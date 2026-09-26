@@ -2497,6 +2497,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		expectedSig = c.expected.Sig
 	}
 	c.refuseParamMarks(x.Params.Params)
+	c.refuseConstParams(x.Params.Params, "a lambda's")
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -2691,6 +2692,9 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 					selExpr = wrapIfNeeded(selExpr, p.Type)
 				}
 				bound[idx] = &selExpr
+				if p.Const {
+					c.deferConstArg(spread.Pos, selExpr, constParamLabel(p.Name))
+				}
 			}
 			continue
 		}
@@ -2711,6 +2715,9 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			}
 			expr := c.checkArgExpr(arg.Value, sig.Params[positional])
 			bound[positional] = &expr
+			if p := sig.Params[positional]; p.Const {
+				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
+			}
 			positional++
 		} else {
 			seenNamed = true
@@ -2750,6 +2757,9 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			}
 			expr := c.checkArgExpr(arg.Value, p)
 			bound[idx] = &expr
+			if p.Const {
+				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
+			}
 		}
 	}
 
@@ -2881,6 +2891,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				}
 				// Inline event handler — check body.
 				c.pushScope()
+				c.refuseConstParams(arg.Params.Params, "a handler's")
 				for _, p := range arg.Params.Params {
 					c.declare(p.Pos, &ir.Param{
 						Name: p.Name,
@@ -3749,6 +3760,7 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
 	c.refuseParamMarks(eh.Params.Params)
+	c.refuseConstParams(eh.Params.Params, "a handler's")
 	params := make([]*ir.Param, len(eh.Params.Params))
 	for i, p := range eh.Params.Params {
 		if p.Default != nil {
@@ -4004,7 +4016,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		emitName = qualifiedLocal
 	}
 	props = bindWildcardName(comp, emitName, props)
-	return &ir.NodeInst{
+	node := &ir.NodeInst{
 		AST:       vn,
 		Name:      emitName,
 		Component: comp,
@@ -4017,6 +4029,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
+	c.deferConstSlots(node)
+	return node
 }
 
 // callComputedOperand inserts the elided call when expr is a bare reference to a
@@ -4444,6 +4458,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 							continue
 						}
 						noteDirect(f.Name, spread.Pos)
+						c.deferConstProp(spread.Pos, selExpr, comp, f.Name)
 						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
 					}
 					continue
@@ -4528,6 +4543,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// A wildcard prop collects the names it matched rather than
 			// being one: the value is an entry keyed by the written name,
 			// and every match on this call site lands in the same map.
+			if arg.Value != nil {
+				c.deferConstProp(*arg.Value.ExprPos(), val, comp, strings.TrimPrefix(resolvedName, ":"))
+			}
 			if wc := wildcardTarget(comp, strings.TrimPrefix(resolvedName, ":")); wc != nil {
 				collectWildcard(wc, strings.TrimPrefix(resolvedName, ":"), val)
 				continue
@@ -4726,6 +4744,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if expected != nil && expected.Kind != ir.TypeDyn {
 					argExpr = wrapIfNeeded(argExpr, expected)
 				}
+				c.deferConstProp(*arg.Value.ExprPos(), argExpr, comp, boundKey)
 				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
 				if boundKey != "" {
 					boundProps[boundKey] = true
@@ -4735,6 +4754,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 		case ast.EventHandler:
 			c.pushScope()
 			want := componentEventParams(comp, arg.Name)
+			c.refuseConstParams(arg.Params.Params, "a handler's")
 			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)
 				if typ.Kind == ir.TypeDyn && i < len(want) && want[i].Type != nil {
@@ -5396,6 +5416,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 			c.error(a.Pos, "slot %q: a population binds plain names", cd.Name)
 			continue
 		}
+		c.refuseConstParams([]ast.Param{a}, "a slot population's")
 		if a.Default != nil {
 			c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", cd.Name, a.Name)
 		}

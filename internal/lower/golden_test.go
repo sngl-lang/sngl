@@ -207,9 +207,9 @@ func (e errCapsName) Error() string {
 
 // testStubPlatform is a minimal in-test ir.Platform registration so
 // golden fixtures can use `import "sngl:platform/teststub"` to exercise the
-// strict-mode branch of passInlinePure. The
-// platform exposes two wrapper components — one pure, one impure — and
-// nothing else.
+// strict-mode branch of passInlinePure. The platform exposes one const
+// wrapper component and nothing else: an impure one is refused by the
+// checker, which holds a target package's components to const.
 type testStubPlatform struct{}
 
 func (testStubPlatform) PlatformIdentifier() string { return "teststub" }
@@ -219,13 +219,8 @@ func (testStubPlatform) Resolve(string) ir.Symbol   { return nil }
 const testStubSource = `
 import sngl "sngl:ui"
 
-component Cleanwrap(value string) sngl.node {
+const component Cleanwrap(value string) sngl.node {
     sngl.text(value=value)
-}
-
-component Statefulwrap() sngl.node {
-    var count int = 0
-    sngl.text(value=string(count))
 }
 `
 

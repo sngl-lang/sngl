@@ -1,0 +1,20 @@
+# A const parameter is folded by contract: the checker holds its argument to a
+# constant expression, and the build then holds it to a literal. A const func
+# the build cannot run -- a host function, trusted const, with no evaluator for
+# its scheme -- passes the first and not the second, and the build says so at
+# the argument rather than handing the callee an expression it cannot read.
+! sngl generate --lang=none --platform=html --out=out app.sngl
+stderr 'app.sngl:10:\d+: param "n" of scaled is const, and its argument does not fold to a literal at build time'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:macro"
+
+#[foreign("js:./api", "add", native)]
+const func add(a int, b int) int
+
+func scaled(const n int) => n * 2
+
+window {
+    text(value="{scaled(add(1, 2))}")
+}

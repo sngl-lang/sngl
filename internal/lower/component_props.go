@@ -137,8 +137,9 @@ func promoteProps(c *ir.Component) {
 		renames[ir.Symbol(p.Sym)] = v.Name
 		// No setter for a #[construct] prop: its absence is what
 		// componentAbsorbs reads to say the instance cannot take a new value
-		// and has to be rebuilt.
-		if !p.Construct {
+		// and has to be rebuilt. Nor for a const one, whose value never
+		// changes after the instance is built.
+		if !p.Construct && !p.Const {
 			setters = append(setters, propSetter(p, v))
 		}
 	}

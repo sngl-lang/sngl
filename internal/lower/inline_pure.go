@@ -232,6 +232,24 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	return len(viewReadVars(c)) == 0
 }
 
+// constSubstitutable reports whether c says it is const and nothing about the
+// position keeps a substitution from being sound. A const component's render
+// reads only its props -- the checker holds it to that -- so it inlines the
+// way a stateless one does, and isPure stays the opportunistic path for a
+// component that says nothing.
+//
+// Two things a substitution still cannot supply. A func is a method on the
+// instance, and nothing hoists one. And a var only handlers touch is hoisted
+// onto the caller once per call site, which under a `for` is one cell for
+// every copy -- so there the component stays a runtime instance, which gives
+// each copy its own.
+func (st *inlinePureState) constSubstitutable(c *ir.Component) bool {
+	if c == nil || !c.Const || len(c.Funcs) > 0 {
+		return false
+	}
+	return len(c.Vars) == 0 || st.loopDepth == 0
+}
+
 // overriddenHere reports whether c carries a platform extension body for the
 // platform being lowered for. The same question inline_components.go asks as
 // specializedHere; with no platform nothing is specialized.
@@ -384,7 +402,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 
-	pure := st.isPure(comp)
+	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
 	if strictApplies && !pure {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))

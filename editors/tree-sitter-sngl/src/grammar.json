@@ -611,6 +611,18 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "const"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "STRING",
           "value": "func"
         },
@@ -834,8 +846,17 @@
                 "type": "CHOICE",
                 "members": [
                   {
-                    "type": "STRING",
-                    "value": ":"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "STRING",
+                        "value": ":"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "const"
+                      }
+                    ]
                   },
                   {
                     "type": "BLANK"
@@ -1028,6 +1049,18 @@
       "content": {
         "type": "SEQ",
         "members": [
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "const"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
           {
             "type": "STRING",
             "value": "component"

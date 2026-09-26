@@ -466,7 +466,7 @@ audited against the table above in Phase 0.
 
 ### 11. The compile-time evaluator is held to the same model
 
-`#[foreign(pure)]` evaluation already does what decision 10 forbids: `sngl generate` in a cloned repository builds the repository's own Go packages and
+`const func` evaluation already does what decision 10 forbids: `sngl generate` in a cloned repository builds the repository's own Go packages and
 runs them, and a js: call runs node over its modules. That is `go generate`,
 not `go build` -- running a project's code -- and it happens today with no one
 asked. Applying the threat model to it is part of this plan and lands in

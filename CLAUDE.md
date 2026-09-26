@@ -23,6 +23,91 @@ Two valid forms — no third:
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
+## The const prefix
+
+`const` before a declaration says **this is known at compile time**, and so
+takes no part in reactivity. Four meanings, one idea:
+
+- `const func` — pure: the value depends only on the arguments.
+- `const component` — the render depends only on the props.
+- `const name T`, a parameter or prop — the argument is constant at every call
+  site, and so is the default.
+- `const name component(…)`, a slot — every population is a const render.
+
+`ConstDecl` is left-factored on `kw_const` (a name, `(`, `func` or `component`
+follows), `StructBodyDecl` and `EnumBodyItem` take `kw_const FuncDecl`, and
+`Param` takes `kw_const ident [Type]`. The flag is `Const` on `ast.FuncDef`,
+`ast.ComponentDecl` and `ast.Param`, and on `ir.Func`, `ir.Component`,
+`ir.Param`, `ir.Prop`, `ir.SlotDecl` and `ir.Body` (an override's own).
+
+**`ir.IsConst` asks the declaration, never the inference.** A call is a
+constant because `Func.Const` says so; `Func.Purity` is still inferred for
+every function and still drives the optimizer, and promises a caller nothing.
+A read of a `const` `*ir.Param` is a constant. That is the whole change to
+the one test, so `const(…)`, a const initializer, a context default and a
+const argument all move together.
+
+The checker rules (`constparams.go`, `constfuncs.go`, `constcomponents.go`)
+run after the purity fixpoint, where `const(…)` assertions are judged:
+
+- An argument bound to a const param or prop is recorded where it is bound
+  (`deferConstArg`, including a spread and a default) and judged by
+  `runConstArgChecks`. A component body is read twice, so the pre-pass
+  truncates the list with the diagnostics, and the judge dedupes.
+- A bodied `const func` may read its params, locals and consts and call only
+  const funcs (`checkConstFuncs`). A **bodyless** one is trusted and made
+  `PurityPure` in `buildFunc`: nothing says what a host does. `pure` is gone
+  from `#[foreign]`; the Go importer's `//sngl:pure`, the TypeScript pure tag
+  and `file:` set `Const`.
+- A const render (`renderCheck`) walks props, bindings, keys, `if`/`for`
+  heads, slot-insertion args and context values, and skips handlers and
+  lambdas. It allows contexts — a prop an ancestor supplies — and flags any
+  non-const `*ir.Var` and any non-const call. It skips an argument bound to a
+  const prop, which the argument check already reports at the same place.
+- `const` on a base binds every override, reported at the override
+  (`checkOverrideConst`). **Every component and override a target package
+  declares must be const**, written or inherited (`checkTargetComponentsConst`);
+  an empty `{}` component (a build node) and a primitive are exempt. This
+  replaces what `passInlinePure`'s strict mode found at lowering with no
+  position, so its impure-wrapper branch is now unreachable from a checked
+  program. Every override in `codegen/**/*.sngl` says `const` for that reason.
+
+**The library says `const` where it means it.** There is no default-pure rule
+any more: a bodied library func is seeded pure for its own fixpoint, and a
+bodyless one is pure only when it is `const func`. So the builtin methods,
+`sngl:seq`, `sngl:ui/draw`'s geometry, the `remote.Value` accessors and the
+target helpers that build a host value are marked, and a side-effecting native
+(a draw call, a timer, `error.raise`, `async.spawn`) is not — it used to be
+pure by default. The `remote.Value` accessors are const for the reason
+`list.length` is: each is a function of its argument's current value. Unmarked,
+the optimizer stopped treating `contents.value()` as effect-free, declined to
+duplicate it into `Result.ok`'s inlined body, and emitted a Go method call on a
+native type that has none (`cmd/sngl/testdata/remote_http_build.txt`).
+
+A library base is deliberately **not** marked `const`: it would bind every
+override, a program's own included, and a program override whose render reads
+its state is legitimate (it is kept as an instance).
+
+**Lowering and codegen.** `passInlinePure` substitutes a const component
+(`constSubstitutable`) unless it has funcs, or has a var and sits under a
+`for` — a hoisted var there would be one cell for every copy. A const prop gets
+no setter and is never rebuilt (`propIsConst`). After the optimizer, an
+argument bound to a const param or prop is folded owned to a literal tree
+(`optimize.foldConstArg`, before the call is inlined), and one that does not
+fold is a build error at the argument; one still naming a const param is left
+for the call site that substitutes it. fyne's `spec` and bubbletea's
+`Layout.join`, `Widget.model`, `Widget.binds` and `Styled.events` are const
+descriptors, and their decoders panic on anything but a literal instead of
+reading it as empty. **`const` never removes a reactive feature**: a prop is
+marked only when it is a descriptor no program has a reason to change while it
+runs, and a codegen that reads a value prop only as a literal today is a gap,
+not a contract.
+
+**A bodyless func's block is not a body.** `ir.Normalize` appends `return <zero>` to a signature, and a trusted-pure native then folded to that zero
+(`<span>0</span>` for `add(1, 2)`). The optimizer asks `hasWrittenBody` before
+it folds, interprets or inlines a body; the old `pure` + `native` pair had the
+same hole. `cmd/sngl/testdata/const_arg_unfoldable.txt` is both halves.
+
 ## Component syntax
 
 A component's block is optional, as a func's is, and the two spellings say
@@ -1725,8 +1810,11 @@ and trying the other tier second is what makes a misplaced target a
 tree-membership error rather than an unresolved name. And every value in the
 tree must satisfy `ir.IsConst`, the test `const(…)` uses: the directive is read
 once, before the program runs, so a `var` read would compile to a snapshot of
-whatever it held first, while a `#[foreign(pure)]` call is a build-time value
-and passes.
+whatever it held first, while a `const func` call is a build-time value
+and passes. No walk says so: `output`, each language node and `cache.inputs`
+declare `const` slots and their members `const` props, so it is the general
+const-argument and const-slot rules (see *The const prefix*). `entry` is the
+exception, naming a declaration rather than holding a value.
 
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it

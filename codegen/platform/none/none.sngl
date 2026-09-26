@@ -40,7 +40,7 @@ component Timer(
     @tick,
 )
 
-component time.timer[platform] {
+const component time.timer[platform] {
     if enabled {
         Timer(interval=interval, enabled=true, @tick { tick() })
     }
@@ -56,19 +56,19 @@ component time.timer[platform] {
 // from an implementation nobody got to: every other target answers this
 // question per shape, and `reportBodylessLibComponents` asks it of this one
 // too.
-component shapes.rect[platform] {}
+const component shapes.rect[platform] {}
 
-component shapes.circle[platform] {}
+const component shapes.circle[platform] {}
 
-component shapes.ellipse[platform] {}
+const component shapes.ellipse[platform] {}
 
-component shapes.line[platform] {}
+const component shapes.line[platform] {}
 
-component shapes.path[platform] {}
+const component shapes.path[platform] {}
 
-component shapes.canvasText[platform] {}
+const component shapes.canvasText[platform] {}
 
-component shapes.canvasImage[platform] {}
+const component shapes.canvasImage[platform] {}
 
 // --- Rich text ---
 //
@@ -118,29 +118,29 @@ component inline(
     content ...component markup.span,
 ) markup.span
 
-component markup.richText[platform] {
+const component markup.richText[platform] {
     flow(role=role) {
         content
     }
 }
 
-component markup.text[platform] {}
+const component markup.text[platform] {}
 
-component markup.image[platform] {}
+const component markup.image[platform] {}
 
-component markup.run[platform] {
+const component markup.run[platform] {
     inline(style=style) {
         content
     }
 }
 
-component markup.link[platform] {
+const component markup.link[platform] {
     inline(href=href) {
         content
     }
 }
 
-component markup.token[platform] {
+const component markup.token[platform] {
     inline(kind=kind) {
         content
     }

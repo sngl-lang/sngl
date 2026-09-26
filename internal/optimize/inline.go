@@ -64,6 +64,9 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if len(f.TypeParams) > 0 {
 		return nil // skip generic functions
 	}
+	if !hasWrittenBody(f) {
+		return nil // a signature's placeholder return answers nothing
+	}
 	if len(f.Block) != 1 {
 		return nil // only inline single-expression functions
 	}

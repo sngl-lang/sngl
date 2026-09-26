@@ -129,9 +129,6 @@ func foreignFlagIdents(fn *Func) []ast.Expr {
 		return nil
 	}
 	var out []ast.Expr
-	if fn.Purity == PurityPure {
-		out = append(out, &ast.IdentExpr{Name: "pure"})
-	}
 	if fn.IsAsync {
 		out = append(out, &ast.IdentExpr{Name: "async"})
 	}

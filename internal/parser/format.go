@@ -691,6 +691,9 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 }
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
+	if fn.Const {
+		f.write("const ")
+	}
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
 		// recv<T>.method form: Name is "recv.method", split and insert type params.
@@ -742,6 +745,9 @@ func (f *formatter) writeTargetIndex(target ast.Expr) {
 }
 
 func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
+	if c.Const {
+		f.write("const ")
+	}
 	f.write("component ")
 	f.write(c.Name)
 	f.writeTypeParams(c.TypeParams)
@@ -989,6 +995,9 @@ func (f *formatter) writeParam(p ast.Param, multiline bool) {
 	f.writeParamAttrs(p.Attrs, p.Pos, multiline)
 	if p.Bidirectional {
 		f.write(":")
+	}
+	if p.Const {
+		f.write("const ")
 	}
 	f.write(p.Name)
 	if p.Type != nil {

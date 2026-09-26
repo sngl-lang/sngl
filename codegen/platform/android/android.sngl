@@ -19,32 +19,32 @@ import gen "sngl:x/gen"
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 component android(
     // Kotlin package / Android application ID.
-    package string,
+    const package string,
     // Display name used in AndroidManifest.xml.
-    appName string,
+    const appName string,
     // Path to a launcher icon asset.
-    icon string,
+    const icon string,
     // Emit a full Gradle project or just Compose sources.
-    main bool,
+    const main bool,
     // Include Gradle wrapper + build scripts (default: true; set "false" to skip).
-    gradle bool,
+    const gradle bool,
     // Theme accent color (hex).
-    color string,
+    const color string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    projectDir string,
+    const projectDir string,
     // Which Android runtime to test against under `sngl test`.
     //   "robolectric": JVM simulation, fast, no emulator (default).
     //   "device":      APK on a real emulator/device via adb.
-    testRunner string,
+    const testRunner string,
     // Toolchain combo — a known-good set of Gradle/AGP/Kotlin/Compose/SDK
     // versions (see internal/androidtc). "stable" (default) or "next".
-    toolchain string,
+    const toolchain string,
     // Override compileSdk / targetSdk (0 = combo default).
-    sdk int,
+    const sdk int,
     // Override minSdk (0 = default 26).
-    minSdk int,
+    const minSdk int,
     // Override the Gradle distribution version (unset = combo default).
-    gradleVersion string,
+    const gradleVersion string,
 ) build.platform {}
 
 // --- The intrinsics ---

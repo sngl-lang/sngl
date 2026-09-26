@@ -132,7 +132,7 @@ module.exports = grammar({
     ),
 
     func_declaration: ($) =>
-      seq("func", $.func_name, optional($.type_param_list), $._func_tail),
+      seq(optional("const"), "func", $.func_name, optional($.type_param_list), $._func_tail),
 
     _func_tail: ($) =>
       choice(
@@ -165,7 +165,7 @@ module.exports = grammar({
     func_param: ($) =>
       prec.right(choice(
       seq(
-        optional(":"),
+        optional(choice(":", "const")),
         field("name", $.identifier),
         optional(field("type", $.type_identifier)),
         optional(seq("=", field("default", $._expression)))
@@ -199,6 +199,7 @@ module.exports = grammar({
     // `tree-sitter generate` fails outright.
     component_declaration: ($) =>
       prec.right(seq(
+      optional("const"),
       "component",
       field("name", $.identifier),
       optional(seq("(", optional($._param_list), ")")),

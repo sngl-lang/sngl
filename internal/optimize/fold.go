@@ -28,6 +28,14 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
+		// An argument bound to a const parameter is held to a literal before
+		// the call is inlined away: the contract is the call site's, and once
+		// the body is spliced in there is no parameter left to hold it to.
+		for i := range call.Args {
+			if constParamOf(call, i) != nil {
+				call.Args[i].Value = foldCallArg(call, i, ctx)
+			}
+		}
 		if inlined := inlineCall(call, ctx); inlined != nil {
 			if ctx != nil && call.Func != nil {
 				ctx.inliningFuncs[call.Func] = true

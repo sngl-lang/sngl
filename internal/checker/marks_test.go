@@ -255,12 +255,12 @@ struct Post {
 
 func TestForeignMarksFuncFlags(t *testing.T) {
 	pkg, errs := checkForeign(t, `
-#[std.foreign("js:example.com/api", "add", pure, async)]
-func add(a int, b int) => a + b
+#[std.foreign("js:example.com/api", "add", async)]
+const func add(a int, b int) => a + b
 `)
 	wantNoMarkErrs(t, errs)
 	fn := pkg.Funcs[0]
-	if !fn.IsAsync || fn.Purity != ir.PurityPure || fn.Foreign.Name != "add" {
+	if !fn.IsAsync || fn.Purity != ir.PurityPure || !fn.Const || fn.Foreign.Name != "add" {
 		t.Errorf("func = async %v purity %v foreign %+v", fn.IsAsync, fn.Purity, fn.Foreign)
 	}
 }
@@ -275,8 +275,8 @@ struct Row {
 }
 
 component App ui.node {
-    #[std.foreign("js:example.com/api", "Double", pure)]
-    func Row.double(x int) => x * 2
+    #[std.foreign("js:example.com/api", "Double")]
+    const func Row.double(x int) => x * 2
 }
 `)
 	wantNoMarkErrs(t, errs)
@@ -318,13 +318,13 @@ func TestForeignRejectsAnUnknownFlag(t *testing.T) {
 #[std.foreign("js:x", "add", nosuch)]
 func add(a int) => a
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: pure, async, native)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: async, native)`)
 }
 
 // The flags describe a call, and a struct has none.
 func TestForeignRefusesFlagsOnANonFunc(t *testing.T) {
 	_, errs := checkForeign(t, `
-#[std.foreign("js:x", "Entry", pure)]
+#[std.foreign("js:x", "Entry", async)]
 struct Post {}
 `)
 	wantMarkErr(t, errs, "which describes a call")
@@ -404,13 +404,13 @@ struct Entry {
 }
 
 // A flag is an identifier whose spelling *is* the value, so a const of that
-// name must not be substituted for it -- `pure` stays the flag `pure` even
-// where something declares `const pure`.
+// name must not be substituted for it -- `async` stays the flag `async` even
+// where something declares `const async`.
 func TestForeignFlagIsNotAConstLookup(t *testing.T) {
 	_, errs := checkForeign(t, `
-const pure = "not a flag"
+const async = "not a flag"
 
-#[std.foreign("js:x", "add", pure)]
+#[std.foreign("js:x", "add", async)]
 func add(a int) => a
 `)
 	if len(errs) > 0 {
