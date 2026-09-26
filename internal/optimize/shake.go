@@ -100,6 +100,9 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		want(fn.Return)
 	}
+	for _, t := range declaredVarTypes(pkg) {
+		want(t)
+	}
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
 		// to spell.
@@ -129,6 +132,54 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	pkg.Structs = append(pkg.Structs, added...)
 	pkg.Enums = append(pkg.Enums, addedEnums...)
 	return nil
+}
+
+// declaredVarTypes is the library struct type of every var the program
+// declares, and of the structs and enums those hold. A var is storage the
+// target declares by its type -- a Model field of type `Style` -- where a
+// literal the program merely builds needs no declaration. A builtin kind is
+// each backend's own to spell.
+func declaredVarTypes(pkg *ir.Package) []*ir.Type {
+	var out []*ir.Type
+	seen := map[*ir.StructDef]bool{}
+	var add func(t *ir.Type)
+	add = func(t *ir.Type) {
+		if t == nil {
+			return
+		}
+		if t.Kind == ir.TypeEnum {
+			out = append(out, t)
+			return
+		}
+		sd, ok := t.Decl.(*ir.StructDef)
+		if t.Kind != ir.TypeStruct || !ok || sd == nil || sd.Pkg == "" || sd.Builtin != ir.BuiltinNone || seen[sd] {
+			return
+		}
+		seen[sd] = true
+		out = append(out, t)
+		for _, f := range sd.Fields {
+			add(f.Type)
+		}
+	}
+	visit := func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok {
+			add(lv.Type)
+		}
+		return nil
+	}
+	for _, v := range pkg.Vars {
+		add(v.Type)
+	}
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
+			add(v.Type)
+		}
+		_ = ir.Walk(*o.Body, visit)
+		for _, f := range o.Funcs {
+			_ = ir.Walk(f.Block, visit)
+		}
+	}
+	return out
 }
 
 // handlerPayloadTypes is the payload type of every event handler the program
