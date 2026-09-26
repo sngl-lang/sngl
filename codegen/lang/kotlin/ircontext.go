@@ -2,7 +2,6 @@ package kotlin
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -41,7 +40,11 @@ type KtIRContext struct {
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
 	IdentRewrites map[string]string
-	imports       *ktImportSet
+	// receiver is the parameter an extension function's body names its
+	// receiver by, which Kotlin spells `this` whatever the declaration
+	// called it. Matched by symbol: IdentRewrites skips parameters.
+	receiver *ir.Param
+	imports  *ktImportSet
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
@@ -468,6 +471,9 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 		return host
 	}
 	if isParamRef(n) {
+		if kc.receiver != nil && n.Sym == ir.Symbol(kc.receiver) {
+			return "this"
+		}
 		return n.Name
 	}
 	// A write names the var it writes, so a same-named lambda parameter in
@@ -565,8 +571,13 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	if rewritten, ok := kc.identRewrite(name); ok && !isParamRef(n) {
 		return funcReference(n.Sym, rewritten)
 	}
-	if p, ok := n.Sym.(*ir.Param); ok && p.Receiver {
-		return name
+	if p, ok := n.Sym.(*ir.Param); ok {
+		if kc.receiver != nil && p == kc.receiver {
+			return "this"
+		}
+		if p.Receiver {
+			return name
+		}
 	}
 	_, kind := kc.Ctx.Resolve(name)
 	switch kind {
@@ -1131,24 +1142,17 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}
 }
 
-// WithIdentRewrite returns a context in which one name renders as another.
-// Used for a method's receiver: an extension function's receiver is `this`
-// whatever the declaration named it, so a body reading `o.symbol` has to read
-// `this.symbol`.
-func (kc *KtIRContext) WithIdentRewrite(from, to string) *KtIRContext {
-	rewrites := make(map[string]string, len(kc.IdentRewrites)+1)
-	maps.Copy(rewrites, kc.IdentRewrites)
-	rewrites[from] = to
-	return &KtIRContext{
-		Ctx:           kc.Ctx,
-		EventVar:      kc.EventVar,
-		IdentRewrites: rewrites,
-		imports:       kc.imports,
-	}
+// WithReceiver returns a context in which p, the parameter a method's body
+// names its receiver by, renders as the extension's `this`.
+func (kc *KtIRContext) WithReceiver(p *ir.Param) *KtIRContext {
+	nc := *kc
+	nc.receiver = p
+	return &nc
 }
 
 // ForComponent returns a new context scoped to a component.
@@ -1157,6 +1161,7 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 		Ctx:           kc.Ctx.ForComponent(comp),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}
 }

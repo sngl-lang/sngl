@@ -1088,9 +1088,7 @@ func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	if len(fnCopy.Params) > 0 && isReceiverParam(fn, fnCopy.Params[0]) {
 		// The body names the receiver whatever the declaration called it
 		// (`func Op.symbol(o Op)`), and an extension's receiver is `this`.
-		if name := fnCopy.Params[0].Name; name != "this" {
-			localKC = localKC.WithIdentRewrite(name, "this")
-		}
+		localKC = localKC.WithReceiver(fnCopy.Params[0])
 		fnCopy.Params = fnCopy.Params[1:]
 	}
 	fnCopy.Receiver = ""
