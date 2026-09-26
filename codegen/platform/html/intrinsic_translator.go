@@ -57,12 +57,17 @@ type htmlTranslator struct {
 	// laid out in, and the props that size it are assigned after OnCreateNode.
 	// The scope's emitter flushes them once the body is written.
 	canvasDraws []*canvasutil.Meta
+	// classProps collects, per node, the props `classRules` reads, for an
+	// element built at run time: the page walk sees only the page's markup.
+	classProps map[string][]ir.Arg
+	addStyle   func(string)
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
+		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
 	}
 }
 
@@ -305,7 +310,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 		return nil
 	}
-	// Stylesheet rules, registered by the page walk; no element carries one.
+	if prop == "class" || prop == classStyleProp || prop == classStyleDarkProp {
+		t.registerClassRules(node, prop, value)
+	}
 	if prop == classStyleProp || prop == classStyleDarkProp {
 		return nil
 	}
@@ -407,4 +414,17 @@ func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// registerClassRules writes a node's stylesheet rule once its class and a
+// style are both known, the props arriving one assignment at a time.
+func (t *htmlTranslator) registerClassRules(node ir.Expr, prop string, value ir.Expr) {
+	id, ok := node.(*ir.Ident)
+	if !ok || t.addStyle == nil {
+		return
+	}
+	t.classProps[id.Name] = append(t.classProps[id.Name], ir.Arg{Name: prop, Value: value})
+	for _, rule := range classRules(&ir.NodeInst{Props: t.classProps[id.Name]}) {
+		t.addStyle(rule)
+	}
 }

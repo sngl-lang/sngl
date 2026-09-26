@@ -516,9 +516,8 @@ component markup.richText[platform] {
     }
 }
 
-// The box is a class, light and dark, rather than the base's inline style: a
-// light background written on the element stayed light under a dark page
-// whose text had turned light with it, and no stylesheet could reach it.
+// A class rather than the base's inline style, so the box has a dark half and
+// a page's own `pre` rule can still restyle it.
 component markup.codeBlock[platform] {
     flow(
         tag="pre",

@@ -104,12 +104,11 @@ func spanStyleLitCSS(sl *ir.StructLit) string {
 }
 
 // The rule a literal class stands for, in the light scheme and the dark one.
-// A `SpanStyle` on a span and a `ui.Style` on a flow, read like `spanStyle`,
-// and written once per page to the stylesheet rather than onto the element --
-// which is what lets the dark half answer to `prefers-color-scheme`. The
-// selector is `:where` so a page's own CSS wins over both however it is
-// written: a docs site's `pre { background: … }` is an element selector, and
-// against a bare class it lost.
+// A `SpanStyle` on a span and a `ui.Style` on a flow, both read by
+// `spanStyleLitCSS`, which is exact for the fields a flow's rule writes but
+// drops a zero color or font size. Written once per page to the stylesheet
+// rather than onto the element, which is what lets the dark half answer to
+// `prefers-color-scheme`; under `:where`, so a page's own CSS wins over both.
 const (
 	classStyleProp     = "classStyle"
 	classStyleDarkProp = "classStyleDark"
