@@ -3,6 +3,7 @@ package gtk4_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -44,13 +45,15 @@ func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	t.Cleanup(func() { _ = cfg.Configure(map[string]string{}) })
 
 	docs := checker.ProvidedDocs(gen)
-	if len(docs) != 2 {
-		t.Fatalf("ProvidedDocs = %d docs; want 2 (the written half and the generated one)", len(docs))
+	if len(docs) != 3 {
+		t.Fatalf("ProvidedDocs = %d docs; want 3 (doc.sngl, the written half and the generated one)", len(docs))
 	}
 	var names []string
-	for _, stmt := range docs[0].Stmts {
-		if c, ok := stmt.(*ast.ComponentDecl); ok {
-			names = append(names, c.Name)
+	for _, doc := range docs {
+		for _, stmt := range doc.Stmts {
+			if c, ok := stmt.(*ast.ComponentDecl); ok && strings.HasPrefix(c.Name, "Gtk") {
+				names = append(names, c.Name)
+			}
 		}
 	}
 	if len(names) != 1 || names[0] != "GtkButton" {

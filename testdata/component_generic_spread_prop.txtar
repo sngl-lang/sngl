@@ -565,9 +565,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { page__inst0: 3, a__inst0: null };
   state.a__inst0 = { on: 1 };
-  function pageArgs(on) {
-    return { on };
-  }
   function __effect0_mount() {
     state.page__inst0 = __effect0_key + 1;
     __n0.textContent = "page=" + String(state.page__inst0);
@@ -611,7 +608,7 @@ body { font-family: system-ui, sans-serif; }
       }
       __effects0_settling = false;
       if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
       }
     }
   }
@@ -636,4 +633,4 @@ pass sha256:5b528c050b890ff6d104a041516054c7
 -- run/kotlin/android --
 pass sha256:78e4f84be96d9e2df20414afe40806dd
 -- run/none/html --
-pass sha256:4c8692212c50ee57f465013bf0193538
+pass sha256:6c1e594c7e61007a6cf8688e8a68a7cd

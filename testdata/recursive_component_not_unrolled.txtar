@@ -162,7 +162,9 @@ func (m Model) renderTreeView(node any, __depth int) string {
 			result_1 = m.renderTreeView((node).(Node).Left, (__depth + 1))
 		}
 	}
-	resultChildren = append(resultChildren, result_1)
+	if result_1 != "" {
+		resultChildren = append(resultChildren, result_1)
+	}
 	var result_2 string
 	if (node).(Node).Right != nil {
 		if __depth >= 512 {
@@ -170,7 +172,9 @@ func (m Model) renderTreeView(node any, __depth int) string {
 			result_2 = m.renderTreeView((node).(Node).Right, (__depth + 1))
 		}
 	}
-	resultChildren = append(resultChildren, result_2)
+	if result_2 != "" {
+		resultChildren = append(resultChildren, result_2)
+	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
 	return result
 }
@@ -217,7 +221,7 @@ data class Node(
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
-class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -252,6 +256,6 @@ fun TreeView(node: Any? = null, __depth: Int = 0) {
     }
 }
 -- run/go/bubbletea --
-pass sha256:66534e90b90d92d071556e83969e745d
+pass sha256:ff16ca6a51584a7cb36b5631474bf4eb
 -- run/kotlin/android --
-pass sha256:10cc9f3eadf467dd101f5984f8d7c4ec
+pass sha256:8b115513a40cfbb8fb0c4976eba5203a

@@ -89,14 +89,6 @@ var referenceSlots = map[string]bool{
 	"Closure.Func": true,
 	// The same *Funcs already reached through their owning slice.
 	"Component.Methods": true,
-	// passCanvas appends the draw func it synthesizes to pkg.Funcs (or to the
-	// window's) and stores it here; passDeclarative and passCanvasReactivity
-	// then copy that same pointer onto the local and the redraw statement. All
-	// three name a func owned by a declaration slice, so the body is walked
-	// once there rather than once per canvas.
-	"NodeInst.CanvasDraw":       true,
-	"LocalVar.CanvasDraw":       true,
-	"CanvasRedrawStmt.DrawFunc": true,
 	// A macro is a declaration, not code: it is never called and no backend
 	// emits it, so no pass has anything to do to its body. Excluded here
 	// deliberately rather than by omission -- walking it would subject a

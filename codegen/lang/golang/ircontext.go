@@ -333,7 +333,32 @@ func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
 		elemType = IRTypeToGo(n.Type.Elems[0])
 	}
-	return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	if !slices.ContainsFunc(n.Elems, isSpread) {
+		return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	}
+	gc.RequireImport("slices")
+	var parts, run []string
+	flush := func() {
+		if len(run) > 0 {
+			parts = append(parts, "[]"+elemType+"{"+strings.Join(run, ", ")+"}")
+			run = nil
+		}
+	}
+	for i, el := range n.Elems {
+		if isSpread(el) {
+			flush()
+			parts = append(parts, elems[i])
+			continue
+		}
+		run = append(run, elems[i])
+	}
+	flush()
+	return "slices.Concat(" + strings.Join(parts, ", ") + ")"
+}
+
+func isSpread(e ir.Expr) bool {
+	_, ok := e.(*ir.Spread)
+	return ok
 }
 
 func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
@@ -394,7 +419,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	return name + "{" + strings.Join(parts, ", ") + "}"
 }
 
-func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
+func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand }
 
 func (gc *GoIRContext) Call(n *ir.Call) string             { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
 func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConversion(n) }
@@ -412,6 +437,9 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 	}
 	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
 		if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
+			return lines
+		}
+		if lines := gc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
 	}
@@ -467,11 +495,11 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which
 	// is also what keeps Go from calling it unused.
+	n = WithUnreadVarsDropped(n)
 	key := n.Key
 	if key == "" {
 		key = "__i"
 	}
-	n = WithUnreadVarsDropped(n)
 	switch n.IterKind {
 	case ir.IterForever:
 		// Go's own spelling: `for {` is the condition form below with the
@@ -569,9 +597,32 @@ func (gc *GoIRContext) ElseHead() string                    { return "} else {" 
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
 
+// shadowedStateVar reports a read of a state var whose name a local of the
+// emitted scope also binds -- a render slot's `parent` parameter beside a
+// program's `var parent` -- which Resolve, asking by name, answers as the local.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	v, ok := sym.(*ir.Var)
+	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
+		return nil, false
+	}
+	if _, renamed := gc.Ctx.Renames[v.Name]; !gc.Ctx.Locals[v.Name] && !renamed {
+		return nil, false
+	}
+	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
+		return v, true
+	}
+	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
+}
+
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
+	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(n.Name)
 	}
 	sym, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
@@ -609,7 +660,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	// is `m` -- and its fields are its own type's, exported like any other Go
 	// struct's, rather than the Model's unexported state.
 	switch sym := id.Sym.(type) {
-	case nil, *ir.Component:
+	case nil, *ir.Component, *codegen.Receiver:
 		// A synthesized receiver read carries no symbol.
 	case *ir.Param:
 		if !sym.Receiver && sym.Name != ir.ReceiverParam {
@@ -721,6 +772,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return gc.RecvName()
 	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
 
 	name := n.Name
 	// A node handle is stored as a struct field of whatever the scope
@@ -744,6 +798,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	}
 	if n.IsElementRef && n.Synthesized {
 		return gc.NodeRecv(name) + "." + name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(name)
 	}
 	sym, kind := gc.Ctx.Resolve(name)
 	switch kind {
@@ -1246,22 +1303,33 @@ func (gc *GoIRContext) methodField(field string) bool {
 }
 
 // uniqueStructWithField returns the Go type name of the sole package struct
-// declaring this field, or "" if zero or several do.
+// declaring this field, or "" if zero or several do. The program's own
+// structs are asked first: a library payload a handler names joins
+// Pkg.Structs too, and `ChangeEvent.value` made every dyn `.value` ambiguous.
 func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
 		return ""
 	}
-	var match *ir.StructDef
-	for _, sd := range gc.Ctx.Pkg.Structs {
-		for _, f := range sd.Fields {
-			if f.Name == field {
-				if match != nil {
-					return ""
+	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
+		for _, sd := range gc.Ctx.Pkg.Structs {
+			if own && sd.Pkg != "" {
+				continue
+			}
+			for _, f := range sd.Fields {
+				if f.Name == field {
+					if match != nil {
+						return nil, true
+					}
+					match = sd
+					break
 				}
-				match = sd
-				break
 			}
 		}
+		return match, false
+	}
+	match, ambiguous := find(true)
+	if match == nil && !ambiguous {
+		match, _ = find(false)
 	}
 	if match == nil {
 		return ""
@@ -1301,8 +1369,7 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// The recover a catch block (Catch) emits is what stops it, when one
-		// covers this raise; otherwise it aborts.
+		// catchAtCall's recover is what stops a bubbling panic.
 		return []string{"panic(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -1318,10 +1385,83 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// catchAtCall emits a call to a fallible function whose raise a handler at
+// this site catches: the call's own @error, or the boundary or window one it
+// resolved to. The raise is a panic by the time it leaves the callee, so the
+// call runs under a recover, and a panic that is not a raise is re-panicked.
+// A `fails` native reports through its error result instead.
+func (gc *GoIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	param := ""
+	if len(handler.Func.Params) > 0 {
+		param = handler.Func.Params[0].Name
+	}
+	body := func(indent string) []string {
+		var out []string
+		for _, stmt := range handler.Func.Block {
+			for _, l := range gc.EvalStmt(stmt) {
+				out = append(out, indent+l)
+			}
+		}
+		return out
+	}
+	if call.Func != nil && call.Func.HasErrorReturn {
+		raw := gc.evalCall(call)
+		head := "if __err := " + raw + "; __err != nil {"
+		if call.Func.Return != nil {
+			head = "if _, __err := " + raw + "; __err != nil {"
+		}
+		lines := []string{head}
+		indent := "\t"
+		wrap := ir.BlockReturns(handler.Func.Block)
+		if wrap {
+			lines = append(lines, "\tfunc() {")
+			indent = "\t\t"
+		}
+		if param != "" {
+			lines = append(lines,
+				indent+param+" := ErrorEvent{Message: __err.Error()}",
+				indent+"_ = "+param)
+		}
+		lines = append(lines, body(indent)...)
+		if wrap {
+			lines = append(lines, "\t}()")
+		}
+		return append(lines, "}")
+	}
+	bind := "_"
+	if param != "" {
+		bind = param
+	}
+	lines := []string{
+		"func() {",
+		"\tdefer func() {",
+		"\t\t__r := recover()",
+		"\t\tif __r == nil {",
+		"\t\t\treturn",
+		"\t\t}",
+		"\t\t" + bind + ", __ok := __r.(ErrorEvent)",
+		"\t\tif !__ok {",
+		"\t\t\tpanic(__r)",
+		"\t\t}",
+	}
+	if param != "" {
+		lines = append(lines, "\t\t_ = "+param)
+	}
+	lines = append(lines, body("\t\t")...)
+	return append(lines,
+		"\t}()",
+		"\t"+gc.EvalExpr(call),
+		"}()")
+}
+
 // Catch renders a catch block as a closure called in place, whose deferred
 // recover runs the handler for an ErrorEvent and re-panics anything else. A
-// closure rather than a helper taking two, so a `return` in the body still
-// ends what it ended, and nothing has to declare the helper.
+// closure rather than a helper taking two, so nothing has to declare the
+// helper, and a `return` in the body ends the event handler it was written in.
 func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
 	h := n.Catch
 	bind := "_"
@@ -1331,13 +1471,13 @@ func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
 	lines := []string{
 		"func() {",
 		"\tdefer func() {",
-		"\t\tr := recover()",
-		"\t\tif r == nil {",
+		"\t\t__r := recover()",
+		"\t\tif __r == nil {",
 		"\t\t\treturn",
 		"\t\t}",
-		"\t\t" + bind + ", ok := r.(ErrorEvent)",
-		"\t\tif !ok {",
-		"\t\t\tpanic(r)",
+		"\t\t" + bind + ", __ok := __r.(ErrorEvent)",
+		"\t\tif !__ok {",
+		"\t\t\tpanic(__r)",
 		"\t\t}",
 	}
 	if bind != "_" {
@@ -1359,15 +1499,21 @@ func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
 
 // emitHandlerInvoke declares the event variable and inlines the handler body,
 // wrapped in a Go lexical block so the variable does not leak. It is what a
-// raise no catch block covers gets: a per-call handler's own, or a boundary's
-// reached from a view body, where there is no handler left to end.
+// raise no catch block covers gets: a direct raise with a per-call handler,
+// or one in a view body, where there is no event handler to end.
 func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
 		paramName = handler.Func.Params[0].Name
 	}
+	// A `return` in the handler ends the handler, not the function it was
+	// inlined into, so a body holding one is a closure called in place.
+	open, closeLine := "{", "}"
+	if ir.BlockReturns(handler.Func.Block) {
+		open, closeLine = "func() {", "}()"
+	}
 	lines := []string{
-		"{",
+		open,
 		fmt.Sprintf("\t%s := %s", paramName, evt),
 		fmt.Sprintf("\t_ = %s", paramName),
 	}
@@ -1376,7 +1522,7 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 			lines = append(lines, "\t"+l)
 		}
 	}
-	lines = append(lines, "}")
+	lines = append(lines, closeLine)
 	return lines
 }
 
@@ -1463,6 +1609,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
+	if src, dst, ok := ir.NumericListConversion(n); ok {
+		srcGo, elemGo := IRTypeToGo(src), IRTypeToGo(dst.Elems[0])
+		return "func(s " + srcGo + ") " + goType + " { out := make(" + goType + ", len(s)); " +
+			"for i, v := range s { out[i] = " + elemGo + "(v) }; return out }(" + operand + ")"
+	}
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {
@@ -2213,15 +2364,7 @@ func (gc *GoIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	return v.Foreign.Name, true
 }
 
-// WithUnreadVarsDropped is n with a loop variable its body never names left
-// out, since Go refuses one declared and not used. A lowering can leave one: a
-// slot matches its instances against the inner loop's element and never reads
-// the outer loop's. Asked by name, so anything that might read it keeps it.
-func WithUnreadVarsDropped(n *ir.For) *ir.For {
-	// A counted loop's variable is read by its own condition.
-	if n.IterKind == ir.IterCounted {
-		return n
-	}
+func loopReadNames(n *ir.For) map[string]bool {
 	read := map[string]bool{}
 	for _, block := range [][]ir.Stmt{n.Body, n.Else} {
 		_ = ir.Walk(block, func(nd ir.Node) error {
@@ -2230,6 +2373,25 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 			}
 			return nil
 		})
+	}
+	return read
+}
+
+// WithUnreadVarsDropped is n with a loop variable its body never names left
+// out, since Go refuses one declared and not used. A lowering can leave one: a
+// slot matches its instances against the inner loop's element and never reads
+// the outer loop's. Asked by name, so anything that might read it keeps it.
+func WithUnreadVarsDropped(n *ir.For) *ir.For {
+	read := loopReadNames(n)
+	// A counted loop's variable is read by its own condition, which ForHead
+	// names __i when the body does not name one.
+	if n.IterKind == ir.IterCounted {
+		if n.Value != "" || n.Key == "" || read[n.Key] {
+			return n
+		}
+		cp := *n
+		cp.Key = ""
+		return &cp
 	}
 	if (n.Key == "" || read[n.Key]) && (n.Value == "" || read[n.Value]) {
 		return n

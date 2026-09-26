@@ -2,7 +2,6 @@ package kotlin
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -41,7 +40,11 @@ type KtIRContext struct {
 	// Used by the Android test-mode emit to route every component-level
 	// var through a hoisted state object (`count` → `state.count`).
 	IdentRewrites map[string]string
-	imports       *ktImportSet
+	// receiver is the parameter an extension function's body names its
+	// receiver by, which Kotlin spells `this` whatever the declaration
+	// called it. Matched by symbol: IdentRewrites skips parameters.
+	receiver *ir.Param
+	imports  *ktImportSet
 }
 
 // NewIRContext creates a KtIRContext from a codegen ExprCtx.
@@ -179,14 +182,60 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
-func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string { return "*" + operand }
+func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string {
+	return "*" + operand + ".toTypedArray()"
+}
 
 func (kc *KtIRContext) Call(n *ir.Call) string             { return kc.evalCall(n) }
 func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConversion(n) }
 func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambda(n) }
 
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
+	// A map is a read-only `Map` on Kotlin, so an entry write rebuilds it --
+	// which is also the write Compose sees, the map being held by a
+	// `mutableStateOf` that recomposes on reassignment.
+	if idx, ok := n.Target.(*ir.Index); ok && isMapExpr(idx.Operand) {
+		recv := irwalk.EvalMutTarget(kc, idx.Operand)
+		key := kc.EvalExpr(idx.Idx)
+		if n.Op != ast.AssignSet {
+			op := strings.TrimSuffix(n.Op.String(), "=")
+			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
+		}
+		return recv + " = " + recv + " + (" + key + " to " + value + ")"
+	}
+	// A list the program keeps as state is a `SnapshotStateList` held by a
+	// val, so it cannot be reassigned; its contents are replaced instead. The
+	// value is bound first because it may read the list being cleared.
+	if n.Op == ast.AssignSet && kc.isStateList(n.Target) {
+		return "(" + value + ").let { __v -> " + target + ".clear(); " + target + ".addAll(__v) }"
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+func isMapExpr(e ir.Expr) bool {
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeMap
+}
+
+// isStateList reports whether e names a list-typed state var, which every
+// Compose owner declares as a `SnapshotStateList`.
+func (kc *KtIRContext) isStateList(e ir.Expr) bool {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeList {
+		return false
+	}
+	switch n := e.(type) {
+	case *ir.Ident:
+		if kc.Ctx == nil {
+			return false
+		}
+		_, kind := kc.Ctx.Resolve(n.Name)
+		return kind == codegen.NameStateVar
+	case *ir.Select:
+		ot := n.Operand.ExprType()
+		return ot != nil && ot.Kind == ir.TypeComponent
+	}
+	return false
 }
 
 // valueCopy binds a struct value the way SNGL binds one: by copy.
@@ -249,8 +298,67 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := kc.catchAtCall(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{kc.EvalExpr(n.Call)}
+}
+
+// catchAtCall emits a call to a fallible function under a try whose catch is
+// the handler this site resolved to. A raise arrives as SnglRaise carrying
+// its event, and only that is caught, as Go re-panics what is not an
+// ErrorEvent -- except from a `fails` native called here, whose failure is
+// any exception and has no kind.
+func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	caught := "SnglRaise"
+	if call.Func != nil && call.Func.HasErrorReturn {
+		caught = "Exception"
+	}
+	lines := []string{
+		"try {",
+		"\t" + kc.EvalExpr(call),
+		"} catch (__err: " + caught + ") {",
+	}
+	if len(handler.Func.Params) > 0 {
+		event := "__err.event"
+		if caught != "SnglRaise" {
+			event = "ErrorEvent(__err.message ?: \"\", \"\")"
+		}
+		lines = append(lines, "\tval "+handler.Func.Params[0].Name+" = "+event)
+	}
+	lines = append(lines, kc.handlerBody(handler)...)
+	return append(lines, "}")
+}
+
+// handlerBody renders an inlined @error body one indent in. A `return` there
+// ends the handler, not the function it was inlined into, so a body holding
+// one runs as a local fun of its own.
+func (kc *KtIRContext) handlerBody(handler *ir.EventHandler) []string {
+	var body []string
+	for _, stmt := range handler.Func.Block {
+		body = append(body, kc.EvalStmt(stmt)...)
+	}
+	if ir.BlockReturns(handler.Func.Block) {
+		head := "fun __onError() {"
+		if ir.BlockHasAsyncCall(handler.Func.Block) {
+			head = "suspend " + head
+		}
+		wrapped := []string{head}
+		for _, l := range body {
+			wrapped = append(wrapped, "\t"+l)
+		}
+		body = append(wrapped, "}", "__onError()")
+	}
+	out := make([]string, len(body))
+	for i, l := range body {
+		out[i] = "\t" + l
+	}
+	return out
 }
 func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
@@ -349,16 +457,52 @@ func (kc *KtIRContext) ElseHead() string                    { return "} else {" 
 func (kc *KtIRContext) BlockEnd() string                    { return "}" }
 func (kc *KtIRContext) Indent() string                      { return "\t" }
 
+// isParamRef reports whether n reads a parameter. IdentRewrites maps a state
+// var's name to its hoisted cell, and a parameter spelled the same is not
+// that var: android's checkbox override hands `onCheckedChange` a lambda
+// taking `on`, and a program's `var on` made it `state.on = state.on`.
+func isParamRef(n *ir.Ident) bool {
+	_, ok := n.Sym.(*ir.Param)
+	return ok
+}
+
 func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
+	if isParamRef(n) {
+		if kc.receiver != nil && n.Sym == ir.Symbol(kc.receiver) {
+			return "this"
+		}
+		return n.Name
+	}
+	// A write names the var it writes, so a same-named lambda parameter in
+	// scope (android's checkbox hands its lambda `on`) does not shadow it.
+	if _, isVar := n.Sym.(*ir.Var); isVar {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
 		}
 	}
+	if rewritten, ok := kc.identRewrite(n.Name); ok {
+		return rewritten
+	}
 	return n.Name
+}
+
+// identRewrite is the rewrite for a name the page's state declares, unless
+// the scope binds the name itself: a prop or loop variable of the same name
+// in another composable is not the page's.
+func (kc *KtIRContext) identRewrite(name string) (string, bool) {
+	rewritten, ok := kc.IdentRewrites[name]
+	if !ok {
+		return "", false
+	}
+	if kc.Ctx != nil {
+		if _, kind := kc.Ctx.Resolve(name); kind == codegen.NameLocal {
+			return "", false
+		}
+	}
+	return rewritten, true
 }
 func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return n.Field }
 
@@ -424,18 +568,51 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
-		if rewritten, ok := kc.IdentRewrites[name]; ok {
-			return rewritten
+	if rewritten, ok := kc.identRewrite(name); ok && !isParamRef(n) {
+		return funcReference(n.Sym, rewritten)
+	}
+	if p, ok := n.Sym.(*ir.Param); ok {
+		if kc.receiver != nil && p == kc.receiver {
+			return "this"
+		}
+		if p.Receiver {
+			return name
 		}
 	}
 	_, kind := kc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
-		return kc.Ctx.RenamedName(name)
+		return SafeIdent(kc.Ctx.RenamedName(name))
 	default:
-		return name
+		return funcReference(n.Sym, SafeIdent(name))
 	}
+}
+
+// funcReference spells a function named as a value as Kotlin's reference to
+// it, `::f` or `state::f`; anything else is returned as spelled.
+func funcReference(sym ir.Symbol, spelled string) string {
+	if !takesArgs(sym) {
+		return spelled
+	}
+	if i := strings.LastIndexByte(spelled, '.'); i >= 0 {
+		return spelled[:i] + "::" + spelled[i+1:]
+	}
+	return "::" + spelled
+}
+
+// takesArgs reports whether sym is a function a bare name can only be a
+// reference to: one with a parameter past its receiver, which no implicit
+// call reads as a getter.
+func takesArgs(sym ir.Symbol) bool {
+	fn, ok := sym.(*ir.Func)
+	if !ok {
+		return false
+	}
+	params := fn.Params
+	if len(params) > 0 && params[0].Receiver {
+		params = params[1:]
+	}
+	return len(params) > 0
 }
 
 // nativeCall emits a call to the Kotlin identifier a #[kotlin.native]
@@ -684,7 +861,7 @@ func (kc *KtIRContext) Catch(n *ir.If, body []string) []string {
 	}
 	lines = append(lines, "} catch (__e: SnglRaise) {")
 	if h.Func != nil && len(h.Func.Params) > 0 {
-		lines = append(lines, "\tval "+h.Func.Params[0].Name+" = __e.error")
+		lines = append(lines, "\tval "+h.Func.Params[0].Name+" = __e.event")
 	}
 	if h.Func != nil {
 		for _, stmt := range h.Func.Block {
@@ -705,11 +882,7 @@ func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 		"run {",
 		fmt.Sprintf("\tval %s = %s", paramName, evt),
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range kc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, kc.handlerBody(handler)...)
 	lines = append(lines, "}")
 	return lines
 }
@@ -756,6 +929,9 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	codegen.RequireIntrinsicFallback(langKt, n.Func)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
+	}
+	if len(args) == 1 && codegen.IsComputed(n.Func) {
+		return args[0] + "." + method
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 }
@@ -840,6 +1016,16 @@ func ktIntConvMethod(t *ir.Type) string {
 	return "toInt()"
 }
 
+func ktNumberConvMethod(t *ir.Type) string {
+	if t.Kind != ir.TypeFloat {
+		return ktIntConvMethod(t)
+	}
+	if t.Bits == 32 {
+		return "toFloat()"
+	}
+	return "toDouble()"
+}
+
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubKt(n.Type)
@@ -854,15 +1040,13 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionWrap(n) {
 		return operand
 	}
+	if _, dst, ok := ir.NumericListConversion(n); ok {
+		return operand + ".map { it." + ktNumberConvMethod(dst.Elems[0]) + " }"
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			return operand + "." + ktIntConvMethod(n.Type)
-		case ir.TypeFloat:
-			if n.Type.Bits == 32 {
-				return operand + ".toFloat()"
-			}
-			return operand + ".toDouble()"
+		case ir.TypeInt, ir.TypeFloat:
+			return operand + "." + ktNumberConvMethod(n.Type)
 		case ir.TypeString:
 			// Kotlin's Double.toString always writes a fraction, so a
 			// calculator that Go and JS both spell `24` came out as `24.0`.
@@ -945,6 +1129,9 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
 		params[i] = p.Name
+		if p.Type != nil && p.Type.Kind != ir.TypeDyn {
+			params[i] += ": " + IRTypeToKt(p.Type)
+		}
 	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -977,24 +1164,17 @@ func (kc *KtIRContext) WithLocal(name string) *KtIRContext {
 		Ctx:           kc.Ctx.WithLocal(name),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}
 }
 
-// WithIdentRewrite returns a context in which one name renders as another.
-// Used for a method's receiver: an extension function's receiver is `this`
-// whatever the declaration named it, so a body reading `o.symbol` has to read
-// `this.symbol`.
-func (kc *KtIRContext) WithIdentRewrite(from, to string) *KtIRContext {
-	rewrites := make(map[string]string, len(kc.IdentRewrites)+1)
-	maps.Copy(rewrites, kc.IdentRewrites)
-	rewrites[from] = to
-	return &KtIRContext{
-		Ctx:           kc.Ctx,
-		EventVar:      kc.EventVar,
-		IdentRewrites: rewrites,
-		imports:       kc.imports,
-	}
+// WithReceiver returns a context in which p, the parameter a method's body
+// names its receiver by, renders as the extension's `this`.
+func (kc *KtIRContext) WithReceiver(p *ir.Param) *KtIRContext {
+	nc := *kc
+	nc.receiver = p
+	return &nc
 }
 
 // ForComponent returns a new context scoped to a component.
@@ -1003,6 +1183,7 @@ func (kc *KtIRContext) ForComponent(comp *ir.Component) *KtIRContext {
 		Ctx:           kc.Ctx.ForComponent(comp),
 		EventVar:      kc.EventVar,
 		IdentRewrites: kc.IdentRewrites,
+		receiver:      kc.receiver,
 		imports:       kc.imports,
 	}
 }

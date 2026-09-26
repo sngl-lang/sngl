@@ -1,8 +1,6 @@
 package golang
 
 import (
-	"strings"
-
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -28,27 +26,6 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 		return translateIRLiteral(lit)
 	}
 	return `""`
-}
-
-func (t *Translator) TypeToNative(hint string) string {
-	if strings.HasPrefix(hint, "option:") {
-		return "*" + t.TypeToNative(hint[7:])
-	}
-	switch hint {
-	case "int":
-		return "int"
-	case "float":
-		return "float64"
-	case "bool":
-		return "bool"
-	case "string", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
-		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
-		return "string"
-	default:
-		return "any"
-	}
 }
 
 func (t *Translator) ExportName(name string) string {

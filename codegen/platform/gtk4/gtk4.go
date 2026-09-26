@@ -12,6 +12,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -71,6 +72,17 @@ type Generator struct {
 	girOpt   string
 	fsOnce   sync.Once
 	pkgFS    fs.FS
+	fsErr    error
+	// store is where the registry and the declarations derived from it are
+	// kept between builds. Nil means the process's default store.
+	store *gencache.Store
+}
+
+func (g *Generator) genStore() *gencache.Store {
+	if g == nil || g.store == nil {
+		return gencache.Default()
+	}
+	return g.store
 }
 
 // Configure implements codegen.OptionConfigurable. Reads the "gir" option so
@@ -84,6 +96,7 @@ func (g *Generator) Configure(opts map[string]string) error {
 	g.registry = nil
 	g.initErr = nil
 	g.pkgFS = nil
+	g.fsErr = nil
 	return nil
 }
 
@@ -97,17 +110,20 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 
-// Unavailable implements codegen.PlatformAvailability.
+// Unavailable implements codegen.PlatformAvailability. It is answered from the
+// declarations rather than the registry: the checker asks it of every
+// registered platform on every build, and the declarations are what such a
+// build reads anyway.
 func (g *Generator) Unavailable() error {
-	_, err := g.gir()
-	return err
+	g.widgets()
+	return g.fsErr
 }
 
 // gir lazy-loads the widget registry, caching both the registry and the
 // failure. Configure resets the cache when --opt gir= changes.
 func (g *Generator) gir() (*gir.TypeRegistry, error) {
 	g.once.Do(func() {
-		g.registry, g.minimal, g.initErr = girRegistry(g.girOpt)
+		g.registry, g.minimal, g.initErr = girRegistryIn(g.genStore(), g.girOpt)
 	})
 	return g.registry, g.initErr
 }
@@ -131,7 +147,7 @@ func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
 		g.girOpt = opt
 		g.once = sync.Once{}
 		g.fsOnce = sync.Once{}
-		g.registry, g.initErr, g.pkgFS = nil, nil, nil
+		g.registry, g.initErr, g.pkgFS, g.fsErr = nil, nil, nil, nil
 	}
 	return g.gir()
 }
@@ -148,35 +164,27 @@ func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
 //   - empty: the host's Gtk-4.0.gir if the probe finds one, else the bundled
 //     subset -- a host without GTK 4 development files can still check and
 //     document the widgets codegen/platform/gtk4 wraps.
-func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
-	if opt == girBuiltin {
-		reg, err = gir.Minimal()
-		return reg, err == nil, err
-	}
-	if opt != "" {
-		// Through resolveGIRPath rather than straight to the loader: a path the
-		// caller named and that is not there gets the message that says which
-		// option carried it and how to fix it.
-		p, perr := resolveGIRPath(opt)
-		if perr != nil {
-			return nil, false, perr
-		}
-		reg, err = gir.LoadGIR(p)
-		return reg, false, err
-	}
-	if p, perr := resolveGIRPath(""); perr == nil {
-		if reg, err = gir.LoadGIR(p); err == nil {
-			return reg, false, nil
-		}
-		return nil, false, err
-	}
-	reg, err = gir.Minimal()
-	return reg, err == nil, err
+//
+// The answer is the gtk4.registry entry of the default store (girstore.go), so
+// an unchanged GIR is parsed once rather than once per build.
+func girRegistry(opt string) (*gir.TypeRegistry, bool, error) {
+	return girRegistryIn(gencache.Default(), opt)
 }
 
-// usingMinimalGIR reports whether the registry is the bundled subset. A
-// diagnostic about a widget that is not declared says so, because the fix is to
-// install GTK rather than to correct the name.
+func girRegistryIn(store *gencache.Store, opt string) (*gir.TypeRegistry, bool, error) {
+	req, err := girRequest(registryProducer, opt)
+	if err != nil {
+		return nil, false, err
+	}
+	data, err := store.Get(req)
+	if err != nil {
+		return nil, false, err
+	}
+	return decodeRegistry(data)
+}
+
+// usingMinimalGIR reports whether the registry is the bundled subset, which
+// is what a test naming host-only vocabulary skips on.
 func (g *Generator) usingMinimalGIR() bool {
 	_, _ = g.gir()
 	return g.minimal
@@ -270,12 +278,6 @@ func newTestComponent() *Model {
 	m.buildWidgetTree()
 	return m
 }
-
-// Stdlib event payload structs — surfaced for test bodies that
-// construct InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
-type InputEvent struct{ Value string }
-type ChangeEvent struct{ Value string }
-type SubmitEvent struct{ Value string }
 
 func main() { testagent.Main() }
 `)

@@ -7,26 +7,25 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passErrorCatch puts a catch block (ir.If.Catch) wherever a raise is
-// stopped, so that everything between the raise and that point unwinds as the
-// host's own exception does: a panic in Go, a throw in JavaScript and Kotlin.
+// passErrorCatch wraps each handler body holding a call the checker resolved
+// to a boundary's or a window's @error in one catch block (ir.If.Catch) whose
+// handler is that @error. The raise then unwinds as the host's own exception
+// does -- a panic in Go, a throw in JavaScript and Kotlin -- through every
+// fallible caller between, and the handler runs with nothing after the raise
+// running, in the function that raised or in the handler body that called it.
 //
-//   - A call statement carrying a per-call @error is wrapped alone. Its handler
-//     runs and the statements after it carry on.
-//   - A handler body holding a call the checker resolved to a boundary's or a
-//     window's @error is wrapped whole. The handler runs and nothing after the
-//     raise does, in the function that raised, in any fallible caller between,
-//     or in the handler body that made the call.
+// Every call the block covers is left ErrorBubble. Two stay as they were and
+// are caught where they are made (each language's catchAtCall): a call with a
+// per-call @error, which answers for that call alone and lets the statements
+// after it run; and a `fails` native, whose failure is its error result on Go
+// and an ordinary host exception elsewhere rather than a raise. What stays
+// ErrorInvokeAndTerminate otherwise is a raise in a view body -- the
+// recursion bound -- which has no handler body to end and inlines the
+// boundary's handler where it stands.
 //
-// Every call such a block covers is left ErrorBubble: after this pass the
-// raise throws and the block catches. What stays ErrorInvokeAndTerminate is a
-// raise in a view body -- the recursion bound -- which has no handler body to
-// end and inlines the boundary's handler where it stands.
-//
-// A per-call handler answers for its own call and not for the arguments, which
-// are evaluated before the call is made; an argument that may raise is bound
-// to a temp ahead of the block so that its raise goes where the statement's
-// would.
+// A per-call handler answers for its own call and not for the arguments,
+// which are evaluated before the call is made, so an argument that may raise
+// is bound to a temp ahead of the statement.
 //
 // Always on: a raise is a raise on every target.
 var passErrorCatch = pass{
@@ -63,8 +62,8 @@ func catchBlock(body []ir.Stmt, h *ir.EventHandler) *ir.If {
 	return &ir.If{Cond: &ir.Literal{Type: ir.TypBool, Value: "true"}, Body: body, Catch: h}
 }
 
-// perCall wraps each call statement with a per-call handler in the block, and
-// in the blocks it holds.
+// perCall binds the raising arguments of each call statement with a per-call
+// handler in the block, and in the blocks it holds.
 func (st *errorCatchState) perCall(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
@@ -79,9 +78,6 @@ func (st *errorCatchState) perCall(block *[]ir.Stmt) {
 			c := n.Call
 			if c != nil && c.ErrorMode == ir.ErrorPerCall && c.ErrorHandler != nil && !ir.IsErrorRaiseFunc(c.Func) {
 				out = append(out, st.bindRaisingArgs(c)...)
-				c.ErrorMode = ir.ErrorBubble
-				out = append(out, catchBlock([]ir.Stmt{n}, c.ErrorHandler))
-				continue
 			}
 		}
 		out = append(out, s)
@@ -160,7 +156,7 @@ func terminateTarget(block []ir.Stmt) (*ir.EventHandler, error) {
 // coverRaises marks the calls a whole-body catch block covers as bubbling.
 func coverRaises(block []ir.Stmt) {
 	visitCoveredCalls(block, func(c *ir.Call) {
-		if c.ErrorMode == ir.ErrorInvokeAndTerminate {
+		if c.ErrorMode == ir.ErrorInvokeAndTerminate && (c.Func == nil || !c.Func.HasErrorReturn) {
 			c.ErrorMode = ir.ErrorBubble
 		}
 	})

@@ -210,11 +210,8 @@ func (g *Generator) launchDevice(ctx context.Context, dir string, lang codegen.L
 		return nil, nil, fmt.Errorf("apk not found at %s: %w", apk, err)
 	}
 
-	// Bring up emulator if no device attached (reused from sngl run).
-	if !hasDevice() {
-		if err := ensureDevice(); err != nil {
-			return nil, nil, &codegen.SkipError{Reason: fmt.Sprintf("failed to start emulator: %v", err)}
-		}
+	if err := ensureDevice(); err != nil {
+		return nil, nil, &codegen.SkipError{Reason: fmt.Sprintf("no android device: %v", err)}
 	}
 
 	// Install.

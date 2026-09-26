@@ -202,6 +202,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -219,6 +220,7 @@ type ErrorEvent struct {
 type Model struct {
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__inst0_live []*TickerInstance
 	periods      []time.Duration
 }
@@ -228,16 +230,18 @@ func New() *Model {
 	m := &Model{}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*TickerInstance{}
 	var __inst0_i int = 0
 	for _, p := range m.periods {
@@ -255,7 +259,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		container.Add(__n1__el)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -292,13 +296,14 @@ type TickerInstance struct {
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
+	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Label
 }
 
-func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
+func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance {
 	c := &TickerInstance{}
 	c.__model = __model
-	c.__prop_period = period
+	c.__prop_period = __a_period
 	c.ticks = 0
 	c.handle__inst0 = nil
 	c.done__inst0 = nil
@@ -423,6 +428,7 @@ func (c *TickerInstance) Destroy() {
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	c.__effects0_settle()
 }
 
 func main() {
@@ -470,6 +476,7 @@ type ErrorEvent struct {
 type Model struct {
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__inst0_live []*TickerInstance
 	periods      []time.Duration
 }
@@ -480,6 +487,7 @@ func New() *Model {
 	m := &Model{}
 	m.__root = nil
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 	return m
@@ -490,6 +498,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*TickerInstance{}
 	var __inst0_i int = 0
 	for _, p := range m.periods {
@@ -507,7 +516,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		gtk4rt.BoxAppend(parent, __n1__el)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -534,13 +543,14 @@ type TickerInstance struct {
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
+	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
-func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
+func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance {
 	c := &TickerInstance{}
 	c.__model = __model
-	c.__prop_period = period
+	c.__prop_period = __a_period
 	c.ticks = 0
 	c.handle__inst0 = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
@@ -555,6 +565,7 @@ func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
 	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
 	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -629,13 +640,25 @@ func (c *TickerInstance) __effects0_settle() {
 	}
 }
 
-func (c *TickerInstance) Destroy() {
+func (c *TickerInstance) teardown() {
 	c.__effect0_teardown()
 }
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
 	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	c.__effects0_settle()
+}
+
+func (c *TickerInstance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
 }
 
 func (m *Model) buildWidgetTree() {
@@ -750,7 +773,7 @@ body { font-family: system-ui, sans-serif; }
         }
         __effects0_settling = false;
         if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
       }
     }
@@ -760,6 +783,7 @@ body { font-family: system-ui, sans-serif; }
     function __set_period(__v) {
       __prop_period = __v;
       __n0.textContent = String(__prop_period) + "ms: " + String(ticks);
+      __effects0_settle();
     }
     let __n0 = document.createElement("span");
     __n0.textContent = String(__prop_period) + "ms: " + String(ticks);
@@ -831,8 +855,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ba3447f0fef0bbfc9899ca80375527b4
 -- run/go/fyne --
-pass sha256:e3632795cb2bfdd5abc107d21a84dd79
+pass sha256:ee54eda1ad746b434d2b6fbb0eb2cb91
 -- run/go/gtk4 --
-pass sha256:0e9389ac3588c208a8731868bf45af35
+pass sha256:70b076876d5b186c7ff08257bee3f482
 -- run/none/html --
-pass sha256:30bed65fe8cbafd7e14973e95fcaf0bc
+pass sha256:2caa4942bd91738b19103205b073fd88

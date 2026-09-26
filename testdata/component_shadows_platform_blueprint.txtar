@@ -192,6 +192,9 @@ func New() *Model {
 func (m *Model) __n0_input_handler(s string) {
 }
 
+func (m *Model) __n0_change_handler(s string) {
+}
+
 func (m *Model) Name__inst0() string {
 	return m.name__inst0
 }
@@ -208,6 +211,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetText(m.name__inst0)
 	m.__n0.SetPlaceHolder("")
 	m.__n0.OnChanged = m.__n0_input_handler
+	m.__n0.OnSubmitted = m.__n0_change_handler
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n1)
 	parts = append(parts, m.__n0)
@@ -263,6 +267,9 @@ func New() *Model {
 func (m *Model) __n0_changed_handler() {
 }
 
+func (m *Model) __n0_activate_handler() {
+}
+
 func (m *Model) Name__inst0() string {
 	return m.name__inst0
 }
@@ -281,6 +288,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.EntryNew()
 	gtk4rt.EditableSetText(m.__n0, m.name__inst0)
 	gtk4rt.Connect(m.__n0, "changed", m.__n0_changed_handler)
+	gtk4rt.Connect(m.__n0, "activate", m.__n0_activate_handler)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }
@@ -367,9 +375,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:da836b7d189e02eda435a7be4c870d98
 -- run/go/fyne --
-pass sha256:d1b50f9046bd19436b6bb9ddfa6c3e14
+pass sha256:e265a63118fb2fefde8bc4fa96576af2
 -- run/go/gtk4 --
-pass sha256:380d73979a3a588a6714e7c86d90f5ab
+pass sha256:218a60e0e9814347abd57b22fa4279e4
 -- run/kotlin/android --
 pass sha256:7c4884dbefd8a8f7939d4595dd069192
 -- run/none/html --

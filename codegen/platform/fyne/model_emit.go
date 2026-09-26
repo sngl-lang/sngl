@@ -126,11 +126,31 @@ func (m *Model) updateToast() {
 // matching the known framework/std selectors rather than a per-site call.
 func requireTypeImports(gc *golang.GoIRContext, goType string) {
 	for sel, path := range fyneFrameworkPkgs {
-		if strings.Contains(goType, sel+".") {
+		if namesSelector(goType, sel) {
 			gc.RequireImport(path)
 		}
 	}
-	if strings.Contains(goType, "time.") {
+	if namesSelector(goType, "time") {
 		gc.RequireImport("time")
 	}
+}
+
+// namesSelector reports whether goType qualifies a name by sel, as a whole
+// identifier: `*fynelayout.Tap` names fynelayout and not layout.
+func namesSelector(goType, sel string) bool {
+	for i := 0; ; {
+		j := strings.Index(goType[i:], sel+".")
+		if j < 0 {
+			return false
+		}
+		at := i + j
+		if at == 0 || !isIdentByte(goType[at-1]) {
+			return true
+		}
+		i = at + 1
+	}
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }

@@ -258,7 +258,9 @@ func (m Model) View() tea.View {
 		part0Items = append(part0Items, part0Item)
 	}
 	part0 = strings.Join(part0Items, "")
-	parts = append(parts, part0)
+	if part0 != "" {
+		parts = append(parts, part0)
+	}
 	var part1 string
 	var part1Items []string
 	for _, p := range m.periods {
@@ -269,7 +271,9 @@ func (m Model) View() tea.View {
 		part1Items = append(part1Items, part1Item)
 	}
 	part1 = strings.Join(part1Items, "")
-	parts = append(parts, part1)
+	if part1 != "" {
+		parts = append(parts, part1)
+	}
 	var part2 string
 	part2Focused := (m.__focusID == 0)
 	part2Prefix := " "
@@ -306,6 +310,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -321,9 +326,11 @@ type Model struct {
 	shown                bool
 	__root               *fyne.Container
 	__slot0              []fyne.CanvasObject
+	__slot0_at           fyne.CanvasObject
 	__inst0_live         []*TimerInstance
 	__inst0_was_interval []time.Duration
 	__slot1              []fyne.CanvasObject
+	__slot1_at           fyne.CanvasObject
 	__inst1_live         []*TimerInstance
 	__inst1_was_interval []time.Duration
 	periods              []time.Duration
@@ -339,20 +346,23 @@ func New() *Model {
 	m.shown = true
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
 	m.__inst0_was_interval = []time.Duration{}
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst1_live = []*TimerInstance{}
 	m.__inst1_was_interval = []time.Duration{}
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*TimerInstance{}
 	var __inst0_i int = 0
 	__inst0_now_interval := []time.Duration{}
@@ -378,7 +388,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_now_interval = append(__inst0_now_interval, p)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		container.Add(__n1__el)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -391,11 +401,12 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 	m.__inst0_was_interval = __inst0_now_interval
 }
 
-func (m *Model) __renderSlot1(container *fyne.Container) {
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	__inst1_next := []*TimerInstance{}
 	var __inst1_i int = 0
 	__inst1_now_interval := []time.Duration{}
@@ -422,7 +433,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 			__inst1_now_interval = append(__inst1_now_interval, p)
 			__inst1_i = (__inst1_i + 1)
 			__n2__el := __n2.Root
-			container.Add(__n2__el)
+			fynelayout.InsertBefore(__parent, m.__slot1_at, __n2__el)
 			m.__slot1 = append(m.__slot1, __n2__el)
 		}
 	}
@@ -492,15 +503,17 @@ type TimerInstance struct {
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
+	__slot0_at          fyne.CanvasObject
 	__slot1             []fyne.CanvasObject
+	__slot1_at          fyne.CanvasObject
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.done = nil
 	c.live = false
@@ -623,6 +636,7 @@ func (c *TimerInstance) Destroy() {
 
 func (c *TimerInstance) SetTick(__v func(any)) {
 	c.__prop_tick = __v
+	c.__effects0_settle()
 }
 
 func main() {
@@ -668,9 +682,11 @@ type Model struct {
 	shown                bool
 	__root               gtk4rt.Handle
 	__slot0              []gtk4rt.Handle
+	__slot0_at           gtk4rt.Handle
 	__inst0_live         []*TimerInstance
 	__inst0_was_interval []time.Duration
 	__slot1              []gtk4rt.Handle
+	__slot1_at           gtk4rt.Handle
 	__inst1_live         []*TimerInstance
 	__inst1_was_interval []time.Duration
 	periods              []time.Duration
@@ -686,9 +702,11 @@ func New() *Model {
 	m.shown = true
 	m.__root = nil
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
 	m.__inst0_was_interval = []time.Duration{}
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst1_live = []*TimerInstance{}
 	m.__inst1_was_interval = []time.Duration{}
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
@@ -700,6 +718,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*TimerInstance{}
 	var __inst0_i int = 0
 	__inst0_now_interval := []time.Duration{}
@@ -723,7 +742,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_now_interval = append(__inst0_now_interval, p)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		gtk4rt.BoxAppend(parent, __n1__el)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -741,6 +760,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	__inst1_next := []*TimerInstance{}
 	var __inst1_i int = 0
 	__inst1_now_interval := []time.Duration{}
@@ -765,7 +785,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			__inst1_now_interval = append(__inst1_now_interval, p)
 			__inst1_i = (__inst1_i + 1)
 			__n2__el := __n2.Root
-			gtk4rt.BoxAppend(parent, __n2__el)
+			gtk4rt.InsertBefore(parent, m.__slot1_at, __n2__el)
 			m.__slot1 = append(m.__slot1, __n2__el)
 		}
 	}
@@ -800,15 +820,17 @@ type TimerInstance struct {
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
+	__slot0_at          gtk4rt.Handle
 	__slot1             []gtk4rt.Handle
+	__slot1_at          gtk4rt.Handle
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
@@ -821,6 +843,7 @@ func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick
 	c.__slot1 = nil
 	c.__effects0_settle()
 	c.Root = gtk4rt.LabelNew("")
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -896,12 +919,27 @@ func (c *TimerInstance) __effects0_settle() {
 	}
 }
 
-func (c *TimerInstance) Destroy() {
+func (c *TimerInstance) teardown() {
 	c.__effect0_teardown()
 }
 
 func (c *TimerInstance) SetTick(__v func(any)) {
 	c.__prop_tick = __v
+	c.__effects0_settle()
+}
+
+func (c *TimerInstance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
 }
 
 func (m *Model) N() int {
@@ -976,7 +1014,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e) => {
+    let tick = props.tick ?? ((__e0) => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -1052,7 +1090,7 @@ body { font-family: system-ui, sans-serif; }
         }
         __effects0_settling = false;
         if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
       }
     }
@@ -1061,6 +1099,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_tick(__v) {
       __prop_tick = __v;
+      __effects0_settle();
     }
     __effects0_settle();
     return {
@@ -1208,10 +1247,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b1bbcc8d2ecfd44ea44218b3b4e7478d
+pass sha256:146477a18828bf62ccb78a149d2018d5
 -- run/go/fyne --
-pass sha256:a1d0ecc3ecb42baa650cc427a907f5be
+pass sha256:0f6fd8f7cb4d5c7a24c1caa0965772ac
 -- run/go/gtk4 --
-pass sha256:04f84dfc4c194250597ecc484beb84e0
+pass sha256:c5b87e67120c80efe0b3ef4f9ec6554f
 -- run/none/html --
-pass sha256:9495e7cfa7aa365ad95ae6213b92677f
+pass sha256:2f58632ce70d49cb5ca387cd55625313

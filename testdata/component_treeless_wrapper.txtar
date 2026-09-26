@@ -177,12 +177,14 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(fmt.Sprint("widgets"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = tui.RenderTerminal(20, 10, 1, func() image.Image {
+	parts = append(parts, part1)
+	var part2 string
+	part2 = tui.RenderTerminal(20, 10, 1, func() image.Image {
 		__c := _canvasSurface0.Begin(20, 20, 0, 0, "")
 		m._canvasDraw0(__c)
 		return __c.Result()
 	})
-	parts = append(parts, part1)
+	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -299,7 +301,7 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
-class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -340,9 +342,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
-  function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
-    return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -407,8 +406,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d2ea48f430f0b19943c86b4e52df426e
+pass sha256:ab9692a43108aff12e7be892e197c0b6
 -- run/kotlin/android --
-pass sha256:192316f4e5057ed912d97ae573ca0051
+pass sha256:fbb51388e81236f5d8bed7f8b9671bc2
 -- run/none/html --
-pass sha256:e8cc66bafe7e918e6c38e490b2df2783
+pass sha256:7b2068c12c555c65a4834e8532298193

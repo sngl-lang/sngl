@@ -64,35 +64,6 @@ func packageHasCanvas(draws *codegen.CanvasDraws) bool {
 	return len(draws.All()) > 0
 }
 
-// treeHasCanvas reports whether any node in stmts is a canvas.
-func treeHasCanvas(stmts []ir.Stmt) bool {
-	for _, st := range stmts {
-		switch n := st.(type) {
-		case *ir.NodeInst:
-			if ir.IsShapeContainer(n) || treeHasCanvas(n.Children) {
-				return true
-			}
-		case *ir.If:
-			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
-				return true
-			}
-		case *ir.For:
-			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
-				return true
-			}
-		case *ir.SlotInst:
-			if treeHasCanvas(n.Children) {
-				return true
-			}
-		case *ir.ErrorBoundary:
-			if treeHasCanvas(n.Children) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // canvasIntProp extracts the integer pixel value of a numeric/measurement prop
 // (e.g. canvas `width=400px`) from the NodeInst. Mirrors lower.nodeIntProp
 // (which runs on the flattened CreateNode path used by Go platforms); android
@@ -277,25 +248,6 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 		cc.indent--
 	}
 	cc.line("}")
-}
-
-// receiverIsComponent reports whether name matches a component in the package.
-func (cc *irComposeContext) receiverIsComponent(name string) bool {
-	if cc.ctx == nil || cc.ctx.Pkg == nil {
-		return false
-	}
-	for _, comp := range cc.ctx.Pkg.Components {
-		if comp.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-// f converts a SNGL float-valued arg expr to a Kotlin Float for the DrawScope
-// API (Offset/Size/radius all take Float; SNGL floats are Double).
-func (cc *irComposeContext) f(e ir.Expr) string {
-	return "(" + cc.kc.EvalExpr(e) + ").toFloat()"
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib

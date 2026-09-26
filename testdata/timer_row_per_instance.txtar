@@ -86,7 +86,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e) => {
+    let tick = props.tick ?? ((__e0) => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -161,7 +161,7 @@ body { font-family: system-ui, sans-serif; }
         }
         __effects0_settling = false;
         if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
       }
     }
@@ -170,6 +170,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_tick(__v) {
       __prop_tick = __v;
+      __effects0_settle();
     }
     __effects0_settle();
     return {
@@ -256,4 +257,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:00c5b72951ddd7706e91af86a0cabc5d
+pass sha256:5c633fb478c28341d336125adbf3b563

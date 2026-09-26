@@ -62,7 +62,8 @@ func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	touches := map[*ir.Func]bool{}
 	calls := map[*ir.Func][]*ir.Func{}
 	for _, fn := range pkg.Funcs {
-		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		var visit func(ir.Node) error
+		visit = func(n ir.Node) error {
 			switch e := n.(type) {
 			case *ir.Ident:
 				if state[e.Sym] {
@@ -75,9 +76,19 @@ func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 				if e.Func != nil {
 					calls[fn] = append(calls[fn], e.Func)
 				}
+				// A boundary's or window's handler is inlined at the call it
+				// catches, and ir.Walk does not follow ResolvedHandler there.
+				if h := ir.CatchingHandler(e); h != nil && h != e.ErrorHandler && h.Func != nil {
+					_ = ir.Walk(h.Func.Block, visit)
+				}
+			case *ir.If:
+				if e.Catch != nil && e.Catch.Func != nil {
+					_ = ir.Walk(e.Catch.Func.Block, visit)
+				}
 			}
 			return nil
-		})
+		}
+		_ = ir.Walk(fn.Block, visit)
 	}
 
 	for changed := true; changed; {

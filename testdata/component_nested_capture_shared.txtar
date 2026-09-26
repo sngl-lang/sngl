@@ -283,8 +283,7 @@ package main
 import "testing"
 
 func TestTwoInstantiationsShareOneCapturedVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 11)) { t.Errorf("assert failed: %s", "(c.count == 11)") }
 }
@@ -471,8 +470,7 @@ package main
 import "testing"
 
 func TestTwoInstantiationsShareOneCapturedVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 11)) { t.Errorf("assert failed: %s", "(c.count == 11)") }
 }
@@ -782,6 +780,17 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { count: 0, runs__inst0: 0, runs__inst1: 0 };
@@ -862,7 +871,7 @@ body { font-family: system-ui, sans-serif; }
       }
       __effects0_settling = false;
       if (__effects0_pending) {
-        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
       }
     }
   }
@@ -880,15 +889,17 @@ body { font-family: system-ui, sans-serif; }
   __sngl_init();
   __effects0_settle();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eef69accaa6a5c2e112b3d9c2a479e81
+pass sha256:3b06ab0c5203541a4c1be7361bee069b
 -- run/go/fyne --
-pass sha256:b8a6a3bab60794e6077e385ac8b76760
+pass sha256:b010501e28fe060706a65e70a8a44ab8
 -- run/go/gtk4 --
 pass sha256:7ea2ba49add75662368f145940cfddee
 -- run/kotlin/android --
 pass sha256:a21670f00025f47d7ffc1d702723b3fe
 -- run/none/html --
-pass sha256:288c23d8fed076fdbace829396b65938
+pass sha256:9d8bd1084a33d9a42f46dadf754112a5

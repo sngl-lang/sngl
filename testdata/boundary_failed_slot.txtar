@@ -140,22 +140,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			func() {
-				defer func() {
-					r := recover()
-					if r == nil {
-						return
-					}
-					e, ok := r.(ErrorEvent)
-					if !ok {
-						panic(r)
-					}
-					_ = e
-					m.__failed0__inst0 = true
-					m.seen__inst0 = e.Message
-				}()
-				panic(ErrorEvent{Message: "boom", Kind: "demo"})
-			}()
+			{
+				e := ErrorEvent{Message: "boom", Kind: "demo"}
+				_ = e
+				m.__failed0__inst0 = true
+				m.seen__inst0 = e.Message
+			}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -175,13 +165,19 @@ func (m Model) View() tea.View {
 	if m.__failed0__inst0 {
 		content = lipgloss.NewStyle().Render(fmt.Sprint("it broke"))
 	} else {
-		contentFocused := (m.__focusID == 0)
-		contentPrefix := " "
-		if contentFocused {
-			contentPrefix = ">"
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
 		}
-		content = lipgloss.NewStyle().Render(contentPrefix + " " + fmt.Sprint("Go"))
-		content = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Go"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -239,14 +235,9 @@ body { font-family: system-ui, sans-serif; }
       let go = document.createElement("button");
       go.setAttribute("disabled", false);
       go.addEventListener("click", () => {
-        try {
+        {
           ;
-          throw Object.assign(new Error("boom"), { kind: "demo", snglRaise: true });
-        } catch (__e) {
-          ;
-          if (!__e || !__e.snglRaise) throw __e;
-          ;
-          let e = { message: __e.message, kind: __e.kind };
+          let e = { message: "boom", kind: "demo" };
           void e;
           __failed0__inst0 = true;
           __renderSlot0(__slotAnchor_0);
@@ -295,6 +286,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c834a0c74813869edda5081b6e904ad0
+pass sha256:953099841dc8d91d18b1c02b4053c85b
 -- run/none/html --
-pass sha256:1dae77887b683d13e82e06fc4b37d8a3
+pass sha256:808582647ed3f877e90310ec7dfb7ccc

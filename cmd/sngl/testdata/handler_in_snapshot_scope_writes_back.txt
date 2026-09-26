@@ -1,0 +1,27 @@
+# A test that clicks a node mounted in a loop iteration sees the handler's
+# write. The interpreter mounts an iteration in a snapshot of the enclosing
+# scope, so the handler ran against the copy and the component's `seen` never
+# moved -- `sngl test` reported "wanted \"a\", got \"\"" for a program every
+# compiled target runs correctly. A scoped slot's population is mounted the
+# same way; spread_slot_insertion_runs.txt clicks one of those.
+
+sngl test --platform none loop.sngl
+stdout '1 tests, 0 failures'
+
+-- loop.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var seen = ""
+    var xs = ["a", "b"]
+    for var x = xs {
+        button #pick(text=x, @click { seen = seen + x })
+    }
+}
+
+func testClickInLoop(t Test, c main) {
+    c.pick[1].click()
+    c.pick[0].click()
+    t.assert(c.seen == "ba")
+}

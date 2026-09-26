@@ -17,7 +17,6 @@ sngl test --platform=none app.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
 
-[!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout 'PASS'
@@ -48,4 +47,24 @@ func testReadsTheList(t Test, c main) {
 
 ui.window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:ac0f409709bceeeba290e5d566acfedc
+{
+  "results": [
+    {
+      "Desc": "ReadsTheList",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:1417183b5326cecc480a4bd958f3db70
+{
+  "results": [
+    {
+      "Desc": "ReadsTheList",
+      "Passed": true
+    }
+  ]
 }

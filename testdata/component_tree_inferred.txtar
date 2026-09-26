@@ -227,7 +227,9 @@ func (m Model) View() tea.View {
 	if m.on {
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
 	}
-	contentChildren = append(contentChildren, content_2)
+	if content_2 != "" {
+		contentChildren = append(contentChildren, content_2)
+	}
 	var content_3 string
 	content_3 = lipgloss.NewStyle().Render(fmt.Sprint("g"))
 	contentChildren = append(contentChildren, content_3)
@@ -357,7 +359,7 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
-class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -411,9 +413,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { on: true };
-  function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
-    return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -501,8 +500,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af02a514dd032bab6770a6a3a273da9d
+pass sha256:718235c6381ae493e6cb1fd90b9ceccc
 -- run/kotlin/android --
-pass sha256:45d76f485a2e97a7c1dcf3c9d2805e05
+pass sha256:6ec6f2f1e92ca55d5b49564c68330eb9
 -- run/none/html --
-pass sha256:1bad6809f9cf83dcc82b8e4910fecde1
+pass sha256:d1ea6839d501a8e7093388f46893cdd2

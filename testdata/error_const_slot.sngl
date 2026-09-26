@@ -1,0 +1,38 @@
+// A const slot says every population written for it renders from its own
+// arguments and constants alone: it is held to the const component render
+// rule, positioned in the population. Its invocation arguments need not be
+// constant -- a row inserted per item is pure over the item.
+import ui "sngl:ui"
+
+var count = 0
+
+component rows(items list<string>, const row component(item string) ui.node) ui.node {
+    ui.vbox {
+        for var it = items {
+            row(it)
+        }
+    }
+}
+
+component card(caption string, const children ...component) ui.node {
+    ui.vbox {
+        ui.text(value=caption)
+        children
+    }
+}
+
+ui.window {
+    rows(items=["a", "b"]) {
+        component row(item) {
+            ui.text(value=item)
+        }
+    }
+    rows(items=["c"]) {
+        component row(item) {
+            ui.text(value="{item}{count}") // ERROR(check) "the population of const slot \"row\" of rows renders var \"count\""
+        }
+    }
+    card(caption="{count}") {
+        ui.text(value="{count}") // ERROR(check) "the population of const slot \"children\" of card renders var \"count\""
+    }
+}

@@ -338,10 +338,10 @@ body { font-family: system-ui, sans-serif; }
 
 <p style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword" style="color:#ff7b72"><span>func</span></span><span> </span><span class="sngl-tok-function" style="color:#d2a8ff"><span>main</span></span></code></p>
 <style>
-.sngl-tok-keyword { color:#cf222e }
-@media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
-.sngl-tok-function { color:#8250df }
-@media (prefers-color-scheme: dark) { .sngl-tok-function { color:#d2a8ff } }
+:where(.sngl-tok-keyword) { color:#cf222e }
+@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }
+:where(.sngl-tok-function) { color:#8250df }
+@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }
 </style>
 
 <script>
@@ -360,4 +360,4 @@ pass sha256:a8deb01aabc0e99296fdd8a9cb67b26a
 -- run/kotlin/android --
 pass sha256:2a2139f463bcb4edbcefff8e827cdc41
 -- run/none/html --
-pass sha256:eafa760629221fb058cea5e9477bf0cd
+pass sha256:3a47d59b5e2ecf64df47bace98df332c

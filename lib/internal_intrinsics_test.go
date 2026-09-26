@@ -104,7 +104,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 // on. The declaration may carry a doc comment between the two. The mark's
 // package qualifier is optional because a dot import writes none, though no
 // source here uses one.
-var markRE = regexp.MustCompile(`#\[(?:\w+\.)?intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(func|component)\b`)
+var markRE = regexp.MustCompile(`#\[(?:\w+\.)?intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(?:const\s+)?(func|component)\b`)
 
 // A component a program can write is a component someone has to look up, so
 // every exported one carries a doc comment. The draw shapes shipped without

@@ -835,10 +835,8 @@ func TestReachabilityFuncTransitive(t *testing.T) {
 	}
 }
 
-// TestFuncHiddenParam verifies that addHiddenParams puts a synthesized
-// __ctx_<name> Var on pkg.Vars when a user pkg.Func reads the ctx. The
-// func itself does NOT receive a hidden Param — only stdlib wrappers
-// (extraFuncs) do, since user funcs read through the pkg-level state.
+// TestFuncHiddenParam: a program's function that reads a context takes it as
+// a parameter, and no package-level cell stands in for it.
 func TestFuncHiddenParam(t *testing.T) {
 	ctx := makeContext("locale", "en")
 	fn := makeFunc("tr", nil,
@@ -851,24 +849,17 @@ func TestFuncHiddenParam(t *testing.T) {
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	if findFuncParam(fn, "__ctx_locale") != nil {
-		t.Errorf("user pkg.Func tr should NOT have __ctx_locale Param (state lives on pkg.Vars)")
+	p := findFuncParam(fn, "__ctx_locale")
+	if p == nil || p.Type != ctx.Typ {
+		t.Fatalf("tr params = %+v; want a __ctx_locale param of the context's type", fn.Params)
 	}
-	var pkgVar *ir.Var
+	if ret := fn.Block[0].(*ir.Return); ret.Value.(*ir.Ident).Sym != p {
+		t.Errorf("tr reads %+v; want its own param", ret.Value)
+	}
 	for _, v := range pkg.Vars {
-		if v.Name == "__ctx_locale" && v.Synthesized {
-			pkgVar = v
-			break
+		if v.Name == "__ctx_locale" {
+			t.Errorf("package holds a %s var; a function's context is its parameter", v.Name)
 		}
-	}
-	if pkgVar == nil {
-		t.Fatalf("expected synthesized __ctx_locale Var on pkg.Vars after applyNoContext; got %+v", pkg.Vars)
-	}
-	if pkgVar.Type != ctx.Typ {
-		t.Errorf("__ctx_locale Var type = %v; want %v", pkgVar.Type, ctx.Typ)
-	}
-	if pkgVar.Init != ctx.Default {
-		t.Errorf("__ctx_locale Var Init = %v; want ctx.Default", pkgVar.Init)
 	}
 }
 
@@ -906,14 +897,51 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	// User pkg.Func tr has no hidden Param under the new model, so call
-	// sites do NOT thread a __ctx_locale arg. The callee reads state
-	// directly from the pkg-level synth Var.
-	if findCallArgNamed(trCall, "__ctx_locale") != nil {
-		t.Errorf("tr() call should NOT have __ctx_locale arg threaded to a user pkg.Func; args=%+v", trCall.Args)
+	// Consumer is entered with the provided value, and its call passes what
+	// it was entered with.
+	arg, ok := findCallArgNamed(trCall, "__ctx_locale").(*ir.Ident)
+	if !ok || arg.Sym != hiddenParamIndexOf(t, consumer, "__ctx_locale") {
+		t.Errorf("tr() in Consumer passes %+v; want Consumer's own __ctx_locale", findCallArgNamed(trCall, "__ctx_locale"))
 	}
-	if findFuncParam(tr, "__ctx_locale") != nil {
-		t.Errorf("tr() should NOT have __ctx_locale Param under the new model")
+	if findFuncParam(tr, "__ctx_locale") == nil {
+		t.Errorf("tr() has no __ctx_locale param")
+	}
+}
+
+func hiddenParamIndexOf(t *testing.T, comp *ir.Component, name string) *ir.Var {
+	t.Helper()
+	for _, v := range comp.Vars {
+		if v.Name == name {
+			return v
+		}
+	}
+	t.Fatalf("%s has no %s var", comp.Name, name)
+	return nil
+}
+
+// TestFuncCallUnderProviderPassesItsValue: a call written under a provider
+// passes that provider's value, not the default.
+func TestFuncCallUnderProviderPassesItsValue(t *testing.T) {
+	ctx := makeContext("locale", "en")
+	tr := makeFunc("tr", nil, &ir.Return{Value: makeContextRead(ctx)})
+	trCall := &ir.Call{Func: tr}
+	win := &ir.Window{
+		Name: "home",
+		Children: []ir.Stmt{&ir.ContextProvider{
+			Ref:   ctx,
+			Value: makeStringLit("fr"),
+			Children: []ir.Stmt{&ir.NodeInst{
+				Name:  "text",
+				Props: []ir.Arg{{Name: "value", Value: trCall}},
+			}},
+		}},
+	}
+	pkg := &ir.Package{Contexts: []*ir.Context{ctx}, Funcs: []*ir.Func{tr}, Windows: []*ir.Window{win}}
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
+		t.Fatalf("applyNoContext: %v", err)
+	}
+	if lit, ok := findCallArgNamed(trCall, "__ctx_locale").(*ir.Literal); !ok || lit.Value != makeStringLit("fr").Value {
+		t.Errorf("tr() under locale(\"fr\") passes %+v; want \"fr\"", findCallArgNamed(trCall, "__ctx_locale"))
 	}
 }
 
@@ -936,18 +964,13 @@ func TestFuncCallSiteThreadedFromFunc(t *testing.T) {
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
-	if findFuncParam(caller, "__ctx_locale") != nil {
-		t.Errorf("caller (user pkg.Func) should NOT have __ctx_locale Param under the new model")
+	callerParam := findFuncParam(caller, "__ctx_locale")
+	if callerParam == nil || findFuncParam(leaf, "__ctx_locale") == nil {
+		t.Fatalf("caller params %+v, leaf params %+v; want __ctx_locale on both", caller.Params, leaf.Params)
 	}
-	if findCallArgNamed(leafCall, "__ctx_locale") != nil {
-		t.Errorf("leaf() call inside caller should NOT have __ctx_locale arg threaded (callee is user pkg.Func)")
+	if arg, ok := findCallArgNamed(leafCall, "__ctx_locale").(*ir.Ident); !ok || arg.Sym != callerParam {
+		t.Errorf("leaf() inside caller passes %+v; want caller's own param", findCallArgNamed(leafCall, "__ctx_locale"))
 	}
-	if findFuncParam(leaf, "__ctx_locale") != nil {
-		t.Errorf("leaf (user pkg.Func) should NOT have __ctx_locale Param")
-	}
-	// Inside leaf body, the ContextRead is rewritten to an Ident that
-	// resolves the pkg-level synth Var. Surface that to make sure the
-	// rewrite didn't leave a dangling ContextRead.
 	if n := countContextReads(leaf.Block, ctx); n != 0 {
 		t.Errorf("leaf body still has %d ContextRead nodes after pass", n)
 	}
@@ -1001,4 +1024,63 @@ func TestIntrinsicFuncNotInReach(t *testing.T) {
 // slice — same as countContextReads but reused for func bodies.
 func countContextReadsInBlock(stmts []ir.Stmt, ctx *ir.Context) int {
 	return countContextReads(stmts, ctx)
+}
+
+// TestLowerProviders_InHandlers covers the handlers lowerInStmts reaches
+// through something other than NodeInst.Handlers: a boundary's @error, a
+// window's @error and a call's own @error.
+func TestLowerProviders_InHandlers(t *testing.T) {
+	handler := func(ctx *ir.Context, s *ir.Var) *ir.EventHandler {
+		return &ir.EventHandler{Name: "error", Func: &ir.Func{Block: []ir.Stmt{
+			&ir.ContextProvider{
+				Ref:   ctx,
+				Value: makeStringLit("dark"),
+				Children: []ir.Stmt{&ir.Assign{
+					Target: &ir.Ident{Name: "s", Sym: s},
+					Value:  makeContextRead(ctx),
+				}},
+			},
+		}}}
+	}
+	for _, tc := range []struct {
+		name  string
+		build func(win *ir.Window, h *ir.EventHandler)
+	}{
+		{"boundary", func(win *ir.Window, h *ir.EventHandler) {
+			win.Children = []ir.Stmt{&ir.ErrorBoundary{Handler: h}}
+		}},
+		{"window", func(win *ir.Window, h *ir.EventHandler) {
+			win.ErrorHandler = h
+		}},
+		{"call", func(win *ir.Window, h *ir.EventHandler) {
+			risky := &ir.Func{Name: "risky"}
+			win.Children = []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: risky, ErrorHandler: h}}}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := makeContext("theme", "light")
+			s := &ir.Var{Name: "s", Type: ir.TypString}
+			h := handler(ctx, s)
+			win := &ir.Window{Name: "home"}
+			tc.build(win, h)
+			pkg := &ir.Package{
+				Contexts: []*ir.Context{ctx},
+				Vars:     []*ir.Var{s},
+				Windows:  []*ir.Window{win},
+			}
+			if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
+				t.Fatal(err)
+			}
+			if len(h.Func.Block) != 1 {
+				t.Fatalf("handler block = %d stmts; want the provider's one assignment", len(h.Func.Block))
+			}
+			a, ok := h.Func.Block[0].(*ir.Assign)
+			if !ok {
+				t.Fatalf("handler block[0] = %T; want *ir.Assign", h.Func.Block[0])
+			}
+			if lit, ok := a.Value.(*ir.Literal); !ok || lit.Value != `"dark"` {
+				t.Errorf("assigned value = %#v; want the provided \"dark\"", a.Value)
+			}
+		})
+	}
 }

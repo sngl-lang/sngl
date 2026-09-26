@@ -75,8 +75,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
-data class ChangeEvent(val value: String = "")
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -95,7 +93,7 @@ fun MainScreen() {
             for (opt in listOf("small", "medium", "large")) {
                 Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = (pick__inst0 == opt), onClick = {
-                        chosen__inst0 = ChangeEvent(value = opt).value
+                        chosen__inst0 = opt
                     })
                     Text(text = opt, modifier = Modifier)
                 }
@@ -120,4 +118,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:23e39e2e30cda8cfadb392f9bda4c43f
+pass sha256:f884ff5d601d3f08c6aece2020d27eef

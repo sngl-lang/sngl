@@ -138,21 +138,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			func() {
-				defer func() {
-					r := recover()
-					if r == nil {
-						return
-					}
-					e, ok := r.(ErrorEvent)
-					if !ok {
-						panic(r)
-					}
-					_ = e
-					m.caught__inst0 = "light"
-				}()
-				panic(ErrorEvent{Message: "boom", Kind: ""})
-			}()
+			{
+				e := ErrorEvent{Message: "boom", Kind: ""}
+				_ = e
+				m.caught__inst0 = "light"
+			}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -223,7 +213,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
-class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -238,10 +228,8 @@ fun MainScreen() {
 
     Column {
         Button(onClick = {
-            try {
-            	throw SnglRaise(ErrorEvent("boom", ""))
-            } catch (__e: SnglRaise) {
-            	val e = __e.error
+            run {
+            	val e = ErrorEvent("boom", "")
             	caught__inst0 = "light"
             }
         }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
@@ -276,14 +264,9 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    try {
+    {
       ;
-      throw Object.assign(new Error("boom"), { kind: "", snglRaise: true });
-    } catch (__e) {
-      ;
-      if (!__e || !__e.snglRaise) throw __e;
-      ;
-      let e = { message: __e.message, kind: __e.kind };
+      let e = { message: "boom", kind: "" };
       void e;
       state.caught__inst0 = "light";
       __n0.textContent = state.caught__inst0;
@@ -298,8 +281,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:345d3843bdecf8d25149e6a0c9520a96
+pass sha256:2ee1bdabbcb88b6bd278de997ae91472
 -- run/kotlin/android --
-pass sha256:fba53a2402492f7d065b68e4e5a1bd2c
+pass sha256:39aa5762aee88d502d04f04f9f4dafbe
 -- run/none/html --
-pass sha256:a95a158e2c7bf2851a8ca865e34c68fc
+pass sha256:0d665cb871287e3d23265f123f6b1b77
