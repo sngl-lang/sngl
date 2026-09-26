@@ -14,6 +14,16 @@
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --link: #2563eb;
+  /* markup.token colors, GitHub's palettes as html's defaults are. The
+     generated rules follow prefers-color-scheme alone; these follow the
+     toggle too. */
+  --tok-keyword: #cf222e;
+  --tok-type: #953800;
+  --tok-function: #8250df;
+  --tok-constant: #0550ae;
+  --tok-string: #0a3069;
+  --tok-number: #0550ae;
+  --tok-comment: #6e7781;
 }
 
 /* Dark theme: applies when OS prefers dark and user hasn't forced light,
@@ -30,6 +40,13 @@
     --accent: #60a5fa;
     --accent-hover: #93c5fd;
     --link: #60a5fa;
+  --tok-keyword: #ff7b72;
+  --tok-type: #ffa657;
+  --tok-function: #d2a8ff;
+  --tok-constant: #79c0ff;
+  --tok-string: #a5d6ff;
+  --tok-number: #79c0ff;
+  --tok-comment: #8b949e;
   }
 }
 :root[data-theme="dark"] {
@@ -42,6 +59,13 @@
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
   --link: #60a5fa;
+  --tok-keyword: #ff7b72;
+  --tok-type: #ffa657;
+  --tok-function: #d2a8ff;
+  --tok-constant: #79c0ff;
+  --tok-string: #a5d6ff;
+  --tok-number: #79c0ff;
+  --tok-comment: #8b949e;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -183,6 +207,7 @@ code {
 
 pre {
   background: var(--bg-code);
+  color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 1rem;
@@ -195,6 +220,14 @@ pre code {
   padding: 0;
   font-size: 0.85rem;
 }
+
+.sngl-tok-keyword { color: var(--tok-keyword); }
+.sngl-tok-type { color: var(--tok-type); }
+.sngl-tok-function { color: var(--tok-function); }
+.sngl-tok-constant { color: var(--tok-constant); }
+.sngl-tok-string { color: var(--tok-string); }
+.sngl-tok-number { color: var(--tok-number); }
+.sngl-tok-comment { color: var(--tok-comment); }
 
 /* Tables */
 table {
