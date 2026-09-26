@@ -54,6 +54,8 @@ func (vc *irViewContext) nodeStyle(n *ir.NodeInst) string {
 	return buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
 }
 
+// styleValueDecl mirrors irStyleCall field for field; a field added there
+// belongs here too.
 func styleValueDecl(scale int) string {
 	return fmt.Sprintf(`func %s(s Style) lipgloss.Style {
 	cells := func(v float64) int {

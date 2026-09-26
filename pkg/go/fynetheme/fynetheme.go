@@ -76,10 +76,8 @@ func (t Theme) Empty() bool {
 	return t.Background == nil && t.Foreground == nil && t.TextSize == 0 && t.Radius == 0 && !t.Bold && !t.Italic
 }
 
-// The With methods build a theme from style fields only known at run time. A
-// color and an enum member are taken the way generated code holds them, so the
-// emitter passes those fields through as written.
-
+// WithBackground and the With methods after it build a theme from style fields
+// known only at run time, each taking its value the way generated code holds it.
 func (t Theme) WithBackground(c snglcolor.Color) Theme {
 	t.Background = nrgba(c)
 	return t

@@ -189,8 +189,6 @@ func goColorLit(c fyneColor) string {
 	return fmt.Sprintf("color.NRGBA{R: %d, G: %d, B: %d, A: %d}", c.R, c.G, c.B, c.A)
 }
 
-// themeWith names the fynetheme.Theme method each paint field is set through
-// when the theme is built at run time.
 var themeWith = map[string]string{
 	"background":   "WithBackground",
 	"color":        "WithForeground",
@@ -309,7 +307,8 @@ func (t *fyneTranslator) setRuntimeThemeFrom(id string, style ir.Expr) []ir.Stmt
 }
 
 // styleValueTheme is the Go declaration of styleThemeFunc, when a node takes
-// its style as a whole value; "" otherwise.
+// its style as a whole value; "" otherwise. It is themeWith applied to a
+// value, so a field added there belongs here too.
 func styleValueTheme(specs map[string]*fyneSpec) string {
 	for _, sp := range specs {
 		if sp.StyleValue {

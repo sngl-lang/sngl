@@ -42,8 +42,6 @@ func goZeroComparand(t *ir.Type) string {
 	case ir.TypeInt, ir.TypeFloat:
 		return "0"
 	}
-	// A struct or a multi-base unit is compared against its composite zero,
-	// which a comparison needs parenthesized.
 	z := ZeroValueGo(IRTypeToGo(t))
 	if strings.HasSuffix(z, "}") {
 		return "(" + z + ")"
