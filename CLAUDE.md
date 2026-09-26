@@ -881,7 +881,9 @@ between with no signature change. Where it stops has two shapes:
   is made to raise (`raiseFailure`: its error result panics on Go, its exception
   is rethrown as a raise elsewhere); caught at its own call instead, the handler
   ran and the click went on, into whatever raised next
-  (`error_catch_fails_native.txtar`). The interpreter's `dispatchRaise` returns
+  (`error_catch_fails_native.txtar`). A catch block in the half
+  `passAsyncOffload` spawned recovers off the drawing thread, so its handler is
+  posted back through `async.post` (`error_catch_async_offload.txtar`). The interpreter's `dispatchRaise` returns
   a marked `returnSignal`, which `invokeHandler` and an emitted event's
   handler pass on, so a raise caught from inside either ends the handler it
   was run from too.

@@ -23,6 +23,7 @@ var passErrorCatch = pass{
 
 func lowerErrorCatch(pkg *ir.Package, _ Features, _ Options) error {
 	blocks := imperativeBlocks(pkg)
+	spawned := spawnedBlocks(pkg)
 	st := &errorCatchState{}
 	for _, block := range blocks {
 		st.perCall(block)
@@ -36,6 +37,9 @@ func lowerErrorCatch(pkg *ir.Package, _ Features, _ Options) error {
 			continue
 		}
 		coverRaises(*block)
+		if spawned[block] {
+			target = postedHandler(target)
+		}
 		*block = []ir.Stmt{catchBlock(*block, target)}
 	}
 	return nil
@@ -162,4 +166,36 @@ func visitCoveredCalls(block []ir.Stmt, f func(*ir.Call)) {
 			return nil
 		})
 	}
+}
+
+// spawnedBlocks is the lambda bodies passAsyncOffload handed to async.spawn:
+// the half of a handler that runs off the thread the target draws on.
+func spawnedBlocks(pkg *ir.Package) map[*[]ir.Stmt]bool {
+	out := map[*[]ir.Stmt]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil || c.Func.Intrinsic != AsyncSpawnIntrinsic {
+			return nil
+		}
+		for _, a := range c.Args {
+			if l, ok := a.Value.(*ir.Lambda); ok && l.Func != nil {
+				out[&l.Func.Block] = true
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// postedHandler is h run back on the drawing thread: a catch in the spawned
+// half recovers there, and the handler writes the model and its widgets.
+func postedHandler(h *ir.EventHandler) *ir.EventHandler {
+	if h.Func == nil {
+		return h
+	}
+	fn := *h.Func
+	fn.Block = []ir.Stmt{callStmt(AsyncPostIntrinsic, closure(h.Func.Block))}
+	posted := *h
+	posted.Func = &fn
+	return &posted
 }
