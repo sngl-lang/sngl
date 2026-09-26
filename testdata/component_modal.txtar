@@ -267,6 +267,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -394,6 +402,6 @@ pass sha256:7b383e8f17b8b7cffd5d302ae34eff56
 -- run/go/fyne --
 pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
-pass sha256:445eb15d0055f3585a69c0222a21323b
+pass sha256:663f0a0de407b7547029eb2593a0fb44
 -- run/none/html --
 pass sha256:c02a135c1f69a04d4d23101bd43e736b

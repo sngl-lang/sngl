@@ -16,12 +16,12 @@ component main node {
 -- expected.sngl --
 import . "sngl:ui"
 component card(children ...component) node {
-    vbox(style=Style{padding=16}) {
+    vbox(style=Style{padding=16px}) {
         children
     }
 }
 component main node {
-    vbox(style=Style{padding=16}) {
+    vbox(style=Style{padding=16px}) {
         text(value="hello")
     }
 }

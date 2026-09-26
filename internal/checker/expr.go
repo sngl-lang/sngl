@@ -2277,11 +2277,17 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 // checkFieldValue holds a struct literal's field value to the rule an
 // initializer of the field's type is held to.
 func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.StructField, sd *ir.StructDef) ir.Expr {
-	want := field.Type
+	want := c.boundFieldType(field, sd)
+	if mentionsTypeParam(want) {
+		return val
+	}
 	got := exprType(val)
+	if mag, ok := bareMagnitude(val, want); ok {
+		return mag
+	}
 	// A Go nil slice or map encodes as null, and is the empty collection.
 	nilCollection := c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
-	if propTypeMismatch(got, want) && !bareMagnitude(got, want) && !nilCollection {
+	if propTypeMismatch(got, want) && !nilCollection {
 		if adapted, ok := adaptLiteralZero(val, want); ok {
 			return adapted
 		}
@@ -2296,16 +2302,39 @@ func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.Struc
 	return val
 }
 
-// bareMagnitude reports a number written for a unit-typed field, which every
-// style emitter reads as the unit's first base (`padding=16` is 16px). A
-// built-in unit is excluded: duration has a host representation, where a bare
-// 5 would be five nanoseconds.
-func bareMagnitude(got, want *ir.Type) bool {
-	if want.Kind != ir.TypeUnit || (got.Kind != ir.TypeInt && got.Kind != ir.TypeFloat) {
-		return false
+// boundFieldType is the field's type with the literal's type arguments
+// substituted, which only an expected type supplies; a field still naming a
+// parameter is left for the literal's inference.
+func (c *checker) boundFieldType(field *ir.StructField, sd *ir.StructDef) *ir.Type {
+	if sd == nil || len(sd.TypeParams) == 0 || c.expected == nil || c.expected.Decl != sd || len(c.expected.Elems) != len(sd.TypeParams) {
+		return field.Type
+	}
+	bindings := make(map[string]*ir.Type, len(sd.TypeParams))
+	for i, tp := range sd.TypeParams {
+		bindings[tp.Name] = c.expected.Elems[i]
+	}
+	return field.Type.Substitute(bindings)
+}
+
+// bareMagnitude rewrites a number literal written for a unit-typed field as
+// that unit's first base (`padding=16` is 16px), which is how lib/ and the
+// examples write a length. It is a literal rewrite rather than an assignment
+// rule so every backend spells a unit value it already knows. A built-in unit
+// is excluded: duration has a host representation, where a bare 5 would be
+// five nanoseconds.
+func bareMagnitude(val ir.Expr, want *ir.Type) (ir.Expr, bool) {
+	if want.Kind != ir.TypeUnit {
+		return nil, false
 	}
 	u, _ := want.Decl.(*ir.UnitDef)
-	return u != nil && u.Builtin == ir.BuiltinNone
+	if u == nil || u.Builtin != ir.BuiltinNone || len(u.Bases()) == 0 {
+		return nil, false
+	}
+	lit, _ := val.(*ir.Literal)
+	if lit == nil || lit.Suffix != "" || lit.Type == nil || (lit.Type.Kind != ir.TypeInt && lit.Type.Kind != ir.TypeFloat) {
+		return nil, false
+	}
+	return &ir.Literal{AST: lit.AST, Type: want, Value: lit.Value, Suffix: u.Bases()[0].Name}, true
 }
 
 // reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR

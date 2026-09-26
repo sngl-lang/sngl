@@ -75,6 +75,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -118,4 +126,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:f884ff5d601d3f08c6aece2020d27eef
+pass sha256:4f1b62c169c3ad2ecc2e6ac99465b264
