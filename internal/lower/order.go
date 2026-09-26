@@ -52,6 +52,9 @@ var orderConstraints = []orderConstraint{
 	{"PropBindings", "NoToggle",
 		"the same, for a binding whose handler toggles its target: NoToggle rewrites the Toggle stmt PropBindings emits"},
 
+	{"SpreadOnce", "NoAsyncCalls",
+		"the temp a spread's operand is bound to is a statement of its own, and a blocking call in it has to be in a statement by the time the offload splits a body around one"},
+
 	{"RefLoop", "NoReactivity",
 		"the list[idx].field write this leaves has to reach reactivity as a mutation of the list var, or the loop's slot never re-renders"},
 	{"RefLoop", "NoToggle",

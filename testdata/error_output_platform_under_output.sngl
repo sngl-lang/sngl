@@ -6,6 +6,6 @@ output {
     bubbletea() // ERROR(check) "expected language component in output"
 }
 
-component main ui.node {
+component main node {
     text(value="hi")
 }

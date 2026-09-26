@@ -360,7 +360,11 @@ type checker struct {
 	// has nowhere to project and is reported rather than built. It is also
 	// what says a statement is *not* in a view body, which is where a loop
 	// that iterates nothing -- a condition or a forever loop -- is refused.
-	funcDepth int
+	funcDepth   int
+	viewSpreads []viewSpread
+	// stmtCall is the call a call statement is about to check: the one call
+	// whose @error handler has a statement to be attached to.
+	stmtCall *ast.CallExpr
 	// loopDepth is the number of `for` bodies enclosing the statement being
 	// checked, and what `break` and `continue` require one of. It resets at
 	// every imperative-body boundary (enterFuncBody): a lambda written inside
@@ -1588,18 +1592,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 	if irImport.Pkg != nil {
 		for kind := range irImport.Pkg.TreeKinds {
 			owner.NoteTreeKind(kind)
-		}
-	}
-
-	// Check for component main in imported library packages. The package's
-	// own root only: a lib package's root parents whatever scope was current
-	// when it loaded, so a lookup that walks the chain finds the importing
-	// file's own main and blames the import for it.
-	if irImport.Pkg != nil && irImport.Pkg.Symbols != nil && irImport.Pkg.Symbols.Root != nil {
-		if sym, ok := irImport.Pkg.Symbols.Root.LookupDeclaredLocal("main"); ok {
-			if _, isComp := sym.(*ir.Component); isComp {
-				c.error(imp.Pos, "component main can only be defined in the main package")
-			}
 		}
 	}
 
@@ -3428,7 +3420,7 @@ func (c *checker) pass2() {
 		noteOwned(pe.comp)
 	}
 	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] || fn.Nested {
+		if compOwnedFuncs[fn] || fn.Nested || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3449,6 +3441,14 @@ func (c *checker) pass2() {
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
+	// A test reads a component's vars through `c.<var>`, and an unannotated
+	// var has no type until the body declaring it has been checked; nothing
+	// calls a test, so nothing needs its body earlier.
+	for _, fn := range c.pkg.Funcs {
+		if fn.IsTest && !compOwnedFuncs[fn] && !fn.Nested {
+			c.checkFuncBody(fn)
+		}
+	}
 	c.reportBodyComponentCollisions()
 	c.reportBodyComponentCapture()
 	c.reportBodylessComponents()
@@ -3535,6 +3535,8 @@ func (c *checker) pass2() {
 			}
 		}
 	}
+
+	c.reportImpureViewSpreads()
 
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.

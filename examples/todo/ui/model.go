@@ -189,11 +189,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
+		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
 		m.newTodo = m.widget0.Value()
+		if __v := m.widget0.Value(); __v != __prev {
+			m.__widget0_input(__v)
+		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __widget0_input(__v string) {
+	e := struct{ Value string }{Value: __v}
+	_ = e
+	m.newTodo = e.Value
 }
 
 func (m Model) View() tea.View {

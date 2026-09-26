@@ -182,6 +182,7 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 		}
 	}
 	m["__ownerEnv"] = env
+	m["__ownerContext"] = capturedContext(env)
 	return m
 }
 
@@ -234,6 +235,7 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 		m["@"+h.Name] = h.Func
 	}
 	m["__ownerEnv"] = env
+	m["__ownerContext"] = capturedContext(env)
 	return m
 }
 

@@ -1,11 +1,6 @@
-# A spread written as a slot insertion's or an event's argument reaches the
-# interpreter as an ir.Spread, not only as a list element.
-#
-# The checker expands `...x` in a call's argument list into named arguments,
-# but a slot insertion and an emit check the raw argument, so the Spread
-# survives into SlotInst.Args and Emit.Args. The interpreter's Eval has to
-# evaluate one to its operand; without that arm both tests below panic with
-# "testrunner.Eval: unhandled ir.Expr *ir.Spread" before any assertion runs.
+# A struct handed whole to a slot insertion or an event, which is how either
+# takes one: their parameter is unnamed, so a spread there names nothing and
+# is refused (testdata/error_spread_args.sngl).
 
 sngl test --platform none spread.sngl
 stdout '2 tests, 0 failures'
@@ -20,7 +15,7 @@ struct Row {
 
 component table(r Row, cell component(Row)) node {
     vbox {
-        cell(...r)
+        cell(r)
     }
 }
 
@@ -41,7 +36,7 @@ func testSpreadIntoSlot(t Test, c slotted) {
 
 component emitter(@fired ChangeEvent) node {
     var ev = ChangeEvent{value="v"}
-    button #go(text="go", @click { fired(...ev) })
+    button #go(text="go", @click { fired(ev) })
 }
 
 component listener node {

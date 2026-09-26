@@ -94,6 +94,9 @@ type Node struct {
 	// expansion of that component's body. Kept as a node so one tree serves
 	// both readings: a snapshot descends through it, an inspector stops at it.
 	Component *ir.Component
+	// Context is the provided values the node was mounted under, which a
+	// handler runs with: by the time one fires every provider has unwound.
+	Context map[*ir.Context]any
 }
 
 // Handler is one declared event on a node. Body is whatever the IR carried:
@@ -219,6 +222,7 @@ func (n *Node) Map() map[string]any {
 		m["@"+h.Name] = h.Body
 	}
 	m["__ownerEnv"] = n.Env
+	m["__ownerContext"] = n.Context
 	return m
 }
 
@@ -286,6 +290,9 @@ func (m *mounter) drop(n *Node) {
 }
 
 func (m *mounter) add(n *Node) {
+	if n.Env != nil {
+		n.Context = capturedContext(n.Env)
+	}
 	m.view.byKey[n.Key] = n
 	if n.ID != "" {
 		m.view.byID[n.ID] = append(m.view.byID[n.ID], n)

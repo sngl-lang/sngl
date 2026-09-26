@@ -161,8 +161,7 @@ package main
 import "testing"
 
 func TestTooltipTextMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
 	c.msg = "goodbye"
@@ -236,8 +235,7 @@ package main
 import "testing"
 
 func TestTooltipTextMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
 	c.msg = "goodbye"
@@ -380,6 +378,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 */
 import "C"
@@ -539,6 +547,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { msg: "hello" };
@@ -559,15 +578,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c0760734120196049ec1ba682061de7f
+pass sha256:ec77887264626a53d03db76d8a316f7e
 -- run/go/fyne --
-pass sha256:96572cee8a0b0e0c72b073bc656ad49b
+pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:921207663c573735a5ee7a65c53665c6
+pass sha256:78de1b2d5a5ba3ff79e98f1155d2524f
 -- run/kotlin/android --
 pass sha256:5ff1ebf6f747bb3dd9bcc8bc2a142ac0
 -- run/none/html --
-pass sha256:577232e9b84fc1c2a3b3f08ac0c16bf4
+pass sha256:e33d56136132efe232961537b71c133e

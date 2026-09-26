@@ -1,0 +1,40 @@
+# An @input handler that writes the var its input shows, with a different
+# value, runs once per input -- the interpreter's reading. On gtk4 the write
+# set the entry's text from inside its own "changed" emission, which emitted
+# "changed" again, whose handler wrote again: the recursion ended in a SIGSEGV
+# in EditableSetText. A program write to an entry's text is not user input,
+# so it is made with "changed" blocked.
+
+[!exec:pkg-config] skip 'pkg-config required'
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component editor node {
+    var s = ""
+    var edits = 0
+    input #field(
+        value=s,
+        @input(e) {
+            s = e.value + "!"
+            edits = edits + 1
+        },
+    )
+}
+
+func testRewriteRunsOnce(t Test, c editor) {
+    c.field.input({value="h"})
+    t.assert(c.s == "h!")
+    t.assert(c.edits == 1)
+}
+
+window {
+}

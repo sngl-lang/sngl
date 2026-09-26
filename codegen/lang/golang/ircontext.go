@@ -333,7 +333,32 @@ func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
 		elemType = IRTypeToGo(n.Type.Elems[0])
 	}
-	return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	if !slices.ContainsFunc(n.Elems, isSpread) {
+		return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	}
+	gc.RequireImport("slices")
+	var parts, run []string
+	flush := func() {
+		if len(run) > 0 {
+			parts = append(parts, "[]"+elemType+"{"+strings.Join(run, ", ")+"}")
+			run = nil
+		}
+	}
+	for i, el := range n.Elems {
+		if isSpread(el) {
+			flush()
+			parts = append(parts, elems[i])
+			continue
+		}
+		run = append(run, elems[i])
+	}
+	flush()
+	return "slices.Concat(" + strings.Join(parts, ", ") + ")"
+}
+
+func isSpread(e ir.Expr) bool {
+	_, ok := e.(*ir.Spread)
+	return ok
 }
 
 func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
@@ -394,7 +419,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	return name + "{" + strings.Join(parts, ", ") + "}"
 }
 
-func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
+func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand }
 
 func (gc *GoIRContext) Call(n *ir.Call) string             { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
 func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConversion(n) }
@@ -412,6 +437,9 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 	}
 	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
 		if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
+			return lines
+		}
+		if lines := gc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
 	}
@@ -1301,9 +1329,7 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble wants a fallible-signature return channel, which no
-		// lowering produces yet, so this panics and — with no recover
-		// emitted either — aborts. Put error.raise inside the handler.
+		// catchAtCall's recover is what stops a bubbling panic.
 		return []string{"panic(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -1319,6 +1345,79 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// catchAtCall emits a call to a fallible function whose raise a handler at
+// this site catches: the call's own @error, or the boundary or window one it
+// resolved to. The raise is a panic by the time it leaves the callee, so the
+// call runs under a recover, and a panic that is not a raise is re-panicked.
+// A `fails` native reports through its error result instead.
+func (gc *GoIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	param := ""
+	if len(handler.Func.Params) > 0 {
+		param = handler.Func.Params[0].Name
+	}
+	body := func(indent string) []string {
+		var out []string
+		for _, stmt := range handler.Func.Block {
+			for _, l := range gc.EvalStmt(stmt) {
+				out = append(out, indent+l)
+			}
+		}
+		return out
+	}
+	if call.Func != nil && call.Func.HasErrorReturn {
+		raw := gc.evalCall(call)
+		head := "if __err := " + raw + "; __err != nil {"
+		if call.Func.Return != nil {
+			head = "if _, __err := " + raw + "; __err != nil {"
+		}
+		lines := []string{head}
+		indent := "\t"
+		wrap := ir.BlockReturns(handler.Func.Block)
+		if wrap {
+			lines = append(lines, "\tfunc() {")
+			indent = "\t\t"
+		}
+		if param != "" {
+			lines = append(lines,
+				indent+param+" := ErrorEvent{Message: __err.Error()}",
+				indent+"_ = "+param)
+		}
+		lines = append(lines, body(indent)...)
+		if wrap {
+			lines = append(lines, "\t}()")
+		}
+		return append(lines, "}")
+	}
+	bind := "_"
+	if param != "" {
+		bind = param
+	}
+	lines := []string{
+		"func() {",
+		"\tdefer func() {",
+		"\t\t__r := recover()",
+		"\t\tif __r == nil {",
+		"\t\t\treturn",
+		"\t\t}",
+		"\t\t" + bind + ", __ok := __r.(ErrorEvent)",
+		"\t\tif !__ok {",
+		"\t\t\tpanic(__r)",
+		"\t\t}",
+	}
+	if param != "" {
+		lines = append(lines, "\t\t_ = "+param)
+	}
+	lines = append(lines, body("\t\t")...)
+	return append(lines,
+		"\t}()",
+		"\t"+gc.EvalExpr(call),
+		"}()")
+}
+
 // emitHandlerInvoke declares the event variable and inlines the handler body,
 // wrapped in a Go lexical block so the variable does not leak.
 //
@@ -1329,8 +1428,14 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
 		paramName = handler.Func.Params[0].Name
 	}
+	// A `return` in the handler ends the handler, not the function it was
+	// inlined into, so a body holding one is a closure called in place.
+	open, closeLine := "{", "}"
+	if ir.BlockReturns(handler.Func.Block) {
+		open, closeLine = "func() {", "}()"
+	}
 	lines := []string{
-		"{",
+		open,
 		fmt.Sprintf("\t%s := %s", paramName, evt),
 		fmt.Sprintf("\t_ = %s", paramName),
 	}
@@ -1339,7 +1444,7 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 			lines = append(lines, "\t"+l)
 		}
 	}
-	lines = append(lines, "}")
+	lines = append(lines, closeLine)
 	return lines
 }
 
@@ -1426,6 +1531,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
+	if src, dst, ok := ir.NumericListConversion(n); ok {
+		srcGo, elemGo := IRTypeToGo(src), IRTypeToGo(dst.Elems[0])
+		return "func(s " + srcGo + ") " + goType + " { out := make(" + goType + ", len(s)); " +
+			"for i, v := range s { out[i] = " + elemGo + "(v) }; return out }(" + operand + ")"
+	}
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {

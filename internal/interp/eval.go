@@ -22,6 +22,14 @@ const maxCallDepth = 100
 type LambdaValue struct {
 	fn  *ir.Func
 	env *Env
+	// ctx is the provided values where the function value was made, which its
+	// body reads wherever it is later called -- the answer passContext gives,
+	// since a call through a value cannot know what to pass.
+	ctx map[*ir.Context]any
+}
+
+func newLambda(fn *ir.Func, env *Env) *LambdaValue {
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env)}
 }
 
 // call invokes the lambda with the given values.
@@ -37,24 +45,34 @@ type LambdaValue struct {
 // did run.
 func (lv *LambdaValue) Call(args []any) (any, error) {
 	child := lv.env.Snapshot()
-	for i, p := range lv.fn.Params {
+	for i, p := range lv.params(args) {
 		if i < len(args) {
 			child.Set(p, args[i])
 		}
 	}
-	res, err := child.execBlockForResult(lv.fn.Block)
+	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
 	return res, err
 }
 
 // callWithEnv is like call but uses the provided env directly (no snapshot).
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
-	for i, p := range lv.fn.Params {
+	for i, p := range lv.params(args) {
 		if i < len(args) {
 			env.Set(p, args[i])
 		}
 	}
-	return env.execBlockForResult(lv.fn.Block)
+	return env.underContext(lv.ctx, func() (any, error) { return env.execBlockForResult(lv.fn.Block) })
+}
+
+// params is what args bind to: a method taken as a value is handed its
+// arguments without the receiver, which the scope it was taken in holds.
+func (lv *LambdaValue) params(args []any) []*ir.Param {
+	ps := lv.fn.Params
+	if len(ps) > 0 && ps[0].Receiver && len(args) == len(ps)-1 {
+		return ps[1:]
+	}
+	return ps
 }
 
 // unitValue is the runtime representation of a unit value: a magnitude per
@@ -303,6 +321,11 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// origin is the scope this one is a Snapshot of, or nil.
+	origin *Env
+	// spreadVals holds the operands of the spreads the running statement
+	// evaluates once (ir.StatementSpreads), by site.
+	spreadVals map[int]any
 }
 
 func NewEnv() *Env {
@@ -453,10 +476,22 @@ func (env *Env) Snapshot() *Env {
 		// handler to run, so an event emitted from inside a lambda found the
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
-		inst: env.inst,
+		inst:       env.inst,
+		origin:     env,
+		spreadVals: env.spreadVals,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
+}
+
+// writeBack carries what ran in a snapshot back to every scope it was taken
+// from, the way LambdaValue.Call does for a callback. A node mounted in a loop
+// iteration or a scoped slot's population holds a snapshot, so a handler run
+// in it wrote only the copy.
+func (env *Env) writeBack() {
+	for o := env.origin; o != nil; o = o.origin {
+		o.RebindFrom(env)
+	}
 }
 
 // SetContext stores a runtime override for ctx, replacing any default value.
@@ -943,14 +978,12 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalStructLit(n)
 	case *ir.MapLitIR:
 		return env.evalMapLitIR(n)
-	case *ir.Spread:
-		return env.Eval(n.Operand)
 	case *ir.Lambda:
-		return &LambdaValue{fn: n.Func, env: env}, nil
+		return newLambda(n.Func, env), nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
 	case *ir.Closure:
-		return &LambdaValue{fn: n.Func, env: env}, nil
+		return newLambda(n.Func, env), nil
 	}
 	if e == nil {
 		return nil, fmt.Errorf("cannot evaluate <nil> expression")
@@ -1144,7 +1177,7 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 			(effective == 1 && fn.Params[0].Receiver) {
 			return env.EvalUserFunc(fn, nil)
 		}
-		return nil, fmt.Errorf("function %q requires arguments", fn.Name)
+		return newLambda(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
 	// value: a constant from a library package, which is in no list this
@@ -1175,9 +1208,12 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 
-	obj, err := env.Eval(e.Operand)
-	if err != nil {
-		return nil, err
+	obj, cached := env.spreadVals[e.Spread]
+	if e.Spread == 0 || !cached {
+		var err error
+		if obj, err = env.Eval(e.Operand); err != nil {
+			return nil, err
+		}
 	}
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
@@ -1635,21 +1671,27 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		return "/mock/folder", nil
 	}
 
-	evalArgs, err := env.evalCallArgs(call.Args)
-	if err != nil {
-		return nil, err
-	}
-
-	// testingT dispatch: t.assert / t.tick / t.test.
-	if len(evalArgs) > 0 {
-		if tv, ok := evalArgs[0].(TestingT); ok {
+	// The receiver alone first: a test or component receiver evaluates the
+	// rest itself, and evaluating them here too ran each twice.
+	var evalArgs []any
+	if len(call.Args) > 0 {
+		recv, err := env.Eval(call.Args[0].Value)
+		if err != nil {
+			return nil, err
+		}
+		if tv, ok := recv.(TestingT); ok {
 			return tv.CallMethod(env, method, argExprs(call.Args[1:]))
 		}
-		if cv, ok := evalArgs[0].(ComponentValue); ok {
+		if cv, ok := recv.(ComponentValue); ok {
 			if result, handled, err := cv.InvokeMethod(env, method, call.Args[1:]); handled {
 				return result, err
 			}
 		}
+		rest, err := env.evalCallArgs(call.Args[1:])
+		if err != nil {
+			return nil, err
+		}
+		evalArgs = append([]any{recv}, rest...)
 	}
 
 	if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
@@ -1670,7 +1712,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	// it from the receiver's name would fail for a type reached through an
 	// import alias, whose name here is not the name it was declared under.
 	if len(call.Func.Block) > 0 {
-		callEnv, args := env, call.Args
+		callEnv, args, values := env, call.Args, evalArgs
 		// A method on a generic receiver declares no receiver parameter and
 		// names the value `this`, so the leading argument the checker
 		// normalized in has nothing to bind to. Supply it the way a component
@@ -1678,9 +1720,9 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		if len(call.Args) == len(call.Func.Params)+1 && len(evalArgs) > 0 {
 			callEnv = env.Snapshot()
 			callEnv.SetReceiver(evalArgs[0])
-			args = call.Args[1:]
+			args, values = call.Args[1:], evalArgs[1:]
 		}
-		return callEnv.EvalUserFuncCallArgs(call.Func, args)
+		return callEnv.callUserFuncArgValues(call.Func, args, values)
 	}
 
 	// List/string higher-order and other built-in methods.
@@ -1703,14 +1745,16 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			// implements it, and its body says whether there is anything to
 			// run if it does not. A namespace's members include bodyless
 			// intrinsic declarations, and running one of those returns null.
-			if fn, ok := env.methodOn(ident.Name, method); ok {
-				if evalArgs, err := env.evalCallArgs(call.Args); err == nil {
-					if result, handled, err := runIntrinsic(fn.Intrinsic, evalArgs); handled {
-						return result, err
-					}
+			if fn, ok := env.methodOn(ident.Name, method); ok && (fn.Intrinsic != "" || len(fn.Block) > 0) {
+				evalArgs, err := env.evalCallArgs(call.Args)
+				if err != nil {
+					return nil, err
+				}
+				if result, handled, err := runIntrinsic(fn.Intrinsic, evalArgs); handled {
+					return result, err
 				}
 				if len(fn.Block) > 0 {
-					return env.EvalUserFuncCallArgs(fn, call.Args)
+					return env.callUserFuncArgValues(fn, call.Args, evalArgs)
 				}
 			}
 		}
@@ -1741,7 +1785,12 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
 						handlerEnv.SetReceiver(owner)
 					}
-					return handlerEnv.runEventHandler(h, call.Args, event)
+					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
+					res, err := handlerEnv.underContext(provided, func() (any, error) {
+						return handlerEnv.runEventHandler(h, call.Args, event)
+					})
+					handlerEnv.writeBack()
+					return res, err
 				}
 			}
 			if explicitEvent {
@@ -1786,17 +1835,13 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 				// is nothing in the argument list to bind it to. Supply it the
 				// way a component method gets its receiver, in a scope of its
 				// own so the binding does not outlive the call.
-				callEnv, synth := env, make([]ir.Expr, 0, len(call.Args)+1)
+				callEnv, values := env, evalArgs
 				if len(fn.Params) == len(call.Args) {
 					callEnv = env.Snapshot()
 					callEnv.SetReceiver(recv)
-				} else {
-					synth = append(synth, call.Receiver)
+					values = evalArgs[1:]
 				}
-				for _, a := range call.Args {
-					synth = append(synth, a.Value)
-				}
-				return callEnv.EvalUserFunc(fn, synth)
+				return callEnv.EvalUserFuncWithValues(fn, values)
 			}
 			// Enum value method fallback: when recv is a bare string and no
 			// dispatch succeeded, scan user-defined enums for a matching
@@ -1808,12 +1853,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					for _, m := range ed.Members {
 						if m.Name == s {
 							if fn, ok := ed.Methods[method]; ok {
-								synth := make([]ir.Expr, 0, len(call.Args)+1)
-								synth = append(synth, call.Receiver)
-								for _, a := range call.Args {
-									synth = append(synth, a.Value)
-								}
-								return env.EvalUserFunc(fn, synth)
+								return env.EvalUserFuncWithValues(fn, evalArgs)
 							}
 						}
 					}
@@ -2210,7 +2250,17 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 // Name field are bound to the matching parameter by name; args without a Name
 // are bound positionally. Parameters with no supplied arg use their default.
 func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, error) {
-	// Check whether any arg carries a Name — if not, fall back to positional.
+	values, err := env.evalCallArgs(callArgs)
+	if err != nil {
+		return nil, err
+	}
+	return env.callUserFuncArgValues(fn, callArgs, values)
+}
+
+// callUserFuncArgValues is EvalUserFuncCallArgs over arguments already
+// evaluated, values[i] being callArgs[i]'s: a caller that had to read them
+// first must not evaluate them a second time.
+func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values []any) (any, error) {
 	hasNamed := false
 	for _, a := range callArgs {
 		if a.Name != "" {
@@ -2219,10 +2269,9 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 		}
 	}
 	if !hasNamed {
-		return env.EvalUserFunc(fn, argExprs(callArgs))
+		return env.evalUserFuncCore(fn, values)
 	}
 
-	// Build a param→value map honouring defaults.
 	vals := make(map[string]any, len(fn.Params))
 	for _, p := range fn.Params {
 		if p.Default != nil {
@@ -2233,13 +2282,9 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 			vals[p.Name] = v
 		}
 	}
-	// Positional index counter (for args without a name).
 	positional := 0
-	for _, a := range callArgs {
-		v, err := env.Eval(a.Value)
-		if err != nil {
-			return nil, err
-		}
+	for i, a := range callArgs {
+		v := values[i]
 		if a.Name != "" {
 			vals[a.Name] = v
 		} else {
@@ -2295,8 +2340,19 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 				execEnv.Set(p, args[argIdx])
 			}
 		}
+		var localVars []ir.Symbol
 		restoreVoid := func() {
-			if !isPure {
+			if isPure {
+				// A return type does not make a body pure: what it wrote to
+				// state outside its own frame has to reach the caller.
+				for _, p := range fn.Params {
+					delete(execEnv.assigned, p)
+				}
+				for _, sym := range localVars {
+					delete(execEnv.assigned, sym)
+				}
+				env.RebindFrom(execEnv)
+			} else {
 				for _, p := range fn.Params {
 					if orig, ok := savedVars[p]; ok {
 						execEnv.vals[p] = orig
@@ -2312,7 +2368,6 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 		// A Return anywhere deeper arrives as a returnSignal from Exec and
 		// ends the call with the value it carries, without trampolining.
 		var tailExpr ir.Expr
-		var localVars []ir.Symbol
 		nested := false
 		var nestedResult any
 		for _, stmt := range fn.Block {
@@ -2360,6 +2415,7 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 
 		if isPure {
 			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
+			restoreVoid()
 			for _, sym := range localVars {
 				delete(execEnv.vals, sym)
 			}
@@ -2696,4 +2752,21 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 		}
 		env.Locale = prevLocale
 	}, nil
+}
+
+// underContext runs fn with vals provided over whatever env already holds.
+// A handler or an effect runs after the mount that placed it has unwound
+// every provider, so it carries the values it was mounted under and is run
+// with them here -- which is what a lowered target's threading gives it.
+func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (any, error) {
+	if len(vals) == 0 {
+		return fn()
+	}
+	prev, prevLocale := env.ContextVals, env.Locale
+	env.ContextVals = maps.Clone(prev)
+	for ctx, v := range vals {
+		env.SetContext(ctx, v)
+	}
+	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
+	return fn()
 }

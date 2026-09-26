@@ -86,6 +86,7 @@ var alwaysOn = []string{
 	"Query",
 	"RecursionDepth",
 	"RefLoop",
+	"SpreadOnce",
 	"StampUsage",
 	// A context nothing provides is folded to its default on every target: the
 	// ones that lower contexts to state, and the ones that keep them.

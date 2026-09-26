@@ -110,6 +110,9 @@ type ExprCtx struct {
 	// derived from one of its nodes included.
 	OuterReceiver string
 	OuterNodes    map[string]bool
+	// InstanceClosure is set where a component instance is a closure (html's
+	// factory): its methods are functions in scope by bare name.
+	InstanceClosure bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -270,6 +273,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		StateFieldsExported: ctx.StateFieldsExported,
 		OuterReceiver:       ctx.OuterReceiver,
 		OuterNodes:          ctx.OuterNodes,
+		InstanceClosure:     ctx.InstanceClosure,
 	}
 }
 
@@ -351,6 +355,25 @@ func TestComponentParam(fn *ir.Func) string {
 		}
 	}
 	return ""
+}
+
+// TestSetContext reads `t.setContext(ctx, value)`: the context's name and the
+// value. passContext leaves the context argument as its name, since that
+// argument names a context rather than reading one; unlowered it is still the
+// read.
+func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
+	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" || len(c.Args) < 2 {
+		return "", nil, false
+	}
+	switch x := c.Args[len(c.Args)-2].Value.(type) {
+	case *ir.ContextRead:
+		name = x.Ref.Name
+	case *ir.Literal:
+		name = x.Value
+	default:
+		return "", nil, false
+	}
+	return name, c.Args[len(c.Args)-1].Value, true
 }
 
 func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, methodFields map[string]bool) {

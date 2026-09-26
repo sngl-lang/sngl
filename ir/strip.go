@@ -364,6 +364,7 @@ func (s *stripper) stripExpr(e Expr) {
 		e.Def = nil // cross-reference
 		e.Type = nil
 		for i := range e.Fields {
+			e.Fields[i].NamePos = ast.Pos{}
 			s.stripExpr(e.Fields[i].Value)
 		}
 	case *ListLit:

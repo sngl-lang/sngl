@@ -60,8 +60,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc.RequireImport(path)
 	}
 
-	// NoInlineComponents inlined every non-main component into main, so there
-	// are no remaining child-component vars to collect.
+	// NoInlineComponents inlined every component but a harness root into the
+	// body instantiating it, so there are no remaining child-component vars to
+	// collect.
 	for _, ov := range ctx.ModelState() {
 		// nil for a binding no declaration made: a window's route parameters,
 		// which the slot population declares and the request fills. None of
@@ -1227,6 +1228,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 				Value:  &ir.Ident{Name: binding.Param},
 			}}
 			stmts = stmts[1:]
+		}
+		// Any other read of the payload's value is the callback's argument
+		// too: the closure is handed the text, never an event struct.
+		if len(fn.Params) > 0 {
+			codegen.ReadEventField(stmts, fn.Params[0], "value", &ir.Ident{Name: binding.Param, Type: ir.TypString})
 		}
 	}
 

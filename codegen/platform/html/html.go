@@ -94,11 +94,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 			return err
 		}
 		if agentMode {
-			modelType := "main"
-			if main := c.ctx.RootDecl(); main != nil {
-				modelType = main.Name
-			}
-			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
+			if err := emitTestagentFiles(sink, req.Pkg); err != nil {
 				return err
 			}
 		}
@@ -109,6 +105,25 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
 }
+
+// testBootOpen and testBootClose make a test page's program re-runnable, so
+// each test starts from a freshly mounted page.
+const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+`
+
+const testBootClose = `};
+window.__sngl_boot();
+`
 
 // injectTestagentBootstrap appends the testagent module script to every
 // assembled window. Agent mode only.
@@ -463,7 +478,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	ctx := c.codegenCtx(req)
 
-	// A package with no main component and no windows still emits an empty
+	// A package with no harness root and no windows still emits an empty
 	// index.html, so callers can verify codegen succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
@@ -523,7 +538,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			c.routeWindows = append(c.routeWindows, win)
 		case href == nil:
 			// No declaration to take an href from: the package body's root
-			// window, or a lone main component's. It is the document the site
+			// window, or one a component renders. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
@@ -675,11 +690,8 @@ type htmlGen struct {
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
-	// rootComp is the component whose body this document renders. It is the
-	// one named "main" for an ordinary build and the component under test for
-	// a test build, which is a distinction only CodegenCtx.MainComponent
-	// makes: html used to answer it by name in eight places, so a test of a
-	// component not called "main" collected no state and rendered no binding.
+	// rootComp is the component a harness isolated as this document's body
+	// (CodegenCtx.RootDecl), and nil for every ordinary build.
 	rootComp *ir.Component
 
 	usesI18n bool
@@ -692,8 +704,8 @@ type htmlGen struct {
 	pageSlots map[string]bool
 
 	// irWindow is the window this generator emits a document for, or nil when
-	// it is emitting a main component's body. A window is the third place
-	// state is declared, beside the package and the main component, and it is
+	// it is emitting a harness root's body. A window is the third place
+	// state is declared, beside the package and a harness root, and it is
 	// per-document: static mode emits one file per window.
 	irWindow *ir.Window
 
@@ -799,8 +811,6 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// renderer -- which is what the translator needs to draw one at all.
 	g.canvasByID, g.canvasByNode = shared.canvases(pkg)
 	g.canvasDraws = shared.drawings(pkg)
-	g.rootComp = mainIRComponent(pkg)
-	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Platform = "html"
 	if pkg != nil {
@@ -822,8 +832,6 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	g.outDir = ctx.ExprCtx.OutDir
-	// CodegenCtx is the one that knows about RootComponent, so its answer wins
-	// over the by-name lookup newHTMLGen had to fall back on.
 	g.rootComp = ctx.RootDecl()
 	g.currentComp = g.rootComp
 	// Adopt the caller's ExprCtx either way. It carries what the *build* said
@@ -1232,7 +1240,13 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString("\n")
 		b.WriteString(sharedTags)
 		b.WriteString("<script>\n")
-		b.WriteString(script)
+		if g.testMode {
+			b.WriteString(testBootOpen)
+			b.WriteString(script)
+			b.WriteString(testBootClose)
+		} else {
+			b.WriteString(script)
+		}
 		b.WriteString("</script>\n")
 	}
 	b.WriteString("</body></html>\n")
@@ -1453,7 +1467,7 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 	return g.pkg.PointsTo
 }
 
-// stateVars returns pkg.Vars merged with the main component's Vars.
+// stateVars returns pkg.Vars merged with a harness root's Vars.
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 // stateVars is the state in scope for the document this generator emits: the
 // package's, the root component's, and this window's. The other components'
@@ -1584,7 +1598,7 @@ func (g *htmlGen) pkgStructs() []*ir.StructDef {
 	return g.pkg.Structs
 }
 
-// pkgFuncs returns user-defined top-level funcs plus main component funcs.
+// pkgFuncs returns user-defined top-level funcs plus the harness root's funcs.
 // The dedupe matters: after passNoInlineComponents + registerNestedMethods a
 // component method lands in both pkg.Funcs and comp.Funcs. Synthesized funcs
 // are excluded; emitScript routes those through WalkLowered separately.
@@ -1636,15 +1650,6 @@ func (g *htmlGen) pkgConsts() []*ir.Var {
 		}
 	}
 	return out
-}
-
-func mainIRComponent(pkg *ir.Package) *ir.Component {
-	for _, c := range pkg.Components {
-		if c.Name == "main" {
-			return c
-		}
-	}
-	return nil
 }
 
 // preservesWhitespace reports whether a raw HTML tag renders whitespace in its
@@ -3352,7 +3357,9 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
 			continue
 		}
-		fmt.Fprintf(b, "state.%s = () => %s.dispatchEvent(new Event(%q));\n", name, h.elemID, h.event)
+		// A payload's value is put in the element first, which is where the
+		// handler reads it from, as it would after the user typed it.
+		fmt.Fprintf(b, "state.%s = (p) => { if (p != null && p.value !== undefined) { %s.value = p.value; } %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
 	}
 }
 

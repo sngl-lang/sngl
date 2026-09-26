@@ -159,8 +159,7 @@ package main
 import "testing"
 
 func TestPopoverOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.visible == false)) { t.Errorf("assert failed: %s", "(c.visible == false)") }
 	c.visible = true
@@ -236,8 +235,7 @@ package main
 import "testing"
 
 func TestPopoverOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.visible == false)) { t.Errorf("assert failed: %s", "(c.visible == false)") }
 	c.visible = true
@@ -382,6 +380,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 */
 import "C"
@@ -559,6 +567,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { visible: false };
@@ -576,15 +595,17 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testPopoverOpenToggles });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eb57c6c38f7aecc95ff930e0d1a9094a
+pass sha256:e77e9f8d86b2fc61a7fb49eac1a3c167
 -- run/go/fyne --
-pass sha256:7a53ef30ca09f5dbd4836983cd60515b
+pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
-pass sha256:11681055e731446b4f460041c65498d4
+pass sha256:4866dc169b40accf7e1dbf3cd8e94a82
 -- run/kotlin/android --
 pass sha256:3e7713e262225b41fc18e5baf86fdcd0
 -- run/none/html --
-pass sha256:7f02dad22809042a150a375d665696d4
+pass sha256:70dbeb164845ee163a4ad5b5343ce6fd

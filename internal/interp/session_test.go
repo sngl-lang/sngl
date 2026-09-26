@@ -128,3 +128,29 @@ func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
 		t.Errorf("value is %v, want the new var initialised to 7", got)
 	}
 }
+
+// TestInvokeRunsUnderTheProviderTheHandlerIsWrittenUnder: a window's event
+// arrives after the mount has unwound every provider, so the handler has to
+// carry the values it was mounted beneath.
+func TestInvokeRunsUnderTheProviderTheHandlerIsWrittenUnder(t *testing.T) {
+	s := sessionFor(t, `import . "sngl:ui"
+
+context #depth(1)
+
+func show() => "d{depth}"
+
+component main node {
+    var got = ""
+    depth(5) {
+        button #tap(text="tap", @click { got = show() })
+    }
+    text #out(value=got)
+}
+`, "main")
+	if _, err := s.Invoke(s.View().Find("tap")[0].Key, "click"); err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+	if got := s.View().Find("out")[0].Props["value"]; got != "d5" {
+		t.Errorf("handler read %v, want d5", got)
+	}
+}
