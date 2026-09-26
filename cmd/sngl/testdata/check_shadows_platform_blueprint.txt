@@ -22,7 +22,7 @@ import . "sngl:ui"
 
 output { none { html } }
 
-component Widget(title string, children ...component) node {
+component Widget(title string) node {
     text(value=title)
 }
 

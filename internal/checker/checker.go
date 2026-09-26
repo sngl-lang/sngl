@@ -4159,6 +4159,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				}
 			}
 		}
+		c.checkRestInsertion(comp)
 	}
 
 	// The body is captured rather than re-read: checkPendingExtensions swaps an

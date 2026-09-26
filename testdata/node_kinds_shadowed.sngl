@@ -11,10 +11,12 @@ import . "sngl:time"
 // so there is nothing for a user declaration to shadow.
 component timer(label string, children ...component) node {
     text(value=label)
+    children
 }
 
 component boundary(label string, children ...component) node {
     text(value=label)
+    children
 }
 
 component main node {

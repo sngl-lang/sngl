@@ -27,11 +27,15 @@ component para(children ...component inline) block {}
 component bold(weight int) inline {}
 
 // A member whose slot names no family hosts its own, so this holds inlines.
-component span(children ...component) inline {}
+component span(children ...component) inline {
+    children
+}
 
 // `node` is a family like any other: naming it in a slot says the same thing as
 // naming nothing there, because that is the family this component belongs to.
-component plain(children ...component node) node {}
+component plain(children ...component node) node {
+    children
+}
 
 component main node {
     document() {

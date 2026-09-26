@@ -1335,7 +1335,9 @@ component myWidget() node {
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
-component group(children ...component) shape {}
+component group(children ...component) shape {
+    children
+}
 
 component myWidget() node {
     canvas(width=400px, height=300px) {

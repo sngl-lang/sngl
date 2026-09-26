@@ -34,6 +34,7 @@ component collidesWithFunc(ping component, children ...component) node {
         ping {
             text(value="fb")
         }
+        children
     }
 }
 

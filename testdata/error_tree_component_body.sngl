@@ -42,6 +42,7 @@ component scoped ui.node {
 component wrap(art component d.shape, content ...component) { // ERROR(check) "expected node component in the body of wrap, got the shape slot art"
     widget()
     art
+    content
 }
 
 component widget ui.node {

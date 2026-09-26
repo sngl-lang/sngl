@@ -1,0 +1,81 @@
+// A rest slot is inserted exactly once, where it always renders: the children
+// a caller writes bare are the caller's, and one written node has to be one
+// rendered node.
+
+import . "sngl:ui"
+
+component twice(children ...component) node {
+    vbox {
+        children
+        children // ERROR(check) "rest slot \"children\" is inserted more than once"
+    }
+}
+
+component either(on bool, children ...component) node {
+    if on {
+        children // ERROR(check) "rest slot \"children\" is inserted under an if"
+    } else {
+        vbox {
+            children // ERROR(check) "rest slot \"children\" is inserted under an if"
+        }
+    }
+}
+
+component repeated(n int, children ...component) node {
+    for var i = [1, 2] {
+        children // ERROR(check) "rest slot \"children\" is inserted under a for"
+    }
+}
+
+component guarded(children ...component) node {
+    boundary {
+        children // ERROR(check) "rest slot \"children\" is inserted under a boundary with a fallback"
+
+        component failed {
+            text(value="failed")
+        }
+    }
+}
+
+component wrapped(header component, children ...component) node {
+    vbox {
+        header {}
+    }
+}
+
+component populated(children ...component) node {
+    wrapped {
+        component header {
+            children // ERROR(check) "rest slot \"children\" is inserted under a slot population"
+        }
+    }
+}
+
+component fallback(extra component, children ...component) node {
+    extra {
+        children // ERROR(check) "rest slot \"children\" is inserted under a slot fallback"
+    }
+}
+
+component never(children ...component) node { // ERROR(check) "rest slot \"children\" of never is never inserted"
+    text(value="nothing")
+}
+
+component empty(children ...component) node {} // ERROR(check) "rest slot \"children\" of empty is never inserted"
+
+// Through a callee's own rest slot and a context override, the insertion still
+// renders once.
+component passed(children ...component) node {
+    vbox {
+        children
+    }
+}
+
+component relayed(children ...component) node {
+    passed {
+        children
+    }
+}
+
+window {
+}

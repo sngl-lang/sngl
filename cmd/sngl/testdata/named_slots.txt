@@ -98,7 +98,7 @@ output { none { html } }
 -- propargs.sngl --
 import . "sngl:ui"
 
-component card(caption string, heading component(string), children ...component) node {
+component card(caption string, heading component(string)) node {
     vbox {
         heading(caption) {
             text(value="fallback")
@@ -118,7 +118,7 @@ output { none { html } }
 -- instances.sngl --
 import . "sngl:ui"
 
-component card(heading component, children ...component) node {
+component card(heading component) node {
     var open = true
     vbox {
         heading {
@@ -128,7 +128,7 @@ component card(heading component, children ...component) node {
     }
 }
 
-component wrapper(start string, children ...component) node {
+component wrapper(start string) node {
     var label = start
     vbox {
         card() {

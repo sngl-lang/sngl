@@ -915,6 +915,19 @@ twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()` the lookup; the
 old answer was the name `_`, which is why nothing keys on a slot's name any
 more.
 
+**A body inserts its rest slot exactly once, where it always renders**
+(`checkRestInsertion`, `internal/checker/rest_slot.go`). Not under an `if` or a
+`for`, not in a boundary that has a fallback, a slot fallback, a slot
+population or a window, not twice, and not never — each a positioned error
+(`error_rest_slot_insertion.sngl`). The reason is the element-ref rule below:
+children written bare are the *caller's*, their `#id`s are the caller's refs,
+and the rule is what makes one written node one rendered node without the
+caller having to read the callee's body. Through a callee's own rest slot it
+composes, since that callee is held to the same rule. A signature, a library
+declaration's `{}` (its render is a target's, and the target's override is what
+is asked), and a declaration carrying `#[builtin]`, `#[intrinsic]` or
+`#[wildcard]` have no insertion to hold and are exempt.
+
 **A rest slot may be scoped, and the population written by name is the only
 thing that reaches its arguments.** `children ...component(v T) node` is
 declared like a named slot's contract, and a caller that wants the arguments
@@ -1223,6 +1236,24 @@ declaration itself. Two things about the name that are easy to get wrong:
   An **index** is still right where the host's own ABI is an index: a GLib
   callback carries an `int` user_data and cannot hold a Go pointer at all,
   which is what `pkg/go/cbind` is. The test is whether the host asked for it.
+
+**`c.<id>` names the nodes one instance's own body wrote** (`elementRef`,
+Jonathan's call). A node in a component the instance renders is that
+component's ref and is reached through the id of the instance holding it —
+`badge #inbox(…)`, then `c.inbox.lbl` — so two instances never share a ref and
+a recursive component's `c.step` is this level's alone. Children written bare
+are the writer's wherever the callee inserts them, which the rest-slot rule
+above makes a single rendering. A slot population is a declaration with a scope
+of its own, so its ids are nobody's ref; a boundary's fallback and a window's
+content population are the exception, being placed in the writer's own body by
+the compiler. How many nodes the read names is where the node is written: `T`,
+`option<T>` behind a conditional (an `if`, a for-else, a slot fallback, a
+boundary with a fallback, a window), `list<T>` behind a `for`, stamped on
+`ir.Select.Ref`. The interpreter agrees through `interp.Node.Owner` — the
+instance whose body wrote the node, nil in a population — and `View.Refs`, and
+keys a child instance's cached state by its loop copy (`Env.copyKey`) as well
+as its site, since the copies a `for` renders of one instantiation used to
+share the first one's state.
 
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
