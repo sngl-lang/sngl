@@ -274,7 +274,7 @@ component TutorialContent() ui.node {
 
 // The site's windows, gathered in a component of the root family so they read
 // as one declaration. Nothing renders it until `site()` at the end of the file.
-component site() ui.root {
+component site() root {
     // Components — the starter set, in reading order. Everything else is one
     // click on, in the package the component belongs to.
     ui.window(title="Components", href="/components/index.html", favicon=logo) {

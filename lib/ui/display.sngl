@@ -11,7 +11,7 @@ component text(
 
 component _example_text node {
     vbox(style={gap=8, padding=16}) {
-        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+        text(value="Hello, World!", style={fontSize=24, fontWeight=bold})
         text(value="Regular text")
         text(value="Colored text", style={color=#0066CC})
     }
@@ -50,7 +50,7 @@ component badge(
 ) node {}
 
 component _example_badge node {
-    hbox(style={gap=8, padding=16, alignItems="center"}) {
+    hbox(style={gap=8, padding=16, alignItems=center}) {
         badge(value="3", variant="primary")
         badge(value="New", variant="success")
         badge(value="Error", variant="error")
@@ -145,7 +145,7 @@ component spinner(
 ) node {}
 
 component _example_spinner node {
-    hbox(style={gap=16, padding=16, alignItems="center"}) {
+    hbox(style={gap=16, padding=16, alignItems=center}) {
         spinner(label="Loading...")
         spinner(variant="circle", size="large")
     }
