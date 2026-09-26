@@ -243,3 +243,16 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 	}
 	return IRLiteralToGo(v.Init)
 }
+
+// scalarAsFloat spells the scalar side of a unit struct's per-base op as the
+// float64 the base fields are. Go does not mix a typed int into one; a literal
+// is an untyped constant and needs no conversion.
+func scalarAsFloat(e ir.Expr, s string) string {
+	if _, lit := e.(*ir.Literal); lit {
+		return s
+	}
+	if t := e.ExprType(); t != nil && t.Kind == ir.TypeInt {
+		return "float64(" + s + ")"
+	}
+	return s
+}

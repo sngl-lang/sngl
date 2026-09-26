@@ -240,6 +240,12 @@ func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
 		return "(" + left + " " + op + " " + right + ")", true
 	}
 
+	if !leftIsStruct {
+		left = scalarAsFloat(n.Left, left)
+	}
+	if !rightIsStruct {
+		right = scalarAsFloat(n.Right, right)
+	}
 	bases := UnitBases(ud)
 	parts := make([]string, 0, len(bases))
 	for _, base := range bases {

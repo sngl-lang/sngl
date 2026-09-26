@@ -240,6 +240,22 @@ func TestGoBinary_MultiBaseUnit_ScalarOperand(t *testing.T) {
 	}
 }
 
+func TestGoBinary_MultiBaseUnit_IntVarOperand(t *testing.T) {
+	gc := newMinimalIRCtx()
+	ut := multiBaseUnitType()
+	mul := &ir.Binary{
+		Op:    ast.BinMul,
+		Left:  &ir.Ident{Name: "b", Type: ut},
+		Right: &ir.Ident{Name: "n", Type: ir.TypInt},
+		Type:  ut,
+	}
+	got := gc.EvalExpr(mul)
+	want := "Measurement{Px: b.Px * float64(n), Em: b.Em * float64(n)}"
+	if got != want {
+		t.Errorf("unit * int var = %q; want %q", got, want)
+	}
+}
+
 func TestEvalStmt_If(t *testing.T) {
 	gc := newMinimalIRCtx()
 	stmt := &ir.If{
