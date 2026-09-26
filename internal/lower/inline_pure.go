@@ -640,14 +640,16 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
 
+	// Apply event-invocation substitution: replace any *ir.Emit whose
+	// Name matches a user-provided event handler with the handler body.
+	// Before the slots are spliced: an emit in slot content names the
+	// caller's event, and an unmatched emit is dropped.
+	body = substituteEvents(body, callsite.Handlers)
+
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
 	body = substituteSlots(body, callsite)
-
-	// Apply event-invocation substitution: replace any *ir.Emit whose
-	// Name matches a user-provided event handler with the handler body.
-	body = substituteEvents(body, callsite.Handlers)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.

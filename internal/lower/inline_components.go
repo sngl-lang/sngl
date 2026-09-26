@@ -1073,8 +1073,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
-	body = substituteSlots(body, n)
+	// Events before slots: an emit in spliced slot content names the caller's
+	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)
+	body = substituteSlots(body, n)
 
 	return body, nil
 }
