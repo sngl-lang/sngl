@@ -177,14 +177,12 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(fmt.Sprint("widgets"))
 	parts = append(parts, part0)
 	var part1 string
-	parts = append(parts, part1)
-	var part2 string
-	part2 = tui.RenderTerminal(20, 10, 1, func() image.Image {
+	part1 = tui.RenderTerminal(20, 10, 1, func() image.Image {
 		__c := _canvasSurface0.Begin(20, 20, 0, 0, "")
 		m._canvasDraw0(__c)
 		return __c.Result()
 	})
-	parts = append(parts, part2)
+	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -301,6 +299,8 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
+class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -407,8 +407,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ab9692a43108aff12e7be892e197c0b6
+pass sha256:d2ea48f430f0b19943c86b4e52df426e
 -- run/kotlin/android --
-pass sha256:90585bbe508a2c85507cfa93c7e6e73e
+pass sha256:192316f4e5057ed912d97ae573ca0051
 -- run/none/html --
 pass sha256:e8cc66bafe7e918e6c38e490b2df2783

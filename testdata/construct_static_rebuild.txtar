@@ -111,7 +111,7 @@ body { font-family: system-ui, sans-serif; }
       let __inst1_now_start = [];
       if (__prop_more > 0) {
         if (__prop___depth >= 512) {
-          throw Object.assign(new Error("seeded: recursion exceeded 512 nested instances"), { kind: "recursion" });
+          throw Object.assign(new Error("seeded: recursion exceeded 512 nested instances"), { kind: "recursion", snglRaise: true });
         } else {
           let __n2 = null;
           if (__inst1_live.length > __inst1_i && __inst1_was_start[__inst1_i] === __prop_start) {
@@ -208,4 +208,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c036c9bd2e05faea12cfea448cff6c77
+pass sha256:3e6a6401a32b7c3d6b231aa97764fdda

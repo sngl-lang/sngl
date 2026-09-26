@@ -363,14 +363,14 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	}
 	evt := fmt.Sprintf("{message: %s, kind: %s}", msg, kind)
 
+	// snglRaise tells a catch block (Catch) this throw from one the host made.
+	throw := "throw Object.assign(new Error(" + msg + "), {kind: " + kind + ", snglRaise: true})"
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble has no fallible-signature lowering; throw so the
-		// enclosing scope surfaces the error natively.
-		return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+		return []string{throw}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
-			return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+			return []string{throw}
 		}
 		return jc.emitHandlerInvoke(evt, call.ResolvedHandler)
 	case ir.ErrorPerCall:
@@ -382,8 +382,35 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
-// emitHandlerInvoke inlines the handler body in a JS block scope. It emits no
-// terminate, as in the Go translator.
+// Catch renders a catch block as try/catch. Only a SNGL raise is caught: a
+// host exception is a bug in the program or the runtime, not an error the
+// program raised.
+func (jc *JsIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	lines := []string{"try {"}
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines,
+		"} catch (__e) {",
+		"\tif (!__e || !__e.snglRaise) throw __e;",
+	)
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		p := h.Func.Params[0].Name
+		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __e.message, kind: __e.kind}", p), "\tvoid "+p)
+	}
+	if h.Func != nil {
+		for _, stmt := range h.Func.Block {
+			for _, l := range jc.EvalStmt(stmt) {
+				lines = append(lines, "\t"+l)
+			}
+		}
+	}
+	return append(lines, "}")
+}
+
+// emitHandlerInvoke inlines the handler body in a JS block scope, for a raise
+// no catch block covers; see the Go translator's.
 func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {

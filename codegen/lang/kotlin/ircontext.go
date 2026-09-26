@@ -659,10 +659,10 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		return []string{"throw RuntimeException(" + msg + ")"}
+		return []string{"throw SnglRaise(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
-			return []string{"throw RuntimeException(" + msg + ")"}
+			return []string{"throw SnglRaise(" + evt + ")"}
 		}
 		return kc.emitHandlerInvoke(evt, call.ResolvedHandler)
 	case ir.ErrorPerCall:
@@ -672,6 +672,28 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 		return kc.emitHandlerInvoke(evt, call.ErrorHandler)
 	}
 	return nil
+}
+
+// Catch renders a catch block as try/catch over SnglRaise, the exception a
+// raise throws, so a host exception is not taken for one.
+func (kc *KtIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	lines := []string{"try {"}
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines, "} catch (__e: SnglRaise) {")
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		lines = append(lines, "\tval "+h.Func.Params[0].Name+" = __e.error")
+	}
+	if h.Func != nil {
+		for _, stmt := range h.Func.Block {
+			for _, l := range kc.EvalStmt(stmt) {
+				lines = append(lines, "\t"+l)
+			}
+		}
+	}
+	return append(lines, "}")
 }
 
 func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {

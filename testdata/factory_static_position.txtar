@@ -103,7 +103,7 @@ body { font-family: system-ui, sans-serif; }
       let __inst1_i = 0;
       if (__prop_n > 0) {
         if (__prop___depth >= 512) {
-          throw Object.assign(new Error("chain: recursion exceeded 512 nested instances"), { kind: "recursion" });
+          throw Object.assign(new Error("chain: recursion exceeded 512 nested instances"), { kind: "recursion", snglRaise: true });
         } else {
           let __n2 = null;
           if (__inst1_live.length > __inst1_i) {
@@ -180,4 +180,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9a226436086ffe2a556fda80cde132b2
+pass sha256:349dd89f86bd4d2c54939c76a9ed9e14

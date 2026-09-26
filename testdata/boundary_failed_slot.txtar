@@ -140,12 +140,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			{
-				e := ErrorEvent{Message: "boom", Kind: "demo"}
-				_ = e
-				m.__failed0__inst0 = true
-				m.seen__inst0 = e.Message
-			}
+			func() {
+				defer func() {
+					r := recover()
+					if r == nil {
+						return
+					}
+					e, ok := r.(ErrorEvent)
+					if !ok {
+						panic(r)
+					}
+					_ = e
+					m.__failed0__inst0 = true
+					m.seen__inst0 = e.Message
+				}()
+				panic(ErrorEvent{Message: "boom", Kind: "demo"})
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -229,9 +239,14 @@ body { font-family: system-ui, sans-serif; }
       let go = document.createElement("button");
       go.setAttribute("disabled", false);
       go.addEventListener("click", () => {
-        {
+        try {
           ;
-          let e = { message: "boom", kind: "demo" };
+          throw Object.assign(new Error("boom"), { kind: "demo", snglRaise: true });
+        } catch (__e) {
+          ;
+          if (!__e || !__e.snglRaise) throw __e;
+          ;
+          let e = { message: __e.message, kind: __e.kind };
           void e;
           __failed0__inst0 = true;
           __renderSlot0(__slotAnchor_0);
@@ -280,6 +295,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7f9a82d75de94bd4db3b50805496d3bd
+pass sha256:c834a0c74813869edda5081b6e904ad0
 -- run/none/html --
-pass sha256:808582647ed3f877e90310ec7dfb7ccc
+pass sha256:1dae77887b683d13e82e06fc4b37d8a3

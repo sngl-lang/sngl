@@ -1032,7 +1032,7 @@ body { font-family: system-ui, sans-serif; }
         }
         __effects0_settling = false;
         if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
         }
       }
     }
@@ -1135,4 +1135,4 @@ pass sha256:19c6bd01ef6a695409afc50582e8e1d7
 -- run/kotlin/android --
 pass sha256:4ffa09189aa41104afea7fb8a840eb20
 -- run/none/html --
-pass sha256:241ce678956b959b36862e0668552a12
+pass sha256:dba28a8046e140c1558b2d3a39b98368

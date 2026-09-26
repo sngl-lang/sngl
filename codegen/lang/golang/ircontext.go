@@ -1301,9 +1301,8 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble wants a fallible-signature return channel, which no
-		// lowering produces yet, so this panics and — with no recover
-		// emitted either — aborts. Put error.raise inside the handler.
+		// The recover a catch block (Catch) emits is what stops it, when one
+		// covers this raise; otherwise it aborts.
 		return []string{"panic(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -1319,11 +1318,49 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// Catch renders a catch block as a closure called in place, whose deferred
+// recover runs the handler for an ErrorEvent and re-panics anything else. A
+// closure rather than a helper taking two, so a `return` in the body still
+// ends what it ended, and nothing has to declare the helper.
+func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	bind := "_"
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		bind = h.Func.Params[0].Name
+	}
+	lines := []string{
+		"func() {",
+		"\tdefer func() {",
+		"\t\tr := recover()",
+		"\t\tif r == nil {",
+		"\t\t\treturn",
+		"\t\t}",
+		"\t\t" + bind + ", ok := r.(ErrorEvent)",
+		"\t\tif !ok {",
+		"\t\t\tpanic(r)",
+		"\t\t}",
+	}
+	if bind != "_" {
+		lines = append(lines, "\t\t_ = "+bind)
+	}
+	if h.Func != nil {
+		for _, stmt := range h.Func.Block {
+			for _, l := range gc.EvalStmt(stmt) {
+				lines = append(lines, "\t\t"+l)
+			}
+		}
+	}
+	lines = append(lines, "\t}()")
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	return append(lines, "}()")
+}
+
 // emitHandlerInvoke declares the event variable and inlines the handler body,
-// wrapped in a Go lexical block so the variable does not leak.
-//
-// It emits no return, so statements following a raise still execute: place
-// error.raise at the end of a handler body.
+// wrapped in a Go lexical block so the variable does not leak. It is what a
+// raise no catch block covers gets: a per-call handler's own, or a boundary's
+// reached from a view body, where there is no handler left to end.
 func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {

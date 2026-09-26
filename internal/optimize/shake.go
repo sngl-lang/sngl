@@ -399,6 +399,11 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkExpr(n.Cond, used, walk)
 		walkStmts(n.Body, used, walk)
 		walkStmts(n.Else, used, walk)
+		// A catch block renders its handler where it stands, so what the handler
+		// names is used here whether or not its owner survived.
+		if n.Catch != nil && n.Catch.Func != nil {
+			walkStmts(n.Catch.Func.Block, used, walk)
+		}
 	case *ir.For:
 		walkExpr(n.Iter, used, walk)
 		walkStmts(n.Body, used, walk)

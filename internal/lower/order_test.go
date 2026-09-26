@@ -62,6 +62,9 @@ var alwaysOn = []string{
 	"AsyncCapable",
 	"BoundaryFailed",
 	"CSE",
+	// A raise is a raise on every target, and the catch it unwinds to is a block
+	// every language renders.
+	"ErrorCatch",
 	"ForElse",
 	"ForeignPrimitive",
 	"HoistBodyTypes",

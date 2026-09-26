@@ -216,7 +216,7 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 // but it draws nothing, so a body is one widget or several by what it renders
 // and not by how many schedules it also placed.
 func (vc *irViewContext) renderBody(stmts []ir.Stmt, single string) {
-	stmts = codegen.WithoutSchedules(stmts)
+	stmts = joinedChildren(codegen.WithoutSchedules(stmts))
 	if len(stmts) == 1 {
 		vc.line("var %s string", single)
 		vc.renderStmt(stmts[0], single)
@@ -483,7 +483,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		vc.line("var %s []string", childrenVar)
 		prevVertical := vc.vertical
 		vc.vertical = true
-		for i, child := range n.Children {
+		for i, child := range joinedChildren(n.Children) {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
 		vc.vertical = prevVertical
@@ -514,7 +514,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		vc.line("var %s []string", childrenVar)
 		prevVertical := vc.vertical
 		vc.vertical = bp.Join == joinVertical
-		for i, child := range n.Children {
+		for i, child := range joinedChildren(n.Children) {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
 		vc.vertical = prevVertical
@@ -615,7 +615,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 			vc.line("var %s []string", childrenVar)
 			prevVertical := vc.vertical
 			vc.vertical = s == "vertical"
-			for i, child := range n.Children {
+			for i, child := range joinedChildren(n.Children) {
 				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
 			vc.vertical = prevVertical
@@ -834,4 +834,23 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 		return "Faint(true)"
 	}
 	return ""
+}
+
+// joinedChildren is the parts a container joins, with each boundary's content
+// spliced in where the boundary stands. A boundary draws nothing of its own,
+// and rendered as one part its children were each written to the same part
+// var -- declared twice, which does not compile, and the last one alone shown.
+func joinedChildren(stmts []ir.Stmt) []ir.Stmt {
+	if !slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.ErrorBoundary); return ok }) {
+		return stmts
+	}
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		if b, ok := s.(*ir.ErrorBoundary); ok {
+			out = append(out, joinedChildren(b.Children)...)
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
