@@ -65,9 +65,9 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 				// The tree finds strictly more than the walk did: content a
 				// call site supplies to a user component is now mounted, and
 				// the walk never reached it. That is one intentional
-				// divergence (nodeMaps holds the other), so it is subtracted here rather than the
-				// comparison being loosened -- everything else must still
-				// match exactly.
+				// divergence (nodeMaps holds the other), so it is subtracted
+				// here rather than the comparison being loosened --
+				// everything else must still match exactly.
 				visible, fromSlot := splitSupplied(view.Find(id))
 				supplied += fromSlot
 				newMaps := nodeMaps(visible)

@@ -170,7 +170,7 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s has no runnable body for @%s", key, event)
 		}
-		if _, err := env.underContext(n.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
+		if _, err := env.underHandler(n.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
 			return nil, err
 		}
 		s.Env.RebindFrom(env)

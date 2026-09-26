@@ -8,13 +8,17 @@
 # The interpreter follows the tree at run time (the frames a node is mounted
 # under), and a compiled target resolves each spliced instance statically.
 #
+# The emitted-event case is the other direction: listener's @pick runs inside
+# emitter's click -- a compiled target inlines it there -- so the boundary
+# catching its raise ends the click too.
+#
 # Only the interpreter runs these: no compiled test agent reaches an element
 # through a nested instance (`c.l.go`) -- bubbletea's reads it as a Model field
 # `lGo` and does not compile, and html's fails the click. What those targets
 # emit is testdata/error_raise_render_tree.txtar.
 
 sngl test --platform=none app.sngl
-stdout '4 tests, 0 failures'
+stdout '5 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:ui"
@@ -120,6 +124,31 @@ func testBoundaryHandlerRaisesOutward(t Test, c rethrow) {
     c.l.go.click()
     t.assert(c.inner == "empty")
     t.assert(c.outer == "again")
+}
+
+component emitter(@pick()) node {
+    var after = false
+    button #go(text="go", @click {
+        pick()
+        after = true
+    })
+}
+
+component listener node {
+    var problem = "none"
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        emitter #c(@pick {
+            check("")
+        })
+    }
+}
+
+func testRaiseInEmittedHandlerEndsTheEmitter(t Test, c listener) {
+    c.c.go.click()
+    t.assert(c.problem == "empty")
+    t.assert(c.c.after == false)
 }
 
 window {

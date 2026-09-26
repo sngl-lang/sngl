@@ -676,9 +676,9 @@ func numKindOfValue(v any) opeval.NumKind {
 	return opeval.NumKind{}
 }
 
-// execCatch runs a catch block, which only a lowered package holds: a build
-// for this target lowers, and passErrorCatch has by then turned each raise it
-// covers into one that propagates to here.
+// execCatch runs a catch block. Only lowered IR holds one -- `sngl test` runs
+// checked IR -- so this answers a caller that interprets after lowering, as the
+// optimizer does in optimize.Documents.
 func (env *Env) execCatch(s *ir.If) error {
 	for _, st := range s.Body {
 		err := env.Exec(st)

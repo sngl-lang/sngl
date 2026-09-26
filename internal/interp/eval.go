@@ -325,12 +325,16 @@ type Env struct {
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
+	// handling counts the event handlers running, shared by every env of one
+	// program so that a nested dispatch can tell it is one.
+	handling *int
 }
 
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
+		handling:  new(int),
 	}
 }
 
@@ -478,6 +482,7 @@ func (env *Env) Snapshot() *Env {
 		inst:       env.inst,
 		origin:     env,
 		spreadVals: env.spreadVals,
+		handling:   env.handling,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
@@ -1808,7 +1813,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 						return nil, err
 					}
 					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
-					res, err := handlerEnv.underContext(provided, func() (any, error) {
+					res, err := handlerEnv.underHandler(provided, func() (any, error) {
 						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
 							return nil, err
 						}
@@ -2868,6 +2873,22 @@ func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (
 		env.SetContext(ctx, v)
 	}
 	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
-	res, err := fn()
-	return res, catchEscaped(vals, err)
+	return fn()
+}
+
+// underHandler is underContext for an event handler's entry. A raise the
+// handler lets out is offered to the frames it was mounted under -- but only by
+// the outermost one, since a handler run from inside another (an emitted event)
+// is part of the raise that one is making.
+func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (any, error) {
+	if env.handling == nil {
+		env.handling = new(int)
+	}
+	*env.handling++
+	res, err := env.underContext(vals, fn)
+	*env.handling--
+	if *env.handling == 0 {
+		err = catchEscaped(vals, err)
+	}
+	return res, err
 }

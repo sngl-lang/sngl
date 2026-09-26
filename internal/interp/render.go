@@ -100,6 +100,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 
 	child := NewEnv()
 	child.Pkg = env.Pkg
+	child.handling = env.handling
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
@@ -200,6 +201,7 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child := NewEnv()
 	child.Pkg = env.Pkg
+	child.handling = env.handling
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
