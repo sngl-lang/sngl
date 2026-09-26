@@ -9,8 +9,9 @@
 # including the ones whose call raised.
 #
 # boundary.sngl is testdata/boundary_catches_called_raise.txtar's program: a
-# boundary catching a raise from a called function, in a click and in an
-# effect's @mount, and a call through a func value catching its own. fyne and
+# boundary catching a raise from a called function, in a click -- which the
+# raise ends, so the click appends nothing to `after` -- and in an effect's
+# @mount, and a call through a func value catching its own. fyne and
 # gtk4 implement no boundary, so it runs on the interpreter and html only.
 #
 # return.sngl is testdata/error_handler_return.txtar's program: a `return` in
@@ -126,7 +127,7 @@ func testBoundaryAndLambdaCatch(t Test, c main) {
     c.stmt.click()
     c.lam.click()
     t.assert(c.caught == "too big;too big;lam:lam;")
-    t.assert(c.after == "sl")
+    t.assert(c.after == "l")
 }
 
 window {

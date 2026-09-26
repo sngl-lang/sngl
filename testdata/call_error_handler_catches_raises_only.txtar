@@ -151,6 +151,7 @@ body { font-family: system-ui, sans-serif; }
       ;
       let e = { message: __err?.message ?? String(__err), kind: __err?.kind ?? "" };
       state.caught__inst0 = e.message;
+      __n0.textContent = state.caught__inst0 + String(state.got__inst0);
     }
     ;
   });
@@ -164,4 +165,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/kotlin/android --
 pass sha256:3b8b6951e4600aeb5b2af1a5f0bffaca
 -- run/none/html --
-pass sha256:f5f0ccc07a91336820afaa1cfd0412ed
+pass sha256:2c37fd47d25b664186d6974a260a72db

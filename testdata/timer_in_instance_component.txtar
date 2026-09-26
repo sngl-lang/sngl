@@ -147,7 +147,7 @@ body { font-family: system-ui, sans-serif; }
         }
         __effects0_settling = false;
         if (__effects0_pending) {
-          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect", snglRaise: true });
+          throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
       }
     }
@@ -225,4 +225,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d7bf58da77b798c6bd7660c00a7331ed
+pass sha256:4194b8637358b5b77ea1eac7450d752e

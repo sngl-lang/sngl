@@ -138,11 +138,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			{
-				e := ErrorEvent{Message: "boom", Kind: ""}
-				_ = e
-				m.caught__inst0 = "light"
-			}
+			func() {
+				defer func() {
+					__r := recover()
+					if __r == nil {
+						return
+					}
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
+					}
+					_ = e
+					m.caught__inst0 = "light"
+				}()
+				panic(ErrorEvent{Message: "boom", Kind: ""})
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -228,8 +238,10 @@ fun MainScreen() {
 
     Column {
         Button(onClick = {
-            run {
-            	val e = ErrorEvent("boom", "")
+            try {
+            	throw SnglRaise(ErrorEvent("boom", ""))
+            } catch (__e: SnglRaise) {
+            	val e = __e.event
             	caught__inst0 = "light"
             }
         }, modifier = Modifier.testTag("go").safeDrawingPadding()) {
@@ -264,9 +276,14 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    {
+    try {
       ;
-      let e = { message: "boom", kind: "" };
+      throw Object.assign(new Error("boom"), { kind: "" });
+    } catch (__e) {
+      ;
+      if (__e?.kind === void 0) throw __e;
+      ;
+      let e = { message: __e.message, kind: __e.kind };
       void e;
       state.caught__inst0 = "light";
       __n0.textContent = state.caught__inst0;
@@ -281,8 +298,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2ee1bdabbcb88b6bd278de997ae91472
+pass sha256:629dcdc5aaa98caca9e3ed6cdf724f24
 -- run/kotlin/android --
-pass sha256:39aa5762aee88d502d04f04f9f4dafbe
+pass sha256:64c41dea995677fc4a44038cc1eac770
 -- run/none/html --
-pass sha256:0d665cb871287e3d23265f123f6b1b77
+pass sha256:cd58746d5009a16b870d22fec73c45d2

@@ -1,20 +1,20 @@
 A raise inside a called function unwinds to the handler that resolved it, as
-the host's own exception does, and passErrorCatch places that handler: the body
-of a handler whose raises the checker resolved to a boundary is one catch block,
-and a call statement carrying a per-call @error is one of its own.
+the host's own exception does. The body of a handler whose raises the checker
+resolved to a boundary is one catch block (passErrorCatch), so the raise ends
+the handler; a call statement carrying a per-call @error is caught at that call
+(catchAtCall), and the handler goes on after it.
 
 So `age = parseTwice("")` under the boundary stops in requireAge, passes back
 through parseTwice without reaching `return n * 2`, leaves `age` as it was and
 skips `problem = "saved"`; the boundary's handler runs in its place. The
 per-call handler on `requireAge` catches there instead, and `age = 0` after it
-still runs. Before the pass a raise in a called function was a panic or throw
-nothing caught, and only a raise written directly in a handler reached the
-boundary -- by inlining the boundary's handler at the raise, after which the
-handler went on running.
+still runs. Before, a raise in a call whose value is used was caught nowhere,
+and a raise that did reach the boundary ran its handler and let the click go
+on.
 
 The argument case is the third button: a per-call handler answers for its own
 call, and `string(requireAge(""))` is evaluated before that call is made, so it
-is bound to a temp ahead of the catch block and its raise reaches the boundary.
+is bound to a temp ahead of the statement and its raise reaches the boundary.
 
 deny out/go/bubbletea/model.go `e := ErrorEvent\{` -- no raise inlines its handler any more; each one panics to a recover
 deny out/none/html/index.html `let e = \{ message: "` -- nor in JavaScript
@@ -221,13 +221,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			func() {
 				defer func() {
-					r := recover()
-					if r == nil {
+					__r := recover()
+					if __r == nil {
 						return
 					}
-					e, ok := r.(ErrorEvent)
-					if !ok {
-						panic(r)
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
 					}
 					_ = e
 					m.problem__inst0 = e.Message
@@ -238,13 +238,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			func() {
 				defer func() {
-					r := recover()
-					if r == nil {
+					__r := recover()
+					if __r == nil {
 						return
 					}
-					e, ok := r.(ErrorEvent)
-					if !ok {
-						panic(r)
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
 					}
 					_ = e
 					m.problem__inst0 = ("call: " + e.Kind)
@@ -255,13 +255,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			func() {
 				defer func() {
-					r := recover()
-					if r == nil {
+					__r := recover()
+					if __r == nil {
 						return
 					}
-					e, ok := r.(ErrorEvent)
-					if !ok {
-						panic(r)
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
 					}
 					_ = e
 					m.problem__inst0 = e.Message
@@ -269,13 +269,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				__arg0 := fmt.Sprint(RequireAge(""))
 				func() {
 					defer func() {
-						r := recover()
-						if r == nil {
+						__r := recover()
+						if __r == nil {
 							return
 						}
-						e, ok := r.(ErrorEvent)
-						if !ok {
-							panic(r)
+						e, __ok := __r.(ErrorEvent)
+						if !__ok {
+							panic(__r)
 						}
 						_ = e
 						m.problem__inst0 = "not this one"
@@ -292,32 +292,36 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	var content_0Parts []string
+	var content_0Part_0 string
+	content_0Part_0Focused := (m.__focusID == 0)
+	content_0Part_0Prefix := " "
+	if content_0Part_0Focused {
+		content_0Part_0Prefix = ">"
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("Save"))
+	content_0Part_0 = lipgloss.NewStyle().Render(content_0Part_0Prefix + " " + fmt.Sprint("Save"))
+	content_0Parts = append(content_0Parts, content_0Part_0)
+	var content_0Part_1 string
+	content_0Part_1Focused := (m.__focusID == 1)
+	content_0Part_1Prefix := " "
+	if content_0Part_1Focused {
+		content_0Part_1Prefix = ">"
+	}
+	content_0Part_1 = lipgloss.NewStyle().Render(content_0Part_1Prefix + " " + fmt.Sprint("Check"))
+	content_0Parts = append(content_0Parts, content_0Part_1)
+	var content_0Part_2 string
+	content_0Part_2Focused := (m.__focusID == 2)
+	content_0Part_2Prefix := " "
+	if content_0Part_2Focused {
+		content_0Part_2Prefix = ">"
+	}
+	content_0Part_2 = lipgloss.NewStyle().Render(content_0Part_2Prefix + " " + fmt.Sprint("Argument"))
+	content_0Parts = append(content_0Parts, content_0Part_2)
+	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Parts...)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1Focused := (m.__focusID == 1)
-	content_1Prefix := " "
-	if content_1Focused {
-		content_1Prefix = ">"
-	}
-	content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("Check"))
+	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(((("problem=" + m.problem__inst0) + " age=") + fmt.Sprint(m.age__inst0))))
 	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	content_2Focused := (m.__focusID == 2)
-	content_2Prefix := " "
-	if content_2Focused {
-		content_2Prefix = ">"
-	}
-	content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("Argument"))
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	content_3 = lipgloss.NewStyle().Render(fmt.Sprint(((("problem=" + m.problem__inst0) + " age=") + fmt.Sprint(m.age__inst0))))
-	contentChildren = append(contentChildren, content_3)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -361,7 +365,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
-class SnglRaise(val error: ErrorEvent) : RuntimeException(error.message)
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -381,7 +385,7 @@ fun MainScreen() {
             	age__inst0 = parseTwice("")
             	problem__inst0 = "saved"
             } catch (__e: SnglRaise) {
-            	val e = __e.error
+            	val e = __e.event
             	problem__inst0 = e.message
             }
         }, modifier = Modifier) {
@@ -390,8 +394,8 @@ fun MainScreen() {
         Button(onClick = {
             try {
             	requireAge("")
-            } catch (__e: SnglRaise) {
-            	val e = __e.error
+            } catch (__err: SnglRaise) {
+            	val e = __err.event
             	problem__inst0 = ("call: " + e.kind)
             }
             age__inst0 = 0
@@ -403,12 +407,12 @@ fun MainScreen() {
             	var __arg0 = requireAge("").toString()
             	try {
             		parseTwice(__arg0)
-            	} catch (__e: SnglRaise) {
-            		val e = __e.error
+            	} catch (__err: SnglRaise) {
+            		val e = __err.event
             		problem__inst0 = "not this one"
             	}
             } catch (__e: SnglRaise) {
-            	val e = __e.error
+            	val e = __e.event
             	problem__inst0 = e.message
             }
         }, modifier = Modifier) {
@@ -464,7 +468,7 @@ body { font-family: system-ui, sans-serif; }
   function requireAge(s) {
     if (s.length === 0) {
       ;
-      throw Object.assign(new Error("an age is required"), { kind: "validation", snglRaise: true });
+      throw Object.assign(new Error("an age is required"), { kind: "validation" });
     }
     ;
     return Math.trunc(s);
@@ -489,7 +493,7 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = "problem=" + state.problem__inst0 + " age=" + String(state.age__inst0);
     } catch (__e) {
       ;
-      if (!__e || !__e.snglRaise) throw __e;
+      if (__e?.kind === void 0) throw __e;
       ;
       let e = { message: __e.message, kind: __e.kind };
       void e;
@@ -502,12 +506,11 @@ body { font-family: system-ui, sans-serif; }
     try {
       ;
       requireAge("");
-    } catch (__e) {
+    } catch (__err) {
       ;
-      if (!__e || !__e.snglRaise) throw __e;
+      if (__err?.kind === void 0) throw __err;
       ;
-      let e = { message: __e.message, kind: __e.kind };
-      void e;
+      let e = { message: __err?.message ?? String(__err), kind: __err?.kind ?? "" };
       state.problem__inst0 = "call: " + e.kind;
       __n0.textContent = "problem=" + state.problem__inst0 + " age=" + String(state.age__inst0);
     }
@@ -522,19 +525,18 @@ body { font-family: system-ui, sans-serif; }
       try {
         ;
         parseTwice(__arg0);
-      } catch (__e) {
+      } catch (__err) {
         ;
-        if (!__e || !__e.snglRaise) throw __e;
+        if (__err?.kind === void 0) throw __err;
         ;
-        let e = { message: __e.message, kind: __e.kind };
-        void e;
+        let e = { message: __err?.message ?? String(__err), kind: __err?.kind ?? "" };
         state.problem__inst0 = "not this one";
         __n0.textContent = "problem=" + state.problem__inst0 + " age=" + String(state.age__inst0);
       }
       ;
     } catch (__e) {
       ;
-      if (!__e || !__e.snglRaise) throw __e;
+      if (__e?.kind === void 0) throw __e;
       ;
       let e = { message: __e.message, kind: __e.kind };
       void e;
@@ -551,8 +553,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:654f81b805ae2a2c46d609f845b07379
+pass sha256:a469d89f9c010cd80d5e235ca0f3920c
 -- run/kotlin/android --
-pass sha256:15171764ba186195604b579bfae9319f
+pass sha256:e88cd828582503667faafac819a42572
 -- run/none/html --
-pass sha256:cbaf69246ab0ae91b8c70b7d28aab452
+pass sha256:35290bf4898c6d1b12d8400cac2ceb9e

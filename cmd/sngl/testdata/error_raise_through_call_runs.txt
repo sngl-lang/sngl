@@ -3,20 +3,18 @@
 #
 # Run rather than read, because what is being claimed is what executes: a
 # golden shows a recover or a catch, and only running it shows the handler ran
-# and the statements after the raise did not. Before passErrorCatch every
-# compiled target panicked or threw out of the click with nothing to catch it,
-# and the interpreter caught only a fallible call written as a bare statement,
-# so `age = parseTwice("")` reported `raised: an age is required` there too.
+# and the statements after the raise did not. Before passErrorCatch a raise
+# that reached a boundary ran its handler and let the click go on, and a raise
+# in a call whose value is used (`age = parseTwice("")`) was caught nowhere --
+# on the interpreter either, which dispatched only a bare call statement.
 #
 # The per-call handler is the other half: it catches at its call, the boundary
 # never hears of it, and the handler goes on after the statement. The argument
 # case holds the line between the two -- a raise from an argument happens
 # before the call it is passed to, so it is the boundary's.
 #
-# Android is not run: a robolectric test that clicks does not compile
-# (TestAgentRunner.kt uses onNodeWithTag without importing it), which is the
-# test harness and not this. Its golden, error_raise_through_call.txtar, is
-# compiled by gradle.
+# Android only compiles the program, in the record of
+# testdata/error_raise_through_call.txtar, which declares no test functions.
 
 sngl test --platform=none app.sngl
 stdout 'PASS'
@@ -25,8 +23,6 @@ stdout 'PASS'
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
-
-[!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout 'PASS'
@@ -154,4 +150,104 @@ window {
     perCall()
     argument()
     noRaise()
+}
+-- testrun/bubbletea/go/app.sngl/argument/1 --
+sha256:d1a54fd3e1943219e4ea2e6673c29c3f
+{
+  "results": [
+    {
+      "Desc": "RaiseInArgumentReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/direct/1 --
+sha256:8e6c01f52ef80773282dfe66cfcb1906
+{
+  "results": [
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/noRaise/1 --
+sha256:58ff536c567d078fb99f7dbc9f989681
+{
+  "results": [
+    {
+      "Desc": "NoRaiseCompletes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/perCall/1 --
+sha256:684d01b3fb1e0161977ee8ffc5cf870a
+{
+  "results": [
+    {
+      "Desc": "PerCallCatchesAndContinues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/throughCalls/1 --
+sha256:be573bf2dd1324d9aae165287a7670fa
+{
+  "results": [
+    {
+      "Desc": "RaiseTwoCallsDownReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/argument/1 --
+sha256:961b15c52fb7b201e575f73ff3ce0287
+{
+  "results": [
+    {
+      "Desc": "RaiseInArgumentReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/direct/1 --
+sha256:9aee3dc8679b21310f8dd9a0183700f0
+{
+  "results": [
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/noRaise/1 --
+sha256:bb51a740cf6e488be6030b534b26f608
+{
+  "results": [
+    {
+      "Desc": "NoRaiseCompletes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/perCall/1 --
+sha256:818c71a5ae83525d637bdb39691714e4
+{
+  "results": [
+    {
+      "Desc": "PerCallCatchesAndContinues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/throughCalls/1 --
+sha256:27692146d2f414dfd3dd064a95375426
+{
+  "results": [
+    {
+      "Desc": "RaiseTwoCallsDownReachesBoundary",
+      "Passed": true
+    }
+  ]
 }

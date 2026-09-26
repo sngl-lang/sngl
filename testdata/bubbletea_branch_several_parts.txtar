@@ -169,11 +169,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.on__inst0 = false
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			{
-				e := ErrorEvent{Message: "c", Kind: ""}
-				_ = e
-				m.caught__inst0 = e.Message
-			}
+			func() {
+				defer func() {
+					__r := recover()
+					if __r == nil {
+						return
+					}
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
+					}
+					_ = e
+					m.caught__inst0 = e.Message
+				}()
+				panic(ErrorEvent{Message: "c", Kind: ""})
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -281,4 +291,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:b3b2ab4cbe65ccf1710bf2c539792924
+pass sha256:8764dc2d2b70dffba777e245e2b02cfe
