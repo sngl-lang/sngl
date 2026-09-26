@@ -240,6 +240,14 @@ func goMultiBaseUnitBinary(n *ir.Binary, left, right string) (string, bool) {
 		return "(" + left + " " + op + " " + right + ")", true
 	}
 
+	// A base is a float64 and Go will not scale one by an int.
+	if !leftIsStruct && isIntType(n.Left.ExprType()) {
+		left = "float64(" + left + ")"
+	}
+	if !rightIsStruct && isIntType(n.Right.ExprType()) {
+		right = "float64(" + right + ")"
+	}
+
 	bases := UnitBases(ud)
 	parts := make([]string, 0, len(bases))
 	for _, base := range bases {
