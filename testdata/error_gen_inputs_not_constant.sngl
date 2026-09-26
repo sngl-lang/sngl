@@ -6,7 +6,7 @@ import ui "sngl:ui"
 var where = "/tmp"
 
 cache.inputs {
-    cache.absent(path=where) // ERROR(check) "must be constant"
+    cache.absent(path=where) // ERROR(check) "prop \"path\" of absent is const: \"where\" is a var"
 }
 
 ui.window {

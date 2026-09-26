@@ -23,9 +23,9 @@ import gen "sngl:x/gen"
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component fyne(
     // Go package name for the generated files.
-    package string,
+    const package string,
     // Emit a standalone main() or a library-style module.
-    main bool,
+    const main bool,
 ) build.platform {}
 
 // --- The Spec vocabulary ---
@@ -116,7 +116,7 @@ struct Spec {
 #[gen.renders(identity)]
 #[intrinsic("fyne:Widget")]
 component Widget(
-    spec Spec,
+    const spec Spec,
     text string,
     placeholder string,
     number int,
@@ -131,7 +131,7 @@ component Widget(
 #[gen.renders(identity)]
 #[intrinsic("fyne:Container")]
 component Container(
-    spec Spec,
+    const spec Spec,
     text string,
     placeholder string,
     number int,
@@ -147,7 +147,7 @@ component Container(
 #[gen.renders(identity)]
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
-    spec Spec,
+    const spec Spec,
     text string,
     placeholder string,
     number int,
@@ -168,7 +168,7 @@ component Wrapper(
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
 // written the same way a user would write a thirteenth.
 
-component Label(text string, style ui.Style) ui.node {
+const component Label(text string, style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
@@ -181,7 +181,7 @@ component Label(text string, style ui.Style) ui.node {
     ) {}
 }
 
-component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
+const component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -196,7 +196,7 @@ component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
     ) {}
 }
 
-component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent, @change ui.ChangeEvent) ui.node {
+const component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent, @change ui.ChangeEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -218,7 +218,7 @@ component Entry(text string, placeholder string, style ui.Style, @input ui.Input
     ) {}
 }
 
-component MultiLineEntry(
+const component MultiLineEntry(
     text string,
     placeholder string,
     rows int,
@@ -249,7 +249,7 @@ component MultiLineEntry(
     ) {}
 }
 
-component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
+const component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -272,7 +272,7 @@ component Check(text string, checked bool, style ui.Style, @change ui.ToggleEven
 // that is not already among `Options`, and the props are assigned in the order
 // this call writes them. Reordering them is why the constructor can take `nil`
 // choices.
-component Select(
+const component Select(
     selected string,
     options list<string>,
     style ui.Style,
@@ -299,7 +299,7 @@ component Select(
 // `widget.Hyperlink` exposes its text and its URL as struct fields rather than
 // as setters, and a URL is a `*url.Parse` result rather than an expression this
 // package can spell, so the link renders empty.
-component Hyperlink(style ui.Style) ui.node {
+const component Hyperlink(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
@@ -314,7 +314,7 @@ component Hyperlink(style ui.Style) ui.node {
 // expression to build, so the image is empty. From a resource rather than a
 // URI because NewImageFromURI dereferences what it is given and a nil URI is
 // the only one available here.
-component Image(style ui.Style) ui.node {
+const component Image(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
@@ -325,7 +325,7 @@ component Image(style ui.Style) ui.node {
     ) {}
 }
 
-component Spacer(style ui.Style) ui.node {
+const component Spacer(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
@@ -335,7 +335,7 @@ component Spacer(style ui.Style) ui.node {
     ) {}
 }
 
-component VBox(style ui.Style, children ...component) ui.node {
+const component VBox(style ui.Style, children ...component) ui.node {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -349,7 +349,7 @@ component VBox(style ui.Style, children ...component) ui.node {
     }
 }
 
-component HBox(style ui.Style, children ...component) ui.node {
+const component HBox(style ui.Style, children ...component) ui.node {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -363,7 +363,7 @@ component HBox(style ui.Style, children ...component) ui.node {
     }
 }
 
-component VScroll(style ui.Style, content ...component tr.one) ui.node {
+const component VScroll(style ui.Style, content ...component tr.one) ui.node {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -379,13 +379,13 @@ component VScroll(style ui.Style, content ...component tr.one) ui.node {
 
 // --- Layout containers ---
 
-component ui.vbox[platform] {
+const component ui.vbox[platform] {
     VBox(style={...style}) {
         children
     }
 }
 
-component ui.hbox[platform] {
+const component ui.hbox[platform] {
     HBox(style={...style}) {
         children
     }
@@ -394,29 +394,29 @@ component ui.hbox[platform] {
 // Fyne has no layered container in the widget set this platform builds from,
 // so a stack is a vertical box: the children are all present and in order,
 // they just do not overlap.
-component ui.stack[platform] {
+const component ui.stack[platform] {
     VBox(style={...style}) {
         layers
     }
 }
 
-component ui.scroll[platform] {
+const component ui.scroll[platform] {
     VScroll(style={...style}) {
         content
     }
 }
 
-component ui.spacer[platform] {
+const component ui.spacer[platform] {
     Spacer(style={...style}) {}
 }
 
-component ui.card[platform] {
+const component ui.card[platform] {
     VBox(style={...style}) {
         content
     }
 }
 
-component ui.splitview[platform] {
+const component ui.splitview[platform] {
     HBox(style={...style}) {
         panes
     }
@@ -429,19 +429,19 @@ component ui.splitview[platform] {
 // constructor arguments. So an overlay renders inline with its content
 // visible.
 
-component ui.modal[platform] {
+const component ui.modal[platform] {
     VBox(style={...style}) {
         content
     }
 }
 
-component ui.drawer[platform] {
+const component ui.drawer[platform] {
     VBox(style={...style}) {
         content
     }
 }
 
-component ui.popover[platform] {
+const component ui.popover[platform] {
     VBox(style={...style}) {
         content
     }
@@ -449,7 +449,7 @@ component ui.popover[platform] {
 
 // The shape html uses: a box carrying the tooltip text, with the wrapped
 // content inside it.
-component ui.tooltip[platform] {
+const component ui.tooltip[platform] {
     VBox(style={...style}) {
         trigger
     }
@@ -462,23 +462,23 @@ component ui.tooltip[platform] {
 // arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no `Arg` can
 // build out of a SNGL prop.
 
-component ui.tabs[platform] {
+const component ui.tabs[platform] {
     HBox(style={...style}) {
         panels
     }
 }
 
-component ui.toolbar[platform] {
+const component ui.toolbar[platform] {
     HBox(style={...style}) {
         controls
     }
 }
 
-component ui.menubar[platform] {
+const component ui.menubar[platform] {
     HBox(style={...style}) {}
 }
 
-component ui.menu[platform] {
+const component ui.menu[platform] {
     VBox(style={...style}) {}
 }
 
@@ -488,43 +488,43 @@ component ui.menu[platform] {
 // as children, and Fyne's Table/Tree read theirs through callbacks a Spec has
 // no way to spell. Each renders as its container, empty.
 
-component ui.table[platform] {
+const component ui.table[platform] {
     VBox(style={...style}) {}
 }
 
-component ui.tree[platform] {
+const component ui.tree[platform] {
     VBox(style={...style}) {}
 }
 
-component ui.radio[platform] {
+const component ui.radio[platform] {
     VBox(style={...style}) {}
 }
 
 // --- Text ---
 
-component ui.text[platform] {
+const component ui.text[platform] {
     Label(text=value, style={...style}) {}
 }
 
-component ui.badge[platform] {
+const component ui.badge[platform] {
     Label(text=value, style={...style}) {}
 }
 
-component ui.chip[platform] {
+const component ui.chip[platform] {
     Label(text=label, style={...style}) {}
 }
 
-component ui.divider[platform] {
+const component ui.divider[platform] {
     Label(text=label, style={...style}) {}
 }
 
 // `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
 // is the half of an avatar this platform can render.
-component ui.avatar[platform] {
+const component ui.avatar[platform] {
     Label(text=initials, style={...style}) {}
 }
 
-component ui.spinner[platform] {
+const component ui.spinner[platform] {
     Label(text=label, style={...style}) {}
 }
 
@@ -532,7 +532,7 @@ component ui.spinner[platform] {
 // here rather than left to the Spec, which binds a prop to a setter and
 // converts nothing. A bar with no value has no number to show and falls back
 // to its `label`, which is the only other thing it was told.
-component ui.progress[platform] {
+const component ui.progress[platform] {
     if value != null {
         Label(text=string(value), style={...style}) {}
     } else {
@@ -544,46 +544,46 @@ component ui.progress[platform] {
 // reports a selection: Fyne has no date widget among the twelve wrapped here,
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
-component ui.datepicker[platform] {
+const component ui.datepicker[platform] {
     Label(text=placeholder, style={...style}) {}
 }
 
 // --- Controls ---
 
-component ui.button[platform] {
+const component ui.button[platform] {
     Button(text=text, style={...style}, @click { click() }) {}
 }
 
 // `href` and `text` are not forwarded — see the Hyperlink declaration.
-component ui.link[platform] {
+const component ui.link[platform] {
     Hyperlink(style={...style}) {}
 }
 
-component ui.image[platform] {
+const component ui.image[platform] {
     Image(style={...style}) {}
 }
 
-component ui.checkbox[platform] {
+const component ui.checkbox[platform] {
     Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
-component ui.toggle[platform] {
+const component ui.toggle[platform] {
     Check(text=label, checked=checked, style={...style}, @change { change() }) {}
 }
 
-component ui.select[platform] {
+const component ui.select[platform] {
     Select(selected=value, options=options, style={...style}, @change { change() }) {}
 }
 
 // --- Text entry ---
 
-component ui.input[platform] {
+const component ui.input[platform] {
     Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }, @change { change() }) {}
 }
 
-component ui.textarea[platform] {
+const component ui.textarea[platform] {
     MultiLineEntry(
         text=value,
         placeholder=placeholder,
@@ -633,7 +633,7 @@ func Schedule.stop()
 // stays parked for the life of the process. `done` is the second arm that ends
 // it, and `go.select` is what makes the two a choice rather than a sequence --
 // two receives in a row would take the tick before ever looking at `done`.
-component time.timer[platform] {
+const component time.timer[platform] {
     var handle Schedule
     var done go.chan<bool>
     var live = false
@@ -742,29 +742,29 @@ component Span(
     content ...component markup.span,
 ) markup.span
 
-component markup.richText[platform] {
+const component markup.richText[platform] {
     Flow(style={...style}) {
         content
     }
 }
 
-component markup.text[platform] {
+const component markup.text[platform] {
     Span(text=value) {}
 }
 
-component markup.run[platform] {
+const component markup.run[platform] {
     Span(spanStyle=style) {
         content
     }
 }
 
-component markup.link[platform] {
+const component markup.link[platform] {
     Span(href=href) {
         content
     }
 }
 
-component markup.token[platform] {
+const component markup.token[platform] {
     Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
@@ -774,6 +774,6 @@ component markup.token[platform] {
 // blocks", says its own comment -- so there is no picture to put on the line
 // with the words. The description is what an image is here, in the brackets
 // that say a picture stood where they are.
-component markup.image[platform] {
+const component markup.image[platform] {
     Span(text="[{alt}]") {}
 }

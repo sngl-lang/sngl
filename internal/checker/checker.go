@@ -571,6 +571,12 @@ type checker struct {
 	// purity, which is only assigned after all bodies are checked, so the
 	// assertions are run in a final pass.
 	constAsserts []constAssertion
+	// Arguments bound to a const parameter or prop, judged with the
+	// assertions above. See constparams.go.
+	constArgs []constArg
+	// Nodes populating a const slot, whose populations are held to the const
+	// render rule at the same moment. See constcomponents.go.
+	constSlotNodes []*ir.NodeInst
 
 	// pendingConstInits holds top-level const initializers whose names are
 	// registered as shells in pass1 but whose values are checked in a
@@ -2360,17 +2366,19 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	c.applyMarks(f, fn)
 
-	// Library source is not body-checked, so two things it would otherwise
-	// infer are stated here. A signature with no return annotation is dyn
-	// rather than void. And purity, which the analysis never runs for, starts
-	// pure so the optimizer can fold int.min and its like; anything reaching
-	// outside the program has it overridden afterwards.
+	// Library source is not body-checked by pass2, so two things it would
+	// otherwise infer are stated here. A signature with no return annotation
+	// is dyn rather than void. And a bodied function's purity starts pure: the
+	// library's own fixpoint (checkLibFuncs) lowers it to what the body calls.
+	// A bodyless one is pure only where it is declared `const func`, which
+	// buildFunc has already said -- nothing in the program says what a host
+	// does.
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
 			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
-		if fn.Purity == ir.PurityUnknown {
+		if fn.Purity == ir.PurityUnknown && funcHasBody(f) {
 			fn.Purity = ir.PurityPure
 		}
 	}
@@ -2660,7 +2668,7 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
 // component type.
 func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
-	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest}
+	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
@@ -2759,6 +2767,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Stdlib:     c.inLibSource(),
 		Pkg:        c.libPkgName,
 		Bodyless:   !comp.Body.IsDefined(),
+		Const:      comp.Const,
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
@@ -2794,8 +2803,10 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
 				Bidirectional: pd.Bidirectional,
+				Const:         pd.Const,
 			}
 			c.applyParamMarks(pd, prop)
+			c.checkConstProp(pd, prop)
 			// A prop with neither an annotation nor a default says nothing
 			// about what it takes. `dyn` written out is an annotation: it says
 			// the prop takes anything, which is what `context(default dyn)`
@@ -3549,6 +3560,7 @@ func (c *checker) pass2() {
 		}
 	}
 
+	c.checkConstFuncs(allFuncs)
 	c.reportImpureViewSpreads()
 
 	// After the fixpoint, because the rule reads what a handler writes through
@@ -3569,6 +3581,13 @@ func (c *checker) pass2() {
 	for _, a := range c.constAsserts {
 		if !ir.IsConst(a.operand) {
 			c.error(a.pos, "const() operand is not a constant expression")
+		}
+	}
+	c.runConstArgChecks()
+	c.runConstSlotChecks()
+	for _, comp := range c.pkg.Components {
+		if comp.Const && !comp.Stdlib {
+			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
 		}
 	}
 
@@ -3617,6 +3636,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprExpecting(ap.Default, p.Type)
+			if p.Const {
+				c.deferConstArg(*ap.Default.ExprPos(), p.Default, "the default of "+constParamLabel(p.Name))
+			}
 		}
 	}
 
@@ -3857,13 +3879,15 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 
 	// Snapshot diagnostics; discard whatever the pre-pass produces. The
 	// authoritative method-body check runs again in checkComponentBody.
-	diagMark, deferred := len(c.diags), len(c.treeChecks)
+	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
 	c.diags = c.diags[:diagMark]
+	c.constArgs = c.constArgs[:min(constMark, len(c.constArgs))]
+	c.constSlotNodes = c.constSlotNodes[:min(slotMark, len(c.constSlotNodes))]
 	// The same, and here the pre-pass is followed by an authoritative one that
 	// would record the check again.
 	c.treeChecks = c.treeChecks[:deferred]
@@ -3879,6 +3903,7 @@ func propParam(p *ir.Prop) *ir.Param {
 		p.Sym = &ir.Param{Name: p.Name}
 	}
 	p.Sym.Type = p.Type
+	p.Sym.Const = p.Const
 	return p.Sym
 }
 
@@ -4036,6 +4061,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					// default could disagree with.
 					want := prop.Type.Substitute(declBindings)
 					prop.Default = c.checkExprExpecting(pd.Default, want)
+					if prop.Const {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
+					}
 					initType := exprType(prop.Default)
 					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
 						!mentionsTypeParam(want) && !initType.IsAssignableTo(want) {

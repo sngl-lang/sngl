@@ -41,6 +41,7 @@ func bindParamWhat(name, owner string) string {
 // and binds every name as dyn; an empty one passes nothing.
 func (c *checker) bindParams(pl ast.ParamList, want []*ir.Param, owner, supplier string) []*ir.Param {
 	c.refuseParamMarks(pl.Params)
+	c.refuseConstParams(pl.Params, "a handler's")
 	if want != nil && len(pl.Params) > len(want) {
 		passes := "none"
 		if len(want) > 0 {

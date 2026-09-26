@@ -88,7 +88,7 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 // deep-copied at param binding so callee mutations cannot corrupt cached
 // const values in ctx.values.
 func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool) {
-	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure {
+	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure || !hasWrittenBody(fn) {
 		return nil, false
 	}
 	// Refuse to fold any function whose body transitively calls a native

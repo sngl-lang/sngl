@@ -309,6 +309,11 @@ func IsConst(e Expr) bool {
 		if _, ok := x.Sym.(*StructDef); ok {
 			return true
 		}
+		// A const parameter is constant at every call site, so a read of it
+		// is a compile-time value wherever the body is evaluated.
+		if p, ok := x.Sym.(*Param); ok && p.Const {
+			return true
+		}
 		return false
 	case *Binary:
 		return IsConst(x.Left) && IsConst(x.Right)
@@ -330,7 +335,10 @@ func IsConst(e Expr) bool {
 		if x.Receiver != nil && !IsConst(x.Receiver) {
 			return false
 		}
-		return x.Func != nil && x.Func.Purity == PurityPure
+		// Declared, not inferred: a call is a compile-time value because the
+		// callee says it is one, and a caller may rely on that. Inferred
+		// Purity drives the optimizer and promises nothing.
+		return x.Func != nil && x.Func.Const
 	case *Conversion:
 		return IsConst(x.Operand)
 	case *Select:

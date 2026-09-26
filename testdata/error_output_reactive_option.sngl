@@ -6,7 +6,7 @@ var pkgName = "app"
 
 output {
     go {
-        bubbletea(package=pkgName) // ERROR(check) "must be constant"
+        bubbletea(package=pkgName) // ERROR(check) "prop \"package\" of bubbletea is const: \"pkgName\" is a var"
     }
 }
 

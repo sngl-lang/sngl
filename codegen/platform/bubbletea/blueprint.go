@@ -1,6 +1,7 @@
 package bubbletea
 
 import (
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -266,12 +267,54 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 
 // extractJoinDir reads a JoinDir enum member off a prop value: an *ir.Ident
 // with Member set, which is what the checker makes of a qualified
-// `JoinDir.horizontal` too. Anything but "horizontal" defaults to vertical.
+// `JoinDir.horizontal` too. "horizontal" selects the horizontal axis and
+// "vertical" the vertical one.
+//
+// `join` is const, so the optimizer has folded it to a member; anything else
+// is a compiler bug, not a program to lay out vertically.
 func extractJoinDir(e ir.Expr) joinDir {
-	if v, ok := e.(*ir.Ident); ok && v.Member == "horizontal" {
+	v, ok := e.(*ir.Ident)
+	if !ok || v.Member == "" {
+		panic(fmt.Sprintf("internal: bubbletea Layout.join not folded to a JoinDir member: %T", e))
+	}
+	if v.Member == "horizontal" {
 		return joinHorizontal
 	}
 	return joinVertical
+}
+
+// descriptorString reads one string field of a descriptor record. The record
+// is a const prop, folded to literals by the optimizer, so a field that is not
+// one is a compiler bug rather than a field to leave empty.
+func descriptorString(what string, e ir.Expr) string {
+	s, ok := codegen.IRLiteralString(e)
+	if !ok {
+		panic(fmt.Sprintf("internal: bubbletea %s not folded to a string literal: %T", what, e))
+	}
+	return s
+}
+
+// descriptorList reads a const list prop, folded to a list literal. nil for a
+// prop the instantiation left out.
+func descriptorList(what string, e ir.Expr) []ir.Expr {
+	if e == nil {
+		return nil
+	}
+	ll, ok := e.(*ir.ListLit)
+	if !ok {
+		panic(fmt.Sprintf("internal: bubbletea %s not folded to a list literal: %T", what, e))
+	}
+	return ll.Elems
+}
+
+// descriptorRecord reads one record of a const descriptor, folded to a struct
+// literal.
+func descriptorRecord(what string, e ir.Expr) *ir.StructLit {
+	sl, ok := e.(*ir.StructLit)
+	if !ok {
+		panic(fmt.Sprintf("internal: bubbletea %s not folded to a struct literal: %T", what, e))
+	}
+	return sl
 }
 
 // extractFocus reads a `Focus{enabled=...}` struct literal.
@@ -289,13 +332,10 @@ func extractFocus(e ir.Expr) bool {
 
 // extractModel reads a `Model{...}` struct literal.
 func extractModel(e ir.Expr) modelMeta {
-	sl, ok := e.(*ir.StructLit)
-	if !ok {
-		return modelMeta{}
-	}
+	sl := descriptorRecord("Widget.model", e)
 	var m modelMeta
 	for _, f := range sl.Fields {
-		s, _ := codegen.IRLiteralString(f.Value)
+		s := descriptorString("Widget.model."+f.Name, f.Value)
 		switch f.Name {
 		case "type":
 			m.Type = s
@@ -319,25 +359,22 @@ func extractModel(e ir.Expr) modelMeta {
 // extractBinds reads a `[Bind{...}, ...]` list-of-structs prop. Lists appear in
 // IR as an *ir.ListLit whose Elems are *ir.StructLit.
 func extractBinds(e ir.Expr) []bindMeta {
-	ll, ok := e.(*ir.ListLit)
-	if !ok {
+	elems := descriptorList("Widget.binds", e)
+	if elems == nil {
 		return nil
 	}
-	out := make([]bindMeta, 0, len(ll.Elems))
-	for _, el := range ll.Elems {
-		sl, ok := el.(*ir.StructLit)
-		if !ok {
-			continue
-		}
+	out := make([]bindMeta, 0, len(elems))
+	for _, el := range elems {
+		sl := descriptorRecord("Widget.binds", el)
 		var b bindMeta
 		if v := structField(sl, "prop"); v != nil {
-			b.Prop, _ = codegen.IRLiteralString(v)
+			b.Prop = descriptorString("Bind.prop", v)
 		}
 		if v := structField(sl, "get"); v != nil {
-			b.Get, _ = codegen.IRLiteralString(v)
+			b.Get = descriptorString("Bind.get", v)
 		}
 		if v := structField(sl, "set"); v != nil {
-			b.Set, _ = codegen.IRLiteralString(v)
+			b.Set = descriptorString("Bind.set", v)
 		}
 		out = append(out, b)
 	}
@@ -346,22 +383,19 @@ func extractBinds(e ir.Expr) []bindMeta {
 
 // extractEvents reads a `[Event{...}, ...]` list-of-structs prop.
 func extractEvents(e ir.Expr) []eventMeta {
-	ll, ok := e.(*ir.ListLit)
-	if !ok {
+	elems := descriptorList("Styled.events", e)
+	if elems == nil {
 		return nil
 	}
-	out := make([]eventMeta, 0, len(ll.Elems))
-	for _, el := range ll.Elems {
-		sl, ok := el.(*ir.StructLit)
-		if !ok {
-			continue
-		}
+	out := make([]eventMeta, 0, len(elems))
+	for _, el := range elems {
+		sl := descriptorRecord("Styled.events", el)
 		var ev eventMeta
 		if v := structField(sl, "on"); v != nil {
-			ev.On, _ = codegen.IRLiteralString(v)
+			ev.On = descriptorString("Event.on", v)
 		}
 		if v := structField(sl, "key"); v != nil {
-			ev.Key, _ = codegen.IRLiteralString(v)
+			ev.Key = descriptorString("Event.key", v)
 		}
 		out = append(out, ev)
 	}

@@ -32,14 +32,14 @@ import gen "sngl:x/gen"
 component go(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.
-    goVersion string,
+    const goVersion string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
     // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
-    goModExtra string,
-    platforms ...component build.platform,
+    const goModExtra string,
+    const platforms ...component build.platform,
 ) build.language {}
 
 // --- sngl:remote/http ---
@@ -236,7 +236,7 @@ func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
 // alpha, so a fill-only shape does not stroke and a line does not read `fill`
 // at all.
 
-component shapes.rect[language] {
+const component shapes.rect[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -245,7 +245,7 @@ component shapes.rect[language] {
     })
 }
 
-component shapes.circle[language] {
+const component shapes.circle[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -254,7 +254,7 @@ component shapes.circle[language] {
     })
 }
 
-component shapes.ellipse[language] {
+const component shapes.ellipse[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -263,7 +263,7 @@ component shapes.ellipse[language] {
     })
 }
 
-component shapes.line[language] {
+const component shapes.line[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -272,7 +272,7 @@ component shapes.line[language] {
     })
 }
 
-component shapes.path[language] {
+const component shapes.path[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -298,7 +298,7 @@ component shapes.path[language] {
     })
 }
 
-component shapes.canvasText[language] {
+const component shapes.canvasText[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
@@ -307,7 +307,7 @@ component shapes.canvasText[language] {
     })
 }
 
-component shapes.canvasImage[language] {
+const component shapes.canvasImage[language] {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.image(x, y, w, h, src)

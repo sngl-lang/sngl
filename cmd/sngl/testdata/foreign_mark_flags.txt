@@ -1,9 +1,9 @@
-# The flags on #[foreign] state what a call costs, which is the half of a
-# foreign declaration SNGL cannot read off the body: the body describes the
-# foreign function rather than implementing it.
+# What a foreign call costs is the half of a foreign declaration SNGL cannot
+# read off the body: the body describes the foreign function rather than
+# implementing it. `const func` and the flags on #[foreign] say it.
 
-# pure lets the compiler evaluate the call at build time — the result is in the
-# markup and the function is gone.
+# const lets the compiler evaluate the call at build time — the result is in
+# the markup and the function is gone.
 sngl generate --lang=none --platform=html --out=pure pure.sngl
 grep '<span>5</span>' pure/index.html
 ! grep 'function add' pure/index.html
@@ -26,7 +26,11 @@ grep 'await fetchHello' async/index.html
 # alternatives rather than ignoring the flag.
 ! sngl check typo.sngl
 stderr 'unknown value "puer"'
-stderr 'pure, async'
+stderr 'async, native'
+
+# Purity is not a flag: it is `const func`, which says so for any function.
+! sngl check pureflag.sngl
+stderr 'unknown value "pure"'
 
 # The flags describe a call, so a declaration that has none refuses them.
 ! sngl check onstruct.sngl
@@ -46,8 +50,8 @@ grep 'api\.Entry' native/model.go
 import . "sngl:ui"
 import . "sngl:macro"
 
-#[foreign("js:./api", "add", pure)]
-func add(a int, b int) => a + b
+#[foreign("js:./api", "add")]
+const func add(a int, b int) => a + b
 
 component main node {
     text(value=string(add(2, 3)))
@@ -100,11 +104,25 @@ component main node {
 window {
     main
 }
+-- pureflag.sngl --
+import . "sngl:ui"
+import . "sngl:macro"
+
+#[foreign("js:./api", "add", pure)]
+func add(a int, b int) => a + b
+
+component main node {
+    text(value=string(add(2, 3)))
+}
+
+window {
+    main
+}
 -- onstruct.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
 
-#[foreign("js:./api", "Entry", pure)]
+#[foreign("js:./api", "Entry", async)]
 struct Entry {
     title string
 }

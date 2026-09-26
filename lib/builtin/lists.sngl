@@ -10,7 +10,7 @@ struct list<T> {}
 
 // Number of items in l.
 #[marks.intrinsic("list.length")]
-func list<T>.length() int
+const func list<T>.length() int
 
 // Appends item to the receiver list (`this`), in place. Index assignment
 // (`l[i] = x`) and the mutating methods modify the list directly, and observers
@@ -39,35 +39,35 @@ func list<T>.remove(index int)
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
 #[marks.intrinsic("list.indexOf")]
-func list<T>.indexOf(item T) int
+const func list<T>.indexOf(item T) int
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
 #[marks.intrinsic("list.join")]
-func list<T>.join(sep string) string
+const func list<T>.join(sep string) string
 
 // Returns a copy of l with items in reverse order.
 #[marks.intrinsic("list.reverse")]
-func list<T>.reverse() list<T>
+const func list<T>.reverse() list<T>
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
 #[marks.intrinsic("list.slice")]
-func list<T>.slice(start int, end int) list<T>
+const func list<T>.slice(start int, end int) list<T>
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
 #[marks.intrinsic("list.filter")]
-func list<T>.filter(pred func(T) bool) list<T>
+const func list<T>.filter(pred func(T) bool) list<T>
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
 #[marks.intrinsic("list.map")]
-func list<T>.map<U>(fn func(T) U) list<U>
+const func list<T>.map<U>(fn func(T) U) list<U>
 
 // True if item appears in l (by equality). Equivalent to
 // `list.indexOf(l, item) >= 0`.
-func list<T>.contains(item T) => this.indexOf(item) >= 0
+const func list<T>.contains(item T) => this.indexOf(item) >= 0
 
 // Generic iterator. list<T> and map<K, V> implicitly convert when passed
 // to a context expecting iter<T> (or iter<(K, V)> for map). For-loops

@@ -261,14 +261,16 @@ StructDecl = kw_struct [ ident ] [ TypeParamList ] lbrace { StructBodyItem [ sem
 
 StructBodyItem = { MacroAttr } StructBodyDecl .
 
-StructBodyDecl = FuncDecl | StructField .
+# `const func` is a method declared pure; StructField begins with ident, so
+# kw_const and kw_func stay disjoint from it.
+StructBodyDecl = FuncDecl | kw_const FuncDecl | StructField .
 
 StructField = IdentList Type [ assign Expr ] .
 
 # Enum body accepts members and nested funcs, separated by comma or semi.
 EnumDecl = kw_enum [ ident ] lbrace [ EnumBodyItem { (comma | semi) EnumBodyItem } [ comma | semi ] ] rbrace .
 
-EnumBodyItem = FuncDecl | EnumMember .
+EnumBodyItem = FuncDecl | kw_const FuncDecl | EnumMember .
 
 EnumMember = ident [ assign Expr ] .
 
@@ -281,10 +283,13 @@ UnitDecl = kw_unit [ ident ] lbrace [ ArgList ] rbrace .
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-ConstDecl =
-      kw_const ConstSpec
-    | kw_const lparen { ConstSpec [ comma | semi ] } rparen
-    .
+# `const` says "known at compile time". Before a name it declares a constant;
+# before a func or a component it declares one pure. Left-factored on kw_const:
+# ident, lparen, kw_func and kw_component are disjoint.
+ConstDecl = kw_const ( ConstSpec
+                     | lparen { ConstSpec [ comma | semi ] } rparen
+                     | FuncDecl
+                     | ComponentDecl ) .
 
 ConstSpec = IdentList [ Type ] [ assign Expr ] .
 
@@ -375,7 +380,11 @@ ParamList = Param { comma Param } [ comma ] .
 # type's, `@pick(index int, label string)`, and `@change T` is the
 # one-parameter case written without the parens; `lparen` cannot begin a Type,
 # so the two alternatives are LL(1).
-Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
+#
+# kw_const → a parameter whose argument is constant at every call site. The
+# grammar admits it in every list; the checker refuses it where it means nothing
+# (a lambda, a handler, a slot population).
+Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type ] ) [ assign Expr ] .
 
 EventParams = lparen [ FuncTypeParamList ] rparen .
 

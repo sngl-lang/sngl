@@ -54,6 +54,7 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 			Params:  []*ir.Param{{Name: "name", Type: ir.TypString}},
 			Return:  ir.TypString,
 			Purity:  ir.PurityPure,
+			Const:   true,
 			Foreign: ir.Foreign{Path: "file", Name: name},
 		}
 	}
@@ -66,6 +67,7 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		Params:  []*ir.Param{{Name: "pattern", Type: ir.TypString}},
 		Return:  &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}},
 		Purity:  ir.PurityPure,
+		Const:   true,
 		Foreign: ir.Foreign{Path: "file", Name: "names"},
 	}
 	return &ir.NativeImport{

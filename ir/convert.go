@@ -228,6 +228,7 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 		TypeParams: c.convertTypeParams(f.TypeParams),
 		Params:     c.convertParamList(f.Params),
 		Attrs:      c.foreignAttrs(f.Foreign, f),
+		Const:      f.Const,
 	}
 	if f.Return != nil {
 		fd.ReturnType = c.convertType(f.Return)
@@ -247,7 +248,8 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 
 func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	cd := &ast.ComponentDecl{
-		Name: comp.Name,
+		Name:  comp.Name,
+		Const: comp.Const,
 	}
 
 	// Build prop list.
@@ -257,6 +259,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 			Name:          p.Name,
 			Type:          c.convertType(p.Type),
 			Bidirectional: p.Bidirectional,
+			Const:         p.Const,
 		}
 		if p.Default != nil {
 			param.Default = c.convertExpr(p.Default)
@@ -272,7 +275,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
 		}
-		props = append(props, ast.Param{Name: s.Name, Type: typ})
+		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}
 	if len(props) > 0 {
 		cd.Props = ast.PropList{
@@ -1152,8 +1155,9 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 	}
 	for _, p := range params {
 		ap := ast.Param{
-			Name: p.Name,
-			Type: c.convertType(p.Type),
+			Name:  p.Name,
+			Type:  c.convertType(p.Type),
+			Const: p.Const,
 		}
 		if p.Default != nil {
 			ap.Default = c.convertExpr(p.Default)

@@ -23,4 +23,4 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
 )]
-component none(platforms ...component build.platform) build.language {}
+component none(const platforms ...component build.platform) build.language {}

@@ -158,7 +158,7 @@ func (c *checker) collectUserOverrides() {
 		if !ok {
 			continue
 		}
-		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection)
+		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection, decl.Const)
 	}
 }
 

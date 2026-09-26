@@ -1230,7 +1230,7 @@ func (st *reactivityState) rebuildsFor(props []reactiveProp) ([]*ir.NodeInst, ma
 	var rebuild []*ir.NodeInst
 	rebuilt := map[string]bool{}
 	for _, p := range props {
-		if !p.Instance || componentAbsorbs(p.Comp, p.Key) {
+		if !p.Instance || componentAbsorbs(p.Comp, p.Key) || propIsConst(p.Comp, p.Key) {
 			continue
 		}
 		if !propIsConstruct(p.Comp, p.Key) {

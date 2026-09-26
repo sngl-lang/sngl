@@ -135,7 +135,7 @@ struct Size {
 // *primitive* -- `color.rgb() => color{…}` would otherwise shadow the `color`
 // primitive in callers -- so a struct-returning helper stays `dyn`, and an
 // expression body cannot carry an annotation to say otherwise.
-func Point.polar(center Point, radius float, angle float) Point {
+const func Point.polar(center Point, radius float, angle float) Point {
     return Point{
         x = center.x + radius * float.cos(angle),
         y = center.y + radius * float.sin(angle),
@@ -143,14 +143,14 @@ func Point.polar(center Point, radius float, angle float) Point {
 }
 
 // `p` moved by dx, dy.
-func Point.offset(p Point, dx float, dy float) Point {
+const func Point.offset(p Point, dx float, dy float) Point {
     return Point{x=p.x + dx, y=p.y + dy}
 }
 
 // The point `t` of the way from a to b, with t = 0 at a and t = 1 at b.
 // Values outside that range extrapolate, which is deliberate: a control point
 // often sits beyond the segment it belongs to.
-func Point.lerp(a Point, b Point, t float) Point {
+const func Point.lerp(a Point, b Point, t float) Point {
     return Point{
         x = a.x + (b.x - a.x) * t,
         y = a.y + (b.y - a.y) * t,
@@ -158,19 +158,19 @@ func Point.lerp(a Point, b Point, t float) Point {
 }
 
 // The distance between two points.
-func Point.distance(a Point, b Point) => float.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+const func Point.distance(a Point, b Point) => float.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
 
 // The angle from a to b, in radians, as `Point.polar` measures it.
-func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
+const func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
 
 // The even scale that puts all of `inner` inside `outer`, and the one that
 // leaves none of `outer` uncovered. These are `ScalingMode.fit` and
 // `ScalingMode.fill` as a number, which is what a target's own scaling does to
 // a canvas -- so an override that scales part of a drawing can ask the same
 // question the platform does.
-func Size.fitScale(inner Size, outer Size) => float.min(outer.width / inner.width, outer.height / inner.height)
+const func Size.fitScale(inner Size, outer Size) => float.min(outer.width / inner.width, outer.height / inner.height)
 
-func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inner.width, outer.height / inner.height)
+const func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inner.width, outer.height / inner.height)
 
 // --- The tangent arc ---
 
@@ -205,7 +205,7 @@ struct Arc {
 // function from a struct by case and Go's export rule erases that, so
 // `tangentArc` returning a `TangentArc` collided as one name in the emitted
 // package and did not compile.
-func tangentArc(from Point, corner Point, to Point, r float) Arc {
+const func tangentArc(from Point, corner Point, to Point, r float) Arc {
     var a1 = Point.angle(corner, from)
     var a2 = Point.angle(corner, to)
     var turn = a2 - a1

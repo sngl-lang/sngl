@@ -35,25 +35,25 @@ import gen "sngl:x/gen"
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component html(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
-    preview bool,
+    const preview bool,
     // Emit a test harness instead of the normal app bundle.
-    test bool,
+    const test bool,
     // Relative path to a CSS file included in every page.
-    stylesheet string,
+    const stylesheet string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    projectDir string,
+    const projectDir string,
     // Route mode: target Go package name (default "ui", or "main" when main=true).
-    package string,
+    const package string,
     // Route mode: emit a main() that calls ListenAndServe.
-    main bool,
+    const main bool,
     // Route mode: HTTP framework (default "net/http").
-    framework string,
+    const framework string,
     // Route mode: host:port for `sngl run` to listen on.
-    listen string,
+    const listen string,
     // Minify emitted HTML and inline JS via esbuild.
-    minify bool,
+    const minify bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
-    noCacheBust bool,
+    const noCacheBust bool,
 ) build.platform {}
 
 // The element every tag resolves to. The web's element set is open — a new
@@ -158,32 +158,32 @@ component element(
 
 // --- Core Layout ---
 
-component ui.vbox[platform] {
+const component ui.vbox[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
         children
     }
 }
 
-component ui.hbox[platform] {
+const component ui.hbox[platform] {
     html.div(style={...style, display="flex", flexDirection="row"}) {
         children
     }
 }
 
-component ui.stack[platform] {
+const component ui.stack[platform] {
     html.div(style={...style, position="relative"}) {
         layers
     }
 }
 
-component ui.spacer[platform] {
+const component ui.spacer[platform] {
     html.div(style={...style, flex=1}) {}
 }
 
 // `@scrollEnd` is the standard library's name for the event the DOM calls
 // `scrollend`. The names differ, so the override maps them: that is the half of
 // wrapping an element that a wildcard cannot do for itself.
-component ui.scroll[platform] {
+const component ui.scroll[platform] {
     html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
     }
@@ -191,7 +191,7 @@ component ui.scroll[platform] {
 
 // --- Core Text & Media ---
 
-component ui.text[platform] {
+const component ui.text[platform] {
     html.span(textContent=value, style={...style}) {}
 }
 
@@ -199,22 +199,22 @@ component ui.text[platform] {
 // fires -- and a right-click, which is not the same gesture. It stands in until
 // html synthesizes the real one from pointerdown and a timer; the alternative
 // was a declared event that reached nothing.
-component ui.button[platform] {
+const component ui.button[platform] {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
         content
     }
 }
 
-component ui.image[platform] {
+const component ui.image[platform] {
     html.img(src=src, alt=alt, style={...style}) {}
 }
 
-component ui.input[platform] {
+const component ui.input[platform] {
     html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
 }
 
-component ui.checkbox[platform] {
+const component ui.checkbox[platform] {
     html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
@@ -223,7 +223,7 @@ component ui.checkbox[platform] {
 
 // --- Tier 1: Core Input ---
 
-component ui.radio[platform] {
+const component ui.radio[platform] {
     html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display="inline-flex", alignItems="center", gap=4}) {
@@ -234,14 +234,14 @@ component ui.radio[platform] {
     }
 }
 
-component ui.toggle[platform] {
+const component ui.toggle[platform] {
     html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
 }
 
-component ui.select[platform] {
+const component ui.select[platform] {
     html.select(disabled=disabled, style={...style}, @change { change() }) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
@@ -252,7 +252,7 @@ component ui.select[platform] {
     }
 }
 
-component ui.textarea[platform] {
+const component ui.textarea[platform] {
     html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
     }
 }
@@ -262,7 +262,7 @@ component ui.textarea[platform] {
 // `<progress>` with no `value` attribute is HTML's own indeterminate bar, so
 // the absent value is spelled by leaving the attribute off rather than by
 // choosing a number to stand for "unknown".
-component ui.progress[platform] {
+const component ui.progress[platform] {
     if value != null {
         html.progress(value=string(value), max=string(max), style={...style}) {}
     } else {
@@ -270,20 +270,20 @@ component ui.progress[platform] {
     }
 }
 
-component ui.spinner[platform] {
+const component ui.spinner[platform] {
     html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
 }
 
-component ui.badge[platform] {
+const component ui.badge[platform] {
     html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
         html.span(textContent=value) {}
     }
 }
 
-component ui.tabs[platform] {
+const component ui.tabs[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
         html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
             for var label = items {
@@ -296,19 +296,19 @@ component ui.tabs[platform] {
     }
 }
 
-component ui.link[platform] {
+const component ui.link[platform] {
     html.a(href=href, style={...style}, @click { click() }) {
         html.span(textContent=text) {}
     }
 }
 
-component ui.divider[platform] {
+const component ui.divider[platform] {
     html.hr(style={...style}) {}
 }
 
 // --- Tier 3: Overlays & Layout ---
 
-component ui.modal[platform] {
+const component ui.modal[platform] {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
             if title != "" {
@@ -319,25 +319,25 @@ component ui.modal[platform] {
     }
 }
 
-component ui.drawer[platform] {
+const component ui.drawer[platform] {
     html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
         content
     }
 }
 
-component ui.tooltip[platform] {
+const component ui.tooltip[platform] {
     html.div(title=text, style={...style}) {
         trigger
     }
 }
 
-component ui.popover[platform] {
+const component ui.popover[platform] {
     html.div(style={...style, position="relative"}) {
         content
     }
 }
 
-component ui.splitview[platform] {
+const component ui.splitview[platform] {
     html.div(style={...style, display="flex"}) {
         panes
     }
@@ -345,7 +345,7 @@ component ui.splitview[platform] {
 
 // --- Tier 4: Data & Desktop ---
 
-component ui.table[platform] {
+const component ui.table[platform] {
     html.table(style={width="100%", borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
@@ -366,7 +366,7 @@ component ui.table[platform] {
     }
 }
 
-component ui.tree[platform] {
+const component ui.tree[platform] {
     html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
         for var item = items {
             html.li(textContent=item)
@@ -374,17 +374,17 @@ component ui.tree[platform] {
     }
 }
 
-component ui.menu[platform] {
+const component ui.menu[platform] {
     html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
     }
 }
 
-component ui.menubar[platform] {
+const component ui.menubar[platform] {
     html.nav(style={...style, display="flex", gap=4}) {
     }
 }
 
-component ui.toolbar[platform] {
+const component ui.toolbar[platform] {
     html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
         controls
     }
@@ -397,7 +397,7 @@ component ui.toolbar[platform] {
 // rather than one with a ternary, for the reason progress gives: under a
 // language with no conditional expression the ternary becomes a temporary
 // before the fold that would have settled it.
-component ui.datepicker[platform] {
+const component ui.datepicker[platform] {
     if value != null {
         html.input(type="date", value=string(value), disabled=disabled, style={...style}, @change { change() }) {}
     } else {
@@ -405,19 +405,19 @@ component ui.datepicker[platform] {
     }
 }
 
-component ui.chip[platform] {
+const component ui.chip[platform] {
     html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
         html.span(textContent=label) {}
     }
 }
 
-component ui.avatar[platform] {
+const component ui.avatar[platform] {
     html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
         html.span(textContent=initials) {}
     }
 }
 
-component ui.card[platform] {
+const component ui.card[platform] {
     html.div(style={borderRadius=8, padding=16, ...style}) {
         content
     }
@@ -483,7 +483,7 @@ component inline(
 // The element a flow's role names. A heading announces as one, a quotation is
 // quoted, a code sample is preformatted; a role html has no element for is a
 // paragraph, which is what an unmarked run of prose is anyway.
-func roleTag(role markup.Role) string {
+const func roleTag(role markup.Role) string {
     if role == markup.Role.heading1 {
         return "h1"
     } else if role == markup.Role.heading2 {
@@ -510,7 +510,7 @@ func roleTag(role markup.Role) string {
 // that would otherwise collapse what the author wrote. It is written first so
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
-component markup.richText[platform] {
+const component markup.richText[platform] {
     flow(tag=roleTag(role), style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
         content
     }
@@ -518,7 +518,7 @@ component markup.richText[platform] {
 
 // A class rather than the base's inline style, so the box has a dark half and
 // a page's own `pre` rule can still restyle it.
-component markup.codeBlock[platform] {
+const component markup.codeBlock[platform] {
     flow(
         tag="pre",
         class="sngl-code",
@@ -532,41 +532,41 @@ component markup.codeBlock[platform] {
     }
 }
 
-component markup.text[platform] {
+const component markup.text[platform] {
     inline(tag="span", textContent=value) {}
 }
 
-component markup.bold[platform] {
+const component markup.bold[platform] {
     inline(tag="strong") {
         content
     }
 }
 
-component markup.italic[platform] {
+const component markup.italic[platform] {
     inline(tag="em") {
         content
     }
 }
 
-component markup.underline[platform] {
+const component markup.underline[platform] {
     inline(tag="u") {
         content
     }
 }
 
-component markup.strike[platform] {
+const component markup.strike[platform] {
     inline(tag="s") {
         content
     }
 }
 
-component markup.monospace[platform] {
+const component markup.monospace[platform] {
     inline(tag="code") {
         content
     }
 }
 
-component markup.link[platform] {
+const component markup.link[platform] {
     inline(tag="a", href=href) {
         content
     }
@@ -574,7 +574,7 @@ component markup.link[platform] {
 
 // `<img>` is a void element, so the description has nowhere to go but the
 // attribute it is already a string for.
-component markup.image[platform] {
+const component markup.image[platform] {
     inline(tag="img", src=src, alt=alt) {}
 }
 
@@ -582,7 +582,7 @@ component markup.image[platform] {
 // palette is the class's rule in the stylesheet, light and dark, and a page's
 // own CSS for `sngl-tok-<kind>` wins over it. A palette the program sets is on
 // the element instead, since it wins over everything.
-component markup.token[platform] {
+const component markup.token[platform] {
     inline(
         tag="span",
         class="sngl-tok-" + string(kind),
@@ -602,7 +602,7 @@ component markup.token[platform] {
 // over whole and `spanStyleCSS` decides, rather than a chain of components
 // here asking field by field: a prop is opaque to the `if` that would ask,
 // so every branch survived folding and the words came out once per branch.
-component markup.run[platform] {
+const component markup.run[platform] {
     inline(tag="span", spanStyle=style) {
         content
     }
@@ -613,12 +613,12 @@ component markup.run[platform] {
 // server call. No effect for static-site builds. Build fails if the logic cannot
 // run in the browser or depends on server-side values.
 #[intrinsic("html.frontend")]
-func frontend<T>(v T) T
+const func frontend<T>(v T) T
 
 // Force v to run server-side (back-end). A func value is generated as an HTTP
 // route; a constant expression is generated as a lazy-loaded static file.
 #[intrinsic("html.backend")]
-func backend<T>(v T) T
+const func backend<T>(v T) T
 
 // --- The timer ---
 //
@@ -638,7 +638,7 @@ func clearInterval(handle int)
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
-component time.timer[platform] {
+const component time.timer[platform] {
     var handle = 0
 
     if enabled {
@@ -745,7 +745,7 @@ component draw(@draw DrawEvent) shapes.shape
 // fold: a literal colour becomes the string `"rgba(51,102,204,1)"` at build
 // time, where a native call stays a call forever. The alpha channel is 0-255
 // in SNGL and 0-1 here, which is the whole reason it is a function.
-func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
+const func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 
 // Fill and stroke are gated on alpha, which every other backend does and this
 // one did not: the old translation tested the colour *object* for truthiness,
@@ -760,7 +760,7 @@ func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
     ctx.lineWidth = style.strokeWidth
 }
 
-component shapes.circle[platform] {
+const component shapes.circle[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -779,7 +779,7 @@ component shapes.circle[platform] {
 // Each shape sets only the style it uses, which is the point of writing these
 // in SNGL: the translation they replace applied all six properties to every
 // shape, including a font to a rectangle.
-component shapes.rect[platform] {
+const component shapes.rect[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         if style.fill.a > 0 {
@@ -799,7 +799,7 @@ component shapes.rect[platform] {
     })
 }
 
-component shapes.ellipse[platform] {
+const component shapes.ellipse[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -818,7 +818,7 @@ component shapes.ellipse[platform] {
 // A line has no interior, so `fill` is not read here at all rather than being
 // set and ignored. That is the declaration's documented behaviour, stated once
 // in the override instead of as a special case in five emitters.
-component shapes.line[platform] {
+const component shapes.line[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         e.ctx.strokeStyle = cssColor(style.stroke)
@@ -833,7 +833,7 @@ component shapes.line[platform] {
     })
 }
 
-component shapes.path[platform] {
+const component shapes.path[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
@@ -874,13 +874,13 @@ component shapes.path[platform] {
 #[js.native("_snglDrawImage")]
 func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
 
-component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform] {
     html.draw(@draw(e) {
         drawImage(e.ctx, src, x, y, w, h)
     })
 }
 
-component shapes.canvasText[platform] {
+const component shapes.canvasText[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         e.ctx.font = "{style.fontSize}px {style.fontFamily}"

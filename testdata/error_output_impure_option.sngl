@@ -8,7 +8,7 @@ func label() string {
 
 output {
     go {
-        bubbletea(package=label()) // ERROR(check) "must be constant"
+        bubbletea(package=label()) // ERROR(check) "prop \"package\" of bubbletea is const: label is not const"
     }
 }
 

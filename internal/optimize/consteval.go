@@ -462,7 +462,7 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 // `drawRect(color = null, ...)`, `null` being no `Color` at all and no Kotlin
 // that compiles.
 //
-// A `#[foreign(..., pure)]` declaration is the deliberate opposite and keeps
+// A `#[foreign]` `const func` is the deliberate opposite and keeps
 // folding: it is marked rather than native, and its body is what runs.
 func isUnfoldableNative(f *ir.Func) bool {
 	return f.Foreign.Name != "" && !f.Foreign.Marked && len(f.Block) == 0
@@ -470,7 +470,21 @@ func isUnfoldableNative(f *ir.Func) bool {
 
 // canFoldBody reports whether f has a SNGL body the folder may run.
 func canFoldBody(f *ir.Func) bool {
-	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure
+	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure && hasWrittenBody(f)
+}
+
+// hasWrittenBody reports whether f's Block is a body someone wrote rather than
+// the `return <zero>` ir.Normalize gives a signature. A bodyless declaration is
+// a host function, an intrinsic or an import, and a `const func` one is pure
+// by the declaration's word -- so without this the folder ran the placeholder
+// and answered zero for a call it had no way to make. A func with no AST was
+// built by a pass, and an override's body is swapped in over its base's
+// signature; both are real.
+func hasWrittenBody(f *ir.Func) bool {
+	if f == nil || f.AST == nil || f.SpecializedFor != "" {
+		return true
+	}
+	return f.AST.Body != nil || f.AST.Block.IsDefined()
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {

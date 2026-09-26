@@ -24,7 +24,7 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
 )]
-component js(platforms ...component build.platform) build.language {}
+component js(const platforms ...component build.platform) build.language {}
 
 // Names the JavaScript identifier a declaration *is*, rather than one it
 // corresponds to. The JS counterpart of `go.native`, and the same thin spelling

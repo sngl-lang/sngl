@@ -23,59 +23,59 @@ import gen "sngl:x/gen"
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component gtk4(
     // Go package name for the generated files.
-    package string,
+    const package string,
     // Emit a standalone main() or a library-style module.
-    main bool,
+    const main bool,
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
-    gir string,
+    const gir string,
 ) build.platform {}
 
 // --- Leaf widgets ---
 
-component ui.text[platform] {
+const component ui.text[platform] {
     gtk4.GtkLabel(label=value, style={...style}) {}
 }
 
-component ui.button[platform] {
+const component ui.button[platform] {
     gtk4.GtkButton(label=text, style={...style}, @clicked { click() }) {}
 }
 
-component ui.checkbox[platform] {
+const component ui.checkbox[platform] {
     gtk4.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
 }
 
-component ui.image[platform] {
+const component ui.image[platform] {
     gtk4.GtkImage(file=src, style={...style}) {}
 }
 
-component ui.input[platform] {
+const component ui.input[platform] {
     gtk4.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
-component ui.textarea[platform] {
+const component ui.textarea[platform] {
     gtk4.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
 }
 
 // --- Container widgets ---
 
-component ui.vbox[platform] {
+const component ui.vbox[platform] {
     gtk4.GtkBox(orientation="vertical", spacing=6, style={...style}) {
         children
     }
 }
 
-component ui.hbox[platform] {
+const component ui.hbox[platform] {
     gtk4.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
         children
     }
 }
 
-component ui.scroll[platform] {
+const component ui.scroll[platform] {
     gtk4.GtkScrolledWindow(style={...style}) {
         content
     }
@@ -93,7 +93,7 @@ component ui.scroll[platform] {
 // conditional expression, and that happens before the fold that would have
 // settled it -- `C.double(__lt0)` where `__lt0 = (2 / 10)`, which is Go
 // integer division.
-component ui.progress[platform] {
+const component ui.progress[platform] {
     if value != null {
         gtk4.GtkProgressBar(fraction=value / max, text=label, showText=showValue, style={...style}) {}
     } else {
@@ -109,7 +109,7 @@ component ui.progress[platform] {
 #[cnative("gtk_progress_bar_pulse")]
 func GtkProgressBar.pulse()
 
-component ui.spinner[platform] {
+const component ui.spinner[platform] {
     gtk4.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
 }
 
@@ -118,17 +118,17 @@ component ui.spinner[platform] {
 // its members (see enumValueArg) — a prop reference has no compile-time
 // member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
-component ui.divider[platform] {
+const component ui.divider[platform] {
     gtk4.GtkSeparator(style={...style}) {}
 }
 
-component ui.link[platform] {
+const component ui.link[platform] {
     gtk4.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
-component ui.toggle[platform] {
+const component ui.toggle[platform] {
     gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive { change() }) {}
 }
 
@@ -137,31 +137,31 @@ component ui.toggle[platform] {
 // a `date` offers no way to take those three apart. So the calendar is shown
 // and its selection reported, and the bound value does not reach it, whether
 // or not the `option` holds one.
-component ui.datepicker[platform] {
+const component ui.datepicker[platform] {
     gtk4.GtkCalendar(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
 }
 
 // --- Layout ---
 
-component ui.spacer[platform] {
+const component ui.spacer[platform] {
     gtk4.GtkBox(hexpand=true, vexpand=true, style={...style}) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
-component ui.tooltip[platform] {
+const component ui.tooltip[platform] {
     gtk4.GtkBox(tooltipText=text, style={...style}) {
         trigger
     }
 }
 
-component ui.card[platform] {
+const component ui.card[platform] {
     gtk4.GtkFrame(style={...style}) {
         content
     }
 }
 
-component ui.stack[platform] {
+const component ui.stack[platform] {
     gtk4.GtkStack(style={...style}) {
         layers
     }
@@ -172,7 +172,7 @@ component ui.stack[platform] {
 // popup/popdown is a pair of calls chosen by the value. `position` is a
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
-component ui.popover[platform] {
+const component ui.popover[platform] {
     gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
         content
     }
@@ -207,7 +207,7 @@ func Schedule.cancel()
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
-component time.timer[platform] {
+const component time.timer[platform] {
     var handle Schedule
 
     if enabled {
@@ -261,10 +261,10 @@ struct LineCapValue {}
 struct LineJoinValue {}
 
 #[cnative("C.cairo_line_cap_t")]
-func toLineCap(v int) LineCapValue
+const func toLineCap(v int) LineCapValue
 
 #[cnative("C.cairo_line_join_t")]
-func toLineJoin(v int) LineJoinValue
+const func toLineJoin(v int) LineJoinValue
 
 #[cnative("cairo_set_line_cap")]
 func CairoContext.setLineCap(cap LineCapValue)
@@ -323,10 +323,10 @@ struct FontSlant {}
 struct FontWeight {}
 
 #[cnative("C.cairo_font_slant_t")]
-func toFontSlant(v int) FontSlant
+const func toFontSlant(v int) FontSlant
 
 #[cnative("C.cairo_font_weight_t")]
-func toFontWeight(v int) FontWeight
+const func toFontWeight(v int) FontWeight
 
 // The family is a string cairo copies.
 #[cnative("cairo_select_font_face")]
@@ -350,7 +350,7 @@ component draw(@draw DrawEvent) shapes.shape
 // numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
 // here is what makes `lineCap` and `lineJoin` reach this target at all --
 // before the overrides, gtk4 read neither (#223).
-func lineCap(name string) LineCapValue {
+const func lineCap(name string) LineCapValue {
     if name == "round" {
         return toLineCap(1)
     }
@@ -360,7 +360,7 @@ func lineCap(name string) LineCapValue {
     return toLineCap(0)
 }
 
-func lineJoin(name string) LineJoinValue {
+const func lineJoin(name string) LineJoinValue {
     if name == "round" {
         return toLineJoin(1)
     }
@@ -396,7 +396,7 @@ func paint(ctx CairoContext, style shapes.CanvasStyle) {
     }
 }
 
-component shapes.rect[platform] {
+const component shapes.rect[platform] {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.rectangle(x, y, w, h)
@@ -405,7 +405,7 @@ component shapes.rect[platform] {
     })
 }
 
-component shapes.circle[platform] {
+const component shapes.circle[platform] {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.newSubPath()
@@ -419,7 +419,7 @@ component shapes.circle[platform] {
 // would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
 // comes out thicker horizontally than vertically. kappa is the control-point
 // offset that makes a cubic match a quarter arc to within a thousandth.
-component shapes.ellipse[platform] {
+const component shapes.ellipse[platform] {
     draw(@draw(e) {
         var k = 0.5522847498307936
         var ox = rx * k
@@ -441,7 +441,7 @@ component shapes.ellipse[platform] {
 // A line has no interior, so `fill` is not read: the declaration says a fill
 // on a line is ignored, and here that is the absence of a call rather than a
 // special case in the emitter.
-component shapes.line[platform] {
+const component shapes.line[platform] {
     draw(@draw(e) {
         e.ctx.save()
         e.ctx.moveTo(x1, y1)
@@ -474,7 +474,7 @@ func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.P
     return a.tangent2
 }
 
-component shapes.path[platform] {
+const component shapes.path[platform] {
     draw(@draw(e) {
         // Where the path is, which `arcTo` needs and cairo will not hand back
         // without an out-parameter. Every other command ends at its own point,
@@ -507,7 +507,7 @@ component shapes.path[platform] {
     })
 }
 
-component shapes.canvasText[platform] {
+const component shapes.canvasText[platform] {
     draw(@draw(e) {
         e.ctx.save()
         // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
@@ -560,7 +560,7 @@ func unrefPixbuf(pb option<Pixbuf>)
 // the loader answers NULL and the null test is what reads it. This is the gap
 // #223 recorded -- gtk4 emitted nothing at all for canvasImage, where every
 // other target loads a local path.
-component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform] {
     draw(@draw(e) {
         var pb = loadPixbuf(src, int(w), int(h), 0, null)
 
@@ -605,17 +605,17 @@ component Span(
     content ...component markup.span,
 ) markup.span
 
-component markup.richText[platform] {
+const component markup.richText[platform] {
     Flow(style={...style}) {
         content
     }
 }
 
-component markup.text[platform] {
+const component markup.text[platform] {
     Span(text=value) {}
 }
 
-component markup.run[platform] {
+const component markup.run[platform] {
     Span(spanStyle=style) {
         content
     }
@@ -623,7 +623,7 @@ component markup.run[platform] {
 
 // Pango has `<a href>` and GtkLabel follows one when it is clicked, so this is
 // the one target besides html where a link is a link.
-component markup.link[platform] {
+const component markup.link[platform] {
     Span(href=href) {
         content
     }
@@ -632,7 +632,7 @@ component markup.link[platform] {
 // Pango takes a foreground and nothing a theme could answer, so the fallback
 // is a palette rather than the host: the light one, since the theme GTK ships
 // with is light.
-component markup.token[platform] {
+const component markup.token[platform] {
     Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
         content
     }
@@ -641,6 +641,6 @@ component markup.token[platform] {
 // Pango markup has no image, and a GtkLabel holds text. So the description is
 // what an image is here, in the brackets that say a picture stood where they
 // are.
-component markup.image[platform] {
+const component markup.image[platform] {
     Span(text="[{alt}]") {}
 }
