@@ -7,15 +7,13 @@ import (
 )
 
 // collectUsedEnums returns the package's own enums followed by every library
-// enum something the package declares is typed by: a var, a const, a field, a
-// parameter or a result. pkg.Enums holds only the first, so a backend that
-// declares one type per enum declared nothing for `var w = ui.FontWeight.bold`,
-// and the reference named whatever the host had in scope under that name.
+// enum the package's code has a value or a declaration of; Kotlin declares one
+// class per enum.
 //
-// Declarations rather than every expression's type, because a style literal
-// or a primitive's prop names a library enum too, and those a platform
-// translates into its own vocabulary rather than storing. The library half is
-// sorted by name, since its discovery order is not meaningful.
+// Two places name a library enum without the host ever spelling it, and are
+// skipped: a literal of a library struct the package never declares -- a Style
+// handed to style= -- and a member written directly as a node's prop. A
+// platform reads both and translates them into its own vocabulary.
 func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 	if pkg == nil {
 		return nil
@@ -25,6 +23,10 @@ func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 	for _, e := range pkg.Enums {
 		seen[e] = true
 		out = append(out, e)
+	}
+	declared := map[*ir.StructDef]bool{}
+	for _, s := range pkg.Structs {
+		declared[s] = true
 	}
 	var lib []*ir.EnumDef
 	var add func(t *ir.Type)
@@ -42,7 +44,7 @@ func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 			add(t.Sig.Return)
 		}
 		ed, ok := t.Decl.(*ir.EnumDef)
-		if !ok || t.Kind != ir.TypeEnum || seen[ed] {
+		if !ok || t.Kind != ir.TypeEnum || seen[ed] || ed.Foreign.Name != "" {
 			return
 		}
 		seen[ed] = true
@@ -62,6 +64,15 @@ func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 			add(v.Type)
 		}
 	}
+	var slots func(ss []*ir.SlotDecl)
+	slots = func(ss []*ir.SlotDecl) {
+		for _, s := range ss {
+			for _, p := range s.Params {
+				add(p.Type)
+			}
+			slots(s.Slots)
+		}
+	}
 	for _, s := range pkg.Structs {
 		for _, f := range s.Fields {
 			add(f.Type)
@@ -76,17 +87,38 @@ func collectUsedEnums(pkg *ir.Package) []*ir.EnumDef {
 		for _, p := range c.Props {
 			add(p.Type)
 		}
+		slots(c.Slots)
 		vars(c.Vars)
 		for _, f := range c.Funcs {
 			fn(f)
 		}
 	}
+	propMembers := map[*ir.Ident]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		switch x := n.(type) {
+		case *ir.NodeInst:
+			for _, a := range x.Props {
+				if id, ok := a.Value.(*ir.Ident); ok && id.Member != "" {
+					propMembers[id] = true
+				}
+			}
+		case *ir.Ident:
+			if propMembers[x] {
+				return nil
+			}
+		case *ir.StructLit:
+			if x.Def != nil && x.Def.Pkg != "" && !declared[x.Def] {
+				return ir.SkipDir
+			}
 		case *ir.LocalVar:
 			add(x.Type)
+		case *ir.For:
+			add(x.ElemType)
 		case *ir.Lambda:
 			fn(x.Func)
+		}
+		if e, ok := n.(ir.Expr); ok {
+			add(e.ExprType())
 		}
 		return nil
 	})

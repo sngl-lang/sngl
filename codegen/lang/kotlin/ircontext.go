@@ -1120,14 +1120,12 @@ func EnumName(decl ir.Symbol) string {
 func EnumDecl(ed *ir.EnumDef) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "enum class %s(private val sngl: String) {\n", EnumName(ed))
+	entries := make([]string, len(ed.Members))
 	for i, m := range ed.Members {
-		end := ","
-		if i == len(ed.Members)-1 {
-			end = ";"
-		}
-		fmt.Fprintf(&b, "    %s(%q)%s\n", EnumEntry(m.Name), m.Name, end)
+		entries[i] = fmt.Sprintf("    %s(%q)", EnumEntry(m.Name), m.Name)
 	}
-	b.WriteString("\n    override fun toString(): String = sngl\n}\n")
+	b.WriteString(strings.Join(entries, ",\n"))
+	b.WriteString(";\n\n    override fun toString(): String = sngl\n}\n")
 	return b.String()
 }
 
