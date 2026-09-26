@@ -7,11 +7,18 @@ stdout '2 tests, 0 failures'
 stdout 'counter/testQualifiedRefIsAddressable'
 stdout 'pair/testQualifiedRefInAChildIsAddressable'
 
-# The child written as a qualified call statement into another package: the
-# descendant search followed only a bare call, so `c.lbl` was no member of pair.
+# A child in another package, reached through a qualified call statement. Its
+# body is that package's: it imports sngl:ui as `u` and renders its own
+# `inner`, while this package declares an `inner` with a #lbl button. Read in
+# this package's scope, `c.lbl` was either no member of pair or a button.
 sngl test --platform none child
 stdout '1 tests, 0 failures'
 stdout 'pair/testQualifiedChildCall'
+
+# A child in a sibling file of this package, which imports sngl:ui as `u`.
+sngl test --platform none sibling
+stdout '1 tests, 0 failures'
+stdout 'pair/testSiblingFileChild'
 
 -- refs.sngl --
 import test "sngl:test"
@@ -81,9 +88,45 @@ component pair ui.node {
 ui.window {
     pair()
 }
+
+component inner ui.node {
+    ui.button #lbl(text="x")
+}
 -- child/widgets/w.sngl --
+import u "sngl:ui"
+
+component inner(label string) u.node {
+    u.text #lbl(value=label)
+}
+
+component labelled(label string) u.node {
+    inner(label=label)
+}
+-- sibling/main.sngl --
+import test "sngl:test"
 import ui "sngl:ui"
 
-component labelled(label string) ui.node {
-    ui.text #lbl(value=label)
+output {
+    none { html }
+}
+
+func testSiblingFileChild(t test.Test, c pair) {
+    t.assert(c.lbl[1].value == "b")
+}
+
+component pair ui.node {
+    ui.vbox {
+        labelled(label="a")
+        labelled(label="b")
+    }
+}
+
+ui.window {
+    pair()
+}
+-- sibling/other.sngl --
+import u "sngl:ui"
+
+component labelled(label string) u.node {
+    u.text #lbl(value=label)
 }
