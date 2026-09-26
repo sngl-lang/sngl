@@ -120,6 +120,7 @@ var workerSources = []string{
 	"pkg/go/fynehost",
 	"pkg/go/fynelayout",
 	"pkg/go/fynetheme",
+	"pkg/go/snglcolor",
 	"pkg/go/snglhost",
 	"internal/testrpc",
 }
