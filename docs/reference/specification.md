@@ -888,8 +888,7 @@ A `const` declaration binds an immutable name. Its initializer must be a
 elements are constant), an enum member, an operator applied to constant
 operands, a primitive conversion, a reference to another constant, one of the
 predeclared constants `true`, `false`, `null`, `PLATFORM`, `LANGUAGE`, or a
-call to a function a `#[macro.foreign(…, pure)]` mark declares evaluable at
-build time. A constant initializer may not reference a variable, an ordinary
+call to a [const function](#const-functions) with constant arguments. A constant initializer may not reference a variable, an ordinary
 function, or a context. Constants may refer to one another in any source order.
 Assigning to a constant is an error.
 
@@ -1557,7 +1556,8 @@ const slots, which is what requires every value in one to be constant.
 A component parameter is one of four kinds:
 
 - a **regular parameter** — `name Type = default` — an input supplied by the
-  caller, with an optional default;
+  caller, with an optional default, and constant at every call site when
+  written `const name Type` (see [the const prefix](#the-const-prefix));
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
   to `name` is written back to that lvalue, so parent and child stay in sync;
@@ -1877,7 +1877,7 @@ boundary catches goes to the platform's default handler.
 A user interface is a tree, and it is segmented into **families**: a container
 accepts members of its own family and nothing else. Widgets are one family
 (`ui.node`), the shapes a canvas draws are another (`draw.shape`), the windows
-and build directive at the root of a file a third (`ui.root`).
+and build directive at the root of a file a third (`root`, declared in `sngl:builtin` and so in scope everywhere).
 
 A family is declared by a struct carrying the `#[tree.kind]` mark. The struct
 holds nothing and no value of it exists; it *is* the family, identified by its
@@ -1934,11 +1934,11 @@ A package is a **program** when it declares at least one window; a package that
 declares none is a library, which may be type-checked but has nothing to run.
 
 The package body — the statements at the root of its files — is a slot that
-accepts the `ui.root` family, whose members are `ui.window` and the `output`
+accepts the `root` family, whose members are `ui.window` and the `output`
 directive. A `ui.node` written at the root of a file is therefore a family
 error, while an `if` or `for` there is not a node and may hold windows. There is
 no entry-point function or component: a component named `main` is an ordinary
-component. A component whose return position is `ui.root` renders windows, and
+component. A component whose return position is `root` renders windows, and
 they reach the program when something at the root instantiates it.
 
 ```sngl

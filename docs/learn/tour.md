@@ -84,7 +84,7 @@ ui.window {
 
 ## Constant Expressions
 
-Some values never change. Use `const` instead of `var` and SNGL evaluates the expression at compile time — the result is baked into the generated code. Constant folding also applies to pure functions called with constant arguments, so you can use string helpers, color constants, and number math in `const` initializers.
+Some values never change. Use `const` instead of `var` and SNGL evaluates the expression at compile time — the result is baked into the generated code. A call is constant too when the function is declared `const func` and its arguments are constant; the library's string helpers, color functions and number math are declared that way, so they work in `const` initializers.
 
 Compile-time evaluation is useful for content pipelines — the docs site itself uses it to run a markdown parser while building.
 
@@ -597,14 +597,14 @@ ui.window {
 
 ## Custom Events
 
-A component declares its own events in its parameter list: `@changed int` is an event carrying an `int`, and a bare `@reset` carries nothing. Inside the component, firing one is calling it — `changed(value + 1)` — and the parent's handler runs with the payload.
+A component declares its own events in its parameter list, each with the parameters it passes: `@moved(x int, y int)` passes two, `@changed int` is the one-parameter case written without parens, and `@reset()` passes nothing. Inside the component, firing one is calling it — `changed(value + 1)` — and the parent's handler binds what it passes by position.
 
 This is how state flows back up: the parent owns `quantity`, the stepper reports changes, and the parent decides what to do with them.
 
 ```sngl
 import ui "sngl:ui"
 
-component Stepper(value = 0, @changed int, @reset) ui.node {
+component Stepper(value = 0, @changed int, @reset()) ui.node {
     ui.hbox(style={gap=8, alignItems=center}) {
         ui.button(text="-", @click { changed(value - 1) })
         ui.text(value="{value}", style={fontFamily="monospace"})

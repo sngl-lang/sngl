@@ -132,7 +132,9 @@ output {
 
 A function imported through a scheme can be marked so the compiler *runs* it
 while building and freezes the result into the output as a literal. An
-unmarked function is left as a call for the target to make at runtime.
+unmarked function is left as a call for the target to make at runtime. The
+importer declares a marked function `const func`, which is also what lets a
+call to it with constant arguments stand in a `const` initializer.
 
 In Go the marker is a `//sngl:pure` line in the doc comment. In JavaScript and
 TypeScript it is a tag in the declaration's doc comment, and six spellings are
@@ -1066,12 +1068,15 @@ ui.button(text="Evens", @click { items = items.filter(func(x) => x % 2 == 0) })
 ### Component events
 
 A component notifies its parent through an event. The event is declared on the
-component with `@name`, and firing it is an ordinary call on that name:
+component with `@name` and the parameters it passes -- `@save()` passes none,
+`@moved(x int, y int)` two, and `@changed int` is the one-parameter case --
+and firing it is an ordinary call on that name. The handler binds what the
+event passes by position, `@moved(x, y) { … }`:
 
 ```sngl
 import ui "sngl:ui"
 
-component SaveButton(label = "Save", @save) ui.node {
+component SaveButton(label = "Save", @save()) ui.node {
     ui.button(text=label, @click { save() })
 }
 

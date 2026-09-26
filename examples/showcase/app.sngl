@@ -109,7 +109,7 @@ func makeBadge(b struct {
 // ----- 9. Child component with prop + event sink -------------------
 // Components are declared at top level. Props live in the header.
 // `@event` props let the parent receive events emitted by the child.
-component LabeledCounter(label = "Clicks", start = 0, @changed) ui.node {
+component LabeledCounter(label = "Clicks", start = 0, @changed int) ui.node {
     var n = start
 
     ui.hbox(style={gap=8, alignItems=center}) {
