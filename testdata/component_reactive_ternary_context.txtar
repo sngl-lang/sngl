@@ -482,9 +482,6 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -586,6 +583,6 @@ pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
 pass sha256:58eb81c03da71dabc6bd7bb3f74ed2e7
 -- run/kotlin/android --
-pass sha256:cb0865335f6c4341aaa9336a0c2f5b86
+pass sha256:57c5d33bab3c791e76c59981556a0863
 -- run/none/html --
 pass sha256:6d0572bf1ca0febcbcff4bc7c7b8fe60

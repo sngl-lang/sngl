@@ -124,8 +124,7 @@ package main
 import "testing"
 
 func TestDeepens(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.deeperClick()
 	if !((c.depth == 3)) { t.Errorf("assert failed: %s", "(c.depth == 3)") }
@@ -239,6 +238,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { depth: 2 };
@@ -258,11 +268,13 @@ body { font-family: system-ui, sans-serif; }
     state.depth += 1;
   });
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:246307f0d9b061ffe5e61ccfb55290cd
+pass sha256:6c6b353558da56e9390fc13c39597302
 -- run/go/gtk4 --
 pass sha256:619670ebb535bdbe4de14b0b2ee5f0c5
 -- run/none/html --
-pass sha256:039cda04cac161a97f6a2dd918deb9a2
+pass sha256:f21fb7470853b228e0eba9cc0300eec1

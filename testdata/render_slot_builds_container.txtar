@@ -189,8 +189,7 @@ package main
 import "testing"
 
 func TestMore(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.moreClick()
 	if !((len(c.items) == 2)) { t.Errorf("assert failed: %s", "(len(c.items) == 2)") }
@@ -359,6 +358,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:9d1e21aa9203e8e317883a01e2ce56f6
+pass sha256:da6dfa4a9b1ebd12fbf8966b77210fbb
 -- run/go/gtk4 --
 pass sha256:678eb7cad03cadebba3b2b6d656a95c0

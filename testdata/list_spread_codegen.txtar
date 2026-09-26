@@ -1031,9 +1031,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function P(a) {
-    return { a };
-  }
   function main_joinedLen(state2, extra) {
     let ys = [...state2.xs, 0, 1, 2, 3, extra];
     return ys.length;
@@ -1098,4 +1095,4 @@ pass sha256:d3fc83a7b05048309f26e107fb85c3e8
 -- run/kotlin/android --
 pass sha256:aa5616096ebc269dc2f8daa8ee1b1ae7
 -- run/none/html --
-pass sha256:0f4acce2cfa4f7ea400389eda6619319
+pass sha256:454380781f0b2b9ac7de7f2f46220a57

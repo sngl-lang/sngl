@@ -215,6 +215,9 @@ func New() *Model {
 func (m *Model) __n0_input_handler(s string) {
 }
 
+func (m *Model) __n0_change_handler(s string) {
+}
+
 func (m *Model) Text() string {
 	return m.text
 }
@@ -230,6 +233,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetPlaceHolder("Notes")
 	m.__n0.SetMinRowsVisible(4)
 	m.__n0.OnChanged = m.__n0_input_handler
+	m.__n0.OnSubmitted = m.__n0_change_handler
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -472,7 +476,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5e19a034edfeee260fd1241e75d41920
 -- run/go/fyne --
-pass sha256:4069827219e3475c7d324623bff4fbd3
+pass sha256:eb77048339807e5ceb805b193e11f8b6
 -- run/go/gtk4 --
 pass sha256:2c0d185c1d6c362b6d3221a1529eb060
 -- run/kotlin/android --

@@ -402,8 +402,7 @@ package main
 import "testing"
 
 func TestCount(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -665,8 +664,7 @@ package main
 import "testing"
 
 func TestCount(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -994,13 +992,13 @@ class MainScreenState {
     var k by mutableStateOf(3)
     var picked by mutableStateOf(0)
     val xs = mutableStateListOf(1, 2)
-    val count by derivedStateOf(fun(): Int {
+    val count: Int get() {
         var total = 0
         for (i in 0 until k) {
         	total += 1
         }
         return total
-    })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1043,9 +1041,6 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1088,6 +1083,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { show: true, k: 3, picked: 0, xs: [1, 2] };
@@ -1439,15 +1445,17 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
   __renderSlot2(__slotAnchor_2);
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ff04e36ed0d537b89a7165b11daecc91
+pass sha256:b898654abf6909a9b8396bb9139da2a2
 -- run/go/fyne --
-pass sha256:021f0ffb07fba85a01ab16a2cb39c749
+pass sha256:1b45f2d6a003c4c17782a45a4148a79a
 -- run/go/gtk4 --
 pass sha256:3816770c973e6ccf5627471837602447
 -- run/kotlin/android --
-pass sha256:f248b6dd67bb3d7cea081cc9ce2fe153
+pass sha256:ef7efe0dcedc1c8e55ea08084cf7d23f
 -- run/none/html --
-pass sha256:f72a8266246c78ff7abef3451da92181
+pass sha256:1107071170d9405b10bac30d6ea31db9

@@ -334,8 +334,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -411,6 +418,9 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __n0_notifyActive_handler() {
+}
+
 func (m *Model) On() bool {
 	return m.on
 }
@@ -427,6 +437,8 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.on)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, m.__n0_notifyActive_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -491,9 +503,6 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -587,8 +596,8 @@ pass sha256:054e9d8c4c497250914d99509fc81b57
 -- run/go/fyne --
 pass sha256:0cfdd65a282c4b2da031d1c0525e4d57
 -- run/go/gtk4 --
-pass sha256:c0b1f7af8007bd65ad5f5c41eff9968e
+pass sha256:63b2feec02fe64c813de642c372a1fc0
 -- run/kotlin/android --
-pass sha256:6052ff026e5972c8b7aa9ea4aea1c6cb
+pass sha256:36a0e8c24ebb21ae420052e2436d5d82
 -- run/none/html --
 pass sha256:ebc1b2f48b22864fd83941bdf1836e04

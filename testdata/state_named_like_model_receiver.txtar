@@ -338,8 +338,7 @@ package main
 import "testing"
 
 func TestBump(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.bumpClick()
 	if !((c.m == 2)) { t.Errorf("assert failed: %s", "(c.m == 2)") }
@@ -526,8 +525,7 @@ package main
 import "testing"
 
 func TestBump(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.bumpClick()
 	if !((c.m == 2)) { t.Errorf("assert failed: %s", "(c.m == 2)") }
@@ -737,8 +735,8 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:08620ce17fe05cdafa6317265adca067
+pass sha256:884f5f4e4d90b472ca618abd6b9bef81
 -- run/go/fyne --
-pass sha256:bb96c476816a75438ebff211e31db316
+pass sha256:b6e234774d185739c12f385c5ec9788d
 -- run/go/gtk4 --
 pass sha256:1f2e686f23b52228f767194e136356eb

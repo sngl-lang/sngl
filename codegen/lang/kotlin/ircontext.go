@@ -467,7 +467,17 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if rewritten, ok := kc.identRewrite(n.Name); ok && !isParamRef(n) {
+	if isParamRef(n) {
+		return n.Name
+	}
+	// A write names the var it writes, so a same-named lambda parameter in
+	// scope (android's checkbox hands its lambda `on`) does not shadow it.
+	if _, isVar := n.Sym.(*ir.Var); isVar {
+		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
+			return rewritten
+		}
+	}
+	if rewritten, ok := kc.identRewrite(n.Name); ok {
 		return rewritten
 	}
 	return n.Name

@@ -582,7 +582,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 
 	src := b.String()
 	imports := ""
-	if strings.Contains(src, ".onNodeWithTag(") {
+	if strings.Contains(src, ".onNodeWithTag(") || strings.Contains(src, ".performClick(") || strings.Contains(src, ".performTextReplacement(") {
 		imports = composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)

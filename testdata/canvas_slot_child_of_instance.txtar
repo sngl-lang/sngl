@@ -276,8 +276,7 @@ package main
 import "testing"
 
 func TestAdds(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.addClick()
 	if !((len(c.rs) == 3)) { t.Errorf("assert failed: %s", "(len(c.rs) == 3)") }
@@ -464,6 +463,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 
 // Canvas2D draw-func trampoline. gtk_drawing_area_set_draw_func wants a
@@ -802,6 +811,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { rs: [4, 8] };
@@ -962,11 +982,13 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot0(__slotAnchor_0);
   });
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b8969fe022c3759c642c7953ebdd0dfd
+pass sha256:4d5e65338ee14102074157132da708d8
 -- run/go/gtk4 --
-pass sha256:bfa7d9c44de1fe7a72b7b209087338a3
+pass sha256:32ed2110c610f3a2f52efab5c8890eda
 -- run/none/html --
-pass sha256:af9f541caf78beb02b352ad59cc2921e
+pass sha256:ae0fd8ef9409f31c63dd5ac7753ae6cc

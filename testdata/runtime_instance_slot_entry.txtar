@@ -414,8 +414,7 @@ package main
 import "testing"
 
 func TestEntryPerCopy(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.heads == "1:5 2:10 ")) { t.Errorf("assert failed: %s", "(c.heads == \"1:5 2:10 \")") }
 	if !((c.contents == "c5 c10 ")) { t.Errorf("assert failed: %s", "(c.contents == \"c5 c10 \")") }
@@ -731,8 +730,7 @@ package main
 import "testing"
 
 func TestEntryPerCopy(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.heads == "1:5 2:10 ")) { t.Errorf("assert failed: %s", "(c.heads == \"1:5 2:10 \")") }
 	if !((c.contents == "c5 c10 ")) { t.Errorf("assert failed: %s", "(c.contents == \"c5 c10 \")") }
@@ -1219,6 +1217,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { items: [1, 2], heads: "", contents: "" };
@@ -1431,15 +1440,17 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot0(__slotAnchor_0);
   });
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7cc02084c57b5caee3e25094a3dc26c6
+pass sha256:35cf82764ca6e58b3e5628b610ba20a7
 -- run/go/fyne --
-pass sha256:889dd6651fc1a5099568abc9277910d6
+pass sha256:2ad6df1d5a9506f7378d56c7e4fadd60
 -- run/go/gtk4 --
 pass sha256:b7f909c6ecedc2a5e7f2414fe7cd27fc
 -- run/kotlin/android --
 pass sha256:d410b39a76f2ac074ede39d3dc13007d
 -- run/none/html --
-pass sha256:0854519eea3f7c2eff166a46ff7399d3
+pass sha256:44d7fbe9745bf03d30fe0d218029f0d4

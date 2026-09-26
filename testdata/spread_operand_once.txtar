@@ -703,9 +703,6 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
-  function Pair(x, y) {
-    return { x, y };
-  }
   function panel_next(state2) {
     state2.n = state2.n + 1;
     return { x: state2.n, y: state2.n * 100 };
@@ -771,4 +768,4 @@ pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
 pass sha256:15cb238b369f2716fcb0ad15aa44e92c
 -- run/none/html --
-pass sha256:94bb962e613d561e8b772d3d688d5fd7
+pass sha256:8ed3bf8f7c777b0a02be7a059ac563f1

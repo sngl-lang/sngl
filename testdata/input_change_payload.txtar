@@ -239,8 +239,7 @@ package main
 import "testing"
 
 func TestChange(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.last == "")) { t.Errorf("assert failed: %s", "(c.last == \"\")") }
 }
@@ -453,6 +452,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:c47d139a2ff2d91b3a1cf34018bf8137
+pass sha256:7a062dccfdfe8e3d1c810b7592c95a02
 -- run/go/gtk4 --
 pass sha256:5db0510d82c7eafa4f96cb04598f4809

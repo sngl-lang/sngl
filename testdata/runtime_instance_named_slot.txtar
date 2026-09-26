@@ -536,8 +536,7 @@ package main
 import "testing"
 
 func TestEachCopyRendersItsOwnCells(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.mounted == "1:1 1:11 2:2 2:12 ")) { t.Errorf("assert failed: %s", "(c.mounted == \"1:1 1:11 2:2 2:12 \")") }
 	c.addClick()
@@ -935,8 +934,7 @@ package main
 import "testing"
 
 func TestEachCopyRendersItsOwnCells(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.mounted == "1:1 1:11 2:2 2:12 ")) { t.Errorf("assert failed: %s", "(c.mounted == \"1:1 1:11 2:2 2:12 \")") }
 	c.addClick()
@@ -1528,6 +1526,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { items: [1, 2], mounted: "" };
@@ -1957,15 +1966,17 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot3(__slotAnchor_3);
   });
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4874f98a5297f394b45a01547bd1d3d8
+pass sha256:04193e96fdd1d766b7a99a6dc790d48d
 -- run/go/fyne --
-pass sha256:3d44dd82109b4937c199577b1b1bab02
+pass sha256:31c2f097006c94a55b405241e3643149
 -- run/go/gtk4 --
 pass sha256:ef58876a1d66f7f2e7c0fcf9c452b5c0
 -- run/kotlin/android --
 pass sha256:240c001b2528aae2f65b2b28178cc836
 -- run/none/html --
-pass sha256:ba44c5adcc7176d43facf7b1a3a16db4
+pass sha256:3d9f4bdd42a94372feb86f2c421b363b

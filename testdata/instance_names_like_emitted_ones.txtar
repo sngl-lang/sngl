@@ -277,8 +277,7 @@ package main
 import "testing"
 
 func TestBump(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.bumpClick()
 	if !((c.parent == 2)) { t.Errorf("assert failed: %s", "(c.parent == 2)") }
@@ -531,6 +530,6 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/fyne --
-pass sha256:bdb7b8ac22f39c449d15599d61e054ae
+pass sha256:aed61b6d42d3d96bdd51308b9a954136
 -- run/go/gtk4 --
 pass sha256:7d8b36e49862c6d4b966543a71d6d722

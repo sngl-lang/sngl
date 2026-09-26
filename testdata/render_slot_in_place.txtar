@@ -200,8 +200,7 @@ package main
 import "testing"
 
 func TestReRenders(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.flipClick()
 	c.flipClick()
@@ -371,6 +370,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:5fd6f669dde1c3981e6670ac230216cd
+pass sha256:a3ac5c9bc205c318dccd78fcf6c88369
 -- run/go/gtk4 --
 pass sha256:65a12d701a04fa5ba489b935409d4543

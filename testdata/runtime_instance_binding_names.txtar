@@ -252,8 +252,7 @@ package main
 import "testing"
 
 func TestLevels(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.depth == 2)) { t.Errorf("assert failed: %s", "(c.depth == 2)") }
 }
@@ -1137,8 +1136,7 @@ package main
 import "testing"
 
 func TestLevels(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.depth == 2)) { t.Errorf("assert failed: %s", "(c.depth == 2)") }
 }
@@ -2238,6 +2236,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -2288,9 +2288,6 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -2333,6 +2330,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { depth: 2, mark: "*" };
@@ -3084,15 +3092,17 @@ body { font-family: system-ui, sans-serif; }
   var __n14 = __cf_frame__slot2({ result: state.depth - 2, m: "third", __depth: 0, __p0: state.mark });
   __n14__pos.appendChild(__n14.__root);
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8ab0e73a2bf9e30c3bc4844ff1638568
+pass sha256:c6d1873a2548e7613ce16b8440c9ca07
 -- run/go/fyne --
-pass sha256:50406a2ed4ceb0160e163f8f2bc4a9d6
+pass sha256:b281f52242f33e745bff2f6c0a4bffa2
 -- run/go/gtk4 --
 pass sha256:5b3ac632b5d3f357fa3a702db7c82794
 -- run/kotlin/android --
-pass sha256:9bacbc80b57eaca603f853a01012be51
+pass sha256:d240a16f922563997c98ff32f8edcc27
 -- run/none/html --
-pass sha256:b5e9d82ad397c9199389cd744c50a1c3
+pass sha256:6dd7582588fb06e5fb941493b2b0e98f

@@ -148,8 +148,7 @@ package main
 import "testing"
 
 func TestFlip(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.flipClick()
 	c.flipClick()
@@ -278,6 +277,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:8e58d63b84e7cc157b8accd7137cfcd2
+pass sha256:f722f49b87ad084f329b20eff5a8ba27
 -- run/go/gtk4 --
 pass sha256:ca474418eddc0c99094ad6705cd81b80

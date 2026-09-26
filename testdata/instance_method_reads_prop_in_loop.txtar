@@ -94,9 +94,17 @@ func (m *Model) describe__inst0(__copy string, it string) string {
 	}()))
 }
 
+func (m *Model) __focusLoop0_len() int {
+	var __focusCount int = 0
+	for range m.items {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
-		var __focusLen int = len(m.items)
+		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
 		} else {
@@ -111,7 +119,7 @@ func (m *Model) __focusPrev() {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
 		} else {
-			var __focusLen int = len(m.items)
+			var __focusLen int = m.__focusLoop0_len()
 			m.__focusID = 0
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
@@ -173,24 +181,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			for __copy0, _ := range m.items {
-				if m.__focusLoop0_cursor == __copy0 {
-					var __cell1_hits__inst0 int = func() int {
-						if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}()
-					__cell1_hits__inst0 = (func() int {
-						if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}() + 1)
-					m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
-					break
+			func() {
+				__focusPos0 := 0
+				for __copy0, it := range m.items {
+					_ = __copy0
+					_ = it
+					if m.__focusLoop0_cursor == __focusPos0 {
+						var __cell1_hits__inst0 int = func() int {
+							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}()
+						__cell1_hits__inst0 = (func() int {
+							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}() + 1)
+						m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+						return
+					}
+					__focusPos0++
 				}
-			}
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -200,21 +214,26 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
+	__focusPos0 := 0
+	_ = __focusPos0
 	var content_0Items []string
 	for __copy0, it := range m.items {
 		_ = __copy0
 		_ = it
 		var content_0Item string
-		content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __copy0))
+		content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
 		content_0ItemPrefix := " "
 		if content_0ItemFocused {
 			content_0ItemPrefix = ">"
 		}
 		content_0Item = lipgloss.NewStyle().Render(content_0ItemPrefix + " " + fmt.Sprint(m.describe__inst0(fmt.Sprint(__copy0), it)))
+		__focusPos0++
 		content_0Items = append(content_0Items, content_0Item)
 	}
 	content_0 = strings.Join(content_0Items, "\n")
-	contentChildren = append(contentChildren, content_0)
+	if content_0 != "" {
+		contentChildren = append(contentChildren, content_0)
+	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -250,26 +269,23 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: ["a", "b"] };
-  function row_describe(state2) {
-    return __prop_label + ":" + String(hits);
-  }
   function __cf_row(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let label = props.label ?? "";
-    let __prop_label2 = label;
-    let hits2 = 0;
+    let __prop_label = label;
+    let hits = 0;
     let __slot02 = [];
     function describe() {
-      return __prop_label2 + ":" + String(hits2);
+      return __prop_label + ":" + String(hits);
     }
     function __set_label(__v) {
-      __prop_label2 = __v;
+      __prop_label = __v;
     }
     let b = document.createElement("button");
     b.disabled = false;
     b.addEventListener("click", () => {
-      hits2 = hits2 + 1;
+      hits = hits + 1;
       __n0.textContent = describe();
     });
     b.addEventListener("contextmenu", () => {
@@ -341,6 +357,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3a7085666e5d7ddb0843013a73064675
+pass sha256:1f99b78ad634cc5d04afcb901f48d42e
 -- run/none/html --
-pass sha256:a86a860f52d50431df37a104039897af
+pass sha256:65f259f3b346f5976b02e3d9e7de9f19

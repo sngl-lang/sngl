@@ -148,8 +148,10 @@ func (m *Model) __n2_change_handler(b bool) {
 
 // boxInput invokes the OnChanged callback on the #box widget; for tests.
 func (m *Model) boxInput(s string) {
-	if m.box.OnChanged != nil {
-		m.box.OnChanged(s)
+	if cb := m.box.OnChanged; cb != nil {
+		m.box.OnChanged = nil
+		cb(s)
+		m.box.OnChanged = cb
 	}
 }
 
@@ -272,8 +274,7 @@ package main
 import "testing"
 
 func TestBuilds(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.last == "")) { t.Errorf("assert failed: %s", "(c.last == \"\")") }
 }
@@ -445,6 +446,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 */
 import "C"
@@ -661,19 +672,25 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 }
 
 // boxInput fires the "changed" signal on the #box widget; for tests.
-func (m *Model) boxInput() {
+func (m *Model) boxInput(v string) {
+	__v := C.CString(v)
+	defer C.free(unsafe.Pointer(__v))
+	C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.box)), __v)
 	sig := C.CString("changed")
 	defer C.free(unsafe.Pointer(sig))
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 
 // boxChange fires the "activate" signal on the #box widget; for tests.
-func (m *Model) boxChange() {
+func (m *Model) boxChange(v string) {
+	__v := C.CString(v)
+	defer C.free(unsafe.Pointer(__v))
+	C.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.box)), __v)
 	sig := C.CString("activate")
 	defer C.free(unsafe.Pointer(sig))
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:eae6686887964edab0ef4b1d4dc168e6
+pass sha256:a19d352d2620394606015b4839640b1f
 -- run/go/gtk4 --
-pass sha256:ccd12776d4cd20ccd26527299fe32afb
+pass sha256:05038bd63e7cdc1b2da80df1973b9363

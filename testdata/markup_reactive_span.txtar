@@ -183,8 +183,7 @@ package main
 import "testing"
 
 func TestFlip(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.flipClick()
 	if !(!c.loud) { t.Errorf("assert failed: %s", "!c.loud") }
@@ -332,6 +331,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { loud: true };
@@ -396,11 +406,13 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot0(__slotAnchor_0);
   });
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:755a1c41f2d886ee1b2a97f23e8ff908
+pass sha256:053222482ad8eeb3f2d97f8fdccbdb52
 -- run/go/gtk4 --
 pass sha256:3f019af0f2c7bbca89d0d8b8983f910d
 -- run/none/html --
-pass sha256:83ef5cffb24a7624a3bd3b5d2e7310a0
+pass sha256:3b316f120b369efe26324c63feffd012

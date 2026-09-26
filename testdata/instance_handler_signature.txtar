@@ -219,8 +219,7 @@ package main
 import "testing"
 
 func TestRows(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((len(c.items) == 2)) { t.Errorf("assert failed: %s", "(len(c.items) == 2)") }
 }
@@ -418,6 +417,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:ef7406166078845c36793d39a2c6293f
+pass sha256:1a501db8de9569729c57207da6118b54
 -- run/go/gtk4 --
 pass sha256:4ff1c1bd621c809593903561d1c1c59d

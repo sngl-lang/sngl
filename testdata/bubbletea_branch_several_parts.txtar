@@ -210,40 +210,42 @@ func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
 	if m.on__inst0 {
-		var part0Group []string
-		var part0G0 string
-		part0G0Focused := (m.__focusID == 0)
-		part0G0Prefix := " "
-		if part0G0Focused {
-			part0G0Prefix = ">"
+		var part0Parts []string
+		var part0Part_0 string
+		part0Part_0Focused := (m.__focusID == 0)
+		part0Part_0Prefix := " "
+		if part0Part_0Focused {
+			part0Part_0Prefix = ">"
 		}
-		part0G0 = lipgloss.NewStyle().Render(part0G0Prefix + " " + fmt.Sprint("A"))
-		part0Group = append(part0Group, part0G0)
-		var part0G1 string
-		part0G1Focused := (m.__focusID == 1)
-		part0G1Prefix := " "
-		if part0G1Focused {
-			part0G1Prefix = ">"
+		part0Part_0 = lipgloss.NewStyle().Render(part0Part_0Prefix + " " + fmt.Sprint("A"))
+		part0Parts = append(part0Parts, part0Part_0)
+		var part0Part_1 string
+		part0Part_1Focused := (m.__focusID == 1)
+		part0Part_1Prefix := " "
+		if part0Part_1Focused {
+			part0Part_1Prefix = ">"
 		}
-		part0G1 = lipgloss.NewStyle().Render(part0G1Prefix + " " + fmt.Sprint("B"))
-		part0Group = append(part0Group, part0G1)
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Group...)
+		part0Part_1 = lipgloss.NewStyle().Render(part0Part_1Prefix + " " + fmt.Sprint("B"))
+		part0Parts = append(part0Parts, part0Part_1)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
-	parts = append(parts, part0)
+	if part0 != "" {
+		parts = append(parts, part0)
+	}
 	var part1 string
-	var part1Group []string
-	var part1G0 string
-	part1G0Focused := (m.__focusID == 2)
-	part1G0Prefix := " "
-	if part1G0Focused {
-		part1G0Prefix = ">"
+	var part1Parts []string
+	var part1Part_0 string
+	part1Part_0Focused := (m.__focusID == 2)
+	part1Part_0Prefix := " "
+	if part1Part_0Focused {
+		part1Part_0Prefix = ">"
 	}
-	part1G0 = lipgloss.NewStyle().Render(part1G0Prefix + " " + fmt.Sprint("C"))
-	part1Group = append(part1Group, part1G0)
-	var part1G1 string
-	part1G1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
-	part1Group = append(part1Group, part1G1)
-	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Group...)
+	part1Part_0 = lipgloss.NewStyle().Render(part1Part_0Prefix + " " + fmt.Sprint("C"))
+	part1Parts = append(part1Parts, part1Part_0)
+	var part1Part_1 string
+	part1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
+	part1Parts = append(part1Parts, part1Part_1)
+	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Parts...)
 	parts = append(parts, part1)
 	var part2 string
 	var part2Children []string
@@ -251,19 +253,17 @@ func (m Model) View() tea.View {
 	var part2_0Items []string
 	for _, n := range []string{"x", "y"} {
 		_ = n
-		var part2_0Item string
-		var part2_0ItemGroup []string
-		var part2_0ItemG0 string
-		part2_0ItemG0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
-		part2_0ItemGroup = append(part2_0ItemGroup, part2_0ItemG0)
-		var part2_0ItemG1 string
-		part2_0ItemG1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
-		part2_0ItemGroup = append(part2_0ItemGroup, part2_0ItemG1)
-		part2_0Item = lipgloss.JoinHorizontal(lipgloss.Top, part2_0ItemGroup...)
-		part2_0Items = append(part2_0Items, part2_0Item)
+		var part2_0Item_0 string
+		part2_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
+		part2_0Items = append(part2_0Items, part2_0Item_0)
+		var part2_0Item_1 string
+		part2_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
+		part2_0Items = append(part2_0Items, part2_0Item_1)
 	}
 	part2_0 = strings.Join(part2_0Items, "")
-	part2Children = append(part2Children, part2_0)
+	if part2_0 != "" {
+		part2Children = append(part2Children, part2_0)
+	}
 	part2 = lipgloss.JoinHorizontal(lipgloss.Top, part2Children...)
 	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -281,4 +281,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:4bea5db24cd26c67e4b9c42f4ec09720
+pass sha256:b3b2ab4cbe65ccf1710bf2c539792924

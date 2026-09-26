@@ -319,8 +319,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -488,9 +495,6 @@ package test.sngl.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -601,8 +605,8 @@ pass sha256:2d3135c2d141e0e0dde30603b12671b6
 -- run/go/fyne --
 pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
-pass sha256:60cfe9a991be310760f50bd9c4e3530e
+pass sha256:15b20b2a509d9e7c1bfa344fc1c14d3b
 -- run/kotlin/android --
-pass sha256:64606395809d8cca0f7c49e6b648efb5
+pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
 -- run/none/html --
 pass sha256:375c71116f6600395d3ef70e8bfdf812
