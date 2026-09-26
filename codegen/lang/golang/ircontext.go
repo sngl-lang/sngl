@@ -1303,22 +1303,33 @@ func (gc *GoIRContext) methodField(field string) bool {
 }
 
 // uniqueStructWithField returns the Go type name of the sole package struct
-// declaring this field, or "" if zero or several do.
+// declaring this field, or "" if zero or several do. The program's own
+// structs are asked first: a library payload a handler names joins
+// Pkg.Structs too, and `ChangeEvent.value` made every dyn `.value` ambiguous.
 func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
 		return ""
 	}
-	var match *ir.StructDef
-	for _, sd := range gc.Ctx.Pkg.Structs {
-		for _, f := range sd.Fields {
-			if f.Name == field {
-				if match != nil {
-					return ""
+	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
+		for _, sd := range gc.Ctx.Pkg.Structs {
+			if own && sd.Pkg != "" {
+				continue
+			}
+			for _, f := range sd.Fields {
+				if f.Name == field {
+					if match != nil {
+						return nil, true
+					}
+					match = sd
+					break
 				}
-				match = sd
-				break
 			}
 		}
+		return match, false
+	}
+	match, ambiguous := find(true)
+	if match == nil && !ambiguous {
+		match, _ = find(false)
 	}
 	if match == nil {
 		return ""
