@@ -1,4 +1,4 @@
-// Hello, world — internationalised.
+// Hello, world — internationalized.
 //
 // Exercises the i18n MessageFormat features that need different
 // translations to look right:
@@ -14,7 +14,7 @@
 // for English (manifest fallback), French, and Spanish.
 
 import ui "sngl:ui"
-import . "sngl:time"
+import time "sngl:time"
 import "sngl:i18n"
 
 output {
@@ -24,12 +24,12 @@ output {
 
 enum Gender { female, male, other }
 
-component main ui.node {
+ui.window {
     var name = "Alice"
     var gender Gender = Gender.female
     var guests = 1
     var price = 1234
-    var partyDate date = date("2026-05-09")
+    var partyDate time.date = time.date("2026-05-09")
 
     ui.vbox(style={gap=16, padding=24, maxWidth=480}) {
         ui.text(value=$"Party RSVP", style={fontSize=24, fontWeight=bold})
@@ -47,8 +47,8 @@ component main ui.node {
             ui.text(value=$"Honorific")
             ui.hbox(style={gap=8}) {
                 ui.button(text=$"female", @click { gender = Gender.female })
-                ui.button(text=$"male",   @click { gender = Gender.male })
-                ui.button(text=$"other",  @click { gender = Gender.other })
+                ui.button(text=$"male", @click { gender = Gender.male })
+                ui.button(text=$"other", @click { gender = Gender.other })
             }
         }
 
@@ -63,21 +63,17 @@ component main ui.node {
 
         ui.text(
             value=$"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party.",
-            style={fontSize=18, padding=12, color=#111111, background="#f5f5f5", borderRadius=8},
+            style={fontSize=18, padding=12, color=#111111, background=#f5f5f5, borderRadius=8},
         )
 
         ui.text(
             value=$"Ticket price: {price, number, currency}",
-            style={fontSize=14, color="#555"},
+            style={fontSize=14, color=#555555},
         )
 
         ui.text(
             value=$"Party date: {partyDate, date, long}",
-            style={fontSize=14, color="#555"},
+            style={fontSize=14, color=#555555},
         )
     }
-}
-
-ui.window {
-    main
 }

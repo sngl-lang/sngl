@@ -10,7 +10,7 @@ The example has two canvases:
 ## Run
 
 ```
-sngl generate --platform html --lang none --out out/ examples/canvas/
+sngl generate --platform html --out out/ examples/canvas/
 open out/index.html
 ```
 
@@ -22,15 +22,15 @@ sngl check examples/canvas/app.sngl
 
 ## Canvas API used
 
-Everything below comes from `sngl:ui/draw`, which the app dot-imports alongside
-`sngl:ui`.
+Everything below comes from `sngl:ui/draw`, which the app imports as
+`import draw "sngl:ui/draw"` alongside `import ui "sngl:ui"`.
 
-- `canvas(width, height)` — the container; hosts the shapes below as children
-- `rect(x, y, w, h, style)` — filled/stroked rectangle
-- `circle(cx, cy, r, style)` — filled/stroked circle
-- `ellipse(cx, cy, rx, ry, style)` — filled/stroked ellipse
-- `line(x1, y1, x2, y2, style)` — stroked line
-- `path(cmds, style)` — a path built from a `list<PathCmd>`
-- `canvasText(x, y, content, style)` — drawn text
-- `canvasImage(x, y, w, h, src)` — a drawn image
-- `CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `fontSize`, `fontFamily`
+- `draw.canvas(width, height)` — the container; hosts the shapes below as children
+- `draw.rect(x, y, w, h, style)` — filled/stroked rectangle
+- `draw.circle(cx, cy, r, style)` — filled/stroked circle
+- `draw.ellipse(cx, cy, rx, ry, style)` — filled/stroked ellipse
+- `draw.line(x1, y1, x2, y2, style)` — stroked line
+- `draw.path(cmds, style)` — a path built from a `list<draw.PathCmd>`
+- `draw.canvasText(x, y, content, style)` — drawn text
+- `draw.canvasImage(x, y, w, h, src)` — a drawn image
+- `draw.CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`

@@ -26,7 +26,7 @@ output {
     kotlin { android }
 }
 
-component main ui.node {
+component Calculator ui.node {
     var state calc.Calc
 
     // One key, one method. The calculator never edits itself: each method
@@ -66,5 +66,5 @@ component main ui.node {
 }
 
 ui.window #calculator(title="Calculator", href="/") {
-    main
+    Calculator()
 }
