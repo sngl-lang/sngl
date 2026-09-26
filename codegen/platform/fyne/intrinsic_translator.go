@@ -156,7 +156,7 @@ func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
 }
 
 func (t *fyneTranslator) withSlotRoot(body []ir.Stmt) *fyneTranslator {
-	t.rootRenders = codegen.RootSlotRenders(body, slotRootVar)
+	t.rootRenders = codegen.RootSlotRenders(body)
 	return t
 }
 

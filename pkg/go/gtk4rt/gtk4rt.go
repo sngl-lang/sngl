@@ -259,6 +259,11 @@ func WindowSetChild(win, child Handle) {
 	C.gtk_window_set_child((*C.GtkWindow)(p(win)), widget(child))
 }
 
+// WindowPresent shows a window and raises it.
+func WindowPresent(win Handle) {
+	C.gtk_window_present((*C.GtkWindow)(p(win)))
+}
+
 // Retain takes a strong reference on a widget, so that removing it from its
 // parent does not free it.
 func Retain(h Handle) {

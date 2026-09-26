@@ -155,7 +155,7 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 }
 
 func (t *gtk4Translator) withSlotRoot(body []ir.Stmt) *gtk4Translator {
-	t.rootRenders = codegen.RootSlotRenders(body, slotRootVar)
+	t.rootRenders = codegen.RootSlotRenders(body)
 	return t
 }
 

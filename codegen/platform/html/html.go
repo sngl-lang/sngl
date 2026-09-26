@@ -2281,7 +2281,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	emittedVar := false
 	for _, v := range synthVars {
 		// __root is a dead sentinel: slots render into their own anchors now.
-		if v.Name == "__root" {
+		if ir.IsSlotRootName(v.Name) {
 			continue
 		}
 		openDecl(b, v.Name)

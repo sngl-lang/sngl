@@ -78,7 +78,8 @@ type reactivityState struct {
 	// held records the instance registries each component owns, in the order
 	// they were opened, so its teardown can destroy what it holds. Keyed by
 	// component because a window's registries live as long as the page does.
-	held map[*ir.Component][]*slotInstance
+	held        map[*ir.Component][]*slotInstance
+	windowRoots map[*ir.Window]*ir.Var
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -168,6 +169,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
+		windowRoots:  map[*ir.Window]*ir.Var{},
 	}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
@@ -301,11 +303,15 @@ func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
-	// If any reactive slots exist on this owner, synthesize a __root Var
-	// of type dyn. Platforms bind this to their root-container reference
-	// at codegen time.
-	if len(st.reverseSlots) > 0 || len(st.undriven) > 0 {
-		st.synthesizeRootVar()
+	switch st.owner.(type) {
+	case compOwner:
+		if len(st.reverseSlots) > 0 || len(st.undriven) > 0 {
+			st.rootVar()
+		}
+	case windowOwner:
+		if rendersIntoRoot(stmts) {
+			st.rootVar()
+		}
 	}
 	// Collect unique slot IDs from reverseSlots so each Func is built once.
 	uniqueSlots := maps.Clone(st.undriven)
@@ -365,8 +371,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -378,8 +383,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -473,8 +477,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		rootVar := st.findSlotVar("__root")
-		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+		parentRef = st.rootRef()
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -529,19 +532,32 @@ func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
 	}
 }
 
-// synthesizeRootVar creates the `__root dyn` Var on the current owner
-// if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
-// can detect it.
-func (st *reactivityState) synthesizeRootVar() {
-	if existing := st.findSlotVar("__root"); existing != nil {
-		return
+// rootVar is the container the current owner's top-level slots render into.
+// A component's is created with its first slot; a window's only
+// when one of its own slots needs it. Each window gets its own, named by its
+// position in ir.AllWindows so a platform building every window agrees on it,
+// and two windows' rows never land in one container.
+func (st *reactivityState) rootVar() *ir.Var {
+	if o, ok := st.owner.(windowOwner); ok {
+		if v := st.windowRoots[o.w]; v != nil {
+			return v
+		}
+		v := &ir.Var{Name: ir.SlotRootNameN(slices.Index(ir.AllWindows(st.pkg), o.w)), Type: ir.TypDyn, Synthesized: true}
+		st.windowRoots[o.w] = v
+		o.addVar(v)
+		return v
 	}
-	v := &ir.Var{
-		Name:        "__root",
-		Type:        ir.TypDyn,
-		Synthesized: true,
+	if v := st.findSlotVar(ir.SlotRootName); v != nil {
+		return v
 	}
+	v := &ir.Var{Name: ir.SlotRootName, Type: ir.TypDyn, Synthesized: true}
 	st.owner.addVar(v)
+	return v
+}
+
+func (st *reactivityState) rootRef() *ir.Ident {
+	v := st.rootVar()
+	return &ir.Ident{Name: v.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: v}
 }
 
 func (st *reactivityState) findSlotVar(name string) *ir.Var {
@@ -1189,8 +1205,7 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			rootVar := st.findSlotVar("__root")
-			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+			parentRef = st.rootRef()
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,
@@ -1794,4 +1809,31 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 	}
 	walk(stmts)
 	return fn
+}
+
+// rendersIntoRoot reports whether a reactive If/For in stmts is reached with
+// no enclosing node, which is what rewriteReactiveStructures renders into the
+// owner's root.
+func rendersIntoRoot(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.If:
+			if n.LoweredSlotID != "" || rendersIntoRoot(n.Body) || rendersIntoRoot(n.Else) {
+				return true
+			}
+		case *ir.For:
+			if n.LoweredSlotID != "" || rendersIntoRoot(n.Body) || rendersIntoRoot(n.Else) {
+				return true
+			}
+		case *ir.SlotInst:
+			if rendersIntoRoot(n.Children) {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if rendersIntoRoot(n.Children) {
+				return true
+			}
+		}
+	}
+	return false
 }

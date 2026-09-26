@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -221,9 +222,9 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 
 // emitBuildUIWrapped is the wrapped-mode analogue of emitBuildUI: it emits the
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
-// widget-tree body (buildBuf) was already emitted in wrapped mode by the
-// translator, so only the surrounding scaffolding is produced here.
-func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string, fields map[string]bool) {
+// widget-tree bodies were already emitted in wrapped mode by the translator,
+// so only the surrounding scaffolding is produced here.
+func emitBuildUIWrapped(b *strings.Builder, trees []windowTree, entry int, gc *golang.GoIRContext, fields map[string]bool) {
 	// A ref the translator did not put in the Model is a local in
 	// buildWidgetTree; see buildRef, which answers the same question for the
 	// inline-cgo path.
@@ -235,7 +236,7 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 	}
 
 	// Empty component: BuildUI just creates a window.
-	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
+	if len(trees) == 1 && trees[0].empty() {
 		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
@@ -243,36 +244,43 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 		b.WriteString("}\n\n")
 		return
 	}
-	// Window-class passthrough: sole top-level is a window widget.
-	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+	if len(trees) == 1 && trees[0].passthrough() {
 		b.WriteString("func (m *Model) buildWidgetTree() {\n")
-		b.WriteString(buildBuf.String())
+		b.WriteString(trees[0].build.String())
 		b.WriteString("}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
 		b.WriteString("\tm.buildWidgetTree()\n")
-		fmt.Fprintf(b, "\treturn %s\n", mref(topLevelRefs[0]))
+		fmt.Fprintf(b, "\treturn %s\n", mref(trees[0].tops[0]))
 		b.WriteString("}\n\n")
 		return
 	}
-	// General case: wrap top-level children in a synthetic __root box.
 	b.WriteString("func (m *Model) buildWidgetTree() {\n")
-	b.WriteString("\tif m.__root != nil {\n\t\treturn\n\t}\n")
-	b.WriteString("\tm.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n")
-	b.WriteString(buildBuf.String())
-	for _, ref := range topLevelRefs {
-		fmt.Fprintf(b, "\tgtk4rt.BoxAppend(m.__root, %s)\n", mref(ref))
+	fmt.Fprintf(b, "\tif m.%s != nil {\n\t\treturn\n\t}\n", trees[0].root)
+	for _, t := range trees {
+		fmt.Fprintf(b, "\tm.%s = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)\n", t.root)
+		b.WriteString(t.build.String())
+		for _, ref := range t.tops {
+			fmt.Fprintf(b, "\tgtk4rt.BoxAppend(m.%s, %s)\n", t.root, mref(ref))
+		}
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
-	b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
-	b.WriteString("\tgtk4rt.WindowSetDefaultSize(win, 480, 640)\n")
-	if title != "" {
-		fmt.Fprintf(b, "\tgtk4rt.WindowSetTitle(win, %s)\n", title)
+	for _, i := range otherWindowsFirst(len(trees), entry) {
+		t := trees[i]
+		name := windowVar(i, entry)
+		fmt.Fprintf(b, "\t%s := gtk4rt.ApplicationWindowNew(app)\n", name)
+		fmt.Fprintf(b, "\tgtk4rt.WindowSetDefaultSize(%s, 480, 640)\n", name)
+		if title := windowTitleGo(t.win, gc); title != "" {
+			fmt.Fprintf(b, "\tgtk4rt.WindowSetTitle(%s, %s)\n", name, title)
+		}
+		fmt.Fprintf(b, "\tgtk4rt.WindowSetChild(%s, m.%s)\n", name, t.root)
+		if i != entry {
+			fmt.Fprintf(b, "\tgtk4rt.WindowPresent(%s)\n", name)
+		}
 	}
-	b.WriteString("\tgtk4rt.WindowSetChild(win, m.__root)\n")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
 }

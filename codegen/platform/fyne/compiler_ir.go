@@ -82,7 +82,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		if v != nil && v.Synthesized {
-			if v.Name == "__root" {
+			if ir.IsSlotRootName(v.Name) {
 				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
@@ -295,9 +295,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			var winBuf strings.Builder
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport, failProp).withLocalRefs(w.Window.LocalRefs)
+			}, addWidgetImport, failProp).withLocalRefs(w.Window.LocalRefs).withSlotRoot(w.Body)
 			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
+			if tr.renderedRoot != nil {
+				fmt.Fprintf(&winBuf, "\t%s.RemoveAll()\n", gc.EvalExpr(tr.renderedRoot))
+			}
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
 					fmt.Fprintf(&winBuf, "\t%s\n", line)
@@ -307,11 +310,18 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			fmt.Fprintf(&winCode, "func (m *Model) %s() fyne.CanvasObject {\n", buildFn)
 			winCode.WriteString(winBuf.String())
 			tops := tr.topLevel
-			switch len(tops) {
-			case 0:
+			switch {
+			case tr.renderedRoot != nil:
+				for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
+					for _, line := range gc.EvalStmt(stmt) {
+						fmt.Fprintf(&winCode, "\t%s\n", line)
+					}
+				}
+				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(tr.renderedRoot))
+			case len(tops) == 0:
 				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
-			case 1:
+			case len(tops) == 1:
 				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				gc.RequireImport("fyne.io/fyne/v2/container")

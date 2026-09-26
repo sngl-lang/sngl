@@ -1090,6 +1090,17 @@ projected onto.
 `testdata/root_component_state_two_windows.txtar` is the fixture, and it is
 where the per-platform table is written down.
 
+**The cells are shared; the trees are not.** A reactive slot at the top of a
+window body renders into that window's own root container, which
+`passReactivity` names by the window's position in `ir.AllWindows`
+(`__root`, `__root1`, …, `ir.SlotRootNameN`) so a platform building every
+window names the same one. It used to be one `__root` for the package, and on
+fyne the second window's rows rendered into the first window's container.
+gtk4 builds every window as a `GtkApplicationWindow` of its own over the one
+Model; fyne stacks them in one window and shows one at a time. bubbletea and
+android still render only the first. `testdata/multi_window_root_slots.txtar`
+is the fixture.
+
 **A program declares at least one window**, checked by `internal/build.Emit`
 rather than by the checker: `component c { … }` on its own is a perfectly good
 thing to type-check, and it is only as something to *run* that it has nowhere
