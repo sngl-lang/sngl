@@ -698,7 +698,11 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
 	slotRef := t.fieldRef(slot.Name)
-	child = t.qualifyChildExpr(child)
+	if sp := t.specs[codegen.IdentBareName(child)]; sp != nil && sp.RuntimeTheme {
+		child = t.themeOverrideRef(codegen.IdentBareName(child))
+	} else {
+		child = t.qualifyChildExpr(child)
+	}
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(slot.Name),

@@ -1165,6 +1165,9 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 	}
 	props := map[string]ir.Expr{}
 	for _, s := range rest {
+		if valueTemp(s) {
+			continue
+		}
 		asn, ok := s.(*ir.Assign)
 		if !ok {
 			break
@@ -1185,6 +1188,32 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 	}
 	specs[lv.Name] = sp
 	return nil
+}
+
+// valueTemp reports a statement that only computes a value into a temp: the
+// `var __ltN` and value-only `if` NoTernary hoists a prop's ternary into. In a
+// render slot the pass runs after the node's props are written, so they sit
+// between the prop assignments rather than ahead of the create.
+func valueTemp(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		return n.Init == nil && (n.Type == nil || n.Type.Kind != ir.TypeComponent)
+	case *ir.If:
+		for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+			for _, st := range b {
+				if asn, ok := st.(*ir.Assign); ok {
+					if _, plain := asn.Target.(*ir.Ident); plain {
+						continue
+					}
+				}
+				if !valueTemp(st) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // emitIRPromotedHandler emits a node-attached event handler that the
