@@ -137,8 +137,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -242,4 +249,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return (*C.GtkWidget)(unsafe.Pointer(m.__n0))
 }
 -- run/go/gtk4 --
-broken sha256:a9e763b0e82abd4da2849d81b06fb4c7
+broken sha256:c6af3bc454d8448f86f4507690c15f7b

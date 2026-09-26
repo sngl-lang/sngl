@@ -100,6 +100,13 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		want(fn.Return)
 	}
+	for _, t := range handlerPayloadTypes(pkg) {
+		// sngl:builtin's `error`, an @error handler's, is each backend's own
+		// to spell.
+		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && sd.Builtin == ir.BuiltinNone && sd.Pkg != "sngl:builtin" {
+			want(t)
+		}
+	}
 	// Promotion is keyed by declaration and every backend emits by name, so a
 	// promoted library struct whose name the program also declares would be a
 	// second `type Point struct` in one file -- Go refuses it, and JS takes
@@ -122,6 +129,42 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	pkg.Structs = append(pkg.Structs, added...)
 	pkg.Enums = append(pkg.Enums, addedEnums...)
 	return nil
+}
+
+// handlerPayloadTypes is the payload type of every event handler the program
+// writes and of every payload a test hands an event trigger. A backend that
+// keeps the handler's parameter declares it by that type, and a test's
+// `c.box.change({checked=true})` constructs one.
+func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
+	var out []*ir.Type
+	visit := func(n ir.Node) error {
+		switch v := n.(type) {
+		case *ir.NodeInst:
+			for _, h := range v.Handlers {
+				if h.Func != nil && !h.Func.Synthesized {
+					for _, p := range h.Func.Params {
+						out = append(out, p.Type)
+					}
+				}
+			}
+		case *ir.Call:
+			if v.Event != "" {
+				for _, a := range v.Args {
+					out = append(out, a.Value.ExprType())
+				}
+			}
+		}
+		return nil
+	}
+	for _, o := range ir.Owners(pkg) {
+		_ = ir.Walk(*o.Body, visit)
+	}
+	for _, fn := range pkg.Funcs {
+		if fn != nil && fn.IsTest {
+			_ = ir.Walk(fn.Block, visit)
+		}
+	}
+	return out
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries

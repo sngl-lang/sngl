@@ -811,10 +811,13 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
 		if emit, isEmit := s.(*ir.Emit); isEmit {
-			if h, ok := byName[emit.Name]; ok && h != nil && h.Func != nil {
-				if under != nil && under.ComponentEvent == "" {
-					under.ComponentEvent = emit.Name
-				}
+			h, ok := byName[emit.Name]
+			// A binding's write-back is emitted ahead of the event it rides on,
+			// and is not an event a test can name.
+			if under != nil && under.ComponentEvent == "" && !(ok && h != nil && h.Func != nil && h.Func.Synthesized) {
+				under.ComponentEvent = emit.Name
+			}
+			if ok && h != nil && h.Func != nil {
 				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args, enclosing)...)
 				continue
 			}
@@ -885,6 +888,7 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	// looped to) can only name the value. The payloads this applies to hold
 	// exactly that one field, so a read of it is the argument itself.
 	payloadValues := map[string]ir.Expr{}
+	var held []heldField
 	for i, p := range params {
 		if p == nil || p.Name == "" {
 			continue
@@ -893,6 +897,28 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 			bindings[p.Name] = args[i].Value
 			if f, ok := soleFieldGiven(p.Type, args[i].Value); ok {
 				payloadValues[p.Name+"."+f] = args[i].Value
+			}
+			// A payload the wrapper builds in place is read field by field,
+			// so no target has to declare the struct to take one apart. It is
+			// evaluated where it was emitted, before the handler runs: a field
+			// computed from state is held in a temp, or `{checked = !checked}`
+			// read after the handler wrote `checked` reads the new state
+			// negated.
+			if lit, ok := args[i].Value.(*ir.StructLit); ok {
+				for _, f := range lit.Fields {
+					if f.Spread || f.Name == "" || f.Value == nil {
+						continue
+					}
+					v := f.Value
+					if !payloadFieldStable(v) {
+						t := v.ExprType()
+						sym := &ir.Var{Name: "__" + p.Name + "_" + f.Name, Type: t, Synthesized: true}
+						held = append(held, heldField{decl: &ir.LocalVar{Name: sym.Name, Type: t, Init: v, Sym: sym}})
+						v = &ir.Ident{Name: sym.Name, Type: t, Sym: sym}
+						held[len(held)-1].ref = sym
+					}
+					payloadValues[p.Name+"."+f.Name] = v
+				}
 			}
 			continue
 		}
@@ -914,11 +940,17 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	if len(bindings) == 0 {
 		return stmts
 	}
+	read := map[*ir.Var]bool{}
 	walker := newExprWalker(func(e ir.Expr) ir.Expr {
 		if sel, ok := e.(*ir.Select); ok && len(payloadValues) > 0 {
 			if id, ok := sel.Operand.(*ir.Ident); ok {
 				if _, isParam := id.Sym.(*ir.Param); isParam {
 					if v, ok := payloadValues[id.Name+"."+sel.Field]; ok {
+						if ref, ok := v.(*ir.Ident); ok {
+							if sym, ok := ref.Sym.(*ir.Var); ok {
+								read[sym] = true
+							}
+						}
 						return deepCloneExpr(v)
 					}
 				}
@@ -936,7 +968,37 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		}
 		return e
 	})
-	return walker.stmts(stmts)
+	out := walker.stmts(stmts)
+	var pre []ir.Stmt
+	for _, h := range held {
+		if read[h.ref] {
+			pre = append(pre, h.decl)
+		}
+	}
+	return append(pre, out...)
+}
+
+// heldField is a payload field evaluated once into a temp, declared only if
+// the handler reads it.
+type heldField struct {
+	decl *ir.LocalVar
+	ref  *ir.Var
+}
+
+// payloadFieldStable reports whether a payload field reads the same wherever
+// the handler reads it: a literal, a const, or a name no statement assigns --
+// a parameter, a loop variable, or the temp injectBind already held it in. A
+// source payload cannot name a synthesized var, so the only one to reach here
+// is that temp.
+func payloadFieldStable(e ir.Expr) bool {
+	switch v := e.(type) {
+	case *ir.Literal:
+		return true
+	case *ir.Ident:
+		sym, ok := v.Sym.(*ir.Var)
+		return !ok || sym.IsConst || sym.Synthesized
+	}
+	return false
 }
 
 // soleFieldGiven reports the one field of the event payload p declares, when

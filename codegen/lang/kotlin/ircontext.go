@@ -349,11 +349,20 @@ func (kc *KtIRContext) ElseHead() string                    { return "} else {" 
 func (kc *KtIRContext) BlockEnd() string                    { return "}" }
 func (kc *KtIRContext) Indent() string                      { return "\t" }
 
+// isParamRef reports whether n reads a parameter. IdentRewrites maps a state
+// var's name to its hoisted cell, and a parameter spelled the same is not
+// that var: android's checkbox override hands `onCheckedChange` a lambda
+// taking `on`, and a program's `var on` made it `state.on = state.on`.
+func isParamRef(n *ir.Ident) bool {
+	_, ok := n.Sym.(*ir.Param)
+	return ok
+}
+
 func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
+	if kc.IdentRewrites != nil && !isParamRef(n) {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
 		}
@@ -424,7 +433,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
+	if kc.IdentRewrites != nil && !isParamRef(n) {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
 			return rewritten
 		}

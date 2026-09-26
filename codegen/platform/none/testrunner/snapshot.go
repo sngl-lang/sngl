@@ -144,7 +144,7 @@ func formatSNGLValue(v any) string {
 	case map[string]any:
 		keys := make([]string, 0, len(val))
 		for k := range val {
-			if k == "_type" || k == "__ownerEnv" || k == "__ownerComponent" {
+			if k == "_type" || k == "__ownerEnv" || k == "__ownerComponent" || k == "__inst" {
 				continue
 			}
 			keys = append(keys, k)

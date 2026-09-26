@@ -1262,6 +1262,33 @@ declaration itself. Two things about the name that are easy to get wrong:
   callback carries an `int` user_data and cannot hold a Go pointer at all,
   which is what `pkg/go/cbind` is. The test is whether the host asked for it.
 
+**An event's payload is its declaration's, and each target hands it over in
+its own terms.** `sngl:ui` declares one struct per kind of event
+(`lib/ui/events.sngl`): `ChangeEvent{value string}` for a committed text or
+choice, `ToggleEvent{checked bool}` for a checkbox's and a toggle's flip,
+`ClickEvent{}` carrying nothing. A handler's parameter is typed by the
+component's `@event`, and a platform override forwards the host's value one of
+two ways: `change()` with no argument binds the handler's parameter to the
+override's own host event, which the emitter reads fields off
+(`e.target.checked`, fyne's `OnChanged(b bool)`, gtk4's
+`gtk_check_button_get_active`); `change({checked = on})` builds the payload in
+place, and `bindEventParams` reads each field where it was built, holding one
+computed from state in a temp so a handler that writes that state reads the
+value the event carried (bubbletea's `{checked = !checked}`). A `:prop` binding
+writes back from the payload's field of the prop's type (`injectBind`) rather
+than toggling, since a host that reports its state also reports it when the
+program set it; `sngl test`'s interpreter, which runs the checked IR, does the
+same in `writeBindings`. A test's `c.box.change({checked=true})` reaches the
+platform's input path -- the element's state and a dispatched event on html,
+the widget's state on gtk4, the callback on fyne -- except on bubbletea and
+android, where a key press and a click flip the control whatever the payload
+says. The shake declares a library payload a handler or a test names, and each
+Go and Kotlin emitter prunes the ones nothing it wrote reads
+(`golang.PruneStructDecls`, `kotlin.PruneLibraryDataClasses`), html's
+`pruneDecls` doing the same for a constructor.
+`testdata/toggle_change_payload.txtar` and `canvas_click.txtar` are the code,
+`cmd/sngl/testdata/toggle_change_payload_runs.txt` the answer.
+
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be

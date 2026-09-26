@@ -340,9 +340,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
-  function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
-    return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -411,4 +408,4 @@ pass sha256:ab9692a43108aff12e7be892e197c0b6
 -- run/kotlin/android --
 pass sha256:90585bbe508a2c85507cfa93c7e6e73e
 -- run/none/html --
-pass sha256:e8cc66bafe7e918e6c38e490b2df2783
+pass sha256:7b2068c12c555c65a4834e8532298193

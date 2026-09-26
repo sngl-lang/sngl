@@ -147,13 +147,10 @@ component ui.link[platform] {
     gtk4.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), style={...style}, @clicked { click() }) {}
 }
 
-// GtkSwitch reports its own changes through `state-set`, which returns a
-// gboolean, and through GObject's notify — neither of which the fixed
-// (instance, user_data) → void trampoline can carry. So `active` is bound
-// one way and `@change` is not connected; a toggle renders and follows the
-// model, and a user flip does not reach it.
+// A flip reaches the program through `notify::active`: GtkSwitch's own
+// `state-set` returns a gboolean, which the connect trampoline cannot carry.
 component ui.toggle[platform] {
-    gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}) {}
+    gtk4.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive { change() }) {}
 }
 
 // GtkCalendar takes the day, month and year as three separate ints -- its own

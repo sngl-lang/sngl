@@ -170,6 +170,14 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	}
 	event := c.Event
 	id := innerSel.Field
+	if carriesState(c.Args) {
+		// The tag sits on the override's root, the Row around the control and
+		// its label, so the click targets the toggleable inside it. It flips
+		// the control whatever the payload says: this is the input path, as
+		// bubbletea's key press is.
+		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
+		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
+	}
 	finder := fmt.Sprintf("composeTestRule.onNodeWithTag(%q)", id)
 	action := composeAction(event, c.Args)
 	if action == "" {
@@ -193,6 +201,27 @@ func composeAction(event string, args []ir.CallArg) string {
 		return fmt.Sprintf("performTextReplacement(%s)", text)
 	}
 	return ""
+}
+
+// carriesState reports whether a trigger's payload is a control's on/off
+// state -- a struct literal holding a bool, ToggleEvent's `checked`.
+func carriesState(args []ir.CallArg) bool {
+	if len(args) != 1 {
+		return false
+	}
+	sl, ok := args[0].Value.(*ir.StructLit)
+	if !ok {
+		return false
+	}
+	for _, f := range sl.Fields {
+		if f.Value == nil {
+			continue
+		}
+		if t := f.Value.ExprType(); t != nil && t.Kind == ir.TypeBool {
+			return true
+		}
+	}
+	return false
 }
 
 // extractEventValue pulls the `value` field expression out of a

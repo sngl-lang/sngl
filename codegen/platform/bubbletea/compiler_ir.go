@@ -113,6 +113,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerPayloads(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -658,7 +659,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			KeyExpr:   keyExpr,
 		})
 	})
-	emitBtEventInvokers(&b, eventInvokers)
+	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
 	emitLoopTimerSyncs(&b, info.loopTimers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
@@ -1145,7 +1146,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			bp := extractBlueprint(n)
 			for _, ev := range bp.Events {
 				h := codegen.NodeHandler(n, ev.On)
-				if h == nil || h.Func == nil {
+				if h == nil || h.Func == nil || len(h.Func.Block) == 0 {
 					continue
 				}
 				guard := teaKeyGuard(ev.Key)
@@ -1259,7 +1260,11 @@ func teaKeyMsg(key string) string {
 // Update takes and returns a Model by value, so the result is assigned back
 // through the pointer receiver; a test holds an addressable local, which is
 // what makes `c.incClick()` legal.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
+//
+// A payload a test passes is taken and not read: the key is the input, and
+// what it produces is what the override builds from the widget's state -- a
+// checkbox's press is its `checked` flipped, whatever the test asked for.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads map[string]*ir.Type) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1268,7 +1273,11 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
 		}
 		seen[name] = true
 		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		if t := payloads[inv.IDLabel+"."+inv.SnglEvent]; t != nil {
+			fmt.Fprintf(b, "func (m *Model) %s(_ %s) {\n", name, golang.IRTypeToGo(t))
+		} else {
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		}
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
 		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)

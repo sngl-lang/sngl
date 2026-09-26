@@ -248,8 +248,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -419,7 +426,7 @@ pass sha256:7d2fcd67e5325f59fb47e1ea26776e47
 -- run/go/fyne --
 pass sha256:b7caa1d8280dde23404b84e197c93a62
 -- run/go/gtk4 --
-pass sha256:7ae6b681ab23fde76215e97aae9dac49
+pass sha256:d176102d5852b006cc2b6809984439d6
 -- run/kotlin/android --
 pass sha256:301d9b0d12d36d91b0275d67b66f9ff1
 -- run/none/html --

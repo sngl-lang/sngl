@@ -67,6 +67,10 @@ import (
 	"os"
 )
 
+type ChangeEvent struct {
+	Value string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	last         string
@@ -150,9 +154,9 @@ func (m *Model) boxInput(s string) {
 }
 
 // boxChange invokes the OnSubmitted callback on the #box widget; for tests.
-func (m *Model) boxChange(s string) {
+func (m *Model) boxChange(e ChangeEvent) {
 	if m.box.OnSubmitted != nil {
-		m.box.OnSubmitted(s)
+		m.box.OnSubmitted(e.Value)
 	}
 }
 
@@ -373,8 +377,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -521,6 +532,9 @@ func (m *Model) box_activate_handler() {
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
 }
 
+func (m *Model) __n2_notifyActive_handler() {
+}
+
 // RowInstance is one live instance of the row component.
 type RowInstance struct {
 	Root         *C.GtkWidget
@@ -559,6 +573,9 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.got != ""))))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, func() {
+	})
+	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
 	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(c.got))
@@ -624,6 +641,8 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(m.on)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, m.__n2_notifyActive_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
@@ -641,8 +660,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 
-// boxChanged fires the "changed" signal on the #box widget; for tests.
-func (m *Model) boxChanged() {
+// boxInput fires the "changed" signal on the #box widget; for tests.
+func (m *Model) boxInput() {
 	sig := C.CString("changed")
 	defer C.free(unsafe.Pointer(sig))
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
@@ -655,6 +674,6 @@ func (m *Model) boxChange() {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:33ddaff7efbec1a95a40c816473e512d
+pass sha256:eae6686887964edab0ef4b1d4dc168e6
 -- run/go/gtk4 --
-pass sha256:3a2c82acb7ff62620e1356602a3a3c55
+pass sha256:ccd12776d4cd20ccd26527299fe32afb

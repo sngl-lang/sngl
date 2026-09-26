@@ -250,6 +250,7 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 		m["@"+h.Name] = h.Func
 	}
 	m["__ownerEnv"] = env
+	m["__inst"] = node
 	return m
 }
 

@@ -219,6 +219,9 @@ func (n *Node) Map() map[string]any {
 		m["@"+h.Name] = h.Body
 	}
 	m["__ownerEnv"] = n.Env
+	if n.Inst != nil {
+		m["__inst"] = n.Inst
+	}
 	return m
 }
 

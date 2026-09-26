@@ -144,6 +144,16 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	if !ok {
 		return nil, fmt.Errorf("no node at %s", key)
 	}
+	env := n.Env
+	if env == nil {
+		env = s.Env
+	}
+	bound := boundByEvent(n.Inst, event)
+	if bound && len(args) > 0 {
+		if err := env.writeBindings(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])}); err != nil {
+			return nil, err
+		}
+	}
 	for _, h := range n.Handlers {
 		if h.Name != event {
 			continue
@@ -152,13 +162,13 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s has no runnable body for @%s", key, event)
 		}
-		env := n.Env
-		if env == nil {
-			env = s.Env
-		}
 		if _, err := env.runEventHandlerValues(fn, args); err != nil {
 			return nil, err
 		}
+		s.Env.RebindFrom(env)
+		return s.Sync()
+	}
+	if bound {
 		s.Env.RebindFrom(env)
 		return s.Sync()
 	}

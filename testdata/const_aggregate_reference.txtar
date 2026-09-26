@@ -498,9 +498,6 @@ body { font-family: system-ui, sans-serif; }
   var entries = [{ title: "Home", href: "/" }, { title: "About", href: "/about.html" }];
   var labels = /* @__PURE__ */ new Map([["home", "Start"], ["about", "Us"]]);
   var state = { pick: 0, key: "home" };
-  function Entry(title, href) {
-    return { title, href };
-  }
   var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -525,4 +522,4 @@ pass sha256:ca7b8ea766b1bde39b0a9a5aa3814b4c
 -- run/go/gtk4 --
 pass sha256:21d217f342b568e0e3873faa7ba311d8
 -- run/none/html --
-pass sha256:51ca0061fb7200fefa914ec58c8b3fa9
+pass sha256:188880d499ef6f63518e4bf72dd2341a

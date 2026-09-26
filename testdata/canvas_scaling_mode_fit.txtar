@@ -249,8 +249,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -304,6 +311,22 @@ static void sngl_draw_tramp(GtkDrawingArea* area, cairo_t* cr, int width, int he
 }
 static void sngl_drawing_area_set_draw(void* area, int idx) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), sngl_draw_tramp, GINT_TO_POINTER(idx), NULL);
+}
+
+// A drawing area has no click signal of its own; a GtkGestureClick does, and
+// its `pressed` passes (n_press, x, y) before user_data.
+static void sngl_pressed_cb(GtkGestureClick *g, gint n, gdouble x, gdouble y, gpointer data) {
+    (void)g; (void)n; (void)x; (void)y;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+static GtkGesture* sngl_connect_click(void* widget, int idx) {
+    GtkGesture *g = gtk_gesture_click_new();
+    gtk_widget_add_controller(GTK_WIDGET(widget), GTK_EVENT_CONTROLLER(g));
+    g_signal_connect(g, "pressed", G_CALLBACK(sngl_pressed_cb), GINT_TO_POINTER(idx));
+    return g;
+}
+static void sngl_emit_pressed(void* gesture) {
+    g_signal_emit_by_name(gesture, "pressed", 1, 0.0, 0.0);
 }
 */
 import "C"
@@ -650,7 +673,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:f9084a66c0d08b8ab45186149d9ab9cc
 -- run/go/gtk4 --
-pass sha256:b7eade7df8acccc638b98539e03b7f6c
+pass sha256:25ae711d3628db41c94abca68e2130d2
 -- run/kotlin/android --
 pass sha256:48baa0335241791a90b4ef0d0acb365b
 -- run/none/html --

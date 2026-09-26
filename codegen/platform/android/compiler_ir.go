@@ -883,7 +883,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		fmt.Fprintf(&out, "import %s\n", imp)
 	}
 	out.WriteString("\n")
-	out.WriteString(body.String())
+	out.WriteString(kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg))
 	return []byte(out.String())
 }
 

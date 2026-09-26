@@ -1607,7 +1607,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				if name == "" {
 					return nil
 				}
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1631,7 +1631,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			}
 		case *ast.CallStmt:
 			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1689,7 +1689,7 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 		if name == "" {
 			return
 		}
-		if sym, ok := c.scope.Lookup(name); ok {
+		if sym, ok := c.resolveComponentSymbol(name); ok {
 			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
 				out = append(out, comp)
 			}
