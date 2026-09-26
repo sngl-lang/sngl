@@ -422,7 +422,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	childSpec := t.specs[codegen.IdentBareName(child)]
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil {
 		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
-			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec)}, ir.TypVoid)}}
+			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))}, ir.TypVoid)}}
 	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))

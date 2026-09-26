@@ -19,7 +19,7 @@ window {
     button(text="flip", @click { active = 1 })
     text(value="styled", style={
         color = active == 0 ? #ffffff : #333333,
-        fontSize = active * 10 + 12,
+        fontSize = 1px * (active * 10 + 12),
         fontStyle = italic,
     })
     vbox {
