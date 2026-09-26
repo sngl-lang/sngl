@@ -34,7 +34,7 @@ func lowerWindowNesting(pkg *ir.Package, _ Features, _ Options) error {
 	// body but does not visit the window itself -- only one reached as a
 	// statement is stepped -- so the outer window of a program whose windows
 	// are at the root was in nobody's list and the nesting under it went
-	// unreported. It was a statement in `component main`'s body before.
+	// unreported.
 	outer := append([]*ir.Window{}, pkg.Windows...)
 	seen := make(map[*ir.Window]bool, len(outer))
 	for _, w := range outer {

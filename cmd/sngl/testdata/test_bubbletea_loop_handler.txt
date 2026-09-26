@@ -14,7 +14,6 @@
 # This has to be a compiled run: the interpreter never emits either loop, so
 # `--platform none` passes under the bug.
 
-[!exec:go] skip 'go toolchain required'
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'
@@ -54,4 +53,14 @@ func testStartsEmpty(t Test, c main) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:df8234585e654ecd06f31cdeb6a49b61
+{
+  "results": [
+    {
+      "Desc": "StartsEmpty",
+      "Passed": true
+    }
+  ]
 }

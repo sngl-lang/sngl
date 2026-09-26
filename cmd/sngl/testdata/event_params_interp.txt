@@ -1,0 +1,47 @@
+# The interpreter binds an event's parameters by position.
+#
+# `sngl test` on the none platform runs the checked IR without lowering, so a
+# two-parameter emit reaches the handler through interp's own runHandler
+# rather than through passInlinePure's substitution. A handler that stops
+# short binds only what it names.
+
+sngl test --platform none events.sngl
+stdout '2 tests, 0 failures'
+
+-- events.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component picker(@pick(index int, label string)) node {
+    button #b(text="b", @click { pick(7, "seven") })
+}
+
+component both node {
+    var at = 0
+    var picked = ""
+
+    picker #p(@pick(i, l) {
+        at = i
+        picked = l
+    })
+}
+
+component firstOnly node {
+    var at = 0
+
+    picker #p(@pick(i) { at = i })
+}
+
+func testBindsBoth(t Test, c both) {
+    c.p.b.click()
+    t.assert(c.at == 7)
+    t.assert(c.picked == "seven")
+}
+
+func testBindsFirst(t Test, c firstOnly) {
+    c.p.b.click()
+    t.assert(c.at == 7)
+}
+
+window {
+}

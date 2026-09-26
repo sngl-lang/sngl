@@ -54,3 +54,13 @@ func testUnitAndPrimitiveMethodsWriteTopLevelVar(t Test, c main) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:7c7ecd7da5eabb836923cce37aa3c9fd
+{
+  "results": [
+    {
+      "Desc": "UnitAndPrimitiveMethodsWriteTopLevelVar",
+      "Passed": true
+    }
+  ]
+}

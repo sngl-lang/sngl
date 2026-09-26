@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -78,6 +79,8 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 			}
 		}
 		return true
+	case *ir.Spread:
+		return isConstExpr(x.Operand, ctx)
 	case *ir.StructLit:
 		for _, f := range x.Fields {
 			if f.Value == nil || !isConstExpr(f.Value, ctx) {
@@ -187,6 +190,15 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 	case *ir.ListLit:
 		result := make([]any, 0, len(x.Elems))
 		for _, el := range x.Elems {
+			if sp, isSpread := el.(*ir.Spread); isSpread {
+				v, ok := evalExpr(sp.Operand, ctx)
+				items, isList := v.([]any)
+				if !ok || !isList {
+					return nil, false
+				}
+				result = append(result, items...)
+				continue
+			}
 			v, ok := evalExpr(el, ctx)
 			if !ok {
 				return nil, false
@@ -369,10 +381,6 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 				return v, true
 			}
 		}
-		// Try builtin function.
-		if v, ok := evalCallFunc(call.Func.Name, args); ok {
-			return v, true
-		}
 	}
 
 	// An intrinsic the folder does not implement. A body it still has is one
@@ -454,7 +462,7 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 // `drawRect(color = null, ...)`, `null` being no `Color` at all and no Kotlin
 // that compiles.
 //
-// A `#[foreign(..., pure)]` declaration is the deliberate opposite and keeps
+// A `#[foreign]` `const func` is the deliberate opposite and keeps
 // folding: it is marked rather than native, and its body is what runs.
 func isUnfoldableNative(f *ir.Func) bool {
 	return f.Foreign.Name != "" && !f.Foreign.Marked && len(f.Block) == 0
@@ -462,7 +470,21 @@ func isUnfoldableNative(f *ir.Func) bool {
 
 // canFoldBody reports whether f has a SNGL body the folder may run.
 func canFoldBody(f *ir.Func) bool {
-	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure
+	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure && hasWrittenBody(f)
+}
+
+// hasWrittenBody reports whether f's Block is a body someone wrote rather than
+// the `return <zero>` ir.Normalize gives a signature. A bodyless declaration is
+// a host function, an intrinsic or an import, and a `const func` one is pure
+// by the declaration's word -- so without this the folder ran the placeholder
+// and answered zero for a call it had no way to make. A func with no AST was
+// built by a pass, and an override's body is swapped in over its base's
+// signature; both are real.
+func hasWrittenBody(f *ir.Func) bool {
+	if f == nil || f.AST == nil || f.SpecializedFor != "" {
+		return true
+	}
+	return f.AST.Body != nil || f.AST.Block.IsDefined()
 }
 
 func evalNativeCall(call *ir.Call, args []any, ctx *evalCtx) (any, bool) {
@@ -865,62 +887,6 @@ func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 	return nil, false
 }
 
-func evalCallFunc(name string, args []any) (any, bool) {
-	if len(args) != 1 {
-		return nil, false
-	}
-	arg := args[0]
-	switch name {
-	case "string":
-		return fmt.Sprintf("%v", arg), true
-	case "int":
-		switch v := arg.(type) {
-		case int:
-			return v, true
-		case float64:
-			return int(v), true
-		case string:
-			i, err := strconv.Atoi(v)
-			if err != nil {
-				return nil, false
-			}
-			return i, true
-		}
-	case "float":
-		switch v := arg.(type) {
-		case float64:
-			return v, true
-		case int:
-			return float64(v), true
-		case string:
-			f, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return nil, false
-			}
-			return f, true
-		}
-	}
-	return nil, false
-}
-
-func evalMethod(method string, recv any, args []any) (any, bool) {
-	typeName := "dyn"
-	switch recv.(type) {
-	case int:
-		typeName = "int"
-	case float64:
-		typeName = "float"
-	case string:
-		typeName = "string"
-	case bool:
-		typeName = "bool"
-	case []any:
-		typeName = "list"
-	}
-	allArgs := append([]any{recv}, args...)
-	return evalQualifiedMethod(typeName+"."+method, allArgs)
-}
-
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	switch qualName {
 	case "int.min":
@@ -1095,8 +1061,11 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	return nil, false
 }
 
-// evalFileFunc evaluates file: scheme functions (path, contents).
+// evalFileFunc evaluates file: scheme functions (path, contents, names).
 func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) {
+	if funcName == "names" {
+		return fileNames(dirPath, filename)
+	}
 	f := ctx.evalCache().file(dirPath, filename)
 	if f.err != nil {
 		return nil, false
@@ -1122,6 +1091,27 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 		return string(f.data), true
 	}
 	return nil, false
+}
+
+// fileNames is file:'s names(pattern): the names in dirPath that pattern
+// matches, sorted, as the list<string> the declaration returns. A pattern
+// reaching outside the directory matches nothing rather than listing a
+// directory the import was not allowed to name.
+func fileNames(dirPath, pattern string) (any, bool) {
+	if _, err := filepath.Match(pattern, ""); err != nil || strings.ContainsAny(pattern, `/\\`) {
+		return nil, false
+	}
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, false
+	}
+	out := []any{}
+	for _, e := range entries {
+		if ok, _ := filepath.Match(pattern, e.Name()); ok {
+			out = append(out, e.Name())
+		}
+	}
+	return out, true
 }
 
 // --- Helper functions ---

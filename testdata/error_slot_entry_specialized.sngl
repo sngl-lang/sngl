@@ -36,7 +36,7 @@ window {
     each(v=1) {
         component item(content) {
             content(n)
-            content("one") // ERROR(check) "cannot use string as int for argument 1 of slot \"content\""
+            content("one") // ERROR(check) "cannot pass string as int"
         }
     }
     shapes {

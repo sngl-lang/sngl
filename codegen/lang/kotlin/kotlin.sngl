@@ -1,13 +1,3 @@
-// Kotlin language package. Declarations here are visible at every output target
-// that selects --lang kotlin.
-//
-// The build node carries no props; see the note in
-// codegen/lang/javascript/javascript.sngl. The Android build knobs — the
-// application id, the launcher icon, whether to emit a Gradle project — belong
-// to the platform rather than to the language, and are declared in
-// codegen/platform/android/android.sngl. What would belong here is something
-// true of Kotlin at every platform, which so far is nothing.
-
 import . "sngl:macro"
 import ir "sngl:internal/ir"
 import build "sngl:build"
@@ -32,7 +22,7 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
 )]
-component kotlin(platforms ...component build.platform) build.language {}
+component kotlin(const platforms ...component build.platform) build.language {}
 
 // Names the Kotlin identifier a declaration *is*. The counterpart of
 // `go.native` and `js.native`, and the same thin spelling: a call becomes a

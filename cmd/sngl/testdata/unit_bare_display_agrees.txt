@@ -91,3 +91,29 @@ func testADurationDisplaysInMilliseconds(t Test, c main) {
 ui.window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:5aaa83420f5c8f5debf49a7f69f78048
+{
+  "results": [
+    {
+      "Desc": "ADurationDisplaysInMilliseconds",
+      "Passed": true
+    },
+    {
+      "Desc": "AMultiBaseValueSumsItsBases",
+      "Passed": true
+    },
+    {
+      "Desc": "AReducedSuffixDisplaysInItsBase",
+      "Passed": true
+    },
+    {
+      "Desc": "ASingleBaseValueCarriesItsSuffix",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEmptyValueTakesTheFirstBase",
+      "Passed": true
+    }
+  ]
+}

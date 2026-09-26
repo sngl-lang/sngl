@@ -232,6 +232,24 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	return len(viewReadVars(c)) == 0
 }
 
+// constSubstitutable reports whether c says it is const and nothing about the
+// position keeps a substitution from being sound. A const component's render
+// reads only its props -- the checker holds it to that -- so it inlines the
+// way a stateless one does, and isPure stays the opportunistic path for a
+// component that says nothing.
+//
+// Two things a substitution still cannot supply. A func is a method on the
+// instance, and nothing hoists one. And a var only handlers touch is hoisted
+// onto the caller once per call site, which under a `for` is one cell for
+// every copy -- so there the component stays a runtime instance, which gives
+// each copy its own.
+func (st *inlinePureState) constSubstitutable(c *ir.Component) bool {
+	if c == nil || !c.Const || len(c.Funcs) > 0 {
+		return false
+	}
+	return len(c.Vars) == 0 || st.loopDepth == 0
+}
+
 // overriddenHere reports whether c carries a platform extension body for the
 // platform being lowered for. The same question inline_components.go asks as
 // specializedHere; with no platform nothing is specialized.
@@ -384,7 +402,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 
-	pure := st.isPure(comp)
+	pure := st.isPure(comp) || st.constSubstitutable(comp)
 	strictApplies := isPlatformStdlibComponent(st.pkg, comp)
 	if strictApplies && !pure {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
@@ -642,8 +660,8 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Apply event-invocation substitution: replace any *ir.Emit whose
 	// Name matches a user-provided event handler with the handler body.
-	// Before the slots are spliced: an emit in slot content names the
-	// caller's event, and an unmatched emit is dropped.
+	// Before the slots are spliced, since an emit in the content the call
+	// site supplied is the caller's own and names none of these events.
 	body = substituteEvents(body, callsite.Handlers)
 
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
@@ -763,8 +781,12 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 // The inliner binds a scoped slot's arguments by parameter name, since the body
 // it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
+	return substituteSlotsCloning(stmts, callsite, deepCloneStmts)
+}
+
+func substituteSlotsCloning(stmts []ir.Stmt, callsite *ir.NodeInst, clone func([]ir.Stmt) []ir.Stmt) []ir.Stmt {
 	sp := ir.SlotSplicer{
-		Clone: deepCloneStmts,
+		Clone: clone,
 		Bind: func(body []ir.Stmt, sc *ir.SlotContent, si *ir.SlotInst) []ir.Stmt {
 			bindings := make(map[string]ir.Expr, len(sc.Params))
 			for i, p := range sc.Params {
@@ -807,10 +829,13 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
 		if emit, isEmit := s.(*ir.Emit); isEmit {
-			if h, ok := byName[emit.Name]; ok && h != nil && h.Func != nil {
-				if under != nil && under.ComponentEvent == "" {
-					under.ComponentEvent = emit.Name
-				}
+			h, ok := byName[emit.Name]
+			// A binding's write-back is emitted ahead of the event it rides on,
+			// and is not an event a test can name.
+			if under != nil && under.ComponentEvent == "" && !(ok && h != nil && h.Func != nil && h.Func.Synthesized) {
+				under.ComponentEvent = emit.Name
+			}
+			if ok && h != nil && h.Func != nil {
 				out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, emit.Args, enclosing)...)
 				continue
 			}
@@ -881,6 +906,7 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	// looped to) can only name the value. The payloads this applies to hold
 	// exactly that one field, so a read of it is the argument itself.
 	payloadValues := map[string]ir.Expr{}
+	var held []heldField
 	for i, p := range params {
 		if p == nil || p.Name == "" {
 			continue
@@ -890,6 +916,28 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 			if f, ok := soleFieldGiven(p.Type, args[i].Value); ok {
 				payloadValues[p.Name+"."+f] = args[i].Value
 			}
+			// A payload the wrapper builds in place is read field by field,
+			// so no target has to declare the struct to take one apart. It is
+			// evaluated where it was emitted, before the handler runs: a field
+			// computed from state is held in a temp, or `{checked = !checked}`
+			// read after the handler wrote `checked` reads the new state
+			// negated.
+			if lit, ok := args[i].Value.(*ir.StructLit); ok {
+				for _, f := range lit.Fields {
+					if f.Spread || f.Name == "" || f.Value == nil {
+						continue
+					}
+					v := f.Value
+					if !payloadFieldStable(v) {
+						t := v.ExprType()
+						sym := &ir.Var{Name: "__" + p.Name + "_" + f.Name, Type: t, Synthesized: true}
+						held = append(held, heldField{decl: &ir.LocalVar{Name: sym.Name, Type: t, Init: v, Sym: sym}})
+						v = &ir.Ident{Name: sym.Name, Type: t, Sym: sym}
+						held[len(held)-1].ref = sym
+					}
+					payloadValues[p.Name+"."+f.Name] = v
+				}
+			}
 			continue
 		}
 		// No matching arg — the wrapper invoked @event() with fewer args
@@ -897,12 +945,15 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		// enclosing handler receives, so it becomes that handler's parameter:
 		// the wrapper is the one the platform installs, and a reference has
 		// to name something the surviving handler declares.
+		// By position, as the handler bound it: the enclosing handler's
+		// parameter at the same index, or this one appended when it has
+		// none there yet.
 		target := p
 		if enclosing != nil {
-			if len(enclosing.Params) == 0 {
-				enclosing.Params = []*ir.Param{p}
-			} else {
-				target = enclosing.Params[0]
+			if i < len(enclosing.Params) {
+				target = enclosing.Params[i]
+			} else if i == len(enclosing.Params) {
+				enclosing.Params = append(enclosing.Params, p)
 			}
 		}
 		bindings[p.Name] = &ir.Ident{Name: target.Name, Type: target.Type, Sym: target}
@@ -910,11 +961,17 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	if len(bindings) == 0 {
 		return stmts
 	}
+	read := map[*ir.Var]bool{}
 	walker := newExprWalker(func(e ir.Expr) ir.Expr {
 		if sel, ok := e.(*ir.Select); ok && len(payloadValues) > 0 {
 			if id, ok := sel.Operand.(*ir.Ident); ok {
 				if _, isParam := id.Sym.(*ir.Param); isParam {
 					if v, ok := payloadValues[id.Name+"."+sel.Field]; ok {
+						if ref, ok := v.(*ir.Ident); ok {
+							if sym, ok := ref.Sym.(*ir.Var); ok {
+								read[sym] = true
+							}
+						}
 						return deepCloneExpr(v)
 					}
 				}
@@ -932,7 +989,37 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		}
 		return e
 	})
-	return walker.stmts(stmts)
+	out := walker.stmts(stmts)
+	var pre []ir.Stmt
+	for _, h := range held {
+		if read[h.ref] {
+			pre = append(pre, h.decl)
+		}
+	}
+	return append(pre, out...)
+}
+
+// heldField is a payload field evaluated once into a temp, declared only if
+// the handler reads it.
+type heldField struct {
+	decl *ir.LocalVar
+	ref  *ir.Var
+}
+
+// payloadFieldStable reports whether a payload field reads the same wherever
+// the handler reads it: a literal, a const, or a name no statement assigns --
+// a parameter, a loop variable, or the temp injectBind already held it in. A
+// source payload cannot name a synthesized var, so the only one to reach here
+// is that temp.
+func payloadFieldStable(e ir.Expr) bool {
+	switch v := e.(type) {
+	case *ir.Literal:
+		return true
+	case *ir.Ident:
+		sym, ok := v.Sym.(*ir.Var)
+		return !ok || sym.IsConst || sym.Synthesized
+	}
+	return false
 }
 
 // soleFieldGiven reports the one field of the event payload p declares, when
@@ -1049,6 +1136,10 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		return &clone
 	case *ir.SlotInst:
 		clone := *n
+		clone.Args = make([]ir.Expr, len(n.Args))
+		for i, a := range n.Args {
+			clone.Args[i] = deepCloneExpr(a)
+		}
 		clone.Children = deepCloneStmts(n.Children)
 		clone.Slots = deepCloneSlots(n.Slots)
 		return &clone

@@ -10,25 +10,6 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
 )
 
-// buildNode is the component a target package declares for the build-target
-// tree -- `component html(…) build.platform`. It is named for the target, which
-// is how a build directive reaches it, so the identifier the plugin registers
-// under is the name to look up.
-func buildNode(t *testing.T, pkg, name string) *ir.Component {
-	t.Helper()
-	p := checker.LibPackage(pkg)
-	if p == nil {
-		t.Fatalf("no package %q", pkg)
-	}
-	for _, c := range p.Components {
-		if c.Name == name {
-			return c
-		}
-	}
-	t.Fatalf("%s declares no component %q for the build tree", pkg, name)
-	return nil
-}
-
 // TestGenVocabularyIsMapped holds the SNGL enums and the Go tables together.
 // A member nothing maps is a word a target can write that gates no pass, which
 // is the failure the mark table exists to prevent one layer up.

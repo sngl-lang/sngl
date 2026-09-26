@@ -60,11 +60,11 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     val xs__inst0 = remember { mutableStateListOf(3, 1, 2) }
     val rev__inst0 = remember { xs__inst0.reversed().toMutableStateList() }
-    val evens__inst0 = remember { xs__inst0.filter({ n -> ((n % 2) == 0) }).toMutableStateList() }
+    val evens__inst0 = remember { xs__inst0.filter({ n: Int -> ((n % 2) == 0) }).toMutableStateList() }
     val empty__inst0 = remember { mutableStateListOf<Int>() }
     var idx__inst0 by remember { mutableStateOf(xs__inst0.indexOf(2)) }
 
     Text(text = (((rev__inst0.size.toString() + evens__inst0.size.toString()) + empty__inst0.size.toString()) + idx__inst0.toString()), modifier = Modifier.safeDrawingPadding())
 }
 -- run/kotlin/android --
-pass sha256:9fb8e4bc3a353693d5ec24db896437ca
+pass sha256:9481f6c39ea82061a73d9b625e06c0d8

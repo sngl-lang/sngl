@@ -14,7 +14,7 @@ struct Result {
 // True for a 2xx status. The other classes are failures and reach the box as
 // one, so a Result a program holds has usually already succeeded — this is for
 // the cases that ask anyway.
-func Result.ok(r Result) => r.status >= 200 && r.status < 300
+const func Result.ok(r Result) => r.status >= 200 && r.status < 300
 
 // Fetches url, answering the box every reader of that url shares.
 //

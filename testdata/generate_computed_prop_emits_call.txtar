@@ -36,7 +36,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="$0">
+<span id="__n0" data-sngl-id="__n0">
 </span>
 
 <script>
@@ -49,13 +49,13 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $0 = document.getElementById("$0");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    $0.textContent = String(doubled__inst0());
+    __n0.textContent = String(doubled__inst0());
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ae099df695d7b80760cd181ecaf34e7e
+pass sha256:2cec6548651e8f8b32c246fb7e915388

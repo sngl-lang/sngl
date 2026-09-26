@@ -151,8 +151,10 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	case *ast.LambdaExpr:
 		return c.inferLambda(x)
 	case *ast.SpreadExpr:
-		operand := c.checkExpr(x.Operand)
-		return &ir.Spread{AST: x, Type: exprType(operand), Operand: operand}
+		// A list literal and an argument list each read their own spreads, so
+		// one arriving here stands where a single value is taken.
+		c.error(x.Pos, "a spread's fields are named arguments, and this position takes one value")
+		return c.checkExpr(x.Operand)
 	case *ast.ParenExpr:
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
@@ -389,10 +391,10 @@ func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
 //
 // The parameters have to line up, and what lines up is defined by what an
 // author could write by hand: a callback taking nothing becomes `{ tick() }`,
-// an emit with no arguments, which is legal for a payloadless event and for one
-// whose payload is dyn -- a bare `@tick` gets the second. A callback taking one
-// value forwards it. Anything else is reported against the event, because by
-// then the name has resolved and "undefined" would be the wrong thing to say.
+// the forwarding emit, and one taking values passes them as the emit's
+// arguments -- so it takes exactly the event's, each assignable to the one at
+// its position. Anything else is reported against the event, because by then
+// the name has resolved and "undefined" would be the wrong thing to say.
 func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 	want := c.expected
 	if want == nil || want.Kind != ir.TypeFunc || want.Sig == nil || c.currentComponent == nil {
@@ -422,18 +424,21 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 	// the expected one exactly: a `func()` written with no return annotation
 	// carries a nil Return, and `func() void` is not assignable to it.
 	fn := &ir.Func{Return: want.Sig.Return, Purity: ir.PurityMutates}
+	if k := len(want.Sig.Params); k > 0 && k != len(evt.Params) {
+		if len(evt.Params) == 0 {
+			return fail("it carries no value to pass")
+		}
+		return fail("it passes " + countOf(len(evt.Params), "parameter"))
+	}
 	var args []ir.CallArg
-	switch {
-	case len(want.Sig.Params) == 0:
-	case len(want.Sig.Params) == 1 && evt.Type != nil && want.Sig.Params[0].Type != nil &&
-		want.Sig.Params[0].Type.IsAssignableTo(evt.Type):
-		p := &ir.Param{Name: "__e", Type: want.Sig.Params[0].Type}
-		fn.Params = []*ir.Param{p}
-		args = []ir.CallArg{{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}}
-	case evt.Type == nil:
-		return fail("it carries no value to pass")
-	default:
-		return fail("its payload is " + evt.Type.String())
+	for i, wp := range want.Sig.Params {
+		et := evt.Params[i].Type
+		if wp.Type == nil || et == nil || !wp.Type.IsAssignableTo(et) {
+			return fail(fmt.Sprintf("%s is %s", eventParamLabel(evt, i), et))
+		}
+		p := &ir.Param{Name: fmt.Sprintf("__e%d", i), Type: wp.Type}
+		fn.Params = append(fn.Params, p)
+		args = append(args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
 	}
 	fn.Block = []ir.Stmt{&ir.Emit{Name: evt.Name, Args: args}}
 	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}, Func: fn}
@@ -963,6 +968,11 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+	stmtCall := c.stmtCall
+	c.stmtCall = nil
+	if x != stmtCall {
+		c.refuseExprErrorHandler(x)
+	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -1514,15 +1524,15 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	event := ""
 	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
 		event = evt.Name
-		if evt.Type != nil {
-			// Mark the param optional via a placeholder Default so
+		if len(evt.Params) > 0 {
+			// Mark each param optional via a placeholder Default so
 			// `c.btn.click()` (zero args) and `c.entry.input({…})`
-			// (one struct arg) both pass arity, while the single
-			// positional arg still gets the payload's expected type.
-			argSig = &ir.FuncSig{Params: []*ir.Param{{
-				Type:    evt.Type,
-				Default: &ir.Literal{Type: evt.Type},
-			}}}
+			// (one struct arg) both pass arity, while each positional
+			// arg still gets its parameter's expected type.
+			argSig = &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
+			for i, p := range evt.Params {
+				argSig.Params[i] = &ir.Param{Name: p.Name, Type: p.Type, Default: &ir.Literal{Type: p.Type}}
+			}
 		}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
@@ -1607,7 +1617,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				if name == "" {
 					return nil
 				}
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1631,7 +1641,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			}
 		case *ast.CallStmt:
 			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1689,7 +1699,7 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 		if name == "" {
 			return
 		}
-		if sym, ok := c.scope.Lookup(name); ok {
+		if sym, ok := c.resolveComponentSymbol(name); ok {
 			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
 				out = append(out, comp)
 			}
@@ -2100,6 +2110,11 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	switch operand.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
+		c.error(x.Pos, "cannot index %s", operand)
+		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	}
 	return &ir.Index{
 		AST:     x,
 		Type:    dynSpread(operand, "%s is not indexable", operand),
@@ -2317,17 +2332,82 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		elemExpected = c.expected.Elems[0]
 	}
 	elems := make([]ir.Expr, len(x.Elements))
-	elems[0] = c.checkExprExpecting(x.Elements[0], elemExpected)
-	for i, e := range x.Elements[1:] {
-		elems[i+1] = c.checkExprExpecting(e, elemExpected)
+	var elemT *ir.Type
+	for i, e := range x.Elements {
+		pos := *e.ExprPos()
+		expect := elemExpected
+		if expect == nil && elemT != nil && elemT.Kind != ir.TypeNull {
+			expect = elemT
+		}
+		var got *ir.Type
+		if sp, ok := e.(*ast.SpreadExpr); ok {
+			var spread *ir.Spread
+			spread, got = c.checkListSpread(sp, expect)
+			elems[i] = spread
+		} else {
+			elems[i] = c.checkExprExpecting(e, expect)
+			got = exprType(elems[i])
+			// A void element would make the literal a `list<void>`, which
+			// only an annotated target refuses.
+			c.requireValueType(got, pos)
+		}
+		elemT = c.unifyListElem(elemT, got, elemExpected, pos)
 	}
-	// A void element makes the literal a `list<void>`, which an annotated
-	// target rejects but an inferred one accepts: `var m = [xs.push(v)]`
-	// checked clean and reached codegen.
 	for i, el := range elems {
-		c.requireValueType(exprType(el), *x.Elements[i].ExprPos())
+		if sp, ok := el.(*ir.Spread); ok {
+			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Type = exprType(sp.Operand)
+		} else {
+			elems[i] = wrapIfNeeded(el, elemT)
+		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
+	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+}
+
+// checkListSpread checks `...operand` written as a list element, returning
+// the spread and the element type it contributes. Only a list may be spread:
+// an iter<T> is a pull sequence that a literal would have to drain.
+func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
+	var want *ir.Type
+	if elemExpected != nil {
+		want = ListOf(elemExpected)
+	}
+	operand := c.checkExprExpecting(sp.Operand, want)
+	t := exprType(operand)
+	out := &ir.Spread{AST: sp, Type: t, Operand: operand}
+	switch {
+	case t.Kind == ir.TypeDyn:
+		return out, t
+	case t.Kind == ir.TypeList && len(t.Elems) == 1:
+		return out, t.Elems[0]
+	}
+	c.error(sp.Pos, "cannot spread %s into a list literal: the operand must be a list", t)
+	return out, TypDyn
+}
+
+// unifyListElem folds one element's type into the literal's element type so
+// far. The first element decides, widened when a later one is the wider
+// number, and a null beside a T makes it option<T>. Two that only agree as
+// the expected element type (`[2.0, "a"]` for a list<dyn>) make the literal a
+// list of that.
+func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
+	switch {
+	case have == nil:
+		return got
+	case got.Kind == ir.TypeDyn || have.Kind == ir.TypeDyn || got.IsAssignableTo(have):
+		return have
+	case have.IsAssignableTo(got):
+		return got
+	case have.Kind == ir.TypeNull:
+		return OptionOf(got)
+	case got.Kind == ir.TypeNull:
+		return OptionOf(have)
+	case expected != nil && got.IsAssignableTo(expected) && have.IsAssignableTo(expected):
+		return expected
+	}
+	want, gotS := ir.Contrast(have, got)
+	c.error(pos, "list element type %s does not match earlier %s", gotS, want)
+	return have
 }
 
 func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
@@ -2493,6 +2573,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		expectedSig = c.expected.Sig
 	}
 	c.refuseParamMarks(x.Params.Params)
+	c.refuseConstParams(x.Params.Params, "a lambda's")
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {
@@ -2545,19 +2626,32 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 // argument types against parameter types, then returns a substituted FuncSig.
 func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
 	bindings := make(map[string]*ir.Type)
+	bind := func(p *ir.Param, t *ir.Type) {
+		if p != nil && t != nil && t.Kind != ir.TypeDyn {
+			bindTypeParams(p.Type, t, bindings)
+		}
+	}
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name != "" {
+		if !ok || arg.Value == nil {
 			continue
 		}
-		if pos >= len(sig.Params) {
-			break
+		// Arguments bind by the parameter they fill, which is what bindArgs
+		// will match them to: a named argument or a spread field by name.
+		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			fields, _ := spreadFieldsOf(c.checkExpr(sp.Operand))
+			for _, f := range fields {
+				bind(paramNamed(sig, f.name), f.typ)
+			}
+			continue
 		}
-		argExpr := c.checkExpr(arg.Value)
-		argType := exprType(argExpr)
-		if argType.Kind != ir.TypeDyn {
-			bindTypeParams(sig.Params[pos].Type, argType, bindings)
+		if arg.Name != "" {
+			bind(paramNamed(sig, arg.Name), exprType(c.checkExpr(arg.Value)))
+			continue
+		}
+		if pos < len(sig.Params) {
+			bind(sig.Params[pos], exprType(c.checkExpr(arg.Value)))
 		}
 		pos++
 	}
@@ -2620,6 +2714,16 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 	}
 }
 
+// paramNamed is the parameter of sig a call site can target by name, or nil.
+func paramNamed(sig *ir.FuncSig, name string) *ir.Param {
+	for _, p := range sig.Params {
+		if paramNameOK(p) && p.Name == name {
+			return p
+		}
+	}
+	return nil
+}
+
 // paramNameOK reports whether a param can be targeted by name at a call site.
 func paramNameOK(p *ir.Param) bool {
 	return p.Name != "" && !strings.HasPrefix(p.Name, "_")
@@ -2643,50 +2747,43 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			continue
 		}
 
-		// Struct spread: ...expr expands struct fields as named args.
-		if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-			operandIR := c.checkExpr(spread.Operand)
-			operandType := exprType(operandIR)
-			if operandType == nil || operandType.Kind != ir.TypeStruct {
-				typStr := "(nil)"
-				if operandType != nil {
-					typStr = operandType.String()
-				}
-				c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
+		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			seenNamed = true
+			spread, expanded := c.expandSpread(sp)
+			if !expanded {
 				ok = false
 				continue
 			}
-			sd := operandType.Decl.(*ir.StructDef)
-			seenNamed = true
-			for _, f := range sd.Fields {
+			for _, f := range spread.fields {
 				idx := -1
 				for i, p := range sig.Params {
-					if paramNameOK(p) && p.Name == f.Name {
+					if paramNameOK(p) && p.Name == f.name {
 						idx = i
 						break
 					}
 				}
 				if idx == -1 {
-					continue // no matching param; ignore silently
+					continue
 				}
+				spread.bound++
 				if bound[idx] != nil {
-					c.error(spread.Pos, "parameter %q already provided", f.Name)
+					c.error(sp.Pos, "parameter %q already provided", f.name)
 					ok = false
 					continue
 				}
-				var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
 				p := sig.Params[idx]
-				if p.Type != nil && f.Type.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn &&
-					!f.Type.IsAssignableTo(p.Type) {
-					c.error(spread.Pos, "cannot use field %q (%s) as parameter %q (%s)",
-						f.Name, f.Type, p.Name, p.Type)
+				val, fits := c.bindSpreadField(spread, f, p.Type, "parameter "+strconv.Quote(p.Name))
+				if !fits {
 					ok = false
 					continue
 				}
-				if p.Type != nil {
-					selExpr = wrapIfNeeded(selExpr, p.Type)
+				bound[idx] = &val
+				if p.Const {
+					c.deferConstArg(sp.Pos, val, constParamLabel(p.Name))
 				}
-				bound[idx] = &selExpr
+			}
+			if !c.finishSpread(spread) {
+				ok = false
 			}
 			continue
 		}
@@ -2707,6 +2804,9 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			}
 			expr := c.checkArgExpr(arg.Value, sig.Params[positional])
 			bound[positional] = &expr
+			if p := sig.Params[positional]; p.Const {
+				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
+			}
 			positional++
 		} else {
 			seenNamed = true
@@ -2726,7 +2826,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 					}
 				}
 				if hasUnnamed {
-					c.error(arg.NamePos, "no parameter name: function type has unnamed parameters")
+					c.error(arg.NamePos, "no parameter name: the parameters here are unnamed, so pass them positionally")
 				} else {
 					c.error(arg.NamePos, "unknown parameter %q", arg.Name)
 				}
@@ -2746,6 +2846,9 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			}
 			expr := c.checkArgExpr(arg.Value, p)
 			bound[idx] = &expr
+			if p.Const {
+				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
+			}
 		}
 	}
 
@@ -2795,16 +2898,16 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 // an event declared to carry another, and the mismatch surfaced as a type error
 // in the generated program rather than against the declaration that was wrong.
 //
-// The argument is the payload, or there is none. A shorthand accepting the
-// payload's single field instead would tie the rule to the payload's shape:
-// adding a second field to a one-field event would stop every such call site
-// checking, so a change that is backward compatible in the declaration would
-// not be in the checker. Writing the payload out costs a call site nothing and
-// keeps the two independent.
+// An emit is a call of the event's signature: one argument per declared
+// parameter, by position, each checked against its parameter's type -- so a
+// struct literal here is typed by the declaration, and `change({value = opt})`
+// names no type and needs none. A handler may stop short; an emit may not,
+// because a handler that binds the parameter would read a value nobody sent.
 //
-// The argument is checked against the payload rather than on its own, so a
-// struct literal here is typed by the declaration -- `change({value = opt})`
-// names no type and needs none.
+// The exception is an emit with no arguments at all, which *forwards*: written
+// in a handler, it hands on what that handler received, position for position
+// (bindEventParams). It is how every platform override re-fires its host
+// widget's event -- `@clicked { click() }` -- so it is legal for any event.
 func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList) []ir.CallArg {
 	var vals []ast.Expr
 	for _, a := range args.Args {
@@ -2814,23 +2917,52 @@ func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList
 		}
 		vals = append(vals, arg.Value)
 	}
-	switch {
-	case len(vals) == 0:
-		return nil
-	case len(vals) > 1:
-		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(vals))
-		return nil
-	case evt.Type == nil:
-		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
+	if len(vals) != len(evt.Params) && len(vals) > 0 {
+		passes := "no parameters"
+		if len(evt.Params) > 0 {
+			passes = countOf(len(evt.Params), "parameter")
+		}
+		c.error(pos, "event %q passes %s, got %s", evt.Name, passes, countOf(len(vals), "argument"))
 		return nil
 	}
-	val := c.checkExprExpecting(vals[0], evt.Type)
-	if got := exprType(val); got != nil && got.Kind != ir.TypeDyn &&
-		evt.Type.Kind != ir.TypeDyn && !got.IsAssignableTo(evt.Type) {
-		c.error(*vals[0].ExprPos(), "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
+	if len(vals) == 0 {
 		return nil
 	}
-	return []ir.CallArg{{Value: val}}
+	// An event's parameter names are documentation, so the arguments bind
+	// positionally: a name, or a spread's fields, has nothing to name.
+	sig := &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
+	for i, p := range evt.Params {
+		sig.Params[i] = &ir.Param{Type: p.Type}
+	}
+	bound, ok := c.bindArgs(args.Pos, args.Args, sig)
+	if !ok {
+		return nil
+	}
+	out := make([]ir.CallArg, len(bound))
+	for i, b := range bound {
+		if b == nil {
+			return nil
+		}
+		out[i] = ir.CallArg{Value: *b}
+	}
+	return out
+}
+
+// eventParamLabel names an event's parameter in a diagnostic: by the name the
+// declaration gave it, or by its ordinal from one when it has none.
+func eventParamLabel(evt *ir.EventDecl, i int) string {
+	if n := evt.Params[i].Name; n != "" {
+		return "parameter " + strconv.Quote(n)
+	}
+	return fmt.Sprintf("parameter %d", i+1)
+}
+
+// countOf is "1 parameter", "2 parameters".
+func countOf(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
@@ -2857,6 +2989,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 				}
 				// Inline event handler — check body.
 				c.pushScope()
+				c.refuseConstParams(arg.Params.Params, "a handler's")
 				for _, p := range arg.Params.Params {
 					c.declare(p.Pos, &ir.Param{
 						Name: p.Name,
@@ -2891,6 +3024,9 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	for _, a := range args.Args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg || arg.Value == nil || arg.Name != "" {
+			continue
+		}
+		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
 		if positional >= len(sig.Params) {
@@ -3282,7 +3418,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				})
 			}
 		}
+		c.stmtCall = x.Call
 		callExpr := c.checkExpr(x.Call)
+		c.stmtCall = nil
 		return c.resolveCallStmt(x, callExpr)
 	case *ast.IfStmt:
 		condExpr := c.checkExpr(x.Cond)
@@ -3703,6 +3841,19 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	return &ir.CallStmt{AST: x, Call: call}
 }
 
+// refuseExprErrorHandler reports an @error on a call whose value is used.
+// Only a call statement has somewhere for execution to continue after the
+// handler runs; what such a call evaluates to after a caught raise is not
+// decided, and the handler was dropped without a word.
+func (c *checker) refuseExprErrorHandler(call *ast.CallExpr) {
+	for _, a := range call.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			c.error(eh.Pos, "@error is only handled on a call statement; this call's value is used, so write the call on its own line and read what it set")
+			return
+		}
+	}
+}
+
 // extractCallErrorHandler finds an inline @error handler in a CallExpr's args
 // and returns it as a typed ir.EventHandler (param defaulted to the boundary's
 // payload type when no annotation was given). Returns nil if no @error is
@@ -3725,6 +3876,7 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
 	c.refuseParamMarks(eh.Params.Params)
+	c.refuseConstParams(eh.Params.Params, "a handler's")
 	params := make([]*ir.Param, len(eh.Params.Params))
 	for i, p := range eh.Params.Params {
 		if p.Default != nil {
@@ -3769,7 +3921,7 @@ func (c *checker) errorEventType() *ir.Type {
 	}
 	for _, e := range c.boundaryComp.Events {
 		if e.Name == "error" {
-			return e.Type
+			return e.Payload()
 		}
 	}
 	return nil
@@ -3786,6 +3938,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	kind, builtinComp := c.builtinNode(name)
 	if kind == ir.BuiltinOutput && vn != c.outputDecl {
 		c.error(vn.Pos, "output may only be written at the root of a file: it is the package's build directive, not a node")
+		return nil
+	}
+	if kind == ir.BuiltinGenInputs && !slices.Contains(c.genInputs, vn) {
+		c.error(vn.Pos, "%s may only be written at the root of a file: it says what the file was generated from, not what it renders", name)
 		return nil
 	}
 	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
@@ -3976,7 +4132,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		emitName = qualifiedLocal
 	}
 	props = bindWildcardName(comp, emitName, props)
-	return &ir.NodeInst{
+	node := &ir.NodeInst{
 		AST:       vn,
 		Name:      emitName,
 		Component: comp,
@@ -3989,6 +4145,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
+	c.deferConstSlots(node)
+	return node
 }
 
 // callComputedOperand inserts the elided call when expr is a bare reference to a
@@ -4221,13 +4379,30 @@ func onComponent(comp *ir.Component) string {
 	return " on component " + comp.Name
 }
 
-func componentEventType(comp *ir.Component, name string) *ir.Type {
+// componentEventParams is the signature a handler for the named event binds
+// against: a declared event's, or the wildcard event covering the name. Nil
+// when the component declares neither, which is reported elsewhere.
+func componentEventParams(comp *ir.Component, name string) []*ir.Param {
+	if comp == nil {
+		return nil
+	}
 	for _, e := range comp.Events {
 		if e.Name == name {
-			return e.Type
+			return nonNilParams(e.Params)
 		}
 	}
+	if e, ok, _ := wildcardEvent(comp, name); ok {
+		return nonNilParams(e.Params)
+	}
 	return nil
+}
+
+// nonNilParams keeps "declares none" distinct from "no signature to read".
+func nonNilParams(ps []*ir.Param) []*ir.Param {
+	if ps == nil {
+		return []*ir.Param{}
+	}
+	return ps
 }
 
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
@@ -4357,50 +4532,23 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if arg.Name == "key" {
 				continue // handled separately by checkVisualNodeIR
 			}
-			// Struct spread: ...expr expands struct fields as named props.
 			if arg.Value != nil {
-				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-					operandIR := c.checkExpr(spread.Operand)
-					operandType := exprType(operandIR)
-					if operandType == nil || operandType.Kind != ir.TypeStruct {
-						typStr := "(nil)"
-						if operandType != nil {
-							typStr = operandType.String()
-						}
-						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
-						continue
-					}
-					sd := operandType.Decl.(*ir.StructDef)
+				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
-					for _, f := range sd.Fields {
-						if comp == nil {
-							continue // no component context; can't match prop names
-						}
-						propType := componentPropType(comp, f.Name)
-						if propType == nil {
-							continue // no matching prop; ignore silently
-						}
-						if boundProps[f.Name] {
-							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
-							continue
-						}
-						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
-						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
-							selExpr = wrapIfNeeded(selExpr, propType)
-						}
-						boundProps[f.Name] = true
+					c.spreadProps(sp, comp, boundProps, func(name string, v ir.Expr) {
 						// A spread field is a written prop name like any
 						// other, so a name a wildcard prop covers is
 						// collected into it rather than becoming an arg under
 						// its own name — which named no prop, and was dropped
 						// by every backend.
-						if wc := wildcardTarget(comp, f.Name); wc != nil {
-							collectWildcard(wc, f.Name, selExpr)
-							continue
+						if wc := wildcardTarget(comp, name); wc != nil {
+							collectWildcard(wc, name, v)
+							return
 						}
-						noteDirect(f.Name, spread.Pos)
-						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
-					}
+						noteDirect(name, sp.Pos)
+						c.deferConstProp(sp.Pos, v, comp, name)
+						props = append(props, ir.Arg{Name: name, Value: v})
+					})
 					continue
 				}
 			}
@@ -4483,6 +4631,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			// A wildcard prop collects the names it matched rather than
 			// being one: the value is an entry keyed by the written name,
 			// and every match on this call site lands in the same map.
+			if arg.Value != nil {
+				c.deferConstProp(*arg.Value.ExprPos(), val, comp, strings.TrimPrefix(resolvedName, ":"))
+			}
 			if wc := wildcardTarget(comp, strings.TrimPrefix(resolvedName, ":")); wc != nil {
 				collectWildcard(wc, strings.TrimPrefix(resolvedName, ":"), val)
 				continue
@@ -4495,10 +4646,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				continue
 			}
 			seen[arg.Name] = arg.Pos
-			var want *ir.Type
-			if comp != nil {
-				want = componentEventType(comp, arg.Name)
-			}
+			want := componentEventParams(comp, arg.Name)
 			fn := &ir.Func{Params: c.bindParams(arg.Params, want, "@"+arg.Name, "the event")}
 			// Check the handler body in a scoped context.
 			c.pushScope()
@@ -4598,37 +4746,12 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if arg.Name == "key" {
 				continue // handled by loop diffing
 			}
-			// Struct spread: ...expr expands struct fields as named props.
 			if arg.Value != nil {
-				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-					operandIR := c.checkExpr(spread.Operand)
-					operandType := exprType(operandIR)
-					if operandType == nil || operandType.Kind != ir.TypeStruct {
-						typStr := "(nil)"
-						if operandType != nil {
-							typStr = operandType.String()
-						}
-						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
-						continue
-					}
-					sd := operandType.Decl.(*ir.StructDef)
+				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
-					for _, f := range sd.Fields {
-						propType := componentPropType(comp, f.Name)
-						if propType == nil {
-							continue // no matching prop; ignore silently
-						}
-						if boundProps[f.Name] {
-							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
-							continue
-						}
-						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
-						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
-							selExpr = wrapIfNeeded(selExpr, propType)
-						}
-						result = append(result, ir.CallArg{Name: f.Name, Value: selExpr})
-						boundProps[f.Name] = true
-					}
+					c.spreadProps(sp, comp, boundProps, func(name string, v ir.Expr) {
+						result = append(result, ir.CallArg{Name: name, Value: v})
+					})
 					continue
 				}
 			}
@@ -4684,6 +4807,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 				if expected != nil && expected.Kind != ir.TypeDyn {
 					argExpr = wrapIfNeeded(argExpr, expected)
 				}
+				c.deferConstProp(*arg.Value.ExprPos(), argExpr, comp, boundKey)
 				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
 				if boundKey != "" {
 					boundProps[boundKey] = true
@@ -4692,12 +4816,12 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 
 		case ast.EventHandler:
 			c.pushScope()
-			for _, p := range arg.Params.Params {
+			want := componentEventParams(comp, arg.Name)
+			c.refuseConstParams(arg.Params.Params, "a handler's")
+			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)
-				if typ.Kind == ir.TypeDyn {
-					if et := componentEventType(comp, arg.Name); et != nil {
-						typ = et
-					}
+				if typ.Kind == ir.TypeDyn && i < len(want) && want[i].Type != nil {
+					typ = want[i].Type
 				}
 				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
 			}
@@ -5175,8 +5299,8 @@ func (c *checker) boundEntry(name string) *ir.SlotDecl {
 	return nil
 }
 
-// checkSlotInsertion checks an insertion point: its arguments, positional
-// against the declaration's types, the populations of the slot's component
+// checkSlotInsertion checks an insertion point: its arguments, bound against
+// the declaration's parameters as a call's are, the populations of the slot's component
 // entries, and the fallback block. written is the name the insertion was
 // written under, which for an entry is the population's and not the entry's.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
@@ -5193,33 +5317,11 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, writ
 	} else {
 		inst.Decl = slot
 	}
-	var args []ast.Expr
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Value == nil {
-			continue
+	bound, _ := c.bindArgs(vn.Pos, vn.Args.Args, &ir.FuncSig{Params: slot.Params})
+	for _, e := range bound {
+		if e != nil {
+			inst.Args = append(inst.Args, *e)
 		}
-		if arg.Name != "" {
-			c.error(vn.Pos, "slot %q takes positional arguments: it declares types, and the names belong to whoever populates it", written)
-			continue
-		}
-		args = append(args, arg.Value)
-	}
-	if len(args) != len(slot.Params) {
-		c.error(vn.Pos, "slot %q takes %d argument(s), got %d", written, len(slot.Params), len(args))
-	}
-	for i, a := range args {
-		var want *ir.Type
-		if i < len(slot.Params) {
-			want = slot.Params[i].Type
-		}
-		e := c.checkExprExpecting(a, want)
-		if want != nil {
-			if got := exprType(e); got != nil && !got.IsAssignableTo(want) {
-				c.error(*a.ExprPos(), "cannot use %s as %s for argument %d of slot %q", got, want, i+1, written)
-			}
-		}
-		inst.Args = append(inst.Args, e)
 	}
 	fallback := vn.Block
 	fallback.Stmts = nil
@@ -5355,6 +5457,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 			c.error(a.Pos, "slot %q: a population binds plain names", cd.Name)
 			continue
 		}
+		c.refuseConstParams([]ast.Param{a}, "a slot population's")
 		if a.Default != nil {
 			c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", cd.Name, a.Name)
 		}

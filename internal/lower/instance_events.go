@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -108,13 +110,17 @@ func propNamed(c *ir.Component, name string) *ir.Prop {
 	return nil
 }
 
-// eventParams is the signature an event's handler is called with: its payload,
-// or nothing when it carries none.
+// eventParams is the signature an event's handler is called with: the
+// event's declared parameters, each given a name the lambda can bind.
 func eventParams(e *ir.EventDecl) []*ir.Param {
-	if e == nil || e.Type == nil {
+	if e == nil || len(e.Params) == 0 {
 		return nil
 	}
-	return []*ir.Param{{Name: "__e", Type: e.Type}}
+	out := make([]*ir.Param, len(e.Params))
+	for i, p := range e.Params {
+		out[i] = &ir.Param{Name: fmt.Sprintf("__e%d", i), Type: p.Type}
+	}
+	return out
 }
 
 // eventNamed is comp's declaration of that event, or nil.

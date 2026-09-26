@@ -19,6 +19,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"git.duckfam.us/jonathan/sngl/internal/gencache/godeps"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
 )
@@ -300,7 +302,7 @@ func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, schem
 	case "js":
 		values, bad, err = execJSConstEval(dir, types, reqs)
 	default:
-		values, bad, err = execConstEval(dir, types, reqs)
+		values, bad, err = execConstEval(cache.genStore(), dir, types, reqs)
 	}
 	if err != nil {
 		return err
@@ -321,28 +323,174 @@ func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, schem
 	return nil
 }
 
-// execConstEval generates, builds and runs the batch program, returning the
-// values keyed by request key, and the keys whose value did not check.
-func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+// execConstEval answers a batch of go: calls, returning the values keyed by
+// request key, and the keys whose value did not check.
+//
+// Each call is looked up in gen first: a call evaluated by an earlier build,
+// whose Go source and toolchain have not changed since, is answered with the
+// value stored then, and only the rest are built into a program and run. A
+// value is stored as SNGL -- `const value = …`, the form it arrived in -- behind
+// one input, the go.deps closure of the packages the program imported, so an
+// edit anywhere in them is an edit that invalidates it (see storeConstEval).
+//
+// Stored values are checked against the declared return type on the way back
+// in, exactly as fresh ones are: they pass through the same results reader, so
+// a declaration that changed on the SNGL side is held to what it says now.
+func execConstEval(gen *gencache.Store, dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	raw := map[string]string{}
+	var misses []*nativeRequest
+	for _, r := range reqs {
+		if data, ok := gen.Lookup(storedRequest(absDir, r)); ok {
+			if v, ok := storedValue(data); ok {
+				raw[r.key] = v
+				continue
+			}
+		}
+		misses = append(misses, r)
+	}
+	slog.Debug("consteval store", "calls", len(reqs), "stored", len(reqs)-len(misses))
+
+	// Recorded before the program is built, so a file edited while it builds
+	// is recorded as it was and found stale next time.
+	deps := map[string]gencache.Input{}
+	var read []gencache.Input
+	if len(misses) > 0 {
+		deps = constEvalDeps(gen, absDir, misses)
+		results, err := runConstEvalBatch(dir, misses)
+		if err != nil {
+			return nil, nil, err
+		}
+		var reported []string
+		for line := range strings.SplitSeq(string(results), "\n") {
+			if in, ok := strings.CutPrefix(line, genInputRecord); ok {
+				reported = append(reported, in)
+				continue
+			}
+			if key, val, ok := strings.Cut(recordLine(line), resultSep); ok {
+				raw[key] = val
+			}
+		}
+		// What the batch read of the compiler's own generated source, which
+		// every value in it records: one run, so nothing says which call read
+		// what, and recording it on all of them errs toward a repeat.
+		if extra, err := gencache.ParseInputs(reported); err != nil {
+			slog.Debug("consteval generated inputs", "err", err)
+			deps = map[string]gencache.Input{} // store nothing rather than store it unrecorded
+		} else {
+			read = extra
+		}
+	}
+
+	var doc strings.Builder
+	for _, r := range reqs {
+		if v, ok := raw[r.key]; ok {
+			doc.WriteString(r.key + resultSep + v + "\n")
+		}
+	}
+	parseStart := time.Now()
+	values, bad, err := parseNativeResults("const evaluator results", []byte(doc.String()), wantTypes(reqs), types)
+	slog.Debug("consteval parse", "bytes", doc.Len(), "duration", time.Since(parseStart))
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, r := range misses {
+		dep, ok := deps[r.key]
+		if _, checked := values[r.key]; ok && checked && bad[r.key] == nil {
+			gen.Put(storedRequest(absDir, r), gencache.Output{
+				Inputs: append([]gencache.Input{dep}, read...),
+				Body:   []byte(storedValuePrefix + raw[r.key] + "\n"),
+			})
+		}
+	}
+	return values, bad, nil
+}
+
+// storedRequest is the store's name for one call: the project, and the
+// request key -- which already says which function, in which package, with
+// which arguments. The function's name rides along so a stored file says
+// what it holds.
+func storedRequest(absDir string, r *nativeRequest) gencache.Request {
+	return gencache.Request{Producer: constEvalProducer, Params: []string{absDir, r.nativeType, r.key}}
+}
+
+// constEvalProducer names stored go: values. Nothing registers it: the
+// evaluator answers its misses in one batch, through Lookup and Put, rather
+// than one request at a time through Get.
+const constEvalProducer = "consteval.go"
+
+// genInputRecord prefixes a line of the results file naming a generated file
+// the batch read. It is a comment to the results reader, so a compiler that
+// does not look for it reads the file as it always did.
+const genInputRecord = "//gencache "
+
+// storedValuePrefix is how a stored value is written: as the const it is.
+const storedValuePrefix = "const value = "
+
+// storedValue reads the value back out of a stored file.
+func storedValue(data []byte) (string, bool) {
+	line, _, _ := strings.Cut(string(gencache.Body(data)), "\n")
+	return strings.CutPrefix(line, storedValuePrefix)
+}
+
+// constEvalDeps records, per call, the go.deps closure of the packages the
+// evaluator program would import for it. Calls into one package share one
+// closure, which is looked up or listed once. A closure that cannot be
+// listed leaves its calls unrecorded: they are still evaluated, and not
+// stored.
+func constEvalDeps(gen *gencache.Store, absDir string, reqs []*nativeRequest) map[string]gencache.Input {
+	out := map[string]gencache.Input{}
+	for _, r := range reqs {
+		roots := append(append(slices.Clone(evaluatorImports), r.importPath), r.imports...)
+		req, err := godeps.Request(absDir, roots)
+		if err != nil {
+			continue
+		}
+		in, _, err := gen.Entry(req)
+		if err != nil {
+			slog.Debug("consteval deps", "func", r.nativeType, "err", err)
+			continue
+		}
+		out[r.key] = in
+	}
+	return out
+}
+
+// evaluatorImports is what every generated program imports whatever it
+// calls: the runtime it reports through, and the codegen registries a pure
+// function may enumerate (docs.Targets() does).
+var evaluatorImports = []string{
+	"git.duckfam.us/jonathan/sngl/pkg/go/consteval",
+	"git.duckfam.us/jonathan/sngl/codegen/lang",
+	"git.duckfam.us/jonathan/sngl/codegen/platform",
+}
+
+// runConstEvalBatch generates, builds and runs the program for reqs and
+// returns the results document it wrote.
+func runConstEvalBatch(dir string, reqs []*nativeRequest) ([]byte, error) {
 
 	// The source must sit inside the project so the module resolves; the
 	// binary must not, or `go build ./...` in the project would pick it up.
 	src := constEvalSource(reqs)
 	srcDir, canonical, err := constEvalSrcDir(dir, src)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer os.RemoveAll(srcDir)
 	if err := os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(src), 0o644); err != nil {
-		return nil, nil, fmt.Errorf("writing evaluator source: %w", err)
+		return nil, fmt.Errorf("writing evaluator source: %w", err)
 	}
 
 	runDir, err := os.MkdirTemp("", "sngl-consteval-*")
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating output dir: %w", err)
+		return nil, fmt.Errorf("creating output dir: %w", err)
 	}
 	defer os.RemoveAll(runDir)
 	resultPath := filepath.Join(runDir, "results.sngl")
@@ -353,7 +501,7 @@ func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map
 	binPath := filepath.Join(runDir, "eval")
 	if canonical {
 		if binPath, err = constEvalBinPath(filepath.Base(srcDir)); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -365,7 +513,7 @@ func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map
 	// unlikely; this makes it harmless.)
 	for attempt := range 2 {
 		if err := buildConstEval(dir, srcDir, binPath); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		err := runConstEval(dir, binPath, resultPath)
 		if err == nil {
@@ -375,17 +523,14 @@ func execConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map
 			slog.Debug("consteval binary vanished before exec; rebuilding", "path", binPath)
 			continue
 		}
-		return nil, nil, err
+		return nil, err
 	}
 
 	results, err := os.ReadFile(resultPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("reading const evaluator results: %w", err)
+		return nil, fmt.Errorf("reading const evaluator results: %w", err)
 	}
-	parseStart := time.Now()
-	values, bad, err := parseNativeResults(resultPath, results, wantTypes(reqs), types)
-	slog.Debug("consteval parse", "bytes", len(results), "duration", time.Since(parseStart))
-	return values, bad, err
+	return results, nil
 }
 
 func buildConstEval(dir, srcDir, binPath string) error {
@@ -640,13 +785,14 @@ import (
 	"fmt"
 	"os"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
-
-	// A pure func may reach into the codegen registries (docs.Targets()
-	// enumerates them); blank-import both so it sees what the compiler sees.
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 `)
+	// The runtime is imported by name; the codegen registries are blank so a
+	// pure func that enumerates them (docs.Targets()) sees what the compiler
+	// sees.
+	fmt.Fprintf(&b, "\n\t%q\n\t%q\n", evaluatorImports[0], "git.duckfam.us/jonathan/sngl/codegen")
+	for _, p := range evaluatorImports[1:] {
+		fmt.Fprintf(&b, "\t_ %q\n", p)
+	}
 	for _, p := range paths {
 		fmt.Fprintf(&b, "\n\t%s %q", aliases[p], p)
 	}
@@ -662,6 +808,14 @@ import (
 	b.WriteString(`	if err := consteval.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	// The generated files the calls read, as comment records: a reader that
+	// does not look for them skips them.
+	if f, err := os.OpenFile(os.Getenv(consteval.OutEnv), os.O_APPEND|os.O_WRONLY, 0); err == nil {
+		for _, in := range codegen.GeneratedInputs() {
+			fmt.Fprintf(f, "` + genInputRecord + `%s\n", in)
+		}
+		f.Close()
 	}
 }
 `)

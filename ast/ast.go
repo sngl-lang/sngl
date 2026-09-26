@@ -321,6 +321,9 @@ type Param struct {
 	Type          TypeExpr
 	Default       Expr
 	Bidirectional bool // :name — component binding param
+	// Const is the `const` prefix: the argument at every call site, and the
+	// default, is known at compile time.
+	Const bool `json:",omitempty"`
 	// Attrs are the #[...] macro attributes written before the parameter. The
 	// grammar accepts them anywhere a parameter is written; which of them mean
 	// anything there is the checker's to say, and it refuses the rest where it
@@ -359,6 +362,9 @@ type FuncDef struct {
 	Body       Expr        // single-expression form (=> expr)
 	Block      StmtBlock   // block form ({ ... })
 	Attrs      []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+	// Const is the `const` prefix: the function is pure, its value depending
+	// only on its arguments.
+	Const bool `json:",omitempty"`
 }
 
 // IsTest returns true if this function is a test function.
@@ -406,6 +412,9 @@ type ComponentDecl struct {
 	ChildrenType TypeExpr
 	Body         StmtBlock
 	Attrs        []MacroAttr `json:",omitempty"` // the #[...] marks written on the declaration
+	// Const is the `const` prefix: the component's render depends only on its
+	// props.
+	Const bool `json:",omitempty"`
 }
 
 // PropList is the parameter list of a component declaration.
@@ -423,11 +432,18 @@ type ParamOrEventDecl interface {
 func (Param) paramOrEventDecl()     {}
 func (EventDecl) paramOrEventDecl() {}
 
-// EventDecl declares an event on a component: @click, @change Type.
+// EventDecl declares an event on a component and the parameters its handlers
+// receive: `@pick(index int, label string)`, `@change T`, `@done()`.
+//
+// Params is one list whichever way it was written. `@change T` is the
+// one-parameter case without the parens -- a single entry with no name -- and
+// HasParens is what tells the two spellings apart for the formatter, which
+// prints what the author wrote. A bare `@tick` has no entries and no parens.
 type EventDecl struct {
-	Pos  Pos
-	Name string
-	Type TypeExpr // optional type annotation
+	Pos       Pos
+	Name      string
+	Params    []FuncTypeParam
+	HasParens bool
 	// Attrs are the #[...] macro attributes written before the event, read
 	// the same way a Param's are.
 	Attrs    []MacroAttr `json:",omitempty"`

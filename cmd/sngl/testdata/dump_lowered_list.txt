@@ -55,7 +55,7 @@ cmp stdout fyne.txt
 # they are held under --lang none, even though Go withholds both. html+go and
 # html+none lower identically, which is again the cmp and not a repeated chain.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
 cp stdout htmlgo.txt
 

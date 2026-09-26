@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -61,9 +62,69 @@ func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 		if c == root || !c.RuntimeInstance {
 			continue
 		}
-		promoteProps(c)
+		setters := promoteProps(c)
+		settleOnSet(c, setters, pkg.Mounts)
 	}
 	return nil
+}
+
+// settleOnSet has a prop's setter settle the brackets whose keys read it.
+// passEffect settles after every write to a var a key reads, and ran while
+// the prop was still a parameter nothing could write.
+func settleOnSet(c *ir.Component, setters, mounts []*ir.Func) {
+	var settles []*ir.Func
+	for _, f := range c.Funcs {
+		if slices.Contains(mounts, f) {
+			settles = append(settles, f)
+		}
+	}
+	for _, setter := range setters {
+		assign, ok := setter.Block[0].(*ir.Assign)
+		if !ok {
+			continue
+		}
+		id, ok := assign.Target.(*ir.Ident)
+		if !ok {
+			continue
+		}
+		cell, ok := id.Sym.(*ir.Var)
+		if !ok {
+			continue
+		}
+		for _, settle := range settles {
+			if readsThroughCalls(settle.Block, cell) {
+				setter.Block = append(setter.Block, callOf(settle))
+			}
+		}
+	}
+}
+
+// readsThroughCalls reports whether stmts, or a func they call, read v.
+func readsThroughCalls(stmts []ir.Stmt, v *ir.Var) bool {
+	seen := map[*ir.Func]bool{}
+	var reads func(root any) bool
+	reads = func(root any) bool {
+		found := false
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.Ident:
+				if x.Sym == ir.Symbol(v) {
+					found = true
+				}
+			case *ir.Call:
+				if f := x.Func; f != nil && !seen[f] {
+					seen[f] = true
+					found = found || reads(f.Block)
+				}
+			}
+			if found {
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
+	}
+	return reads(stmts)
 }
 
 // contextProps turns each hidden context var of c into a prop defaulting to
@@ -111,9 +172,9 @@ func contextProps(c *ir.Component) {
 
 // promoteProps turns each of c's props into a var initialised from the
 // parameter, rewrites the body to read the var, and gives each one a setter.
-func promoteProps(c *ir.Component) {
+func promoteProps(c *ir.Component) []*ir.Func {
 	if c == nil || len(c.Props) == 0 {
-		return
+		return nil
 	}
 	symRenames := make(map[ir.Symbol]ir.Symbol, len(c.Props))
 	renames := make(map[ir.Symbol]string, len(c.Props))
@@ -137,13 +198,14 @@ func promoteProps(c *ir.Component) {
 		renames[ir.Symbol(p.Sym)] = v.Name
 		// No setter for a #[construct] prop: its absence is what
 		// componentAbsorbs reads to say the instance cannot take a new value
-		// and has to be rebuilt.
-		if !p.Construct {
+		// and has to be rebuilt. Nor for a const one, whose value never
+		// changes after the instance is built.
+		if !p.Construct && !p.Const {
 			setters = append(setters, propSetter(p, v))
 		}
 	}
 	if len(vars) == 0 {
-		return
+		return nil
 	}
 
 	// Every read of the parameter becomes a read of the var -- except the
@@ -168,6 +230,7 @@ func promoteProps(c *ir.Component) {
 	// can precede it.
 	c.Vars = append(vars, c.Vars...)
 	c.Funcs = append(c.Funcs, setters...)
+	return setters
 }
 
 // propSetter is the function UpdateComponent reaches for one prop: it writes

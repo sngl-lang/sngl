@@ -1,0 +1,45 @@
+// An event is declared with a parameter list, the way a func type is, and a
+// handler binds it by position, the way a func literal does.
+//
+// `@name T` is the one-parameter case of the same thing, written without the
+// parens, and `@name()` is an event that passes nothing. A handler may leave
+// trailing parameters unbound; what it binds takes the declared type at that
+// position, and an annotation it writes is held to it.
+
+import . "sngl:ui"
+
+func both(f func(int, string)) {
+    f(1, "one")
+}
+
+component picker(@pick(index int, label string), @done(), @named(v int)) node {
+    button(text="a", @click { pick(0, "a") })
+    button(text="b", @click { pick(1, "b") })
+    button(text="done", @click { done() })
+    button(text="named", @click { named(3) })
+    effect(@mount {
+        both(pick)
+    })
+}
+
+component main node {
+    var last = ""
+    var at = 0
+    var count = 0
+
+    picker(
+        @pick(i, l) {
+            at = i
+            last = l
+        },
+        @done { count += 1 },
+        @named(v int) { at = v },
+    )
+    picker(@pick(i int) { at = i })
+    picker(@pick { count += 1 })
+    text(value="{last} at {at}, {count}")
+}
+
+window {
+    main
+}

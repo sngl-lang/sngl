@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"git.duckfam.us/jonathan/sngl/internal/asset"
+	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -30,6 +31,10 @@ type constResult struct {
 type EvalCache struct {
 	m     sync.Map // string → constResult
 	files sync.Map // string → fileResult
+	// gen is the store a go: value is kept in between compilations, keyed on
+	// what the value was built from rather than on the call alone. Nil means
+	// the process's default store.
+	gen *gencache.Store
 }
 
 // fileResult is one file: import's read: the bytes, and the content-hashed
@@ -74,6 +79,14 @@ func (c *EvalCache) file(dirPath, filename string) fileResult {
 	}
 	c.files.Store(key, res)
 	return res
+}
+
+// genStore is the store go: values are kept in between compilations.
+func (c *EvalCache) genStore() *gencache.Store {
+	if c.gen == nil {
+		return gencache.Default()
+	}
+	return c.gen
 }
 
 // evalCache is the cache this pass folds against. Optimize always supplies
