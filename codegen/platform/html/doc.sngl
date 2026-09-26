@@ -1,0 +1,13 @@
+// HTML output. Any lowercase identifier is a valid tag: `html.div`,
+// `html.dialog`.
+// The web element set is open — new standards keep adding to it — so a tag
+// resolves to the `element` component in html.sngl rather than to a declaration of
+// its own. A tag no identifier can spell is written through that component's
+// `tag` prop: `html.element(tag="my-widget")`.
+//
+// Each `component ui.X` gives a stdlib component its HTML implementation.
+// The stdlib declares the props; the body reads them as locals.
+//
+// Inside a `platform html { ... }` body a native element needs its `html.`
+// prefix: the stdlib component of the same name is in scope too, and carries
+// a body of its own.

@@ -1,0 +1,132 @@
+# A test drives a text input's payload events -- `c.field.input({value=…})`
+# and `c.field.change({value=…})` -- and every target runs the handler the
+# program wrote, once, with that value, as the interpreter does.
+#
+# The invokers for these were missing or took the wrong thing:
+#
+#   - The Go test lowerer passed the payload as a Go `InputEvent{Value: …}`,
+#     a type no Go target declares; an invoker takes the widget's value, the
+#     payload's `value`, as android's performTextReplacement already does.
+#   - bubbletea ran neither handler at all: an input widget synced its bound
+#     var and dropped the @input and @change bodies. It now runs @input when
+#     an Update changed the text and @change on Enter.
+#   - fyne had no @change on an entry (OnSubmitted is its commit), read the
+#     payload only in a handler shaped like the two-way bind, and invoked the
+#     callback with it attached, so the handler's write-back of the bound
+#     text fired it a second time.
+#   - gtk4's invokers took no argument, had no commit signal to fire
+#     (`activate`), and read the payload only in the bind shape.
+#   - html dispatched the DOM event without putting the value in the element
+#     the handler reads it from.
+#
+# Driving `change` runs the change handler alone -- `edits` stays 0 -- where a
+# user committing text would have typed it first; the interpreter's reading.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout '2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component editor node {
+    var name = ""
+    var edits = 0
+    var lastCommit = ""
+
+    input #field(
+        value=name,
+        @input(e) {
+            name = e.value
+            edits = edits + 1
+        },
+        @change(e) { lastCommit = e.value + "!" },
+    )
+    text(value=name)
+}
+
+func testInputFiresOnEachKeystroke(t Test, c editor) {
+    t.assert(c.name == "")
+    c.field.input({value="h"})
+    t.assert(c.name == "h")
+    c.field.input({value="hello"})
+    t.assert(c.name == "hello")
+    t.assert(c.edits == 2)
+}
+
+func testChangeFiresOnCommit(t Test, c editor) {
+    c.field.change({value="committed"})
+    t.assert(c.lastCommit == "committed!")
+    t.assert(c.edits == 0)
+}
+
+window {
+}
+-- testrun/bubbletea/go/app.sngl/editor/1 --
+sha256:08cbd16fb549be688d903ef6ef3c5b05
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/editor/1 --
+sha256:a8f452e695bfe2fe7689b57027a4cd0e
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/editor/1 --
+sha256:1a2143dd8162e9e5ced9f24a1e09379b
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/editor/1 --
+sha256:58fd124c6110b248c3e7bf6ae364b6f5
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}

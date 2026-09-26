@@ -1,6 +1,8 @@
 package optimize
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -92,6 +94,13 @@ func isScalar(t *ir.Type) bool {
 // foldCallArg folds argument i of call.
 func foldCallArg(call *ir.Call, i int, ctx *evalCtx) ir.Expr {
 	arg := call.Args[i]
+	if p := constParamOf(call, i); p != nil {
+		pos := arg.NamePos
+		if !pos.IsSet() {
+			pos = callPos(call)
+		}
+		return foldConstArg(arg.Value, pos, fmt.Sprintf("param %q of %s", p.Name, call.Func.Name), ctx)
+	}
 	if ctx == nil || ctx.sharedConstRef(arg.Value) == nil || !ctx.writes.callWrites(call, i) {
 		return foldExpr(arg.Value, ctx)
 	}
@@ -100,6 +109,9 @@ func foldCallArg(call *ir.Call, i int, ctx *evalCtx) ir.Expr {
 
 // foldPropArg folds the value n passes for prop name.
 func foldPropArg(n *ir.NodeInst, name string, value ir.Expr, ctx *evalCtx) ir.Expr {
+	if p := constPropOf(n.Component, name); p != nil {
+		return foldConstArg(value, nodePos(n), fmt.Sprintf("prop %q of %s", p.Name, n.Component.Name), ctx)
+	}
 	if ctx == nil || ctx.sharedConstRef(value) == nil || !ctx.writes.propWrites(n.Component, name) {
 		return foldExpr(value, ctx)
 	}

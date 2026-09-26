@@ -1,0 +1,154 @@
+# State inside a recursion is refused on bubbletea, with a position, rather
+# than emitted.
+#
+# bubbletea keeps no state of an instance's own, so a stateful component is
+# spliced where it is written with a cell per copy -- and a recursion is never
+# spliced: it is rendered as a function per call, which has nowhere to keep a
+# cell. A recursive component's own var reached the Model as a field nothing
+# declared (`m.hits undefined`), and a stateful component written in its body
+# reached the view as a node it drew as an empty string, silently.
+#
+# The same programs build on html, which keeps an instance's state in its
+# factory.
+
+! sngl generate --lang go --platform bubbletea --out out own.sngl
+stderr 'own.sngl:4:5: the recursive component "frame" declares state of its own \("hits"\)'
+
+! sngl generate --lang go --platform bubbletea --out out2 callee.sngl
+stderr 'callee.sngl:11:16: "Counter" has state of its own and is written in the recursive component "frame"'
+
+sngl generate --platform html --out out3 own.sngl
+sngl generate --platform html --out out4 callee.sngl
+
+# A lifetime written in the recursive component's own body is state of its own
+# too: its handle is a cell. Only a callee's lifetime was asked about, so this
+# built and the ticks were never delivered. The timer is the platform's
+# primitive by then, so the position is the declaration's.
+! sngl generate --lang go --platform bubbletea --out out5 lifetime.sngl
+stderr 'lifetime.sngl:10:1: the recursive component "frame" places a timer or effect in its own body'
+sngl generate --platform html --out out6 lifetime.sngl
+
+# A canvas is the third: its surface and kitty image are kept per copy of the
+# loop the view walks, and the walk never enters a recursion's function, so
+# every level shared one surface and nothing was ever transmitted.
+! sngl generate --lang go --platform bubbletea --out out7 canvas.sngl
+stderr 'canvas.sngl:8:24: a canvas in the recursive component "tower" is drawn once per level'
+! sngl generate --lang go --platform bubbletea --out out8 canvas_content.sngl
+stderr 'canvas_content.sngl:19:20: a canvas handed to the recursive component "tower" is drawn once per level'
+sngl generate --platform html --out out9 canvas.sngl
+sngl generate --platform html --out out10 canvas_content.sngl
+
+-- own.sngl --
+import . "sngl:ui"
+
+component frame(n int) node {
+    var hits = 0
+
+    vbox {
+        button(text="level {n} {hits}", @click { hits += 1 })
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
+-- callee.sngl --
+import . "sngl:ui"
+
+component Counter node {
+    var hits = 0
+
+    button(text="{hits}", @click { hits += 1 })
+}
+
+component frame(n int) node {
+    vbox {
+        Counter()
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
+-- lifetime.sngl --
+import . "sngl:ui"
+import time "sngl:time"
+
+var ticks = 0
+
+func tick() {
+    ticks += 1
+}
+
+component frame(n int) node {
+    vbox {
+        text(value="level {n} {ticks}")
+        time.timer(interval=100ms, @tick { tick() })
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
+-- canvas.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+import seq "sngl:seq"
+
+component tower(n int) node {
+    vbox {
+        for var i = seq.count(2) {
+            draw.canvas(width=20px, height=10px) {
+                draw.circle(cx=5.0 + float(i), cy=5.0, r=float(n) + 1.0)
+            }
+        }
+        if n > 0 {
+            tower(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    tower(n=depth)
+}
+-- canvas_content.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component tower(n int, children ...component) node {
+    vbox {
+        children
+        if n > 0 {
+            tower(n=n - 1) {
+                children
+            }
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    tower(n=depth) {
+        draw.canvas(width=20px, height=10px) {
+            draw.circle(cx=5.0, cy=5.0, r=3.0)
+        }
+    }
+}

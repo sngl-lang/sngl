@@ -193,12 +193,6 @@ type IdentExpr struct {
 	Name string
 }
 
-// EventRefExpr references an event by name: @click, @change.
-type EventRefExpr struct {
-	Pos  Pos
-	Name string
-}
-
 // BinaryExpr is a binary operation.
 type BinaryExpr struct {
 	Pos   Pos
@@ -489,7 +483,6 @@ type I18nCase struct {
 
 func (x *LiteralExpr) ExprPos() *Pos         { return &x.Pos }
 func (x *IdentExpr) ExprPos() *Pos           { return &x.Pos }
-func (x *EventRefExpr) ExprPos() *Pos        { return &x.Pos }
 func (x *BinaryExpr) ExprPos() *Pos          { return &x.Pos }
 func (x *UnaryExpr) ExprPos() *Pos           { return &x.Pos }
 func (x *TernaryExpr) ExprPos() *Pos         { return &x.Pos }

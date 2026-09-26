@@ -9,29 +9,29 @@ import time "sngl:time"
 import . "sngl:internal/marks"
 // --- Core Layout ---
 
-component ui.vbox[platform] {
+const component ui.vbox[platform] {
     Column(modifier={...style}) {
         children
     }
 }
 
-component ui.hbox[platform] {
+const component ui.hbox[platform] {
     Row(modifier={...style}) {
         children
     }
 }
 
-component ui.stack[platform] {
+const component ui.stack[platform] {
     Box(modifier={...style}) {
         layers
     }
 }
 
-component ui.spacer[platform] {
+const component ui.spacer[platform] {
     Spacer(modifier={...style}) {}
 }
 
-component ui.scroll[platform] {
+const component ui.scroll[platform] {
     Column(
         modifier={...style},
         chain=["verticalScroll(rememberScrollState())"],
@@ -42,11 +42,11 @@ component ui.scroll[platform] {
 
 // --- Core Text & Media ---
 
-component ui.text[platform] {
+const component ui.text[platform] {
     Text(text=value, modifier={...style}, style={...style}) {}
 }
 
-component ui.button[platform] {
+const component ui.button[platform] {
     Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
         Text(text=text) {}
     }
@@ -56,7 +56,7 @@ component ui.button[platform] {
 // every source SNGL accepts (a URL, an asset path) needs a different one, so
 // android draws no image yet. The emitter used to render a TODO comment,
 // which draws nothing; an unsized Spacer is the declared spelling of that.
-component ui.image[platform] {
+const component ui.image[platform] {
     Spacer(modifier={...style}) {}
 }
 
@@ -66,7 +66,7 @@ component ui.image[platform] {
 // renders nothing is not passed. A placeholder only known at run time cannot
 // be answered that way and keeps the argument, so an empty one shows as the
 // notched, uncaptioned field the fold exists to avoid.
-component ui.input[platform] {
+const component ui.input[platform] {
     OutlinedTextField(
         value=value,
         readOnly=readonly,
@@ -84,9 +84,9 @@ component ui.input[platform] {
     }
 }
 
-component ui.checkbox[platform] {
+const component ui.checkbox[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+        Checkbox(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -99,7 +99,7 @@ component ui.checkbox[platform] {
 // container is the direction the prop asks for and each option is a button
 // beside its label. onClick is passed nothing, so the override builds the
 // ChangeEvent itself from the option it looped over.
-component ui.radio[platform] {
+const component ui.radio[platform] {
     if direction == "horizontal" {
         Row(modifier={...style}) {
             for var opt = options {
@@ -121,9 +121,9 @@ component ui.radio[platform] {
     }
 }
 
-component ui.toggle[platform] {
+const component ui.toggle[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+        Switch(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -139,11 +139,11 @@ component ui.toggle[platform] {
 // loop besides, which is not what `expanded` means. compose_ir.go numbers
 // `expandedN` per rendered node, which is the thing an override cannot ask
 // for.
-component ui.select() {
+const component ui.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
 
-component ui.textarea[platform] {
+const component ui.textarea[platform] {
     OutlinedTextField(
         value=value,
         minLines=3,
@@ -170,7 +170,7 @@ component ui.textarea[platform] {
 // overrides write: Kotlin has a conditional expression, so nothing lowers this
 // one to a temporary, and duplicating the call would duplicate the label slot
 // with it.
-component ui.datepicker[platform] {
+const component ui.datepicker[platform] {
     OutlinedTextField(
         value=(value != null ? string(value) : ""),
         readOnly=true,
@@ -190,7 +190,7 @@ component ui.datepicker[platform] {
 // Compose's determinate/indeterminate split is by *presence* of the `progress`
 // argument, which is the shape `value` being an `option` gives the override:
 // the null test picks the call, and neither branch invents a fraction.
-component ui.progress[platform] {
+const component ui.progress[platform] {
     if value != null {
         // The null test is repeated inside the lambda because narrowing does
         // not cross into one: a lambda runs later, and the checker will not
@@ -205,31 +205,31 @@ component ui.progress[platform] {
     }
 }
 
-component ui.spinner[platform] {
+const component ui.spinner[platform] {
     CircularProgressIndicator(modifier={...style}) {}
 }
 
-component ui.badge[platform] {
+const component ui.badge[platform] {
     Badge(modifier={...style}) {
         Text(text=value) {}
     }
 }
 
-component ui.divider[platform] {
+const component ui.divider[platform] {
     HorizontalDivider(modifier={...style}) {}
 }
 
-component ui.card[platform] {
+const component ui.card[platform] {
     Card(modifier={...style}) {
         content
     }
 }
 
-component ui.chip[platform] {
+const component ui.chip[platform] {
     Text(text=label) {}
 }
 
-component ui.link[platform] {
+const component ui.link[platform] {
     Text(
         text=text,
         style={...style},
@@ -237,13 +237,13 @@ component ui.link[platform] {
     ) {}
 }
 
-component ui.tabs[platform] {
+const component ui.tabs[platform] {
     TabRow(selectedTabIndex=selected) {
         panels
     }
 }
 
-component ui.modal[platform] {
+const component ui.modal[platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(args=["shape = MaterialTheme.shapes.medium"]) {
@@ -258,53 +258,53 @@ component ui.modal[platform] {
     }
 }
 
-component ui.drawer[platform] {
+const component ui.drawer[platform] {
     Column(modifier={...style}) {
         content
     }
 }
 
-component ui.tooltip[platform] {
+const component ui.tooltip[platform] {
     Column(modifier={...style}) {
         trigger
     }
 }
 
-component ui.popover[platform] {
+const component ui.popover[platform] {
     Column(modifier={...style}) {
         content
     }
 }
 
-component ui.splitview[platform] {
+const component ui.splitview[platform] {
     Column(modifier={...style}) {
         panes
     }
 }
 
-component ui.table[platform] {
+const component ui.table[platform] {
     Text(text="") {}
 }
 
-component ui.tree[platform] {
+const component ui.tree[platform] {
     Text(text="") {}
 }
 
-component ui.menu[platform] {
+const component ui.menu[platform] {
     Text(text="") {}
 }
 
-component ui.menubar[platform] {
+const component ui.menubar[platform] {
     Text(text="") {}
 }
 
-component ui.toolbar[platform] {
+const component ui.toolbar[platform] {
     Column(modifier={...style}) {
         controls
     }
 }
 
-component ui.avatar[platform] {
+const component ui.avatar[platform] {
     Text(text="") {}
 }
 
@@ -326,6 +326,6 @@ component Timer(
     @tick,
 )
 
-component time.timer[platform] {
+const component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

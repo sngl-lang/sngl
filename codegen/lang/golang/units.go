@@ -134,11 +134,6 @@ var goTimeConst = map[string]string{
 	"h":  "time.Hour",
 }
 
-// formatFloat formats a float64 as a Go literal, preferring integer
-// form when the value is a whole number to keep generated source
-// readable (`5` not `5.000000`).
-func formatFloat(v float64) string { return ir.FormatUnitMagnitude(v) }
-
 // parseUnitNumber parses a unit literal's numeric half. Handles `_` digit
 // separators.
 func parseUnitNumber(num string) (float64, bool) {

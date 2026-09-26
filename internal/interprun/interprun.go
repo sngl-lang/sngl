@@ -97,7 +97,8 @@ func stopTimer(t *time.Timer, armed <-chan time.Time) {
 
 // Options configure a run.
 type Options struct {
-	// Component is the entry point. Empty means "main".
+	// Component is the entry point. Empty means the one a harness isolated
+	// (ir.Package.RootComponent), or else the program's windows.
 	Component string
 	// Worker is the host program to spawn. Empty means Locate decides.
 	Worker string
@@ -122,9 +123,6 @@ type Options struct {
 // program mounted and, through the host's own report, what a real toolkit
 // would have been asked for.
 func Headless(pkg *ir.Package, comp string) (string, error) {
-	if comp == "" {
-		comp = "main"
-	}
 	s, err := interp.NewSession(pkg, comp, interp.NewVirtual())
 	if err != nil {
 		return "", err
@@ -147,7 +145,7 @@ func Run(pkg *ir.Package, opts Options) error {
 	}
 	comp := opts.Component
 	if comp == "" {
-		comp = "main"
+		comp = pkg.RootComponent
 	}
 	if opts.Headless {
 		tree, err := Headless(pkg, comp)

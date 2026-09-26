@@ -89,14 +89,15 @@ component _example_textarea node {
 // Boolean toggle rendered as a checkmark box. `checked` is two-way
 // bound — toggling the box updates it, and writes to it update the
 // rendered state. `label` is rendered next to the box; omit it for
-// a bare checkbox. `@change` fires each time the user toggles.
+// a bare checkbox. `@change` fires each time the user toggles, and
+// carries the new state.
 component checkbox(
     style Style,
     :checked bool,
     label string,
     disabled bool,
     focusable bool = true,
-    @change ChangeEvent,
+    @change ToggleEvent,
 ) node {}
 
 component _example_checkbox node {
@@ -138,7 +139,7 @@ component toggle(
     label string,
     disabled bool,
     focusable bool = true,
-    @change ChangeEvent,
+    @change ToggleEvent,
 ) node {}
 
 component _example_toggle node {

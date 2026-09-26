@@ -114,3 +114,29 @@ func testADurationConvertsToMilliseconds(t Test, c main) {
 ui.window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:4b0e334237a071f626266a906609a62f
+{
+  "results": [
+    {
+      "Desc": "ADurationConvertsToMilliseconds",
+      "Passed": true
+    },
+    {
+      "Desc": "APerBaseFieldIsANumber",
+      "Passed": true
+    },
+    {
+      "Desc": "AReducedSuffixCountsInItsBase",
+      "Passed": true
+    },
+    {
+      "Desc": "ASingleBaseUnitConverts",
+      "Passed": true
+    },
+    {
+      "Desc": "AdditionKeepsEveryBase",
+      "Passed": true
+    }
+  ]
+}

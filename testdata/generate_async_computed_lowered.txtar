@@ -3,12 +3,20 @@ A zero-arg computed function whose body calls an async native is lowered by the
 NoAsyncReactive pass: the reactive read site becomes a synchronous state-field
 access, and an async kicker fires at startup to fill that field.
 
-Calling greeting() from a visual prop triggers the hoist path, which
-synthesises __hoist_N (renamed from greeting) and then lowers it into three
-pieces -- the settled-state field __async___hoist_0 holding the zero value "",
-the kicker $compute___hoist_0 that awaits the original fetchHello call and
-resolves it, and the synchronous wrapper __hoist_0 that reads the field. The
-kicker is called at startup, so the initial value is fetched.
+greeting is lowered in place into three pieces -- the settled-state field
+__async_greeting holding the zero value "", the kicker $compute_greeting that
+awaits the fetchHello call and resolves it, and greeting itself, now a
+synchronous read of the field. The kicker is called at startup, so the
+initial value is fetched.
+
+The prop that calls greeting() is not hoisted: named computeds are lowered
+before inline async expressions are, so by then the call is a plain read. The
+other order wrapped it in a __hoist_0 marked async that awaited a function no
+longer async -- `await` outside an `async` function -- which was hidden while
+the optimizer inlined greeting into the prop. It stopped doing that once a
+call to an undeclared native made greeting read-only rather than pure.
+
+deny out/none/html/index.html `__hoist_` -- a call to a named computed is not hoisted a second time
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
@@ -54,21 +62,21 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { __async___hoist_0: "" };
-  function __hoist_0() {
-    return state.__async___hoist_0;
+  var state = { __async_greeting: "" };
+  function greeting() {
+    return state.__async_greeting;
   }
-  async function $compute___hoist_0() {
-    state.__async___hoist_0 = await fetchHello("world");
+  async function $compute_greeting() {
+    state.__async_greeting = await fetchHello("world");
   }
   var $0 = document.getElementById("$0");
   function __sngl_init() {
-    $0.textContent = __hoist_0();
+    $0.textContent = greeting();
   }
   __sngl_init();
-  $compute___hoist_0();
+  $compute_greeting();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f44251327f538536be94f459c5c8481c
+pass sha256:776364b4da7ac3fc16c9384b0228f45f

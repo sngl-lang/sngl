@@ -257,11 +257,17 @@ func adbLaunch(pkg string) error {
 	return launch.Run()
 }
 
-// ensureDevice checks that an ADB device is connected. If none is found,
-// it attempts to start an Android emulator.
+// ensureDevice selects an ADB device, starting an Android emulator only when
+// none is connected. The choice is exported as ANDROID_SERIAL, which every
+// later adb command inherits: with two transports attached -- one phone over
+// both an IP and its mDNS pairing -- a bare `adb install` refuses to pick.
 func ensureDevice() error {
-	if hasDevice() {
-		return nil
+	serial, err := connectedDevice()
+	if err != nil {
+		return err
+	}
+	if serial != "" {
+		return useDevice(serial)
 	}
 
 	fmt.Fprintln(os.Stderr, "sngl: no ADB device found, starting emulator...")
@@ -311,29 +317,90 @@ func ensureDevice() error {
 	}
 
 	fmt.Fprintln(os.Stderr, "sngl: emulator ready")
-	return nil
+	serial, err = connectedDevice()
+	if err != nil {
+		return err
+	}
+	if serial == "" {
+		return fmt.Errorf("emulator booted but adb lists no device")
+	}
+	return useDevice(serial)
 }
 
-func hasDevice() bool {
+func useDevice(serial string) error {
+	if os.Getenv("ANDROID_SERIAL") == serial {
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "sngl: using device %s\n", serial)
+	return os.Setenv("ANDROID_SERIAL", serial)
+}
+
+// connectedDevice returns the serial of a ready ADB device, or "" when none is
+// attached. A wireless device is found by the adb server's mDNS discovery,
+// which has not run yet on the listing that started the server, so an empty
+// listing is asked again for a few seconds before it is believed.
+func connectedDevice() (string, error) {
 	adb, err := androidTool("adb")
 	if err != nil {
-		return false
+		return "", err
 	}
+	if err := exec.Command(adb, "start-server").Run(); err != nil {
+		return "", fmt.Errorf("adb start-server: %w", err)
+	}
+	want := os.Getenv("ANDROID_SERIAL")
+	var unready []string
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		devs, err := listDevices(adb)
+		if err != nil {
+			return "", err
+		}
+		unready = unready[:0]
+		for _, d := range devs {
+			switch {
+			case want != "" && d.serial != want:
+			case d.state == "device":
+				return d.serial, nil
+			default:
+				unready = append(unready, d.serial+" ("+d.state+")")
+			}
+		}
+		if time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if want != "" {
+		return "", fmt.Errorf("ANDROID_SERIAL=%s is not a connected, ready device", want)
+	}
+	// A phone that is plugged in but not authorized is the device the user
+	// meant; booting an emulator beside it would install somewhere else.
+	if len(unready) > 0 {
+		return "", fmt.Errorf("adb device not ready: %s; authorize it on the device or disconnect it", strings.Join(unready, ", "))
+	}
+	return "", nil
+}
+
+type adbDevice struct {
+	serial, state string
+}
+
+func listDevices(adb string) ([]adbDevice, error) {
 	out, err := exec.Command(adb, "devices").Output()
 	if err != nil {
-		return false
+		return nil, fmt.Errorf("adb devices: %w", err)
 	}
+	var devs []adbDevice
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "List of") || strings.HasPrefix(line, "*") {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) >= 2 && fields[1] == "device" {
-			return true
+		if fields := strings.Fields(line); len(fields) >= 2 {
+			devs = append(devs, adbDevice{serial: fields[0], state: fields[1]})
 		}
 	}
-	return false
+	return devs, nil
 }
 
 // waitForFocus polls until the given package's activity holds window focus,

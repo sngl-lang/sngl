@@ -40,3 +40,4 @@ codegen/platform/*/_fyne-*/
 codegen/platform/*/_gtk4-*/
 codegen/platform/*/_optnarrow*/
 /.sngl-consteval-*/
+/cmd/sngl/sngl

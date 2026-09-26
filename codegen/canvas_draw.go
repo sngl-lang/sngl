@@ -129,13 +129,12 @@ func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 	return out
 }
 
-// CanvasDraws is Canvases keyed both ways, which is what a platform emitting
-// one node at a time wants: it holds a *ir.NodeInst on a render-model target
-// and a *ir.LocalVar on a target whose tree was flattened.
+// CanvasDraws is Canvases keyed by node, which is what a platform emitting one
+// node at a time wants. A flattened target reaches the node through
+// LocalVar.CanvasNode.
 type CanvasDraws struct {
-	byNode  map[*ir.NodeInst]*Canvas
-	byLocal map[*ir.LocalVar]*Canvas
-	all     []Canvas
+	byNode map[*ir.NodeInst]*Canvas
+	all    []Canvas
 }
 
 func NewCanvasDraws(pkg *ir.Package) *CanvasDraws {
@@ -148,18 +147,9 @@ func NewCanvasDrawsIn(pkg *ir.Package, body []ir.Stmt) *CanvasDraws {
 }
 
 func newCanvasDraws(all []Canvas) *CanvasDraws {
-	cs := &CanvasDraws{all: all}
-	// Deduped by node: a canvas reached both as a NodeInst and as a flattened
-	// local is one drawing. Nothing produces both today -- a target either
-	// flattens or does not -- and keying by node is what says so.
-	cs.byNode = make(map[*ir.NodeInst]*Canvas, len(cs.all))
-	cs.byLocal = make(map[*ir.LocalVar]*Canvas, len(cs.all))
+	cs := &CanvasDraws{all: all, byNode: make(map[*ir.NodeInst]*Canvas, len(all))}
 	for i := range cs.all {
-		c := &cs.all[i]
-		cs.byNode[c.Node] = c
-		if c.Local != nil {
-			cs.byLocal[c.Local] = c
-		}
+		cs.byNode[cs.all[i].Node] = &cs.all[i]
 	}
 	return cs
 }
@@ -172,20 +162,13 @@ func (cs *CanvasDraws) All() []Canvas {
 	return cs.all
 }
 
-// ForNode and ForLocal answer nil for a node that is not a canvas, so a caller
+// ForNode answers nil for a node that is not a canvas, so a caller
 // may ask of every node it meets.
 func (cs *CanvasDraws) ForNode(n *ir.NodeInst) *Canvas {
 	if cs == nil {
 		return nil
 	}
 	return cs.byNode[n]
-}
-
-func (cs *CanvasDraws) ForLocal(lv *ir.LocalVar) *Canvas {
-	if cs == nil {
-		return nil
-	}
-	return cs.byLocal[lv]
 }
 
 // collectCanvases finds the drawings in one statement list, reaching through
@@ -221,8 +204,6 @@ func collectCanvases(stmts []ir.Stmt, out *[]Canvas) {
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
 			// find the fallback a second time.
-			collectCanvases(v.Children, out)
-		case *ir.ContextProvider:
 			collectCanvases(v.Children, out)
 		}
 	}

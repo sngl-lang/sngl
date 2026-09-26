@@ -101,6 +101,9 @@ type Node struct {
 	// bare are the caller's wherever the callee inserts them. Nil for a node
 	// written in a slot population, which is a scope of its own.
 	Owner *Env
+	// Context is the provided values the node was mounted under, which a
+	// handler runs with: by the time one fires every provider has unwound.
+	Context map[*ir.Context]any
 }
 
 // Handler is one declared event on a node. Body is whatever the IR carried:
@@ -242,6 +245,10 @@ func (n *Node) Map() map[string]any {
 		m["@"+h.Name] = h.Body
 	}
 	m["__ownerEnv"] = n.Env
+	m["__ownerContext"] = n.Context
+	if n.Inst != nil {
+		m["__inst"] = n.Inst
+	}
 	return m
 }
 
@@ -314,6 +321,9 @@ func (m *mounter) drop(n *Node) {
 
 func (m *mounter) add(n *Node) {
 	n.Owner = m.owner
+	if n.Env != nil {
+		n.Context = capturedContext(n.Env)
+	}
 	m.view.byKey[n.Key] = n
 	if n.ID != "" {
 		m.view.byID[n.ID] = append(m.view.byID[n.ID], n)
@@ -482,7 +492,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		node.Handlers = handlersOf(inst)
 		m.add(node)
 
-		child := env.componentEnv(inst.Component, inst)
+		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
 		node.CompEnv = child
 		if !node.Expanded {
@@ -764,9 +774,6 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 				id = iterationID(fmt.Sprintf("%v", v), seen)
 			}
 		}
-		// Not the mounted path, which depends on which instance the mount
-		// started from: the same copy has to find the same state either way.
-		child.copyKey = fmt.Sprintf("%s/%p[%s]", env.copyKey, f, id)
 		nodes, err := m.stmts(child, f.Body, fmt.Sprintf("%s:body[%s]", path, id))
 		if err != nil {
 			return nil, err

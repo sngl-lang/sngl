@@ -4,6 +4,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"git.duckfam.us/jonathan/sngl/internal/optimize/testdata/storeprobe"
 )
 
 // Double returns x * 2.
@@ -199,3 +201,15 @@ func Huge() uint64 { return math.MaxUint64 }
 //
 //sngl:pure
 func BoomWith(s string) string { panic("boom: " + s) }
+
+// RunStamp is marked pure and is not: it returns the moment it ran, which is
+// how a test tells a value the evaluator computed from one the store replayed.
+//
+//sngl:pure
+func RunStamp(tag string) string { return tag + " " + time.Now().Format(time.RFC3339Nano) }
+
+// ViaStore returns a file's content as the generated-file store holds it,
+// which is how a pure function reads the compiler's own generated source.
+//
+//sngl:pure
+func ViaStore(path string) (string, error) { return storeprobe.Read(path) }

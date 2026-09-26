@@ -20,7 +20,7 @@ const maxRebuildDepth = 16
 // a live instance is the one this render describes: an effect's `on`, and a
 // #[construct] prop. Both are the same rule -- the value is kept and compared
 // against the next render's, so every target has to agree on when two of them
-// are the same value, and not every type gets that agreement (ir.RebuildComparable).
+// are the same value, and not every type gets that agreement (ir.RebuildIncomparable).
 //
 // One walk over the package's instances, rather than a guard on each syntactic
 // path that builds one. The two rules were first written as guards, and both
@@ -217,7 +217,7 @@ func envKey(env map[string]*ir.Type) string {
 // `sngl test` and `+,-,+` compiled.
 //
 // Nothing is said about an effect with no `on`: the parameter's default binds T
-// to a struct with no fields, which ir.RebuildComparable admits and the
+// to a struct with no fields, which ir.RebuildIncomparable admits and the
 // comparison reduces to "never differs" -- exactly what a bracket that lives as
 // long as its node means.
 func (w *rebuildWalker) reportKey(inst *ir.NodeInst, a rebuildArg, t *ir.Type, scope rebuildScope) {

@@ -42,23 +42,23 @@ struct DrawStyle {}
 struct Path {}
 
 #[kt.native("Offset", "androidx.compose.ui.geometry.Offset")]
-func offset(x float, y float) Offset
+const func offset(x float, y float) Offset
 
 #[kt.native("Size", "androidx.compose.ui.geometry.Size")]
-func size(width float, height float) Size
+const func size(width float, height float) Size
 
 // Fully qualified rather than imported: this platform's own emitter already
 // writes `import androidx.compose.ui.graphics.Color as ComposeColor`, so the
 // bare name is not bound and an import of it would collide with that alias.
 #[kt.native("androidx.compose.ui.graphics.Color", "", named)]
-func composeColor(red int, green int, blue int, alpha int) ComposeColor
+const func composeColor(red int, green int, blue int, alpha int) ComposeColor
 
 // Compose's `Stroke` carries the cap and the join, so `strokeStyle` takes the
 // whole style rather than just the width -- android read `lineCap` and
 // `lineJoin` nowhere before this and the two reached its `CanvasStyle` data
 // class to be ignored (#223).
 #[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
-func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
+const func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
 
 // Named in full, as DrawStyle is: a native type's name is what a Kotlin
 // signature spells, and `#[foreign]`'s separate path is not an import Kotlin
@@ -90,7 +90,7 @@ const joinBevel StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
 // for cairo's enums.
-func strokeCap(name string) StrokeCap {
+const func strokeCap(name string) StrokeCap {
     if name == "round" {
         return capRound
     }
@@ -100,7 +100,7 @@ func strokeCap(name string) StrokeCap {
     return capButt
 }
 
-func strokeJoin(name string) StrokeJoin {
+const func strokeJoin(name string) StrokeJoin {
     if name == "round" {
         return joinRound
     }
@@ -110,7 +110,7 @@ func strokeJoin(name string) StrokeJoin {
     return joinMiter
 }
 
-func strokeStyle(style shapes.CanvasStyle) DrawStyle {
+const func strokeStyle(style shapes.CanvasStyle) DrawStyle {
     return strokeOf(f32(style.strokeWidth), strokeCap(style.lineCap), strokeJoin(style.lineJoin))
 }
 
@@ -118,11 +118,11 @@ func strokeStyle(style shapes.CanvasStyle) DrawStyle {
 // the conversion is written where the value crosses. A method native, which
 // is exactly what `.toFloat()` is.
 #[kt.native("toFloat", "", method)]
-func f32(v float) float
+const func f32(v float) float
 
 // The colour as Compose spells it. SNGL carries 0-255 channels and so does
 // this overload, so it is a rename rather than a conversion.
-func composeOf(c color) ComposeColor {
+const func composeOf(c color) ComposeColor {
     return composeColor(int(c.r), int(c.g), int(c.b), int(c.a))
 }
 
@@ -176,7 +176,7 @@ func pathClose(p Path)
 // where the command gives three points and a radius -- so the corner is solved
 // by `sngl:ui/draw` and only the box and the degrees are built here.
 #[kt.native("Rect", "androidx.compose.ui.geometry.Rect", named)]
-func rect(left float, top float, right float, bottom float) ComposeRect
+const func rect(left float, top float, right float, bottom float) ComposeRect
 
 #[kt.native("arcTo", "", method, named)]
 func pathArcTo(p Path, rect ComposeRect, startAngleDegrees float, sweepAngleDegrees float, forceMoveTo bool)
@@ -184,7 +184,7 @@ func pathArcTo(p Path, rect ComposeRect, startAngleDegrees float, sweepAngleDegr
 #[foreign("kotlin:androidx.compose.ui.geometry", "Rect", native)]
 struct ComposeRect {}
 
-func degrees(radians float) => radians * 180.0 / math.pi
+const func degrees(radians float) => radians * 180.0 / math.pi
 
 #[intrinsic("android:draw")]
 component draw(@draw DrawEvent) shapes.shape
@@ -194,7 +194,7 @@ struct DrawEvent {
     height int
 }
 
-component shapes.rect[platform] {
+const component shapes.rect[platform] {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawRectFill(composeOf(style.fill), offset(f32(x), f32(y)), size(f32(w), f32(h)))
@@ -205,7 +205,7 @@ component shapes.rect[platform] {
     })
 }
 
-component shapes.circle[platform] {
+const component shapes.circle[platform] {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawCircleFill(composeOf(style.fill), f32(r), offset(f32(cx), f32(cy)))
@@ -218,7 +218,7 @@ component shapes.circle[platform] {
 
 // Compose has no ellipse: `drawOval` takes the bounding box, so the centre and
 // radii become a top-left and a size.
-component shapes.ellipse[platform] {
+const component shapes.ellipse[platform] {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawOvalFill(composeOf(style.fill), offset(f32(cx - rx), f32(cy - ry)), size(f32(rx * 2.0), f32(ry * 2.0)))
@@ -230,13 +230,13 @@ component shapes.ellipse[platform] {
 }
 
 // A line has no interior, so `fill` is not read.
-component shapes.line[platform] {
+const component shapes.line[platform] {
     draw(@draw(e) {
         drawLine(composeOf(style.stroke), offset(f32(x1), f32(y1)), offset(f32(x2), f32(y2)), f32(style.strokeWidth))
     })
 }
 
-component shapes.path[platform] {
+const component shapes.path[platform] {
     draw(@draw(e) {
         var p = newPath()
         // Where the path is, which the tangent arc measures from and Compose
@@ -290,7 +290,7 @@ func drawTextShim(content string, x float, y float, c ComposeColor, size float, 
 #[kt.native("snglDrawImage", "", named)]
 func drawImageShim(src string, x float, y float, w float, h float)
 
-component shapes.canvasText[platform] {
+const component shapes.canvasText[platform] {
     draw(@draw(e) {
         if style.fill.a > 0 {
             drawTextShim(content, f32(x), f32(y), composeOf(style.fill), f32(style.fontSize), style.fontFamily)
@@ -298,7 +298,7 @@ component shapes.canvasText[platform] {
     })
 }
 
-component shapes.canvasImage[platform] {
+const component shapes.canvasImage[platform] {
     draw(@draw(e) {
         drawImageShim(src, f32(x), f32(y), f32(w), f32(h))
     })

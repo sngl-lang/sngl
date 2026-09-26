@@ -150,8 +150,7 @@ package main
 import "testing"
 
 func TestInitialCountIsZero(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
 }
@@ -159,4 +158,4 @@ func TestInitialCountIsZero(t *testing.T) {
 
 func newTestComponent() Model { return New() }
 -- run/go/bubbletea --
-pass sha256:6c3f779842efdb3b9b6c5e3643a9af71
+pass sha256:02b196fa94abf85ad0e7c25ce337b5dc

@@ -1,0 +1,21 @@
+import marks "sngl:internal/marks"
+import tree "sngl:tree"
+
+// The family whose members are written at the root of a file: the windows a
+// program opens, the build directive saying what it compiles to, and the
+// inputs a generated file records. Nothing syntactic makes those top-level —
+// the package body is a slot that accepts this tree, and everything else it
+// could accept belongs to another one.
+//
+// `root` because each member genuinely is one: a window roots a render tree,
+// and a build directive roots the targets. An `if` or a `for` at the root
+// still works, since neither is a node, and a component that names `root`
+// itself renders windows conditionally.
+//
+// It is ambient because it describes every package rather than widgets: a
+// member declared anywhere names it without importing the package the
+// members happen to come from, and `output`, declared here, is one like any
+// other.
+#[tree.kind]
+#[marks.builtin("treeRoot")]
+struct root {}

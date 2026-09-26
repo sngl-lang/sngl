@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"slices"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -23,6 +25,14 @@ import (
 func (c *checker) elementRef(comp *ir.Component, id string) (*ir.Component, ir.RefCount) {
 	if comp == nil || comp.AST == nil || id == "" {
 		return nil, ir.RefNone
+	}
+	// Another package's body names things through that package's scope, which
+	// this checker does not hold; an imported package is checked before its
+	// importer, so its IR is complete.
+	if !slices.Contains(c.pkg.Components, comp) {
+		s := &refSearch{id: id}
+		s.walkIR(comp.Body, ir.RefOne)
+		return s.host, s.count
 	}
 	s := &refSearch{c: c, comp: comp, id: id}
 	restore := c.fileOf(compDeclPos(comp))
@@ -142,6 +152,41 @@ func isElementRefRead(e ir.Expr) bool {
 			return n.Ref != ir.RefNone
 		default:
 			return false
+		}
+	}
+}
+
+// walkIR is walk over a checked body, which is what another package's
+// component offers.
+func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
+	for _, st := range stmts {
+		switch n := st.(type) {
+		case *ir.NodeInst:
+			if n.ID == s.id && n.Component != nil && s.host == nil {
+				s.host, s.count = n.Component, k
+			}
+			inner := k
+			if ir.IsWindowNode(n) {
+				inner = joinRef(k, ir.RefOption)
+			}
+			s.walkIR(n.Children, inner)
+		case *ir.SlotInst:
+			s.walkIR(n.Children, joinRef(k, ir.RefOption))
+		case *ir.If:
+			s.walkIR(n.Body, joinRef(k, ir.RefOption))
+			s.walkIR(n.Else, joinRef(k, ir.RefOption))
+		case *ir.For:
+			s.walkIR(n.Body, joinRef(k, ir.RefList))
+			s.walkIR(n.Else, joinRef(k, ir.RefOption))
+		case *ir.ErrorBoundary:
+			inner := k
+			if len(n.Failed) > 0 {
+				inner = joinRef(k, ir.RefOption)
+			}
+			s.walkIR(n.Children, inner)
+			s.walkIR(n.Failed, inner)
+		case *ir.ContextProvider:
+			s.walkIR(n.Children, k)
 		}
 	}
 }

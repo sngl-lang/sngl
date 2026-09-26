@@ -56,6 +56,9 @@ type fyneTranslator struct {
 	// whose root is decided some other way, which is every Model scope: the
 	// Model's own __root is the wrapper its BuildUI already returns.
 	slotRoot string
+	// slotAnchor is the anchor field of the slot this render func renders,
+	// set when the func resets its slot.
+	slotAnchor ir.Expr
 
 	// Canvas2D state. canvasByID/canvasByNode map a flattened canvas element to
 	// its Model widget field and draw func, shared into every translator that
@@ -80,6 +83,9 @@ type fyneTranslator struct {
 	// which is what a repaint names -- there being no draw function in the IR
 	// for it to point at.
 	canvasByNode map[*ir.NodeInst]*canvasMeta
+	// canvasTaps are the canvases a click handler put in a fynelayout.Tap,
+	// which is then what their container holds in the canvas's place.
+	canvasTaps map[string]bool
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string), failSink func(error)) *fyneTranslator {
@@ -90,6 +96,7 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 		importSink: importSink,
 		failSink:   failSink,
 		fieldIDs:   map[string]bool{},
+		canvasTaps: map[string]bool{},
 	}
 }
 
@@ -121,6 +128,14 @@ type fyneEventInvoker struct {
 	Field     string // the Go callback field, e.g. "OnTapped"
 	Param     string // the declared parameter name, "" for a no-arg event
 	ParamType string // its Go type, "" for a no-arg event
+	// Payload is the SNGL payload's Go type a test passes, and PayloadField
+	// the field of it the callback takes; both "" when the handler declares
+	// no payload or none of its fields is the callback's type.
+	Payload      string
+	PayloadField string
+	// Target is the Model field holding Field when it is not the #id's own
+	// widget -- a canvas's Tap. "" means IDLabel.
+	Target string
 }
 
 func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
@@ -388,7 +403,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	// what to return.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
-			if name == id.Name {
+			if name == id.Name || (t.canvasTaps[id.Name] && name == canvasTapField(id.Name)) {
 				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
 				break
 			}
@@ -398,6 +413,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
 	childSpec := t.specs[codegen.IdentBareName(child)]
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec)}, ir.TypVoid)}}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.themed(t.qualifyChildExpr(child), childSpec)
 	if sp != nil && sp.isSingleChild() {
@@ -422,20 +441,23 @@ func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
 }
 
-// qualifyParentExpr renames the slot-function parameter `parent` to the
-// type-asserted `container` local — mirrors the typed-slot signature
-// emitted by emitIRSlotFunc.
+// slotParentParam is what a render slot's func calls the container it renders
+// into; `container` would shadow the fyne package.
+const slotParentParam = "__parent"
+
+// qualifyParentExpr renames the slot-function parameter `parent` to
+// slotParentParam, the typed parameter emitIRSlotFunc declares.
 func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
 		if id.Name == "parent" {
-			return &ir.Ident{Name: "container", Type: ir.TypDyn}
+			return &ir.Ident{Name: slotParentParam, Type: ir.TypDyn}
 		}
 		if t.isLocalRef(id.Name) {
 			return localElementRef(id.Name)
 		}
 		// Synthesized __nN parents from inline AppendChild calls in
 		// window/component bodies need an `m.` qualifier; slot Funcs use
-		// the typed `container` param instead.
+		// the typed slotParentParam instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
 			return t.fieldRef(id.Name)
 		}
@@ -448,6 +470,9 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 // "__entry", etc.) and already-qualified expressions pass through.
 func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
+		if t.canvasTaps[id.Name] {
+			return t.fieldRef(canvasTapField(id.Name))
+		}
 		if t.isLocalRef(id.Name) {
 			return localElementRef(id.Name)
 		}
@@ -460,6 +485,9 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 
 func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	bareID := codegen.IdentBareName(node)
+	if _, isCanvas := t.canvasByID[bareID]; isCanvas && event == "click" {
+		return t.attachCanvasClick(bareID, event, handler)
+	}
 	sp, ok := t.specs[bareID]
 	if !ok {
 		return nil
@@ -469,10 +497,13 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	fieldName := h.Field
-	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h)
+	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h, handler)
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
+	if lam, ok := handlerRef.(*ir.Lambda); ok {
+		handlerRef = fyneCallbackLambda(lam, h, event)
+	}
 	return []ir.Stmt{&ir.Assign{
 		Target: &ir.Select{
 			Operand: nodeRef,
@@ -482,6 +513,59 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Op:    ast.AssignSet,
 		Value: handlerRef,
 	}}
+}
+
+// fyneCallbackLambda gives a handler written in place -- in an instance
+// record, where nothing promotes it to a method -- the Go signature of the
+// callback field it is assigned to, the way emitIRPromotedHandler does for a
+// promoted one: the SNGL event parameter goes, and the two-way bind that opens
+// the body reads the callback's own parameter instead.
+func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
+	if lam.Func == nil || h.Signature == "" {
+		return lam
+	}
+	params, err := signatureParams("", event, h.Signature)
+	if err != nil {
+		panic("fyne: " + err.Error())
+	}
+	stmts := lam.Func.Block
+	if h.Param != "" {
+		if bindVar := extractEventBindTarget(stmts, lam.Func.Params); bindVar != "" {
+			bind := stmts[0].(*ir.Assign)
+			stmts = append([]ir.Stmt{&ir.Assign{
+				Target: bind.Target,
+				Op:     ast.AssignSet,
+				Value:  &ir.Ident{Name: h.Param},
+			}}, stmts[1:]...)
+		}
+	}
+	stmts = substitutePayload(stmts, lam.Func.Params, h.Param, params)
+	fn := *lam.Func
+	fn.Params = params
+	fn.Block = stmts
+	out := *lam
+	out.Func = &fn
+	return &out
+}
+
+// substitutePayload reads the event's value off the callback's own parameter
+// named goParam, where its Go type is the field's.
+func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goParams []*ir.Param) []ir.Stmt {
+	if goParam == "" {
+		return stmts
+	}
+	var goType string
+	for _, p := range goParams {
+		if ref, ok := p.Type.Meta.(ir.NativeTypeRef); p.Name == goParam && ok {
+			goType = ref.Name
+		}
+	}
+	return codegen.SubstituteEventPayload(stmts, sngl, func(f *ir.StructField) ir.Expr {
+		if f.Type == nil || golang.IRTypeToGo(f.Type) != goType {
+			return nil
+		}
+		return &ir.Ident{Name: goParam, Type: f.Type}
+	})
 }
 
 // OnDetachHandler clears the callback field. Fyne holds one callback per
@@ -586,11 +670,17 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 }
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	return []ir.Stmt{&ir.Assign{
-		Target: t.fieldRef(slot.Name),
-		Op:     ast.AssignSet,
-		Value:  &ir.Literal{Type: ir.TypNull},
-	}}
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	anchor := nativeCallAt("fynelayout.SlotAnchor", fyneLayoutImportPath,
+		[]ir.Expr{t.qualifyParentExpr(&ir.Ident{Name: "parent"}), t.slotAnchor}, ir.TypDyn)
+	return []ir.Stmt{
+		&ir.Assign{
+			Target: t.fieldRef(slot.Name),
+			Op:     ast.AssignSet,
+			Value:  &ir.Literal{Type: ir.TypNull},
+		},
+		&ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor},
+	}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
@@ -622,24 +712,82 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
+	case *ir.CallStmt:
+		if boxed := t.boxedSlotRenderCall(n); boxed != nil {
+			return boxed
+		}
+		if local := localSlotRenderCall(n, t.isLocalRef); local != nil {
+			return []ir.Stmt{local}
+		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// boxedSlotRenderCall renders a slot whose container holds one child -- a
+// scroll -- into a box that is that child, since the slot adds and removes
+// any number of entries.
+func (t *fyneTranslator) boxedSlotRenderCall(cs *ir.CallStmt) []ir.Stmt {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil
+	}
+	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
+	sp := t.specs[bare]
+	if sp == nil || !sp.isSingleChild() {
+		return nil
+	}
+	boxName := bare + "_box"
+	t.fieldSink(boxName, "*fyne.Container")
+	box := t.fieldRef(boxName)
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Value: box}}
+	return []ir.Stmt{
+		&ir.Assign{Target: box, Op: ast.AssignSet,
+			Value: nativeCallAt("fynelayout.SlotBox", fyneLayoutImportPath, []ir.Expr{box}, ir.TypDyn)},
+		&ir.Assign{Target: &ir.Select{Operand: t.nodeRefFor(bare), Field: sp.Content, Type: ir.TypDyn}, Op: ast.AssignSet, Value: box},
+		&ir.CallStmt{Call: &call},
+	}
+}
+
+// localSlotRenderCall rewrites a render slot call whose container is a local
+// of this scope -- a slot nothing but the ctor renders -- to pass the local,
+// which the language context would otherwise spell as a field.
+func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	if !ok || !isLocal(id.Name) {
+		return nil
+	}
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: localElementRef(id.Name)}}
+	return &ir.CallStmt{Call: &call}
 }
 
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted
 // after the walk. A synthesized id is skipped: `c.__n0.click()` is not
 // something a test can write.
-func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
+func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, handler ir.Expr) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
-	t.invokerSink(fyneEventInvoker{
+	inv := fyneEventInvoker{
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
 		Param:     h.Param,
 		ParamType: fyneHandlerParamType(h),
-	})
+	}
+	if pt, sd := codegen.HandlerPayload(handler); sd != nil && inv.ParamType != "" {
+		for _, f := range sd.Fields {
+			if f != nil && f.Type != nil && f.Name != "value" && golang.IRTypeToGo(f.Type) == inv.ParamType {
+				inv.Payload = golang.IRTypeToGo(pt)
+				inv.PayloadField = golang.ExportName(f.Name)
+				break
+			}
+		}
+	}
+	t.invokerSink(inv)
 }
 
 // fyneHandlerParamType reads the parameter's Go type out of the declared
@@ -671,17 +819,30 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 			continue // duplicate id+event -- keep the first
 		}
 		seen[name] = true
+		target := inv.IDLabel
+		if inv.Target != "" {
+			target = inv.Target
+		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
+		if inv.Payload != "" {
+			fmt.Fprintf(b, "func (m *Model) %s(e %s) {\n", name, inv.Payload)
+			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(e.%s)\n\t}\n}\n\n",
+				target, inv.Field, target, inv.Field, inv.PayloadField)
+			continue
+		}
 		if inv.Param != "" && inv.ParamType != "" {
+			// Detached while it runs: a widget calls it after taking the value,
+			// so the handler's write-back of the bound var is a no-op there,
+			// while here it would set a new value and fire the callback again.
 			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
-			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(%s)\n\t}\n}\n\n",
-				inv.IDLabel, inv.Field, inv.IDLabel, inv.Field, inv.Param)
+			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
+				target, inv.Field, target, inv.Field, inv.Param, target, inv.Field)
 			continue
 		}
 		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
 		fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s()\n\t}\n}\n\n",
-			inv.IDLabel, inv.Field, inv.IDLabel, inv.Field)
+			target, inv.Field, target, inv.Field)
 	}
 }
 

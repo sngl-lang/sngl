@@ -52,7 +52,7 @@ component _helper() node {
     text(value="private")
 }
 `,
-		"badlib": `
+		"mainlib": `
 import . "sngl:ui"
 
 component main node {

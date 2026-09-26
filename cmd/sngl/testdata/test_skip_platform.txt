@@ -43,3 +43,153 @@ func testItRenders(t test.Test, c main) {
 ui.window(title="t") {
     main
 }
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:1c2ac9ac9344073d196e66ccd4605f62
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/main/2 --
+sha256:1c2ac9ac9344073d196e66ccd4605f62
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/main/3 --
+sha256:1c2ac9ac9344073d196e66ccd4605f62
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:aebe0bfe2a911fe1c123e5ad74c2d7d0
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/2 --
+sha256:aebe0bfe2a911fe1c123e5ad74c2d7d0
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/3 --
+sha256:aebe0bfe2a911fe1c123e5ad74c2d7d0
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:dd527b01c06662d1e425dd034b056913
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/2 --
+sha256:dd527b01c06662d1e425dd034b056913
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/3 --
+sha256:dd527b01c06662d1e425dd034b056913
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:cbd57f826bdf22ae229d52d27dabcb92
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/2 --
+sha256:cbd57f826bdf22ae229d52d27dabcb92
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/3 --
+sha256:cbd57f826bdf22ae229d52d27dabcb92
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:360f9edec17c937e48b9202f2626b56a
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/2 --
+sha256:360f9edec17c937e48b9202f2626b56a
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/3 --
+sha256:360f9edec17c937e48b9202f2626b56a
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}

@@ -51,7 +51,7 @@ func TestExtensionMergeBasic(t *testing.T) {
 	const extSource = `
 import sngl "sngl:ui"
 
-component sngl.text[extstub.platform] {
+const component sngl.text[extstub.platform] {
     image(src=value)
 }
 `
@@ -128,28 +128,30 @@ func (namedStubPlatform) Resolve(string) ir.Symbol     { return nil }
 // stashed per platform, and reach codegen as ordinary per-instance component
 // state.
 //
-// Two stub platforms each override `sngl.text` with a var of their own. The
+// Two stub platforms each override `sngl.text` with a var of their own, which
+// only a handler touches: a target's override is const, so its render reads
+// none. The
 // test lowers for one of them, which is what pins the per-platform split: a
 // var declared by a platform that is not the build target must not survive.
 func TestExtensionBodyVars(t *testing.T) {
 	const extA = `
 import sngl "sngl:ui"
 
-component sngl.text[stubA.platform] {
+const component sngl.text[stubA.platform] {
     const label string = "L"
     var flip bool = false
     vbox {
-        image(src="{label}{flip}")
+        button(text=label, @click { flip = !flip })
     }
 }
 `
 	const extB = `
 import sngl "sngl:ui"
 
-component sngl.text[stubB.platform] {
+const component sngl.text[stubB.platform] {
     var other int = 7
     vbox {
-        image(src="{other}")
+        button(text="b", @click { other += 1 })
     }
 }
 `

@@ -27,8 +27,14 @@ func foldUnprovidedContexts(pkg *ir.Package, _ Features, _ Options) error {
 	provided := map[*ir.Context]bool{}
 	for _, r := range roots {
 		_ = ir.Walk(r, func(n ir.Node) error {
-			if p, ok := n.(*ir.ContextProvider); ok {
-				provided[p.Ref] = true
+			switch x := n.(type) {
+			case *ir.ContextProvider:
+				provided[x.Ref] = true
+			case *ir.Call:
+				// A test's override provides it for the statements after it.
+				if _, ctx := setContextArg(x); ctx != nil {
+					provided[ctx] = true
+				}
 			}
 			return nil
 		})

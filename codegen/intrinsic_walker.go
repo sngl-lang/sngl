@@ -167,7 +167,11 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			// nothing, so an element ref written inside one kept the name the
 			// program gave it rather than the variable the page emitted, and
 			// the page threw on a name nothing declared.
-			if call, changed := walkCallLambdas(ctx, n.Call, t); changed {
+			call, changed := walkCallLambdas(ctx, n.Call, t)
+			if caught, moved := walkCatchingHandler(ctx, call, t); moved {
+				call, changed = caught, true
+			}
+			if changed {
 				cp := *n
 				cp.Call = call
 				return []ir.Stmt{&cp}
@@ -208,6 +212,10 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		cp.Iter = iterExpr
 		cp.Body = body
 		return []ir.Stmt{&cp}
+	case *ir.ErrorBoundary:
+		// A raise reaches its handler through Call.ResolvedHandler, so once its
+		// children are flat statements the boundary itself holds nothing.
+		return WalkLowered(ctx, n.Children, t)
 	case *ir.If:
 		cp := *n
 		cp.Cond = t.OnCond(ctx, n.Cond)
@@ -220,18 +228,32 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	return t.OnDefault(ctx, s)
 }
 
-// walkHandlerBody rewrites an inline handler's body through the same
-// translator as any other statement block, and returns the handler unchanged
-// when it is not one.
-//
-// A handler attached as a named func is walked where that func is emitted. One
-// attached as a closure -- which is how a handler that reads a loop variable
-// has to be attached, since a top-level func cannot see it -- sits inside an
-// expression, and the walk had no reason to look inside an expression. So its
-// body reached the language backend raw: a canvas redraw emitted nothing at
-// all (the generic statement path has no rendering for one), and a prop
-// assignment on a node kept its IR shape instead of the platform's. The button
-// worked and the display it was supposed to repaint did not.
+// walkCatchingHandler walks the handler a language inlines at a fallible call
+// site -- the call's own @error, or the boundary's or window's it resolved to.
+// A boundary's or window's handler is also emitted where it is declared, so
+// the walk rewrites a copy.
+func walkCatchingHandler(ctx context.Context, call *ir.Call, t IntrinsicTranslator) (*ir.Call, bool) {
+	if call == nil {
+		return call, false
+	}
+	h := ir.CatchingHandler(call)
+	if h == nil || h.Func == nil {
+		return call, false
+	}
+	fn := *h.Func
+	fn.Block = WalkLowered(ctx, h.Func.Block, t)
+	walked := *h
+	walked.Func = &fn
+	cp := *call
+	if cp.ErrorHandler == h {
+		cp.ErrorHandler = &walked
+	}
+	if cp.ResolvedHandler == h {
+		cp.ResolvedHandler = &walked
+	}
+	return &cp, true
+}
+
 // walkCallLambdas rewrites every callback a call hands over, answering a copy
 // and whether anything moved. Copied rather than rewritten in place for the
 // reason walkComponentProps gives: walking one body twice nests the
@@ -291,6 +313,11 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 	return e, false
 }
 
+// walkHandlerBody rewrites an inline handler's body through the same
+// translator as any other statement block, and returns the handler unchanged
+// when it is not one. A handler attached as a closure -- how one reading a
+// loop variable has to be attached -- sits inside an expression, which the
+// statement walk does not otherwise enter.
 func walkHandlerBody(ctx context.Context, handler ir.Expr, t IntrinsicTranslator) ir.Expr {
 	lam, ok := handler.(*ir.Lambda)
 	if !ok || lam.Func == nil {

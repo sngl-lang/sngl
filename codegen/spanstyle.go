@@ -35,13 +35,8 @@ func SpanStyleUnsetColor(e ir.Expr) bool {
 // SpanStyleInherit reports whether a `markup.SpanStyle` weight or slant is the
 // `inherit` member its enum leads with.
 func SpanStyleInherit(e ir.Expr) bool {
-	switch v := e.(type) {
-	case *ir.Ident:
-		return v.Member == "inherit"
-	case *ir.Select:
-		return v.Field == "inherit"
-	}
-	return false
+	v, ok := e.(*ir.Ident)
+	return ok && v.Member == "inherit"
 }
 
 // SpanStyleKnownColor reports whether a color is one the build can read: a

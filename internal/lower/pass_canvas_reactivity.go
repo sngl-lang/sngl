@@ -175,8 +175,6 @@ func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Va
 				walk(n.Else)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
-			case *ir.ContextProvider:
-				walk(n.Children)
 			}
 		}
 	}

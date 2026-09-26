@@ -120,8 +120,8 @@ body { font-family: system-ui, sans-serif; }
     });
   }
   function __effect2_mount() {
-    runWith((__e) => {
-      state.seen__inst0 = __e;
+    runWith((__e0) => {
+      state.seen__inst0 = __e0;
       __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
@@ -218,4 +218,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ed81bfb0cd358ffd3533a9a1b814f9dc
+pass sha256:64be1595aa6f0a2bc6dbe9f48c079db6

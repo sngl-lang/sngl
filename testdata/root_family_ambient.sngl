@@ -1,0 +1,17 @@
+// `root`, the family a package body accepts, is ambient: it is declared in the
+// builtin package, so a file names it without importing anything.
+//
+// It describes every package rather than widgets, and while it lived in the ui
+// package anything that wanted to be written at a file's root had to import
+// the widget library to say so -- `output` could not, since the builtin
+// package cannot import the ui one, and was let off the family check instead.
+// Here a root member is declared in a file that imports nothing.
+//
+// It is not instantiated: a package-body node that is neither a window nor a
+// directive is rendered by nothing today, and collecting one is the plugin
+// plan's Phase 0 rather than this fixture's business.
+//
+// The package names are spelled out rather than as their URIs because the
+// fuzz harness adds the standard imports to any source that mentions none.
+
+component meta() root {}

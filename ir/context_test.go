@@ -55,10 +55,10 @@ func TestConvertContextProvider(t *testing.T) {
 		Ref:   ctx,
 		Value: &Literal{Type: &Type{Kind: TypeString}, Value: "dark"},
 	}
-	s := ConvertStmt(prov)
+	s := (&converter{}).convertStmt(prov)
 	vn, ok := s.(*ast.VisualNode)
 	if !ok {
-		t.Fatalf("ConvertStmt(provider) = %T, want *ast.VisualNode", s)
+		t.Fatalf("convertStmt(provider) = %T, want *ast.VisualNode", s)
 	}
 	ident, ok := vn.Target.(*ast.IdentExpr)
 	if !ok || ident.Name != "theme" {
@@ -69,9 +69,9 @@ func TestConvertContextProvider(t *testing.T) {
 func TestConvertContextRead(t *testing.T) {
 	ctx := &Context{Name: "theme", Typ: &Type{Kind: TypeString}}
 	r := &ContextRead{Ref: ctx, Typ: ctx.Typ}
-	e := ConvertExpr(r)
+	e := (&converter{}).convertExpr(r)
 	ident, ok := e.(*ast.IdentExpr)
 	if !ok || ident.Name != "theme" {
-		t.Fatalf("ConvertExpr(read) = %T %+v, want IdentExpr{Name:theme}", e, ident)
+		t.Fatalf("convertExpr(read) = %T %+v, want IdentExpr{Name:theme}", e, ident)
 	}
 }

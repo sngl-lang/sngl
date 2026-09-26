@@ -69,11 +69,20 @@ func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst) {
 	}
 }
 
-func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
+// childKey is one instance: the site, and where in the tree it was mounted.
+// A site under a `for` is mounted once per iteration, and each of those holds
+// state of its own.
+type childKey struct {
+	inst *ir.NodeInst
+	at   string
+}
+
+func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *Env {
 	if env.childEnvs == nil {
-		env.childEnvs = map[copyOf[*ir.NodeInst]]*Env{}
+		env.childEnvs = map[childKey]*Env{}
 	}
-	if cached, ok := env.childEnvs[copyOf[*ir.NodeInst]{inst, env.copyKey}]; ok {
+	key := childKey{inst, at}
+	if cached, ok := env.childEnvs[key]; ok {
 		// The cache is for the component's own state, which has to survive a
 		// re-mount. Its props are inputs and must not: they are the call site's
 		// expressions, and the call site's state moves. `enabled=running`
@@ -107,14 +116,14 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 		child.Set(v, evalInit(child, v.Init))
 	}
 	child.BodyStmts = comp.Body
-	env.childEnvs[copyOf[*ir.NodeInst]{inst, env.copyKey}] = child
+	env.childEnvs[key] = child
 	return child
 }
 
 // ComponentEnv is the public entry point for componentEnv. Used by the
 // testrunner to construct live child componentValue wrappers.
 func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
-	return env.componentEnv(comp, inst)
+	return env.componentEnv(comp, inst, "")
 }
 
 // ComponentEnvFromCallStmt returns (and caches) the child env for a user
@@ -122,21 +131,14 @@ func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 // the *ir.CallStmt so state survives across re-renders.
 func (env *Env) ComponentEnvFromCallStmt(comp *ir.Component, cs *ir.CallStmt) *Env {
 	if env.callChildEnvs == nil {
-		env.callChildEnvs = map[copyOf[*ir.CallStmt]]*Env{}
+		env.callChildEnvs = map[*ir.CallStmt]*Env{}
 	}
-	if cached, ok := env.callChildEnvs[copyOf[*ir.CallStmt]{cs, env.copyKey}]; ok {
+	if cached, ok := env.callChildEnvs[cs]; ok {
 		return cached
 	}
 	child := env.componentEnvFromCall(comp, cs.Call)
-	env.callChildEnvs[copyOf[*ir.CallStmt]{cs, env.copyKey}] = child
+	env.callChildEnvs[cs] = child
 	return child
-}
-
-// CallStmtElemName returns the element/component name of a CallStmt as
-// recovered from its AST back-reference, or "" if not an element call.
-func CallStmtElemName(cs *ir.CallStmt) string {
-	n, _ := elemCallInfo(cs)
-	return n
 }
 
 // RenderCallStmtNode renders a children-less element call (text #id(...))
@@ -194,6 +196,7 @@ func (env *Env) renderCallStmtProps(cs *ir.CallStmt, elemName string) map[string
 		}
 	}
 	m["__ownerEnv"] = env
+	m["__ownerContext"] = capturedContext(env)
 	return m
 }
 
@@ -246,6 +249,8 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 		m["@"+h.Name] = h.Func
 	}
 	m["__ownerEnv"] = env
+	m["__ownerContext"] = capturedContext(env)
+	m["__inst"] = node
 	return m
 }
 

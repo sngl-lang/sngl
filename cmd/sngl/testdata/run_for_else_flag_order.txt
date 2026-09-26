@@ -59,3 +59,17 @@ func testContinueMeansTheBodyRan(t Test, c box) {
 
 window {
 }
+-- testrun/bubbletea/go/app.sngl/box/1 --
+sha256:abdd2d40d8552ace16bd8570ce15d903
+{
+  "results": [
+    {
+      "Desc": "BreakMeansTheBodyRan",
+      "Passed": true
+    },
+    {
+      "Desc": "ContinueMeansTheBodyRan",
+      "Passed": true
+    }
+  ]
+}

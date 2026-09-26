@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -8,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -151,20 +154,32 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 		return nil, fmt.Errorf("generate: %w", err)
 	}
 
-	ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
-	if err != nil {
-		if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
-			return []*codegen.TestResult{{
-				Desc:       "<launcher-skip>",
-				Skipped:    true,
-				SkipReason: skip.Reason,
-				Log:        []string{"SKIP: " + skip.Reason},
-			}}, nil
+	launch := func() ([]*codegen.TestResult, error) {
+		ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
+		if err != nil {
+			if _, ok := errors.AsType[*codegen.SkipError](err); ok {
+				return nil, err
+			}
+			return nil, fmt.Errorf("launch: %w", err)
 		}
-		return nil, fmt.Errorf("launch: %w", err)
+		defer cleanup()
+		return driveRPC(ch, fixtureDir, fixtureFile)
 	}
-	defer cleanup()
-	return driveRPC(ch, fixtureDir, fixtureFile)
+	if testRuns != nil {
+		key := strings.Join([]string{plat.PlatformIdentifier(), langIdent(lang), fixtureFile, cmp.Or(group.Component, "_")}, "/")
+		snapDir := filepath.Join(fixtureDir, fixtureFile+".snapshots")
+		return testRuns.answer(key, tmpDir, snapDir, launch)
+	}
+	results, err = launch()
+	if skip, ok := errors.AsType[*codegen.SkipError](err); ok {
+		return []*codegen.TestResult{{
+			Desc:       "<launcher-skip>",
+			Skipped:    true,
+			SkipReason: skip.Reason,
+			Log:        []string{"SKIP: " + skip.Reason},
+		}}, nil
+	}
+	return results, err
 }
 
 // Best-effort, for error messages: language types spell this differently.

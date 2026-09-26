@@ -26,7 +26,6 @@
 # below is what fails. An injection is invisible to a state assertion and shows
 # up only in the DOM, which is the whole reason this fixture reads one.
 
-[!chromium] skip 'a rendered DOM needs a real Chromium'
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=html app.sngl
@@ -68,4 +67,27 @@ func testRendered(t Test, c main) {
 
 window {
     main
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:a0ac5349a87d1d29b0337cc1ff263c46
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "rendered.html": "PGh0bWw+PGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0idXRmLTgiPgogIDxtZXRhIG5hbWU9InZpZXdwb3J0IiBjb250ZW50PSJ3aWR0aD1kZXZpY2Utd2lkdGgsIGluaXRpYWwtc2NhbGU9MSI+CiAgPHN0eWxlPgoqIHsgbWFyZ2luOiAwOyBwYWRkaW5nOiAwOyBib3gtc2l6aW5nOiBib3JkZXItYm94OyB9CmJvZHkgeyBmb250LWZhbWlseTogc3lzdGVtLXVpLCBzYW5zLXNlcmlmOyB9CiAgPC9zdHlsZT4KPC9oZWFkPjxib2R5PgoKPHAgc3R5bGU9Im1hcmdpbjowcHg7d2hpdGUtc3BhY2U6cHJlLXdyYXAiPjxzcGFuPiZsdDtlbSZndDtub3QgbWFya3VwJmx0Oy9lbSZndDsgIHR3byBzcGFjZXMKYW5kIGEgbmV3bGluZTwvc3Bhbj48c3Ryb25nPjxzcGFuPiBib2xkPC9zcGFuPjwvc3Ryb25nPjwvcD4KCjxzY3JpcHQ+CndpbmRvdy5fX3NuZ2xfbWFya3VwID0gQXJyYXkuZnJvbShkb2N1bWVudC5ib2R5LmNoaWxkTm9kZXMpCiAgLmZpbHRlcigobikgPT4gbi5ub2RlTmFtZSAhPT0gIlNDUklQVCIpLm1hcCgobikgPT4gbi5jbG9uZU5vZGUodHJ1ZSkpOwp3aW5kb3cuX19zbmdsX3Jlc2V0ID0gKCkgPT4gewogIGZvciAoY29uc3QgbiBvZiBBcnJheS5mcm9tKGRvY3VtZW50LmJvZHkuY2hpbGROb2RlcykpIHsKICAgIGlmIChuLm5vZGVOYW1lICE9PSAiU0NSSVBUIikgbi5yZW1vdmUoKTsKICB9CiAgY29uc3QgZmlyc3QgPSBkb2N1bWVudC5ib2R5LmZpcnN0Q2hpbGQ7CiAgZm9yIChjb25zdCBuIG9mIHdpbmRvdy5fX3NuZ2xfbWFya3VwKSBkb2N1bWVudC5ib2R5Lmluc2VydEJlZm9yZShuLmNsb25lTm9kZSh0cnVlKSwgZmlyc3QpOwogIHdpbmRvdy5fX3NuZ2xfYm9vdCgpOwp9Owp3aW5kb3cuX19zbmdsX2Jvb3QgPSAoKSA9PiB7CigoKSA9PiB7CiAgLy8gc25nbC1lbnRyeS5qcwogIHZhciBzdGF0ZSA9IHt9OwogIGlmICh0eXBlb2Ygd2luZG93ICE9PSAidW5kZWZpbmVkIikgewogICAgd2luZG93Ll9fc25nbF9zdGF0ZSA9IHN0YXRlOwogIH0KICBmdW5jdGlvbiB0ZXN0UmVuZGVyZWQodCwgYykgewogICAgdC5zbmFwc2hvdCgicmVuZGVyZWQiKTsKICB9CiAgaWYgKHR5cGVvZiB3aW5kb3cgIT09ICJ1bmRlZmluZWQiKSB7CiAgICBPYmplY3QuYXNzaWduKHdpbmRvdywgeyB0ZXN0UmVuZGVyZWQgfSk7CiAgfQp9KSgpOwp9Owp3aW5kb3cuX19zbmdsX2Jvb3QoKTsKPC9zY3JpcHQ+CjxzY3JpcHQgdHlwZT0ibW9kdWxlIj4KaW1wb3J0IHsgbWFpbiB9IGZyb20gJy4vdGVzdGFnZW50L3Rlc3RhZ2VudC5qcyc7CmltcG9ydCAnLi90ZXN0YWdlbnRfbWFpbi5qcyc7CmltcG9ydCAnLi9zbmFwc2hvdC5qcyc7CmltcG9ydCAnLi9jdXJyZW50X21vZGVsLmpzJzsKZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsICgpID0+IG1haW4oKSk7Cjwvc2NyaXB0PgoKPC9ib2R5PjwvaHRtbD4="
+  }
+}
+-- testrun/html/none/app.sngl/main/2 --
+sha256:1935b4c9b40228ab0b7026349b494ca1
+{
+  "results": [
+    {
+      "Desc": "Rendered",
+      "Passed": true
+    }
+  ]
 }

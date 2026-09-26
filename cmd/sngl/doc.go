@@ -681,7 +681,7 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 	if len(events) > 0 {
 		sb.WriteString("## Events\n\n```\n")
 		for _, e := range events {
-			payload := parser.FormatType(e.Type)
+			payload := parser.FormatEventSignature(e)
 			sb.WriteString(fmt.Sprintf("@%-15s %s\n", e.Name, payload))
 		}
 		sb.WriteString("```\n\n")

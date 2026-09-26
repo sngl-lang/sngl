@@ -223,9 +223,6 @@ body { font-family: system-ui, sans-serif; }
   var state = { fm: null, zero: null };
   state.fm = { title: "Home", weight: 0, limit: 9 };
   state.zero = { title: "", weight: 0, limit: 9 };
-  function Frontmatter(title, weight, limit) {
-    return { title, weight, limit };
-  }
   function String(v) {
     return "" + v;
   }
@@ -242,4 +239,4 @@ pass sha256:6d55f39bd7ce1d18f2937ef4b07a5ae8
 -- run/kotlin/android --
 pass sha256:cb963c4b5d6fd87c04c1d696948cbb94
 -- run/none/html --
-pass sha256:1ab1f7092e7b6b40b1f94106622de1e5
+pass sha256:f539bbccd91127861de15f4051064077

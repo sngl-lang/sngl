@@ -46,7 +46,7 @@ output {
     }
 }
 
-component main ui.root {
+component main root {
     ui.window #home(title=greeting()) {
         ui.text(value="x")
     }

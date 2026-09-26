@@ -6,7 +6,7 @@ component sngl.text[html.platform] list<dyn> { // ERROR(check) "may not declare 
 }
 
 component main sngl.node {
-    text(value="hi")
+    sngl.text(value="hi")
 }
 
 sngl.window {

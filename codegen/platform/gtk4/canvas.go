@@ -86,12 +86,6 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	return canvasutil.StructDeclsExcluding(declared) + canvasCairoHelpers
 }
 
-// cairoCall builds a `C.cairo_*(cr, args...)` CallStmt.
-func cairoCall(name string, cr ir.Expr, args ...ir.Expr) ir.Stmt {
-	all := append([]ir.Expr{cr}, args...)
-	return &ir.CallStmt{Call: nativeCall(name, all...)}
-}
-
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a
 // gtk_widget_queue_draw on the matching canvas drawing-area Model field.
 func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
@@ -193,6 +187,33 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	stmts = append(stmts, &ir.CallStmt{Call: nativeCall("sngl_drawing_area_set_draw", widgetPtr, idx)})
 
 	return stmts
+}
+
+// attachCanvasClick wires a canvas's @click through a GtkGestureClick on its
+// drawing area, which has no click signal of its own. The handler keeps its
+// SNGL parameter, since no GTK signature replaces it, so it is handed the
+// declared payload.
+func (t *gtk4Translator) attachCanvasClick(id, event string, handler ir.Expr) []ir.Stmt {
+	gesture := id + "Gesture"
+	t.fieldSink(gesture, "GtkGesture")
+	t.fieldIDs[gesture] = true
+	if t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
+		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: gesture, GTKSignal: "pressed", WidgetType: "GtkGesture"})
+	}
+
+	arg := ""
+	if pt, _ := codegen.HandlerPayload(handler); pt != nil {
+		arg = golang.IRTypeToGo(pt) + "{}"
+	}
+	cbList := &ir.Ident{Name: "snglCallbacks", Type: ir.TypDyn}
+	closure := &ir.Ident{Name: fmt.Sprintf("func() { %s(%s) }", t.gc.EvalExpr(handler), arg), Type: ir.TypDyn}
+	appendCall := &ir.Call{Type: ir.TypDyn, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: cbList}, {Value: closure}}}
+	lenCall := &ir.Call{Type: ir.TypInt, Func: &ir.Func{Name: "len"}, Args: []ir.CallArg{{Value: cbList}}}
+	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})
+	return []ir.Stmt{
+		&ir.Assign{Target: cbList, Op: ast.AssignSet, Value: appendCall},
+		&ir.Assign{Target: t.fieldRef(gesture), Op: ast.AssignSet, Value: nativeCall("sngl_connect_click", cgoCast("", t.fieldRef(id)), idx)},
+	}
 }
 
 // emitIRCanvasDraw wraps one drawing's statements in a Model method

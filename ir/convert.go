@@ -16,21 +16,6 @@ func Convert(pkg *Package) *ast.Document {
 	return c.convertPackage(pkg)
 }
 
-// ConvertExpr reconstructs an AST expression from an IR expression.
-// Synthetic expressions (no AST backref) are materialized from IR fields.
-// Bridges the IR → AST-codegen migration while platform generators are
-// incrementally ported to consume IR directly.
-func ConvertExpr(e Expr) ast.Expr {
-	c := &converter{}
-	return c.convertExpr(e)
-}
-
-// ConvertStmt reconstructs an AST statement from an IR statement.
-func ConvertStmt(s Stmt) ast.Stmt {
-	c := &converter{}
-	return c.convertStmt(s)
-}
-
 type converter struct {
 	// aliases maps a library package's URI to what this file imported it as,
 	// so a name from one is spelled the way the source spells it.
@@ -243,6 +228,7 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 		TypeParams: c.convertTypeParams(f.TypeParams),
 		Params:     c.convertParamList(f.Params),
 		Attrs:      c.foreignAttrs(f.Foreign, f),
+		Const:      f.Const,
 	}
 	if f.Return != nil {
 		fd.ReturnType = c.convertType(f.Return)
@@ -262,7 +248,8 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 
 func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	cd := &ast.ComponentDecl{
-		Name: comp.Name,
+		Name:  comp.Name,
+		Const: comp.Const,
 	}
 
 	// Build prop list.
@@ -272,6 +259,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 			Name:          p.Name,
 			Type:          c.convertType(p.Type),
 			Bidirectional: p.Bidirectional,
+			Const:         p.Const,
 		}
 		if p.Default != nil {
 			param.Default = c.convertExpr(p.Default)
@@ -279,11 +267,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		props = append(props, param)
 	}
 	for _, e := range comp.Events {
-		ed := ast.EventDecl{Name: e.Name}
-		if e.Type != nil {
-			ed.Type = c.convertType(e.Type)
-		}
-		props = append(props, ed)
+		props = append(props, c.convertEventDecl(e))
 	}
 	for _, s := range comp.Slots {
 		ct := c.slotType(s)
@@ -291,7 +275,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
 		}
-		props = append(props, ast.Param{Name: s.Name, Type: typ})
+		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}
 	if len(props) > 0 {
 		cd.Props = ast.PropList{
@@ -781,7 +765,9 @@ func (c *converter) treePkg() string { return c.aliasFor("tree") }
 // last segment of its URI — which is the alias an unaliased import binds.
 func (c *converter) aliasFor(uri string) string {
 	uri = strings.TrimPrefix(uri, "sngl:")
-	if c.dotted[uri] {
+	// sngl:builtin is ambient: every file reaches its names bare, and it
+	// cannot be imported under any alias.
+	if c.dotted[uri] || uri == "builtin" {
 		return ""
 	}
 	if a := c.aliases[uri]; a != "" {
@@ -994,7 +980,15 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	}
 }
 
-func (c *converter) convertConversion(conv *Conversion) *ast.CallExpr {
+func (c *converter) convertConversion(conv *Conversion) ast.Expr {
+	// These conversions have no source spelling -- `list<float>(xs)` names
+	// nothing -- and only ever arise implicitly, so the checker re-inserts them.
+	if conv.Type != nil {
+		switch conv.Type.Kind {
+		case TypeList, TypeOption, TypeIter:
+			return c.convertExpr(conv.Operand)
+		}
+	}
 	// Type conversions look like calls: int(x), string(x), etc.
 	name := conv.Type.String()
 	return &ast.CallExpr{
@@ -1161,8 +1155,9 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 	}
 	for _, p := range params {
 		ap := ast.Param{
-			Name: p.Name,
-			Type: c.convertType(p.Type),
+			Name:  p.Name,
+			Type:  c.convertType(p.Type),
+			Const: p.Const,
 		}
 		if p.Default != nil {
 			ap.Default = c.convertExpr(p.Default)
@@ -1170,6 +1165,25 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 		pl.Params = append(pl.Params, ap)
 	}
 	return pl
+}
+
+// convertEventDecl spells an event so it parses as the same declaration: the
+// bare `@change T` for one unnamed parameter, `@tick` for the loose `dyn` one
+// that spelling has always meant, and the parenthesised list otherwise --
+// `@done()` for none, since a bare `@done` would read back as the loose form.
+func (c *converter) convertEventDecl(e *EventDecl) ast.EventDecl {
+	ed := ast.EventDecl{Name: e.Name}
+	if len(e.Params) == 1 && e.Params[0].Name == "" {
+		if t := e.Params[0].Type; t != nil && t.Kind != TypeDyn {
+			ed.Params = []ast.FuncTypeParam{{Type: c.convertType(t)}}
+		}
+		return ed
+	}
+	ed.HasParens = true
+	for _, p := range e.Params {
+		ed.Params = append(ed.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
+	}
+	return ed
 }
 
 func (c *converter) convertEventHandler(h *EventHandler) ast.EventHandler {

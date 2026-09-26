@@ -138,8 +138,7 @@ package main
 import "testing"
 
 func TestDatepickerValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	fresh := mustParseDate("0001-01-01")
 	c.d = fresh
@@ -214,8 +213,7 @@ package main
 import "testing"
 
 func TestDatepickerValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	fresh := mustParseDate("0001-01-01")
 	c.d = fresh
@@ -321,8 +319,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -358,6 +363,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 */
 import "C"
@@ -523,6 +538,17 @@ body { font-family: system-ui, sans-serif; }
 <span data-sngl-slot="0" style="display:contents"></span>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { d: "0001-01-01" };
@@ -570,15 +596,17 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a7fda78877147d4bf0e6c92646379d1e
+pass sha256:2d3135c2d141e0e0dde30603b12671b6
 -- run/go/fyne --
-pass sha256:0d7ff64ee9258be9ce16ec8d4c263111
+pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
-pass sha256:fb71d944f547b2ccd3810698f9adbfd1
+pass sha256:15b20b2a509d9e7c1bfa344fc1c14d3b
 -- run/kotlin/android --
 pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
 -- run/none/html --
-pass sha256:489164628aeff3c909a838c842cbb224
+pass sha256:375c71116f6600395d3ef70e8bfdf812

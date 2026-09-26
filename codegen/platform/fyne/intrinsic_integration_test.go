@@ -49,9 +49,9 @@ window {
 	out := string(modelSrc)
 
 	for _, snippet := range []string{
-		"func (m *Model) __renderSlot0(container *fyne.Container)",
+		"func (m *Model) __renderSlot0(__parent *fyne.Container)",
 		"for _, __entry := range m.__slot0",
-		"container.Remove(__entry)",
+		"__parent.Remove(__entry)",
 		"m.__slot0 = nil",
 		"if m.visible",
 		// The slot-local label does not escape __renderSlot0 (created,
@@ -64,7 +64,7 @@ window {
 		// blueprint form's `fmt.Sprint` wrapper existed only because the
 		// prop it named carried no type.
 		`__n0.SetText("hi")`,
-		"container.Add(__n0)",
+		"fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)",
 		"m.__slot0 = append(m.__slot0, __n0)",
 	} {
 		if !strings.Contains(out, snippet) {

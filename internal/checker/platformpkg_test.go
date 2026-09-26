@@ -18,7 +18,7 @@ func TestPlatformPackageDiagnosticsAreReported(t *testing.T) {
 	const platSource = `
 import sngl "sngl:ui"
 
-component Wrap() sngl.node {
+const component Wrap() sngl.node {
     sngl.text(value=nosuchthing)
 }
 `
@@ -55,7 +55,7 @@ func TestPlatformPackageSharesStdlibIdentity(t *testing.T) {
 	const platSource = `
 import sngl "sngl:ui"
 
-component Wrap() sngl.node {
+const component Wrap() sngl.node {
     sngl.text(value="x")
 }
 `

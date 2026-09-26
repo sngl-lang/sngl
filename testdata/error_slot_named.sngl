@@ -16,11 +16,10 @@ component table(rows list<Row>, cell component(Row)) node {
         for var r = rows {
             cell(r)
         }
-        // An insertion passes values positionally: the declaration carries
-        // types and no names, so there is nothing for a named argument to
-        // bind to.
-        cell(value=r) // ERROR(check) "takes positional arguments"
-        cell()        // ERROR(check) "takes 1 argument(s), got 0"
+        // An insertion binds its arguments as a call does, and this slot's
+        // parameter carries no name for a named argument to bind to.
+        cell(value=r) // ERROR(check) "no parameter name"
+        cell()        // ERROR(check) "missing required argument at position 1"
     }
 }
 

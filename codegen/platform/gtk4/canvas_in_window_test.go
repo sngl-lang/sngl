@@ -2,12 +2,10 @@ package gtk4
 
 import "testing"
 
-// passCanvas attached a canvas's draw func to whatever body held the canvas,
-// and a `window` a component renders is an ir.Window statement in that
-// component's body. CodegenCtx.AllFuncs walked only pkg.Windows, so a canvas
-// under a component-declared window produced a BuildUI calling m._canvasDraw0
-// against a method nothing declared: examples/calculator, whose seven-segment
-// readout is exactly that shape.
+// A `window` a component renders is a statement in that component's body, not
+// on pkg.Windows, and a canvas under one once produced a BuildUI calling
+// m._canvasDraw0 against a method nothing declared: examples/calculator, whose
+// seven-segment readout is exactly that shape.
 //
 // The radius is the *package's* so that the assertion can name it: a root
 // component's own var is renamed per instantiation when the inliner splices

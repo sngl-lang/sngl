@@ -1,0 +1,29 @@
+# A context provider inside a component the optimizer specializes at its call
+# site survives until the lowering, so the optimizer's statement walks meet it.
+#
+# `rows` is called with a constant list, which makes it a candidate for
+# call-site specialization, and findParamSyms walks its body through
+# walkStmtExprs before passContext has run. Without the provider arm there,
+# every target panics with "walkStmtExprs: unhandled stmt *ir.ContextProvider".
+
+sngl generate --platform bubbletea --lang go --out out app.sngl
+exists out/model.go
+
+-- app.sngl --
+import ui "sngl:ui"
+
+context #theme("light")
+
+component rows(items list<string>) ui.node {
+    theme("dark") {
+        ui.vbox {
+            for var x = items {
+                ui.text(value=x)
+            }
+        }
+    }
+}
+
+ui.window #home(title="t", href="/") {
+    rows(items=["a", "b"])
+}

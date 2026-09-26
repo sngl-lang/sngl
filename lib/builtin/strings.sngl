@@ -9,50 +9,50 @@ struct string {}
 
 // Number of Unicode characters in s (not bytes).
 #[marks.intrinsic("string.length")]
-func string.length(s string) int
+const func string.length(s string) int
 
 // Index of the first occurrence of sub in s, or -1 if absent. The
 // index is a character index, matching `string.substring`.
 #[marks.intrinsic("string.indexOf")]
-func string.indexOf(s string, sub string) int
+const func string.indexOf(s string, sub string) int
 
 // Substring of s from start (inclusive) to end (exclusive). Both
 // bounds are character indices; negative or out-of-range values are
 // clamped to [0, length(s)].
 #[marks.intrinsic("string.substring")]
-func string.substring(s string, start int, end int) string
+const func string.substring(s string, start int, end int) string
 
 // Uppercased copy of s using the platform's Unicode case mapping.
 #[marks.intrinsic("string.upper")]
-func string.upper(s string) string
+const func string.upper(s string) string
 
 // Lowercased copy of s using the platform's Unicode case mapping.
 #[marks.intrinsic("string.lower")]
-func string.lower(s string) string
+const func string.lower(s string) string
 
 // Copy of s with leading and trailing whitespace removed. Whitespace
 // follows the platform's Unicode whitespace definition.
 #[marks.intrinsic("string.trim")]
-func string.trim(s string) string
+const func string.trim(s string) string
 
 // Copy of s with every occurrence of old replaced by new. Replacement
 // is non-overlapping — after each match, scanning resumes after the
 // replacement (not after old).
 #[marks.intrinsic("string.replace")]
-func string.replace(s string, old string, new string) string
+const func string.replace(s string, old string, new string) string
 
 // Splits s on every occurrence of sep and returns the pieces. An
 // empty s returns a list with a single empty string; consecutive
 // separators produce empty pieces.
 #[marks.intrinsic("string.split")]
-func string.split(s string, sep string) list<string>
+const func string.split(s string, sep string) list<string>
 
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.
-func string.contains(s string, sub string) bool { return string.indexOf(s, sub) >= 0 }
+const func string.contains(s string, sub string) bool { return string.indexOf(s, sub) >= 0 }
 
 // True if s begins with prefix. An empty prefix always matches.
-func string.startsWith(s string, prefix string) bool { return string.substring(s, 0, string.length(prefix)) == prefix }
+const func string.startsWith(s string, prefix string) bool { return string.substring(s, 0, string.length(prefix)) == prefix }
 
 // True if s ends with suffix. An empty suffix always matches.
-func string.endsWith(s string, suffix string) bool { return string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix }
+const func string.endsWith(s string, suffix string) bool { return string.substring(s, string.length(s) - string.length(suffix), string.length(s)) == suffix }

@@ -145,19 +145,6 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 	case *ir.Spread:
 		x.Operand = inlineComputedExpr(x.Operand, bodies)
 		return x
-	case *ir.Closure:
-		if x.State != nil {
-			for i := range x.State.Fields {
-				if x.State.Fields[i].Value != nil {
-					x.State.Fields[i].Value = inlineComputedExpr(x.State.Fields[i].Value, bodies)
-				}
-			}
-		}
-		if x.Func != nil {
-			rewrite := func(e ir.Expr) ir.Expr { return inlineComputedExpr(e, bodies) }
-			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewrite)
-		}
-		return x
 	case *ir.Lambda:
 		if x.Func != nil {
 			rewrite := func(e ir.Expr) ir.Expr { return inlineComputedExpr(e, bodies) }

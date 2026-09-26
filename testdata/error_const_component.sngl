@@ -1,0 +1,39 @@
+// A const component's render depends only on its props: a var the render
+// reads, or a call to a function that is not const, is refused. Handlers are
+// not the render, so state they touch is allowed.
+import ui "sngl:ui"
+
+var count = 0
+
+func label(n int) => "n={n}"
+
+const component reads(n int) ui.node {
+    ui.text(value="{n + count}") // ERROR(check) "const component reads renders var \"count\""
+}
+
+const component calls(n int) ui.node {
+    ui.text(value=label(n)) // ERROR(check) "const component calls calls label in its render, which is not const"
+}
+
+const component own(n int) ui.node {
+    var hits = 0
+    ui.button(text="+", @click { hits += 1 })
+    if hits > n { // ERROR(check) "const component own renders var \"hits\""
+        ui.text(value="many")
+    }
+}
+
+const component handlers(n int) ui.node {
+    var clicks = 0
+    ui.button(text="{n}", @click {
+        clicks += 1
+        count += clicks
+    })
+}
+
+ui.window {
+    reads(n=1)
+    calls(n=1)
+    own(n=1)
+    handlers(n=1)
+}

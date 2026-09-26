@@ -1,9 +1,7 @@
 # Every command resolves its arguments the same way, through resolveUnits:
 #
 #   - a file named on the command line is its own unit;
-#   - a directory is a package, read as one;
-#   - a directory whose files declare more than one `component main` is a
-#     collection of programs, and each file is its own unit.
+#   - a directory is a package, read as one, whatever its files declare.
 #
 # They used to each decide for themselves. `sngl generate` merged a file's
 # siblings, `sngl test` deliberately never did, and `sngl check` read every
@@ -28,14 +26,18 @@ grep 'twice: 14' out/index.html
 ! sngl check app/app_test.sngl
 stderr 'unknown type "main"'
 
-# A directory holding several programs is not a package. Read as one it would
-# report every main after the first as a duplicate; read as a corpus, each file
-# stands alone.
-sngl check corpus/
+# `main` is an ordinary name, so two files each declaring `component main` are
+# one package redeclaring it. A directory whose files each declared one used to
+# be read as a corpus of programs instead; a corpus is checked by naming its
+# files.
+! sngl check corpus/
+stderr '"main" redeclared in this package'
+
+sngl check corpus/one.sngl corpus/two.sngl
 stdout 'corpus/one.sngl: ok'
 stdout 'corpus/two.sngl: ok'
 
-sngl test corpus/
+sngl test corpus/one.sngl corpus/two.sngl
 stdout '2 tests, 0 failures'
 
 -- app/app.sngl --

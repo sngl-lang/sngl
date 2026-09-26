@@ -1,6 +1,6 @@
 A root component's own state, on every target.
 
-`component main ui.root { … }` renders windows rather than widgets, and
+`component main root { … }` renders windows rather than widgets, and
 `main()` at the root of the file is what renders it. A root component is an
 ordinary declaration: nothing lifts its windows, so `passNoInlineComponents`
 substitutes the whole body into the package body and renames what it declares
@@ -47,7 +47,7 @@ output {
     }
 }
 
-component main ui.root {
+component main root {
     var hits = 0
 
     func bump(n int) => n + 1

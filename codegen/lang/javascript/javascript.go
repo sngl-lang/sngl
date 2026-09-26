@@ -77,25 +77,6 @@ func (t *Translator) NewFileEmitter(sink codegen.Sink, opts codegen.FileOptions)
 // resolves at runtime.
 const SnglI18nImportPath = "./i18n/i18n.js"
 
-func (t *Translator) TypeToNative(hint string) string {
-	if strings.HasPrefix(hint, "option:") {
-		return t.TypeToNative(hint[7:]) // JS has no option types; everything is nullable
-	}
-	switch hint {
-	case "int", "float":
-		return "number"
-	case "bool":
-		return "boolean"
-	case "string", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
-		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
-		return "string"
-	default:
-		return "any"
-	}
-}
-
 func (t *Translator) ExportName(name string) string {
 	return SafeIdent(name)
 }

@@ -25,9 +25,9 @@ grep 'Text\(text = "Wifi", modifier = Modifier\)' out/MainScreen.kt
 
 # A two-way `:checked` binding reaches the same callback: the write-back is the
 # binding's, injected into the lambda because the lambda is what reports the
-# change.
+# change, and it writes the state Compose reported rather than toggling it.
 grep 'Checkbox\(checked = flag, onCheckedChange = \{' out/MainScreen.kt
-grep 'flag = !flag' out/MainScreen.kt
+grep 'flag = on$' out/MainScreen.kt
 
 # modal renders its title, and @close is the Dialog's dismiss callback.
 grep 'Text\(text = "Howdy", modifier = Modifier\)' out/MainScreen.kt

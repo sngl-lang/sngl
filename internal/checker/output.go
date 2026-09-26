@@ -145,41 +145,8 @@ func (c *checker) checkOutputTree() {
 	if !ok {
 		return
 	}
-	c.requireConstOutputTree(root)
 	c.collectOutputs(root)
 	c.resolveEntryWindow(root)
-}
-
-// requireConstOutputTree holds every value in the directive to what the build
-// can evaluate. The tree is read at build time and never again, so a value
-// that changes while the program runs would compile to a snapshot of whatever
-// it was first.
-//
-// The test is ir.IsConst, the one `const(...)` applies: a literal, a const, an
-// enum member, or a call to a pure function -- including a `#[foreign(pure)]`
-// one, which is a build-time value a target may reasonably compute. What it
-// rejects is a read of anything the program can write.
-func (c *checker) requireConstOutputTree(n *ir.NodeInst) {
-	for _, p := range n.Props {
-		// `entry` names a declaration rather than holding a value, so there is
-		// nothing for the build to evaluate: resolveEntryWindow reads the
-		// reference itself.
-		if p.Name == entryOption || ir.IsConst(p.Value) {
-			continue
-		}
-		at := p.NamePos
-		if at == (ast.Pos{}) {
-			if sp := stmtPos(n.AST); sp != nil {
-				at = *sp
-			}
-		}
-		c.error(at, "output option %q must be constant: the build directive is read once, before the program runs", p.Name)
-	}
-	for _, child := range n.Children {
-		if ni, ok := child.(*ir.NodeInst); ok {
-			c.requireConstOutputTree(ni)
-		}
-	}
 }
 
 // collectOutputs projects the checked tree into one ir.Output per

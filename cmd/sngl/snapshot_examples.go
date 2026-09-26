@@ -16,17 +16,17 @@ import (
 var snapshotExamplesCmd = &cobra.Command{
 	Use:   "examples [file|dir...]",
 	Short: "Generate screenshots from doc comment examples",
-	Long: `Extract example SNGL apps from doc comments in .sngl files and render
-them to PNG screenshots at deterministic paths.
+	Long: `Render the example components in .sngl files to PNG screenshots at
+deterministic paths.
 
-Examples are defined in doc comments above component declarations:
+An example is a component named _example_<name>, which documents <name>:
 
-  // Example:
-  //
-  //   component main {
-  //       button(text="Click me")
-  //   }
-  component MyButton(...) { ... }
+  component _example_button node {
+      button(text="Click me")
+  }
+
+Each is rendered in a window of its own, with the imports of the file it was
+written in.
 
 Screenshots are written to {dir}/snapshots/{component}-{platform}.png.
 
@@ -115,6 +115,10 @@ func snapshotExamplesFile(path string, platforms []string, width, height int, fo
 	if len(examples) == 0 {
 		return nil
 	}
+	imports := checker.DocumentExampleImports(doc)
+	for name, src := range examples {
+		examples[name] = exampleSource(imports, src, platforms)
+	}
 
 	dir := filepath.Dir(path)
 	outDir := filepath.Join(dir, "snapshots")
@@ -123,14 +127,7 @@ func snapshotExamplesFile(path string, platforms []string, width, height int, fo
 }
 
 func snapshotStdlibExamples(platforms []string, width, height int, force bool) error {
-	flat := map[string]string{}
-	for _, pkg := range lib.PublicPackages() {
-		for name, srcs := range checker.PackageExamples(pkg) {
-			if len(srcs) > 0 {
-				flat[name] = srcs[0]
-			}
-		}
-	}
+	flat := stdlibExampleSources(platforms)
 	if len(flat) == 0 {
 		fmt.Println("No examples found in stdlib.")
 		return nil
@@ -139,6 +136,31 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 	outDir := filepath.Join("lib", "snapshots")
 
 	return renderExamples(flat, outDir, platforms, width, height, force)
+}
+
+func stdlibExampleSources(platforms []string) map[string]string {
+	flat := map[string]string{}
+	for _, pkg := range lib.PublicPackages() {
+		imports := checker.PackageExampleImports("sngl:" + pkg)
+		for name, srcs := range checker.PackageExamples(pkg) {
+			if len(srcs) > 0 {
+				flat[name] = exampleSource(imports, srcs[0], platforms)
+			}
+		}
+	}
+	return flat
+}
+
+// exampleSource is an example as a file snapshot.Generate builds for platforms.
+func exampleSource(imports, example string, platforms []string) string {
+	var b strings.Builder
+	b.WriteString(checker.ExampleProgram(imports, example))
+	b.WriteString("\noutput {\n")
+	for _, plat := range platforms {
+		fmt.Fprintf(&b, "    %s { %s }\n", snapshot.LangForPlatform(plat), plat)
+	}
+	b.WriteString("}\n")
+	return b.String()
 }
 
 func renderExamples(examples map[string]string, outDir string, platforms []string, width, height int, force bool) error {
@@ -170,18 +192,6 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 			}
 		}
 
-		if !strings.Contains(src, "output {") {
-			var wrapped strings.Builder
-			wrapped.WriteString("output {\n")
-			for _, plat := range platforms {
-				lang := langForPlatform(plat)
-				fmt.Fprintf(&wrapped, "    %s { %s }\n", lang, plat)
-			}
-			wrapped.WriteString("}\n\n")
-			wrapped.WriteString(src)
-			src = wrapped.String()
-		}
-
 		tmpFile := filepath.Join(tmpDir, name+".sngl")
 		if err := os.WriteFile(tmpFile, []byte(src), 0o644); err != nil {
 			return fmt.Errorf("writing temp file for %s: %w", name, err)
@@ -204,17 +214,4 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 		}
 	}
 	return nil
-}
-
-func langForPlatform(platform string) string {
-	switch platform {
-	case "html":
-		return "js"
-	case "bubbletea", "fyne":
-		return "go"
-	case "android":
-		return "kotlin"
-	default:
-		return "js"
-	}
 }

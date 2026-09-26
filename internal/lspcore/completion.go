@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/lib"
 )
@@ -210,7 +211,7 @@ func EventCompletions(content string, doc *ast.Document, line int) []CompletionI
 	if decl := userComponent(doc, name); decl != nil {
 		for _, p := range decl.Props.Props {
 			if e, ok := p.(ast.EventDecl); ok {
-				items = append(items, eventItem(e.Name, typeExprString(e.Type)))
+				items = append(items, eventItem(e.Name, parser.FormatEventSignature(e)))
 			}
 		}
 		return items
@@ -422,7 +423,7 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 		items = append(items, CompletionItem{
 			Label:            "@" + e.Name,
 			Kind:             CIKEvent,
-			Detail:           typeExprString(e.Type),
+			Detail:           parser.FormatEventSignature(e),
 			InsertText:       "@" + e.Name + "={ $1 }",
 			InsertTextFormat: ITFSnippet,
 		})

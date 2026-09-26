@@ -14,7 +14,7 @@ Every lesson must end with one complete, compilable SNGL program.
 
 ## Hello World
 
-SNGL programs are `.sngl` source files. Every runnable program has one `component main` — the root of the UI tree. A component contains a mix of state declarations and visual nodes. The simplest possible program renders a single piece of text:
+SNGL programs are `.sngl` source files. A runnable program is its windows: each `window` is a root of the UI tree, and holds a mix of state declarations and visual nodes. The simplest possible program renders a single piece of text:
 
 ```sngl
 import . "sngl:ui"

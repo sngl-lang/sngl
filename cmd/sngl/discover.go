@@ -126,8 +126,7 @@ type unit struct {
 	// order. A package reads its whole directory whatever this holds; this is
 	// what it reports on.
 	files []string
-	// solo marks a file read without its siblings: one the command line named,
-	// or one from a directory that is not a package.
+	// solo marks a file read without its siblings: one the command line named.
 	solo bool
 }
 
@@ -156,9 +155,7 @@ func (u unit) doc() (*ast.Document, error) {
 //
 //   - a file named on the command line is its own unit — naming it is the
 //     request, and a corpus of one-file programs in one directory relies on it;
-//   - a directory is a package, and all of its .sngl files are read together;
-//   - a directory whose files declare more than one `component main` is not a
-//     package but a collection of programs, and each file is its own unit.
+//   - a directory is a package, and all of its .sngl files are read together.
 func resolveUnits(args []string) ([]unit, error) {
 	files, err := discoverFiles(args)
 	if err != nil {
@@ -184,58 +181,7 @@ func resolveUnits(args []string) ([]unit, error) {
 		grouped[i].files = append(grouped[i].files, f)
 	}
 
-	var out []unit
-	for _, u := range grouped {
-		if u.solo || isPackageDir(u.dir) {
-			out = append(out, u)
-			continue
-		}
-		for _, f := range u.files {
-			out = append(out, unit{dir: u.dir, name: f, files: []string{f}, solo: true})
-		}
-	}
-	return out, nil
-}
-
-// isPackageDir reports whether a directory's files form one package.
-//
-// A package declares at most one `component main` — the checker says so — and
-// a directory with several is a corpus of one-file programs rather than a
-// package. Reading it as one would report every fixture after the first as a
-// duplicate declaration, which is true and useless.
-//
-// A file that does not parse is not counted: a corpus of deliberately broken
-// fixtures is still a corpus.
-func isPackageDir(dir string) bool {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return true
-	}
-	mains := 0
-	for _, e := range entries {
-		if e.IsDir() || !isSNGLFile(e.Name()) {
-			continue
-		}
-		path := filepath.Join(dir, e.Name())
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		doc, err := parseSNGL(path, f)
-		f.Close()
-		if err != nil {
-			continue
-		}
-		for _, stmt := range doc.Stmts {
-			if c, ok := stmt.(*ast.ComponentDecl); ok && c.Name == "main" {
-				mains++
-			}
-		}
-		if mains > 1 {
-			return false
-		}
-	}
-	return true
+	return grouped, nil
 }
 
 // A directory is one compilation unit: every .sngl file in it merges into one

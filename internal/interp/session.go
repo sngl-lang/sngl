@@ -35,7 +35,7 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	// every stdlib component is before a platform implements it, and schedules
 	// nothing.
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	env, err := BuildEnv(pkg, comp)
+	env, err := sessionEnv(pkg, comp)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +52,14 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	}
 	timers.Retarget(view)
 	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view, fx: fx}, nil
+}
+
+// sessionEnv scopes a session to comp, or to the program when comp is empty.
+func sessionEnv(pkg *ir.Package, comp string) (*Env, error) {
+	if comp == "" {
+		return BuildProgramEnv(pkg), nil
+	}
+	return BuildEnv(pkg, comp)
 }
 
 // View is the tree as the session currently holds it -- what a host has
@@ -144,6 +152,16 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	if !ok {
 		return nil, fmt.Errorf("no node at %s", key)
 	}
+	env := n.Env
+	if env == nil {
+		env = s.Env
+	}
+	bound := boundByEvent(n.Inst, event)
+	if bound && len(args) > 0 {
+		if err := env.writeBindings(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])}); err != nil {
+			return nil, err
+		}
+	}
 	for _, h := range n.Handlers {
 		if h.Name != event {
 			continue
@@ -152,13 +170,13 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s has no runnable body for @%s", key, event)
 		}
-		env := n.Env
-		if env == nil {
-			env = s.Env
-		}
-		if _, err := env.runEventHandlerValues(fn, args); err != nil {
+		if _, err := env.underContext(n.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
 			return nil, err
 		}
+		s.Env.RebindFrom(env)
+		return s.Sync()
+	}
+	if bound {
 		s.Env.RebindFrom(env)
 		return s.Sync()
 	}
@@ -192,7 +210,7 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	// platform's bodies exactly as the first one did. Without it a reload
 	// silently dropped every timer: `timer` reverted to the empty stub.
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	env, err := BuildEnv(pkg, s.Comp)
+	env, err := sessionEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
 	}

@@ -565,9 +565,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { page__inst0: 3, a__inst0: null };
   state.a__inst0 = { on: 1 };
-  function pageArgs(on) {
-    return { on };
-  }
   function __effect0_mount() {
     state.page__inst0 = __effect0_key + 1;
     __n0.textContent = "page=" + String(state.page__inst0);
@@ -636,4 +633,4 @@ pass sha256:5b528c050b890ff6d104a041516054c7
 -- run/kotlin/android --
 pass sha256:78e4f84be96d9e2df20414afe40806dd
 -- run/none/html --
-pass sha256:139c909374afc6e1f16dd31fbbfd4bb7
+pass sha256:6c1e594c7e61007a6cf8688e8a68a7cd

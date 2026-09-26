@@ -1,0 +1,40 @@
+import . "sngl:ui"
+
+struct Row {
+    title string
+    count int
+}
+
+var n = 0
+
+func next() Row {
+    n = n + 1
+    return Row{title="t", count=n}
+}
+
+func row(i int) => Row{title="r", count=i}
+
+component cell(title string, count int) node {
+    text(value="{title}{count}")
+}
+
+component list(r Row, item component(title string, count int)) node {
+    item(...r)
+    item(...next()) // ERROR(check) "a spread in a view body reads its operand once per field, and next writes state"
+}
+
+component panel node {
+    var held = next()
+    cell(...next()) // ERROR(check) "a spread in a view body reads its operand once per field, and next writes state"
+    cell(...row(2))
+    cell(...held)
+    list(r=row(1)) {
+        component item(t, c) {
+            text(value=t)
+        }
+    }
+}
+
+window {
+    panel
+}

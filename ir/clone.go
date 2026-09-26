@@ -83,24 +83,6 @@ func CloneExprSharingDecls(e Expr) Expr {
 	return c.clone(reflect.ValueOf(e)).Interface().(Expr)
 }
 
-// CloneStmtsSharingDecls is CloneExprSharingDecls over a statement list: the
-// statements and the expressions in them are copied, the declarations they
-// name are shared.
-//
-// Its use is a body several call sites splice -- a shape declaration drawn
-// once per call site, each with its own arguments substituted in. The
-// substitution rewrites the copy, so the copies must not share a node; the
-// *ir.Var a statement assigns to is the same binding in each, so they must
-// share that.
-func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
-	if stmts == nil {
-		return nil
-	}
-	c := newCloner()
-	c.shareDecls = true
-	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
-}
-
 func newCloner() *cloner {
 	c := &cloner{seen: map[uintptr]reflect.Value{}}
 	// Keep the immutable global primitive Type singletons shared: map each
@@ -288,4 +270,16 @@ func carriesFuncBody(t reflect.Type) bool {
 // isIRType reports whether t belongs to this package and should be deep-copied.
 func isIRType(t reflect.Type) bool {
 	return t.PkgPath() == irPkgPath
+}
+
+// CloneStmtsSharingDecls is CloneExprSharingDecls over a statement list: the
+// statements and the expressions in them are copied, the declarations they
+// name are shared.
+func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
+	if stmts == nil {
+		return nil
+	}
+	c := newCloner()
+	c.shareDecls = true
+	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
 }

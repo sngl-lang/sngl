@@ -10,10 +10,3 @@ func Greeting(name string) string {
 	}
 	return "Hello, " + name + "!"
 }
-
-// IsLoggedIn reports whether the given name is non-empty.
-//
-//sngl:pure
-func IsLoggedIn(name string) bool {
-	return name != ""
-}

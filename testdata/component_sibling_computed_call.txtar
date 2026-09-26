@@ -145,8 +145,7 @@ package main
 import "testing"
 
 func TestSiblingComputedCall(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.summary() == "d=6")) { t.Errorf("assert failed: %s", "(c.summary() == \"d=6\")") }
 }
@@ -220,8 +219,7 @@ package main
 import "testing"
 
 func TestSiblingComputedCall(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.summary() == "d=6")) { t.Errorf("assert failed: %s", "(c.summary() == \"d=6\")") }
 }
@@ -344,11 +342,11 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var n by mutableStateOf(3)
-    val double by derivedStateOf { (n * 2) }
-    val summary by derivedStateOf(fun(): String {
+    val double: Int get() = (n * 2)
+    val summary: String get() {
         var d = double
         return ("d=" + d.toString())
-    })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -403,6 +401,17 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { n: 3 };
@@ -433,15 +442,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:becba57e390feaecb5709de8e3c6b5f4
+pass sha256:eca6b10bae64bbb6d5108bfc92c93691
 -- run/go/fyne --
-pass sha256:535ee76fc758fadfeb18b1671724f1e6
+pass sha256:a8e40c44c4d466f1e10cdbd2a06eb163
 -- run/go/gtk4 --
 pass sha256:d8edffb730103d8dfe51216fe5a83a28
 -- run/kotlin/android --
-pass sha256:b5246112900c00030ae5125fd1f6ef2b
+pass sha256:1e9cd198a7e484591f698c9300d1ffb4
 -- run/none/html --
-pass sha256:c5e46ae537e0f2f290c88b11044e5d44
+pass sha256:94fe7f8cf8809f631bbb1a2808daacad

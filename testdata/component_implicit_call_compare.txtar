@@ -142,8 +142,7 @@ package main
 import "testing"
 
 func TestImplicitCallCompare(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -217,8 +216,7 @@ package main
 import "testing"
 
 func TestImplicitCallCompare(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -341,7 +339,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var n by mutableStateOf(3)
-    val count by derivedStateOf { n }
+    val count: Int get() = n
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -396,6 +394,17 @@ body { font-family: system-ui, sans-serif; }
 </span>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { n: 3 };
@@ -418,15 +427,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:274aadf9739131d43b8d613be7ad6cee
+pass sha256:78d62257c34ff1eb15124ef6819b778f
 -- run/go/fyne --
-pass sha256:76ec407ff9a44579f9fe40d5ad3bca3e
+pass sha256:4884bde89effcb938aad265b2ab11bc3
 -- run/go/gtk4 --
 pass sha256:6d68d9192c5c0ee56ddde28f6c8a69aa
 -- run/kotlin/android --
-pass sha256:f76c306b9d53ed3be484c4edac9899a6
+pass sha256:2eacbb5fec4ec4d62e4013be3cf6dc73
 -- run/none/html --
-pass sha256:19af082b2f349b4cd560608bf91a598a
+pass sha256:7b0b38ee520f5a3f17a91a7ae9181152

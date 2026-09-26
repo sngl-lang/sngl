@@ -196,8 +196,6 @@ func (w *windowWalk) stmt(s ir.Stmt, ctx *evalCtx) {
 		}
 		w.stmts(n.Body, ctx)
 		w.stmts(n.Else, ctx)
-	case *ir.ContextProvider:
-		w.stmts(n.Children, ctx)
 	case *ir.ErrorBoundary:
 		w.stmts(n.Children, ctx)
 	case *ir.SlotInst:

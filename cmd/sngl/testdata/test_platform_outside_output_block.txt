@@ -4,11 +4,7 @@
 # in its platform package -- is reported as a component gtk4 does not
 # implement, and every test in the file is skipped.
 
-[!exec:go] skip 'go toolchain required'
-[!exec:pkg-config] skip 'pkg-config required'
-[!exec:cc] skip 'C compiler required for cgo'
 [!gtk4] skip 'gtk4 development libraries required'
-[!display] skip 'gtk4 test agent needs an X11/Wayland display (headless CI)'
 
 sngl test --platform=gtk4 app.sngl
 stdout 'PASS'
@@ -32,4 +28,14 @@ func testGreeterRenders(t Test, c greeter) {
 }
 
 window {
+}
+-- testrun/gtk4/go/app.sngl/greeter/1 --
+sha256:c559afadadbc21389156271c16d138ed
+{
+  "results": [
+    {
+      "Desc": "GreeterRenders",
+      "Passed": true
+    }
+  ]
 }

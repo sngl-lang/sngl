@@ -149,8 +149,7 @@ package main
 import "testing"
 
 func TestDrawerOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -222,8 +221,7 @@ package main
 import "testing"
 
 func TestDrawerOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -345,6 +343,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { open: false };
@@ -362,13 +371,15 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testDrawerOpenToggles });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b37435126c78816e1653245ff641106c
+pass sha256:880027166e53d1f622b689fde7766af7
 -- run/go/fyne --
-pass sha256:d7e48ba45b09ecbbfdf2fe8f78316d58
+pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:1d5886f2039d964d297fa6265cb5f55e
 -- run/none/html --
-pass sha256:a5ae45d9b0448c4c11616913d401df52
+pass sha256:fd99829b910ef5c63256436878eb45c7

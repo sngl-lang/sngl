@@ -144,12 +144,83 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 	}
 }
 
+// factorySlotAnchors is the set of slots in comp whose first render is a
+// statement of the body itself, each of which the factory gives an anchor of
+// its own to re-render into.
+func factorySlotAnchors(comp *ir.Component) map[string]bool {
+	anchored := map[string]bool{}
+	initial := map[*ir.Call]bool{}
+	var scan func(stmts []ir.Stmt)
+	scan = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			if b, ok := s.(*ir.ErrorBoundary); ok {
+				scan(b.Children)
+				continue
+			}
+			cs, ok := s.(*ir.CallStmt)
+			if !ok || cs.Call == nil || cs.Call.Func == nil || len(cs.Call.Args) != 1 {
+				continue
+			}
+			if n := slotIndexFromRenderFunc(cs.Call.Func.Name); n != "" && componentHasFunc(comp, cs.Call.Func.Name) {
+				anchored[n] = true
+				initial[cs.Call] = true
+			}
+		}
+	}
+	scan(comp.Body)
+	if len(anchored) == 0 {
+		return anchored
+	}
+	retarget := func(root any) {
+		_ = ir.Walk(root, func(node ir.Node) error {
+			call, ok := node.(*ir.Call)
+			if !ok || call.Func == nil || initial[call] || len(call.Args) != 1 {
+				return nil
+			}
+			if n := slotIndexFromRenderFunc(call.Func.Name); anchored[n] {
+				call.Args[0].Value = &ir.Ident{Name: slotAnchorVar(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+			}
+			return nil
+		})
+	}
+	retarget(comp.Body)
+	for _, fn := range comp.Funcs {
+		if fn != nil {
+			retarget(fn.Block)
+		}
+	}
+	for _, v := range comp.Vars {
+		for _, h := range v.Handlers {
+			if h.Func != nil {
+				retarget(h.Func.Block)
+			}
+		}
+	}
+	return anchored
+}
+
+// anchoredSlotCall reports whether stmt is the initial render of an anchored
+// slot, and the parent it was written against.
+func anchoredSlotCall(stmt ir.Stmt, anchored map[string]bool) (string, ir.Expr, bool) {
+	cs, ok := stmt.(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.Func == nil || len(cs.Call.Args) != 1 {
+		return "", nil, false
+	}
+	n := slotIndexFromRenderFunc(cs.Call.Func.Name)
+	if !anchored[n] {
+		return "", nil, false
+	}
+	return n, cs.Call.Args[0].Value, true
+}
+
 func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	g.adoptElemDecl(comp)
+	anchored := factorySlotAnchors(comp)
 	// Props and vars are locals of the call, so every read of one renders as a
 	// bare identifier rather than `state.x` -- which is what makes the closure
 	// the record.
 	ctx := g.ctx.ForComponent(comp)
+	ctx.ClosureMethods = true
 	for _, p := range comp.Props {
 		ctx = ctx.WithLocal(p.Name)
 	}
@@ -196,9 +267,13 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		tr := g.newHTMLTranslator(jc)
+		params := fn.Params
+		if len(params) > 0 && params[0].Receiver {
+			params = params[1:]
+		}
 		walked := &ir.Func{
 			Name:   fn.Name,
-			Params: fn.Params,
+			Params: params,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, tr),
 		}
 		for _, line := range jc.EmitFuncDef(walked) {
@@ -228,13 +303,39 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 
 	tr := g.newHTMLTranslator(jc)
 	body := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	topLevel := make(map[string]bool, len(tr.topLevel))
+	for _, id := range tr.topLevel {
+		topLevel[id] = true
+	}
+	var rootOrder []string
 	for _, stmt := range body {
+		if lv, ok := stmt.(*ir.LocalVar); ok && topLevel[lv.Name] {
+			rootOrder = append(rootOrder, lv.Name)
+		}
+		if n, parent, ok := anchoredSlotCall(stmt, anchored); ok {
+			anchor := slotAnchorVar(n)
+			fmt.Fprintf(b, "\tconst %s = document.createElement(\"span\");\n", anchor)
+			fmt.Fprintf(b, "\t%s.style.display = \"contents\";\n", anchor)
+			if id, isID := parent.(*ir.Ident); isID && id.Name == slotRootSentinel {
+				rootOrder = append(rootOrder, anchor)
+			} else {
+				fmt.Fprintf(b, "\t%s.appendChild(%s);\n", jc.EvalExpr(parent), anchor)
+			}
+			fmt.Fprintf(b, "\t__renderSlot%s(%s);\n", n, anchor)
+			continue
+		}
 		for _, line := range jc.EvalStmt(stmt) {
 			b.WriteString("\t" + line + "\n")
 		}
 	}
-	// Whatever the body did not attach itself is the instance's own content.
 	for _, id := range tr.topLevel {
+		if !slices.Contains(rootOrder, id) {
+			rootOrder = append(rootOrder, id)
+		}
+	}
+	// Whatever the body did not attach itself is the instance's own content,
+	// in the order the body wrote it.
+	for _, id := range rootOrder {
 		fmt.Fprintf(b, "\t%s.appendChild(%s);\n", instanceRootLocal, id)
 	}
 	// After the attach, because the helper sizes the backing store from the

@@ -195,7 +195,9 @@ func (m Model) View() tea.View {
 		content_0Items = append(content_0Items, content_0Item)
 	}
 	content_0 = strings.Join(content_0Items, "\n")
-	contentChildren = append(contentChildren, content_0)
+	if content_0 != "" {
+		contentChildren = append(contentChildren, content_0)
+	}
 	var content_1 string
 	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entries[m.pick].Title))
 	contentChildren = append(contentChildren, content_1)
@@ -496,9 +498,6 @@ body { font-family: system-ui, sans-serif; }
   var entries = [{ title: "Home", href: "/" }, { title: "About", href: "/about.html" }];
   var labels = /* @__PURE__ */ new Map([["home", "Start"], ["about", "Us"]]);
   var state = { pick: 0, key: "home" };
-  function Entry(title, href) {
-    return { title, href };
-  }
   var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -517,10 +516,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eba09260bb7021d9da4cd47ac5f3b0b8
+pass sha256:d0fcbd3fd9b930e4b6d38f91339d13ff
 -- run/go/fyne --
 pass sha256:ca7b8ea766b1bde39b0a9a5aa3814b4c
 -- run/go/gtk4 --
 pass sha256:21d217f342b568e0e3873faa7ba311d8
 -- run/none/html --
-pass sha256:51ca0061fb7200fefa914ec58c8b3fa9
+pass sha256:188880d499ef6f63518e4bf72dd2341a

@@ -36,7 +36,7 @@ output {
     }
 }
 
-component main ui.root {
+component main root {
     var total = 0
 
     func add() {

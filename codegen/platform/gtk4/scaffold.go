@@ -45,6 +45,7 @@ type templateData struct {
 	// NeedsGObjectSet emits the g_object_set_property helpers, for the GTK
 	// properties that have no C setter of their own.
 	NeedsGObjectSet bool
+	NeedsSlotAnchor bool
 	HasCanvas       bool // emit the cairo draw-func trampoline glue in callbacks.go
 	Wrapped         bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 }

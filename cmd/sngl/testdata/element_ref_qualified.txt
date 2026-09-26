@@ -7,6 +7,19 @@ stdout '2 tests, 0 failures'
 stdout 'counter/testQualifiedRefIsAddressable'
 stdout 'pair/testQualifiedRefInAChildIsAddressable'
 
+# A child in another package, reached through a qualified call statement. Its
+# body is that package's: it imports sngl:ui as `u` and renders its own
+# `inner`, while this package declares an `inner` with a #lbl button. Read in
+# this package's scope, `c.b.core.lbl` would be either no member or a button.
+sngl test --platform none child
+stdout '1 tests, 0 failures'
+stdout 'pair/testQualifiedChildCall'
+
+# A child in a sibling file of this package, which imports sngl:ui as `u`.
+sngl test --platform none sibling
+stdout '1 tests, 0 failures'
+stdout 'pair/testSiblingFileChild'
+
 -- refs.sngl --
 import test "sngl:test"
 import ui "sngl:ui"
@@ -16,8 +29,7 @@ output {
 }
 
 // A node written through an import alias is the same node written bare, so a
-// test reaches its #id the same way: resolving the host by the written name
-// looked up "ui.button" in scope, found nothing, and reported no member.
+// test reaches its #id the same way.
 func testQualifiedRefIsAddressable(t test.Test, c counter) {
     c.inc.click()
     t.assert(c.count == 1)
@@ -52,4 +64,71 @@ component pair ui.node {
 
 ui.window {
     counter()
+}
+-- child/main.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+import w "./widgets"
+
+output {
+    none { html }
+}
+
+func testQualifiedChildCall(t test.Test, c pair) {
+    t.assert(c.a.core.lbl.value == "a")
+    t.assert(c.b.core.lbl.value == "b")
+}
+
+component pair ui.node {
+    ui.vbox {
+        w.labelled #a(label="a")
+        w.labelled #b(label="b")
+    }
+}
+
+ui.window {
+    pair()
+}
+
+component inner ui.node {
+    ui.button #lbl(text="x")
+}
+-- child/widgets/w.sngl --
+import u "sngl:ui"
+
+component inner(label string) u.node {
+    u.text #lbl(value=label)
+}
+
+component labelled(label string) u.node {
+    inner #core(label=label)
+}
+-- sibling/main.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none { html }
+}
+
+func testSiblingFileChild(t test.Test, c pair) {
+    t.assert(c.a.lbl.value == "a")
+    t.assert(c.b.lbl.value == "b")
+}
+
+component pair ui.node {
+    ui.vbox {
+        labelled #a(label="a")
+        labelled #b(label="b")
+    }
+}
+
+ui.window {
+    pair()
+}
+-- sibling/other.sngl --
+import u "sngl:ui"
+
+component labelled(label string) u.node {
+    u.text #lbl(value=label)
 }

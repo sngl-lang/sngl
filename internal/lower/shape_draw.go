@@ -41,9 +41,10 @@ func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 // walkCanvases finds the drawings in a statement list and splices each.
 //
 // It reaches through everything that says when or how many rather than what: a
-// canvas is often one arm of a target test, and a boundary or a context
-// override is how the nodes under it got there rather than a node. Stopping at
-// NodeInsts left such a canvas unspliced and its shapes rendered as widgets.
+// canvas is often one arm of a target test, and a boundary is how the nodes
+// under it got there rather than a node. Stopping at NodeInsts left such a
+// canvas unspliced and its shapes rendered as widgets. A context override is
+// gone by now: passContext runs first on every target that draws.
 func walkCanvases(stmts []ir.Stmt, failed *error) {
 	for _, s := range stmts {
 		switch v := s.(type) {
@@ -63,8 +64,6 @@ func walkCanvases(stmts []ir.Stmt, failed *error) {
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
 			// find the fallback a second time.
-			walkCanvases(v.Children, failed)
-		case *ir.ContextProvider:
 			walkCanvases(v.Children, failed)
 		}
 	}
@@ -147,8 +146,6 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
 			// what the canvas draws, and dropping it here is what made a shape
 			// under one disappear from every target's draw function while its
 			// siblings drew normally.
-			emitShapes(v.Children, body, env)
-		case *ir.ContextProvider:
 			emitShapes(v.Children, body, env)
 		}
 	}

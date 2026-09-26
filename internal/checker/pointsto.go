@@ -179,11 +179,6 @@ func (w *pointsToWalker) walkExpr(e ir.Expr) {
 		if x.Func != nil {
 			w.walkFunc(x.Func)
 		}
-	case *ir.Closure:
-		// Same as Lambda.
-		if x.Func != nil {
-			w.walkFunc(x.Func)
-		}
 	}
 }
 
@@ -222,10 +217,6 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 			*w.out = append(*w.out, constraint{dst: dst, srcs: []ir.PointsToKey{ir.SlotParamKey(sym)}})
 		}
 	case *ir.Lambda:
-		if x.Func != nil {
-			*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
-		}
-	case *ir.Closure:
 		if x.Func != nil {
 			*w.out = append(*w.out, constraint{dst: dst, funcs: []*ir.Func{x.Func}})
 		}

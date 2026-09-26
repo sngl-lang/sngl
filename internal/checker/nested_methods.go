@@ -226,6 +226,7 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			// list: desugaring the receiver must not drop what a mark said
 			// about the function it was written on.
 			Attrs: n.Attrs,
+			Const: n.Const,
 		}
 		fn := c.buildFunc(synthetic)
 		c.applyMarks(synthetic, fn)

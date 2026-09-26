@@ -229,7 +229,7 @@ struct Palette {
 }
 
 // The color a palette gives one kind.
-func tokenColor(p Palette, kind Token) color {
+const func tokenColor(p Palette, kind Token) color {
     if kind == Token.keyword {
         return p.keyword
     }
@@ -278,7 +278,7 @@ context #palette(Palette{})
 
 // The color `kind` is drawn in: the palette's where it sets one, and the
 // fallback's where it does not.
-func colorOf(p Palette, fallback Palette, kind Token) color {
+const func colorOf(p Palette, fallback Palette, kind Token) color {
     var c = tokenColor(p, kind)
     if c.a != 0 {
         return c
@@ -422,7 +422,7 @@ const bullets = ["•", "◦", "▪"]
 // The bullet for a nesting level. Depth 1 is the outermost list, so the
 // modulo is taken of one less; anything shallower than that is a `listItem`
 // with no list around it and gets the plain bullet.
-func bulletAt(depth int) string {
+const func bulletAt(depth int) string {
     if depth <= 1 {
         return bullets[0]
     }

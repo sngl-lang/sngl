@@ -171,10 +171,5 @@ func (w *irLitWalker) expr(e ir.Expr) {
 		w.expr(x.Operand)
 	case *ir.Lambda:
 		w.fn_(x.Func)
-	case *ir.Closure:
-		w.fn_(x.Func)
-		if x.State != nil {
-			w.expr(x.State)
-		}
 	}
 }

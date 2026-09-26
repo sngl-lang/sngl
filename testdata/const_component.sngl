@@ -1,0 +1,47 @@
+// A const component's render depends only on its props: it may read them,
+// consts, const funcs, loop variables over those, a slot's invocation
+// arguments and a context. A var only its handlers touch is not part of the
+// render, and neither is a child with state of its own.
+import ui "sngl:ui"
+
+const prefix = "#"
+
+const func tag(n int) => prefix + string(n)
+
+context #accent("blue")
+
+component counter(start int) ui.node {
+    var n = start
+    ui.button(text="{n}", @click { n += 1 })
+}
+
+const component badge(const label string, n int, items list<string>) ui.node {
+    var clicks = 0
+    ui.vbox {
+        ui.text(value="{label} {tag(n)} {accent}")
+        for var it = items {
+            ui.text(value=it)
+        }
+        ui.button(text="+", @click { clicks += 1 })
+        counter(start=n)
+    }
+}
+
+const component list(items list<string>, const row component(item string) ui.node) ui.node {
+    ui.vbox {
+        for var it = items {
+            row(it)
+        }
+    }
+}
+
+var count = 0
+
+ui.window {
+    badge(label="new", n=count, items=["a", "b"])
+    list(items=["x"]) {
+        component row(item) {
+            ui.text(value=item.upper())
+        }
+    }
+}

@@ -128,8 +128,7 @@ package main
 import "testing"
 
 func TestImageSrcMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.src == "https://example.com/a.png")) { t.Errorf("assert failed: %s", "(c.src == \"https://example.com/a.png\")") }
 	c.src = "https://example.com/b.png"
@@ -194,8 +193,7 @@ package main
 import "testing"
 
 func TestImageSrcMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.src == "https://example.com/a.png")) { t.Errorf("assert failed: %s", "(c.src == \"https://example.com/a.png\")") }
 	c.src = "https://example.com/b.png"
@@ -368,6 +366,17 @@ body { font-family: system-ui, sans-serif; }
 <img id="__n0" data-sngl-id="__n0" alt="test"/>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { src: "https://example.com/a.png" };
@@ -388,15 +397,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:de2e2640c1ea68c832dc605408ef406c
+pass sha256:af4dd10f8fd5414881807c79cf987f0d
 -- run/go/fyne --
-pass sha256:3262efed79d52c1032452efbce1a8af9
+pass sha256:26ea3b2afd2e41a4b38e92295cfb2ff2
 -- run/go/gtk4 --
 pass sha256:dbc8995b8daf024c80f5b3df937d78af
 -- run/kotlin/android --
 pass sha256:d2fa83600f825b8dcb72fa2ec6fb233d
 -- run/none/html --
-pass sha256:0c09913d3a2195e99eeed35ce102002c
+pass sha256:47e372160b6056d70906b955406d560f

@@ -68,7 +68,7 @@ output {
     }
 }
 
-component main ui.root {
+component main root {
     var hits = 0
 
     func bump(n int) => n + 1

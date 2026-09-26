@@ -1,0 +1,20 @@
+// A generated file says what it was generated from, so a store holding it can
+// tell whether it is still what a producer would write today. The directive is
+// read at the root of a file, like `output`, and renders nothing: the window
+// below is the whole program.
+import cache "sngl:x/gen/cache"
+import ui "sngl:ui"
+
+cache.inputs {
+    cache.file(path="/usr/share/gir-1.0/Gtk-4.0.gir", sha256="9f86d081884c7d65")
+    cache.absent(path="/usr/local/share/gir-1.0/Gtk-4.0.gir")
+    cache.dir(path="/src/app", sha256="e3b0c44298fc1c14")
+    cache.env(name="GOFLAGS", value="-mod=mod")
+    cache.unsetenv(name="GOEXPERIMENT")
+    cache.goenv(dir="/src/app", name="GOVERSION", value="go1.27.1")
+    cache.entry(producer="go.deps", params=["/src/app", "example.com/docs"], sha256="2c26b46b68ffc68f")
+}
+
+ui.window #home(title="Home") {
+    ui.text(value="hi")
+}

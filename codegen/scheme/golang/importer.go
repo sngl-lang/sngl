@@ -168,8 +168,10 @@ func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*i
 		case *types.Func:
 			if fn := goFuncToFunc(o, pkgPath, pkgName, structs); fn != nil {
 				fn.Purity = ir.PurityUnknown
+				// `//sngl:pure` is the Go spelling of `const func`.
 				if funcPure[o.Name()] {
 					fn.Purity = ir.PurityPure
+					fn.Const = true
 				}
 				fn.Doc = funcDoc[o.Name()]
 				ni.Funcs = append(ni.Funcs, fn)

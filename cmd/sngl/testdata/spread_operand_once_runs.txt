@@ -1,0 +1,54 @@
+# The interpreter's half of testdata/spread_operand_once.txtar. `sngl test` on
+# none runs the checked IR, which passSpreadOnce never touches, so the
+# interpreter binds a spread's computed operand once per statement itself
+# (ir.StatementSpreads) and reads each field off that value.
+
+sngl test --platform=none spread.sngl
+stdout '3 tests, 0 failures'
+
+-- spread.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Pair {
+    x int
+    y int
+}
+
+component panel node {
+    var n = 0
+    var got = 0
+    var p = Pair{x=3, y=4}
+    func next() Pair {
+        n = n + 1
+        return Pair{x=n, y=n * 100}
+    }
+    func add(x int, y int) => x + y
+    func swap(x int, y int) => Pair{x=y, y=x}
+    button #once(text="once", @click {
+        got = add(...next())
+    })
+    button #path(text="path", @click {
+        got = add(...p)
+    })
+    button #nested(text="nested", @click {
+        got = add(...swap(...next()))
+    })
+}
+
+func testOperandOnce(t Test, c panel) {
+    c.once.click()
+    t.assert(c.got == 101)
+    t.assert(c.n == 1)
+}
+
+func testPathInPlace(t Test, c panel) {
+    c.path.click()
+    t.assert(c.got == 7)
+}
+
+func testNestedOnce(t Test, c panel) {
+    c.nested.click()
+    t.assert(c.got == 101)
+    t.assert(c.n == 1)
+}

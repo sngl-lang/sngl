@@ -222,7 +222,9 @@ func (s *stripper) stripComponent(c *Component) {
 		s.stripExpr(p.Default)
 	}
 	for _, e := range c.Events {
-		e.Type = nil
+		for _, p := range e.Params {
+			p.Type = nil
+		}
 	}
 	c.ChildrenType = nil
 	for _, v := range c.Vars {
@@ -364,6 +366,7 @@ func (s *stripper) stripExpr(e Expr) {
 		e.Def = nil // cross-reference
 		e.Type = nil
 		for i := range e.Fields {
+			e.Fields[i].NamePos = ast.Pos{}
 			s.stripExpr(e.Fields[i].Value)
 		}
 	case *ListLit:
@@ -379,11 +382,6 @@ func (s *stripper) stripExpr(e Expr) {
 	case *Lambda:
 		e.AST = nil
 		e.Type = nil
-		s.stripFunc(e.Func)
-	case *Closure:
-		e.AST = nil
-		e.Type = nil
-		s.stripExpr(e.State)
 		s.stripFunc(e.Func)
 	}
 }
