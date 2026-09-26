@@ -6,8 +6,7 @@ output {
 }
 
 // A node written through an import alias is the same node written bare, so a
-// test reaches its #id the same way: resolving the host by the written name
-// looked up "ui.button" in scope, found nothing, and reported no member.
+// test reaches its #id the same way.
 func testQualifiedRefIsAddressable(t test.Test, c counter) {
     c.inc.click()
     t.assert(c.count == 1)
