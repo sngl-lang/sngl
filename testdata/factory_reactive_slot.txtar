@@ -134,8 +134,9 @@ func (m *Model) SetItems__inst0(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	m.__root.RemoveAll()
 	m.__renderSlot1(m.__root)
-	content := fyne.CanvasObject(widget.NewLabel(""))
+	content := fyne.CanvasObject(m.__root)
 	return content
 }
 
@@ -165,10 +166,11 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__n0.SetText(c.__prop_name)
 	c.__n0.OnTapped = func() {
 		c.open = !c.open
+		c.__root.Add(c.__n0)
 		c.__renderSlot0(c.__root)
 	}
 	c.__renderSlot0(c.__root)
-	c.Root = container.NewVBox(c.__n0, c.__root)
+	c.Root = c.__root
 	return c
 }
 
@@ -306,13 +308,11 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.open = !c.open
+		gtk4rt.BoxAppend(c.__root, c.__n0)
 		c.__renderSlot0(c.__root)
 	})
 	c.__renderSlot0(c.__root)
-	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	gtk4rt.BoxAppend(__box, c.__n0)
-	gtk4rt.BoxAppend(__box, c.__root)
-	c.Root = __box
+	c.Root = c.__root
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -375,6 +375,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:d5da2e3a5959d44d2269a79858cdf667
+pass sha256:3911e143fb8ebc0143d7c1970b03851f
 -- run/go/gtk4 --
-pass sha256:4cd4bac41e190616de3613280665c8db
+pass sha256:db53cb829133464deaff47dcdab68adf

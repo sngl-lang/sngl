@@ -242,11 +242,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
+				withSlotRoot(slotRootVar).
 				withInvokerSink(func(inv fyneEventInvoker) {
 					eventInvokers = append(eventInvokers, inv)
 				})
 			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
+			if tr.renderedRoot != nil {
+				// __root outlives BuildUI, which a test calls again to snapshot
+				// what it rendered.
+				fmt.Fprintf(&buildBuf, "\t%s.RemoveAll()\n", gc.EvalExpr(tr.renderedRoot))
+			}
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
 					fmt.Fprintf(&buildBuf, "\t%s\n", line)
@@ -255,14 +261,18 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			// topLevel holds the widget ids no AppendChild consumed — the
 			// window roots.
 			tops := tr.topLevel
-			switch len(tops) {
-			case 0:
-				// A purely reactive body has no top-level widgets; a
-				// synthesized __root bind then drives emitIRBuildUI to return
-				// m.__root, and an empty label is the fallback.
+			switch {
+			case tr.renderedRoot != nil:
+				for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
+					for _, line := range gc.EvalStmt(stmt) {
+						fmt.Fprintf(&buildBuf, "\t%s\n", line)
+					}
+				}
+				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(tr.renderedRoot))
+			case len(tops) == 0:
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
-			case 1:
+			case len(tops) == 1:
 				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				singleRoot = false

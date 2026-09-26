@@ -102,14 +102,14 @@ type gtk4Translator struct {
 	// reactive one and is what re-writes it.
 	builtSpans map[string]bool
 	topLevel   []string
-	// slotRoot is the box a reactive slot in this scope's body renders into,
-	// when this scope owns one. A call to that slot's renderer holds a place in
-	// the tree exactly as a created widget does -- the subtree is built into
-	// the box rather than named by a ref -- so OnDefault records the box in
-	// topLevel at that position. Empty in a scope whose root is decided some
-	// other way, which is every Model scope: the Model's own __root is the
-	// wrapper buildWidgetTree already parents into.
-	slotRoot string
+	// slotRoot is the box a reactive slot at the top of this scope's body
+	// renders into. Once one renders there, that box is the scope's widget, so
+	// its static top-level siblings have to be in it too: OnDefault appends
+	// the ones written so far ahead of each such render, which is what puts
+	// the slot's anchor after them, and renderedRoot tells the emitter where
+	// to append the rest, and that the box is what it returns.
+	slotRoot     string
+	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot, in wrapped mode.
 	slotAnchor ir.Expr
@@ -1252,9 +1252,26 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
-		t.topLevel = append(t.topLevel, t.slotRoot)
+	if t.recordsSlotRoot(stmt) {
+		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
+		placed := t.addTopsTo(ctx, t.renderedRoot)
+		return append(placed, t.translateDefault(stmt)...)
 	}
+	return t.translateDefault(stmt)
+}
+
+// addTopsTo appends every top-level widget written so far to root, in order,
+// and forgets them.
+func (t *gtk4Translator) addTopsTo(ctx context.Context, root ir.Expr) []ir.Stmt {
+	var stmts []ir.Stmt
+	for _, ref := range slices.Clone(t.topLevel) {
+		stmts = append(stmts, t.OnAppendChild(ctx, root, &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})...)
+	}
+	t.topLevel = nil
+	return stmts
+}
+
+func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)

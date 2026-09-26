@@ -59,7 +59,7 @@ func emitComponentInstance(
 	}
 
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar)
+		withLocalRefs(comp.LocalRefs).withSlotRoot(slotRootVar)
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
@@ -72,7 +72,11 @@ func emitComponentInstance(
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
-	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, instanceRootExpr(tr, cgc))
+	rootLines, root := instanceRootExpr(tr, cgc)
+	for _, line := range rootLines {
+		fmt.Fprintf(&ctorBody, "\t%s\n", line)
+	}
+	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, root)
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -216,7 +220,7 @@ func instanceVarGoType(v *ir.Var) string {
 	switch {
 	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "[]fyne.CanvasObject"
-	case v.Synthesized && v.Name == instanceRootVar:
+	case v.Synthesized && v.Name == slotRootVar:
 		return "*fyne.Container"
 	}
 	return golang.VarGoType(v)
@@ -226,42 +230,44 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext) string {
 	switch {
 	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "nil"
-	case v.Synthesized && v.Name == instanceRootVar:
+	case v.Synthesized && v.Name == slotRootVar:
 		igc.RequireImport("fyne.io/fyne/v2/container")
 		return "container.NewVBox()"
 	}
 	return golang.LowerVarInit(v, igc)
 }
 
-// instanceRootExpr is the widget the instance renders as: whatever the body
-// left unattached, the container a reactive slot in it renders into included.
-// Wrapped when the body left several, because a parent holds one child per
-// instance and an instance with two top-level nodes has no single widget to be.
-//
-// That container reaches tr.topLevel through withSlotRoot, at the position the
-// slot was written. Reading tr.topLevel without it left the container parented
-// nowhere and its whole subtree invisible, and appending it after the fact put
-// it in the wrong place among the body's own widgets.
-func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) string {
+// instanceRootExpr is the widget the instance renders as: the container a
+// reactive slot at the top of its body renders into, when there is one, and
+// otherwise whatever the body left unattached. Wrapped when the body left
+// several, because a parent holds one child per instance and an instance with
+// two top-level nodes has no single widget to be.
+func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) (lines []string, root string) {
+	if tr.renderedRoot != nil {
+		for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
+			lines = append(lines, igc.EvalStmt(stmt)...)
+		}
+		return lines, igc.EvalExpr(tr.renderedRoot)
+	}
 	tops := tr.topLevel
 	switch len(tops) {
 	case 0:
 		igc.RequireImport("fyne.io/fyne/v2/widget")
-		return `widget.NewLabel("")`
+		return nil, `widget.NewLabel("")`
 	case 1:
-		return igc.EvalExpr(topRef(tr, tops[0]))
+		return nil, igc.EvalExpr(topRef(tr, tops[0]))
 	}
 	igc.RequireImport("fyne.io/fyne/v2/container")
 	parts := make([]string, len(tops))
 	for i, ref := range tops {
 		parts[i] = igc.EvalExpr(topRef(tr, ref))
 	}
-	return "container.NewVBox(" + strings.Join(parts, ", ") + ")"
+	return nil, "container.NewVBox(" + strings.Join(parts, ", ") + ")"
 }
 
-// instanceRootVar is the container a reactive slot in a component body renders
+// slotRootVar is the container a reactive slot at the top of a body renders
 // into.
-const instanceRootVar = "__root"
+const slotRootVar = "__root"
 
 // isInstanceComponent reports whether a component's body belongs to a record
 // rather than to the Model. What survives inlining and was met at a site the

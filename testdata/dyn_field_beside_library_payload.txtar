@@ -342,8 +342,9 @@ func newShowInstance(__model *Model, __a_node any, __a___depth int) *ShowInstanc
 	c.__inst0_live = []*ShowInstance{}
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(fmt.Sprint((c.__prop_node).(Item).Value))
+	c.__root.Add(c.__n0)
 	c.__renderSlot0(c.__root)
-	c.Root = container.NewVBox(c.__n0, c.__root)
+	c.Root = c.__root
 	return c
 }
 
@@ -418,4 +419,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:7b4a9fe90d6e1138835f0555d4f019e9
 -- run/go/fyne --
-pass sha256:4189a309ea688a9312f6e84608359d8f
+pass sha256:5a11a4d1da124fa4525536419eed7461

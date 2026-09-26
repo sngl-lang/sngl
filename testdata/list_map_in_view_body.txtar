@@ -206,13 +206,15 @@ func (m *Model) SetXs__inst0(v []int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	m.__root.RemoveAll()
 	__list0 := []int{}
 	m.__renderSlot0(m.__root)
 	__list1 := []int{}
 	m.__renderSlot1(m.__root)
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(((fmt.Sprint(__list0[0]) + " ") + fmt.Sprint(__list1[0])))
-	content := fyne.CanvasObject(m.__n0)
+	m.__root.Add(m.__n0)
+	content := fyne.CanvasObject(m.__root)
 	return content
 }
 
@@ -328,6 +330,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:ddeb4985637c7c8b59ab7ec98c3f1b8e
 -- run/go/fyne --
-broken sha256:c7dd68523c4e85532db434a41de5184e
+broken sha256:33aa2e16473f68019b583ba549a0b130
 -- run/go/gtk4 --
 broken sha256:ac2fa5804a9e7a7000f459caddff9ae7

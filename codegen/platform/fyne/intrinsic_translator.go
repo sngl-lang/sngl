@@ -48,14 +48,14 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
-	// slotRoot is the container a reactive slot in this scope's body renders
-	// into, when this scope owns one. A call to that slot's renderer holds a
-	// place in the tree exactly as a created widget does -- the subtree is
-	// built into the container rather than named by a ref -- so OnDefault
-	// records the container in topLevel at that position. Empty in a scope
-	// whose root is decided some other way, which is every Model scope: the
-	// Model's own __root is the wrapper its BuildUI already returns.
-	slotRoot string
+	// slotRoot is the container a reactive slot at the top of this scope's
+	// body renders into. Once one renders there, that container is the
+	// scope's widget, so its static top-level siblings have to be in it too:
+	// OnDefault adds the ones written so far ahead of each such render, which
+	// is what puts the slot's anchor after them, and renderedRoot tells the
+	// emitter where to add the rest, and that the container is what it returns.
+	slotRoot     string
+	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot.
 	slotAnchor ir.Expr
@@ -176,6 +176,17 @@ func (t *fyneTranslator) recordsSlotRoot(stmt ir.Stmt) bool {
 	}
 	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
 	return ok && id.Name == t.slotRoot
+}
+
+// addTopsTo adds every top-level widget written so far to root, in order, and
+// forgets them.
+func (t *fyneTranslator) addTopsTo(root ir.Expr) []ir.Stmt {
+	stmts := make([]ir.Stmt, 0, len(t.topLevel))
+	for _, ref := range t.topLevel {
+		stmts = append(stmts, &ir.CallStmt{Call: methodCall(root, "Add", []ir.Expr{topRef(t, ref)}, ir.TypVoid)})
+	}
+	t.topLevel = nil
+	return stmts
 }
 
 // isLocalRef reports whether id is a non-escaping ref that should be emitted
@@ -706,9 +717,15 @@ func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
-		t.topLevel = append(t.topLevel, t.slotRoot)
+	if t.recordsSlotRoot(stmt) {
+		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
+		placed := t.addTopsTo(t.renderedRoot)
+		return append(placed, t.translateDefault(stmt)...)
 	}
+	return t.translateDefault(stmt)
+}
+
+func (t *fyneTranslator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)

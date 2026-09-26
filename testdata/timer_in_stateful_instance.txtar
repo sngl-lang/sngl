@@ -273,8 +273,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	m.__root.RemoveAll()
 	m.__renderSlot0(m.__root)
-	content := fyne.CanvasObject(widget.NewLabel(""))
+	content := fyne.CanvasObject(m.__root)
 	return content
 }
 
@@ -855,7 +856,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ba3447f0fef0bbfc9899ca80375527b4
 -- run/go/fyne --
-pass sha256:ee54eda1ad746b434d2b6fbb0eb2cb91
+pass sha256:02f927674451d42da5dfc625d0b348ba
 -- run/go/gtk4 --
 pass sha256:70b076876d5b186c7ff08257bee3f482
 -- run/none/html --

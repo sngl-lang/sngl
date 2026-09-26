@@ -169,10 +169,12 @@ func (m *Model) SetPeriods__inst0(v []time.Duration) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	m.__root.RemoveAll()
 	m.__renderSlot0(m.__root)
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.n__inst0))
-	content := fyne.CanvasObject(m.__n0)
+	m.__root.Add(m.__n0)
+	content := fyne.CanvasObject(m.__root)
 	return content
 }
 
@@ -794,7 +796,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:61b0081fa2875e18d431496ac7868121
+pass sha256:a8551f9b9b0acc7038478fd292d40e17
 -- run/go/gtk4 --
 pass sha256:4ed072531ff851efda48abac357d26bc
 -- run/none/html --

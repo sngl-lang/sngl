@@ -354,7 +354,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
-			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
+			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).withSlotRoot(slotRootVar).
 			withInvokerSink(func(inv gtkEventInvoker) {
 				vc.eventInvokers = append(vc.eventInvokers, inv)
 			})

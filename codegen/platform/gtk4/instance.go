@@ -78,7 +78,7 @@ func emitComponentInstance(
 		return tr
 	}
 
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar)
+	tr := newTr(comp.LocalRefs).withSlotRoot(slotRootVar)
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder
@@ -217,19 +217,28 @@ func rootRefLine(cFunc, rtFunc string, wrapped bool) string {
 	return fmt.Sprintf("C.%s(C.gpointer(unsafe.Pointer(%s)))", cFunc, root)
 }
 
-// instanceRootBinding assigns the widget the instance renders as: whatever the
-// body left unattached, boxed when it left several, because a parent holds one
-// child per instance.
-//
-// The container a reactive slot in the body renders into counts as one of
-// those: the subtree is built into it rather than named by a ref, so it
-// reaches tr.topLevel through withSlotRoot, at the position the slot was
-// written. Reading tr.topLevel without it left that box parented nowhere and
-// its whole subtree invisible.
+// instanceRootBinding assigns the widget the instance renders as: the box a
+// reactive slot at the top of its body renders into, when there is one, and
+// otherwise whatever the body left unattached, boxed when it left several,
+// because a parent holds one child per instance.
 func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bool) string {
 	root := instanceReceiver + "." + golang.ComponentRootField
 	nodeRef := func(id string) ir.Expr {
 		return tr.qualifyNodeExpr(&ir.Ident{Name: id, IsElementRef: true, Synthesized: true})
+	}
+	if tr.renderedRoot != nil {
+		var b strings.Builder
+		for _, stmt := range tr.addTopsTo(context.Background(), tr.renderedRoot) {
+			for _, line := range igc.EvalStmt(stmt) {
+				fmt.Fprintf(&b, "\t%s\n", line)
+			}
+		}
+		box := tr.qualifyNodeExpr(tr.renderedRoot)
+		if !wrapped {
+			box = &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: box}
+		}
+		fmt.Fprintf(&b, "\t%s = %s\n", root, igc.EvalExpr(box))
+		return b.String()
 	}
 	tops := tr.topLevel
 	switch {
@@ -326,7 +335,7 @@ func instanceVarGoType(v *ir.Var, wrapped bool) string {
 			return "[]" + gtk4rtHandleType
 		}
 		return "[]*C.GtkWidget"
-	case v.Synthesized && v.Name == instanceRootVar:
+	case v.Synthesized && v.Name == slotRootVar:
 		if wrapped {
 			return gtk4rtHandleType
 		}
@@ -345,7 +354,7 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 	// the first render appended into nothing. These assignments are statements
 	// of the ctor rather than fields of a struct literal, which is what made
 	// the Model's reason for binding its own __root later not apply.
-	if v.Synthesized && v.Name == instanceRootVar {
+	if v.Synthesized && v.Name == slotRootVar {
 		if wrapped {
 			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
 		}
@@ -390,6 +399,6 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 	return false
 }
 
-// instanceRootVar is the container a reactive slot in a component body renders
+// slotRootVar is the container a reactive slot at the top of a body renders
 // into.
-const instanceRootVar = "__root"
+const slotRootVar = "__root"
