@@ -63,23 +63,23 @@ component PlatformCarousel() node {
 		active = (active + 1) % 4
 	})
 
-	vbox(style={gap=16, alignItems="center", padding="32 0"}) {
+	vbox(style={gap=16, alignItems=center, paddingY=32, paddingX=0}) {
 		stack {
 			if active == 0 {
 				image(src=screenshotWeb, alt="SNGL Todo App on Web", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct})
 			}
 			if active == 1 {
 				image(src=screenshotTerminal, alt="SNGL Todo App in Terminal", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct})
 			}
 			if active == 2 {
 				image(src=screenshotDesktop, alt="SNGL Todo App on Desktop", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct})
 			}
 			if active == 3 {
 				image(src=screenshotAndroid, alt="SNGL Todo App on Android", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
+					style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct})
 			}
 		}
 		hbox(style={gap=8}) {
@@ -130,7 +130,7 @@ component PageLayout(title = "", currentHref = "", children ...component) node {
 		hbox {
 			NavSidebar(currentHref=currentHref)
 			vbox(style={padding=24, flex=1}) {
-				text(value=title, style={fontSize=28, fontWeight="bold"})
+				text(value=title, style={fontSize=28, fontWeight=bold})
 				children
 			}
 		}
@@ -275,7 +275,7 @@ component site() root {
 				docui.Markdown(src=comp.previewHTML)
 				docui.Markdown(src=comp.highlightedCode)
 
-				text(value="Properties", style={fontSize=20, fontWeight="bold"})
+				text(value="Properties", style={fontSize=20, fontWeight=bold})
 				docui.Table {
 					docui.HeaderRow {
 						docui.HeaderCell(value="Name")
@@ -290,7 +290,7 @@ component site() root {
 						}
 					}
 				}
-				text(value="Slots", style={fontSize=20, fontWeight="bold"})
+				text(value="Slots", style={fontSize=20, fontWeight=bold})
 				docui.Table {
 					docui.HeaderRow {
 						docui.HeaderCell(value="Name")
@@ -303,7 +303,7 @@ component site() root {
 						}
 					}
 				}
-				text(value="Events", style={fontSize=20, fontWeight="bold"})
+				text(value="Events", style={fontSize=20, fontWeight=bold})
 				docui.Table {
 					docui.HeaderRow {
 						docui.HeaderCell(value="Name")
@@ -346,7 +346,7 @@ component site() root {
 		PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
 			text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents the recognized `--opt key=value` options.")
 
-			text(value="Global Options", style={fontSize=22, fontWeight="bold"})
+			text(value="Global Options", style={fontSize=22, fontWeight=bold})
 			text(value="Declared by the standard library; accepted by every output target.")
 			docui.Table {
 				docui.HeaderRow {
@@ -363,7 +363,7 @@ component site() root {
 				}
 			}
 
-			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
+			text(value="Capabilities", style={fontSize=22, fontWeight=bold})
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Platform")
@@ -382,13 +382,13 @@ component site() root {
 			}
 
 			for var p = targets.platforms {
-				text(value=p.name, style={fontSize=20, fontWeight="bold"})
+				text(value=p.name, style={fontSize=20, fontWeight=bold})
 				text(value=p.doc)
 				text(value="Supported languages:")
 				for var lname = p.languages {
 					text(value="• " + lname, style={fontFamily="monospace"})
 				}
-				text(value="Options", style={fontSize=16, fontWeight="bold"})
+				text(value="Options", style={fontSize=16, fontWeight=bold})
 				docui.Table {
 					docui.HeaderRow {
 						docui.HeaderCell(value="Name")
@@ -412,7 +412,7 @@ component site() root {
 		PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
 			text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents the recognized `--opt key=value` options.")
 
-			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
+			text(value="Capabilities", style={fontSize=22, fontWeight=bold})
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Language")
@@ -431,9 +431,9 @@ component site() root {
 			}
 
 			for var l = targets.languages {
-				text(value=l.name, style={fontSize=20, fontWeight="bold"})
+				text(value=l.name, style={fontSize=20, fontWeight=bold})
 				text(value=l.doc)
-				text(value="Options", style={fontSize=16, fontWeight="bold"})
+				text(value="Options", style={fontSize=16, fontWeight=bold})
 				docui.Table {
 					docui.HeaderRow {
 						docui.HeaderCell(value="Name")

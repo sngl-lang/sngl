@@ -1,0 +1,28 @@
+// A struct literal's field value is held to the field's type, as an
+// initializer of that type is: named, expected-type and prop-position
+// literals alike. A string is not an enum member, and a bool is not a length.
+//
+// Two coercions stay: an int widens to a float, and a bare number in a
+// unit-typed field is that unit's first base (`padding = 16` is 16px).
+
+import . "sngl:ui"
+
+enum W { a, b }
+
+struct S {
+    w W
+    n int
+    f float = 0.0
+}
+
+const ok = S{w=b, n=1, f=2}
+const named = S{w="bold", n=1} // ERROR(check) "cannot use string as W for field \"w\" of S"
+const count = S{w=a, n="x"}    // ERROR(check) "cannot use string as int for field \"n\" of S"
+const anon S = {w=a, n=true}   // ERROR(check) "cannot use bool as int for field \"n\" of S"
+
+window {
+    text(value="x", style={fontWeight=42}) // ERROR(check) "cannot use int as FontWeight for field \"fontWeight\" of Style"
+    text(value="y", style={gap=true})      // ERROR(check) "cannot use bool as measurement for field \"gap\" of Style"
+    text(value="z", style={color="teal"})  // ERROR(check) "invalid color literal \"teal\""
+    text(value=string(ok.n), style={padding=16, fontWeight=bold})
+}

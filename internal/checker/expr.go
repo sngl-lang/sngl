@@ -2208,6 +2208,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		}
 		val := c.checkExprExpecting(f.Value, expected)
 		if field != nil {
+			val = c.checkFieldValue(f.Value, val, field, sd)
 			// `TreeNode{left = leaf1}` against `left option<TreeNode>` reached
 			// codegen as a bare TreeNode, and Go's option is *T -- the one
 			// assignment position that read the declared type and then threw
@@ -2258,9 +2259,40 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
 }
 
-// reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
-// when the expected type is map<K,V>. Only map<string,V> is supported; ident
-// names become string literal keys. For any other K, a check error is emitted.
+// checkFieldValue holds a struct literal's field value to the rule an
+// initializer of the field's type is held to.
+func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.StructField, sd *ir.StructDef) ir.Expr {
+	want := field.Type
+	got := exprType(val)
+	// A Go nil slice or map encodes as null, and is the empty collection.
+	nilCollection := c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
+	if propTypeMismatch(got, want) && !bareMagnitude(got, want) && !nilCollection {
+		if adapted, ok := adaptLiteralZero(val, want); ok {
+			return adapted
+		}
+		if call, _ := c.implicitCall(written, got, want); call != nil {
+			return c.checkFieldValue(call, c.checkExprExpecting(call, want), field, sd)
+		}
+		w, g := ir.Contrast(want, got)
+		c.error(*written.ExprPos(), "cannot use %s as %s for field %q of %s", g, w, field.Name, sd.Name)
+		return val
+	}
+	c.validateStringDomainLiteral(*written.ExprPos(), want, val)
+	return val
+}
+
+// bareMagnitude reports a number written for a unit-typed field, which every
+// style emitter reads as the unit's first base (`padding=16` is 16px). A
+// built-in unit is excluded: duration has a host representation, where a bare
+// 5 would be five nanoseconds.
+func bareMagnitude(got, want *ir.Type) bool {
+	if want.Kind != ir.TypeUnit || (got.Kind != ir.TypeInt && got.Kind != ir.TypeFloat) {
+		return false
+	}
+	u, _ := want.Decl.(*ir.UnitDef)
+	return u != nil && u.Builtin == ir.BuiltinNone
+}
+
 // reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR
 // when the expected type is map<K,V>. Only map<string,V> is supported; ident
 // names become string literal keys. For any other K, a check error is emitted.

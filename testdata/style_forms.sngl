@@ -2,7 +2,7 @@ import . "sngl:ui"
 
 component main node {
     vbox(style={padding=8, gap=4}) {
-        text(value="styled", style={fontWeight="bold", color=#007700, fontSize=24})
+        text(value="styled", style={fontWeight=bold, color=#007700, fontSize=24})
         button(text="click", style={margin=4, background=#ff0000, padding=8})
     }
 }

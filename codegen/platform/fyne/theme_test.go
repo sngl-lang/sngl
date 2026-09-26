@@ -15,8 +15,8 @@ import . "sngl:ui"
 output { go { fyne } }
 window {
     hbox {
-        button(text="a", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight="bold", borderRadius=8})
-        button(text="b", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight="bold", borderRadius=8})
+        button(text="a", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight=bold, borderRadius=8})
+        button(text="b", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight=bold, borderRadius=8})
         button(text="c", style={background=#f59e0b})
     }
 }

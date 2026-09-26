@@ -17,7 +17,7 @@ component SummaryRow(name = "", doc = "", href = "", active = false) node {
     } else {
         hbox(style={gap=8, padding=4}) {
             text(value=active ? "> " + name : "  " + name,
-                 style={fontWeight=active ? "bold" : "normal", minWidth=140})
+                 style={fontWeight=active ? bold : normal, minWidth=140})
             text(value=doc, style={color="#888"})
         }
     }
@@ -39,7 +39,7 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") node {
 // boundaries; use PackageSections / StdlibSections as the public entry.
 component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") node {
     if items.length() > 0 {
-        text(value=title, style={fontWeight="bold", paddingTop=8})
+        text(value=title, style={fontWeight=bold, paddingTop=8})
         for var it = items {
             SummaryRow(name=it.name, doc=it.doc, href=hrefPrefix + it.name + ".html")
         }
@@ -59,7 +59,7 @@ component PackagePage(path = "", baseHref = "") node {
 component PackagePageView(view lookup.PackageView, baseHref = "") node {
     vbox(style={gap=4, padding=8}) {
         if view.title != "" {
-            text(value=view.title, style={fontSize=20, fontWeight="bold"})
+            text(value=view.title, style={fontSize=20, fontWeight=bold})
         }
         if view.description != "" {
             text(value=view.description, style={color="#888"})
@@ -101,7 +101,7 @@ component StdlibSectionsView(view lookup.PackageView, baseHref = "") node {
 component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName = "") node {
     vbox(style={gap=4, padding=8}) {
         if view.title != "" {
-            text(value=view.title, style={fontSize=20, fontWeight="bold"})
+            text(value=view.title, style={fontSize=20, fontWeight=bold})
         }
         if view.description != "" {
             text(value=view.description, style={color="#888"})
@@ -112,13 +112,13 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
         }
 
         if view.components.length() > 0 {
-            text(value="Components", style={fontWeight="bold", paddingTop=8})
+            text(value="Components", style={fontWeight=bold, paddingTop=8})
             for var c = view.components {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
         if view.types.length() > 0 {
-            text(value="Types", style={fontWeight="bold", paddingTop=8})
+            text(value="Types", style={fontWeight=bold, paddingTop=8})
             for var t = view.types {
                 SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
                 for var m = t.methods {
@@ -127,31 +127,31 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
             }
         }
         if view.enums.length() > 0 {
-            text(value="Enums", style={fontWeight="bold", paddingTop=8})
+            text(value="Enums", style={fontWeight=bold, paddingTop=8})
             for var e = view.enums {
                 SummaryRow(name=e.name, doc=e.doc, href=hrefPrefix + e.name, active=e.name == activeName)
             }
         }
         if view.constants.length() > 0 {
-            text(value="Constants", style={fontWeight="bold", paddingTop=8})
+            text(value="Constants", style={fontWeight=bold, paddingTop=8})
             for var c = view.constants {
                 SummaryRow(name=c.name, doc=c.doc, href=hrefPrefix + c.name, active=c.name == activeName)
             }
         }
         if view.data.length() > 0 {
-            text(value="Data", style={fontWeight="bold", paddingTop=8})
+            text(value="Data", style={fontWeight=bold, paddingTop=8})
             for var d = view.data {
                 SummaryRow(name=d.name, doc=d.doc, href=hrefPrefix + d.name, active=d.name == activeName)
             }
         }
         if view.functions.length() > 0 {
-            text(value="Functions", style={fontWeight="bold", paddingTop=8})
+            text(value="Functions", style={fontWeight=bold, paddingTop=8})
             for var f = view.functions {
                 SummaryRow(name=f.name, doc=f.doc, href=hrefPrefix + f.name, active=f.name == activeName)
             }
         }
         if view.overrides.length() > 0 {
-            text(value="Platform Overrides", style={fontWeight="bold", paddingTop=8, color="#888"})
+            text(value="Platform Overrides", style={fontWeight=bold, paddingTop=8, color="#888"})
             for var o = view.overrides {
                 SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
             }
@@ -163,7 +163,7 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
 // props + events tables, children policy, and example source.
 component ComponentView(detail lookup.ComponentDetailView) node {
     vbox(style={gap=8, padding=8}) {
-        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        text(value=detail.name, style={fontSize=22, fontWeight=bold})
         if detail.doc != "" {
             text(value=detail.doc)
         }
@@ -171,7 +171,7 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             text(value="Children: " + detail.children, style={color="#888"})
         }
         if detail.props.length() > 0 {
-            text(value="Properties", style={fontWeight="bold", paddingTop=8})
+            text(value="Properties", style={fontWeight=bold, paddingTop=8})
             for var p = detail.props {
                 hbox(style={gap=12, padding=2}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120})
@@ -181,7 +181,7 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             }
         }
         if detail.slots.length() > 0 {
-            text(value="Slots", style={fontWeight="bold", paddingTop=8})
+            text(value="Slots", style={fontWeight=bold, paddingTop=8})
             for var sl = detail.slots {
                 hbox(style={gap=12, padding=2}) {
                     text(value=sl.name, style={fontFamily="monospace", minWidth=120})
@@ -190,7 +190,7 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             }
         }
         if detail.events.length() > 0 {
-            text(value="Events", style={fontWeight="bold", paddingTop=8})
+            text(value="Events", style={fontWeight=bold, paddingTop=8})
             for var e = detail.events {
                 hbox(style={gap=12, padding=2}) {
                     text(value="@" + e.name, style={fontFamily="monospace", minWidth=120})
@@ -199,7 +199,7 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             }
         }
         if detail.examples.length() > 0 {
-            text(value="Example", style={fontWeight="bold", paddingTop=8})
+            text(value="Example", style={fontWeight=bold, paddingTop=8})
             for var src = detail.examples {
                 text(value=src, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
                 if PLATFORM == html.platform {
@@ -214,7 +214,7 @@ component ComponentView(detail lookup.ComponentDetailView) node {
 // (methods only).
 component TypeView(detail lookup.TypeDetailView) node {
     vbox(style={gap=8, padding=8}) {
-        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        text(value=detail.name, style={fontSize=22, fontWeight=bold})
         if detail.isNative && detail.nativeName != "" {
             text(value="Native: " + detail.nativeName,
                  style={color="#888", fontFamily="monospace"})
@@ -223,7 +223,7 @@ component TypeView(detail lookup.TypeDetailView) node {
             text(value=detail.doc)
         }
         if detail.fields.length() > 0 {
-            text(value="Fields", style={fontWeight="bold", paddingTop=8})
+            text(value="Fields", style={fontWeight=bold, paddingTop=8})
             for var f = detail.fields {
                 hbox(style={gap=12, padding=2}) {
                     text(value=f.name, style={fontFamily="monospace", minWidth=120})
@@ -232,7 +232,7 @@ component TypeView(detail lookup.TypeDetailView) node {
             }
         }
         if detail.methods.length() > 0 {
-            text(value="Methods", style={fontWeight="bold", paddingTop=8})
+            text(value="Methods", style={fontWeight=bold, paddingTop=8})
             for var m = detail.methods {
                 hbox(style={gap=12, padding=2}) {
                     text(value=m.short, style={fontFamily="monospace", minWidth=120})
@@ -246,12 +246,12 @@ component TypeView(detail lookup.TypeDetailView) node {
 // EnumView renders an enum's members.
 component EnumView(detail lookup.EnumDetailView) node {
     vbox(style={gap=8, padding=8}) {
-        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        text(value=detail.name, style={fontSize=22, fontWeight=bold})
         if detail.doc != "" {
             text(value=detail.doc)
         }
         if detail.members.length() > 0 {
-            text(value="Members", style={fontWeight="bold", paddingTop=8})
+            text(value="Members", style={fontWeight=bold, paddingTop=8})
             for var m = detail.members {
                 text(value="• " + m.name, style={fontFamily="monospace"})
             }
@@ -262,7 +262,7 @@ component EnumView(detail lookup.EnumDetailView) node {
 // FuncView renders a function's signature, params, and return type.
 component FuncView(detail lookup.FuncDetailView) node {
     vbox(style={gap=8, padding=8}) {
-        text(value=detail.name, style={fontSize=22, fontWeight="bold"})
+        text(value=detail.name, style={fontSize=22, fontWeight=bold})
         if detail.signature != "" {
             text(value=detail.signature, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
         }
@@ -274,7 +274,7 @@ component FuncView(detail lookup.FuncDetailView) node {
             text(value=detail.doc)
         }
         if detail.params.length() > 0 {
-            text(value="Parameters", style={fontWeight="bold", paddingTop=8})
+            text(value="Parameters", style={fontWeight=bold, paddingTop=8})
             for var p = detail.params {
                 hbox(style={gap=12, padding=2}) {
                     text(value=p.name, style={fontFamily="monospace", minWidth=120})
@@ -292,7 +292,7 @@ component FuncView(detail lookup.FuncDetailView) node {
 component ValueView(detail lookup.ValueDetailView) node {
     vbox(style={gap=8, padding=8}) {
         text(value=(detail.isConst ? "const " : "var ") + detail.name,
-             style={fontSize=22, fontWeight="bold"})
+             style={fontSize=22, fontWeight=bold})
         if detail.type != "" {
             text(value="Type: " + detail.type, style={color="#888", fontFamily="monospace"})
         }
@@ -310,7 +310,7 @@ component ValueView(detail lookup.ValueDetailView) node {
 component PropDocView(detail lookup.PropDetailView) node {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.componentName + "." + detail.name + (detail.isEvent ? " (event)" : ""),
-             style={fontSize=22, fontWeight="bold"})
+             style={fontSize=22, fontWeight=bold})
         if detail.type != "" {
             text(value="Type: " + detail.type, style={color="#58a6ff"})
         }
@@ -318,7 +318,7 @@ component PropDocView(detail lookup.PropDetailView) node {
             text(value="Payload: " + detail.payload, style={color="#58a6ff"})
         }
         if detail.enumValues.length() > 0 {
-            text(value="Values:", style={fontWeight="bold", paddingTop=8})
+            text(value="Values:", style={fontWeight=bold, paddingTop=8})
             for var v = detail.enumValues {
                 text(value="• " + v, style={fontFamily="monospace"})
             }
@@ -333,7 +333,7 @@ component PropDocView(detail lookup.PropDetailView) node {
 component FieldDocView(detail lookup.FieldDetailView) node {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.type + "." + detail.name,
-             style={fontSize=22, fontWeight="bold"})
+             style={fontSize=22, fontWeight=bold})
         if detail.expr != "" {
             text(value="Type: " + detail.expr, style={color="#58a6ff"})
         }
@@ -347,7 +347,7 @@ component FieldDocView(detail lookup.FieldDetailView) node {
 component MemberDocView(detail lookup.MemberDetailView) node {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.enumName + "." + detail.name,
-             style={fontSize=22, fontWeight="bold"})
+             style={fontSize=22, fontWeight=bold})
         if detail.doc != "" {
             text(value=detail.doc)
         }
@@ -369,7 +369,7 @@ component EntryView(path = "", ident1 = "", ident2 = "",
 component EntryViewInner(entry lookup.Entry, hrefPrefix = "", activeName = "") node {
     if !entry.found && entry.error != "" {
         vbox(style={padding=8, gap=8}) {
-            text(value="Not found", style={fontWeight="bold"})
+            text(value="Not found", style={fontWeight=bold})
             text(value=entry.error, style={color="#888"})
         }
     }

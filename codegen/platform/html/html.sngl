@@ -173,19 +173,19 @@ component element(
 // --- Core Layout ---
 
 component ui.vbox[platform] {
-    html.div(style={...style, display="flex", flexDirection="column"}) {
+    html.div(style={...style, display=flex, flexDirection=column}) {
         children
     }
 }
 
 component ui.hbox[platform] {
-    html.div(style={...style, display="flex", flexDirection="row"}) {
+    html.div(style={...style, display=flex, flexDirection=row}) {
         children
     }
 }
 
 component ui.stack[platform] {
-    html.div(style={...style, position="relative"}) {
+    html.div(style={...style, position=relative}) {
         layers
     }
 }
@@ -198,7 +198,7 @@ component ui.spacer[platform] {
 // `scrollend`. The names differ, so the override maps them: that is the half of
 // wrapping an element that a wildcard cannot do for itself.
 component ui.scroll[platform] {
-    html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
+    html.div(style={...style, overflow=auto}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
         content
     }
 }
@@ -229,7 +229,7 @@ component ui.input[platform] {
 }
 
 component ui.checkbox[platform] {
-    html.label(style={display="inline-flex", alignItems="center", gap=4, ...style}) {
+    html.label(style={display=inlineFlex, alignItems=center, gap=4, ...style}) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
@@ -238,9 +238,9 @@ component ui.checkbox[platform] {
 // --- Tier 1: Core Input ---
 
 component ui.radio[platform] {
-    html.fieldset(style={display="flex", flexDirection=direction, gap=8, border="none", padding=0, ...style}) {
+    html.fieldset(style={display=flex, flexDirection=(direction == "horizontal" ? row : column), gap=8, border="none", padding=0, ...style}) {
         for var opt = options {
-            html.label(style={display="inline-flex", alignItems="center", gap=4}) {
+            html.label(style={display=inlineFlex, alignItems=center, gap=4}) {
                 html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
                 html.span(textContent=opt)
             }
@@ -249,7 +249,7 @@ component ui.radio[platform] {
 }
 
 component ui.toggle[platform] {
-    html.label(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
+    html.label(style={display=inlineFlex, alignItems=center, gap=8, ...style}) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
@@ -285,23 +285,23 @@ component ui.progress[platform] {
 }
 
 component ui.spinner[platform] {
-    html.span(style={display="inline-flex", alignItems="center", gap=8, ...style}) {
+    html.span(style={display=inlineFlex, alignItems=center, gap=8, ...style}) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
 }
 
 component ui.badge[platform] {
-    html.span(style={display="inline-block", padding="2px 8px", borderRadius=12, ...style}) {
+    html.span(style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12, ...style}) {
         html.span(textContent=value) {}
     }
 }
 
 component ui.tabs[platform] {
-    html.div(style={...style, display="flex", flexDirection="column"}) {
-        html.div(role="tablist", style={display="flex", gap=4, borderBottom="1px solid #ccc"}) {
+    html.div(style={...style, display=flex, flexDirection=column}) {
+        html.div(role="tablist", style={display=flex, gap=4, borderBottom="1px solid #ccc"}) {
             for var label = items {
-                html.button(role="tab", textContent=label, style={padding="8px 16px", border="none", background="none", cursor="pointer"})
+                html.button(role="tab", textContent=label, style={paddingY=8px, paddingX=16px, border="none", background=#00000000, cursor="pointer"})
             }
         }
         html.div(role="tabpanel") {
@@ -323,10 +323,10 @@ component ui.divider[platform] {
 // --- Tier 3: Overlays & Layout ---
 
 component ui.modal[platform] {
-    html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {
+    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, width=100pct, height=100pct, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
             if title != "" {
-                html.h3(textContent=title, style={margin="0 0 16px"})
+                html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
             }
             content
         }
@@ -334,7 +334,7 @@ component ui.modal[platform] {
 }
 
 component ui.drawer[platform] {
-    html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
+    html.div(style={...style, position=fixed, top=0, bottom=0, background="#fff", zIndex=1000}) {
         content
     }
 }
@@ -346,13 +346,13 @@ component ui.tooltip[platform] {
 }
 
 component ui.popover[platform] {
-    html.div(style={...style, position="relative"}) {
+    html.div(style={...style, position=relative}) {
         content
     }
 }
 
 component ui.splitview[platform] {
-    html.div(style={...style, display="flex"}) {
+    html.div(style={...style, display=flex}) {
         panes
     }
 }
@@ -360,11 +360,11 @@ component ui.splitview[platform] {
 // --- Tier 4: Data & Desktop ---
 
 component ui.table[platform] {
-    html.table(style={width="100%", borderCollapse="collapse", ...style}) {
+    html.table(style={width=100pct, borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
                 for var col = columns {
-                    html.th(textContent=col, style={textAlign="left", padding=8, borderBottom="2px solid #ddd"})
+                    html.th(textContent=col, style={textAlign=left, padding=8, borderBottom="2px solid #ddd"})
                 }
             }
         }
@@ -381,7 +381,7 @@ component ui.table[platform] {
 }
 
 component ui.tree[platform] {
-    html.ul(style={listStyleType="none", paddingLeft=16, ...style}) {
+    html.ul(style={listStyleType=none, paddingLeft=16, ...style}) {
         for var item = items {
             html.li(textContent=item)
         }
@@ -389,17 +389,17 @@ component ui.tree[platform] {
 }
 
 component ui.menu[platform] {
-    html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+    html.div(style={...style, position=absolute, background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
     }
 }
 
 component ui.menubar[platform] {
-    html.nav(style={...style, display="flex", gap=4}) {
+    html.nav(style={...style, display=flex, gap=4}) {
     }
 }
 
 component ui.toolbar[platform] {
-    html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
+    html.div(style={...style, display=flex, gap=4, alignItems=center}) {
         controls
     }
 }
@@ -420,13 +420,13 @@ component ui.datepicker[platform] {
 }
 
 component ui.chip[platform] {
-    html.span(style={display="inline-flex", alignItems="center", padding="4px 12px", borderRadius=16, border="1px solid #ccc", ...style}) {
+    html.span(style={display=inlineFlex, alignItems=center, paddingY=4px, paddingX=12px, borderRadius=16, border="1px solid #ccc", ...style}) {
         html.span(textContent=label) {}
     }
 }
 
 component ui.avatar[platform] {
-    html.div(style={display="inline-flex", alignItems="center", justifyContent="center", borderRadius="50%", width=40, height=40, background="#ccc", overflow="hidden", ...style}) {
+    html.div(style={display=inlineFlex, alignItems=center, justifyContent=center, borderRadius=50pct, width=40, height=40, background="#ccc", overflow=hidden, ...style}) {
         html.span(textContent=initials) {}
     }
 }

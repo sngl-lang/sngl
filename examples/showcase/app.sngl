@@ -112,7 +112,7 @@ func makeBadge(b struct {
 component LabeledCounter(label = "Clicks", start = 0, @changed) ui.node {
     var n = start
 
-    ui.hbox(style={gap=8, alignItems="center"}) {
+    ui.hbox(style={gap=8, alignItems=center}) {
         ui.text(value="{label}: {n}")
         ui.button(text="+1", @click {
             n += 1
@@ -306,7 +306,7 @@ component main ui.node {
         style={gap=24, maxWidth=900, padding=24},
     ) {
         // --- Heading ---------------------------------------------
-        ui.text(value=APP_NAME, style={fontSize=32, fontWeight="bold"})
+        ui.text(value=APP_NAME, style={fontSize=32, fontWeight=bold})
         ui.text(
             value="Every stdlib component + every language feature, one file.",
             style={color=#666666},
@@ -314,8 +314,8 @@ component main ui.node {
         ui.divider
 
         // --- Text + button + computed (§ — `greeting` is computed) ---
-        ui.text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
-        ui.hbox(style={alignItems="center", gap=12}) {
+        ui.text(value="Text & Button", style={fontSize=20, fontWeight=bold})
+        ui.hbox(style={alignItems=center, gap=12}) {
             ui.text(value=greeting, style={fontSize=18})
             ui.button(text="Increment", @click { count += 1 })
             ui.button(text="Reset", @click {
@@ -327,7 +327,7 @@ component main ui.node {
         ui.divider
 
         // --- Input -----------------------------------------------
-        ui.text(value="Input", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Input", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={gap=12}) {
             ui.input(
                 placeholder="Enter your name",
@@ -337,7 +337,7 @@ component main ui.node {
             ui.input(placeholder="Password", type="password")
             ui.input(placeholder="Search...", type="search")
         }
-        ui.text(value="Textarea", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Textarea", style={fontSize=20, fontWeight=bold})
         ui.textarea(
             placeholder="Write some notes...",
             rows=4,
@@ -349,7 +349,7 @@ component main ui.node {
         // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
         ui.text(
             value="Checkbox, Toggle & Radio",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         ui.hbox(style={gap=24}) {
             ui.checkbox(
@@ -364,7 +364,7 @@ component main ui.node {
                 value=selectedRadio,
             )
         }
-        ui.text(value="Select", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Select", style={fontSize=20, fontWeight=bold})
         ui.select(
             options=["Apple", "Banana", "Cherry", "Date"],
             placeholder="Pick a fruit",
@@ -375,13 +375,13 @@ component main ui.node {
         // --- Progress / Spinner / Tabs ---------------------------
         ui.text(
             value="Progress & Spinner",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
-        ui.hbox(style={alignItems="center", gap=24}) {
+        ui.hbox(style={alignItems=center, gap=24}) {
             ui.progress(max=1, value=sliderVal)
             ui.spinner(label="Loading...")
         }
-        ui.text(value="Tabs", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Tabs", style={fontSize=20, fontWeight=bold})
         ui.tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
             ui.text(value="This is the overview content.")
             ui.text(value="Here are the details.")
@@ -390,14 +390,14 @@ component main ui.node {
         ui.divider
 
         // --- Link / Chip / Avatar --------------------------------
-        ui.text(value="Link & Chip", style={fontSize=20, fontWeight="bold"})
-        ui.hbox(style={alignItems="center", gap=8}) {
+        ui.text(value="Link & Chip", style={fontSize=20, fontWeight=bold})
+        ui.hbox(style={alignItems=center, gap=8}) {
             ui.link(href="https://sngl.dev", text="SNGL Website")
             ui.chip(label="Tag")
             ui.chip(label="Removable", removable=true)
             ui.chip(label="Success", variant="success")
         }
-        ui.text(value="Avatar", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Avatar", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={gap=8}) {
             ui.avatar(initials="JD")
             ui.avatar(initials="AB", variant="square")
@@ -406,25 +406,25 @@ component main ui.node {
         ui.divider
 
         // --- Card ------------------------------------------------
-        ui.text(value="Card", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Card", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={gap=16}) {
             ui.card(variant="outlined") {
-                ui.text(value="Outlined Card", style={fontWeight="bold"})
+                ui.text(value="Outlined Card", style={fontWeight=bold})
                 ui.text(value="With a border")
             }
             ui.card(variant="elevated") {
-                ui.text(value="Elevated Card", style={fontWeight="bold"})
+                ui.text(value="Elevated Card", style={fontWeight=bold})
                 ui.text(value="With a shadow")
             }
             ui.card(variant="filled") {
-                ui.text(value="Filled Card", style={fontWeight="bold"})
+                ui.text(value="Filled Card", style={fontWeight=bold})
                 ui.text(value="With a background")
             }
         }
         ui.divider
 
         // --- Modal / Drawer / Toast ------------------------------
-        ui.text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Modal & Drawer", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={gap=12}) {
             ui.button(text="Open Modal", @click { showModal = true })
             ui.button(text="Open Drawer", @click { showDrawer = true })
@@ -439,7 +439,7 @@ component main ui.node {
         }
         ui.drawer(open=showDrawer, side="right") {
             ui.vbox(style={gap=12, padding=16}) {
-                ui.text(value="Drawer Content", style={fontWeight="bold"})
+                ui.text(value="Drawer Content", style={fontWeight=bold})
                 ui.text(value="Slide-out panel")
                 ui.button(text="Close", @click { showDrawer = false })
             }
@@ -447,11 +447,11 @@ component main ui.node {
         ui.divider
 
         // --- Tooltip / Split / Table / Tree ----------------------
-        ui.text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Tooltip", style={fontSize=20, fontWeight=bold})
         ui.tooltip(text="This is a tooltip") {
             ui.button(text="Hover me")
         }
-        ui.text(value="Split View", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Split View", style={fontSize=20, fontWeight=bold})
         ui.splitview(direction="horizontal", style={height=120}) {
             ui.vbox(style={padding=12}) {
                 ui.text(value="Left pane")
@@ -463,16 +463,16 @@ component main ui.node {
             }
         }
         ui.divider
-        ui.text(value="Table", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Table", style={fontSize=20, fontWeight=bold})
         ui.table(columns=["Name", "Role", "Status"])
-        ui.text(value="Tree", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Tree", style={fontSize=20, fontWeight=bold})
         ui.tree(items=["Documents", "Photos", "Music", "Videos"])
         ui.divider
 
         // --- Menubar / Toolbar / DatePicker ----------------------
-        ui.text(value="Menubar", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Menubar", style={fontSize=20, fontWeight=bold})
         ui.menubar(items=["File", "Edit", "View", "Help"])
-        ui.text(value="Toolbar", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Toolbar", style={fontSize=20, fontWeight=bold})
         ui.toolbar {
             ui.button(text="New")
             ui.button(text="Open")
@@ -481,14 +481,14 @@ component main ui.node {
             ui.button(text="Settings")
         }
         ui.divider
-        ui.text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="Date Picker", style={fontSize=20, fontWeight=bold})
         ui.datepicker(placeholder="Select birthday", value=birthday)
         ui.divider
 
         // --- Composition: child component + event sink (§9) -----
         ui.text(
             value="Composition (child component emits event upward)",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         LabeledCounter(
             label="Clicks",
@@ -501,7 +501,7 @@ component main ui.node {
         // --- Recursive component (§10) --------------------------
         ui.text(
             value="Recursive component (TreeView calls itself)",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         TreeView(node=tree)
         ui.divider
@@ -509,7 +509,7 @@ component main ui.node {
         // --- For-loops, if, list/map iteration ------------------
         ui.text(
             value="For-loops & if",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         ui.vbox(style={gap=4}) {
             // for with index + nested if-else (loop var deps only,
@@ -539,7 +539,7 @@ component main ui.node {
         // --- Top-level if at component scope -------------------
         ui.text(
             value="If statement",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         if count > 0 {
             ui.text(value="count is positive: {count}")
@@ -551,7 +551,7 @@ component main ui.node {
         // --- Computed values pulling list methods (§ — generics) ---
         ui.text(
             value="Computed (filter/map/total)",
-            style={fontSize=20, fontWeight="bold"},
+            style={fontSize=20, fontWeight=bold},
         )
         ui.text(value="nums   = {nums}")
         ui.text(value="evens  = {evens}")
@@ -560,13 +560,13 @@ component main ui.node {
         ui.divider
 
         // --- i18n showcase (§11) --------------------------------
-        ui.text(value="i18n", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="i18n", style={fontSize=20, fontWeight=bold})
         I18nDemo
 
         ui.divider
 
         // --- Reactive context (§12) -----------------------------
-        ui.text(value="reactive context", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="reactive context", style={fontSize=20, fontWeight=bold})
         ContextDemo
 
         ui.divider(label="End of Tour")

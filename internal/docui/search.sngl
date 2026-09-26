@@ -53,7 +53,7 @@ component SearchHit(entry docs.SearchEntry, query = "") node {
     func matches() => query != "" && string.contains(string.lower(entry.title + " " + entry.crumb + " " + entry.blurb), string.lower(query))
 
     if PLATFORM == html.platform {
-        html.a(href=entry.href, class="search-hit", style={display = matches ? "block" : "none"}) {
+        html.a(href=entry.href, class="search-hit", style={display = matches ? block : none}) {
             html.div(innerText=entry.title, class="hit-title")
             if entry.crumb != "" {
                 html.div(innerText=entry.crumb, class="hit-crumb")
@@ -63,8 +63,8 @@ component SearchHit(entry docs.SearchEntry, query = "") node {
             }
         }
     } else {
-        vbox(style={gap=2, padding=4, display=matches ? "flex" : "none"}) {
-            text(value=entry.title, style={fontWeight="bold"})
+        vbox(style={gap=2, padding=4, display=matches ? flex : none}) {
+            text(value=entry.title, style={fontWeight=bold})
             if entry.crumb != "" {
                 text(value=entry.crumb, style={color="#888", fontSize=12})
             }

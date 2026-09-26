@@ -2,13 +2,13 @@ import . "sngl:ui"
 
 const primary = Style{
     color = #0000ff,
-    fontWeight = "bold",
+    fontWeight = bold,
     fontSize = 16,
 }
 
 const secondary = Style{
     color = #777777,
-    fontStyle = "italic",
+    fontStyle = italic,
 }
 
 component main node {

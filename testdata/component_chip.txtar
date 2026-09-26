@@ -264,13 +264,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:row">
-  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding:4px 12px">
+  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Tag</span>
   </span>
-  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding:4px 12px">
+  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Removable</span>
   </span>
-  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding:4px 12px">
+  <span style="align-items:center;border-radius:16px;border:1px solid #ccc;display:inline-flex;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Success</span>
   </span>
 </div>
@@ -289,4 +289,4 @@ pass sha256:42383a31b524b64bc53be4c89f1d49fa
 -- run/kotlin/android --
 pass sha256:2b6c706e87d1f6a5e7d2d4a44a88a5a9
 -- run/none/html --
-pass sha256:00c9dc47a128469e303c5764caf13c56
+pass sha256:550298c0b2b176ac62654482ef3ee394

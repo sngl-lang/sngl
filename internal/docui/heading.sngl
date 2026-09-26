@@ -9,7 +9,7 @@ component Heading1(value = "") node {
     if PLATFORM == html.platform {
         html.h1(innerText=value)
     } else {
-        text(value=value, style={fontWeight="bold", fontSize=28, paddingBottom=8})
+        text(value=value, style={fontWeight=bold, fontSize=28, paddingBottom=8})
     }
 }
 
@@ -17,7 +17,7 @@ component Heading2(value = "") node {
     if PLATFORM == html.platform {
         html.h2(innerText=value)
     } else {
-        text(value=value, style={fontWeight="bold", fontSize=22, paddingTop=16, paddingBottom=8})
+        text(value=value, style={fontWeight=bold, fontSize=22, paddingTop=16, paddingBottom=8})
     }
 }
 
@@ -25,6 +25,6 @@ component Heading3(value = "") node {
     if PLATFORM == html.platform {
         html.h3(innerText=value)
     } else {
-        text(value=value, style={fontWeight="bold", fontSize=18, paddingTop=12, paddingBottom=6})
+        text(value=value, style={fontWeight=bold, fontSize=18, paddingTop=12, paddingBottom=6})
     }
 }

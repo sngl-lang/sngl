@@ -24,7 +24,7 @@ component HeaderRow(cells ...component) node {
             }
         }
     } else {
-        hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
+        hbox(style={fontWeight=bold, gap=16, padding=4, borderBottom="1px solid #ddd"}) {
             cells
         }
     }
@@ -57,7 +57,7 @@ component HeaderCell(value = "") node {
     if PLATFORM == html.platform {
         html.th(innerText=value)
     } else {
-        text(value=value, style={minWidth=80, fontWeight="bold"})
+        text(value=value, style={minWidth=80, fontWeight=bold})
     }
 }
 

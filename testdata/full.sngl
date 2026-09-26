@@ -21,7 +21,7 @@ component main node {
     func doubled() => count * 2
 
     vbox(style={padding=16, gap=12}) {
-        text(value=greeting, style={fontSize=24, fontWeight="bold"})
+        text(value=greeting, style={fontSize=24, fontWeight=bold})
         if active {
             text(value="Active", style={color=#007700})
         }

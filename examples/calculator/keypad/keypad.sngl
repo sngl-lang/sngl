@@ -55,7 +55,7 @@ component KeyCap(entry Key, @press Key) ui.node {
             background = bgOf(entry.tone()),
             color = KEY_FG,
             fontSize = 22,
-            fontWeight = "bold",
+            fontWeight = bold,
             borderRadius = 8,
             margin = 3,
         },
