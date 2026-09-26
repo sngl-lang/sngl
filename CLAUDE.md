@@ -877,15 +877,19 @@ between with no signature change. Where it stops has two shapes:
   the literal `true` for a condition, so every analysis that reads an `if`'s
   body still reads it), and nothing after the raise runs — in the function
   that raised, in a caller between, or in the handler. Each language renders
-  the block through `irwalk`'s `Catch` hook. A `fails` native is the one call
-  left to `catchAtCall` there, since its failure is not a raise. The
-  interpreter's `dispatchRaise` returns a marked `returnSignal` for it, which
-  `invokeHandler` passes on so a raise from inside a per-call handler ends the
-  handler that one was invoked from too.
+  the block through `irwalk`'s `Catch` hook. A `fails` native the block covers
+  is made to raise (`raiseFailure`: its error result panics on Go, its exception
+  is rethrown as a raise elsewhere); caught at its own call instead, the handler
+  ran and the click went on, into whatever raised next
+  (`error_catch_fails_native.txtar`). The interpreter's `dispatchRaise` returns
+  a marked `returnSignal`, which `invokeHandler` and an emitted event's
+  handler pass on, so a raise caught from inside either ends the handler it
+  was run from too.
 
 A `return` in a handler ends the handler, so a body holding one runs as a
 function of its own rather than a block of the function it was inlined into
-(`error_handler_return.txtar`). A handler rendered somewhere other than where
+(`error_handler_return.txtar`), the catch clause of a block included
+(`error_catch_handler_return.txtar`). A handler rendered somewhere other than where
 it is declared — inlined by `catchAtCall`, or the `Catch` of a block — is not
 reached by `ir.Walk` there (`ResolvedHandler` and `If.Catch` are aliases), so
 whatever asks what a block contains has to ask of it too: `codegen.WalkLowered`,
@@ -908,10 +912,17 @@ under a boundary, whose body lets a raise out, is refused with a position
 rather than emitted with the raise going nowhere. The interpreter answers at
 run time instead: the mounter pushes each boundary's and window's handler onto
 a frame list it keeps among the context values a node is mounted under
-(`raiseScope`), and `underContext` offers a raise that left an event handler to
-those frames, starting outside the handler that let it out
+(`raiseScope`), and `underHandler` -- the outermost event handler's entry, not a
+lambda or an emitted event's -- offers a raise that left it to those frames,
+starting outside the handler that let it out
 (`error_raise_render_tree_runs.txt`, `error_raise_render_tree.txtar`,
 `internal/interp/raise_scope_test.go`).
+
+**Slot content is the exception.** A handler written in the caller and
+rendered in a callee's slot is resolved by the checker against the *caller's*
+boundaries, so where the caller has one it wins over a nearer boundary the
+callee wraps the slot in; only where the caller has none does the render tree
+answer. And a raise in a `var`'s `@change` is resolved by neither.
 
 A call in **expression position** that carries its own `@error`
 (`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the

@@ -6,25 +6,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passErrorScope resolves a raise against the render tree rather than against
-// the declaration it was written in. The checker resolves each handler's
-// raises inside its own component body, so one that reaches no boundary there
-// is left native -- and it is only once the inliner has spliced a component's
-// body into the tree that renders it that the boundaries and windows around
-// that instance are there to be found. Every splice is its own clone, so two
-// instances of one component under different boundaries each answer to their
-// own.
+// passErrorScope resolves a raise the checker left native -- one that reached
+// no boundary in the component it was written in -- against the tree the
+// instance is spliced into. Each splice is its own clone, so one declaration
+// under two boundaries answers to both. A handler may be a lambda in Props by
+// now (android's override substitution); only native calls are touched, and a
+// lambda the program wrote never has one.
 //
-// A handler is found wherever the node carries it: in Handlers, or as a lambda
-// in Props, which is where android's override substitution has put it by now.
-// Upgrading only what the checker left native is what keeps that safe: a
-// lambda the program wrote resolves its raises as leaving the lambda, never as
-// native.
-//
-// A component built at run time is not spliced: its body is emitted once, for
-// every instance, and none of them knows statically which boundary it sits
-// under. An instance of one under a boundary or window, whose body would let a
-// raise out, is refused rather than emitted with the raise going nowhere.
+// A component built at run time is not spliced and its body is shared by every
+// instance, so an instance of one under a handler, whose body lets a raise out,
+// is refused rather than emitted with the raise going nowhere.
 //
 // Always on: where a raise lands is not a target's choice.
 var passErrorScope = pass{
