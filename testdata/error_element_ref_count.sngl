@@ -24,7 +24,7 @@ component child node {
 }
 
 component once node {
-    child()
+    child #kid()
 }
 
 func testOwnNodes(t Test, c counter) {
@@ -34,9 +34,9 @@ func testOwnNodes(t Test, c counter) {
     c.maybe.click()        // ERROR(check) "no method \"click\" on type option<button>"
 }
 
-// Written once in a component written once: one node, not a list of them.
-func testDescendant(t Test, c once) {
-    var xs list<text> = c.shows // ERROR(check) "cannot initialize list<text> with text"
+// A child instance written once is one instance, not a list of them.
+func testChildInstance(t Test, c once) {
+    var xs list<child> = c.kid // ERROR(check) "cannot initialize list<child> with child"
 }
 
 window {

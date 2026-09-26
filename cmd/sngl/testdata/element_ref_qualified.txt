@@ -26,7 +26,8 @@ func testQualifiedRefIsAddressable(t test.Test, c counter) {
 }
 
 func testQualifiedRefInAChildIsAddressable(t test.Test, c pair) {
-    t.assert(c.lbl[1].value == "b")
+    t.assert(c.first.lbl.value == "a")
+    t.assert(c.second.lbl.value == "b")
 }
 
 component counter ui.node {
@@ -44,8 +45,8 @@ component labelled(label string) ui.node {
 
 component pair ui.node {
     ui.vbox {
-        labelled(label="a")
-        labelled(label="b")
+        labelled #first(label="a")
+        labelled #second(label="b")
     }
 }
 

@@ -358,7 +358,7 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	return nil, fmt.Errorf("component has no field %q", field)
 }
 
-// ElementRef returns every node carrying #id in this instance's rendered tree.
+// ElementRef returns the nodes carrying #id that this instance's own body wrote.
 func (cv *componentValue) ElementRef(id string) ([]any, error) {
 	cv.settle()
 	if cv.settleErr != nil {
@@ -371,7 +371,7 @@ func (cv *componentValue) ElementRef(id string) ([]any, error) {
 		return nil, err
 	}
 	var out []any
-	for _, n := range view.FindAny(id) {
+	for _, n := range view.Refs(id) {
 		switch {
 		case n.Component != nil && n.CompEnv != nil && isUserComponent(n.Component):
 			out = append(out, wrapChildComponent(n.CompEnv, n.Component))
@@ -526,7 +526,7 @@ func (cv *componentValue) childComponentByID(id string) *componentValue {
 	if err != nil {
 		return nil
 	}
-	for _, n := range view.FindAny(id) {
+	for _, n := range view.Refs(id) {
 		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
 			continue
 		}

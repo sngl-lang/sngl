@@ -5,16 +5,16 @@ output {
     none { html }
 }
 
-// What a call site supplies to a user component is part of the rendered tree,
-// so a #id inside it resolves like any other. Both routes in: ordinary
-// children fill the rest slot, `component header { … }` fills a named one.
+// Children written bare are the caller's, wherever the callee inserts them, so
+// #body is main's ref. What the callee writes in its own body is the callee's,
+// reached through the instance's id. A population written by name is a
+// declaration with a scope of its own, so #head is neither's.
 //
 // Slot content is written in the caller's body, so it reads the caller's
-// scope -- #head interpolates main's `title`, not anything of frame's.
+// scope -- #body interpolates main's `title`, not anything of frame's.
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
-    t.assert(c.body.value == "in the rest slot")
-    t.assert(c.head.value == "Hello")
-    t.assert(c.own.value == "frame's own")
+    t.assert(c.body.value == "Hello in the rest slot")
+    t.assert(c.shell.own.value == "frame's own")
 }
 
 // An insertion point the caller supplied nothing for renders its own block.
@@ -42,8 +42,8 @@ component bare(children ...component) node {
 component main node {
     var title = "Hello"
 
-    frame {
-        text #body(value="in the rest slot")
+    frame #shell {
+        text #body(value="{title} in the rest slot")
         component header {
             text #head(value=title)
         }

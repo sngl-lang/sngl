@@ -7,14 +7,17 @@ struct TreeNode {
     right option<TreeNode> = null
 }
 
+// Each level is an instance of its own, so `#val` names that level's text and
+// no other: the levels below are reached through the ids of the instances
+// holding them.
 component tree_view(node TreeNode) node {
     vbox {
         text #val(value=string(node.value))
         if node.left != null {
-            tree_view(node=node.left)
+            tree_view #left(node=node.left)
         }
         if node.right != null {
-            tree_view(node=node.right)
+            tree_view #right(node=node.right)
         }
     }
 }
@@ -30,23 +33,45 @@ component main node {
     var node8 = TreeNode{value=8}
     var root = TreeNode{value=5, left=node3, right=node8}
 
-    tree_view(node=root)
+    tree_view #top(node=root)
 }
 
 func testRecursiveComponentRendersRoot(t Test, c main) {
-    t.assert(c.val[0].value == "5")
+    t.assert(c.top.val.value == "5")
 }
 
 func testRecursiveComponentRendersChildren(t Test, c main) {
-    t.assert(c.val[1].value == "3")
-    t.assert(c.val[2].value == "1")
-    t.assert(c.val[3].value == "8")
+    var three = c.top.left
+    t.assert(three != null)
+    if three != null {
+        t.assert(three.val.value == "3")
+        t.assert(three.right == null)
+        var one = three.left
+        t.assert(one != null)
+        if one != null {
+            t.assert(one.val.value == "1")
+        }
+    }
+    var eight = c.top.right
+    t.assert(eight != null)
+    if eight != null {
+        t.assert(eight.val.value == "8")
+    }
 }
 
 func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
-    t.assert(c.val[3].value == "4")
-    t.assert(c.val[4].value == "8")
+    var three = c.top.left
+    if three != null {
+        var four = three.right
+        t.assert(four != null)
+        if four != null {
+            t.assert(four.val.value == "4")
+        }
+    }
+    if c.top.right != null {
+        t.assert(c.top.right.val.value == "8")
+    }
 }
 
 window {

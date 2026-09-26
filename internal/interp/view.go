@@ -47,6 +47,8 @@ type View struct {
 	// byID indexes by #id. A `for` renders one node per iteration, so an id
 	// inside a loop names several.
 	byID map[string][]*Node
+	// owner is the instance the tree was mounted for, whose refs Refs answers.
+	owner *Env
 	// Effects are the lifetime brackets this tree holds, in mount order. Not
 	// among the nodes: an effect draws nothing, and what it wants from the
 	// tree is only the lifetime that reaching it at all confers.
@@ -94,6 +96,11 @@ type Node struct {
 	// expansion of that component's body. Kept as a node so one tree serves
 	// both readings: a snapshot descends through it, an inspector stops at it.
 	Component *ir.Component
+	// Owner is the component instance whose body wrote this node, which is
+	// the instance whose `#id` refs it answers to: children a caller wrote
+	// bare are the caller's wherever the callee inserts them. Nil for a node
+	// written in a slot population, which is a scope of its own.
+	Owner *Env
 }
 
 // Handler is one declared event on a node. Body is whatever the IR carried:
@@ -126,7 +133,7 @@ func IsUserComponent(comp *ir.Component) bool {
 
 // Mount builds the retained tree for env's component body.
 func Mount(env *Env) (*View, error) {
-	v := &View{byKey: map[Key]*Node{}, byID: map[string][]*Node{}}
+	v := &View{byKey: map[Key]*Node{}, byID: map[string][]*Node{}, owner: env}
 	if env == nil || env.BodyStmts == nil {
 		return v, nil
 	}
@@ -134,7 +141,7 @@ func Mount(env *Env) (*View, error) {
 	if env.Comp != nil {
 		root = env.Comp.Name
 	}
-	m := &mounter{view: v, root: root}
+	m := &mounter{view: v, root: root, owner: env}
 	nodes, err := m.stmts(env, env.BodyStmts, "")
 	if err != nil {
 		return nil, err
@@ -170,6 +177,22 @@ func (v *View) FindAny(id string) []*Node {
 		return nil
 	}
 	return v.byID[id]
+}
+
+// Refs returns the nodes carrying #id that the mounted instance's own body
+// wrote, component instantiations included, in mount order: what `c.<id>`
+// names. A node in a component the instance renders is that component's ref.
+func (v *View) Refs(id string) []*Node {
+	if v == nil {
+		return nil
+	}
+	var out []*Node
+	for _, n := range v.byID[id] {
+		if n.Owner == v.owner {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // At returns the node at a mounted path.
@@ -234,6 +257,9 @@ type mounter struct {
 	// entries is the stack of insertions whose populations are being mounted,
 	// which is where an insertion of a component entry finds its content.
 	entries []entryFrame
+	// owner is the instance whose body the statements being mounted were
+	// written in, stamped on each node as its Owner.
+	owner *Env
 }
 
 // slotFrame is one component expansion: the instantiation that supplied the
@@ -246,6 +272,7 @@ type mounter struct {
 type slotFrame struct {
 	callsite *ir.NodeInst
 	env      *Env
+	owner    *Env
 }
 
 // entryFrame is one insertion whose population is being mounted: the content it
@@ -286,6 +313,7 @@ func (m *mounter) drop(n *Node) {
 }
 
 func (m *mounter) add(n *Node) {
+	n.Owner = m.owner
 	m.view.byKey[n.Key] = n
 	if n.ID != "" {
 		m.view.byID[n.ID] = append(m.view.byID[n.ID], n)
@@ -468,10 +496,10 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			node.Children = kids
 			return []*Node{node}, nil
 		}
-		m.push(slotFrame{callsite: inst, env: env})
+		m.push(slotFrame{callsite: inst, env: env, owner: m.owner})
 		defer m.pop()
 		before := len(m.view.Timers)
-		kids, err := m.stmts(child, child.BodyStmts, path)
+		kids, err := m.mountBody(child, path)
 		if err != nil {
 			return nil, err
 		}
@@ -549,9 +577,9 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			// The children-less call form supplies nothing, but it still opens
 			// a frame: without one, an insertion point in this component's body
 			// would read the *enclosing* call site's content.
-			m.push(slotFrame{env: env})
+			m.push(slotFrame{env: env, owner: m.owner})
 			defer m.pop()
-			kids, err := m.stmts(child, child.BodyStmts, path)
+			kids, err := m.mountBody(child, path)
 			if err != nil {
 				return nil, err
 			}
@@ -637,6 +665,12 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	}
 	m.pop()
 	defer m.push(frame)
+	owner := m.owner
+	m.owner = nil
+	if sc == nil {
+		m.owner = frame.owner
+	}
+	defer func() { m.owner = owner }()
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
@@ -682,7 +716,19 @@ func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, err
 	slots, entries := m.slots, m.entries
 	m.slots, m.entries = slices.Clone(f.slots), m.entries[:at]
 	defer func() { m.slots, m.entries = slots, entries }()
+	owner := m.owner
+	m.owner = nil
+	defer func() { m.owner = owner }()
 	return m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
+}
+
+// mountBody mounts a component instance's own body, whose nodes are that
+// instance's refs.
+func (m *mounter) mountBody(child *Env, path string) ([]*Node, error) {
+	owner := m.owner
+	m.owner = child
+	defer func() { m.owner = owner }()
+	return m.stmts(child, child.BodyStmts, path)
 }
 
 // forStmt mounts one subtree per iteration.
@@ -718,6 +764,9 @@ func (m *mounter) forStmt(env *Env, f *ir.For, path string) ([]*Node, error) {
 				id = iterationID(fmt.Sprintf("%v", v), seen)
 			}
 		}
+		// Not the mounted path, which depends on which instance the mount
+		// started from: the same copy has to find the same state either way.
+		child.copyKey = fmt.Sprintf("%s/%p[%s]", env.copyKey, f, id)
 		nodes, err := m.stmts(child, f.Body, fmt.Sprintf("%s:body[%s]", path, id))
 		if err != nil {
 			return nil, err

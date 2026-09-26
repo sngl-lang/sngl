@@ -2616,10 +2616,9 @@ type elementRef struct {
 }
 
 // collectElementRefIDs returns every element id declared in a component body,
-// in source order. It is findHostComponentAST's walk widened from one name to
-// all of them -- ids hide inside if/for branches and inside a slot's block, and
-// the `Comp() #id` call form declares one as much as `Comp #id { }` does. It
-// does not descend into the components the body instantiates: those ids are
+// in source order. Ids hide inside if/for branches and inside a node's block,
+// and the `Comp() #id` call form declares one as much as `Comp #id { }` does.
+// It does not descend into the components the body instantiates: those ids are
 // their own declarations'.
 func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 	var out []elementRef
@@ -2633,10 +2632,11 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 				}
 				walk(n.Block.Stmts)
 				// A component declaration in a node's block is a slot
-				// population, so its body is written in *this* component's
-				// body and any id in it is this component's. One at the root
-				// of a body is a declaration and its ids are its own, which
-				// is why this sits here rather than in walk.
+				// population. Its ids are not this component's refs
+				// (elementRef), but it is written in this body and its nodes
+				// are emitted into this component's host, so it still claims
+				// the name. One at the root of a body is a declaration and its
+				// ids are its own, which is why this sits here and not in walk.
 				for _, inner := range n.Block.Stmts {
 					if cd, isDecl := inner.(*ast.ComponentDecl); isDecl {
 						walk(cd.Body.Stmts)

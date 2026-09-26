@@ -274,10 +274,10 @@ type Env struct {
 	// childEnvs caches per-NodeInst child component envs so state
 	// persists across ResolveElementRef calls. Keyed by the
 	// instantiation site's *ir.NodeInst pointer.
-	childEnvs map[*ir.NodeInst]*Env
+	childEnvs map[copyOf[*ir.NodeInst]]*Env
 	// callChildEnvs is the analogous cache for user-component instantiations
 	// expressed as ir.CallStmt (children-less call form, e.g. `main()`).
-	callChildEnvs map[*ir.CallStmt]*Env
+	callChildEnvs map[copyOf[*ir.CallStmt]]*Env
 	// parent points at the surrounding env when this env is a child component
 	// scope. lookup() falls through to the parent chain so child components
 	// can read (and assignments can mutate) package-level vars defined in the
@@ -304,12 +304,23 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// copyKey names the loop iteration this scope renders, "" outside any
+	// loop. A child instance's cached env is keyed by it beside the site, so
+	// the copies a `for` renders of one instantiation each keep their own
+	// state instead of sharing the first's.
+	copyKey string
+}
+
+// copyOf is one rendered copy of an instantiation site.
+type copyOf[T comparable] struct {
+	site T
+	copy string
 }
 
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
-		childEnvs: map[*ir.NodeInst]*Env{},
+		childEnvs: map[copyOf[*ir.NodeInst]]*Env{},
 	}
 }
 
@@ -423,7 +434,7 @@ func (env *Env) Values(f func(val any) bool) {
 func (env *Env) Snapshot() *Env {
 	childEnvs := env.childEnvs
 	if childEnvs == nil {
-		childEnvs = map[*ir.NodeInst]*Env{}
+		childEnvs = map[copyOf[*ir.NodeInst]]*Env{}
 	}
 	cp := &Env{
 		vals: make(map[ir.Symbol]any, len(env.vals)),
@@ -454,7 +465,8 @@ func (env *Env) Snapshot() *Env {
 		// handler to run, so an event emitted from inside a lambda found the
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
-		inst: env.inst,
+		inst:    env.inst,
+		copyKey: env.copyKey,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp

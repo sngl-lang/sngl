@@ -12,8 +12,8 @@ component dashboard node {
     var total = 5
 
     vbox {
-        badge(label=name, count=total)
-        badge()
+        badge #named(label=name, count=total)
+        badge #plain()
         text #foot(value="footer")
     }
 }
@@ -31,11 +31,12 @@ func testComputedFromParams(t Test, c badge) {
 
 func testRendersChildComponent(t Test, c dashboard) {
     t.assert(c.foot.value == "footer")
-    t.assert(c.lbl[0] != null)
+    t.assert(c.named.lbl != null)
+    t.assert(c.plain.lbl.value == "default")
 }
 
 func testComponentReceivesProps(t Test, c dashboard) {
-    t.assert(c.lbl[0].value == "test")
+    t.assert(c.named.lbl.value == "test")
 }
 
 window {

@@ -24,11 +24,11 @@ func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	// struct's types to its widest field name: a literal run of spaces asserts
 	// what else is in the Model rather than what this field's type is.
 	for _, want := range []string{
-		`__n0\s+\*Tree_viewInstance`,
-		`m\.__n0 = newTree_viewInstance\(`,
+		`top\s+\*Tree_viewInstance`,
+		`m\.top = newTree_viewInstance\(`,
 		// A record does carry a Root, so this is also the positive half of
 		// what OnComponentRoot decides.
-		`m\.__n0__el = m\.__n0\.Root`,
+		`m\.top__el = m\.top\.Root`,
 	} {
 		if !regexp.MustCompile(want).MatchString(model) {
 			t.Errorf("emitted Go missing %s\n--- model.go ---\n%s", want, model)

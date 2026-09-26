@@ -23,7 +23,12 @@ func (env *Env) ResolveElementRef(id string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodes := v.Find(id)
+	var nodes []*Node
+	for _, n := range v.Refs(id) {
+		if !n.IsComponent() || !n.Expanded {
+			nodes = append(nodes, n)
+		}
+	}
 	if len(nodes) == 0 {
 		return nil, nil
 	}
@@ -66,9 +71,9 @@ func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst) {
 
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	if env.childEnvs == nil {
-		env.childEnvs = map[*ir.NodeInst]*Env{}
+		env.childEnvs = map[copyOf[*ir.NodeInst]]*Env{}
 	}
-	if cached, ok := env.childEnvs[inst]; ok {
+	if cached, ok := env.childEnvs[copyOf[*ir.NodeInst]{inst, env.copyKey}]; ok {
 		// The cache is for the component's own state, which has to survive a
 		// re-mount. Its props are inputs and must not: they are the call site's
 		// expressions, and the call site's state moves. `enabled=running`
@@ -102,7 +107,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 		child.Set(v, evalInit(child, v.Init))
 	}
 	child.BodyStmts = comp.Body
-	env.childEnvs[inst] = child
+	env.childEnvs[copyOf[*ir.NodeInst]{inst, env.copyKey}] = child
 	return child
 }
 
@@ -117,13 +122,13 @@ func (env *Env) ComponentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 // the *ir.CallStmt so state survives across re-renders.
 func (env *Env) ComponentEnvFromCallStmt(comp *ir.Component, cs *ir.CallStmt) *Env {
 	if env.callChildEnvs == nil {
-		env.callChildEnvs = map[*ir.CallStmt]*Env{}
+		env.callChildEnvs = map[copyOf[*ir.CallStmt]]*Env{}
 	}
-	if cached, ok := env.callChildEnvs[cs]; ok {
+	if cached, ok := env.callChildEnvs[copyOf[*ir.CallStmt]{cs, env.copyKey}]; ok {
 		return cached
 	}
 	child := env.componentEnvFromCall(comp, cs.Call)
-	env.callChildEnvs[cs] = child
+	env.callChildEnvs[copyOf[*ir.CallStmt]{cs, env.copyKey}] = child
 	return child
 }
 

@@ -5,11 +5,11 @@ output {
     none { html }
 }
 
-// How many nodes `c.<id>` names is where the node is written, not how many an
-// instance happens to render: one where nothing on the way to it is
-// conditional, an option behind an `if`, a list behind a `for`. The same rule
-// holds for an id in the component's own body, in a component it
-// instantiates, and in content it supplies to a slot.
+// `c.<id>` names the nodes an instance's own body writes, and how many is
+// where the node is written: one where nothing on the way to it is
+// conditional, an option behind an `if`, a list behind a `for`. A node in a
+// component the instance renders is that component's, reached through the id
+// of the instance holding it.
 
 component counter node {
     var count = 0
@@ -58,66 +58,86 @@ component child node {
     text #shows(value="{count}")
 }
 
-// The component holding the node is written once, so the node is one: this
-// read used to be a list the interpreter answered with a single element.
 component once node {
     vbox {
-        child()
+        child #kid()
     }
 }
 
-func testADescendantWrittenOnceIsOne(t Test, c once) {
-    c.bump.click()
-    t.assert(c.shows.value == "1")
+func testAChildsNodesAreReachedThroughItsInstance(t Test, c once) {
+    c.kid.bump.click()
+    t.assert(c.kid.shows.value == "1")
+}
+
+// Two instances of one component each hold their own refs, and driving one
+// leaves the other alone.
+component two node {
+    vbox {
+        child #left()
+        child #right()
+    }
+}
+
+func testTwoInstancesAreIndependent(t Test, c two) {
+    c.left.bump.click()
+    c.left.bump.click()
+    t.assert(c.left.shows.value == "2")
+    t.assert(c.right.shows.value == "0")
 }
 
 component maybeChild node {
     var open = false
 
     if open {
-        child()
+        child #kid()
     }
 }
 
-func testADescendantBehindAnIfIsAnOption(t Test, c maybeChild) {
-    t.assert(c.shows == null)
+func testAnInstanceBehindAnIfIsAnOption(t Test, c maybeChild) {
+    t.assert(c.kid == null)
     c.open = true
-    t.assert(c.shows != null && c.shows.value == "0")
+    t.assert(c.kid != null)
+    if c.kid != null {
+        t.assert(c.kid.shows.value == "0")
+    }
 }
 
-// A conditional inside a loop is still a list: of the nodes that rendered.
+// A conditional inside a loop is still a list: of the instances that rendered.
 component children node {
     var ns list<int> = [1, 2, 3]
 
     for var n = ns {
         if n != 2 {
-            child()
+            child #kid()
         }
     }
 }
 
-func testADescendantBehindAForIsAList(t Test, c children) {
-    t.assert(c.shows.length() == 2)
-    c.bump[1].click()
-    t.assert(c.shows[1].value == "1")
+func testAnInstanceBehindAForIsAList(t Test, c children) {
+    t.assert(c.kid.length() == 2)
+    c.kid[1].bump.click()
+    t.assert(c.kid[1].shows.value == "1")
+    t.assert(c.kid[0].shows.value == "0")
 }
 
-// A slot's content is counted where the component it was handed to inserts
-// it: `repeat` inserts its children once per element.
-component repeat(times list<int>, children ...component) node {
-    for var n = times {
+// Children written bare belong to the body that wrote them, and a rest slot is
+// inserted exactly once, so they count as written there.
+component panel(children ...component) node {
+    vbox {
+        text #title(value="panel")
         children
     }
 }
 
-component repeated node {
-    repeat(times=[1, 2]) {
+component filled node {
+    panel #p {
         text #copy(value="x")
     }
 }
 
-func testSlotContentInsertedInALoopIsAList(t Test, c repeated) {
-    t.assert(c.copy.length() == 2)
+func testBareChildrenAreTheCallersRefs(t Test, c filled) {
+    t.assert(c.copy.value == "x")
+    t.assert(c.p.title.value == "panel")
 }
 
 // A boundary with a fallback stands it in place of its content, so both halves

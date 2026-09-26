@@ -18,7 +18,7 @@ type TestingT interface {
 // reads, field writes, method dispatch, and list/toggle writebacks.
 type ComponentValue interface {
 	GetField(field string) (any, error)
-	// ElementRef is every node `#id` names under this instance, in mount
+	// ElementRef is every node `#id` names in this instance's own body, in mount
 	// order: an element as its props, a component of the program's as its own
 	// value. The read's ir.RefCount says what shape the caller gets.
 	ElementRef(id string) ([]any, error)

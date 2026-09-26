@@ -31,21 +31,25 @@ func testUnboundedRecursionReachesTheBoundary(t Test, c boundReachesTheBoundary)
 component terminatingRecursion node {
     var caught = ""
     boundary(@error(e) { caught = e.kind }) {
-        countdown(n=3)
+        countdown #top(n=3)
     }
 }
 
 component countdown(n = 0) node {
     text #step(value=string(n))
     if n > 0 {
-        countdown(n=n - 1)
+        countdown #next(n=n - 1)
     }
 }
 
 func testRecursionInsideTheBoundIsUntouched(t Test, c terminatingRecursion) {
     t.assert(c.caught == "")
-    t.assert(c.step[0].value == "3")
-    t.assert(c.step[3].value == "0")
+    t.assert(c.top.step.value == "3")
+    var two = c.top.next
+    t.assert(two != null)
+    if two != null {
+        t.assert(two.step.value == "2")
+    }
 }
 
 // The window renders both wrappers, because a program renders what a window
