@@ -1217,6 +1217,11 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
 	}
+	if t := e.Operand.ExprType(); e.Field == "length" && t != nil {
+		if id, ok := lengthIntrinsics[t.Kind]; ok {
+			return intrinsics[id]([]any{obj})
+		}
+	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
 		return v, nil
@@ -2835,6 +2840,15 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 		}
 		env.Locale = prevLocale
 	}, nil
+}
+
+// lengthIntrinsics answers the `.length` the checker types as int on a list, a
+// map or a string. Chosen by the checked type, because evalSelect otherwise
+// reads a map[string]any by key and a map may hold a "length" key.
+var lengthIntrinsics = map[ir.TypeKind]string{
+	ir.TypeList:   "list.length",
+	ir.TypeMap:    "map.length",
+	ir.TypeString: "string.length",
 }
 
 // underContext runs fn with vals provided over whatever env already holds.

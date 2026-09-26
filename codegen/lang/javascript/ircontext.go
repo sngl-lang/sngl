@@ -96,6 +96,11 @@ func (jc *JsIRContext) Select(n *ir.Select, operand string) string {
 	if jc.Ctx != nil && jc.Ctx.MethodFields != nil && jc.Ctx.MethodFields[n.Field] {
 		return operand + "." + n.Field + "()"
 	}
+	if n.Field == "length" {
+		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeMap {
+			return operand + ".size"
+		}
+	}
 	return operand + "." + jc.fieldKey(n)
 }
 

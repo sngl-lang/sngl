@@ -563,6 +563,11 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	if ir.IsOptionWrap(conv) {
 		return nil, false
 	}
+	if conv.Type.Kind == ir.TypeString {
+		if s, ok := multiBaseUnitString(conv.Operand); ok {
+			return s, true
+		}
+	}
 	operand, ok := evalExpr(conv.Operand, ctx)
 	if !ok {
 		return nil, false
@@ -1181,4 +1186,57 @@ func unitConversionString(conv *ir.Conversion, operand any) (string, bool) {
 		return "", false
 	}
 	return ir.FormatUnitTerm(mag, ud.Bases()[0].Name), true
+}
+
+// multiBaseUnitString displays a constant multi-base unit value, which
+// evalLiteral declines to reduce to a number and so never reaches
+// unitConversionString.
+func multiBaseUnitString(e ir.Expr) (string, bool) {
+	ud := ir.UnitDeclOf(e.ExprType())
+	if ud == nil || ud.IsSingleBase() {
+		return "", false
+	}
+	amounts := map[string]float64{}
+	if !unitAmounts(e, 1, amounts, map[*ir.Var]bool{}) {
+		return "", false
+	}
+	var terms []string
+	for _, b := range ud.Bases() {
+		if m := amounts[b.Name]; m != 0 {
+			terms = append(terms, ir.FormatUnitTerm(m, b.Name))
+		}
+	}
+	if len(terms) == 0 {
+		return ir.FormatUnitZero(ud), true
+	}
+	return strings.Join(terms, ir.UnitTermSep), true
+}
+
+// unitAmounts adds sign times e's magnitude per base into out, for the
+// literals, consts, sums and differences a constant unit value is written as.
+func unitAmounts(e ir.Expr, sign float64, out map[string]float64, seen map[*ir.Var]bool) bool {
+	switch x := e.(type) {
+	case *ir.Literal:
+		mag, base, ok := ir.UnitMagnitude(x)
+		if ok {
+			out[base] += sign * mag
+		}
+		return ok
+	case *ir.Ident:
+		v, ok := x.Sym.(*ir.Var)
+		if !ok || !v.IsConst || v.Init == nil || seen[v] {
+			return false
+		}
+		seen[v] = true
+		defer delete(seen, v)
+		return unitAmounts(v.Init, sign, out, seen)
+	case *ir.Binary:
+		switch x.Op {
+		case ast.BinAdd:
+			return unitAmounts(x.Left, sign, out, seen) && unitAmounts(x.Right, sign, out, seen)
+		case ast.BinSub:
+			return unitAmounts(x.Left, sign, out, seen) && unitAmounts(x.Right, -sign, out, seen)
+		}
+	}
+	return false
 }
