@@ -679,7 +679,7 @@ import ui "sngl:ui"
 ui.window {
     ui.vbox(style={gap=6, padding=16}) {
         ui.text(value="Hand-rolled link:")
-        html.a(href="https://example.com", innerText="example.com", style={color="#2196f3"})
+        html.a(href="https://example.com", innerText="example.com", style={color=#2196f3})
     }
 }
 ```
@@ -697,7 +697,7 @@ import ui "sngl:ui"
 ui.window {
     ui.vbox(style={gap=8, padding=16}) {
         ui.text(value="Aliased raw HTML access:")
-        h.details(style={padding="6px", background="#f5f5f5"}) {
+        h.details(style={padding=6px, background=#f5f5f5}) {
             h.summary(innerText="Click to expand")
             h.p(innerText="This paragraph was hidden until you clicked.")
         }
@@ -726,9 +726,9 @@ import ui "sngl:ui"
 
 component Collapsible(title = "", body = "") ui.node {
     if PLATFORM == html.platform {
-        html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
-            html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
-            html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
+        html.details(style={padding=8px, background=#e0f7fa, borderRadius=6px}) {
+            html.summary(innerText=title, style={fontWeight=bold})
+            html.p(innerText=body, style={marginTop=6px, color=#555555})
         }
     } else if PLATFORM == bubbletea.platform {
         ui.text(value="[" + title + "] " + body)
@@ -752,7 +752,7 @@ ui.window {
 
 ## Raw Platform Elements
 
-The SNGL library covers what every platform shares, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, a GTK widget the library does not wrap. A platform's package exposes its own. For HTML, any tag is available as `html.<tagname>`, with attributes as arguments; raw HTML elements take CSS strings in their `style`, since they bypass the portable `Style`.
+The SNGL library covers what every platform shares, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, a GTK widget the library does not wrap. A platform's package exposes its own. For HTML, any tag is available as `html.<tagname>`, with attributes as arguments and the same typed `style` every other node takes.
 
 A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. A hyphenated attribute (`aria-label`, `data-id`) isn't a valid SNGL identifier, so it goes in the `attrs` map: `html.button(attrs={"aria-label"="Close"})`.
 
@@ -764,14 +764,14 @@ ui.window {
     var volume = 60
     ui.vbox(style={gap=10, padding=16}) {
         ui.text(value="Native browser widgets:", style={fontWeight=bold})
-        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width="100%"})
+        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=100pct})
         ui.hbox(style={gap=8}) {
             ui.button(text="-10", @click { volume = volume - 10 })
             ui.button(text="+10", @click { volume = volume + 10 })
             ui.text(value="{volume}%", style={fontFamily="monospace"})
         }
         html.hr
-        html.blockquote(style={borderLeft="3px solid #2196f3", padding="4px 12px", color="#555555"}) {
+        html.blockquote(style={paddingX=12px, paddingY=4px, color=#555555}) {
             html.span(innerText="“Everything in the browser is one html.tagname away.”")
         }
     }
