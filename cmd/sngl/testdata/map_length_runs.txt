@@ -16,8 +16,6 @@ sngl test --platform=none app.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
 
-[!chromium] skip 'the JavaScript half needs a real Chromium'
-
 sngl test --platform=html app.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
@@ -51,4 +49,24 @@ func testLength(t Test, c counts) {
 }
 
 window {
+}
+-- testrun/bubbletea/go/app.sngl/counts/1 --
+sha256:3a3656870f780e96646764d9b808ed9a
+{
+  "results": [
+    {
+      "Desc": "Length",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counts/1 --
+sha256:58505635fc4e5723288362b17a4e5495
+{
+  "results": [
+    {
+      "Desc": "Length",
+      "Passed": true
+    }
+  ]
 }
