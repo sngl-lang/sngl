@@ -441,3 +441,37 @@ component gap(w int) node
         (identifier)))
     (type_identifier
       (identifier))))
+
+================
+Component declaring events with parameter lists
+================
+
+component picker(@pick(index int, label string), @change int, @done(), @tick) {
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (func_param
+      name: (identifier)
+      params: (event_params
+        (event_param
+          name: (identifier)
+          type: (type_identifier
+            (identifier)))
+        (event_param
+          name: (identifier)
+          type: (type_identifier
+            (identifier)))))
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (identifier)))
+    (func_param
+      name: (identifier)
+      params: (event_params))
+    (func_param
+      name: (identifier))
+    (statement_block)))

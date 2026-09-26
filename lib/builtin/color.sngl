@@ -20,28 +20,28 @@ struct color {
 
 // Builds an opaque color from 0-255 RGB components. Values outside
 // that range are clamped by downstream consumers; pass literal ints.
-func color.rgb(r int, g int, b int) color { return color{r=uint8(r), g=uint8(g), b=uint8(b), a=255} }
+const func color.rgb(r int, g int, b int) color { return color{r=uint8(r), g=uint8(g), b=uint8(b), a=255} }
 
 // Builds a color from 0-255 RGB components and an explicit 0-255
 // alpha. Use when transparency is needed; otherwise prefer
 // `color.rgb` for clarity.
-func color.rgba(r int, g int, b int, a int) color { return color{r=uint8(r), g=uint8(g), b=uint8(b), a=uint8(a)} }
+const func color.rgba(r int, g int, b int, a int) color { return color{r=uint8(r), g=uint8(g), b=uint8(b), a=uint8(a)} }
 
 // Returns a copy of c with alpha replaced by a (0-255). Useful for
 // deriving translucent variants of a base color while keeping the
 // hue stable.
-func color.opacity(c color, a int) color { return color{r=c.r, g=c.g, b=c.b, a=uint8(a)} }
+const func color.opacity(c color, a int) color { return color{r=c.r, g=c.g, b=c.b, a=uint8(a)} }
 
 // Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
 // its complete value, and dropping alpha would print two different colours
 // the same.
 #[marks.intrinsic("color.hex")]
-func color.hex(c color) string
+const func color.hex(c color) string
 
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,
 // preserving alpha. `lighten(c, 0.0)` returns c; `lighten(c, 1.0)`
 // returns opaque white at c's alpha.
-func color.lighten(c color, pct float) color {
+const func color.lighten(c color, pct float) color {
     var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = uint8(int.min(255, int(c.r) + int(float(255 - int(c.r)) * pct)))
     ret.g = uint8(int.min(255, int(c.g) + int(float(255 - int(c.g)) * pct)))
@@ -52,7 +52,7 @@ func color.lighten(c color, pct float) color {
 // Mixes c toward black by pct (0.0-1.0) on each RGB channel,
 // preserving alpha. `darken(c, 0.0)` returns c; `darken(c, 1.0)`
 // returns black at c's alpha.
-func color.darken(c color, pct float) color {
+const func color.darken(c color, pct float) color {
     var ret = color{r=c.r, g=c.g, b=c.b, a=c.a}
     ret.r = uint8(int(float(int(c.r)) * (1.0 - pct)))
     ret.g = uint8(int(float(int(c.g)) * (1.0 - pct)))

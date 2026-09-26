@@ -66,8 +66,8 @@ const (
 	// any wrapper does -- so the passes asking "is this rendered rather than
 	// composed" have to tell it from a specialised family.
 	BuiltinTreeNode BuiltinKind = "treeNode"
-	// TreeShape is the drawing tree. passCanvas emits that package's own
-	// primitives, so it is the one specialised tree there are rules about.
+	// TreeShape is the drawing tree. A node hosting its members is a canvas,
+	// whose shapes passShapeDraw turns into the statements that paint them.
 	BuiltinTreeShape BuiltinKind = "treeShape"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
@@ -84,6 +84,11 @@ const (
 	BuiltinEffect BuiltinKind = "effect"
 
 	BuiltinOutput BuiltinKind = "output"
+	// GenInputs is `sngl:x/gen/cache`'s `inputs`: what a generated file was
+	// generated from. Like output it is read rather than rendered, and unlike
+	// output a library package may carry it -- a target serves generated
+	// source of its own.
+	BuiltinGenInputs BuiltinKind = "genInputs"
 
 	// Target identities. An opaque value type each of whose values is a const
 	// the compiler synthesizes into one target's package -- html.platform,
@@ -176,8 +181,11 @@ func (b BuiltinKind) IsNode() bool {
 	return false
 }
 
+// IsDirective reports whether the kind marks a directive: a component a file's
+// root instantiates to say something to the compiler, which is read rather
+// than rendered.
 func (b BuiltinKind) IsDirective() bool {
-	return b == BuiltinOutput
+	return b == BuiltinOutput || b == BuiltinGenInputs
 }
 
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
@@ -200,7 +208,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
-		BuiltinOutput,
+		BuiltinOutput, BuiltinGenInputs,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}

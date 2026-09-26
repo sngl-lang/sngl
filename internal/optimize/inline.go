@@ -64,6 +64,9 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if len(f.TypeParams) > 0 {
 		return nil // skip generic functions
 	}
+	if !hasWrittenBody(f) {
+		return nil // a signature's placeholder return answers nothing
+	}
 	if len(f.Block) != 1 {
 		return nil // only inline single-expression functions
 	}
@@ -278,12 +281,6 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 		return callsFuncInArgs(n.Args, target)
 	case *ir.Toggle:
 		return callsFunc(n.Target, target)
-	case *ir.SlotInst:
-		for _, c := range n.Children {
-			if callsFuncStmt(c, target) {
-				return true
-			}
-		}
 	case *ir.ErrorBoundary:
 		for _, c := range n.Children {
 			if callsFuncStmt(c, target) {
@@ -635,6 +632,7 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			}
 		}
 		cp.Children = cloneStmts(n.Children)
+		cp.Slots = cloneSlots(n.Slots)
 		return &cp
 	case *ir.If:
 		cp := *n
@@ -685,7 +683,12 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		return &cp
 	case *ir.SlotInst:
 		cp := *n
+		cp.Args = make([]ir.Expr, len(n.Args))
+		for i, a := range n.Args {
+			cp.Args[i] = cloneExpr(a)
+		}
 		cp.Children = cloneStmts(n.Children)
+		cp.Slots = cloneSlots(n.Slots)
 		return &cp
 	case *ir.ContextProvider:
 		cp := *n
@@ -717,6 +720,19 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 	out := make([]ir.Stmt, len(stmts))
 	for i, s := range stmts {
 		out[i] = cloneStmt(s)
+	}
+	return out
+}
+
+// cloneSlots copies each population's body and keeps its parameters, which a
+// splice binds by pointer.
+func cloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
+	if slots == nil {
+		return nil
+	}
+	out := make(map[string]*ir.SlotContent, len(slots))
+	for name, sc := range slots {
+		out[name] = &ir.SlotContent{Params: sc.Params, Body: cloneStmts(sc.Body)}
 	}
 	return out
 }

@@ -139,6 +139,22 @@ func (env *Env) ExecBlock(block []ir.Stmt) error {
 
 // Exec executes an IR statement, mutating the environment.
 func (env *Env) Exec(s ir.Stmt) error {
+	if groups := ir.StatementSpreads(s); len(groups) > 0 {
+		saved := env.spreadVals
+		defer func() { env.spreadVals = saved }()
+		env.spreadVals = make(map[int]any, len(groups))
+		for _, g := range groups {
+			v, err := env.Eval(g.Operand)
+			if err != nil {
+				return err
+			}
+			env.spreadVals[g.ID] = v
+		}
+	}
+	return env.exec(s)
+}
+
+func (env *Env) exec(s ir.Stmt) error {
 	switch n := s.(type) {
 	case *ir.Assign:
 		return env.execAssign(n)
@@ -196,11 +212,17 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil
 	case *ir.ErrorBoundary:
 		return nil
-	case *ir.SlotInst:
-		return nil
 	case *ir.ContextProvider:
-		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
-	case *ir.CanvasRedrawStmt:
+		restore, err := env.pushContext(n.Ref, n.Value)
+		defer restore()
+		if err != nil {
+			return err
+		}
+		for _, child := range n.Children {
+			if err := env.Exec(child); err != nil {
+				return err
+			}
+		}
 		return nil
 	default:
 		panic(fmt.Sprintf("testrunner.Exec: unhandled ir.Stmt %T", s))
@@ -270,6 +292,19 @@ func (env *Env) execAssign(s *ir.Assign) error {
 				return err
 			}
 			list[i] = nv
+			return nil
+		}
+		if m, ok := obj.(map[string]any); ok {
+			key := fmt.Sprintf("%v", idx)
+			old, present := m[key]
+			if !present {
+				old = zeroValueFor(target.ExprType())
+			}
+			nv, err := ApplyOp(s.Op, old, val, target.ExprType())
+			if err != nil {
+				return err
+			}
+			m[key] = nv
 			return nil
 		}
 		return fmt.Errorf("cannot index-assign to %T", obj)

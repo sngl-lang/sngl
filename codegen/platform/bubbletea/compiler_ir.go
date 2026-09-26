@@ -55,6 +55,7 @@ type widgetInfo struct {
 	binds       []widgetBind
 	placeholder string // Go-quoted-ready raw string; "" = no placeholder setter
 	focusExpr   string // Go expr that is true when this widget is focused; "" = no tracking
+	node        *ir.NodeInst
 }
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
@@ -113,6 +114,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerPayloads(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -171,6 +173,9 @@ type irAnalysis struct {
 type overlayInfo struct {
 	openExpr string
 	closeVar string
+	// closeCode closes an overlay a loop renders: the statement that clears
+	// the gate of whichever copy is open.
+	closeCode string
 }
 
 type irBind struct {
@@ -215,8 +220,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc.RequireImport(path)
 	}
 
-	// NoInlineComponents inlined every non-main component into main, so there
-	// are no remaining child-component vars to collect.
+	// NoInlineComponents inlined every component but a harness root into the
+	// body instantiating it, so there are no remaining child-component vars to
+	// collect.
 	for _, ov := range ctx.ModelState() {
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
@@ -326,6 +332,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				binds:       binds,
 				placeholder: placeholder,
 				focusExpr:   nodeStaticFocusExpr(n, gc),
+				node:        n,
 			})
 			return false
 		})
@@ -540,11 +547,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// func list, so the generic user-func loop below never meets them and
 	// needs no exclusion -- which is what the name match on `_canvasDraw`
 	// used to be for.
-	emitCanvasSurfaceDecls(&b, ctx.Canvases)
-	emitCanvasDrawFuncs(&b, ctx.Canvases, gc)
+	inLoop := loopCanvases(ctx)
+	emitCanvasSurfaceDecls(&b, ctx.Canvases, inLoop)
+	emitCanvasDrawFuncs(&b, ctx.Canvases, inLoop, gc)
 	hasCanvas := len(ctx.Canvases.All()) > 0
 	if hasCanvas {
-		emitCanvasTransmitMethod(&b, ctx.Canvases, gc)
+		emitCanvasTransmitMethod(&b, ctx, inLoop, gc)
 	}
 
 	// Every component this build renders, not only the root: one that
@@ -582,8 +590,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		// rather than on any component, and a clone that touched no state was
 		// not in stateFuncs either: `func (m *main) Paint__inst0` came out
 		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
-		// same question here and always did.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] {
+		// same question here and always did. A synthesized func is not in
+		// ModelFreeFuncs either, so its call sites spell it on m.
+		if fn.Receiver == "" && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -653,7 +662,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			KeyExpr:   keyExpr,
 		})
 	})
-	emitBtEventInvokers(&b, eventInvokers)
+	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
+	emitWidgetPayloadHandlers(&b, info, gc)
 	emitLoopTimerSyncs(&b, info.loopTimers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
@@ -989,6 +999,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			fmt.Fprintf(b, "\t\t\tcase %s:\n", ov.openExpr)
 			if ov.closeVar != "" {
 				fmt.Fprintf(b, "\t\t\t\tm.%s = false\n", ov.closeVar)
+			} else if ov.closeCode != "" {
+				fmt.Fprintf(b, "\t\t\t\t%s\n", ov.closeCode)
 			} else {
 				// No recoverable open var: consume the key but leave state
 				// unchanged (the overlay's gate is a compound expression).
@@ -1048,12 +1060,22 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		} else {
 			fmt.Fprintf(b, "%s{\n", fwdIndent)
 		}
+		get, hasInput, hasChange := widgetPayloadEvents(w)
+		if hasInput {
+			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
+		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
 		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
 				fmt.Fprintf(b, "%s\tm.%s = %s\n", fwdIndent, bd.target, bindReadBack(w.fieldName, bd.get))
 			}
+		}
+		if hasInput {
+			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "input"), fwdIndent)
+		}
+		if hasChange {
+			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
 		fmt.Fprintf(b, "%s}\n", fwdIndent)
 	}
@@ -1086,7 +1108,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, nil, bgGuard, false, invokerSink)
+	emitIRButtonHandlersWalk(b, stmts, info, gc, bgGuard, false, invokerSink)
 }
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
@@ -1094,17 +1116,20 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 type btInvokerSink func(n *ir.NodeInst, event string, slotIdx int, keyExpr string)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
-// button/checkbox handlers. currentFor is non-nil when inside a for-loop that
-// passFocusOrder turned into a loop slot; handlers inside it are emitted with a
-// loop-wrapped body that matches the cursor to the current iteration. bgGuard is
-// appended to each case unless inOverlay is set (overlay-content handlers stay
-// unguarded so they keep working while the overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
+// button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
+// emitLoopSlotHandlers. bgGuard is appended to each case unless inOverlay is
+// set (overlay-content handlers stay unguarded so they keep working while the
+// overlay is open).
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
 	}
-	emitStaticCase := func(slotIdx int, keyGuard string, block []ir.Stmt) {
+	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
+		slotIdx := nodeFocusSlotIdx(n)
+		if slotIdx < 0 {
+			return
+		}
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
@@ -1113,85 +1138,16 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
-	emitLoopCase := func(slotIdx int, keyGuard, cursorVar string, f *ir.For, block []ir.Stmt) {
-		var tmp strings.Builder
-		for _, stmt := range block {
-			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(&tmp, "\t\t\t\t\t%s\n", line)
-			}
-		}
-		syncMutatedInputs(&tmp, block, info.widgets, info.binds, gc)
-		body := tmp.String()
-
-		// Bind the element only where the handler reads it: Go rejects an
-		// unused loop variable. The key is the ordinal the emitted cursor test
-		// compares against, so it is always bound.
-		keyName, valName := f.Key, f.Value
-		if !loopVarUsed(block, valName, f.ValueSym) {
-			valName = "_"
-		}
-		iterExpr := gc.EvalExpr(f.Iter)
-
-		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
-		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
-		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
-		b.WriteString(body)
-		b.WriteString("\t\t\t\t\tbreak\n")
-		b.WriteString("\t\t\t\t}\n")
-		b.WriteString("\t\t\t}\n")
-	}
-
-	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
-		if currentFor == nil {
-			// Static slot.
-			if idx := nodeFocusSlotIdx(n); idx >= 0 {
-				emitStaticCase(idx, keyGuard, block)
-			}
-			return
-		}
-		// Loop-body slot: extract slot and cursor info from __focused prop.
-		fp := codegen.NodeProp(n, "__focused")
-		if fp == nil {
-			return
-		}
-		outer, ok := fp.(*ir.Binary)
-		if !ok || outer.Op != ast.BinAnd {
-			return
-		}
-		// Left: __focusID == slotIdx
-		leftBin, ok := outer.Left.(*ir.Binary)
-		if !ok || leftBin.Op != ast.BinEq {
-			return
-		}
-		lit, ok := leftBin.Right.(*ir.Literal)
-		if !ok {
-			return
-		}
-		slotIdx, err := strconv.Atoi(lit.Value)
-		if err != nil {
-			return
-		}
-		// Right: cursor == key
-		rightBin, ok := outer.Right.(*ir.Binary)
-		if !ok || rightBin.Op != ast.BinEq {
-			return
-		}
-		cursorIdent, ok := rightBin.Left.(*ir.Ident)
-		if !ok {
-			return
-		}
-		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, currentFor, block)
-	}
 
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, n, bgGuard, inOverlay, invokerSink)
+			emitLoopSlotHandlers(b, n, info, gc, overlayGuard)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
 			if ir.IsWindowNode(n) {
 				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
@@ -1204,7 +1160,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			bp := extractBlueprint(n)
 			for _, ev := range bp.Events {
 				h := codegen.NodeHandler(n, ev.On)
-				if h == nil || h.Func == nil {
+				if h == nil || h.Func == nil || len(h.Func.Block) == 0 {
 					continue
 				}
 				guard := teaKeyGuard(ev.Key)
@@ -1212,9 +1168,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				// A loop slot's focus index is per-iteration, so only a static
-				// one is a thing a test can name and drive.
-				if invokerSink != nil && currentFor == nil {
+				if invokerSink != nil {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
 						invokerSink(n, ev.On, idx, teaKeyMsg(ev.Key))
 					}
@@ -1223,14 +1177,14 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// Overlay-content handlers stay live while the overlay is open, so
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay, invokerSink)
+			for _, s := range ir.SuppliedContent(n) {
+				emitIRButtonHandlersWalk(b, s.Body, info, gc, bgGuard, childInOverlay, invokerSink)
+			}
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts — no nested visual children to walk.
-		case *ir.ContextProvider:
-			panic(fmt.Sprintf("bubbletea: ContextProvider should be lowered before handler walk: %#v", n))
 		default:
 			panic(fmt.Sprintf("bubbletea.emitIRButtonHandlersWalk: unhandled ir.Stmt %T", n))
 		}
@@ -1254,7 +1208,7 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 			collectOverlays(n.Body, n, gc, out)
 			collectOverlays(n.Else, gate, gc, out)
 		case *ir.For:
-			collectOverlays(n.Body, gate, gc, out)
+			collectLoopOverlays(n, gate, gc, out)
 		case *ir.ErrorBoundary:
 			collectOverlays(n.Children, gate, gc, out)
 		case *ir.NodeInst:
@@ -1320,7 +1274,11 @@ func teaKeyMsg(key string) string {
 // Update takes and returns a Model by value, so the result is assigned back
 // through the pointer receiver; a test holds an addressable local, which is
 // what makes `c.incClick()` legal.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
+//
+// A payload a test passes is taken and not read: the key is the input, and
+// what it produces is what the override builds from the widget's state -- a
+// checkbox's press is its `checked` flipped, whatever the test asked for.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads map[string]*ir.Type) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1329,13 +1287,88 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
 		}
 		seen[name] = true
 		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		if t := payloads[inv.IDLabel+"."+inv.SnglEvent]; t != nil {
+			fmt.Fprintf(b, "func (m *Model) %s(_ %s) {\n", name, golang.IRTypeToGo(t))
+		} else {
+			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		}
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
 		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
 		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
 		b.WriteString("}\n\n")
+	}
+}
+
+// widgetPayloadEvents reports which of a text widget's payload events the
+// program handles, and the getter its value is read back through. @input
+// fires when an Update changed the text; @change, on Enter in a single-line
+// input, is the commit. Only a widget read back with .Value() carries text.
+func widgetPayloadEvents(w widgetInfo) (get string, input, change bool) {
+	if w.node == nil {
+		return "", false, false
+	}
+	for _, bd := range w.binds {
+		if bd.get == ".Value()" && bd.set == ".SetValue" {
+			get = bd.get
+			break
+		}
+	}
+	if get == "" {
+		return "", false, false
+	}
+	has := func(event string) bool {
+		h := codegen.NodeHandler(w.node, event)
+		return h != nil && h.Func != nil
+	}
+	return get, has("input"), has("change") && w.model.Type == "textinput.Model"
+}
+
+func widgetEventMethod(w widgetInfo, event string) string {
+	return "__" + w.fieldName + "_" + event
+}
+
+// emitWidgetPayloadHandlers writes, for each text widget's @input and
+// @change, the handler as a Model method taking the text, and -- for a widget
+// a test can name -- an invoker that puts the text in the widget and runs it,
+// as typing and committing would.
+//
+// The payload is bound as a struct holding the one field every text event
+// carries: the event types are declarations nothing else here emits.
+func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
+	for _, w := range info.widgets {
+		_, hasInput, hasChange := widgetPayloadEvents(w)
+		for _, ev := range []struct {
+			name string
+			on   bool
+		}{{"input", hasInput}, {"change", hasChange}} {
+			if !ev.on {
+				continue
+			}
+			h := codegen.NodeHandler(w.node, ev.name)
+			hgc := gc
+			fmt.Fprintf(b, "func (m *Model) %s(__v string) {\n", widgetEventMethod(w, ev.name))
+			if len(h.Func.Params) > 0 {
+				name := h.Func.Params[0].Name
+				hgc = gc.WithLocal(name)
+				fmt.Fprintf(b, "\t%s := struct{ Value string }{Value: __v}\n\t_ = %s\n", name, name)
+			}
+			for _, stmt := range h.Func.Block {
+				for _, line := range hgc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			b.WriteString("}\n\n")
+			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+				continue
+			}
+			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
+			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
+		}
 	}
 }
 
@@ -1448,10 +1481,6 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 			}
 		}
 	}
-}
-
-func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	return golang.LowerVarInit(v, gc)
 }
 
 // widgetsHaveResize reports whether any widget declares a resize template, which

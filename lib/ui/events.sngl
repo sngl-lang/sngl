@@ -23,6 +23,12 @@ struct ChangeEvent {
     value string
 }
 
+// Payload emitted by `@change` from `checkbox` and `toggle`. `checked` is
+// the control's state after the user's flip.
+struct ToggleEvent {
+    checked bool
+}
+
 // Payload emitted by `@focus` and `@blur` as focus moves in and out
 // of a control.
 struct FocusEvent {}

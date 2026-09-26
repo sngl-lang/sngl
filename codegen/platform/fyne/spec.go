@@ -203,10 +203,11 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if markupTags(tag) {
 		return markupSpec(tag, props)
 	}
-	lit, ok := props[specPropName].(*ir.StructLit)
-	if !ok {
+	raw := props[specPropName]
+	if raw == nil {
 		return nil, fmt.Errorf("fyne primitive %s was instantiated without a %s record", tag, specPropName)
 	}
+	lit := specRecord(tag, specPropName, raw)
 	sp := &fyneSpec{
 		Setters:   map[string]string{},
 		Handlers:  map[string]fyneHandler{},
@@ -215,49 +216,40 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	for _, f := range lit.Fields {
 		switch f.Name {
 		case "new":
-			sp.New = nativeFromExpr(f.Value)
+			sp.New = nativeFromExpr(tag, f.Value)
 		case "goType":
-			sp.GoType = nativeFromExpr(f.Value)
+			sp.GoType = nativeFromExpr(tag, f.Value)
 		case "add":
-			sp.Add, _ = codegen.IRLiteralString(f.Value)
+			sp.Add = specString(tag, "spec.add", f.Value)
 		case "content":
-			sp.Content, _ = codegen.IRLiteralString(f.Value)
+			sp.Content = specString(tag, "spec.content", f.Value)
 		case "axis":
-			sp.Axis, _ = codegen.IRLiteralString(f.Value)
+			sp.Axis = specString(tag, "spec.axis", f.Value)
 		case "args":
-			for _, e := range listElems(f.Value) {
-				sl, ok := e.(*ir.StructLit)
-				if !ok {
-					continue
-				}
+			for _, e := range specList(tag, "spec.args", f.Value) {
+				sl := specRecord(tag, "spec.args", e)
 				var a fyneArg
-				a.Raw, _ = codegen.IRLiteralString(structField(sl, "raw"))
-				a.Prop, _ = codegen.IRLiteralString(structField(sl, "prop"))
+				a.Raw = specString(tag, "Arg.raw", structField(sl, "raw"))
+				a.Prop = specString(tag, "Arg.prop", structField(sl, "prop"))
 				sp.Args = append(sp.Args, a)
 			}
 		case "setters":
-			for _, e := range listElems(f.Value) {
-				sl, ok := e.(*ir.StructLit)
-				if !ok {
-					continue
-				}
-				prop, _ := codegen.IRLiteralString(structField(sl, "prop"))
-				call, _ := codegen.IRLiteralString(structField(sl, "call"))
+			for _, e := range specList(tag, "spec.setters", f.Value) {
+				sl := specRecord(tag, "spec.setters", e)
+				prop := specString(tag, "Setter.prop", structField(sl, "prop"))
+				call := specString(tag, "Setter.call", structField(sl, "call"))
 				if prop != "" && call != "" {
 					sp.Setters[prop] = call
 				}
 			}
 		case "handlers":
-			for _, e := range listElems(f.Value) {
-				sl, ok := e.(*ir.StructLit)
-				if !ok {
-					continue
-				}
-				on, _ := codegen.IRLiteralString(structField(sl, "on"))
+			for _, e := range specList(tag, "spec.handlers", f.Value) {
+				sl := specRecord(tag, "spec.handlers", e)
+				on := specString(tag, "Handler.on", structField(sl, "on"))
 				var h fyneHandler
-				h.Field, _ = codegen.IRLiteralString(structField(sl, "field"))
-				h.Signature, _ = codegen.IRLiteralString(structField(sl, "signature"))
-				h.Param, _ = codegen.IRLiteralString(structField(sl, "param"))
+				h.Field = specString(tag, "Handler.field", structField(sl, "field"))
+				h.Signature = specString(tag, "Handler.signature", structField(sl, "signature"))
+				h.Param = specString(tag, "Handler.param", structField(sl, "param"))
 				if _, err := signatureParams(tag, on, h.Signature); err != nil {
 					return nil, err
 				}
@@ -475,13 +467,47 @@ func signatureParams(tag, on, sig string) ([]*ir.Param, error) {
 // nativeFromExpr reads a Native record. A bare string is accepted as the
 // identifier alone, which is what a Go builtin or a name already in scope
 // needs.
-func nativeFromExpr(e ir.Expr) fyneNative {
+func nativeFromExpr(tag string, e ir.Expr) fyneNative {
 	if sl, ok := e.(*ir.StructLit); ok {
 		var n fyneNative
-		n.Path, _ = codegen.IRLiteralString(structField(sl, "path"))
-		n.Name, _ = codegen.IRLiteralString(structField(sl, "name"))
+		n.Path = specString(tag, "Native.path", structField(sl, "path"))
+		n.Name = specString(tag, "Native.name", structField(sl, "name"))
 		return n
 	}
-	name, _ := codegen.IRLiteralString(e)
-	return fyneNative{Name: name}
+	return fyneNative{Name: specString(tag, "Native", e)}
+}
+
+// The Spec is a const prop, so the optimizer has folded it to literals all the
+// way down (optimize.foldConstArg). A part of it that is not one is a compiler
+// bug, and reading it as empty would build a widget out of nothing. A field
+// the record leaves out is nil, which is the empty the declaration defaults to.
+
+func specString(tag, what string, e ir.Expr) string {
+	if e == nil {
+		return ""
+	}
+	s, ok := codegen.IRLiteralString(e)
+	if !ok {
+		panic(fmt.Sprintf("internal: fyne primitive %s: %s not folded to a string literal: %T", tag, what, e))
+	}
+	return s
+}
+
+func specList(tag, what string, e ir.Expr) []ir.Expr {
+	if e == nil {
+		return nil
+	}
+	ll, ok := e.(*ir.ListLit)
+	if !ok {
+		panic(fmt.Sprintf("internal: fyne primitive %s: %s not folded to a list literal: %T", tag, what, e))
+	}
+	return ll.Elems
+}
+
+func specRecord(tag, what string, e ir.Expr) *ir.StructLit {
+	sl, ok := e.(*ir.StructLit)
+	if !ok {
+		panic(fmt.Sprintf("internal: fyne primitive %s: %s not folded to a struct literal: %T", tag, what, e))
+	}
+	return sl
 }

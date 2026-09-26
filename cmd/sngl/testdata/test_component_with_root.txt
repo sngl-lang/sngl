@@ -142,3 +142,103 @@ window {
         greeter()
     }
 }
+-- testrun/bubbletea/go/alone.sngl/counter/1 --
+sha256:8ff31d9a075edbe49c75a65e186da0e3
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/composed.sngl/counter/1 --
+sha256:8ff31d9a075edbe49c75a65e186da0e3
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/rooted.sngl/counter/1 --
+sha256:8ff31d9a075edbe49c75a65e186da0e3
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/two.sngl/counter/1 --
+sha256:84b996d272a87b448d613e0a2573e741
+{
+  "results": [
+    {
+      "Desc": "Counter",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/two.sngl/greeter/1 --
+sha256:252cf0634c3ef131759bfb73eeaf0e98
+{
+  "results": [
+    {
+      "Desc": "Greeter",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/alone.sngl/counter/1 --
+sha256:806721baaf7e306465168352965bc983
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/composed.sngl/counter/1 --
+sha256:806721baaf7e306465168352965bc983
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/rooted.sngl/counter/1 --
+sha256:806721baaf7e306465168352965bc983
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/two.sngl/counter/1 --
+sha256:992bb4992322d6a4b6442c5f186dde2a
+{
+  "results": [
+    {
+      "Desc": "Counter",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/two.sngl/greeter/1 --
+sha256:333c2732eb69878b6784c9e8bcc2e929
+{
+  "results": [
+    {
+      "Desc": "Greeter",
+      "Passed": true
+    }
+  ]
+}

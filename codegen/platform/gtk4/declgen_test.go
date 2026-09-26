@@ -188,8 +188,8 @@ func TestSnglName_NoCollisions(t *testing.T) {
 func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 	skipWithoutGIR(t)
 	g := &Generator{}
-	if docs := checker.ProvidedDocs(g); len(docs) != 2 {
-		t.Fatalf("ProvidedDocs = %d docs; want 2 (the written half and the generated one)", len(docs))
+	if docs := checker.ProvidedDocs(g); len(docs) != 3 {
+		t.Fatalf("ProvidedDocs = %d docs; want 3 (doc.sngl, the written half and the generated one)", len(docs))
 	}
 	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platform/gtk4\"\n"))
 	if err != nil {

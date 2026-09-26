@@ -158,7 +158,7 @@ func (c *checker) collectUserOverrides() {
 		if !ok {
 			continue
 		}
-		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection)
+		c.addOverrideBody(decl.Pos, base, kind, plat, ns, local, decl.Body, true, selection, decl.Const)
 	}
 }
 
@@ -196,7 +196,7 @@ func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component)
 			}
 		case ast.EventDecl:
 			name, pos = "@"+pd.Name, pd.Pos
-			if pd.Type != nil {
+			if len(pd.Params) > 0 || pd.HasParens {
 				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
 				ok = false
 				continue

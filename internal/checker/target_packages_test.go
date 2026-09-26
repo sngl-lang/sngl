@@ -21,7 +21,7 @@ import (
 // diagnostic is present exactly when the package is in the target set.
 const tgtStubSource = `import sngl "sngl:ui"
 
-component sngl.text[tgtstub.platform] {
+const component sngl.text[tgtstub.platform] {
     sngl.text(value=noSuchIdentifierAnywhere)
 }
 `

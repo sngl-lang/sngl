@@ -470,12 +470,21 @@ func TestConstExprErasedFromIR(t *testing.T) {
 // every `const fn(...)` call site surfaces the regression as a check error.
 
 func TestConstExprUserPureFunc(t *testing.T) {
-	// Pure user funcs are eligible for const-folding; refactoring away
-	// their purity (e.g. by reading a var) should flip this test.
+	// A const func is a compile-time value; refactoring away its purity (e.g.
+	// by reading a var) is refused at the func itself.
 	expectNoErrors(t, `
-func double(x int) int { return x * 2 }
+const func double(x int) int { return x * 2 }
 var y int = const double(21)
 `)
+}
+
+func TestConstExprInferredPureFuncRejected(t *testing.T) {
+	// Inferred purity promises nothing: only a declared const func is a
+	// compile-time value, so a caller can rely on it staying one.
+	expectError(t, `
+func double(x int) int { return x * 2 }
+var y int = const double(21)
+`, "not a constant expression")
 }
 
 func TestConstExprUserImpureFuncRejected(t *testing.T) {
@@ -526,6 +535,7 @@ func nativeMath(purity ir.Purity) map[string]*ir.NativeImport {
 		Params:  []*ir.Param{{Name: "x", Type: intType()}},
 		Return:  intType(),
 		Purity:  purity,
+		Const:   purity == ir.PurityPure,
 		Foreign: ir.Foreign{Path: "math", Name: "math.Square"},
 	}
 	return map[string]*ir.NativeImport{

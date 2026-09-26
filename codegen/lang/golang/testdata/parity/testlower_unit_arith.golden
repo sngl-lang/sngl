@@ -4,8 +4,7 @@ package ui
 import "testing"
 
 func TestMeasurementArithmetic(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	three := Measurement{Px: 3}
 	five := Measurement{Px: 5}
@@ -25,9 +24,8 @@ package ui
 import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
 
 func testMeasurementArithmetic(t *testagent.T) {
-	__snglTestComponent := newTestComponent()
-	setCurrentTestModel(__snglTestComponent)
-	c := __snglTestComponent
+	c := newTestComponent()
+	setCurrentTestModel(c)
 	_ = c
 	three := Measurement{Px: 3}
 	five := Measurement{Px: 5}

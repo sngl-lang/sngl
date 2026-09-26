@@ -10,27 +10,27 @@ struct int {}
 // Returns the smaller of two integers. Ties return a (which equals b
 // for integers, so the distinction is vacuous).
 #[marks.intrinsic("int.min")]
-func int.min(a int, b int) int { return a < b ? a : b }
+const func int.min(a int, b int) int { return a < b ? a : b }
 
 // Returns the larger of two integers. Ties return a.
 #[marks.intrinsic("int.max")]
-func int.max(a int, b int) int { return a > b ? a : b }
+const func int.max(a int, b int) int { return a > b ? a : b }
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
 #[marks.intrinsic("int.abs")]
-func int.abs(x int) int { return x < 0 ? -x : x }
+const func int.abs(x int) int { return x < 0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the result
 // follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
 // documented contract for malformed ranges.
 #[marks.intrinsic("int.clamp")]
-func int.clamp(x int, lo int, hi int) int { return int.max(lo, int.min(x, hi)) }
+const func int.clamp(x int, lo int, hi int) int { return int.max(lo, int.min(x, hi)) }
 
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
 // interpreter implements this yet.
 #[marks.intrinsic("int.parse")]
-func int.parse(s string, base int) int
+const func int.parse(s string, base int) int
 
 // 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
 // trailing `.0` distinguishes it from `int`). Methods on the `float`
@@ -42,79 +42,79 @@ struct float {}
 // Returns the smaller of two floats. NaN handling is platform-defined
 // — prefer explicit NaN checks when either operand may be NaN.
 #[marks.intrinsic("float.min")]
-func float.min(a float, b float) float { return a < b ? a : b }
+const func float.min(a float, b float) float { return a < b ? a : b }
 
 // Returns the larger of two floats. See `float.min` for NaN caveats.
 #[marks.intrinsic("float.max")]
-func float.max(a float, b float) float { return a > b ? a : b }
+const func float.max(a float, b float) float { return a > b ? a : b }
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.
 #[marks.intrinsic("float.abs")]
-func float.abs(x float) float { return x < 0.0 ? -x : x }
+const func float.abs(x float) float { return x < 0.0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
 // wins (see `int.clamp`).
 #[marks.intrinsic("float.clamp")]
-func float.clamp(x float, lo float, hi float) float { return float.max(lo, float.min(x, hi)) }
+const func float.clamp(x float, lo float, hi float) float { return float.max(lo, float.min(x, hi)) }
 
 // Largest integer value not greater than x. For negative non-integers this
 // rounds away from zero (e.g. floor(-1.5) == -2).
 #[marks.intrinsic("float.floor")]
-func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
+const func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
 
 // Smallest integer value not less than x. For negative non-integers this
 // rounds toward zero (e.g. ceil(-1.5) == -1).
 #[marks.intrinsic("float.ceil")]
-func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
+const func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
 
 // Nearest integer value to x. Halves round away from zero
 // (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
 // and round(-0.5) == -1.0.
 #[marks.intrinsic("float.round")]
-func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
+const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
 
 // Raises base to the power exp. Integer powers are exact up to float
 // precision; fractional powers of negative bases yield NaN.
 #[marks.intrinsic("float.pow")]
-func float.pow(base float, exp float) float
+const func float.pow(base float, exp float) float
 
 // Non-negative square root of x. Returns NaN for negative x.
 #[marks.intrinsic("float.sqrt")]
-func float.sqrt(x float) float
+const func float.sqrt(x float) float
 
 // Sine of x, where x is in radians.
 #[marks.intrinsic("float.sin")]
-func float.sin(x float) float
+const func float.sin(x float) float
 
 // Cosine of x, where x is in radians.
 #[marks.intrinsic("float.cos")]
-func float.cos(x float) float
+const func float.cos(x float) float
 
 // Tangent of x, where x is in radians. Undefined (±Inf / large finite)
 // near odd multiples of π/2.
 #[marks.intrinsic("float.tan")]
-func float.tan(x float) float
+const func float.tan(x float) float
 
 // Arcsine of x, result in radians within [-π/2, π/2]. Returns NaN for
 // |x| > 1.
 #[marks.intrinsic("float.asin")]
-func float.asin(x float) float
+const func float.asin(x float) float
 
 // Arccosine of x, result in radians within [0, π]. Returns NaN for
 // |x| > 1.
 #[marks.intrinsic("float.acos")]
-func float.acos(x float) float
+const func float.acos(x float) float
 
 // Arctangent of x, result in radians within [-π/2, π/2]. Use
 // `float.atan2` when you have separate y and x and need to recover
 // the quadrant.
 #[marks.intrinsic("float.atan")]
-func float.atan(x float) float
+const func float.atan(x float) float
 
 // Arctangent of y/x using signs of both arguments to pick the correct
 // quadrant. Result is in radians within [-π, π]. `atan2(0, 0)` returns
 // 0. This is the correct function for converting Cartesian (x, y)
 // into an angle.
 #[marks.intrinsic("float.atan2")]
-func float.atan2(y float, x float) float
+const func float.atan2(y float, x float) float

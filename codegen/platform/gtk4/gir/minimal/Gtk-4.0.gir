@@ -132,6 +132,11 @@
     <class name="Entry" c:type="GtkEntry" parent="Widget">
       <implements name="Editable"/>
       <constructor name="new" c:identifier="gtk_entry_new"/>
+      <glib:signal name="activate">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
     </class>
     <class name="Button" c:type="GtkButton" parent="Widget">
       <constructor name="new" c:identifier="gtk_button_new"/>

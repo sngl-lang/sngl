@@ -149,8 +149,7 @@ package main
 import "testing"
 
 func TestModalOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -222,8 +221,7 @@ package main
 import "testing"
 
 func TestModalOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -346,14 +344,25 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;height:100%;justify-content:center;left:0px;position:fixed;top:0px;width:100%;z-index:1000" class="modal-overlay">
+<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5);display:flex;height:100%;justify-content:center;left:0px;position:fixed;top:0px;width:100%;z-index:1000" class="modal-overlay">
   <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
-    <h3 style="margin-bottom:16px;margin-left:0px;margin-right:0px;margin-top:0px">Hello</h3>
+    <h3 style="margin:0 0 16px">Hello</h3>
     <span>body</span>
   </div>
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { open: false };
@@ -376,13 +385,15 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c335684a00bee5f94ef5a41725f689c1
+pass sha256:7b383e8f17b8b7cffd5d302ae34eff56
 -- run/go/fyne --
-pass sha256:e56c81ab6f39b066238cc5c16732d729
+pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:445eb15d0055f3585a69c0222a21323b
 -- run/none/html --
-pass sha256:abc3bcf7bd823ee47bd68baa16f83c0b
+pass sha256:dad99bbace5ca377baf913bc7590aa4c

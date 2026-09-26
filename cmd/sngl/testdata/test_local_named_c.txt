@@ -67,3 +67,27 @@ func testComponentParamIsBound(t Test, screen main) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:bb188f00d85c3d369f5bd9e78bd6082f
+{
+  "results": [
+    {
+      "Desc": "ALocalNamedC",
+      "Passed": true
+    },
+    {
+      "Desc": "NoComponentParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:1d694db67a776d663ff3705d1868e1a2
+{
+  "results": [
+    {
+      "Desc": "ComponentParamIsBound",
+      "Passed": true
+    }
+  ]
+}

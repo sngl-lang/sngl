@@ -1,0 +1,33 @@
+// Package cache is what a generated file says it was generated from.
+//
+// Some of the SNGL a build reads is written by something other than a person:
+// the widget declarations derived from a GTK install's introspection data, the
+// value a `const func` returned when the compiler ran it. Each
+// is the output of a *producer* -- a step that reads the world outside the
+// compiler, often by running another process -- and each is stored between
+// builds, so that a build whose inputs have not changed does not run the step
+// again.
+//
+// The file carries its own answer to "is this still what the producer would
+// write". A `cache.inputs` directive at its root lists every input the
+// producer read, each with the value it had, and a store holding the file
+// re-checks each one before handing the file back:
+//
+//     cache.inputs {
+//         cache.file(path="/usr/share/gir-1.0/Gtk-4.0.gir", sha256="9f86d0…")
+//         cache.absent(path="/usr/local/share/gir-1.0/Gtk-4.0.gir")
+//     }
+//
+// The store is separate from the file on purpose. The file says what it
+// depends on; where a previous answer is kept, how much of them is kept and
+// for how long is the store's business, and a file written by hand into a
+// project reads the same way.
+//
+// The inputs are recorded before the producer runs, so a file edited while it
+// runs is recorded as it was before the edit and is found stale next time --
+// the order that makes a race cost a repeat rather than a wrong answer.
+//
+// An input a producer did not record is an input the store cannot see, which
+// for a value folded into a build is a wrong build rather than a slow one.
+// That is why a pure function may not read a file or the environment while it
+// runs: nothing records what it read.

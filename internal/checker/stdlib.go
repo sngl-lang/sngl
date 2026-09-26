@@ -543,6 +543,7 @@ func (c *checker) inLibSource() bool { return c.libDepth > 0 }
 
 func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libDepth++
+	constArgMark, constSlotMark := len(c.constArgs), len(c.constSlotNodes)
 	savedPkgName := c.libPkgName
 	c.libPkgName = "sngl:" + pkgName
 	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
@@ -625,7 +626,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	}
 
 	// Phase 2b: refine stdlib function purity by propagating from called
-	// functions. The auto-Pure default registerFunc gives library source is a
+	// functions. The Pure seed registerFunc gives a bodied library func is a
 	// placeholder;
 	// now that every body is checked, lift each func's purity to
 	// max(self, max(called.Purity)) and iterate to a fixed point. This
@@ -642,6 +643,9 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 			}
 		}
 	}
+	c.checkConstFuncs(stdlibPkg.Funcs)
+	c.runConstArgChecksFrom(constArgMark)
+	c.runConstSlotChecksFrom(constSlotMark)
 
 	// A platform or language package may ship its own body-bearing
 	// components (the wrappers lower's strict InlinePure pass is written
@@ -668,6 +672,9 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 			continue
 		}
 		c.checkComponentBody(irComp)
+	}
+	if _, ok := targetNamespaceName(pkgName); ok {
+		c.checkTargetComponentsConst(stdlibPkg)
 	}
 
 	// Phase 3: refine stdlib context types from their default expressions.
@@ -1119,7 +1126,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if !ok {
 					continue
 				}
-				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection)
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection, decl.Const)
 			}
 		}
 	}
@@ -1139,7 +1146,7 @@ func qualifiedComponentName(ns, local string) string {
 // reports that one is already recorded. A duplicate is an error rather than a
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
-func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
+func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
 	overrides := &comp.PlatformOverrides
 	if kind == ir.BuiltinLanguage {
 		overrides = &comp.LanguageOverrides
@@ -1171,6 +1178,8 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		body:      body,
 		user:      user,
 		selection: selection,
+		isConst:   isConst,
+		name:      qualifiedComponentName(ns, local),
 	})
 }
 
@@ -1306,6 +1315,10 @@ type pendingExtension struct {
 	// scope, where the file's imports are; a target package's body is
 	// compiler-internal and deliberately resolves where they are not.
 	user bool
+	// isConst is the override's own `const` prefix, and name how it spelled
+	// what it overrides.
+	isConst bool
+	name    string
 }
 
 // Runs after user pass1, so user-declared symbols are in scope. Each extension
@@ -1413,12 +1426,14 @@ func (c *checker) checkPendingExtensions() {
 			// where the owner is the base declaration again and the names the
 			// nested body captured are declared by nobody.
 			c.checkOverrideNestedBodies(bodyDecls)
+			c.checkOverrideConst(pe)
 			checked := ir.Body{
 				Vars:      pe.comp.Vars,
 				Stmts:     pe.comp.Body,
 				BodyDecls: pe.comp.BodyDecls,
 				Funcs:     pe.comp.Funcs,
 				Methods:   pe.comp.Methods,
+				Const:     pe.isConst,
 			}
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
@@ -1460,7 +1475,15 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			return
 		case *ir.Call:
 			if x.Func != nil {
-				bump(x.Func.Purity)
+				// A callee nothing says anything about -- a native not
+				// declared const, whose body is the host's -- may depend on
+				// anything, so a call to it is not a pure one. It cannot write
+				// a program's state, which it has no way to name, so it reads.
+				p := x.Func.Purity
+				if p == ir.PurityUnknown {
+					p = ir.PurityReadonly
+				}
+				bump(p)
 			}
 			if x.Callee != nil {
 				walkExpr(x.Callee)
@@ -1507,15 +1530,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 				for _, s := range x.Func.Block {
 					walkStmt(s)
 				}
-			}
-		case *ir.Closure:
-			if x.Func != nil {
-				for _, s := range x.Func.Block {
-					walkStmt(s)
-				}
-			}
-			if x.State != nil {
-				walkExpr(x.State)
 			}
 		}
 	}
@@ -1565,10 +1579,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 					}
 				}
 			}
-			for _, c := range x.Children {
-				walkStmt(c)
-			}
-		case *ir.SlotInst:
 			for _, c := range x.Children {
 				walkStmt(c)
 			}

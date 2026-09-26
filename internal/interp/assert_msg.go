@@ -389,10 +389,6 @@ func IRASTOf(e ir.Expr) ast.Expr {
 		if x.AST != nil {
 			return x.AST
 		}
-	case *ir.Spread:
-		if x.AST != nil {
-			return x.AST
-		}
 	case *ir.Lambda:
 		if x.AST != nil {
 			return x.AST

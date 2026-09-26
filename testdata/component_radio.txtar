@@ -130,8 +130,7 @@ package main
 import "testing"
 
 func TestRadioValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
@@ -198,8 +197,7 @@ package main
 import "testing"
 
 func TestRadioValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
@@ -321,11 +319,22 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<fieldset id="__n3" data-sngl-id="__n3" style="border:none;display:flex;flex-direction:row;gap:8px;padding:0px">
+<fieldset id="__n3" data-sngl-id="__n3" style="border:none;display:flex;flex-direction:horizontal;gap:8px;padding:0px">
   <span data-sngl-slot="0" style="display:contents"></span>
 </fieldset>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { sel: "medium" };
@@ -381,13 +390,15 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f070605f9d615eeac9a40cf9e76e784a
+pass sha256:984e7f369b862c28d153b7a804dd078f
 -- run/go/fyne --
-pass sha256:fba9d4898979d13aef8fd5dd0ec613e6
+pass sha256:2c36fcf71c3aa926078ec9cdd5270d1d
 -- run/kotlin/android --
 pass sha256:51e0f7415584236ad360e19336735471
 -- run/none/html --
-pass sha256:a2dc8e524341da130998b5925f76a4e2
+pass sha256:84994e66667c55c7b95eaecbd5644cea
