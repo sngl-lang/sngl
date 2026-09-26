@@ -1978,11 +1978,10 @@ than over the unit's declared bases disagrees with the other three.
 
 `hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
 still accepts any member name silently: `list`, `map`, `option`, `iter`,
-`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
-uniformly a defect — an element-ref list projects a member read over its
-elements, which `testdata/test_slot_element_ref.sngl` depends on
-(`c.body.value` where `c.body` is `list<text>`) — so closing the rest is a
-question per kind rather than one line.
+`string` beyond `.length`, and a struct type carrying no `Decl`. Closing it is
+a question per kind rather than one line. An element ref is no longer a reason:
+`c.<id>` is a list only where the node is behind a `for`, and one behind a
+conditional is an `option` read after a null test (see `elementRef`).
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
