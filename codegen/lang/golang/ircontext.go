@@ -838,9 +838,6 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return gc.recvFor(sym) + "." + ExportName(name)
 	default:
-		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
-			return fmt.Sprintf("%q", name)
-		}
 		return name
 	}
 }
