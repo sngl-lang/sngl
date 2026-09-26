@@ -16,11 +16,12 @@ appended into it; it builds the box now, as fyne's sibling already did.
 And the box has to be reachable from what the instance renders as. Both
 platforms chose Root from the widgets no AppendChild consumed, and the slot's
 subtree is built into `__root` rather than named by a ref -- so `__root` was in
-no list and its whole subtree was invisible: `c.Root = c.__n0`. The translator
-records it when it meets the call that renders it, which is why the *order*
-below is part of the claim: `container.NewVBox(c.__n0, c.__root)` and the two
-`BoxAppend`s in that sequence are the position the slot was written, not an
-append after the fact.
+no list and its whole subtree was invisible: `c.Root = c.__n0`. Once the slot
+renders into `__root`, `__root` is what the instance renders as, and the button
+is added to it ahead of that render -- so the *order* below is part of the
+claim: the button, then the slot, at the position each was written.
+`root_slot_between_siblings.txtar` holds the same rule with siblings on both
+sides of two slots.
 
 deny out/go/fyne/model.go `if c.open \{\n\t\tcontainer.Add\(__n1\)` -- the renderer declares the label before adding it; going straight to the Add is what a node with no spec left behind
 deny out/go/gtk4/model.go `c.__root = nil` -- the instance's slot renders into a box, so the box is built before the first render appends into it

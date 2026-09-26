@@ -258,8 +258,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 					fmt.Fprintf(&buildBuf, "\t%s\n", line)
 				}
 			}
-			// topLevel holds the widget ids no AppendChild consumed — the
-			// window roots.
+			// topLevel holds the widget ids no AppendChild consumed and no root
+			// slot render placed.
 			tops := tr.topLevel
 			switch {
 			case tr.renderedRoot != nil:
@@ -740,14 +740,6 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 
 	b.WriteString(buildBuf.String())
 
-	hasRoot := false
-	for _, bind := range info.binds {
-		if bind.name == "__root" {
-			hasRoot = true
-			break
-		}
-	}
-
 	if singleRoot {
 		if info.NeedsToast {
 			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
@@ -757,27 +749,13 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 		} else {
 			b.WriteString("\treturn content\n")
 		}
+	} else if info.NeedsToast {
+		b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+		b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+		b.WriteString("\tm.toastBox.Hide()\n")
+		b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, container.NewVBox(parts...))\n")
 	} else {
-		// A synthesized __root is reused as the returned container, so slot
-		// updaters operating on m.__root mutate the displayed tree.
-		if hasRoot {
-			b.WriteString("\tm.__root.Objects = parts\n")
-			if info.NeedsToast {
-				b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
-				b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
-				b.WriteString("\tm.toastBox.Hide()\n")
-				b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, m.__root)\n")
-			} else {
-				b.WriteString("\treturn m.__root\n")
-			}
-		} else if info.NeedsToast {
-			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
-			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
-			b.WriteString("\tm.toastBox.Hide()\n")
-			b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, container.NewVBox(parts...))\n")
-		} else {
-			b.WriteString("\treturn container.NewVBox(parts...)\n")
-		}
+		b.WriteString("\treturn container.NewVBox(parts...)\n")
 	}
 
 	b.WriteString("}\n\n")

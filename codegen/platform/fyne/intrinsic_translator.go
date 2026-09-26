@@ -49,11 +49,7 @@ type fyneTranslator struct {
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
 	// rootRenders are the calls written at the top of this scope's body that
-	// render a reactive slot into __root. Once one has, __root is the scope's
-	// widget, so its static top-level siblings have to be in it too: OnDefault
-	// adds the ones written so far ahead of each such call, which is what puts
-	// the slot's anchor after them, and renderedRoot tells the emitter where
-	// to add the rest, and that the container is what it returns.
+	// render a slot into __root; renderedRoot is that container once one has.
 	rootRenders  map[ir.Stmt]bool
 	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
@@ -164,8 +160,9 @@ func (t *fyneTranslator) withSlotRoot(body []ir.Stmt) *fyneTranslator {
 	return t
 }
 
-// addTopsTo adds every top-level widget written so far to root, in order, and
-// forgets them.
+// addTopsTo places the top-level widgets written so far into root, ahead of
+// the slot render that follows: lowering finishes a node's subtree before
+// anything later, so every one of them is a finished root by then.
 func (t *fyneTranslator) addTopsTo(root ir.Expr) []ir.Stmt {
 	stmts := make([]ir.Stmt, 0, len(t.topLevel))
 	for _, ref := range t.topLevel {

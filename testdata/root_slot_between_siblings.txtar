@@ -22,7 +22,7 @@ The executed half is `TestRootSlotsKeepTheirPlaceRuns` in both platforms,
 which reads the rendered order off the built tree and pushes to the list.
 
 deny out/go/fyne/model.go `__root\.Objects = parts` -- assigning the static siblings over __root drops what the slots rendered into it
-deny out/go/fyne/model.go `container\.NewVBox\(c\.__n\d+, c\.__root` -- an instance's __root is its widget, not one sibling placed at its first slot
+deny out/go/fyne/model.go `container\.NewVBox\([^)]*c\.__root` -- an instance's __root is its widget, not one sibling placed at its first slot
 deny out/go/gtk4/model.go `BoxAppend\(__box, c\.__root\)` -- likewise on gtk4
 deny out/go/fyne/model.go `(?m)^\t\tc\.__root\.Add\(` -- a handler re-rendering a slot is not a position in the body, so nothing is added to __root inside one
 deny out/go/gtk4/model.go `(?m)^\t\tgtk4rt\.BoxAppend\(c\.__root` -- likewise on gtk4
