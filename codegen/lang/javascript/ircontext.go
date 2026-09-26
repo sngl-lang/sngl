@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -832,6 +833,14 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)
+	if jc.Ctx != nil && jc.Ctx.ClosureMethods && jc.Ctx.Component != nil &&
+		slices.Contains(jc.Ctx.Component.Funcs, n.Func) && len(args) > 0 {
+		call := method + "(" + strings.Join(args[1:], ", ") + ")"
+		if n.Func.IsAsync {
+			call = "await " + call
+		}
+		return call
+	}
 	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}
@@ -855,9 +864,6 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// nothing declares. Go's translator asks the same question, and spells the
 	// answer as a method on its Model rather than as a free function.
 	if jc.Ctx != nil {
-		if jc.Ctx.InstanceClosure && jc.Ctx.Component != nil && receiverName == jc.Ctx.Component.Name && len(args) > 0 {
-			return method + "(" + strings.Join(args[1:], ", ") + ")"
-		}
 		if _, ok := codegen.OwnerMethod(jc.Ctx.Pkg, receiverName, method); ok {
 			return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
 		}

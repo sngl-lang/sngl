@@ -20,6 +20,7 @@ import (
 type emitShared struct {
 	boolToInt  bool
 	gObjectSet bool
+	slotAnchor bool
 	errs       []error
 	seen       map[string]bool
 
@@ -49,6 +50,12 @@ func (s *emitShared) needBoolToInt() {
 func (s *emitShared) needGObjectSet() {
 	if s != nil {
 		s.gObjectSet = true
+	}
+}
+
+func (s *emitShared) needSlotAnchor() {
+	if s != nil {
+		s.slotAnchor = true
 	}
 }
 
@@ -103,6 +110,9 @@ type gtk4Translator struct {
 	// other way, which is every Model scope: the Model's own __root is the
 	// wrapper buildWidgetTree already parents into.
 	slotRoot string
+	// slotAnchor is the anchor field of the slot this render func renders,
+	// set when the func resets its slot, in wrapped mode.
+	slotAnchor ir.Expr
 	// wrapped emits widget ops as pkg/go/gtk4rt calls instead of inline cgo.
 	// An unmapped op falls through to cgo, leaving a `C.` that triggers
 	// emitIR's whole-program fallback. See wrapped.go.
@@ -678,6 +688,13 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil && cType == "GtkBox" {
+		if t.wrapped {
+			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
+		}
+		call := nativeCall("sngl_insert_before", cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+		return []ir.Stmt{&ir.CallStmt{Call: call}}
+	}
 	if t.wrapped {
 		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
 		if !ok {
@@ -1034,6 +1051,73 @@ func (t *gtk4Translator) signalFor(nodeID, event string) string {
 	return ""
 }
 
+// signalLambda gives a handler written in place -- in an instance record,
+// where nothing promotes it to a method -- the shape emitIRPromotedHandler
+// gives a promoted one: the trampoline passes no arguments, so the SNGL event
+// parameter goes, and a two-way bind opening the body reads the widget.
+func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string) ir.Expr {
+	if lam.Func == nil || len(lam.Func.Params) == 0 {
+		return lam
+	}
+	var getter ir.Expr
+	if t.wrapped {
+		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
+	} else {
+		getter = cgoEventGetterExpr(cType, t.qualifyNodeExpr(node))
+	}
+	stmts := lam.Func.Block
+	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok && getter != nil {
+		stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
+	}
+	fn := *lam.Func
+	fn.Params = nil
+	fn.Block = substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
+	out := *lam
+	out.Func = &fn
+	return &out
+}
+
+// substituteWidgetPayload reads an event's value off the widget that fired it,
+// the trampoline handing the handler nothing. Only an entry's text is a
+// string, which is what every payload's value is.
+func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) []ir.Stmt {
+	if getter == nil || cType != "GtkEntry" {
+		return stmts
+	}
+	return codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
+		if f.Type == nil || f.Type.Kind != ir.TypeString {
+			return nil
+		}
+		return getter
+	})
+}
+
+// firstEventBind is the `x = e.<field>` a two-way bind opens a handler with,
+// e being one of params.
+func firstEventBind(stmts []ir.Stmt, params []*ir.Param) (*ir.Assign, bool) {
+	if len(stmts) == 0 {
+		return nil, false
+	}
+	assign, ok := stmts[0].(*ir.Assign)
+	if !ok || assign.Op != ast.AssignSet {
+		return nil, false
+	}
+	sel, ok := assign.Value.(*ir.Select)
+	if !ok {
+		return nil, false
+	}
+	op, ok := sel.Operand.(*ir.Ident)
+	if !ok {
+		return nil, false
+	}
+	for _, p := range params {
+		if p != nil && (op.Sym == ir.Symbol(p) || (op.Sym == nil && op.Name == p.Name)) {
+			return assign, true
+		}
+	}
+	return nil, false
+}
+
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
@@ -1057,6 +1141,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
 	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
+	if lam, ok := handler.(*ir.Lambda); ok {
+		handler = t.signalLambda(lam, node, cType)
+	}
 
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.
@@ -1101,11 +1188,20 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	return []ir.Stmt{&ir.Assign{
+	reset := &ir.Assign{
 		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
-	}}
+	}
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	var anchor ir.Expr
+	if t.wrapped {
+		anchor = rtCall("SlotAnchor", &ir.Ident{Name: "parent"}, t.slotAnchor)
+	} else {
+		t.shared.needSlotAnchor()
+		anchor = nativeCall("sngl_slot_anchor", cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
+	}
+	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
@@ -1147,8 +1243,81 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
+	case *ir.CallStmt:
+		if boxed, ok := t.boxedSlotRenderCall(n); ok {
+			return boxed
+		}
+		if local := localSlotRenderCall(n, t.isLocalRef); local != nil {
+			return []ir.Stmt{local}
+		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// boxedSlotRenderCall renders a slot whose container holds one child -- a
+// scrolled window -- into a box that is that child, since a slot renders into
+// a GtkBox and adds and removes any number of entries. A container holding
+// several children through a call of its own is refused rather than handed to
+// gtk_box_append.
+func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil, false
+	}
+	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
+	cType := t.idCTypes[bare]
+	if cType == "" || cType == "GtkBox" {
+		return nil, false
+	}
+	adder := t.childAdder(cType)
+	if !strings.HasSuffix(adder.Func, "_set_child") {
+		t.shared.fail(fmt.Errorf("gtk4: a reactive `if` or `for` directly inside a %s cannot be rendered: its slot renders into a GtkBox; wrap it in a vbox", cType))
+		return nil, false
+	}
+	boxName := bare + "_box"
+	t.fieldSink(boxName, "GtkBox")
+	box := t.fieldRef(boxName)
+	parent := t.qualifyNodeExpr(&ir.Ident{Name: bare, IsElementRef: true})
+	var slotBox, parentOf, parentArg ir.Expr
+	var set ir.Stmt
+	if t.wrapped {
+		var ok bool
+		if set, ok = rtChildAppendCall(adder, parent, box); !ok {
+			return nil, false
+		}
+		slotBox, parentOf, parentArg = rtCall("SlotBox", box), rtCall("ParentOf", box), parent
+	} else {
+		t.shared.needSlotAnchor()
+		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(cType, parent), cgoCast("GtkWidget", box))}
+		slotBox = nativeCall("sngl_slot_box", box)
+		parentOf = nativeCall("gtk_widget_get_parent", cgoCast("GtkWidget", box))
+		parentArg = cgoCast("GtkWidget", parent)
+	}
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Value: box}}
+	return []ir.Stmt{
+		&ir.Assign{Target: box, Op: ast.AssignSet, Value: slotBox},
+		&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: parentOf, Right: parentArg},
+			Body: []ir.Stmt{set},
+		},
+		&ir.CallStmt{Call: &call},
+	}, true
+}
+
+// localSlotRenderCall rewrites a render slot call whose container is a local
+// of this scope -- a slot nothing but the ctor renders -- to pass the local,
+// which the language context would otherwise spell as a field.
+func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	if !ok || !isLocal(id.Name) {
+		return nil
+	}
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: &ir.Ident{Name: id.Name, Type: id.Type}}}
+	return &ir.CallStmt{Call: &call}
 }
 
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted

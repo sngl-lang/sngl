@@ -495,11 +495,11 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which
 	// is also what keeps Go from calling it unused.
+	n = WithUnreadVarsDropped(n)
 	key := n.Key
 	if key == "" {
 		key = "__i"
 	}
-	n = WithUnreadVarsDropped(n)
 	switch n.IterKind {
 	case ir.IterForever:
 		// Go's own spelling: `for {` is the condition form below with the
@@ -597,9 +597,32 @@ func (gc *GoIRContext) ElseHead() string                    { return "} else {" 
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
 
+// shadowedStateVar reports a read of a state var whose name a local of the
+// emitted scope also binds -- a render slot's `parent` parameter beside a
+// program's `var parent` -- which Resolve, asking by name, answers as the local.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	v, ok := sym.(*ir.Var)
+	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
+		return nil, false
+	}
+	if _, renamed := gc.Ctx.Renames[v.Name]; !gc.Ctx.Locals[v.Name] && !renamed {
+		return nil, false
+	}
+	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
+		return v, true
+	}
+	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
+}
+
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
+	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(n.Name)
 	}
 	sym, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
@@ -637,7 +660,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	// is `m` -- and its fields are its own type's, exported like any other Go
 	// struct's, rather than the Model's unexported state.
 	switch sym := id.Sym.(type) {
-	case nil, *ir.Component:
+	case nil, *ir.Component, *codegen.Receiver:
 		// A synthesized receiver read carries no symbol.
 	case *ir.Param:
 		if !sym.Receiver && sym.Name != ir.ReceiverParam {
@@ -749,6 +772,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return gc.RecvName()
 	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
 
 	name := n.Name
 	// A node handle is stored as a struct field of whatever the scope
@@ -772,6 +798,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	}
 	if n.IsElementRef && n.Synthesized {
 		return gc.NodeRecv(name) + "." + name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(name)
 	}
 	sym, kind := gc.Ctx.Resolve(name)
 	switch kind {
@@ -2286,15 +2315,7 @@ func (gc *GoIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	return v.Foreign.Name, true
 }
 
-// WithUnreadVarsDropped is n with a loop variable its body never names left
-// out, since Go refuses one declared and not used. A lowering can leave one: a
-// slot matches its instances against the inner loop's element and never reads
-// the outer loop's. Asked by name, so anything that might read it keeps it.
-func WithUnreadVarsDropped(n *ir.For) *ir.For {
-	// A counted loop's variable is read by its own condition.
-	if n.IterKind == ir.IterCounted {
-		return n
-	}
+func loopReadNames(n *ir.For) map[string]bool {
 	read := map[string]bool{}
 	for _, block := range [][]ir.Stmt{n.Body, n.Else} {
 		_ = ir.Walk(block, func(nd ir.Node) error {
@@ -2303,6 +2324,25 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 			}
 			return nil
 		})
+	}
+	return read
+}
+
+// WithUnreadVarsDropped is n with a loop variable its body never names left
+// out, since Go refuses one declared and not used. A lowering can leave one: a
+// slot matches its instances against the inner loop's element and never reads
+// the outer loop's. Asked by name, so anything that might read it keeps it.
+func WithUnreadVarsDropped(n *ir.For) *ir.For {
+	read := loopReadNames(n)
+	// A counted loop's variable is read by its own condition, which ForHead
+	// names __i when the body does not name one.
+	if n.IterKind == ir.IterCounted {
+		if n.Value != "" || n.Key == "" || read[n.Key] {
+			return n
+		}
+		cp := *n
+		cp.Key = ""
+		return &cp
 	}
 	if (n.Key == "" || read[n.Key]) && (n.Value == "" || read[n.Value]) {
 		return n

@@ -110,9 +110,10 @@ type ExprCtx struct {
 	// derived from one of its nodes included.
 	OuterReceiver string
 	OuterNodes    map[string]bool
-	// InstanceClosure is set where a component instance is a closure (html's
-	// factory): its methods are functions in scope by bare name.
-	InstanceClosure bool
+	// ClosureMethods says Component's own methods are closures of the
+	// function translating it -- an html instance factory -- so a call to one
+	// names it bare and hands it no receiver.
+	ClosureMethods bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -273,7 +274,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		StateFieldsExported: ctx.StateFieldsExported,
 		OuterReceiver:       ctx.OuterReceiver,
 		OuterNodes:          ctx.OuterNodes,
-		InstanceClosure:     ctx.InstanceClosure,
+		ClosureMethods:      ctx.ClosureMethods,
 	}
 }
 

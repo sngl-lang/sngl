@@ -172,6 +172,9 @@ type irAnalysis struct {
 type overlayInfo struct {
 	openExpr string
 	closeVar string
+	// closeCode closes an overlay a loop renders: the statement that clears
+	// the gate of whichever copy is open.
+	closeCode string
 }
 
 type irBind struct {
@@ -543,11 +546,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// func list, so the generic user-func loop below never meets them and
 	// needs no exclusion -- which is what the name match on `_canvasDraw`
 	// used to be for.
-	emitCanvasSurfaceDecls(&b, ctx.Canvases)
-	emitCanvasDrawFuncs(&b, ctx.Canvases, gc)
+	inLoop := loopCanvases(ctx)
+	emitCanvasSurfaceDecls(&b, ctx.Canvases, inLoop)
+	emitCanvasDrawFuncs(&b, ctx.Canvases, inLoop, gc)
 	hasCanvas := len(ctx.Canvases.All()) > 0
 	if hasCanvas {
-		emitCanvasTransmitMethod(&b, ctx.Canvases, gc)
+		emitCanvasTransmitMethod(&b, ctx, inLoop, gc)
 	}
 
 	// Every component this build renders, not only the root: one that
@@ -585,8 +589,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		// rather than on any component, and a clone that touched no state was
 		// not in stateFuncs either: `func (m *main) Paint__inst0` came out
 		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
-		// same question here and always did.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] {
+		// same question here and always did. A synthesized func is not in
+		// ModelFreeFuncs either, so its call sites spell it on m.
+		if fn.Receiver == "" && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -993,6 +998,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			fmt.Fprintf(b, "\t\t\tcase %s:\n", ov.openExpr)
 			if ov.closeVar != "" {
 				fmt.Fprintf(b, "\t\t\t\tm.%s = false\n", ov.closeVar)
+			} else if ov.closeCode != "" {
+				fmt.Fprintf(b, "\t\t\t\t%s\n", ov.closeCode)
 			} else {
 				// No recoverable open var: consume the key but leave state
 				// unchanged (the overlay's gate is a compound expression).
@@ -1100,7 +1107,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 // is open. Handlers inside an Overlay primitive get NO guard — overlay-content
 // buttons (e.g. a modal's Close) stay live while the overlay captures input.
 func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, invokerSink btInvokerSink) {
-	emitIRButtonHandlersWalk(b, stmts, info, gc, nil, bgGuard, false, invokerSink)
+	emitIRButtonHandlersWalk(b, stmts, info, gc, bgGuard, false, invokerSink)
 }
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
@@ -1108,17 +1115,20 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 type btInvokerSink func(n *ir.NodeInst, event string, slotIdx int, keyExpr string)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
-// button/checkbox handlers. currentFor is non-nil when inside a for-loop that
-// passFocusOrder turned into a loop slot; handlers inside it are emitted with a
-// loop-wrapped body that matches the cursor to the current iteration. bgGuard is
-// appended to each case unless inOverlay is set (overlay-content handlers stay
-// unguarded so they keep working while the overlay is open).
-func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, currentFor *ir.For, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
+// button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
+// emitLoopSlotHandlers. bgGuard is appended to each case unless inOverlay is
+// set (overlay-content handlers stay unguarded so they keep working while the
+// overlay is open).
+func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis, gc *golang.GoIRContext, bgGuard string, inOverlay bool, invokerSink btInvokerSink) {
 	overlayGuard := bgGuard
 	if inOverlay {
 		overlayGuard = ""
 	}
-	emitStaticCase := func(slotIdx int, keyGuard string, block []ir.Stmt) {
+	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
+		slotIdx := nodeFocusSlotIdx(n)
+		if slotIdx < 0 {
+			return
+		}
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
@@ -1127,85 +1137,16 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
-	emitLoopCase := func(slotIdx int, keyGuard, cursorVar string, f *ir.For, block []ir.Stmt) {
-		var tmp strings.Builder
-		for _, stmt := range block {
-			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(&tmp, "\t\t\t\t\t%s\n", line)
-			}
-		}
-		syncMutatedInputs(&tmp, block, info.widgets, info.binds, gc)
-		body := tmp.String()
-
-		// Bind the element only where the handler reads it: Go rejects an
-		// unused loop variable. The key is the ordinal the emitted cursor test
-		// compares against, so it is always bound.
-		keyName, valName := f.Key, f.Value
-		if !loopVarUsed(block, valName, f.ValueSym) {
-			valName = "_"
-		}
-		iterExpr := gc.EvalExpr(f.Iter)
-
-		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
-		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
-		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
-		b.WriteString(body)
-		b.WriteString("\t\t\t\t\tbreak\n")
-		b.WriteString("\t\t\t\t}\n")
-		b.WriteString("\t\t\t}\n")
-	}
-
-	emitNodeCase := func(n *ir.NodeInst, keyGuard string, block []ir.Stmt) {
-		if currentFor == nil {
-			// Static slot.
-			if idx := nodeFocusSlotIdx(n); idx >= 0 {
-				emitStaticCase(idx, keyGuard, block)
-			}
-			return
-		}
-		// Loop-body slot: extract slot and cursor info from __focused prop.
-		fp := codegen.NodeProp(n, "__focused")
-		if fp == nil {
-			return
-		}
-		outer, ok := fp.(*ir.Binary)
-		if !ok || outer.Op != ast.BinAnd {
-			return
-		}
-		// Left: __focusID == slotIdx
-		leftBin, ok := outer.Left.(*ir.Binary)
-		if !ok || leftBin.Op != ast.BinEq {
-			return
-		}
-		lit, ok := leftBin.Right.(*ir.Literal)
-		if !ok {
-			return
-		}
-		slotIdx, err := strconv.Atoi(lit.Value)
-		if err != nil {
-			return
-		}
-		// Right: cursor == key
-		rightBin, ok := outer.Right.(*ir.Binary)
-		if !ok || rightBin.Op != ast.BinEq {
-			return
-		}
-		cursorIdent, ok := rightBin.Left.(*ir.Ident)
-		if !ok {
-			return
-		}
-		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, currentFor, block)
-	}
 
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, n, bgGuard, inOverlay, invokerSink)
+			emitLoopSlotHandlers(b, n, info, gc, overlayGuard)
 		case *ir.If:
-			emitIRButtonHandlersWalk(b, n.Body, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
-			emitIRButtonHandlersWalk(b, n.Else, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Body, info, gc, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Else, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.ErrorBoundary:
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
+			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
 			if ir.IsWindowNode(n) {
 				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
@@ -1226,9 +1167,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				// A loop slot's focus index is per-iteration, so only a static
-				// one is a thing a test can name and drive.
-				if invokerSink != nil && currentFor == nil {
+				if invokerSink != nil {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
 						invokerSink(n, ev.On, idx, teaKeyMsg(ev.Key))
 					}
@@ -1237,7 +1176,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// Overlay-content handlers stay live while the overlay is open, so
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay, invokerSink)
+			for _, s := range ir.SuppliedContent(n) {
+				emitIRButtonHandlersWalk(b, s.Body, info, gc, bgGuard, childInOverlay, invokerSink)
+			}
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -1266,7 +1207,7 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 			collectOverlays(n.Body, n, gc, out)
 			collectOverlays(n.Else, gate, gc, out)
 		case *ir.For:
-			collectOverlays(n.Body, gate, gc, out)
+			collectLoopOverlays(n, gate, gc, out)
 		case *ir.ErrorBoundary:
 			collectOverlays(n.Children, gate, gc, out)
 		case *ir.NodeInst:

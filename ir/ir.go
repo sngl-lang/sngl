@@ -788,6 +788,9 @@ type Prop struct {
 type EventDecl struct {
 	Name string
 	Type *Type // payload type; nil for void events
+	// Params replaces Type for an event a lowering synthesized to carry more
+	// than one value, which no source declaration can spell.
+	Params []*Param `json:",omitempty"`
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`

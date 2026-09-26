@@ -288,10 +288,9 @@ type Env struct {
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
 	ContextVals map[*ir.Context]any
-	// childEnvs caches per-NodeInst child component envs so state
-	// persists across ResolveElementRef calls. Keyed by the
-	// instantiation site's *ir.NodeInst pointer.
-	childEnvs map[*ir.NodeInst]*Env
+	// childEnvs caches child component envs so state persists across
+	// ResolveElementRef calls and re-renders.
+	childEnvs map[childKey]*Env
 	// callChildEnvs is the analogous cache for user-component instantiations
 	// expressed as ir.CallStmt (children-less call form, e.g. `main()`).
 	callChildEnvs map[*ir.CallStmt]*Env
@@ -331,7 +330,7 @@ type Env struct {
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
-		childEnvs: map[*ir.NodeInst]*Env{},
+		childEnvs: map[childKey]*Env{},
 	}
 }
 
@@ -445,7 +444,7 @@ func (env *Env) Values(f func(val any) bool) {
 func (env *Env) Snapshot() *Env {
 	childEnvs := env.childEnvs
 	if childEnvs == nil {
-		childEnvs = map[*ir.NodeInst]*Env{}
+		childEnvs = map[childKey]*Env{}
 	}
 	cp := &Env{
 		vals: make(map[ir.Symbol]any, len(env.vals)),

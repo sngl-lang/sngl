@@ -364,7 +364,9 @@ func (m Model) View() tea.View {
 	if m.p__inst1 == "done" {
 		part2 = lipgloss.NewStyle().Render(fmt.Sprint("first done"))
 	}
-	parts = append(parts, part2)
+	if part2 != "" {
+		parts = append(parts, part2)
+	}
 	var part3 string
 	part3 = lipgloss.NewStyle().Render(fmt.Sprint(Local__secondShout(m.here__inst2, 2)))
 	parts = append(parts, part3)
@@ -378,7 +380,9 @@ func (m Model) View() tea.View {
 	if m.p__inst2 == "ready" {
 		part6 = lipgloss.NewStyle().Render(fmt.Sprint("second ready"))
 	}
-	parts = append(parts, part6)
+	if part6 != "" {
+		parts = append(parts, part6)
+	}
 	var part7 string
 	part7 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(Pick(m.seed__inst0))))
 	parts = append(parts, part7)
@@ -622,7 +626,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4e743e1d6cc1da76db4efe8b19b556c0
+pass sha256:1c4e25454f8e7a02109cd6be26d6e515
 -- run/kotlin/android --
 pass sha256:5c25bf679a992bdcb23bafef0987dc4f
 -- run/none/html --

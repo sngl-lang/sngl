@@ -224,6 +224,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 					goType:      "[]*C.GtkWidget",
 					init:        "nil",
 					noAccessors: true,
+				}, irBind{
+					name:        codegen.SlotAnchorField(v.Name),
+					goType:      "*C.GtkWidget",
+					init:        "nil",
+					noAccessors: true,
 				})
 				continue
 			}
@@ -490,6 +495,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		Imports:         map[string]bool{},
 		NeedsBoolToInt:  c.shared.boolToInt,
 		NeedsGObjectSet: c.shared.gObjectSet,
+		NeedsSlotAnchor: c.shared.slotAnchor,
 		Wrapped:         c.wrapped,
 	}
 	if c.wrapped {
@@ -668,11 +674,13 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 // cType, replacing the two-way-bind assignment when a node-attached handler is
 // promoted to a top-level Func the trampoline calls with no args.
 func gtk4EventGetterExpr(cType, nodeID string, wrapped bool) ir.Expr {
-	widgetRef := &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true}
 	if wrapped {
-		// No qualifyNodeExpr needed: ModelFieldRef renders the ref as m.<nodeID>.
 		return rtEventGetterExpr(cType, codegen.ModelFieldRef(nodeID))
 	}
+	return cgoEventGetterExpr(cType, &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true})
+}
+
+func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	switch cType {
 	case "GtkEntry":
 		// In GTK4 the text accessor moved to GtkEditable.
@@ -834,6 +842,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	stmts := fn.Block
 	var prelude []ir.Stmt
+	nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+	cType := tr.idCTypes[nodeID]
+	if cType == "" {
+		cType = sig.CType
+	}
 
 	// Strip the synthesized leading `var = e.<field>` two-way bind and re-emit
 	// as `m.<var> = <gettercall>`; the trampoline exposes no event param.
@@ -845,12 +858,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 				// The SNGL event param may be named anything, so key off the
 				// field: the bare-ident operand IS the event param, never `m`.
 				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name != "m" && sel.Field == sig.Field {
-					// nodeID = handler-name minus the "_<event>_handler" suffix.
-					nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-					cType := tr.idCTypes[nodeID]
-					if cType == "" {
-						cType = sig.CType
-					}
 					getter := gtk4EventGetterExpr(cType, nodeID, wrapped)
 					if getter != nil {
 						prelude = []ir.Stmt{&ir.Assign{
@@ -865,24 +872,13 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		}
 	}
 
-	// Any other read of the payload's value reads the widget as well: the
-	// trampoline hands the handler nothing to read it off.
-	if sig.EventVar != "" && sig.Field != "" && len(fn.Params) > 0 {
-		nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-		cType := tr.idCTypes[nodeID]
-		if cType == "" {
-			cType = sig.CType
-		}
-		if getter := gtk4EventGetterExpr(cType, nodeID, wrapped); getter != nil {
-			codegen.ReadEventField(stmts, fn.Params[0], sig.Field, getter)
-		}
+	if sig.CType != "" {
+		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
 	}
-
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	// Drop self-setter splices: writing the entry's text from inside its own
 	// "changed" handler re-fires the signal and recurses.
-	selfNode := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-	body = dropSelfSetterCalls(body, selfNode)
+	body = dropSelfSetterCalls(body, nodeID)
 	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
 	// only connects a signal that answers to the event. An event no signal
 	// answers to is a component's own -- a func-typed prop its instance calls
@@ -890,7 +886,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// unconditionally left the payload ident undefined in the body that reads
 	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
 	params := fn.Params
-	if tr.signalFor(selfNode, fn.LoweredFromEvent) != "" {
+	if tr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
 		params = nil
 	}
 	synthesized := &ir.Func{

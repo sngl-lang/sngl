@@ -1,0 +1,126 @@
+# Two html instance factories that built or rendered wrong, executed in a
+# real Chromium.
+#
+# method.sngl: a component built at run time whose body declares a func. The
+# factory emitted it as `function bump(this)`, which esbuild refuses, and the
+# call as `Card_bump(state)`, a page function reading cells only the factory
+# holds. Each card bumps itself once on mount, so both read 1.
+#
+# order.sngl: a reactive `if` in an instance body, followed by siblings. Its
+# slot rendered into the parent with nothing to insert before, so the node it
+# rendered on re-render landed after `after`, and one at the root of the body
+# landed before `before` on the first render. Each slot now has its own
+# anchor where it was written.
+
+[!chromium] skip 'the rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html method.sngl
+stdout 'PASS'
+grep '<span>a 1</span>.*<span>b 1</span>' method.sngl.snapshots/bumped.html
+
+sngl test --platform=html order.sngl
+stdout 'PASS'
+grep 'before a</span>.*on a</span>.*after a</span>' order.sngl.snapshots/boxed.html
+grep 'before a</span>.*on a</span>.*after a</span>' order.sngl.snapshots/root.html
+
+-- method.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Card(label string) node {
+    var hits = 0
+
+    func bump() {
+        hits = hits + 1
+    }
+
+    vbox {
+        text(value="{label} {hits}")
+        effect(@mount { bump() })
+    }
+}
+
+component main node {
+    var items = ["a", "b"]
+
+    vbox {
+        for var it = items {
+            Card(label=it)
+        }
+    }
+}
+
+func testBumped(t Test, c main) {
+    t.snapshot("bumped")
+}
+
+window {
+    main
+}
+-- order.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Boxed(label string, on bool) node {
+    var n = 0
+
+    vbox {
+        text(value="before {label}")
+        if on {
+            text(value="on {label}")
+        }
+        text(value="after {label}")
+    }
+}
+
+component Rooted(label string, on bool) node {
+    var n = 0
+
+    text(value="before {label}")
+    if on {
+        text(value="on {label}")
+    }
+    text(value="after {label}")
+}
+
+component main node {
+    var items = ["a"]
+    var on = false
+
+    vbox {
+        button #flip(text="flip", @click { on = !on })
+        for var it = items {
+            Boxed(label=it, on=on)
+        }
+    }
+}
+
+component rootMain node {
+    var items = ["a"]
+    var on = true
+
+    vbox {
+        for var it = items {
+            Rooted(label=it, on=on)
+        }
+    }
+}
+
+func testBoxed(t Test, c main) {
+    c.flip.click()
+    t.snapshot("boxed")
+}
+
+func testRoot(t Test, c rootMain) {
+    t.snapshot("root")
+}
+
+window {
+    main
+    rootMain
+}

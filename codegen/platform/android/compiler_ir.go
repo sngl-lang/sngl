@@ -933,10 +933,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
-	hasSlot := cc.Component.ChildrenType != nil
-	if hasSlot {
-		params = append(params, "slotContent: @Composable () -> Unit = {}")
-	}
+	params = append(params, slotParams(cc.Component)...)
+	params = append(params, eventParams(cc.Component)...)
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 
 	compKC := kc.ForComponent(cc.Component)
@@ -995,12 +993,11 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	}
 
 	vc := &irComposeContext{
-		kc:      compKC,
-		ctx:     ctx,
-		buf:     b,
-		indent:  1,
-		hasSlot: hasSlot,
-		combo:   combo,
+		kc:     compKC,
+		ctx:    ctx,
+		buf:    b,
+		indent: 1,
+		combo:  combo,
 	}
 
 	for _, s := range cc.Body {

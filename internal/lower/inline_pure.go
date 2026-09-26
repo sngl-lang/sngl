@@ -640,14 +640,16 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
 
+	// Apply event-invocation substitution: replace any *ir.Emit whose
+	// Name matches a user-provided event handler with the handler body.
+	// Before the slots are spliced, since an emit in the content the call
+	// site supplied is the caller's own and names none of these events.
+	body = substituteEvents(body, callsite.Handlers)
+
 	// Apply slot substitution: replace each *ir.SlotInst with what the call
 	// site supplied for it -- its ordinary children for the anonymous slot,
 	// the matching `slot name { ... }` block for a named one.
 	body = substituteSlots(body, callsite)
-
-	// Apply event-invocation substitution: replace any *ir.Emit whose
-	// Name matches a user-provided event handler with the handler body.
-	body = substituteEvents(body, callsite.Handlers)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
@@ -1051,6 +1053,10 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 		return &clone
 	case *ir.SlotInst:
 		clone := *n
+		clone.Args = make([]ir.Expr, len(n.Args))
+		for i, a := range n.Args {
+			clone.Args[i] = deepCloneExpr(a)
+		}
 		clone.Children = deepCloneStmts(n.Children)
 		clone.Slots = deepCloneSlots(n.Slots)
 		return &clone

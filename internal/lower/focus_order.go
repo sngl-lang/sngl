@@ -14,9 +14,8 @@ var passFocusOrder = pass{
 	apply:   lowerFocusOrder,
 }
 
-// focusSlot is one position in the tab-order sequence.
-// It is either a single static focusable node or a for-loop
-// whose body contains focusable nodes.
+// focusSlot is one position in the tab-order sequence: a single static
+// focusable node, or the outermost for-loop whose subtree holds any.
 type focusSlot struct {
 	isLoop  bool
 	slotIdx int
@@ -24,17 +23,30 @@ type focusSlot struct {
 	loop    *loopSlotInfo
 }
 
+// A loop slot's cursor is an ordinal over the focusable nodes the loop
+// renders, which the view counts into posVar and lenFunc counts for Tab.
 type loopSlotInfo struct {
 	forStmt   *ir.For
-	cursorVar *ir.Var     // __focusLoopN_cursor
-	keyVar    *ir.LoopVar // synthetic loop key (integer index)
+	cursorVar *ir.Var // __focusLoopN_cursor
+	posVar    *ir.LoopVar
+	lenFunc   *ir.Func
 }
 
 func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	for _, o := range ir.Owners(pkg) {
+		if err := refuseFocusReadingSlotArgs(o.Stmts()); err != nil {
+			return err
+		}
+	}
 	for _, comp := range pkg.Components {
+		if comp.RuntimeInstance {
+			if err := refuseFocusInRecursion(comp); err != nil {
+				return err
+			}
+		}
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
 	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
@@ -50,14 +62,6 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		return
 	}
 
-	// Ensure every loop slot has an integer key variable.
-	for i := range slots {
-		if slots[i].isLoop {
-			ensureLoopKey(slots[i].loop, i)
-		}
-	}
-
-	// __focusID tracks which slot is active.
 	focusIDVar := &ir.Var{
 		Name:        "__focusID",
 		Type:        ir.TypInt,
@@ -69,7 +73,6 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		return &ir.Ident{Name: "__focusID", Type: ir.TypInt, Sym: focusIDVar, Synthesized: true}
 	}
 
-	// Per-loop cursor vars (__focusLoopN_cursor).
 	for i := range slots {
 		s := &slots[i]
 		if !s.isLoop {
@@ -78,49 +81,164 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		name := fmt.Sprintf("__focusLoop%d_cursor", s.slotIdx)
 		cv := &ir.Var{Name: name, Type: ir.TypInt, Init: intLiteralLit(0), Synthesized: true}
 		s.loop.cursorVar = cv
+		s.loop.posVar = &ir.LoopVar{Name: fmt.Sprintf("__focusPos%d", s.slotIdx), Type: ir.TypInt}
 		*vars = append(*vars, cv)
 	}
 
-	// Inject __focused bool prop on every focusable node.
 	injectFocusedProps(stmts, slots, focusIDIdent)
 
-	// Synthesize __focusNext / __focusPrev.
+	for i := range slots {
+		if slots[i].isLoop {
+			fn := buildLoopLenFunc(slots[i])
+			slots[i].loop.lenFunc = fn
+			*funcs = append(*funcs, fn)
+		}
+	}
+
 	*funcs = append(*funcs,
 		buildFocusNav("__focusNext", slots, focusIDIdent, true),
 		buildFocusNav("__focusPrev", slots, focusIDIdent, false),
 	)
 }
 
-// ensureLoopKey makes sure the for-loop has an integer key (index) variable
-// that can be compared against the cursor.
-//
-// Only the two-variable list head arrives with an integer Key. The others are
-// rewritten into that form -- index in Key, whatever they bound in Value -- so
-// every consumer downstream keeps reading Key as the index. A map head has no
-// free position to rewrite into, and needs none: the checker refuses a map
-// loop in a view body, so one cannot reach a focus slot.
-func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
-	f := ls.forStmt
-	if f.Value == "" {
-		// Value "_" when the head bound nothing: from here on the loop is
-		// two-variable and the element position must name something.
-		f.Value, f.ValueSym = f.Key, f.KeySym
-		if f.Value == "" {
-			f.Value = "_"
+// refuseFocusInRecursion: Tab and Update reach only the stops the window
+// renders, and a recursion renders each level from a function of its own.
+func refuseFocusInRecursion(comp *ir.Component) error {
+	slots := gatherFocusSlots(comp.Body)
+	if len(slots) == 0 {
+		return nil
+	}
+	var at *ir.NodeInst
+	if slots[0].isLoop {
+		_ = ir.Walk(slots[0].loop.forStmt.Body, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && nodeEffectiveFocusable(n) {
+				at = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+	} else {
+		at = slots[0].node
+	}
+	// An inlined primitive is positioned in its platform package.
+	pos := ir.StmtPos(at)
+	if comp.AST != nil && pos.File != comp.AST.Pos.File {
+		pos = comp.AST.Pos
+	}
+	return fmt.Errorf("%s: the recursive component %q renders a focusable node in its own body; this target's focus order reaches only what the window renders, and a recursion renders each level from a function of its own -- render the focusable nodes outside %q", pos, comp.Name, comp.Name)
+}
+
+func suppliedBodies(n *ir.NodeInst) [][]ir.Stmt {
+	var out [][]ir.Stmt
+	for _, s := range ir.SuppliedContent(n) {
+		out = append(out, s.Body)
+	}
+	return out
+}
+
+// refuseFocusReadingSlotArgs: content handed to a recursion is one focus stop,
+// whose handler Update runs where it was written, with no slot argument bound.
+func refuseFocusReadingSlotArgs(stmts []ir.Stmt) error {
+	var err error
+	_ = ir.Walk(stmts, func(node ir.Node) error {
+		n, ok := node.(*ir.NodeInst)
+		if !ok || err != nil || n.Component == nil || !n.Component.RuntimeInstance {
+			return nil
 		}
-		f.Key, f.KeySym = fmt.Sprintf("__focusIdx%d", slotIdx), nil
+		for _, s := range ir.SuppliedContent(n) {
+			if s.Content == nil || len(s.Content.Params) == 0 {
+				continue
+			}
+			params := map[ir.Symbol]bool{}
+			for _, p := range s.Content.Params {
+				params[p] = true
+			}
+			if at, p := focusReadsParam(s.Body, params); at != nil {
+				pos := nodePos(at)
+				if p.AST != nil && p.AST.Pos.IsValid() {
+					pos = p.AST.Pos.String()
+				}
+				err = fmt.Errorf("%s: a focusable node in the %q content handed to %q reads the slot argument %q -- %q is a recursion, rendered once per level, and bubbletea gives that content one focus stop and runs its handler where the content was written, where no argument is bound; read the caller's state instead", pos, s.Decl.Name, n.Component.Name, p.Name, n.Component.Name)
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return err
+}
+
+// focusReadsParam is the first focusable node under stmts whose handler, or
+// an if or for around it, reads one of params, and the name it read.
+func focusReadsParam(stmts []ir.Stmt, params map[ir.Symbol]bool) (*ir.NodeInst, *ir.Ident) {
+	reads := func(root any) *ir.Ident {
+		var found *ir.Ident
+		_ = ir.Walk(root, func(node ir.Node) error {
+			if id, ok := node.(*ir.Ident); ok && id.Sym != nil && params[id.Sym] {
+				found = id
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
 	}
-	if f.KeySym != nil {
-		ls.keyVar = f.KeySym
-		return
+	firstFocusable := func(stmts []ir.Stmt) *ir.NodeInst {
+		var found *ir.NodeInst
+		_ = ir.Walk(stmts, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && nodeEffectiveFocusable(n) {
+				found = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
 	}
-	// The checker sets KeySym whenever Key is named, so this is a loop some
-	// other pass built, or the index just synthesized above. Store the symbol
-	// as well as holding it: an identifier the pass emits below refers to this
-	// one, and a symbol the statement does not carry is a symbol nothing else
-	// can reach.
-	ls.keyVar = &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
-	f.KeySym = ls.keyVar
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if nodeEffectiveFocusable(n) {
+				for _, h := range n.Handlers {
+					if h.Func == nil {
+						continue
+					}
+					if p := reads(h.Func.Block); p != nil {
+						return n, p
+					}
+				}
+			}
+			for _, b := range suppliedBodies(n) {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.If:
+			if p := reads(n.Cond); p != nil {
+				if at := firstFocusable(append(slices.Clip(n.Body), n.Else...)); at != nil {
+					return at, p
+				}
+			}
+			for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.For:
+			if p := reads(n.Iter); p != nil {
+				if at := firstFocusable(append(slices.Clip(n.Body), n.Else...)); at != nil {
+					return at, p
+				}
+			}
+			for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.ErrorBoundary:
+			if at, p := focusReadsParam(n.Children, params); at != nil {
+				return at, p
+			}
+		}
+	}
+	return nil, nil
 }
 
 // ---- slot gathering ----
@@ -139,16 +257,17 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 				idx := len(*slots)
 				*slots = append(*slots, focusSlot{slotIdx: idx, node: n})
 			}
-			walkForSlots(n.Children, slots)
+			for _, b := range suppliedBodies(n) {
+				walkForSlots(b, slots)
+			}
 		case *ir.For:
-			if hasFocusableNodes(n.Body) {
+			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				idx := len(*slots)
 				*slots = append(*slots, focusSlot{
 					isLoop:  true,
 					slotIdx: idx,
 					loop:    &loopSlotInfo{forStmt: n},
 				})
-				// Do not recurse further — the loop occupies one slot.
 			}
 		case *ir.If:
 			walkForSlots(n.Body, slots)
@@ -161,9 +280,6 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 	}
 }
 
-// hasFocusableNodes reports whether stmts contain at least one focusable
-// NodeInst (directly, or through If/PlatformFilter/children — but not inside
-// nested For loops, which are their own slots).
 func hasFocusableNodes(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -171,7 +287,11 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			if nodeEffectiveFocusable(n) {
 				return true
 			}
-			if hasFocusableNodes(n.Children) {
+			if slices.ContainsFunc(suppliedBodies(n), hasFocusableNodes) {
+				return true
+			}
+		case *ir.For:
+			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				return true
 			}
 		case *ir.If:
@@ -194,7 +314,6 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 // ---- prop injection ----
 
 func injectFocusedProps(stmts []ir.Stmt, slots []focusSlot, focusIDIdent func() *ir.Ident) {
-	// Build lookup maps.
 	loopSlots := map[*ir.For]*focusSlot{}
 	staticSlots := map[*ir.NodeInst]*focusSlot{}
 	for i := range slots {
@@ -219,21 +338,12 @@ func walkInjectFocused(
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			if slot, ok := staticSlots[n]; ok {
-				// Static focusable: __focused = __focusID == slotIdx
 				n.Props = append(n.Props, ir.Arg{
 					Name:  "__focused",
 					Value: focusEqExpr(focusIDIdent(), slot.slotIdx),
 				})
 			} else if inLoop != nil && nodeEffectiveFocusable(n) {
-				// Loop-body focusable: __focused = __focusID == S && cursor == key
 				ls := inLoop.loop
-				cursorIdent := &ir.Ident{
-					Name:        ls.cursorVar.Name,
-					Type:        ir.TypInt,
-					Sym:         ls.cursorVar,
-					Synthesized: true,
-				}
-				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ls.keyVar.Type, Sym: ls.keyVar}
 				n.Props = append(n.Props, ir.Arg{
 					Name: "__focused",
 					Value: &ir.Binary{
@@ -243,20 +353,23 @@ func walkInjectFocused(
 						Right: &ir.Binary{
 							Type:  ir.TypBool,
 							Op:    ast.BinEq,
-							Left:  cursorIdent,
-							Right: keyIdent,
+							Left:  &ir.Ident{Name: ls.cursorVar.Name, Type: ir.TypInt, Sym: ls.cursorVar, Synthesized: true},
+							Right: &ir.Ident{Name: ls.posVar.Name, Type: ir.TypInt, Sym: ls.posVar, Synthesized: true},
 						},
 					},
 				})
 			}
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			for _, b := range suppliedBodies(n) {
+				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop)
+			}
 
 		case *ir.For:
-			if slot, ok := loopSlots[n]; ok {
-				walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
-			} else {
-				walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
+			slot := inLoop
+			if s, ok := loopSlots[n]; ok {
+				slot = s
 			}
+			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
+			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot)
 
 		case *ir.If:
 			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
@@ -279,6 +392,71 @@ func focusEqExpr(left ir.Expr, slotIdx int) *ir.Binary {
 	}
 }
 
+// buildLoopLenFunc is the slot's loop with each focusable node replaced by an
+// increment.
+func buildLoopLenFunc(slot focusSlot) *ir.Func {
+	ls := slot.loop
+	sym := &ir.Var{Name: "__focusCount", Type: ir.TypInt, Synthesized: true}
+	ref := func() *ir.Ident {
+		return &ir.Ident{Name: sym.Name, Type: ir.TypInt, Sym: sym, Synthesized: true}
+	}
+	body := []ir.Stmt{&ir.LocalVar{Name: sym.Name, Type: ir.TypInt, Init: intLiteralLit(0), Sym: sym}}
+	body = append(body, focusCountStmts([]ir.Stmt{ls.forStmt}, ref)...)
+	body = append(body, &ir.Return{Value: ref()})
+	return &ir.Func{
+		Name:        fmt.Sprintf("__focusLoop%d_len", slot.slotIdx),
+		Return:      ir.TypInt,
+		Synthesized: true,
+		Block:       body,
+	}
+}
+
+func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
+	var out []ir.Stmt
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if nodeEffectiveFocusable(n) {
+				out = append(out, &ir.Assign{
+					Target: count(),
+					Op:     ast.AssignSet,
+					Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: count(), Right: intLiteralLit(1)},
+				})
+			}
+			for _, b := range suppliedBodies(n) {
+				out = append(out, focusCountStmts(b, count)...)
+			}
+		case *ir.For:
+			body, els := focusCountStmts(n.Body, count), focusCountStmts(n.Else, count)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			loop := *n
+			loop.Iter = deepCloneExpr(n.Iter)
+			loop.Body, loop.Else = body, els
+			out = append(out, &loop)
+		case *ir.If:
+			if n.FromTernary {
+				continue
+			}
+			body, els := focusCountStmts(n.Body, count), focusCountStmts(n.Else, count)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			out = append(out, &ir.If{Cond: deepCloneExpr(n.Cond), Body: body, Else: els})
+		case *ir.ErrorBoundary:
+			out = append(out, focusCountStmts(n.Children, count)...)
+		case *ir.ContextProvider:
+			out = append(out, focusCountStmts(n.Children, count)...)
+		}
+	}
+	return out
+}
+
+func callLoopLen(ls *loopSlotInfo) *ir.Call {
+	return &ir.Call{Type: ir.TypInt, Func: ls.lenFunc}
+}
+
 // ---- navigation functions ----
 
 // buildFocusNav builds __focusNext (forward=true) or __focusPrev (forward=false).
@@ -297,8 +475,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 
 		var body []ir.Stmt
 		if !slot.isLoop {
-			// Static slot: just move to the adjacent slot.
-			body = stmtsMoveTo(slots, adjacent, focusIDIdent, false)
+			body = stmtsMoveTo(slots, adjacent, focusIDIdent, !forward)
 		} else {
 			// Loop slot: try to advance/retreat cursor within the loop first.
 			ls := slot.loop
@@ -316,7 +493,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 			lenVar := &ir.LocalVar{
 				Name: "__focusLen",
 				Type: ir.TypInt,
-				Init: callListLength(ls.forStmt.Iter),
+				Init: callLoopLen(ls),
 				Sym:  lenSym,
 			}
 			lenIdent := func() *ir.Ident {
@@ -449,7 +626,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 	lenVar := &ir.LocalVar{
 		Name: "__focusLen",
 		Type: ir.TypInt,
-		Init: callListLength(ls.forStmt.Iter),
+		Init: callLoopLen(ls),
 		Sym:  lenSym,
 	}
 	return []ir.Stmt{

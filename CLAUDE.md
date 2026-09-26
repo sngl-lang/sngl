@@ -367,7 +367,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **html** — two modes selected by `--lang`:
   - `--lang none` (default): static site — one `index.html` per window with inline JS.
     Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
@@ -705,6 +705,13 @@ field of `state`; marked on one half only, the page declared one binding and
 read another, falsy by accident. bubbletea says it from the other side —
 `__failed0` title-cases to itself, so the accessor it skips for a synthesized
 field would have collided with the field.
+
+Where the `if` lands is the boundary's parent node, so reactivity reaches
+through a boundary when it asks whether a node needs an id to render a slot
+into (`childrenContainReactiveSlot`). And once a view is flattened into
+statements the boundary around them holds nothing — a raise reaches its
+handler through `Call.ResolvedHandler` — so `codegen.WalkLowered` returns its
+children (`cmd/sngl/testdata/boundary_in_render_slot_runs.txt`).
 
 **The interpreter answers it itself**, in `Env.caught`. `sngl test` on the
 `none` platform runs the *checked* IR with no lowering at all — the same reason
@@ -1136,38 +1143,44 @@ and records each copy's origin (`checker.entryOrigin`): `SlotInst.Entry`
 carries the declared one, or the splice matches nothing and renders nothing
 (`slot_entry_generic.txtar`).
 
-**A component built at run time may not have a slot populated by name** —
-an entry's population included. No target renders one there: bubbletea and
-android emitted the component with no parameter for the slot, and the mutation
-platforms met the insertion unsubstituted. The inliner refuses it where it
-elects the runtime instance (`refuseRuntimePopulation`,
-`cmd/sngl/testdata/slot_population_runtime_instance.txt`); the interpreter,
-which renders it correctly, runs the checked IR and never asks.
+**A component built at run time renders what it is handed** — bare children,
+a population by name, a scoped one binding the insertion's arguments, and an
+entry's — on every target, each of them reading the caller's scope and the
+callee's arguments per copy (`testdata/runtime_instance_named_slot.txtar` and
+its `_scoped_rest`, `_slot_entry` and `_recursive` siblings,
+`cmd/sngl/testdata/runtime_instance_named_slots_runs.txt`). It used to be
+refused for everything but bare children.
 
-**Bare children are rendered there**, and on html, fyne and gtk4 that is
-`passInstanceSlots`: a factory or record is emitted from the declaration
-alone, so each instantiation handing one children gets a copy of the component
-(`Card__slot0`) with them spliced in by `substituteSlots`, and every other
-runtime instance has its insertions replaced by their fallbacks. What the
-children read from the caller crosses the way a slot child does in
-`passSlotChildInstances` — a value becomes a prop the render rewrites per
-copy, a handler an event whose body stays where it was written — so they read
-the loop variable of the copy they sit in and a new item renders a card with
-content (`testdata/runtime_instance_bare_children.txtar`,
-`cmd/sngl/testdata/runtime_instance_bare_children_runs.txt`). android passes
-them as a composable parameter and bubbletea splices, so neither runs the
-pass. `substituteSlots` would splice a named population too, but the lift
-reads only the bare children, and android and bubbletea have no answer for
-one, so the refusal above stands.
+On html, fyne and gtk4 that is `passInstanceSlots`: a factory or record is
+emitted from the declaration alone, so each instantiation handing one content
+gets a copy of the component (`Card__slot0`) with it spliced in by
+`substituteSlots`, and every other runtime instance has its insertions
+replaced by their fallbacks. A population's parameters are bound where the
+copy inserts it, so they are the callee's; what the content reads from the
+caller crosses the way a slot child does in `passSlotChildInstances` — a
+value becomes a prop the render rewrites per copy, a handler an event whose
+body stays where it was written, handed the host event's payload and any
+population parameter it reads (`EventDecl.Params`, the one event a source
+declaration cannot spell). A call reading a population parameter stays in the
+copy, since its arguments name nothing at the site.
+android passes each slot as a nullable composable parameter taking the slot's
+invocation list, an entry being a composable of its own; bubbletea's render
+method takes a func the same way, and splices a component with state. Null is
+"supplied nothing", which renders the insertion's fallback.
 A copy of a recursive body holds the recursive site again, so a copy is keyed
 by the template site it was made for *and* by the statements that site's
-children were cloned from, and a copy meeting its own site with the children
-it was made for reuses itself
+content was cloned from, and a copy meeting its own site with the content it
+was made for reuses itself
 (`testdata/runtime_instance_bare_children_recursive.txtar`). The site alone
 is not a key: every copy of a declaration holds a clone of each of its sites,
 so two callers forwarding different children would share the first one's copy
 (`runtime_instance_bare_children_forwarded.txtar` and its `_recursive_`
-sibling).
+sibling). Nor are the origins alone: a recursion forwarding `label(d * 10)`
+hands each level content cloned from the same statements and bound
+differently, so the key also carries the content's shape, and a site that
+has needed `maxSlotVariants` of them is refused — composing a slot at every
+level is what a function does, and the three targets build copies at compile
+time. bubbletea and android compose it (`slot_population_runtime_instance.txt`).
 
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
@@ -1655,7 +1668,10 @@ bound (`undefined: p`). What still differs is only what has nothing to
 reconcile: a stateless component is spliced, and a const loop whose body reads
 no state renders as a plain loop -- on html, as markup `optimize.Documents`
 unrolls. A window resets the context, because a loop over pages is not a
-position a page's body is repeated in.
+position a page's body is repeated in. A canvas under a `for` is built at run
+time for the same reason -- its surface and draw routine are its owner's one
+field and one method -- which `passCanvasInstances` does by synthesizing a
+component around it (`testdata/canvas_under_loop.txtar`).
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
@@ -1664,6 +1680,17 @@ and outside one fyne assigned every copy to the one Model field its id named.
 marks a *primitive* standing in a reactive position as well, on the
 declaration, and counting that made every loop of html elements a slot
 (`testdata/const_loop_beside_reactive_loop.txtar`).
+
+**A slot re-renders where it was written.** html renders each into a
+`display:contents` wrapper of its own; fyne and gtk4 render into the container
+the slot sits in, so each slot keeps a hidden anchor there
+(`codegen.SlotAnchorField`), added by its first render -- which runs while the
+container is built, at the slot's position -- and inserts its entries before
+it. Appending instead moved a re-rendered slot after every sibling below it
+(`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
+two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
+record also holds a reference on its root, since the slot holding it removes
+it before appending it again and GTK frees a widget its parent held alone.
 
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea
@@ -1677,7 +1704,37 @@ one cell per copy (`perCopyCells`): a map keyed by the loops' indices
 temporary stored back. A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
-collected by nobody and never ran.
+collected by nobody and never ran. A recursion is never spliced, so state
+inside one -- the recursive component's own vars or lifetime, a stateful
+component written in its body, or a canvas it renders -- has nowhere to live
+there and is refused with a position
+(`refuseStateInCycles`, `refuseCanvasInCycles`,
+`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
+it used to reach the Model as a field nothing declared, or the view as an
+empty string.
+
+**A loop's focus stops are the focusable nodes it renders**, not its
+iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one
+a single slot whose cursor is an ordinal over those nodes, nested loops and
+taken branches included: the view counts them as it renders (`__focusPosN`),
+`__focusLoopN_len` counts them for Tab, and Update's case for a key walks the
+loop the same way and runs the handler of the node the cursor names
+(`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
+one iteration -- a spliced card and the child handed to it -- were one stop
+with two `case` arms, and a nested loop's buttons were unreachable
+(`bubbletea/focus_run_test.go`). Content handed to a recursion is rendered
+once per level but is **one stop**, counted where the content is written: the
+slot func numbers its stops from where it was declared, so every copy is
+marked together and Enter runs the handler as written. That handler runs where
+no slot argument is bound, so a focusable node there whose handler, or a
+branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
+`bubbletea/focus_recursion_run_test.go`,
+`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
+drawing reads the iteration's variables, so it is written inline as the
+rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
+surface and a kitty image ID per copy, and the transmit reaches each copy
+through the same walk (`bubbletea/viewwalk.go`,
+`testdata/bubbletea_canvas_in_loop.txtar`).
 
 **An instance reaches the page through what holds it.** A fyne or gtk4 record
 holds its Model (`__model`), and a name its component does not declare -- the
@@ -1690,6 +1747,16 @@ the three mutation targets is the other direction: a write to page state
 updates the nodes of the scope that wrote it and of the page, and not those of
 *other* live instances reading it, so their views go stale until they are
 rebuilt.
+
+**An html instance is a closure, and its body is laid out the way the page's
+markup is.** Its component's own `func`s are closures beside its vars, called
+bare with no receiver (`ExprCtx.ClosureMethods`); spelled the page's way they
+were `function bump(this)`, which esbuild refuses. And each render slot whose
+first render the body writes gets a `display:contents` anchor at that
+position (`factorySlotAnchors`), as the page's markup gives one: rendered
+into the bare parent, a re-render had nothing to insert before and moved the
+slot's nodes past every sibling written after it
+(`cmd/sngl/testdata/runtime_instance_html_runs.txt`).
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
@@ -1833,6 +1900,17 @@ CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
 android, fyne flattens at render time because the tree is what a reactive
 program mutates, and bubbletea flattens at compile time because lipgloss
 returns a string with reset sequences in it.
+
+**A reactive `if` or `for` among spans** is a render slot only where a span
+can hold one, which is html's `display:contents` wrapper and what
+`#[gen.can(inlineSlots)]` says. Withheld, `slotFlows` makes the flow holding it
+the slot -- wrapped in a one-pass loop over a const, which re-renders its body
+on any state it reads -- and the `if` inside is an ordinary one: fyne builds
+the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
+refuses a `for` there, a label's markup being one expression
+(`testdata/markup_reactive_span.txtar`). Only the flow's own content is asked:
+an `if` holding a whole paragraph is its container's ordinary slot
+(`testdata/markup_flow_under_reactive_if.txtar`).
 
 `markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
 has no box, so most of `ui.Style` would type-check on a span and do nothing

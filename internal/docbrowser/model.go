@@ -247,7 +247,9 @@ func (m Model) View() tea.View {
 		content_1Children = append(content_1Children, content_1_1)
 		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
 	}
-	contentChildren = append(contentChildren, content_1)
+	if content_1 != "" {
+		contentChildren = append(contentChildren, content_1)
+	}
 	var content_2 string
 	if m.entry().Kind == "index" {
 		var content_2Children []string
@@ -264,7 +266,9 @@ func (m Model) View() tea.View {
 			content_2_2 = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath)))
 		}
-		content_2Children = append(content_2Children, content_2_2)
+		if content_2_2 != "" {
+			content_2Children = append(content_2Children, content_2_2)
+		}
 		var content_2_3 string
 		content_2_3 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_3)
@@ -282,7 +286,9 @@ func (m Model) View() tea.View {
 			content_2_5Items = append(content_2_5Items, content_2_5Item)
 		}
 		content_2_5 = strings.Join(content_2_5Items, "\n")
-		content_2Children = append(content_2Children, content_2_5)
+		if content_2_5 != "" {
+			content_2Children = append(content_2Children, content_2_5)
+		}
 		var content_2_6 string
 		content_2_6 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_6)
@@ -300,7 +306,9 @@ func (m Model) View() tea.View {
 			content_2_8Items = append(content_2_8Items, content_2_8Item)
 		}
 		content_2_8 = strings.Join(content_2_8Items, "\n")
-		content_2Children = append(content_2Children, content_2_8)
+		if content_2_8 != "" {
+			content_2Children = append(content_2Children, content_2_8)
+		}
 		var content_2_9 string
 		content_2_9 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_9)
@@ -318,7 +326,9 @@ func (m Model) View() tea.View {
 			content_2_11Items = append(content_2_11Items, content_2_11Item)
 		}
 		content_2_11 = strings.Join(content_2_11Items, "\n")
-		content_2Children = append(content_2Children, content_2_11)
+		if content_2_11 != "" {
+			content_2Children = append(content_2Children, content_2_11)
+		}
 		var content_2_12 string
 		content_2_12 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_12)
@@ -336,7 +346,9 @@ func (m Model) View() tea.View {
 			content_2_14Items = append(content_2_14Items, content_2_14Item)
 		}
 		content_2_14 = strings.Join(content_2_14Items, "\n")
-		content_2Children = append(content_2Children, content_2_14)
+		if content_2_14 != "" {
+			content_2Children = append(content_2Children, content_2_14)
+		}
 		var content_2_15 string
 		content_2_15 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_15)
@@ -354,7 +366,9 @@ func (m Model) View() tea.View {
 			content_2_17Items = append(content_2_17Items, content_2_17Item)
 		}
 		content_2_17 = strings.Join(content_2_17Items, "\n")
-		content_2Children = append(content_2Children, content_2_17)
+		if content_2_17 != "" {
+			content_2Children = append(content_2Children, content_2_17)
+		}
 		var content_2_18 string
 		content_2_18 = lipgloss.NewStyle().Render(fmt.Sprint(""))
 		content_2Children = append(content_2Children, content_2_18)
@@ -372,10 +386,14 @@ func (m Model) View() tea.View {
 			content_2_20Items = append(content_2_20Items, content_2_20Item)
 		}
 		content_2_20 = strings.Join(content_2_20Items, "\n")
-		content_2Children = append(content_2Children, content_2_20)
+		if content_2_20 != "" {
+			content_2Children = append(content_2Children, content_2_20)
+		}
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 	}
-	contentChildren = append(contentChildren, content_2)
+	if content_2 != "" {
+		contentChildren = append(contentChildren, content_2)
+	}
 	var content_3 string
 	if m.entry().Kind == "component" {
 		var content_3Children []string
@@ -400,7 +418,9 @@ func (m Model) View() tea.View {
 			content_3_3Items = append(content_3_3Items, content_3_3Item)
 		}
 		content_3_3 = strings.Join(content_3_3Items, "\n")
-		content_3Children = append(content_3Children, content_3_3)
+		if content_3_3 != "" {
+			content_3Children = append(content_3Children, content_3_3)
+		}
 		var content_3_4 string
 		content_3_4 = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888")).
@@ -415,7 +435,9 @@ func (m Model) View() tea.View {
 			content_3_5Items = append(content_3_5Items, content_3_5Item)
 		}
 		content_3_5 = strings.Join(content_3_5Items, "\n")
-		content_3Children = append(content_3Children, content_3_5)
+		if content_3_5 != "" {
+			content_3Children = append(content_3Children, content_3_5)
+		}
 		var content_3_6 string
 		content_3_6 = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888")).
@@ -430,10 +452,14 @@ func (m Model) View() tea.View {
 			content_3_7Items = append(content_3_7Items, content_3_7Item)
 		}
 		content_3_7 = strings.Join(content_3_7Items, "\n")
-		content_3Children = append(content_3Children, content_3_7)
+		if content_3_7 != "" {
+			content_3Children = append(content_3Children, content_3_7)
+		}
 		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
 	}
-	contentChildren = append(contentChildren, content_3)
+	if content_3 != "" {
+		contentChildren = append(contentChildren, content_3)
+	}
 	var content_4 string
 	if m.entry().Kind == "type" {
 		var content_4Children []string
@@ -458,7 +484,9 @@ func (m Model) View() tea.View {
 			content_4_3Items = append(content_4_3Items, content_4_3Item)
 		}
 		content_4_3 = strings.Join(content_4_3Items, "\n")
-		content_4Children = append(content_4Children, content_4_3)
+		if content_4_3 != "" {
+			content_4Children = append(content_4Children, content_4_3)
+		}
 		var content_4_4 string
 		content_4_4 = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888")).
@@ -473,10 +501,14 @@ func (m Model) View() tea.View {
 			content_4_5Items = append(content_4_5Items, content_4_5Item)
 		}
 		content_4_5 = strings.Join(content_4_5Items, "\n")
-		content_4Children = append(content_4Children, content_4_5)
+		if content_4_5 != "" {
+			content_4Children = append(content_4Children, content_4_5)
+		}
 		content_4 = lipgloss.JoinVertical(lipgloss.Left, content_4Children...)
 	}
-	contentChildren = append(contentChildren, content_4)
+	if content_4 != "" {
+		contentChildren = append(contentChildren, content_4)
+	}
 	var content_5 string
 	if m.entry().Kind == "enum" {
 		var content_5Children []string
@@ -496,10 +528,14 @@ func (m Model) View() tea.View {
 			content_5_2Items = append(content_5_2Items, content_5_2Item)
 		}
 		content_5_2 = strings.Join(content_5_2Items, "\n")
-		content_5Children = append(content_5Children, content_5_2)
+		if content_5_2 != "" {
+			content_5Children = append(content_5Children, content_5_2)
+		}
 		content_5 = lipgloss.JoinVertical(lipgloss.Left, content_5Children...)
 	}
-	contentChildren = append(contentChildren, content_5)
+	if content_5 != "" {
+		contentChildren = append(contentChildren, content_5)
+	}
 	var content_6 string
 	if m.entry().Kind == "func" {
 		var content_6Children []string
@@ -515,7 +551,9 @@ func (m Model) View() tea.View {
 		content_6Children = append(content_6Children, content_6_2)
 		content_6 = lipgloss.JoinVertical(lipgloss.Left, content_6Children...)
 	}
-	contentChildren = append(contentChildren, content_6)
+	if content_6 != "" {
+		contentChildren = append(contentChildren, content_6)
+	}
 	var content_7 string
 	if m.entry().Kind == "value" {
 		var content_7Children []string
@@ -532,7 +570,9 @@ func (m Model) View() tea.View {
 		content_7Children = append(content_7Children, content_7_2)
 		content_7 = lipgloss.JoinVertical(lipgloss.Left, content_7Children...)
 	}
-	contentChildren = append(contentChildren, content_7)
+	if content_7 != "" {
+		contentChildren = append(contentChildren, content_7)
+	}
 	var content_8 string
 	if m.entry().Kind == "prop" {
 		var content_8Children []string
@@ -548,7 +588,9 @@ func (m Model) View() tea.View {
 		content_8Children = append(content_8Children, content_8_2)
 		content_8 = lipgloss.JoinVertical(lipgloss.Left, content_8Children...)
 	}
-	contentChildren = append(contentChildren, content_8)
+	if content_8 != "" {
+		contentChildren = append(contentChildren, content_8)
+	}
 	var content_9 string
 	if m.entry().Kind == "field" {
 		var content_9Children []string
@@ -561,7 +603,9 @@ func (m Model) View() tea.View {
 		content_9Children = append(content_9Children, content_9_1)
 		content_9 = lipgloss.JoinVertical(lipgloss.Left, content_9Children...)
 	}
-	contentChildren = append(contentChildren, content_9)
+	if content_9 != "" {
+		contentChildren = append(contentChildren, content_9)
+	}
 	var content_10 string
 	if m.entry().Kind == "member" {
 		var content_10Children []string
@@ -574,7 +618,9 @@ func (m Model) View() tea.View {
 		content_10Children = append(content_10Children, content_10_1)
 		content_10 = lipgloss.JoinVertical(lipgloss.Left, content_10Children...)
 	}
-	contentChildren = append(contentChildren, content_10)
+	if content_10 != "" {
+		contentChildren = append(contentChildren, content_10)
+	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	content = lipgloss.NewStyle().
 		Padding(1).Render(content)

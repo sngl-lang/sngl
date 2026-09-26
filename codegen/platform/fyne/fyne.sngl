@@ -249,7 +249,10 @@ component Entry(text string, placeholder string, style ui.Style, @input ui.Input
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
-            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}, Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"}],
+            handlers = [
+                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+            ],
         },
         text=text,
         placeholder=placeholder,
@@ -259,7 +262,14 @@ component Entry(text string, placeholder string, style ui.Style, @input ui.Input
     ) {}
 }
 
-component MultiLineEntry(text string, placeholder string, rows int, style ui.Style, @input ui.InputEvent) ui.node {
+component MultiLineEntry(
+    text string,
+    placeholder string,
+    rows int,
+    style ui.Style,
+    @input ui.InputEvent,
+    @change ui.ChangeEvent,
+) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
@@ -269,13 +279,17 @@ component MultiLineEntry(text string, placeholder string, rows int, style ui.Sty
                 Setter{prop="placeholder", call="SetPlaceHolder"},
                 Setter{prop="number", call="SetMinRowsVisible"},
             ],
-            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [
+                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+            ],
         },
         text=text,
         placeholder=placeholder,
         number=rows,
         style={...style},
         @input { input() },
+        @change { change() },
     ) {}
 }
 
@@ -614,7 +628,14 @@ component ui.input[platform] {
 }
 
 component ui.textarea[platform] {
-    MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
+    MultiLineEntry(
+        text=value,
+        placeholder=placeholder,
+        rows=rows,
+        style={...style},
+        @input { input() },
+        @change { change() },
+    ) {}
 }
 
 // --- The timer ---
