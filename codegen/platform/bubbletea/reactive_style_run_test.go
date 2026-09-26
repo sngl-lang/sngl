@@ -18,6 +18,8 @@ ui.window {
     ui.text(value="weight", style={fontWeight=on ? bold : normal})
     ui.text(value="slant", style={fontStyle=on ? italic : normal, textAlign=on ? center : right, width=160px})
     ui.text(value="dim", style={opacity=on ? 0.5 : 1.0, fontSize=on ? 20px : 10px})
+    ui.text(value="edge", style={borderWidth=on ? 1px : 0px})
+    ui.text(value="nest", style={textAlign=on ? center : (on ? left : right), width=160px})
     markup.richText(style={fontWeight=on ? bold : normal}) {
         markup.text("flow ")
         markup.run(style={fontWeight=on ? markup.Weight.inherit : markup.Weight.lighter, underline=on}) {
@@ -51,6 +53,10 @@ func TestStyleFieldsFollowState(t *testing.T) {
 	expect(t, "before", before, plain.Bold(true), "weight", false)
 	expect(t, "before", before, plain.Width(20).Align(lipgloss.Right), "slant", true)
 	expect(t, "before", before, plain.Faint(true), "dim", false)
+	if strings.Contains(before, "\u250c") {
+		t.Errorf("before: a zero borderWidth drew a border\n%q", before)
+	}
+	expect(t, "before", before, plain.Width(20).Align(lipgloss.Right), "nest", true)
 	expect(t, "before", before, plain.Bold(true), "flow ", false)
 	expect(t, "before", before, plain.Faint(true), "run", true)
 
@@ -59,6 +65,10 @@ func TestStyleFieldsFollowState(t *testing.T) {
 	expect(t, "after", after, plain.Bold(true), "weight", true)
 	expect(t, "after", after, plain.Italic(true).Width(20).Align(lipgloss.Center), "slant", true)
 	expect(t, "after", after, plain.Faint(true), "dim", true)
+	if !strings.Contains(after, "\u250c") {
+		t.Errorf("after: borderWidth=1px drew no border\n%q", after)
+	}
+	expect(t, "after", after, plain.Width(20).Align(lipgloss.Center), "nest", true)
 	expect(t, "after", after, plain.Bold(true), "flow ", true)
 	expect(t, "after", after, plain.Bold(true).Underline(true), "run", true)
 }

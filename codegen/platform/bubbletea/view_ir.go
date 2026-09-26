@@ -60,6 +60,15 @@ func (vc *irViewContext) line(format string, args ...any) {
 // `var __ltN` decl or its value-only If) to Go via the shared Go IR context,
 // honoring the current indent.
 func (vc *irViewContext) emitIRStmt(s ir.Stmt) {
+	// A nested ternary's inner temp is declared inside the outer one's
+	// branches, and an unbound enum-typed temp is spelled as the member of its
+	// own name.
+	_ = ir.WalkStmts(s, func(st ir.Stmt) error {
+		if lv, ok := st.(*ir.LocalVar); ok {
+			vc.gc = vc.gc.WithLocal(lv.Name)
+		}
+		return nil
+	})
 	for _, l := range vc.gc.EvalStmt(s) {
 		vc.line("%s", l)
 	}
@@ -316,9 +325,6 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		// before the widget consuming it (its FromTernary If assigns it). Emit
 		// so the temp is declared in the view scope.
 		vc.emitIRStmt(s)
-		// Bound as a local, or a read of an enum-typed temp resolves to nothing
-		// and evalIdent spells it as the member of that name: `"__lt0"`.
-		vc.gc = vc.gc.WithLocal(s.Name)
 	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no visual rendering — skipped.
@@ -750,13 +756,18 @@ func (vc *irViewContext) discardStyle(styles []codegen.StyleField) {
 // NoTernary hoists `fontSize = on ? 20px : 10px` into a `var __ltN` ahead of
 // the node whether or not anything reads it, and Go refuses one nobody reads.
 func (vc *irViewContext) discard(e ir.Expr) {
-	id, ok := e.(*ir.Ident)
-	if !ok || id.Member != "" {
-		return
-	}
-	if _, kind := vc.gc.Ctx.Resolve(id.Name); kind == codegen.NameLocal {
-		vc.line("_ = %s", vc.gc.EvalExpr(id))
-	}
+	seen := map[string]bool{}
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		id, ok := x.(*ir.Ident)
+		if !ok || id.Member != "" || seen[id.Name] {
+			return nil
+		}
+		if _, kind := vc.gc.Ctx.Resolve(id.Name); kind == codegen.NameLocal {
+			seen[id.Name] = true
+			vc.line("_ = %s", vc.gc.EvalExpr(id))
+		}
+		return nil
+	})
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A

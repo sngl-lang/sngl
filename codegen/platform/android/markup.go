@@ -45,7 +45,6 @@ const (
 // expression, "" for off and "true" for on.
 type decoration struct{ underline, strike string }
 
-// orBool is a || b over decoration expressions.
 func orBool(a, b string) string {
 	switch {
 	case a == "" || b == "true":
@@ -261,7 +260,7 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 				if codegen.SpanStyleUnsetColor(f.Value) {
 					continue
 				}
-				parts = append(parts, "color = "+cc.colorExpr(f.Value))
+				parts = append(parts, "color = "+cc.spanColorExpr(f.Value))
 			case "fontSize":
 				if _, isLit := f.Value.(*ir.Literal); !isLit {
 					// 0px is the declaration's "unset", which a read of state can
@@ -427,4 +426,16 @@ func (cc *irComposeContext) composeEnum(e ir.Expr, toCompose func(string) string
 		els = "null"
 	}
 	return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), then, els)
+}
+
+// spanColorExpr is colorExpr for a run, where a branch holding the unset color
+// is the run saying nothing -- the enclosing color, not a transparent one.
+func (cc *irComposeContext) spanColorExpr(e ir.Expr) string {
+	if t, ok := e.(*ir.Ternary); ok {
+		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.spanColorExpr(t.Then), cc.spanColorExpr(t.Else))
+	}
+	if codegen.SpanStyleUnsetColor(e) {
+		return "ComposeColor.Unspecified"
+	}
+	return cc.colorExpr(e)
 }

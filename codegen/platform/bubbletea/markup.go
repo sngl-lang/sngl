@@ -127,17 +127,18 @@ func (vc *irViewContext) withSpanStyle(c spanCascade, e ir.Expr) spanCascade {
 	for _, f := range sl.Fields {
 		switch f.Name {
 		case "color":
-			if !codegen.SpanStyleUnsetColor(f.Value) {
-				c.color = lipglossColor(f.Value, vc.gc)
-			}
+			// The palette's rule, and for the same reason: alpha zero is unset,
+			// at run time as much as in a literal.
+			c = vc.withPaletteColor(c, f.Value)
 		case "fontWeight":
-			if enumMember(f.Value) == "" {
+			member := enumMember(f.Value)
+			if member == "" {
 				v := vc.gc.EvalExpr(f.Value)
 				c.bold = cascadeFlag(v, c.bold, "bold", "bolder")
 				c.faint = cascadeFlag(v, c.faint, "lighter")
 				continue
 			}
-			switch enumMember(f.Value) {
+			switch member {
 			case "bold", "bolder":
 				c.bold = "true"
 			case "lighter":
@@ -146,11 +147,12 @@ func (vc *irViewContext) withSpanStyle(c spanCascade, e ir.Expr) spanCascade {
 				c.bold, c.faint = "", ""
 			}
 		case "fontStyle":
-			if enumMember(f.Value) == "" {
+			member := enumMember(f.Value)
+			if member == "" {
 				c.italic = cascadeFlag(vc.gc.EvalExpr(f.Value), c.italic, "italic", "oblique")
 				continue
 			}
-			switch enumMember(f.Value) {
+			switch member {
 			case "italic", "oblique":
 				c.italic = "true"
 			case "normal":
@@ -172,11 +174,12 @@ func (vc *irViewContext) withSpanStyle(c spanCascade, e ir.Expr) spanCascade {
 // rest, which is `inherit` and whichever other member leaves this flag alone --
 // the same table the literal cases above spell out.
 //
-// v is a Go string expression. NoTernary has made it a temp by the time it
-// gets here, but anything else is bound once so a call is not made per term.
+// v is a Go string expression, usually the temp NoTernary hoisted. Anything
+// that is not a plain name is bound once per flag, though still evaluated
+// again by each flag and each run below it.
 func cascadeFlag(v, parent string, on ...string) string {
 	param := v
-	if !isGoIdent(v) {
+	if !isRepeatable(v) {
 		param = "__w"
 	}
 	terms := make([]string, 0, len(on)+1)
@@ -197,7 +200,9 @@ func cascadeFlag(v, parent string, on ...string) string {
 	return "(" + expr + ")"
 }
 
-func isGoIdent(s string) bool {
+// isRepeatable reports whether a Go expression is a name or selector, which can
+// be written several times without being evaluated several times.
+func isRepeatable(s string) bool {
 	for i, r := range s {
 		if r != '_' && r != '.' && !('a' <= r && r <= 'z') && !('A' <= r && r <= 'Z') && (i == 0 || !('0' <= r && r <= '9')) {
 			return false
@@ -206,7 +211,6 @@ func isGoIdent(s string) bool {
 	return s != ""
 }
 
-// orGo is a || b over cascade flags.
 func orGo(a, b string) string {
 	switch {
 	case a == "" || b == "true":
