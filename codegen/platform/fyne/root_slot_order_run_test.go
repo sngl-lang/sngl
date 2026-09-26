@@ -23,6 +23,7 @@ component Card(xs list<string>) ui.node {
         ui.text(value="open")
     }
     ui.text(value="]")
+    ui.button(text="flip", @click { open = !open })
 }
 
 ui.window {
@@ -78,11 +79,11 @@ func TestRootSlotsKeepTheirPlace(t *testing.T) {
 	m := New()
 	m.BuildUI()
 	root := m.BuildUI()
-	if want := "header,a 0,b 0,mid,[,a,|,open,],[,b,|,open,],footer,more"; rendered(root) != want {
+	if want := "header,a 0,b 0,mid,[,a,|,open,],flip,[,b,|,open,],flip,footer,more"; rendered(root) != want {
 		t.Fatalf("built %q, want %q", rendered(root), want)
 	}
 	m.moreClick()
-	if want := "header,a 0,b 0,c 0,mid,[,a,|,open,],[,b,|,open,],[,c,|,open,],footer,more"; rendered(root) != want {
+	if want := "header,a 0,b 0,c 0,mid,[,a,|,open,],flip,[,b,|,open,],flip,[,c,|,open,],flip,footer,more"; rendered(root) != want {
 		t.Fatalf("after a push, rendered %q, want %q", rendered(root), want)
 	}
 }

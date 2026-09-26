@@ -15,12 +15,17 @@ after the slots had rendered, so every row sat above the header. A component
 instance put its whole `__root` at the first slot's position, so a static
 sibling written between two loops rendered after both.
 
+Only the render calls written at the top of the body are positions. `Card`'s
+`flip` handler re-renders a slot into the same `__root`, and is not one.
+
 The executed half is `TestRootSlotsKeepTheirPlaceRuns` in both platforms,
 which reads the rendered order off the built tree and pushes to the list.
 
 deny out/go/fyne/model.go `__root\.Objects = parts` -- assigning the static siblings over __root drops what the slots rendered into it
 deny out/go/fyne/model.go `container\.NewVBox\(c\.__n\d+, c\.__root` -- an instance's __root is its widget, not one sibling placed at its first slot
 deny out/go/gtk4/model.go `BoxAppend\(__box, c\.__root\)` -- likewise on gtk4
+deny out/go/fyne/model.go `(?m)^\t\tc\.__root\.Add\(` -- a handler re-rendering a slot is not a position in the body, so nothing is added to __root inside one
+deny out/go/gtk4/model.go `(?m)^\t\tgtk4rt\.BoxAppend\(c\.__root` -- likewise on gtk4
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -48,6 +53,7 @@ component Card(xs list<string>) ui.node {
         ui.text(value="open")
     }
     ui.text(value="]")
+    ui.button(text="flip", @click { open = !open })
 }
 
 ui.window {
@@ -89,9 +95,9 @@ type Model struct {
 	__slot3_at   fyne.CanvasObject
 	__inst1_live []*CardInstance
 
-	__n8  *widget.Label
 	__n9  *widget.Label
 	__n10 *widget.Label
+	__n11 *widget.Label
 	more  *widget.Button
 }
 
@@ -203,20 +209,20 @@ func (m *Model) SetItems(v []string) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__root.RemoveAll()
-	m.__n8 = widget.NewLabel("")
-	m.__n8.SetText("header")
-	m.__root.Add(m.__n8)
-	m.__renderSlot2(m.__root)
 	m.__n9 = widget.NewLabel("")
-	m.__n9.SetText("mid")
+	m.__n9.SetText("header")
 	m.__root.Add(m.__n9)
-	m.__renderSlot3(m.__root)
+	m.__renderSlot2(m.__root)
 	m.__n10 = widget.NewLabel("")
-	m.__n10.SetText("footer")
+	m.__n10.SetText("mid")
+	m.__root.Add(m.__n10)
+	m.__renderSlot3(m.__root)
+	m.__n11 = widget.NewLabel("")
+	m.__n11.SetText("footer")
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
-	m.__root.Add(m.__n10)
+	m.__root.Add(m.__n11)
 	m.__root.Add(m.more)
 	content := fyne.CanvasObject(m.__root)
 	return content
@@ -304,7 +310,14 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__renderSlot1(c.__root)
 	__n7 := widget.NewLabel("")
 	__n7.SetText("]")
+	__n8 := widget.NewButton("", nil)
+	__n8.SetText("flip")
+	__n8.OnTapped = func() {
+		c.open = !c.open
+		c.__renderSlot1(c.__root)
+	}
 	c.__root.Add(__n7)
+	c.__root.Add(__n8)
 	c.Root = c.__root
 	return c
 }
@@ -385,9 +398,9 @@ type Model struct {
 	__slot3      []gtk4rt.Handle
 	__slot3_at   gtk4rt.Handle
 	__inst1_live []*CardInstance
-	__n8         gtk4rt.Handle
 	__n9         gtk4rt.Handle
 	__n10        gtk4rt.Handle
+	__n11        gtk4rt.Handle
 	more         gtk4rt.Handle
 }
 
@@ -582,7 +595,14 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__renderSlot1(c.__root)
 	__n7 := gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(__n7, "]")
+	__n8 := gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(__n8, "flip")
+	gtk4rt.Connect(__n8, "clicked", func() {
+		c.open = !c.open
+		c.__renderSlot1(c.__root)
+	})
 	gtk4rt.BoxAppend(c.__root, __n7)
+	gtk4rt.BoxAppend(c.__root, __n8)
 	c.Root = c.__root
 	gtk4rt.Retain(c.Root)
 	return c
@@ -653,20 +673,20 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n8 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n8, "header")
-	gtk4rt.BoxAppend(m.__root, m.__n8)
-	m.__renderSlot2(m.__root)
 	m.__n9 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n9, "mid")
+	gtk4rt.LabelSetText(m.__n9, "header")
 	gtk4rt.BoxAppend(m.__root, m.__n9)
-	m.__renderSlot3(m.__root)
+	m.__renderSlot2(m.__root)
 	m.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n10, "footer")
+	gtk4rt.LabelSetText(m.__n10, "mid")
+	gtk4rt.BoxAppend(m.__root, m.__n10)
+	m.__renderSlot3(m.__root)
+	m.__n11 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n11, "footer")
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n10)
+	gtk4rt.BoxAppend(m.__root, m.__n11)
 	gtk4rt.BoxAppend(m.__root, m.more)
 }
 
@@ -684,6 +704,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:279b276e4b8226984cdef06371611ff7
+pass sha256:bf40306d77390cadd9a97fdd0c3cafde
 -- run/go/gtk4 --
-pass sha256:9d4c93c934de3ebe281cd03dff8c6319
+pass sha256:6a201d03bc23ad8b475ef7ecdbb15a08

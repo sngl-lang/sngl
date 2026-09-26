@@ -59,7 +59,7 @@ func emitComponentInstance(
 	}
 
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(slotRootVar)
+		withLocalRefs(comp.LocalRefs).withSlotRoot(comp.Body)
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 

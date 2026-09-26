@@ -166,9 +166,9 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	c.__n0.SetText(c.__prop_name)
 	c.__n0.OnTapped = func() {
 		c.open = !c.open
-		c.__root.Add(c.__n0)
 		c.__renderSlot0(c.__root)
 	}
+	c.__root.Add(c.__n0)
 	c.__renderSlot0(c.__root)
 	c.Root = c.__root
 	return c
@@ -308,9 +308,9 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 	gtk4rt.ButtonSetLabel(c.__n0, c.__prop_name)
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.open = !c.open
-		gtk4rt.BoxAppend(c.__root, c.__n0)
 		c.__renderSlot0(c.__root)
 	})
+	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
 	c.Root = c.__root
 	gtk4rt.Retain(c.Root)
@@ -375,6 +375,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:3911e143fb8ebc0143d7c1970b03851f
+pass sha256:20e303313ab5b956838ec4a01c1052a2
 -- run/go/gtk4 --
-pass sha256:db53cb829133464deaff47dcdab68adf
+pass sha256:ea83ae29813f4cfc149215c140532855

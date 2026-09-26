@@ -78,7 +78,7 @@ func emitComponentInstance(
 		return tr
 	}
 
-	tr := newTr(comp.LocalRefs).withSlotRoot(slotRootVar)
+	tr := newTr(comp.LocalRefs).withSlotRoot(comp.Body)
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder

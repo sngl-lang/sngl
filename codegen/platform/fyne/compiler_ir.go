@@ -242,7 +242,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
-				withSlotRoot(slotRootVar).
+				withSlotRoot(bodyStmts).
 				withInvokerSink(func(inv fyneEventInvoker) {
 					eventInvokers = append(eventInvokers, inv)
 				})

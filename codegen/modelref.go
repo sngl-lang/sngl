@@ -30,6 +30,24 @@ const ModelTypeName = "Model"
 // inserted before.
 func SlotAnchorField(slot string) string { return slot + "_at" }
 
+// RootSlotRenders is the set of render-slot calls written directly in body
+// that render into the container named root. A handler inside the body
+// renders the same slot into the same container, and is not a position in the
+// body's own layout.
+func RootSlotRenders(body []ir.Stmt, root string) map[ir.Stmt]bool {
+	set := map[ir.Stmt]bool{}
+	for _, s := range body {
+		cs, ok := s.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+			continue
+		}
+		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && id.Name == root {
+			set[s] = true
+		}
+	}
+	return set
+}
+
 // Receiver is the symbol of the receiver RecvFieldRef selects through, so a
 // program's own binding of the same name is never what it resolves to.
 type Receiver struct{ Name string }

@@ -102,13 +102,13 @@ type gtk4Translator struct {
 	// reactive one and is what re-writes it.
 	builtSpans map[string]bool
 	topLevel   []string
-	// slotRoot is the box a reactive slot at the top of this scope's body
-	// renders into. Once one renders there, that box is the scope's widget, so
-	// its static top-level siblings have to be in it too: OnDefault appends
-	// the ones written so far ahead of each such render, which is what puts
-	// the slot's anchor after them, and renderedRoot tells the emitter where
-	// to append the rest, and that the box is what it returns.
-	slotRoot     string
+	// rootRenders are the calls written at the top of this scope's body that
+	// render a reactive slot into __root. Once one has, __root is the scope's
+	// widget, so its static top-level siblings have to be in it too: OnDefault
+	// appends the ones written so far ahead of each such call, which is what
+	// puts the slot's anchor after them, and renderedRoot tells the emitter
+	// where to append the rest, and that the box is what it returns.
+	rootRenders  map[ir.Stmt]bool
 	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot, in wrapped mode.
@@ -158,23 +158,9 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	return t
 }
 
-func (t *gtk4Translator) withSlotRoot(name string) *gtk4Translator {
-	t.slotRoot = name
+func (t *gtk4Translator) withSlotRoot(body []ir.Stmt) *gtk4Translator {
+	t.rootRenders = codegen.RootSlotRenders(body, slotRootVar)
 	return t
-}
-
-// recordsSlotRoot reports whether stmt is the call that renders this scope's
-// own slot box, which is what puts that box in the tree.
-func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
-	if t.slotRoot == "" {
-		return false
-	}
-	cs, ok := stmt.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
-		return false
-	}
-	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
-	return ok && id.Name == t.slotRoot
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
@@ -1252,7 +1238,7 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) {
+	if t.rootRenders[stmt] {
 		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
 		placed := t.addTopsTo(ctx, t.renderedRoot)
 		return append(placed, t.translateDefault(stmt)...)
