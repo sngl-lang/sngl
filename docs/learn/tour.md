@@ -348,7 +348,7 @@ window {
     var next = ""
     func remainingCount() => tasks.filter(func(x) => !x.done).length
     vbox(style={gap=6, padding=16}) {
-        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight="bold"})
+        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight=bold})
         for var &t = tasks {
             checkbox(:checked=t.done, label=t.label)
         }
@@ -376,7 +376,7 @@ window {
     const accent color = #2196f3
     const padding measurement = 16px
     vbox(style={gap=8, padding=padding, background=#f5f5f5}) {
-        text(value="Accent colour", style={color=accent, fontSize=20, fontWeight="bold"})
+        text(value="Accent colour", style={color=accent, fontSize=20, fontWeight=bold})
         text(value="Padded at 16px", style={color=#333333})
     }
 }
@@ -395,7 +395,7 @@ import . "sngl:ui"
 
 component Card(title = "", body = "") node {
     vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=6}) {
-        text(value=title, style={fontWeight="bold", fontSize=18})
+        text(value=title, style={fontWeight=bold, fontSize=18})
         text(value=body, style={color=#555555})
     }
 }
@@ -418,7 +418,7 @@ import . "sngl:ui"
 
 component Counter(label = "") node {
     var count = 0
-    hbox(style={gap=8, alignItems="center"}) {
+    hbox(style={gap=8, alignItems=center}) {
         text(value="{label}: {count}", style={flex=1})
         button(text="+", @click { count += 1 })
         button(text="-", @click { count -= 1 })
@@ -445,7 +445,7 @@ import . "sngl:ui"
 
 component Panel(title = "", content ...component) node {
     vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
-        text(value=title, style={fontWeight="bold", fontSize=18, color=#333333})
+        text(value=title, style={fontWeight=bold, fontSize=18, color=#333333})
         content
     }
 }
@@ -506,15 +506,15 @@ import . "sngl:ui"
 
 component Card(title = "", content ...component) node {
     vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
-        text(value=title, style={fontWeight="bold", fontSize=18})
+        text(value=title, style={fontWeight=bold, fontSize=18})
         content
     }
 }
 
 component Stat(label = "", value = 0) node {
-    hbox(style={gap=12, alignItems="center"}) {
+    hbox(style={gap=12, alignItems=center}) {
         text(value=label, style={flex=1, color=#555555})
-        text(value=string(value), style={fontWeight="bold"})
+        text(value=string(value), style={fontWeight=bold})
     }
 }
 
@@ -567,7 +567,7 @@ import h "sngl:platform/html"
 window {
     vbox(style={gap=8, padding=16}) {
         text(value="Aliased raw HTML access:")
-        h.details(style={padding="6px", background="#f5f5f5"}) {
+        h.details(style={padding=6, background="#f5f5f5"}) {
             h.summary(innerText="Click to expand")
             h.p(innerText="This paragraph was hidden until you clicked.")
         }
@@ -596,15 +596,15 @@ import "sngl:platform/bubbletea"
 
 component Collapsible(title = "", body = "") node {
     if PLATFORM == html.platform {
-        html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
-            html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
-            html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
+        html.details(style={padding=8, background="#e0f7fa", borderRadius=6}) {
+            html.summary(innerText=title, style={cursor="pointer", fontWeight=bold})
+            html.p(innerText=body, style={marginTop=6, marginX=0, marginBottom=0, color="#555555"})
         }
     } else if PLATFORM == bubbletea.platform {
         text(value="[" + title + "] " + body)
     } else {
         vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
-            text(value="▸ " + title, style={fontWeight="bold"})
+            text(value="▸ " + title, style={fontWeight=bold})
             text(value=body, style={color=#555555})
         }
     }
@@ -633,15 +633,15 @@ import "sngl:platform/html"
 window {
     var volume = 60
     vbox(style={gap=10, padding=16}) {
-        text(value="Native browser widgets:", style={fontWeight="bold"})
-        html.progress(value=string(volume), max="100", style={width="100%"})
+        text(value="Native browser widgets:", style={fontWeight=bold})
+        html.progress(value=string(volume), max="100", style={width=100pct})
         hbox(style={gap=8}) {
             button(text="-10", @click { volume = volume - 10 })
             button(text="+10", @click { volume = volume + 10 })
             text(value="{volume}%", style={fontFamily="monospace"})
         }
         html.hr
-        html.blockquote(style={borderLeft="3px solid #2196f3", padding="4 12", color="#555555"}) {
+        html.blockquote(style={borderLeft="3px solid #2196f3", paddingY=4, paddingX=12, color="#555555"}) {
             html.span(innerText="“Everything in the browser is one html.tagname away.”")
         }
     }
@@ -666,7 +666,7 @@ window {
     timer(interval=1000ms, enabled=running, @tick {
         seconds += 1
     })
-    vbox(style={gap=8, padding=16, alignItems="center"}) {
+    vbox(style={gap=8, padding=16, alignItems=center}) {
         text(value="{seconds} s", style={fontSize=36, fontFamily="monospace"})
         hbox(style={gap=8}) {
             button(text=running ? "Pause" : "Start", @click { running!! })
@@ -688,7 +688,7 @@ import . "sngl:ui"
 component Stat(label = "", value = 0, accent color = #2196f3) node {
     vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=label, style={color=#888888})
-        text(value=string(value), style={fontSize=28, fontWeight="bold", color=accent})
+        text(value=string(value), style={fontSize=28, fontWeight=bold, color=accent})
     }
 }
 
@@ -812,8 +812,8 @@ You've seen the core of SNGL: components, reactive state, derived funcs, lists, 
 import . "sngl:ui"
 
 window {
-    vbox(style={gap=8, padding=24, alignItems="center"}) {
-        text(value="Happy building!", style={fontSize=28, fontWeight="bold"})
+    vbox(style={gap=8, padding=24, alignItems=center}) {
+        text(value="Happy building!", style={fontSize=28, fontWeight=bold})
         text(value="Open the Playground, Component Gallery, or Reference docs.", style={color=#555555})
     }
 }

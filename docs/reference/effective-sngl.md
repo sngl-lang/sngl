@@ -814,7 +814,7 @@ Apply styles directly on any node:
 
 ```sngl
 vbox(style={padding=16, gap=12})
-text(value="hello", style={color=#007700, fontSize=24, fontWeight="bold"})
+text(value="hello", style={color=#007700, fontSize=24, fontWeight=bold})
 ```
 
 ### Conditional rendering
@@ -1126,7 +1126,7 @@ All styles are applied via the `style` param:
 
 ```sngl
 vbox(style={gap=12, padding=16})
-text(value="bold", style={fontWeight="bold", color=#007700, fontSize=24})
+text(value="bold", style={fontWeight=bold, color=#007700, fontSize=24})
 button(text="go", style={margin=4, background=#ff0000, padding=8})
 ```
 
@@ -1140,8 +1140,8 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
-const secondary Style = Style{color=#777777, fontStyle="italic"}
+const primary Style = Style{color=#0000ff, fontWeight=bold, fontSize=16}
+const secondary Style = Style{color=#777777, fontStyle=italic}
 
 window {
     vbox {
