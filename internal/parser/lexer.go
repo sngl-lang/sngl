@@ -764,13 +764,6 @@ func Tokenize(src string) (tokens []Token, errs []string) {
 	return scanAll(newLexer(src), nil)
 }
 
-// TokenizeNativeValue scans src as one encoded native value. The leading
-// NATIVE_VALUE token is the mode itself: it is what the grammar's native-value
-// alternative predicts on, and no source text lexes to it.
-func TokenizeNativeValue(src string) (tokens []Token, errs []string) {
-	return scanAll(newLexer(src), []Token{{Type: NATIVE_VALUE, Line: 1, Column: 1}})
-}
-
 // scanEncoded lexes src straight into the three things the parser needs: the
 // byte stream the generated parser reads, the tokens that stream indexes, and
 // the comments the AST builder reattaches.

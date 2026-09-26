@@ -1,0 +1,34 @@
+import . "sngl:ui"
+
+func scaled(n int) int {
+    if n > 5 {
+        error.raise("too big", "range")
+    }
+    return n * 10
+}
+
+func check(n int) {
+    if n > 5 {
+        error.raise("too big", "range")
+    }
+}
+
+component panel node {
+    var v = 0
+    var caught = ""
+    button #b(text="b", @click {
+        check(7, @error(e) {
+            caught = e.message
+        })
+        v = scaled(7, @error(e) { // ERROR(check) "@error is only handled on a call statement"
+            caught = e.message
+        })
+        v = v + scaled(1, @error(e) { // ERROR(check) "@error is only handled on a call statement"
+            caught = e.message
+        })
+    })
+}
+
+window {
+    panel
+}

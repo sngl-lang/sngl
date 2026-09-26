@@ -153,8 +153,7 @@ package main
 import "testing"
 
 func TestCheckboxToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -227,8 +226,7 @@ package main
 import "testing"
 
 func TestCheckboxToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -419,6 +417,17 @@ body { font-family: system-ui, sans-serif; }
 </label>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { on: false };
@@ -441,15 +450,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eb1197aae7ab9af56ef3a0836456b12f
+pass sha256:7780bc8042162de1989ff43eca13275a
 -- run/go/fyne --
-pass sha256:3388b77fc5b8eca13c678ecf7452f58a
+pass sha256:908f148b24c09af66ddd88e6b9763be3
 -- run/go/gtk4 --
 pass sha256:ec0d6a646cddfdb6dd90e11947b06c5f
 -- run/kotlin/android --
 pass sha256:0afa28e7a3bc1747427ae249eab4411b
 -- run/none/html --
-pass sha256:d524114a60e6ea5326ebc4352dd1e1a6
+pass sha256:a800368c39023731be21c713502342f4

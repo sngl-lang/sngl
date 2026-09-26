@@ -126,7 +126,7 @@ component sngl.badge[html.platform] {
     html.span(textContent=value)
 }
 
-component main sngl.root {
+component main root {
     window #w(title="t") {
         badge(value="7")
     }

@@ -9,7 +9,7 @@ import (
 // example drifting from the language empties its component page in silence.
 func TestLibraryExamplesRenderPreviews(t *testing.T) {
 	n := 0
-	for _, c := range LibraryComponents() {
+	for _, c := range LibraryComponents(nil) {
 		if len(c.Examples) == 0 {
 			continue
 		}

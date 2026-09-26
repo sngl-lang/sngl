@@ -25,16 +25,17 @@ struct Macro {}
 enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
 
 // What a call to a foreign function costs. Written as bare identifiers after
-// the name: `#[foreign("go:example.com/api", "Get", pure, async)]`.
+// the name: `#[foreign("go:example.com/api", "Get", async)]`.
 //
-// `pure` says a call has no effects and no dependence on host state, so the
-// compiler may evaluate one at build time — the sharp edge of the mark, since
-// a function wrongly marked pure runs during a build. `async` says the
-// declaration returns a promise its caller awaits, the fact the TypeScript
-// importer reads off `Promise<T>`.
+// `async` says the declaration returns a promise its caller awaits, the fact
+// the TypeScript importer reads off `Promise<T>`. It describes a call, so a
+// declaration with no call to describe — a struct, a field — refuses it.
 //
-// Both describe a call, so a declaration with no call to describe — a struct,
-// a field — refuses them.
+// That a call has no effects and no dependence on host state is not a flag:
+// it is `const func`, which says so for any function. The compiler may then
+// evaluate one at build time — the sharp edge, since a function wrongly
+// declared const runs during a build.
+//
 // `native` says the declaration *is* the thing it names rather than
 // corresponding to it: nothing is emitted for it, and a reference resolves to
 // the host name. Without it a marked declaration is still the program's own
@@ -44,4 +45,4 @@ enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
 // reachable where they are not: a mark arrives through an import, and a
 // package's own macro cannot mark that package's own struct -- struct shells
 // register before functions do.
-enum ForeignFlag { pure, async, native }
+enum ForeignFlag { async, native }

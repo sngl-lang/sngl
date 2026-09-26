@@ -245,7 +245,7 @@ component blip(x int) sngl.node
 import sngl "sngl:ui"
 import bk "sngl:blipkit"
 
-component bk.blip[extstub.platform](x) {
+const component bk.blip[extstub.platform](x) {
     sngl.text(value="blip {x}")
 }
 `
@@ -302,7 +302,7 @@ component blip(x int) sngl.node
 import sngl "sngl:ui"
 import bk "sngl:blipkit"
 
-component bk.blip[extstub.platform](bogus) {
+const component bk.blip[extstub.platform](bogus) {
     sngl.text(value="blip")
 }
 `

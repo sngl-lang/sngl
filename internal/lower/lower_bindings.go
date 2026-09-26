@@ -59,7 +59,7 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 
 // lowerPropBindings transforms all PropBindings on inst into EventDecl +
 // EventHandler pairs. For each PropBinding{PropName:"count", Target:steps}:
-//  1. Adds EventDecl{Name:"count", Type:prop.Type} to the child component (idempotent).
+//  1. Adds EventDecl{Name:"count", Params:[prop.Type]} to the child component (idempotent).
 //  2. Rewrites count+=1 / count=x / count!! in the component body/funcs to
 //     ir.Emit{Name:"count", Args:[newVal]}.
 //     2a. If step 2 found no mutations (e.g. for stdlib native components that
@@ -84,8 +84,8 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		// 1. Add synthetic EventDecl to component (idempotent).
 		if !hasBindingEvent(comp, b.PropName) {
 			comp.Events = append(comp.Events, &ir.EventDecl{
-				Name: b.PropName,
-				Type: prop.Type,
+				Name:   b.PropName,
+				Params: []*ir.Param{{Type: prop.Type}},
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component.
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
@@ -175,8 +175,9 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 // handler, passInlinePure's substituteEvents can route the DOM event to the
 // synthetic @propName handler at the call site.
 //
-// For bool-typed props: emits @propName(!propName) — toggles the current value.
-// For other types:      emits @propName(event.value) — reads from the DOM event.
+// The emit reads the new value from the event's payload, the field of it that
+// has the prop's type. A bool prop whose event carries no such field is
+// toggled instead: @propName(!propName).
 func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 	// Choose candidate event names by prop type.
 	var candidates []string
@@ -188,9 +189,13 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 		candidates = []string{"input", "change"}
 	}
 
-	// Build the emit argument expression.
+	// Toggling assumes the event fires once per user flip, and a host that
+	// reports its state reports it when the program set it too: fyne's
+	// SetChecked inside its own OnChanged flipped the bound var back and forth
+	// until the stack ran out.
 	var emitVal ir.Expr
-	if prop.Type != nil && prop.Type.Kind == ir.TypeBool {
+	evtType := eventPayloadType(comp, candidates)
+	if prop.Type != nil && prop.Type.Kind == ir.TypeBool && payloadFieldOf(evtType, prop.Type) == nil {
 		// !propName — toggle the prop's current value.
 		// After passInlinePure substitutes the prop param, this becomes !boundVar.
 		synthParam := &ir.Param{Name: propName, Type: prop.Type}
@@ -200,18 +205,18 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 			Type:    prop.Type,
 		}
 	}
-	// Otherwise the emit reads event.value, and which parameter `event` names
+	// Otherwise which parameter the payload arrives in
 	// is only known once the receiving handler is found — emitFor builds it.
 
-	injectEmitIntoHandlers(comp.Body, candidates, propName, eventPayloadType(comp, candidates), emitVal)
+	injectEmitIntoHandlers(comp.Body, candidates, propName, evtType, emitVal, prop.Type)
 }
 
 // eventPayloadType is the declared payload of whichever candidate event the
 // component declares, for a handler that has to be given a parameter.
 func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
 	for _, ev := range comp.Events {
-		if slices.Contains(candidates, ev.Name) && ev.Type != nil {
-			return ev.Type
+		if slices.Contains(candidates, ev.Name) && ev.Payload() != nil {
+			return ev.Payload()
 		}
 	}
 	return ir.TypDyn
@@ -253,7 +258,7 @@ func lambdaReportsValueChange(f *ir.Func, candidates []string) bool {
 //
 // The parameter reaches the value either way: an event parameter carries it in
 // the field the event declares, and a callback parameter is the value.
-func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string) *ir.Emit {
+func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string, propType *ir.Type) *ir.Emit {
 	if value == nil {
 		// A callback with no parameter of its own already carries the new value
 		// in the event it emits -- android's radio writes
@@ -274,13 +279,34 @@ func emitFor(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candi
 			t = ir.TypDyn
 		}
 		ref := &ir.Ident{Name: p.Name, Type: t, Sym: p}
-		if t.Kind == ir.TypeStruct {
+		if f := payloadFieldOf(t, propType); f != nil {
+			value = &ir.Select{Operand: ref, Field: f.Name, Type: f.Type}
+		} else if t.Kind == ir.TypeStruct {
 			value = &ir.Select{Operand: ref, Field: "value", Type: ir.TypString}
 		} else {
 			value = ref
 		}
 	}
 	return &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: value}}}
+}
+
+// payloadFieldOf is the field of the struct payload t that carries a value of
+// the bound prop's type -- ToggleEvent's `checked` for a bool -- or nil when t
+// is no struct or holds no such field.
+func payloadFieldOf(t, propType *ir.Type) *ir.StructField {
+	if t == nil || propType == nil || t.Kind != ir.TypeStruct || propType.Kind == ir.TypeStruct {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || sd == nil {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f != nil && f.Type != nil && f.Type.Kind == propType.Kind {
+			return f
+		}
+	}
+	return nil
 }
 
 // emittedValue is the value a body's emit of one of the candidate events
@@ -306,12 +332,52 @@ func emittedValue(stmts []ir.Stmt, candidates []string) ir.Expr {
 	return nil
 }
 
+// injectBind writes the binding back in f. A payload the handler builds in
+// place already says what the new value is, and the write-back takes it from
+// there, just ahead of the emit. Anything but a name is evaluated once, into a
+// temp both read: bubbletea's checkbox builds `{checked = !checked}`, and a
+// write-back that flipped the bound var first had the payload flip it back.
+func injectBind(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, candidates []string, propType *ir.Type) {
+	for i, st := range f.Block {
+		e, ok := st.(*ir.Emit)
+		if !ok || !slices.Contains(candidates, e.Name) || len(e.Args) == 0 {
+			continue
+		}
+		lit, ok := e.Args[0].Value.(*ir.StructLit)
+		if !ok {
+			break
+		}
+		for j, fi := range lit.Fields {
+			if fi.Spread || fi.Value == nil || propType == nil {
+				continue
+			}
+			t := fi.Value.ExprType()
+			if t == nil || t.Kind != propType.Kind || t.Kind == ir.TypeStruct {
+				continue
+			}
+			var pre []ir.Stmt
+			v := fi.Value
+			if _, named := v.(*ir.Ident); !named {
+				sym := &ir.Var{Name: "__bound_" + propName, Type: t, Synthesized: true}
+				pre = append(pre, &ir.LocalVar{Name: sym.Name, Type: t, Init: v, Sym: sym})
+				v = &ir.Ident{Name: sym.Name, Type: t, Sym: sym}
+				lit.Fields[j].Value = deepCloneExpr(v)
+			}
+			pre = append(pre, &ir.Emit{Name: propName, Args: []ir.CallArg{{Value: deepCloneExpr(v)}}})
+			f.Block = slices.Insert(f.Block, i, pre...)
+			return
+		}
+		break
+	}
+	f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value, candidates, propType)}, f.Block...)
+}
+
 // injectEmitIntoHandlers injects into *every* handler that reports the change,
 // not the first. Stopping at the first put the write-back wherever the walk
 // reached it soonest, which for a platform body written as
 // `if direction == "horizontal" { ... } else { ... }` is the branch that is not
 // taken -- so the live one emitted `onClick = {}` and the binding did nothing.
-func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr) bool {
+func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr, propType *ir.Type) bool {
 	injected := false
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -322,7 +388,7 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 					continue
 				}
 				if handlerReportsValueChange(h, candidates) {
-					h.Func.Block = append([]ir.Stmt{emitFor(h.Func, propName, evtType, value, candidates)}, h.Func.Block...)
+					injectBind(h.Func, propName, evtType, value, candidates, propType)
 					injected = true
 				}
 			}
@@ -333,22 +399,22 @@ func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName strin
 				if !lambdaReportsValueChange(f, candidates) {
 					continue
 				}
-				f.Block = append([]ir.Stmt{emitFor(f, propName, evtType, value, candidates)}, f.Block...)
+				injectBind(f, propName, evtType, value, candidates, propType)
 				injected = true
 			}
 			// Recurse into children.
-			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value) {
+			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value, propType) {
 				injected = true
 			}
 		case *ir.For:
-			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
+			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value, propType) {
 				injected = true
 			}
 		case *ir.If:
-			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value) {
+			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value, propType) {
 				injected = true
 			}
-			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value) {
+			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value, propType) {
 				injected = true
 			}
 		}

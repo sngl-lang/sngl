@@ -57,7 +57,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 }
 
 // ScopedExprCtx returns the ExprCtx scoped to the declaration whose body a
-// single-model platform emits: the main component when the program has one,
+// single-model platform emits: the harness root (RootDecl) when there is one,
 // and otherwise the window, when there is exactly one to be unambiguous about.
 //
 // A window declares state the way a component does, so a read of it has to
@@ -150,7 +150,7 @@ func (o OwnedVar) IsConst() bool     { v := o.Var(); return v != nil && v.IsCons
 func (o OwnedVar) Synthesized() bool { v := o.Var(); return v != nil && v.Synthesized }
 
 // ModelState returns every var a single-Model target puts in its Model, in
-// emission order: the package's vars and consts, then the main component's,
+// emission order: the package's vars and consts, then the harness root's,
 // then each window's.
 //
 // This is one answer to "which declarations own state", and it used to be four

@@ -1,0 +1,14 @@
+import . "sngl:ui"
+
+component panel node {
+    var count = 3
+    var on = true
+    var xs = [1, 2]
+    text(value="{count[0]}") // ERROR(check) "cannot index int"
+    text(value="{on[1]}")    // ERROR(check) "cannot index bool"
+    text(value="{xs[0]}")
+}
+
+window {
+    panel
+}

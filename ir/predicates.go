@@ -142,8 +142,9 @@ func StmtPos(s Stmt) ast.Pos {
 	return ast.Pos{}
 }
 
-// RebuildComparable reports whether two values of t can be asked "is this the
-// same one" and get the same answer on every target.
+// RebuildIncomparable is "" when two values of t can be asked "is this the
+// same one" and get the same answer on every target, and otherwise the type
+// that is not, with the field path that reaches it in parentheses.
 //
 // That is the question a keyed lifetime asks of its `on`, and a built instance
 // of a #[construct] prop. It is not isComparable, which asks what may be a map
@@ -157,10 +158,6 @@ func StmtPos(s Stmt) ast.Pos {
 // so a struct whose fields all compare alike does too, and one with no fields
 // is always equal to another -- which is exactly what a bracket with no `on`
 // wants of `effect<T = struct {}>`.
-func RebuildComparable(t *Type) bool { return RebuildIncomparable(t) == "" }
-
-// RebuildIncomparable is "" when t is RebuildComparable, and otherwise the type
-// that is not, with the field path that reaches it in parentheses.
 //
 // A phrase rather than a bool because a struct's answer is about something the
 // type's name does not show. "struct changed is not comparable" sends a reader
@@ -265,4 +262,27 @@ func ComponentSelfRefs(comp *Component) bool {
 // Foreign says "this is the host's own and not a name to spell beside it".
 func IsHostValue(v *Var) bool {
 	return v != nil && v.Foreign.Name != "" && !v.Foreign.Marked
+}
+
+// NumericListConversion reports whether a conversion re-types a list's
+// numeric elements, as widening a list<int> into a list<float> does, and
+// returns the two list types. A host holding each element in its own
+// representation converts element by element rather than casting the list.
+func NumericListConversion(n *Conversion) (src, dst *Type, ok bool) {
+	if n == nil || n.Type == nil || n.Operand == nil {
+		return nil, nil, false
+	}
+	src = n.Operand.ExprType()
+	if !isNumericList(src) || !isNumericList(n.Type) || src.Elems[0].Equal(n.Type.Elems[0]) {
+		return nil, nil, false
+	}
+	return src, n.Type, true
+}
+
+func isNumericList(t *Type) bool {
+	if t == nil || t.Kind != TypeList || len(t.Elems) != 1 || t.Elems[0] == nil {
+		return false
+	}
+	k := t.Elems[0].Kind
+	return k == TypeInt || k == TypeFloat
 }

@@ -355,15 +355,11 @@ var tokenColors = map[string]string{
 	"comment":  "onSurfaceVariant",
 }
 
-// enumMember names the member an enum-valued prop holds. A bare member is an
-// *ir.Ident carrying it; the qualified `Weight.bold` the override bodies write
-// survives as an *ir.Select.
+// enumMember names the member an enum-valued prop holds: an *ir.Ident carrying
+// it, whether the member was written bare or as `Weight.bold`.
 func enumMember(e ir.Expr) string {
-	switch v := e.(type) {
-	case *ir.Ident:
+	if v, ok := e.(*ir.Ident); ok {
 		return v.Member
-	case *ir.Select:
-		return v.Field
 	}
 	s, _ := codegen.IRLiteralString(e)
 	return s

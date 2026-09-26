@@ -33,6 +33,8 @@ type MountedEffect struct {
 	// Env is the scope the effect was written in, which is where its handlers
 	// run and whose state they mutate.
 	Env *Env
+	// Context is the provided values the effect was mounted under.
+	Context map[*ir.Context]any
 	// seq is when this lifetime began, counted across the whole set. Teardown
 	// runs in reverse of it, and holding it on the entry means the running set
 	// needs no second list kept in step with it.
@@ -259,7 +261,7 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 	if len(fn.Params) > 0 {
 		args = []any{e.On}
 	}
-	if _, err := env.runEventHandlerValues(fn, args); err != nil {
+	if _, err := env.underContext(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
 		return err
 	}
 	if root != nil && env != root {
@@ -301,7 +303,7 @@ func effectOf(inst *ir.NodeInst, env *Env, key Key) (MountedEffect, bool) {
 	if inst == nil || inst.Component == nil || inst.Component.Builtin != ir.BuiltinEffect {
 		return MountedEffect{}, false
 	}
-	e := MountedEffect{Key: key, Env: env}
+	e := MountedEffect{Key: key, Env: env, Context: capturedContext(env)}
 	for _, arg := range inst.Props {
 		if arg.Name != effectKeyProp {
 			continue

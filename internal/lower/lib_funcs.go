@@ -15,9 +15,6 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // Promoting rather than teaching each platform to look: they do not agree on
 // where to look, and the one funnel that claims to answer for all of them
 // (codegen.AllFuncs) is bypassed by html, which builds its own list.
-//
-// Runs after passCanvas, because the call may be inside a draw function that
-// pass synthesized from an override's handler body.
 var passLibFuncs = pass{
 	name:    "LibFuncs",
 	enabled: func(c Features) bool { return true },

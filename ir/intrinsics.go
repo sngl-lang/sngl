@@ -15,9 +15,9 @@ type IntrinsicDef struct {
 	// TypeParams names the type variables Params and Return are written
 	// against, in the order Instantiate binds them.
 	TypeParams []string
-	// Purity, if non-zero, overrides the default PurityPure assumption.
-	// Use this for intrinsics whose result depends on host state
-	// (env vars, filesystem, time, etc.) or that have side effects.
+	// Purity is the declaration's: PurityPure for a `const func`, the
+	// intrinsic mark's `readonly` or `mutates` flag, and PurityUnknown for one
+	// that says neither -- which is not pure.
 	Purity Purity
 	// MutatesReceiver marks an intrinsic whose first parameter (the receiver)
 	// is mutated in place by the native implementation, even though the SNGL

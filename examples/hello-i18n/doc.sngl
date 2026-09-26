@@ -1,0 +1,14 @@
+// Hello, world — internationalized.
+//
+// Exercises the i18n MessageFormat features that need different
+// translations to look right:
+//
+//   * select  — gendered honorific (Mr./Ms./Mx.) where many languages
+//               also need to flip article/agreement on surrounding words.
+//   * plural  — guest count, where French/Russian/Polish each split the
+//               cases differently from English's "one / other" pair.
+//   * number  — ticket price, locale-formatted as currency.
+//   * date    — party date, locale-formatted long form.
+//
+// Manifest: i18n.manifest.json next to app.sngl. Translations included
+// for English (manifest fallback), French, and Spanish.

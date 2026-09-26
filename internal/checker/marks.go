@@ -172,6 +172,20 @@ func (c *checker) macroFrom(attr ast.MacroAttr, sym ir.Symbol) (string, *ir.Func
 // is known, so no walk of the document is needed to find one.
 //
 // A component prop is the exception and goes through applyParamMarks.
+// refuseConstParams refuses the `const` prefix in a list whose values arrive
+// from something other than a call site: a lambda's, a handler's, a slot
+// population's. The prefix says every caller passes a compile-time value, and
+// what supplies these is not a call the checker reads -- a host, an event, an
+// insertion -- so the promise would be kept by nobody. The grammar admits it in
+// every parameter list, the trade ArgList makes.
+func (c *checker) refuseConstParams(params []ast.Param, where string) {
+	for _, p := range params {
+		if p.Const {
+			c.error(p.Pos, "%s parameter %q cannot be const: only a declaration's callers can promise a compile-time value", where, p.Name)
+		}
+	}
+}
+
 func (c *checker) refuseParamMarks(params []ast.Param) {
 	for _, p := range params {
 		for _, attr := range p.MacroAttrs() {

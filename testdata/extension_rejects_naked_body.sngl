@@ -8,7 +8,7 @@ component sngl.text { // ERROR(check) "must name the target it implements"
 }
 
 component main sngl.node {
-    text(value="hi")
+    sngl.text(value="hi")
 }
 
 sngl.window {

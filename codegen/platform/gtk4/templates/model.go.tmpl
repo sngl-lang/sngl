@@ -19,8 +19,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -50,12 +57,48 @@ static void sngl_emit(gpointer instance, const char *signal) {
 static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
+{{- if .NeedsSlotAnchor}}
+
+static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
+    if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
+    GtkWidget *w = gtk_label_new(NULL);
+    gtk_widget_set_visible(w, FALSE);
+    g_object_ref_sink(w);
+    gtk_box_append(box, w);
+    return w;
+}
+
+static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
+    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
+        gtk_box_append(box, child);
+        return;
+    }
+    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
+}
+
+static GtkBox *sngl_slot_box(GtkBox *b) {
+    if (b != NULL) return b;
+    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    g_object_ref_sink(w);
+    return GTK_BOX(w);
+}
+{{- end}}
 
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
+}
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 {{- if .NeedsGObjectSet}}
 
@@ -129,6 +172,22 @@ static void sngl_draw_tramp(GtkDrawingArea* area, cairo_t* cr, int width, int he
 }
 static void sngl_drawing_area_set_draw(void* area, int idx) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), sngl_draw_tramp, GINT_TO_POINTER(idx), NULL);
+}
+
+// A drawing area has no click signal of its own; a GtkGestureClick does, and
+// its `pressed` passes (n_press, x, y) before user_data.
+static void sngl_pressed_cb(GtkGestureClick *g, gint n, gdouble x, gdouble y, gpointer data) {
+    (void)g; (void)n; (void)x; (void)y;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+static GtkGesture* sngl_connect_click(void* widget, int idx) {
+    GtkGesture *g = gtk_gesture_click_new();
+    gtk_widget_add_controller(GTK_WIDGET(widget), GTK_EVENT_CONTROLLER(g));
+    g_signal_connect(g, "pressed", G_CALLBACK(sngl_pressed_cb), GINT_TO_POINTER(idx));
+    return g;
+}
+static void sngl_emit_pressed(void* gesture) {
+    g_signal_emit_by_name(gesture, "pressed", 1, 0.0, 0.0);
 }
 {{- end}}
 */

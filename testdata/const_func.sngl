@@ -1,0 +1,32 @@
+// A const func is a compile-time value wherever its arguments are: its body
+// reads only its parameters, its own locals and constants, and calls only
+// other const funcs. Its locals are the call's own, so it may write them.
+import ui "sngl:ui"
+
+const scale = 2
+
+const func area(w int, h int) => w * h * scale
+
+const func sum(xs list<int>) int {
+    var total = 0
+    for var x = xs {
+        total += x
+    }
+    return total
+}
+
+const func shout(s string) => s.upper() + "!"
+
+struct Box {
+    w int
+    h int
+    const func size() => area(this.w, this.h)
+}
+
+const big = const (area(3, 4) + sum([1, 2, 3]))
+
+var count = 0
+
+ui.window {
+    ui.text(value="{big} {shout("hi")} {Box{w=1, h=2}.size()} {area(count, 1)}")
+}

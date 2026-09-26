@@ -1,6 +1,10 @@
 package interp
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
 
 // TestSuppliedSlotContentIsMounted covers what a call site puts inside a user
 // component. The tree used to expand the component's own body and stop, so
@@ -72,5 +76,45 @@ component main node {
 	}
 	if got := len(v.Find("fallback")); got != 1 {
 		t.Errorf("#fallback resolved to %d nodes, want 1", got)
+	}
+}
+
+// Two copies of one instantiation site under a `for` are two instances, each
+// with state of its own. The child cache was keyed by the site alone, so the
+// second card read the first card's rows.
+func TestEachCopyOfALoopSiteHasItsOwnState(t *testing.T) {
+	src := `import . "sngl:ui"
+
+component Card(start int) node {
+    var rows = [start, start + 10]
+
+    vbox {
+        for var r = rows {
+            text #cell(value="{r}")
+        }
+    }
+}
+
+component main node {
+    var items = [1, 2]
+
+    vbox {
+        for var i = items {
+            Card(start=i)
+        }
+    }
+}
+`
+	env, _ := envFor(t, src, "main")
+	v, err := Mount(env)
+	if err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+	var got []string
+	for _, n := range v.Find("cell") {
+		got = append(got, fmt.Sprint(n.Props["value"]))
+	}
+	if strings.Join(got, " ") != "1 11 2 12" {
+		t.Errorf("cells = %v, want each card's own rows: 1 11 2 12", got)
 	}
 }

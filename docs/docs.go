@@ -6,8 +6,8 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -286,11 +286,18 @@ type ComponentEvent struct {
 // because a component is a declaration in a package and two packages may
 // declare one name.
 //
+// snapshots names the preview images lib/snapshots holds, which decide the
+// platform tabs a component's preview shows. They arrive as an argument --
+// website.sngl lists the directory at build time -- rather than being read
+// here: a pure function's result may depend on its arguments and its source
+// and on nothing it reads while it runs, since nothing records that read and a
+// stored result would be replayed after the directory changed.
+//
 //sngl:pure
-func LibraryComponents() []Component {
+func LibraryComponents(snapshots []string) []Component {
 	var comps []Component
 	for _, uri := range lib.PublicPackages() {
-		comps = append(comps, packageComponents(uri)...)
+		comps = append(comps, packageComponents(uri, snapshots)...)
 	}
 	sort.Slice(comps, func(i, j int) bool {
 		if comps[i].Pkg != comps[j].Pkg {
@@ -305,10 +312,12 @@ func LibraryComponents() []Component {
 // order docsite.Starter lists them rather than alphabetically: it is a reading
 // order, not an index.
 //
+// snapshots is LibraryComponents' argument.
+//
 //sngl:pure
-func CuratedComponents() []Component {
+func CuratedComponents(snapshots []string) []Component {
 	byName := map[string]Component{}
-	for _, c := range packageComponents(docsite.StarterPkg) {
+	for _, c := range packageComponents(docsite.StarterPkg, snapshots) {
 		byName[c.Name] = c
 	}
 	out := make([]Component, 0, len(docsite.Starter))
@@ -325,7 +334,7 @@ func CuratedComponents() []Component {
 //
 //sngl:pure
 func CuratedRest() int {
-	rest := len(packageComponents(docsite.StarterPkg)) - len(CuratedComponents())
+	rest := len(packageComponents(docsite.StarterPkg, nil)) - len(CuratedComponents(nil))
 	if rest < 0 {
 		return 0
 	}
@@ -356,7 +365,7 @@ func CuratedRestLabel() string {
 
 // packageComponents takes the library package's URI ("ui"), which is what the
 // checker keys a schema by; the import path is that under the scheme.
-func packageComponents(uri string) []Component {
+func packageComponents(uri string, snapshots []string) []Component {
 	path := "sngl:" + uri
 	registry := checker.PackageSchema(uri)
 	examples := checker.PackageExamples(uri)
@@ -398,7 +407,7 @@ func packageComponents(uri string) []Component {
 			c.Examples = srcs
 			if len(srcs) > 0 {
 				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
-				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name))
+				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name, snapshots))
 			}
 		}
 
@@ -417,19 +426,18 @@ var platformDisplayName = map[string]string{
 	"fyne":      "Fyne",
 }
 
-func detectPlatforms(name string) []string {
-	dir := filepath.Join("lib", "snapshots")
+func detectPlatforms(name string, snapshots []string) []string {
 	var platforms []string
 	for _, p := range platformOrder {
-		if _, err := os.Stat(filepath.Join(dir, name+"_"+p+".png")); err == nil {
+		if slices.Contains(snapshots, name+"_"+p+".png") {
 			platforms = append(platforms, p)
 		}
 	}
 	return platforms
 }
 
-func buildPreviewSection(name, source string, platforms []string) string {
-	iframeHTML := compilePreview(source)
+func buildPreviewSection(name, program string, platforms []string) string {
+	iframeHTML := compilePreview(program)
 	if iframeHTML == "" {
 		return ""
 	}

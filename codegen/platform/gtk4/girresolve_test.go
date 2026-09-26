@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -49,12 +50,14 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 	}
 
 	t.Run("builtin is the bundled subset", func(t *testing.T) {
+		// Structurally rather than by pointer: the registry comes back from the
+		// store, decoded, rather than as gir.Minimal's shared copy.
 		reg, minimal, err := girRegistry(girBuiltin)
-		if err != nil || !minimal || reg != bundled {
+		if err != nil || !minimal || !reflect.DeepEqual(reg, bundled) {
 			t.Fatalf("girRegistry(builtin) = (%p, %v, %v); want the bundled registry", reg, minimal, err)
 		}
 		got, err := (&Generator{girOpt: girBuiltin}).useGIR("")
-		if err != nil || got != bundled {
+		if err != nil || !reflect.DeepEqual(got, bundled) {
 			t.Errorf("useGIR disagreed with girRegistry: (%p, %v)", got, err)
 		}
 	})
@@ -75,11 +78,10 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 		}
 		// The generator is cached on the bundled subset; a Config naming a real
 		// file must re-arm rather than answer from that cache.
-		reg, err := g.useGIR("gir/minimal/Gtk-4.0.gir")
-		if err != nil {
+		if _, err := g.useGIR("gir/minimal/Gtk-4.0.gir"); err != nil {
 			t.Fatalf("useGIR(path): %v", err)
 		}
-		if reg == bundled {
+		if g.usingMinimalGIR() {
 			t.Error("answered from the cached bundled registry, ignoring the Config path")
 		}
 	})

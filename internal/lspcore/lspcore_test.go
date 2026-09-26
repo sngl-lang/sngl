@@ -320,8 +320,8 @@ func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
 import . "sngl:macro"
 
 component main node {
-    #[foreign("js:./api", "compute", pure)]
-    func compute(a int, b int) => a + b
+    #[foreign("js:./api", "compute")]
+    const func compute(a int, b int) => a + b
 
     text(value=string(compute(2, 3)))
 }

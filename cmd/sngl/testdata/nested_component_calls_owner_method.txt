@@ -41,3 +41,13 @@ func testNestedBodyCallsTheOwnersMethod(t Test, c main) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:679255331df16740691227aaed693f50
+{
+  "results": [
+    {
+      "Desc": "NestedBodyCallsTheOwnersMethod",
+      "Passed": true
+    }
+  ]
+}

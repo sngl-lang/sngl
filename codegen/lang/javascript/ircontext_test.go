@@ -74,19 +74,6 @@ func TestJsCall_HtmlPlacementDirectiveIsIdentity(t *testing.T) {
 	}
 }
 
-func TestJsCall_RegexBuiltin(t *testing.T) {
-	ctx := codegen.NewExprCtx(&ir.Package{})
-	jc := NewIRContext(ctx)
-	call := &ir.Call{
-		Func: &ir.Func{Name: "regex"},
-		Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "ab+c"}}},
-	}
-	got := jc.EvalExpr(call)
-	if got != `new RegExp("ab+c")` {
-		t.Errorf("got %q", got)
-	}
-}
-
 func TestJsConversion_Bool(t *testing.T) {
 	ctx := codegen.NewExprCtx(&ir.Package{})
 	jc := NewIRContext(ctx)

@@ -308,12 +308,6 @@ body { font-family: system-ui, sans-serif; }
   var state = { b__inst0: null, h__inst0: null, seen__inst0: 0 };
   state.b__inst0 = { value: 3 };
   state.h__inst0 = { inner: state.b__inst0 };
-  function Box(value) {
-    return { value };
-  }
-  function Holder(inner) {
-    return { inner };
-  }
   function String(v) {
     return "" + v;
   }
@@ -339,4 +333,4 @@ pass sha256:14c82808eee9bc94fa71403f177a86be
 -- run/kotlin/android --
 pass sha256:62324b80ab375a6b6c2552432964c2ac
 -- run/none/html --
-pass sha256:cc1c4ffb1253389237d811ac67022011
+pass sha256:9e9cfd3eca675a8b529f95a853221fdf

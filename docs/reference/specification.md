@@ -862,8 +862,10 @@ one name to both of its variables are all errors.
 
 ```ebnf
 ConstDecl = 
-    "const" ConstSpec
-    | "const" "(" { ConstSpec [ "," | ";" ] } ")"
+    "const" ( ConstSpec
+    | "(" { ConstSpec [ "," | ";" ] } ")"
+    | FuncDecl
+    | ComponentDecl )
 
 ConstSpec = IdentList [ Type ] [ "=" Expr ]
 
@@ -902,6 +904,28 @@ Both forms have a grouped variant — `const ( … )` and `var ( … )` — that
 several specifications inside parentheses. A `var` declaration may carry
 [handlers](#variable-handlers).
 
+### The const prefix
+
+`const` says *this is known at compile time*, and so takes no part in
+reactivity. Before a name it declares a constant. Before another declaration it
+says the same thing of what that declaration produces:
+
+| Written                              | Means                                                                  |
+|--------------------------------------|------------------------------------------------------------------------|
+| `const func f(…)`                    | [f is pure](#const-functions): its value depends only on its arguments |
+| `const component c(…)`               | [c's render depends only on its props](#const-components)              |
+| `const name T` (a parameter or prop) | the argument is constant at every call site                            |
+| `const name component(…)` (a slot)   | every population of the slot is a const render                         |
+
+A **const parameter** — of a function or a component — requires every call
+site's argument, and the default, to be a constant expression; inside the body
+a read of the parameter is one, so it may flow into `const(…)`, a constant
+initializer, or another const parameter. The build then folds the argument to a
+literal and reports one it cannot fold. `const` is refused on a lambda's, a
+handler's, or a slot population's parameter, since what supplies those is not a
+call site; on a binding parameter (`:name`); and beside `#[construct]`, which it
+already implies.
+
 ## Functions and methods
 
 <!-- BEGIN GENERATED: grammar-functions -->
@@ -925,7 +949,9 @@ TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+
+EventParams = "(" [ FuncTypeParamList ] ")"
 
 ```
 
@@ -977,7 +1003,25 @@ Every function is classified by its effect on state:
 The classification follows from the body and constrains observable behavior: a
 pure or read-only computed yields the same result for the same inputs and may
 be re-evaluated on demand, whereas a mutating function runs exactly once per
-call.
+call. It is *inferred*, and promises nothing to a caller: a change to the body
+changes it.
+
+### Const functions
+
+`const func` *declares* a function pure, and only a declared one is a
+compile-time value: a call to it with constant arguments is a constant
+expression, which `const(…)`, a constant initializer and a const parameter
+accept. The declaration is a contract the checker holds the body to. The body
+may read its parameters, its own locals and constants, and call only other
+`const func`s; its locals are the call's own and may be written. Reading or
+writing a variable, reading a context, emitting an event, or calling a function
+that is not const is an error naming what was reached.
+
+A const function with no body — a host identifier, an intrinsic, an import — is
+trusted, since nothing in the program says what the host does. The Go importer
+reads `//sngl:pure` and the TypeScript importer its pure doc tag as `const`.
+The compiler may run a const function at build time, so one wrongly declared
+const runs during a build.
 
 ### Asynchrony
 
@@ -1486,6 +1530,28 @@ A component written in another component's body is scoped to that body, and
 its body sees the enclosing body's props, variables and functions; a write it
 makes to one of them is a write to the enclosing component's own state.
 
+### Const components
+
+`const component` says the render depends only on the props. The render is
+every expression the view body evaluates — a node's props and bindings, an `if`
+or `for` head, a slot insertion's arguments, a context override's value — and
+not a handler's or an effect's body. It may read props, constants, const
+function results, loop variables, a slot's invocation arguments and contexts; a
+variable read there, or a call to a function that is not const, is an error. A
+variable only handlers touch is allowed, and so is a child with state of its
+own, which is its own instance.
+
+`const` on a declaration an override implements is part of its contract, so
+every override of it is held to the rule. An override of a non-const
+declaration may say `const` itself. A target package's components and overrides
+must all be const, written or inherited: each is inlined into every program
+that renders it.
+
+A **const slot** holds every population written for it to the same rule, while
+its invocation arguments need not be constant — a slot inserted once per list
+item is pure over the item. A build directive's contents are populations of
+const slots, which is what requires every value in one to be constant.
+
 ### Parameters
 
 A component parameter is one of four kinds:
@@ -1495,15 +1561,21 @@ A component parameter is one of four kinds:
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
   to `name` is written back to that lvalue, so parent and child stay in sync;
-- an **event parameter** — `@name Type` (the type is optional, denoting a
-  payloadless event) — an outgoing event the component fires by calling its
-  name (`name(args)`) and the caller handles with `@name { … }`;
+- an **event parameter** — `@name(a A, b B)` — an outgoing event the
+  component fires by calling its name (`name(x, y)`) and the caller handles
+  with `@name(a, b) { … }`. The list is a func type's, names optional;
+  `@name T` is the one-parameter case written without the parens, `@name()`
+  passes nothing, and a bare `@name` carries one untyped value;
 - a **slot** — `name component …` — a region of UI the caller supplies,
   described next.
 
 A caller supplies a handler as an event argument, `@name { … }` or
-`@name(v) { … }`, whose optional parameter binds the payload. There is no
-value form of an event reference: `@name` alone is not an argument.
+`@name(a, b) { … }`. A handler binds the parameters by position and may leave
+trailing ones unbound; binding more than the event passes, or annotating a
+type other than its position's, is an error. A call of the event supplies
+every parameter, or none, which forwards what the handler it is written in
+received. There is no value form of an event reference: `@name` alone is not
+an argument.
 
 ### Slots and children
 
@@ -2143,8 +2215,10 @@ UnitDecl = "unit" [ IDENT ] "{" [ ArgList ] "}"
 
 ```ebnf
 ConstDecl = 
-    "const" ConstSpec
-    | "const" "(" { ConstSpec [ "," | ";" ] } ")"
+    "const" ( ConstSpec
+    | "(" { ConstSpec [ "," | ";" ] } ")"
+    | FuncDecl
+    | ComponentDecl )
 
 ConstSpec = IdentList [ Type ] [ "=" Expr ]
 
@@ -2179,7 +2253,9 @@ TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
+
+EventParams = "(" [ FuncTypeParamList ] ")"
 
 ```
 
