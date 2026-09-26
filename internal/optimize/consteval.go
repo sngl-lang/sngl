@@ -79,6 +79,8 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 			}
 		}
 		return true
+	case *ir.Spread:
+		return isConstExpr(x.Operand, ctx)
 	case *ir.StructLit:
 		for _, f := range x.Fields {
 			if f.Value == nil || !isConstExpr(f.Value, ctx) {
@@ -188,6 +190,15 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 	case *ir.ListLit:
 		result := make([]any, 0, len(x.Elems))
 		for _, el := range x.Elems {
+			if sp, isSpread := el.(*ir.Spread); isSpread {
+				v, ok := evalExpr(sp.Operand, ctx)
+				items, isList := v.([]any)
+				if !ok || !isList {
+					return nil, false
+				}
+				result = append(result, items...)
+				continue
+			}
 			v, ok := evalExpr(el, ctx)
 			if !ok {
 				return nil, false
@@ -369,10 +380,6 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 			if v, ok := evalQualifiedMethod(qualName, args); ok {
 				return v, true
 			}
-		}
-		// Try builtin function.
-		if v, ok := evalCallFunc(call.Func.Name, args); ok {
-			return v, true
 		}
 	}
 
@@ -873,62 +880,6 @@ func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 		return v, true
 	}
 	return nil, false
-}
-
-func evalCallFunc(name string, args []any) (any, bool) {
-	if len(args) != 1 {
-		return nil, false
-	}
-	arg := args[0]
-	switch name {
-	case "string":
-		return fmt.Sprintf("%v", arg), true
-	case "int":
-		switch v := arg.(type) {
-		case int:
-			return v, true
-		case float64:
-			return int(v), true
-		case string:
-			i, err := strconv.Atoi(v)
-			if err != nil {
-				return nil, false
-			}
-			return i, true
-		}
-	case "float":
-		switch v := arg.(type) {
-		case float64:
-			return v, true
-		case int:
-			return float64(v), true
-		case string:
-			f, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return nil, false
-			}
-			return f, true
-		}
-	}
-	return nil, false
-}
-
-func evalMethod(method string, recv any, args []any) (any, bool) {
-	typeName := "dyn"
-	switch recv.(type) {
-	case int:
-		typeName = "int"
-	case float64:
-		typeName = "float"
-	case string:
-		typeName = "string"
-	case bool:
-		typeName = "bool"
-	case []any:
-		typeName = "list"
-	}
-	allArgs := append([]any{recv}, args...)
-	return evalQualifiedMethod(typeName+"."+method, allArgs)
 }
 
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {

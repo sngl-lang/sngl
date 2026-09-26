@@ -191,8 +191,7 @@ package main
 import "testing"
 
 func TestThemeToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.dark == false)) { t.Errorf("assert failed: %s", "(c.dark == false)") }
 	c.dark = true
@@ -301,8 +300,7 @@ package main
 import "testing"
 
 func TestThemeToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.dark == false)) { t.Errorf("assert failed: %s", "(c.dark == false)") }
 	c.dark = true
@@ -535,6 +533,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { dark: false };
@@ -563,15 +572,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6488b79d1d3aa7659c6c1b68efe77013
+pass sha256:8ca3c9728cc71a951a334318688f0408
 -- run/go/fyne --
-pass sha256:fbd76ca8dccfb51a0dfb77e311792ad5
+pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
 pass sha256:58eb81c03da71dabc6bd7bb3f74ed2e7
 -- run/kotlin/android --
 pass sha256:57c5d33bab3c791e76c59981556a0863
 -- run/none/html --
-pass sha256:aa79d5467971439fc8eae1f4dce7f62e
+pass sha256:6d0572bf1ca0febcbcff4bc7c7b8fe60

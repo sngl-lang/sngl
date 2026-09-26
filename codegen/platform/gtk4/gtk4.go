@@ -183,9 +183,8 @@ func girRegistryIn(store *gencache.Store, opt string) (*gir.TypeRegistry, bool, 
 	return decodeRegistry(data)
 }
 
-// usingMinimalGIR reports whether the registry is the bundled subset. A
-// diagnostic about a widget that is not declared says so, because the fix is to
-// install GTK rather than to correct the name.
+// usingMinimalGIR reports whether the registry is the bundled subset, which
+// is what a test naming host-only vocabulary skips on.
 func (g *Generator) usingMinimalGIR() bool {
 	_, _ = g.gir()
 	return g.minimal
@@ -279,12 +278,6 @@ func newTestComponent() *Model {
 	m.buildWidgetTree()
 	return m
 }
-
-// Stdlib event payload structs — surfaced for test bodies that
-// construct InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
-type InputEvent struct{ Value string }
-type ChangeEvent struct{ Value string }
-type SubmitEvent struct{ Value string }
 
 func main() { testagent.Main() }
 `)

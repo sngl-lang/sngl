@@ -89,11 +89,11 @@ body { font-family: system-ui, sans-serif; }
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "[" + String(__prop_n) + "]";
-      __renderSlot0(__root);
+      __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot0(__root);
+      __renderSlot0(__slotAnchor_0);
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot0;
@@ -154,8 +154,11 @@ body { font-family: system-ui, sans-serif; }
     }
     let __n0 = document.createElement("span");
     __n0.textContent = "[" + String(__prop_n) + "]";
-    __renderSlot0(__root);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __renderSlot0(__slotAnchor_0);
     __root.appendChild(__n0);
+    __root.appendChild(__slotAnchor_0);
     return {
       __root,
       __destroy() {
@@ -180,4 +183,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9a226436086ffe2a556fda80cde132b2
+pass sha256:28c3b813d6d881d63ea50436f016aadc

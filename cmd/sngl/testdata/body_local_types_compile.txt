@@ -85,3 +85,23 @@ func testSecondKeepsItsOwnLocal(t Test, c second) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/first/1 --
+sha256:70a33073797cb060cb8bcdf40e4a30f7
+{
+  "results": [
+    {
+      "Desc": "FirstKeepsItsOwnLocal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/second/1 --
+sha256:74eff9d5213e9fa4070e89cbc4aa05ce
+{
+  "results": [
+    {
+      "Desc": "SecondKeepsItsOwnLocal",
+      "Passed": true
+    }
+  ]
+}

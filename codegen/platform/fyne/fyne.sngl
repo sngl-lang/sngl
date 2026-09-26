@@ -196,7 +196,7 @@ const component Button(text string, style ui.Style, @click ui.ClickEvent) ui.nod
     ) {}
 }
 
-const component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent) ui.node {
+const component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent, @change ui.ChangeEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -205,16 +205,27 @@ const component Entry(text string, placeholder string, style ui.Style, @input ui
                 Setter{prop="text", call="SetText"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
-            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [
+                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+            ],
         },
         text=text,
         placeholder=placeholder,
         style={...style},
         @input { input() },
+        @change { change() },
     ) {}
 }
 
-const component MultiLineEntry(text string, placeholder string, rows int, style ui.Style, @input ui.InputEvent) ui.node {
+const component MultiLineEntry(
+    text string,
+    placeholder string,
+    rows int,
+    style ui.Style,
+    @input ui.InputEvent,
+    @change ui.ChangeEvent,
+) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
@@ -224,17 +235,21 @@ const component MultiLineEntry(text string, placeholder string, rows int, style 
                 Setter{prop="placeholder", call="SetPlaceHolder"},
                 Setter{prop="number", call="SetMinRowsVisible"},
             ],
-            handlers = [Handler{on="input", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [
+                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+            ],
         },
         text=text,
         placeholder=placeholder,
         number=rows,
         style={...style},
         @input { input() },
+        @change { change() },
     ) {}
 }
 
-const component Check(text string, checked bool, style ui.Style, @change ui.ChangeEvent) ui.node {
+const component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -565,11 +580,18 @@ const component ui.select[platform] {
 // --- Text entry ---
 
 const component ui.input[platform] {
-    Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }) {}
+    Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }, @change { change() }) {}
 }
 
 const component ui.textarea[platform] {
-    MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
+    MultiLineEntry(
+        text=value,
+        placeholder=placeholder,
+        rows=rows,
+        style={...style},
+        @input { input() },
+        @change { change() },
+    ) {}
 }
 
 // --- The timer ---

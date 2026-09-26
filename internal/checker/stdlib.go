@@ -1523,15 +1523,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 					walkStmt(s)
 				}
 			}
-		case *ir.Closure:
-			if x.Func != nil {
-				for _, s := range x.Func.Block {
-					walkStmt(s)
-				}
-			}
-			if x.State != nil {
-				walkExpr(x.State)
-			}
 		}
 	}
 	walkStmt = func(s ir.Stmt) {
@@ -1580,10 +1571,6 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 					}
 				}
 			}
-			for _, c := range x.Children {
-				walkStmt(c)
-			}
-		case *ir.SlotInst:
 			for _, c := range x.Children {
 				walkStmt(c)
 			}

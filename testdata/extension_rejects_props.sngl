@@ -9,7 +9,7 @@ component sngl.text[html.platform](extra string) { // ERROR(check) "its type bel
 }
 
 component main sngl.node {
-    text(value="hi")
+    sngl.text(value="hi")
 }
 
 sngl.window {

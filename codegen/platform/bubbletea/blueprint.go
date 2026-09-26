@@ -265,25 +265,19 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 	return bp
 }
 
-// extractJoinDir reads a JoinDir enum member off a prop value. A bare enum
-// member appears as an *ir.Ident with Member set; a qualified `JoinDir.horizontal`
-// (the form the platform bodies use) survives as an *ir.Select whose Field names
-// the member. The "horizontal" member selects the horizontal axis and
+// extractJoinDir reads a JoinDir enum member off a prop value: an *ir.Ident
+// with Member set, which is what the checker makes of a qualified
+// `JoinDir.horizontal` too. "horizontal" selects the horizontal axis and
 // "vertical" the vertical one.
 //
-// `join` is const, so the optimizer has folded it to one of those two shapes;
-// anything else is a compiler bug, not a program to lay out vertically.
+// `join` is const, so the optimizer has folded it to a member; anything else
+// is a compiler bug, not a program to lay out vertically.
 func extractJoinDir(e ir.Expr) joinDir {
-	member := ""
-	switch v := e.(type) {
-	case *ir.Ident:
-		member = v.Member
-	case *ir.Select:
-		member = v.Field
-	default:
+	v, ok := e.(*ir.Ident)
+	if !ok || v.Member == "" {
 		panic(fmt.Sprintf("internal: bubbletea Layout.join not folded to a JoinDir member: %T", e))
 	}
-	if member == "horizontal" {
+	if v.Member == "horizontal" {
 		return joinHorizontal
 	}
 	return joinVertical

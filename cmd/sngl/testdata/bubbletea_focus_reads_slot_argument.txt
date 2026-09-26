@@ -1,0 +1,147 @@
+# A focusable node in content handed to a recursion may not depend on the
+# slot's arguments on bubbletea, and saying so is a positioned error.
+#
+# A recursion renders the content once per level, each level passing its own
+# argument, while bubbletea gives the content one focus stop and runs its
+# handler in Update at the site that wrote it -- where no argument is bound.
+# The handler reading `d` was dropped: no stop, no `hits +=`, silently. A
+# branch reading it is the same question, since Update walks the branch to find
+# the node. A prop reading it is fine: it is rendered where `d` is bound.
+#
+# html keeps each level's handler in the level, so the same program builds.
+
+! sngl generate --lang go --platform bubbletea --out out handler.sngl
+stderr 'handler.sngl:25:59: a focusable node in the "label" content handed to "frame" reads the slot argument "d"'
+
+! sngl generate --lang go --platform bubbletea --out out2 branch.sngl
+stderr 'branch.sngl:25:24: a focusable node in the "label" content handed to "frame" reads the slot argument "d"'
+
+sngl generate --lang go --platform bubbletea --out out3 prop.sngl
+sngl generate --platform html --out out4 handler.sngl
+
+# A focusable node in the recursion's own body is further still: Tab and
+# Update reach only the stops the window renders, so its focus state was
+# declared nowhere and the Model did not compile (`undefined: __focusID`).
+# The button is the platform's primitive by then, so the position is the
+# declaration's.
+! sngl generate --lang go --platform bubbletea --out out5 own.sngl
+stderr 'own.sngl:5:1: the recursive component "frame" renders a focusable node in its own body'
+sngl generate --platform html --out out6 own.sngl
+
+-- handler.sngl --
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d)
+                }
+            }
+        }
+    }
+}
+
+var hits = 0
+var xs = [1, 2]
+
+window {
+    vbox {
+        text(value="hits {hits}")
+        for var x = xs {
+            frame(n=x) {
+                component label(d) {
+                    button(text="b {d}", @click { hits += d })
+                }
+            }
+        }
+    }
+}
+-- branch.sngl --
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d)
+                }
+            }
+        }
+    }
+}
+
+var hits = 0
+var xs = [1, 2]
+
+window {
+    vbox {
+        text(value="hits {hits}")
+        for var x = xs {
+            frame(n=x) {
+                component label(d) {
+                    if d > 0 {
+                        button(text="b", @click { hits += x })
+                    }
+                }
+            }
+        }
+    }
+}
+-- prop.sngl --
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d)
+                }
+            }
+        }
+    }
+}
+
+var hits = 0
+var xs = [1, 2]
+
+window {
+    vbox {
+        text(value="hits {hits}")
+        for var x = xs {
+            frame(n=x) {
+                component label(d) {
+                    button(text="b {d}", @click { hits += x })
+                }
+            }
+        }
+    }
+}
+-- own.sngl --
+import . "sngl:ui"
+
+var hits = 0
+
+component frame(n int) node {
+    vbox {
+        button(text="level {n}", @click { hits += n })
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    vbox {
+        text(value="hits {hits}")
+        frame(n=depth)
+    }
+}

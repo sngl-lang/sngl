@@ -22,7 +22,6 @@ func (t *Translator) Description() string {
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string { return name.Name }
 func (t *Translator) TranslateIRLiteral(e ir.Expr) string      { return "" }
-func (t *Translator) TypeToNative(hint string) string          { return hint }
 func (t *Translator) ExportName(name string) string            { return name }
 
 // NewFileEmitter returns an unimplemented stub. The none lang isn't

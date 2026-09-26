@@ -13,6 +13,6 @@ import (
 // unreachable from the wasm playground, so this never runs in
 // practice — exists only to satisfy the compiler when html.go is
 // compiled under js/wasm.
-func emitTestagentFiles(_ codegen.Sink, _ *ir.Package, _ string) error {
+func emitTestagentFiles(_ codegen.Sink, _ *ir.Package) error {
 	return nil
 }

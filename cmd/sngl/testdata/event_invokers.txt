@@ -106,3 +106,43 @@ component counter node {
 window {
     counter()
 }
+-- testrun/bubbletea/go/click.sngl/counter/1 --
+sha256:4e4d52c10a31bfe6c7f759a695e29ed2
+{
+  "results": [
+    {
+      "Desc": "Increment",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/click.sngl/counter/1 --
+sha256:cd484cca95af58ee4e215e7da823e4f0
+{
+  "results": [
+    {
+      "Desc": "Increment",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/click.sngl/counter/1 --
+sha256:5432f57af2f9ec2ae26f6a8a6af87646
+{
+  "results": [
+    {
+      "Desc": "Increment",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/click.sngl/counter/1 --
+sha256:6b4fc91dce8fb8bbb227b248c118860d
+{
+  "results": [
+    {
+      "Desc": "Increment",
+      "Passed": true
+    }
+  ]
+}

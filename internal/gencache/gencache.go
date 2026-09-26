@@ -3,7 +3,7 @@
 // A producer is a step whose output the compiler reads but did not write: it
 // runs another process or reads the host, and what it hands back is SNGL
 // source -- declarations derived from a GTK install's introspection data, the
-// value a `#[foreign(pure)]` Go function returned. Doing that on every build
+// value a `const func` Go function returned. Doing that on every build
 // is most of what an unchanged build would otherwise spend.
 //
 // The split this package keeps is the one `sngl:x/gen/cache` describes. A

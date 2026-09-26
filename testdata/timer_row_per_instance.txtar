@@ -170,6 +170,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_tick(__v) {
       __prop_tick = __v;
+      __effects0_settle();
     }
     __effects0_settle();
     return {
@@ -256,4 +257,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d8821ec26d0c0a403ba56e570fc0f0cc
+pass sha256:5c633fb478c28341d336125adbf3b563

@@ -86,7 +86,7 @@ const component ui.input[platform] {
 
 const component ui.checkbox[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+        Checkbox(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -123,7 +123,7 @@ const component ui.radio[platform] {
 
 const component ui.toggle[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+        Switch(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
         if label != "" {
             Text(text=label) {}
         }

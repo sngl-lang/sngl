@@ -211,6 +211,20 @@ type AsyncKickerEntry struct {
 	Deps         []string // sorted names of reactive state vars whose mutation should re-fire the kicker
 }
 
+// RootDecl returns the component RootComponent names, or nil for every
+// ordinary build.
+func (p *Package) RootDecl() *Component {
+	if p == nil || p.RootComponent == "" {
+		return nil
+	}
+	for _, c := range p.Components {
+		if c != nil && c.Name == p.RootComponent {
+			return c
+		}
+	}
+	return nil
+}
+
 // IsProgram reports whether the package is something to build rather than a
 // library to import. A window is what says so: it is the only renderable
 // member of the root tree, so a package without one has nothing to open.

@@ -157,10 +157,6 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 		for _, c := range n.Body {
 			rb.walkStmt(c)
 		}
-	case *ir.ContextProvider:
-		for _, c := range n.Children {
-			rb.walkStmt(c)
-		}
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle,
 		*ir.Break, *ir.Continue:
 		// No visual output.
@@ -401,7 +397,7 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 }
 
 // routeStateVars returns the state fields surfaced to a route's server State
-// struct: the package-level vars, the main component's, and the ones the
+// struct: the package-level vars, a harness root's, and the ones the
 // route's own window owns. Mirrors htmlGen.stateVars but yields the
 // language-agnostic codegen.StateVar (name + IR type).
 //
@@ -424,7 +420,7 @@ func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar 
 }
 
 // routeVars is the declarations a route carries, deduplicated by name and in
-// the order the State struct lists them: the package's, the main component's,
+// the order the State struct lists them: the package's, a harness root's,
 // and the ones the route's own window owns.
 //
 // Separate from routeStateVars because a var is two things to a route. Its
@@ -450,8 +446,8 @@ func routeVars(pkg *ir.Package, win *codegen.WindowCtx) []*ir.Var {
 	}
 	if pkg != nil {
 		add(pkg.Vars)
-		if main := mainIRComponent(pkg); main != nil {
-			add(main.Vars)
+		if root := pkg.RootDecl(); root != nil {
+			add(root.Vars)
 		}
 	}
 	if win != nil {

@@ -83,9 +83,6 @@ body { font-family: system-ui, sans-serif; }
   state.r__inst0 = { a: 1 };
   state.r2__inst0 = { a: 2 };
   state.p__inst0 = "done";
-  function Row(a) {
-    return { a };
-  }
   function String(v) {
     return "" + v;
   }
@@ -98,4 +95,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9d6ad2e82f929398c94793d85bf7f334
+pass sha256:5033c314b15fbb1b0b8e76f93b7b7479

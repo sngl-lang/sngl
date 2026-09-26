@@ -89,6 +89,9 @@ component Styled(
     focus Focus,
     const events list<Event>,
     style ui.Style,
+    // Fired by the key an `events` record maps "change" to. A key press
+    // carries nothing, so the override builds its component's payload here.
+    @change,
 ) ui.node
 
 #[gen.renders(identity)]
@@ -193,6 +196,7 @@ const component ui.checkbox[platform] {
         focus=Focus{enabled=true},
         events=[Event{on="change", key="space"}],
         style={...style},
+        @change { change({checked=!checked}) },
     ) {}
 }
 
@@ -209,6 +213,7 @@ const component ui.toggle[platform] {
         focus=Focus{enabled=true},
         events=[Event{on="change", key="space"}],
         style={...style},
+        @change { change({checked=!checked}) },
     ) {}
 }
 

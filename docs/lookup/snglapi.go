@@ -352,14 +352,6 @@ func DeclHref(path, kind, name string) string {
 	return declPageHref(path, kind, name, "")
 }
 
-// DeclHrefPrefix is what a package's declaration links share: its pages sit
-// directly under the package, so a listing needs no per-kind prefix.
-//
-//sngl:pure
-func DeclHrefPrefix(path string) string {
-	return PackageBaseHref(path)
-}
-
 // urlPkg is the path segments a package's pages live under. Keeping the scheme
 // as the first segment is what keeps the two id spaces apart: sngl:html would
 // otherwise land on the html platform's pages.

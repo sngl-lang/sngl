@@ -19,7 +19,7 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node { text(value="") }
+window { text(value="") }
 -->
 
 ```sngl
@@ -42,7 +42,7 @@ import . "sngl:dialog"
 import . "sngl:test"
 import "shared"
 
-component main node {
+window {
     var w shared.Widget
     text(value=w.name)
 }
@@ -56,7 +56,7 @@ import . "sngl:dialog"
 import . "sngl:test"
 import "go:go/ast"
 
-component main node {
+window {
     var file ast.File
     text(value=string(file))
 }
@@ -131,14 +131,14 @@ registers the same thing from outside.
 
 The top-level declarations available are: `import`, `output`, `struct`, `enum`, `unit`, `const`, `var`, `func`, components, and `timer`. There is no `style` or `test` declaration: a reusable style is a `Style` constant, and a test is an ordinary function taking a `Test` receiver.
 
-A complete minimal file needs only a `component main`:
+A complete minimal program needs only a `window`:
 
 ```sngl
 import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node {
+window {
 }
 ```
 
@@ -153,12 +153,12 @@ output {
     js { html }
 }
 
-component main node {
+window {
     text(value="Hello, SNGL")
 }
 ```
 
-Every package that produces an executable must have exactly one `component main`. Packages without `component main` are libraries -- they export structs, enums, and components for other files to import.
+A program is its windows: a package that renders at least one `window` builds into something to run, and a package without one is a library -- it exports structs, enums, and components for other files to import. No component name is special, `main` included; a component renders where a window, or another component, instantiates it.
 
 ## Types
 
@@ -646,9 +646,9 @@ component Counter(label = "", start = 0) node {
 }
 ```
 
-### component main
+### Rendering a component
 
-`component main` is the app entry point. Its body becomes the root of the rendered UI. Every executable file needs exactly one.
+A component renders only where something instantiates it. The root of a program is its `window`s, so a component reaches the screen by being written inside a window's body or inside another component that one renders. A component called `main` is an ordinary component like any other.
 
 ### Params
 
@@ -796,7 +796,7 @@ component Stepper(:count = 0) node {
     text(value=string(count))
 }
 
-component main node {
+window {
     var steps = 0
     Stepper(:count=steps)
     text(value="Steps: {steps}")
@@ -1069,7 +1069,7 @@ component SaveButton(label = "Save", @save) node {
     button(text=label, @click { save() })
 }
 
-component main node {
+window {
     var status = ""
     SaveButton(@save { status = "saved" })
     text(value=status)
@@ -1087,7 +1087,7 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node {
+component Progress node {
     var (
         progress float = 0
         running = true
@@ -1099,7 +1099,11 @@ component main node {
     button(text="Stop", @click { running = false })
 }
 
-func testTimerIncrements(t Test, c main) {
+window {
+    Progress()
+}
+
+func testTimerIncrements(t Test, c Progress) {
     t.assert(c.progress == 0)
     t.tick()
     t.assert(c.progress == 0.1)
@@ -1139,7 +1143,7 @@ import . "sngl:test"
 const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
 const secondary Style = Style{color=#777777, fontStyle="italic"}
 
-component main node {
+window {
     vbox {
         text(value="hello", style=primary)
         text(value="world", style=secondary)
@@ -1279,7 +1283,7 @@ struct Todo {
     done bool = false
 }
 
-component main node {
+window {
     var (
         newTodo = ""
         todos list<Todo> = []
@@ -1310,7 +1314,7 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node {
+window {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
     vbox(style={padding=16, gap=8}) {
@@ -1330,7 +1334,7 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node {
+window {
     var showModal = false
     vbox(style={padding=16}) {
         button(text="Open", @click { showModal = true })
@@ -1349,7 +1353,7 @@ import . "sngl:ui"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main node {
+window {
     var (
         progress float = 0.0
         running = false
@@ -1380,7 +1384,7 @@ struct Todo {
     done bool = false
 }
 
-component main node {
+window {
     var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
     func active() => todos.filter(func(t) => !t.done)
     func activeCount() => active().length()

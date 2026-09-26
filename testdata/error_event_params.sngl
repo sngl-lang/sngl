@@ -20,7 +20,7 @@ func takesFirst(f func(int)) {
 component picker(@pick(index int, label string), @done()) node {
     button(text="too many", @click { pick(0, "a", true) }) // ERROR(check) "event \"pick\" passes 2 parameters, got 3 arguments"
     button(text="too few", @click { pick(0) })             // ERROR(check) "event \"pick\" passes 2 parameters, got 1 argument"
-    button(text="swapped", @click { pick("a", 0) })        // ERROR(check) "cannot use string as int for parameter \"index\" of event \"pick\""
+    button(text="swapped", @click { pick("a", 0) })        // ERROR(check) "cannot pass string as int"
     button(text="done", @click { done(1) })                // ERROR(check) "event \"done\" passes no parameters, got 1 argument"
     effect(@mount {
         takesSwapped(pick) // ERROR(check) "event \"pick\" cannot be used as func(string, int): parameter \"index\" is int"

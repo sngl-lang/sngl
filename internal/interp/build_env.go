@@ -11,6 +11,57 @@ import (
 // consts/funcs are populated; when set, the named component's vars/consts/
 // props/funcs are also seeded and env.Comp/BodyStmts are wired up.
 func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
+	env := newPackageEnv(pkg)
+	if compName == "" {
+		seedPackageState(env, pkg)
+		return env, nil
+	}
+
+	comp := FindComponent(pkg, compName)
+	if comp == nil {
+		return nil, fmt.Errorf("component %q not found", compName)
+	}
+
+	// Seed package-level vars and consts so component bodies and any nested
+	// child components can read/write global state. A component-local
+	// declaration of the same name is a different symbol, so it binds
+	// separately rather than overwriting.
+	seedPackageState(env, pkg)
+
+	for _, v := range comp.Vars {
+		env.Set(v, evalInit(env, v.Init))
+	}
+	for _, p := range comp.Props {
+		env.Set(p.Sym, evalInit(env, p.Default))
+	}
+	env.Comp = comp
+	env.BodyStmts = comp.Body
+	return env, nil
+}
+
+// BuildProgramEnv creates an Env for running pkg as a program: its package
+// state seeded, and its windows and package body as what mounts.
+func BuildProgramEnv(pkg *ir.Package) *Env {
+	env := newPackageEnv(pkg)
+	seedPackageState(env, pkg)
+	body := make([]ir.Stmt, 0, len(pkg.Windows)+len(pkg.Body))
+	for _, w := range pkg.Windows {
+		body = append(body, w)
+	}
+	env.BodyStmts = append(body, pkg.Body...)
+	return env
+}
+
+func seedPackageState(env *Env, pkg *ir.Package) {
+	for _, v := range pkg.Vars {
+		env.Set(v, evalInit(env, v.Init))
+	}
+	for _, c := range pkg.Consts {
+		env.Set(c, evalInit(env, c.Init))
+	}
+}
+
+func newPackageEnv(pkg *ir.Package) *Env {
 	env := NewEnv()
 	env.Pkg = pkg
 	env.Units = buildUnitTables(pkg)
@@ -39,48 +90,7 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	// by symbol, so a name this package also declares still wins: its own
 	// binding is written after.
 	seedImportedConsts(env, pkg, map[*ir.Package]bool{})
-
-	if compName == "" {
-		for _, c := range pkg.Consts {
-			env.Set(c, evalInit(env, c.Init))
-		}
-		return env, nil
-	}
-
-	comp := FindComponent(pkg, compName)
-	if comp == nil {
-		if compName == "main" {
-			for _, v := range pkg.Vars {
-				env.Set(v, evalInit(env, v.Init))
-			}
-			for _, c := range pkg.Consts {
-				env.Set(c, evalInit(env, c.Init))
-			}
-			return env, nil
-		}
-		return nil, fmt.Errorf("component %q not found", compName)
-	}
-
-	// Seed package-level vars and consts so component bodies and any nested
-	// child components can read/write global state. A component-local
-	// declaration of the same name is a different symbol, so it binds
-	// separately rather than overwriting.
-	for _, v := range pkg.Vars {
-		env.Set(v, evalInit(env, v.Init))
-	}
-	for _, c := range pkg.Consts {
-		env.Set(c, evalInit(env, c.Init))
-	}
-
-	for _, v := range comp.Vars {
-		env.Set(v, evalInit(env, v.Init))
-	}
-	for _, p := range comp.Props {
-		env.Set(p.Sym, evalInit(env, p.Default))
-	}
-	env.Comp = comp
-	env.BodyStmts = comp.Body
-	return env, nil
+	return env
 }
 
 // seedImportedConsts binds the consts of every package this one imports,

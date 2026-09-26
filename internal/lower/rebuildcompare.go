@@ -9,7 +9,7 @@ import (
 // key: what a keyed lifetime asks of two values of its `on`, and a built
 // instance of two values of a #[construct] prop.
 //
-// Emitted from the same walk ir.RebuildComparable answers with, which is the
+// Emitted from the same walk ir.RebuildIncomparable answers with, which is the
 // point of it being a walk. A single `a != b` cannot be that expression,
 // because it does not mean the same thing on every target: Go compares two
 // structs field by field, JS compares two objects by identity, so a struct key
@@ -24,7 +24,7 @@ import (
 //
 // The walk terminates because the checker gates both call sites -- an effect's
 // `on` at checkEffectKey, a #[construct] prop at checkConstructProps -- and a
-// struct that contains itself is not RebuildComparable there. Reaching one here
+// struct that contains itself is refused there. Reaching one here
 // would be a caller that skipped the gate.
 func rebuildDiffers(a, b ir.Expr, t *ir.Type) ir.Expr {
 	return rebuildCompare(a, b, t, false)

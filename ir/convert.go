@@ -16,21 +16,6 @@ func Convert(pkg *Package) *ast.Document {
 	return c.convertPackage(pkg)
 }
 
-// ConvertExpr reconstructs an AST expression from an IR expression.
-// Synthetic expressions (no AST backref) are materialized from IR fields.
-// Bridges the IR → AST-codegen migration while platform generators are
-// incrementally ported to consume IR directly.
-func ConvertExpr(e Expr) ast.Expr {
-	c := &converter{}
-	return c.convertExpr(e)
-}
-
-// ConvertStmt reconstructs an AST statement from an IR statement.
-func ConvertStmt(s Stmt) ast.Stmt {
-	c := &converter{}
-	return c.convertStmt(s)
-}
-
 type converter struct {
 	// aliases maps a library package's URI to what this file imported it as,
 	// so a name from one is spelled the way the source spells it.
@@ -995,7 +980,15 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 	}
 }
 
-func (c *converter) convertConversion(conv *Conversion) *ast.CallExpr {
+func (c *converter) convertConversion(conv *Conversion) ast.Expr {
+	// These conversions have no source spelling -- `list<float>(xs)` names
+	// nothing -- and only ever arise implicitly, so the checker re-inserts them.
+	if conv.Type != nil {
+		switch conv.Type.Kind {
+		case TypeList, TypeOption, TypeIter:
+			return c.convertExpr(conv.Operand)
+		}
+	}
 	// Type conversions look like calls: int(x), string(x), etc.
 	name := conv.Type.String()
 	return &ast.CallExpr{

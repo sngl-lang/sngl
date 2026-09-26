@@ -1,10 +1,6 @@
 package ir
 
-import (
-	"strings"
-
-	"git.duckfam.us/jonathan/sngl/ast"
-)
+import "git.duckfam.us/jonathan/sngl/ast"
 
 // foreignAttrs renders a declaration's Foreign record back as the marks that
 // would have set it.
@@ -133,13 +129,4 @@ func foreignFlagIdents(fn *Func) []ast.Expr {
 		out = append(out, &ast.IdentExpr{Name: "async"})
 	}
 	return out
-}
-
-// needsMacroImport reports whether any mark this rendering emits names a
-// package the document does not import. A dumped program that carried the
-// mark in source imported it already; one whose Foreign came from elsewhere
-// may not, and a mark whose alias resolves to nothing does not re-parse.
-func (c *converter) needsMacroImport(uri string) bool {
-	trimmed := strings.TrimPrefix(uri, "sngl:")
-	return !c.dotted[trimmed] && c.aliases[trimmed] == ""
 }
