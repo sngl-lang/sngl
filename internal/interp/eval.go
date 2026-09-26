@@ -2868,5 +2868,6 @@ func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (
 		env.SetContext(ctx, v)
 	}
 	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
-	return fn()
+	res, err := fn()
+	return res, catchEscaped(vals, err)
 }

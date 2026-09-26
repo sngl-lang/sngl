@@ -65,6 +65,8 @@ var alwaysOn = []string{
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
+	// Where a raise lands is the render tree's answer, not a target's.
+	"ErrorScope",
 	"ForElse",
 	"ForeignPrimitive",
 	"HoistBodyTypes",

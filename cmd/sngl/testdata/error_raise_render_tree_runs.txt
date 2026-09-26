@@ -1,0 +1,127 @@
+# A raise follows the render tree: a handler in a component that reaches no
+# boundary in its own body is caught by the boundary around the instance that
+# raised, however many instantiations up, and each instance answers to its own.
+#
+# The checker resolves a raise inside the component it was written in, so
+# before passErrorScope every compiled target let such a raise out of the click
+# uncaught, and the interpreter reported `raised: empty` for all of these.
+# The interpreter follows the tree at run time (the frames a node is mounted
+# under), and a compiled target resolves each spliced instance statically.
+#
+# Only the interpreter runs these: no compiled test agent reaches an element
+# through a nested instance (`c.l.go`) -- bubbletea's reads it as a Model field
+# `lGo` and does not compile, and html's fails the click. What those targets
+# emit is testdata/error_raise_render_tree.txtar.
+
+sngl test --platform=none app.sngl
+stdout '4 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func check(s string) {
+    if s.length == 0 {
+        error.raise("empty", "validation")
+    }
+}
+
+component leaf node {
+    var after = false
+    vbox {
+        button #go(text="go", @click {
+            check("")
+            after = true
+        })
+        button #raw(text="raw", @click {
+            error.raise("direct", "validation")
+            after = true
+        })
+    }
+}
+
+component middle node {
+    leaf #l()
+}
+
+component oneDeep node {
+    var problem = "none"
+    boundary(@error(e) {
+        problem = "caught: " + e.message
+    }) {
+        leaf #l()
+    }
+}
+
+func testComponentUnderBoundary(t Test, c oneDeep) {
+    c.l.go.click()
+    t.assert(c.problem == "caught: empty")
+    t.assert(c.l.after == false)
+    c.l.raw.click()
+    t.assert(c.problem == "caught: direct")
+    t.assert(c.l.after == false)
+}
+
+component twoDeep node {
+    var problem = "none"
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        middle #m()
+    }
+}
+
+func testComponentTwoLevelsDown(t Test, c twoDeep) {
+    c.m.l.go.click()
+    t.assert(c.problem == "empty")
+}
+
+component nearest node {
+    var inner = "none"
+    var outer = "none"
+    boundary(@error(e) {
+        outer = e.message
+    }) {
+        vbox {
+            boundary(@error(e) {
+                inner = e.message
+            }) {
+                leaf #a()
+            }
+            leaf #b()
+        }
+    }
+}
+
+func testEachInstanceReachesItsOwnBoundary(t Test, c nearest) {
+    c.a.go.click()
+    t.assert(c.inner == "empty")
+    t.assert(c.outer == "none")
+    c.b.go.click()
+    t.assert(c.outer == "empty")
+}
+
+component rethrow node {
+    var inner = "none"
+    var outer = "none"
+    boundary(@error(e) {
+        outer = e.message
+    }) {
+        boundary(@error(e) {
+            inner = e.message
+            error.raise("again", "validation")
+        }) {
+            leaf #l()
+        }
+    }
+}
+
+func testBoundaryHandlerRaisesOutward(t Test, c rethrow) {
+    c.l.go.click()
+    t.assert(c.inner == "empty")
+    t.assert(c.outer == "again")
+}
+
+window {
+    oneDeep()
+}

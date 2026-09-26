@@ -30,6 +30,9 @@ func (e *AssertError) Error() string {
 // invoke a resolved handler or propagate further up.
 type RaisedError struct {
 	Event map[string]any
+	// from is the handler whose body let this raise out, so the render-tree
+	// frames it is offered to start outside that handler rather than at it.
+	from *ir.EventHandler
 }
 
 func (e *RaisedError) Error() string {
@@ -100,11 +103,73 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 		if ret, ok := err.(*returnSignal); ok && !ret.raised {
 			return nil
 		}
+		if raised, ok := err.(*RaisedError); ok {
+			raised.from = handler
+		}
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// raiseScope is the key, among the context values a node is mounted under,
+// that holds the boundaries and windows around it, nearest first. The checker
+// resolves a raise within the component it was written in; one that escapes
+// that is the render tree's, and which instance of the component raised is
+// only known here.
+var raiseScope = &ir.Context{Name: "__raise"}
+
+type raiseFrame struct {
+	handler *ir.EventHandler
+	// env is the scope that rendered the boundary, where its handler runs.
+	env *Env
+}
+
+// pushRaiseScope makes h the nearest frame for what is mounted until the
+// returned func restores the previous ones.
+func (env *Env) pushRaiseScope(h *ir.EventHandler) func() {
+	prev, had := env.ContextVals[raiseScope]
+	frames, _ := prev.([]raiseFrame)
+	env.SetContext(raiseScope, append([]raiseFrame{{handler: h, env: env}}, frames...))
+	return func() {
+		if had {
+			env.ContextVals[raiseScope] = prev
+		} else {
+			delete(env.ContextVals, raiseScope)
+		}
+	}
+}
+
+// catchEscaped offers a raise that left an event handler to the frames it was
+// mounted under, starting outside the handler that let it out.
+func catchEscaped(vals map[*ir.Context]any, err error) error {
+	raised, ok := err.(*RaisedError)
+	if !ok {
+		return err
+	}
+	frames, _ := vals[raiseScope].([]raiseFrame)
+	i := 0
+	if raised.from != nil {
+		for j, f := range frames {
+			if f.handler == raised.from {
+				i = j + 1
+				break
+			}
+		}
+	}
+	for ; i < len(frames); i++ {
+		err := frames[i].env.invokeHandler(frames[i].handler, raised.Event)
+		next, ok := err.(*RaisedError)
+		if !ok {
+			if IsReturn(err) {
+				return nil
+			}
+			return err
+		}
+		raised = next
+	}
+	return raised
 }
 
 // returnSignal carries a `return` out of the blocks it was written inside.

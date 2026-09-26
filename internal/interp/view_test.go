@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,8 +64,8 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 				oldMaps := normalizeRefs(old)
 				// The tree finds strictly more than the walk did: content a
 				// call site supplies to a user component is now mounted, and
-				// the walk never reached it. That is the one intentional
-				// divergence, so it is subtracted here rather than the
+				// the walk never reached it. That is one intentional
+				// divergence (nodeMaps holds the other), so it is subtracted here rather than the
 				// comparison being loosened -- everything else must still
 				// match exactly.
 				visible, fromSlot := splitSupplied(view.Find(id))
@@ -339,7 +340,15 @@ func splitSupplied(nodes []*Node) (visible []*Node, fromSlot int) {
 func nodeMaps(nodes []*Node) []map[string]any {
 	out := make([]map[string]any, 0, len(nodes))
 	for _, n := range nodes {
-		out = append(out, n.Map())
+		m := n.Map()
+		// The boundaries a node is mounted under ride with its contexts, and
+		// the frozen walk predates them: a second intentional divergence.
+		if ctx, ok := m["__ownerContext"].(map[*ir.Context]any); ok && ctx[raiseScope] != nil {
+			ctx = maps.Clone(ctx)
+			delete(ctx, raiseScope)
+			m["__ownerContext"] = ctx
+		}
+		out = append(out, m)
 	}
 	return out
 }

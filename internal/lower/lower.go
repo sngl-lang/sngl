@@ -64,6 +64,7 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	passErrorScope,
 	passWindowNesting,
 	passRecursionDepth,
 	passInstanceSlots,
