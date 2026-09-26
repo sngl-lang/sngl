@@ -11,6 +11,14 @@ import (
 	"strings"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
 type Todo struct {
 	Text string
 	Done bool
