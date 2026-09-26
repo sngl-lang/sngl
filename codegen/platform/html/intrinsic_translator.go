@@ -61,13 +61,16 @@ type htmlTranslator struct {
 	// element built at run time: the page walk sees only the page's markup.
 	classProps map[string][]ir.Arg
 	addStyle   func(string)
+	// useStyleValue records that a node takes a whole Style value, whose CSS
+	// the page then builds with styleValueHelper.
+	useStyleValue func(*ir.StructDef)
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
-		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
+		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle, useStyleValue: g.useStyleValue,
 	}
 }
 
@@ -336,6 +339,10 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 				out = setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 			}
 			return append(out, t.styleWriteStmts(node, dynamicStyleWrites(sl))...)
+		}
+		if sd := styleValueDecl(value); sd != nil && t.useStyleValue != nil {
+			t.useStyleValue(sd)
+			return []ir.Stmt{styleValueWrite(node, value)}
 		}
 	}
 	if prop == spanStyleProp {
