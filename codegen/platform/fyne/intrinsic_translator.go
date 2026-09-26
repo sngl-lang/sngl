@@ -49,7 +49,7 @@ type fyneTranslator struct {
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
 	// rootRenders are the calls written at the top of this scope's body that
-	// render a slot into __root; renderedRoot is that container once one has.
+	// render a slot into its slot root; renderedRoot is that container once one has.
 	rootRenders  map[ir.Stmt]bool
 	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,

@@ -21,7 +21,10 @@ ui.window #one(title="One") {
         Row(label=it)
     }
     ui.text(value="one foot")
-    ui.button #more(text="more", @click { items.push("c") })
+    ui.button #more(text="more", @click {
+        items.push("c")
+        notes.push("z")
+    })
 }
 
 ui.window #two(title="Two") {
@@ -82,9 +85,9 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 	m.more_click_handler()
 	check("after pushing in one", "one head,a 0,b 0,c 0,one foot,more")
 	m.navigate("two")
-	check("window two", "two head,x,two foot,note")
+	check("window two, written from one", "two head,x,z,two foot,note")
 	m.note_click_handler()
-	check("after pushing in two", "two head,x,y,two foot,note")
+	check("after pushing in two", "two head,x,z,y,two foot,note")
 	m.navigate("one")
 	check("back in one", "one head,a 0,b 0,c 0,one foot,more")
 }

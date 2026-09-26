@@ -29,7 +29,10 @@ ui.window #one(title="One") {
         Row(label=it)
     }
     ui.text(value="one foot")
-    ui.button #more(text="more", @click { items.push("c") })
+    ui.button #more(text="more", @click {
+        items.push("c")
+        notes.push("z")
+    })
 }
 
 ui.window #two(title="Two") {
@@ -136,9 +139,9 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 	}
 	check("built", "One: one head,a 0,b 0,one foot,more | Two: two head,x,two foot,note")
 	m.moreClick()
-	check("after pushing in one", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,two foot,note")
+	check("after pushing in one", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,z,two foot,note")
 	m.noteClick()
-	check("after pushing in two", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,y,two foot,note")
+	check("after pushing in two", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,z,y,two foot,note")
 }
 `
 

@@ -193,7 +193,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		v := tv.Var()
 		if v != nil && v.Synthesized {
 			if ir.IsSlotRootName(v.Name) {
-				// The __root sentinel is initialized lazily inside BuildUI:
+				// A slot root is initialized lazily inside BuildUI:
 				// cgo calls aren't valid in struct init.
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -367,6 +367,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			}
 		}
 		t.tops, t.cTypes = tr.topLevel, tr.idCTypes
+		if id, ok := tr.renderedRoot.(*ir.Ident); ok {
+			t.root = id.Name
+		}
 		return t
 	}
 	// lower.passPlatformExtensionBody is always on, so every platform override

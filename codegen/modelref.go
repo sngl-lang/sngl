@@ -41,7 +41,7 @@ func RootSlotRenders(body []ir.Stmt) map[ir.Stmt]bool {
 		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
 			continue
 		}
-		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && ir.IsSlotRootName(id.Name) {
+		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && id.Synthesized && ir.IsSlotRootName(id.Name) {
 			set[s] = true
 		}
 	}

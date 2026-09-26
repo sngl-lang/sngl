@@ -83,7 +83,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 		if v != nil && v.Synthesized {
 			if ir.IsSlotRootName(v.Name) {
-				// The __root sentinel is built through a native call so that
+				// A slot root is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
 					Type:     ir.TypDyn,

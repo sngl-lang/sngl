@@ -237,9 +237,16 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
+	// Every window's slots are built before any window is injected into: a
+	// handler in one window may write what another window's slot renders, and
+	// an updater is spliced only for a slot whose render func exists.
 	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
-		w.Children = st.rewriteAndInject(w.Children)
+		w.Children = st.rewriteStructures(w.Children)
+	}
+	for _, w := range ir.AllWindows(pkg) {
+		st.owner = windowOwner{w: w, pkg: pkg}
+		w.Children = st.injectIntoStmts(w.Children)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
@@ -303,6 +310,13 @@ func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // injectIntoStmts for prop-updater injection. Future tasks add slot
 // generator Funcs and structural rewrites.
 func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
+	return st.injectIntoStmts(st.rewriteStructures(stmts))
+}
+
+// rewriteStructures is rewriteAndInject without the injection: it builds the
+// slot funcs for the reactive structures in stmts and replaces each with its
+// render call.
+func (st *reactivityState) rewriteStructures(stmts []ir.Stmt) []ir.Stmt {
 	switch st.owner.(type) {
 	case compOwner:
 		if len(st.reverseSlots) > 0 || len(st.undriven) > 0 {
@@ -355,8 +369,7 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 		st.reverseSlots[v] = slots
 	}
 	// Replace reactive If/For at source position with renderSlot CallStmt.
-	stmts = st.rewriteReactiveStructures(stmts, nil)
-	return st.injectIntoStmts(stmts)
+	return st.rewriteReactiveStructures(stmts, nil)
 }
 
 // rewriteReactiveStructures replaces every *ir.If/*ir.For carrying a

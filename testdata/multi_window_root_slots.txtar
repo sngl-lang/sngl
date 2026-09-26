@@ -7,8 +7,11 @@ into the first window's container, and its build returned a fresh VBox of its
 static siblings with no rows at all -- the first window's did the same, so on
 fyne neither window showed a row. Each window now gets its own root, named by
 its position among the windows (`__root`, `__root1`, ...), so a single-window
-program is unchanged. State is still shared: both windows read one Model, and
-a push in either re-renders only the slot that reads what it changed.
+program is unchanged. State is still shared: both windows read one Model.
+
+`more` in window one also writes `notes`, which window two renders. Its
+updater used to be missing, because window one was injected into before
+window two's slot func existed; every window's slots are now built first.
 
 gtk4 built only the first window. It now builds every window as a
 GtkApplicationWindow of its own over the one Model: BuildUI presents the rest
@@ -45,7 +48,10 @@ ui.window #one(title="One") {
         Row(label=it)
     }
     ui.text(value="one foot")
-    ui.button #more(text="more", @click { items.push("c") })
+    ui.button #more(text="more", @click {
+        items.push("c")
+        notes.push("z")
+    })
 }
 
 ui.window #two(title="Two") {
@@ -157,6 +163,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 func (m *Model) more_click_handler() {
 	m.items = append(m.items, "c")
 	m.__renderSlot0(m.__root)
+	m.notes = append(m.notes, "z")
+	m.__renderSlot1(m.__root1)
 }
 
 func (m *Model) note_click_handler() {
@@ -400,6 +408,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 func (m *Model) more_clicked_handler() {
 	m.items = append(m.items, "c")
 	m.__renderSlot0(m.__root)
+	m.notes = append(m.notes, "z")
+	m.__renderSlot1(m.__root1)
 }
 
 func (m *Model) note_clicked_handler() {
@@ -529,6 +539,6 @@ func (m *Model) noteClick() {
 	gtk4rt.Emit(m.note, "clicked")
 }
 -- run/go/fyne --
-pass sha256:1a021381a2b6781a6c6e48a18af173e4
+pass sha256:e0e239cbb3f59dfbc04b954873179065
 -- run/go/gtk4 --
-pass sha256:d64f08f63b3557a9c6c5dfdad3ac594a
+pass sha256:e6605856eecb61dbfc91717192020ebf
