@@ -31,8 +31,8 @@ stdout '2 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout '2 tests, 0 failures'
 
-sngl test --platform=gtk4 --language=go app.sngl
-stdout '2 tests, 0 failures'
+[gtk4] [display] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] [display] stdout '2 tests, 0 failures'
 
 [chromium] sngl test --platform=html app.sngl
 [chromium] stdout '2 tests, 0 failures'

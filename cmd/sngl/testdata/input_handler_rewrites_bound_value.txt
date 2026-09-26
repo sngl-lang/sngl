@@ -7,6 +7,7 @@
 
 [!exec:pkg-config] skip 'pkg-config required'
 [!gtk4] skip 'gtk4 development libraries required'
+[!display] skip 'gtk4 runs its tests against a real GDK display (headless CI has none)'
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
