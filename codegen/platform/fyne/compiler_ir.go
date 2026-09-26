@@ -889,6 +889,9 @@ func elementRef(name string) *ir.Ident {
 // bare local for non-escaping ids (declared as `__nN := ...` in the same
 // scope), else the m.<name> element ref.
 func topRef(tr *fyneTranslator, name string) ir.Expr {
+	if sp := tr.specs[name]; sp != nil && sp.RuntimeTheme {
+		return tr.themeOverrideRef(name)
+	}
 	if tr.isLocalRef(name) {
 		return localElementRef(name)
 	}

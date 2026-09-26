@@ -288,13 +288,20 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
 		// call frame (notably a recursive render method) keeps its own
 		// widget temp rather than clobbering a shared Model field.
-		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
+		return t.withThemeOverride(id, sp, &ir.LocalVar{Name: id, Init: ctor})
 	}
-	return []ir.Stmt{&ir.Assign{
+	return t.withThemeOverride(id, sp, &ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
-	}}
+	})
+}
+
+func (t *fyneTranslator) withThemeOverride(id string, sp *fyneSpec, create ir.Stmt) []ir.Stmt {
+	if !sp.RuntimeTheme {
+		return []ir.Stmt{create}
+	}
+	return []ir.Stmt{create, t.createThemeOverride(id, t.nodeRefFor(id))}
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user
@@ -399,7 +406,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	sp := t.specs[codegen.IdentBareName(parent)]
 	childSpec := t.specs[codegen.IdentBareName(child)]
 	parent = t.qualifyParentExpr(parent)
-	child = t.themed(t.qualifyChildExpr(child), childSpec)
+	child = t.themed(t.qualifyChildExpr(child), childSpec, codegen.IdentBareName(child))
 	if sp != nil && sp.isSingleChild() {
 		return []ir.Stmt{&ir.Assign{
 			Target: &ir.Select{Operand: parent, Field: sp.Content, Type: ir.TypDyn},
@@ -547,6 +554,11 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// Not a widget this scope built -- a canvas, or a node another
 		// translator owns. Nothing to say about it here.
 		return nil
+	}
+	if prop == stylePropName && sp.RuntimeTheme {
+		if lit, ok := value.(*ir.StructLit); ok {
+			return t.setRuntimeTheme(bareID, lit)
+		}
 	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record

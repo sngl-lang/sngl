@@ -781,7 +781,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return gc.recvFor(sym) + "." + ExportName(name)
 	default:
-		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
+		// A var no scope registered -- a lowering temp like NoTernary's __ltN
+		// in an instance ctor -- is still a var, not a bare enum member.
+		if _, isVar := n.Sym.(*ir.Var); !isVar && n.Type != nil && n.Type.Kind == ir.TypeEnum {
 			return fmt.Sprintf("%q", name)
 		}
 		return name
