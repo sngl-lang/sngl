@@ -21,6 +21,7 @@ const (
 
 var styleHelperJS = map[string]string{
 	styleColorHelper: `function _snglStyleColor(c) {
+  if (typeof c === "string") return c;
   if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
   return "#" + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, "0")).join("");
 }
@@ -52,6 +53,17 @@ type styleWrite struct {
 // dynamicStyleWrites is what htmlutil.BuildCSSStyleIR leaves out of a style
 // literal: the fields whose value the build cannot read.
 func dynamicStyleWrites(sl *ir.StructLit) []styleWrite {
+	// A fixed declaration is a default, so a field that names the same
+	// property (borderStyle beside borderWidth) wins; written after the
+	// static attribute, the default would otherwise replace it on every write.
+	named := map[string]bool{}
+	for _, f := range sl.Fields {
+		for _, d := range htmlutil.StylePropDecls(f.Name) {
+			if d.Dynamic {
+				named[d.Name] = true
+			}
+		}
+	}
 	var out []styleWrite
 	for _, f := range sl.Fields {
 		if f.Name == "" || f.Value == nil || staticStyleValue(f.Value) {
@@ -62,6 +74,8 @@ func dynamicStyleWrites(sl *ir.StructLit) []styleWrite {
 			if d.Dynamic {
 				w.value = f.Value
 				w.helper = styleHelperFor(styleFieldType(sl, f), d.Name)
+			} else if named[d.Name] {
+				continue
 			} else {
 				w.fixed = d.Value
 			}
