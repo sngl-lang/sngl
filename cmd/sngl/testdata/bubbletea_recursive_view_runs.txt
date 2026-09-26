@@ -14,7 +14,6 @@
 # - A branch not taken still joined its empty string into the box, which is a
 #   blank line below the innermost level.
 
-[!exec:go] skip 'go toolchain required'
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=bubbletea app.sngl
@@ -82,4 +81,30 @@ func testForwarded(t Test, c forwarded) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/forwarded/1 --
+sha256:72ccfc8bdea6c411bb37fc25024a3ad6
+{
+  "results": [
+    {
+      "Desc": "Forwarded",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "forwarded.ansi": "QUxQSEEKQUxQSEEKQUxQSEE="
+  }
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:5f0b96e09baf9b671f4e90cff2e4d4d6
+{
+  "results": [
+    {
+      "Desc": "Deeper",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "deeper.ansi": "dG9wICAgICAKbGV2ZWwgMyAKbGV2ZWwgMiAKbGV2ZWwgMSAKPiBkZWVwZXI="
+  }
 }

@@ -70,3 +70,23 @@ func testMore(t Test, c main) {
 window {
     main
 }
+-- testrun/fyne/go/scroll.sngl/main/1 --
+sha256:5992d2d171bb136d04a25aede47a79a9
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/scroll.sngl/main/1 --
+sha256:b7448fa11f09a7f0bdb5f60542147e9e
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}

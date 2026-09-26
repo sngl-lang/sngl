@@ -116,3 +116,63 @@ func testFlip(t Test, c main) {
 window {
     main
 }
+-- testrun/fyne/go/list.sngl/main/1 --
+sha256:bc52d83b2a4344d6c3c94314516f6ddf
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/para.sngl/main/1 --
+sha256:0fb36a654e85e67951d7f96ab0c53c43
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/tasks.sngl/main/1 --
+sha256:e1a548eeae3710bff3a0ef8f24e65aca
+{
+  "results": [
+    {
+      "Desc": "More",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/list.sngl/main/1 --
+sha256:d0fe2195c4d6a9033cb44d6383857505
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/para.sngl/main/1 --
+sha256:a304441f78d5174556e56bd23371103a
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/tasks.sngl/main/1 --
+sha256:b1ce2431a2be94dcaa3edb40caa96d90
+{
+  "results": [
+    {
+      "Desc": "More",
+      "Passed": true
+    }
+  ]
+}

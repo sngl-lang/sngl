@@ -31,11 +31,11 @@ stdout '2 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout '2 tests, 0 failures'
 
-[gtk4] [display] sngl test --platform=gtk4 --language=go app.sngl
-[gtk4] [display] stdout '2 tests, 0 failures'
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout '2 tests, 0 failures'
 
-[chromium] sngl test --platform=html app.sngl
-[chromium] stdout '2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout '2 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:ui"
@@ -73,4 +73,60 @@ func testChangeFiresOnCommit(t Test, c editor) {
 }
 
 window {
+}
+-- testrun/bubbletea/go/app.sngl/editor/1 --
+sha256:08cbd16fb549be688d903ef6ef3c5b05
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/editor/1 --
+sha256:a8f452e695bfe2fe7689b57027a4cd0e
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/editor/1 --
+sha256:1a2143dd8162e9e5ced9f24a1e09379b
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/editor/1 --
+sha256:58fd124c6110b248c3e7bf6ae364b6f5
+{
+  "results": [
+    {
+      "Desc": "ChangeFiresOnCommit",
+      "Passed": true
+    },
+    {
+      "Desc": "InputFiresOnEachKeystroke",
+      "Passed": true
+    }
+  ]
 }

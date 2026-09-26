@@ -1,10 +1,6 @@
 # Robolectric end-to-end: state-only assertions via sngl test --platform=
-# android --opt testRunner=robolectric. Skips cleanly when JDK/gradle/
-# pkg/kotlin/testagent's mavenLocal entry are unavailable.
+# android --opt testRunner=robolectric.
 
-[short] skip 'slow Robolectric round-trip; skipped in -short'
-[!android-jdk] skip 'no JDK in the range the Android toolchain supports'
-[!android-sdk] skip 'ANDROID_HOME / ANDROID_SDK_ROOT not set'
 
 sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout 'PASS'
@@ -30,4 +26,18 @@ func testIncrement(t Test, c counter) {
 }
 
 window {
+}
+-- testrun/android/kotlin/app.sngl/counter/1 --
+sha256:ea52d6774c5a737515bb4b87e7aab18f
+{
+  "results": [
+    {
+      "Desc": "Increment",
+      "Passed": true
+    },
+    {
+      "Desc": "StartsAtZero",
+      "Passed": true
+    }
+  ]
 }

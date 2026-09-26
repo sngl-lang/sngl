@@ -43,7 +43,6 @@ stdout 'PASS'
 [gtk4] stdout 'PASS'
 [gtk4] ! stdout 'FAIL'
 
-[!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout 'PASS'
@@ -116,4 +115,90 @@ func testClickCounts(t Test, c main) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:eb7842b72403b8aadbdb395b0893be7a
+{
+  "results": [
+    {
+      "Desc": "CheckboxCarriesChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "ToggleCarriesChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:106bab96acc3fabb55d4cc35b88bdd1c
+{
+  "results": [
+    {
+      "Desc": "CheckboxCarriesChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "ToggleCarriesChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/canvas.sngl/main/1 --
+sha256:790080b8a94ca6783cae1b2d16d28511
+{
+  "results": [
+    {
+      "Desc": "ClickCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:03b953df64e8dc36d23e2ce0a1bf6c8b
+{
+  "results": [
+    {
+      "Desc": "CheckboxCarriesChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "ToggleCarriesChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/canvas.sngl/main/1 --
+sha256:8ebfa2611c93ebdfd044c623ad9ae5ba
+{
+  "results": [
+    {
+      "Desc": "ClickCounts",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:06716c9d8fcb00ad2e62ffa7f3104370
+{
+  "results": [
+    {
+      "Desc": "CheckboxCarriesChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "ToggleCarriesChecked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/canvas.sngl/main/1 --
+sha256:56e5e270b3e2d6b608fca5a96b17c718
+{
+  "results": [
+    {
+      "Desc": "ClickCounts",
+      "Passed": true
+    }
+  ]
 }

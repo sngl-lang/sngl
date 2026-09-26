@@ -2264,6 +2264,21 @@ not reformat it. `testdata/*.txtar` is the language's: given this program,
 this is the code every target generates. A claim about the CLI goes in the
 first; a claim about codegen goes in the second.
 
+**A `sngl test` a script launches is recorded, as a golden's toolchain run
+is.** Each launch of a generated test program -- every target but `none` --
+is answered from a `testrun/<platform>/<lang>/<file>/<component>/<n>` file in
+the script's own archive: a digest of the generated program and the snapshots
+it was compared against, then the results, the error, and any snapshots the
+run wrote, which a replay writes back. An ordinary run only compares the
+digest, so CI verifies a gtk4, Chromium or Robolectric run with none of them
+installed, and a script needs no `[!display]`, `[!chromium]` or `[short]`
+guard around one. A digest that moved, or a launch with no record, fails
+naming `-update`; `go test ./cmd/sngl -run TestScript/<name> -update` reruns
+every launch for real, refuses to record one the host cannot run, and
+rewrites the records. The digest does not cover `pkg/<lang>/` runtimes, which
+the generated program imports from the checkout -- a change there wants an
+`-update` the digest will not ask for, the same gap a golden's record has.
+
 A claim of *absence* is the one thing a golden cannot state — it makes
 absence visible, but no reader notices that something is not there. Those are
 written as `deny` lines in the archive comment, naming a golden file (or `*`

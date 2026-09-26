@@ -47,3 +47,17 @@ func testArgumentEvaluatedOnce(t Test, c panel) {
     t.assert(c.n == 1)
     t.assert(c.got == 11)
 }
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:0eee8eb2f96c5b1e61eae3bed28f2c6f
+{
+  "results": [
+    {
+      "Desc": "ArgumentEvaluatedOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ReturningMethodWritesState",
+      "Passed": true
+    }
+  ]
+}

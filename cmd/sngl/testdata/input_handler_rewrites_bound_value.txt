@@ -5,9 +5,7 @@
 # in EditableSetText. A program write to an entry's text is not user input,
 # so it is made with "changed" blocked.
 
-[!exec:pkg-config] skip 'pkg-config required'
 [!gtk4] skip 'gtk4 development libraries required'
-[!display] skip 'gtk4 runs its tests against a real GDK display (headless CI has none)'
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
@@ -38,4 +36,14 @@ func testRewriteRunsOnce(t Test, c editor) {
 }
 
 window {
+}
+-- testrun/gtk4/go/app.sngl/editor/1 --
+sha256:c73b0f23707d6fc5c00c19b1be2b9f19
+{
+  "results": [
+    {
+      "Desc": "RewriteRunsOnce",
+      "Passed": true
+    }
+  ]
 }

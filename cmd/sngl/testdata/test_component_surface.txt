@@ -31,11 +31,11 @@ stdout '12 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout '12 tests, 0 failures'
 
-[gtk4] [display] sngl test --platform=gtk4 --language=go app.sngl
-[gtk4] [display] stdout '12 tests, 0 failures'
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout '12 tests, 0 failures'
 
-[chromium] sngl test --platform=html app.sngl
-[chromium] stdout '12 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout '12 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:ui"
@@ -196,4 +196,244 @@ func testLocals(t Test, c comp) {
 
 window {
     comp
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:c20e187aad80d522c6aab628e8ea2358
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/comp/1 --
+sha256:496a914020cf4302d9d384c78ed2cfe2
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:041e746e79151b8ff89da218b95a46aa
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/comp/1 --
+sha256:9a52a5eeaffab87fe47c5104924d4c57
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:976b2cc962118aa8db198bcfa76ae4ea
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/comp/1 --
+sha256:575fd6484f1810ed0a1ceb103d258eb8
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:35f5d3dbbe5470d74b9838e2d3974cf1
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/comp/1 --
+sha256:45e846d3411646db7607d9c0ced792af
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
 }

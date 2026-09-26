@@ -27,7 +27,6 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=bubbletea --language=go setctx.sngl
 stdout 'ok   1 tests, 0 failures'
 
-[!chromium] skip 'the html half needs a real Chromium'
 
 sngl test --platform html funcs.sngl
 stdout 'PASS'
@@ -161,4 +160,50 @@ func testSetContextProvidesForWhatFollows(t Test, c main) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/setctx.sngl/main/1 --
+sha256:97536ed2b8827d6d51e691a70105c9e7
+{
+  "results": [
+    {
+      "Desc": "SetContextProvidesForWhatFollows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/funcs.sngl/main/1 --
+sha256:e8c113ff26e8ce859b2d7265f60e207a
+{
+  "results": [
+    {
+      "Desc": "AFunctionValueIsBoundWhereItIsTaken",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheProviderItIsWrittenUnder",
+      "Passed": true
+    },
+    {
+      "Desc": "AProviderInAHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "CallsReadTheirCallersProvider",
+      "Passed": true
+    },
+    {
+      "Desc": "DefaultWhereNothingProvides",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/setctx.sngl/main/1 --
+sha256:a9467fd768f98bdc47bbfa333e43b427
+{
+  "results": [
+    {
+      "Desc": "SetContextProvidesForWhatFollows",
+      "Passed": true
+    }
+  ]
 }

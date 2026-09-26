@@ -17,9 +17,6 @@
 # Compose never idle, and every later waitForIdle in the session timed out
 # after a minute. It is a getter there now.
 
-[short] skip 'slow Robolectric round-trip; skipped in -short'
-[!android-jdk] skip 'no JDK in the range the Android toolchain supports'
-[!android-sdk] skip 'ANDROID_HOME / ANDROID_SDK_ROOT not set'
 
 sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout '11 tests, 0 failures'
@@ -179,4 +176,60 @@ func testLocals(t Test, c comp) {
 
 window {
     comp
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:ae2b4070997ddfaa44eeebfcabd657a0
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/comp/1 --
+sha256:72930adfc4c2c0f7b65ea8d50296d587
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
 }

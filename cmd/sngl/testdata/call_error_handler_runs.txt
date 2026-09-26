@@ -25,7 +25,6 @@ stdout '1 tests, 0 failures'
 sngl test --platform=none return.sngl
 stdout '1 tests, 0 failures'
 
-[!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout '1 tests, 0 failures'
@@ -36,11 +35,7 @@ stdout '1 tests, 0 failures'
 sngl test --platform=html return.sngl
 stdout '1 tests, 0 failures'
 
-[!exec:go] skip 'go toolchain required'
-[!exec:pkg-config] skip 'pkg-config required'
-[!exec:cc] skip 'C compiler required for cgo'
 [!gtk4] skip 'gtk4 development libraries required'
-[!display] skip 'gtk4 runs its tests against a real GDK display (headless CI has none)'
 
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '1 tests, 0 failures'
@@ -185,3 +180,43 @@ window {
     main
 }
 
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:c6096dd2a77c92c03b831b71cbb0ba4f
+{
+  "results": [
+    {
+      "Desc": "EachCallCatchesItsOwnRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:d8271706d258586226bf34d45ff46a58
+{
+  "results": [
+    {
+      "Desc": "EachCallCatchesItsOwnRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/boundary.sngl/main/1 --
+sha256:25608c14df3864ead06f35af66f9eec6
+{
+  "results": [
+    {
+      "Desc": "BoundaryAndLambdaCatch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/return.sngl/main/1 --
+sha256:8a9afb3d1a727da1d18cf28a11745ef1
+{
+  "results": [
+    {
+      "Desc": "ReturnEndsOnlyTheHandler",
+      "Passed": true
+    }
+  ]
+}
