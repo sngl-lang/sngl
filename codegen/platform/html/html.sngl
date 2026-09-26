@@ -452,6 +452,9 @@ component flow(
     tag string,
     style ui.Style,
     class string,
+    // The rule `class` stands for, as on `inline`.
+    classStyle ui.Style,
+    classStyleDark ui.Style,
     content ...component markup.span,
 ) ui.node
 
@@ -510,6 +513,23 @@ func roleTag(role markup.Role) string {
 component markup.richText[platform] {
     flow(tag=roleTag(role), style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
         content
+    }
+}
+
+// The box is a class, light and dark, rather than the base's inline style: a
+// light background written on the element stayed light under a dark page
+// whose text had turned light with it, and no stylesheet could reach it.
+component markup.codeBlock[platform] {
+    flow(
+        tag="pre",
+        class="sngl-code",
+        classStyle={padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
+        classStyleDark={background=#161B22, color=#E6EDF3},
+        style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
+    ) {
+        markup.monospace {
+            content
+        }
     }
 }
 
