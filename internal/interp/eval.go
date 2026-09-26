@@ -1181,7 +1181,14 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return nil, err
 	}
 	if cv, ok := obj.(ComponentValue); ok {
-		return cv.GetField(e.Field)
+		if e.Ref == ir.RefNone {
+			return cv.GetField(e.Field)
+		}
+		nodes, err := cv.ElementRef(e.Field)
+		if err != nil {
+			return nil, err
+		}
+		return shapeElementRef(e, nodes)
 	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)

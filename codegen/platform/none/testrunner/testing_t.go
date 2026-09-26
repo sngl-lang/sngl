@@ -358,6 +358,33 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	return nil, fmt.Errorf("component has no field %q", field)
 }
 
+// ElementRef returns every node carrying #id in this instance's rendered tree.
+func (cv *componentValue) ElementRef(id string) ([]any, error) {
+	cv.settle()
+	if cv.settleErr != nil {
+		err := cv.settleErr
+		cv.settleErr = nil
+		return nil, err
+	}
+	view, err := interp.Mount(cv.Env)
+	if err != nil {
+		return nil, err
+	}
+	var out []any
+	for _, n := range view.FindAny(id) {
+		switch {
+		case n.Component != nil && n.CompEnv != nil && isUserComponent(n.Component):
+			out = append(out, wrapChildComponent(n.CompEnv, n.Component))
+		case n.IsComponent() && n.Expanded:
+		default:
+			m := n.Map()
+			stampOwner(m, cv)
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
 // SetField handles c.field = value.
 func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error {
 	sym, err := cv.writableFieldSym(field)

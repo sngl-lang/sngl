@@ -4397,8 +4397,8 @@ func withCount(counts []nodeCount, k nodeCount) []nodeCount {
 
 // declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
 // crossed to reach it, outermost first, and is what the handle's type is
-// wrapped in: a node written inside a `for` inside an `if` reads from outside
-// both as `option<list<T>>`.
+// counted by: a node written inside a `for` inside an `if` reads from outside
+// both as `list<T>`.
 //
 // Each block's own ids are hoisted again, at their own depth, into the scope
 // checkBlockIR pushes for it — so a read from *inside* the scope is the plain
@@ -4658,19 +4658,20 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 	return dynFallback("node id names an instance of %q, which resolves to no component", target)
 }
 
-// countedHandleType wraps a handle in the counts of the scopes it was reached
-// through, innermost first: counts is outermost-first, so the last entry is
-// the scope nearest the node and binds tightest.
+// countedHandleType is a handle as read from outside the scopes it was reached
+// through, by the rule a `c.<id>` read follows (elementRef): a list if any of
+// them repeats, an option if any is conditional.
 func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
-	for _, count := range slices.Backward(counts) {
+	k := ir.RefOne
+	for _, count := range counts {
 		switch count {
 		case countOption, countWindow:
-			typ = ir.OptionOf(typ)
+			k = joinRef(k, ir.RefOption)
 		case countList:
-			typ = ir.ListOf(typ)
+			k = joinRef(k, ir.RefList)
 		}
 	}
-	return typ
+	return k.Wrap(typ)
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.

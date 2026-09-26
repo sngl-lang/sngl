@@ -18,8 +18,9 @@ func testSuppliedSlotContentIsAddressable(t Test, c main) {
 }
 
 // An insertion point the caller supplied nothing for renders its own block.
+// Only there, so a node in it is an option.
 func testUnfilledSlotRendersItsFallback(t Test, c bare) {
-    t.assert(c.fallback.value == "nothing supplied")
+    t.assert(c.fallback != null && c.fallback.value == "nothing supplied")
 }
 
 component frame(children ...component, header component) node {

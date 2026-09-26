@@ -1,0 +1,158 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+// How many nodes `c.<id>` names is where the node is written, not how many an
+// instance happens to render: one where nothing on the way to it is
+// conditional, an option behind an `if`, a list behind a `for`. The same rule
+// holds for an id in the component's own body, in a component it
+// instantiates, and in content it supplies to a slot.
+
+component counter node {
+    var count = 0
+    var shown = false
+    var items list<string> = []
+
+    vbox {
+        button #inc(text="+", @click { count += 1 })
+        text #lbl(value="{count}")
+        if shown {
+            button #maybe(text="-", @click { count -= 1 })
+        }
+        for var it = items {
+            text #row(value=it)
+        }
+    }
+}
+
+func testAnUnconditionalNodeIsOne(t Test, c counter) {
+    c.inc.click()
+    t.assert(c.lbl.value == "1")
+}
+
+func testANodeBehindAnIfIsAnOption(t Test, c counter) {
+    t.assert(c.maybe == null)
+    c.shown = true
+    t.assert(c.maybe != null)
+    if c.maybe != null {
+        c.maybe.click()
+    }
+    t.assert(c.count == -1)
+}
+
+// A list however many rendered: none, and then exactly one.
+func testANodeBehindAForIsAList(t Test, c counter) {
+    t.assert(c.row.length() == 0)
+    c.items = ["a"]
+    t.assert(c.row.length() == 1)
+    t.assert(c.row[0].value == "a")
+}
+
+component child node {
+    var count = 0
+
+    button #bump(text="+", @click { count += 1 })
+    text #shows(value="{count}")
+}
+
+// The component holding the node is written once, so the node is one: this
+// read used to be a list the interpreter answered with a single element.
+component once node {
+    vbox {
+        child()
+    }
+}
+
+func testADescendantWrittenOnceIsOne(t Test, c once) {
+    c.bump.click()
+    t.assert(c.shows.value == "1")
+}
+
+component maybeChild node {
+    var open = false
+
+    if open {
+        child()
+    }
+}
+
+func testADescendantBehindAnIfIsAnOption(t Test, c maybeChild) {
+    t.assert(c.shows == null)
+    c.open = true
+    t.assert(c.shows != null && c.shows.value == "0")
+}
+
+// A conditional inside a loop is still a list: of the nodes that rendered.
+component children node {
+    var ns list<int> = [1, 2, 3]
+
+    for var n = ns {
+        if n != 2 {
+            child()
+        }
+    }
+}
+
+func testADescendantBehindAForIsAList(t Test, c children) {
+    t.assert(c.shows.length() == 2)
+    c.bump[1].click()
+    t.assert(c.shows[1].value == "1")
+}
+
+// A slot's content is counted where the component it was handed to inserts
+// it: `repeat` inserts its children once per element.
+component repeat(times list<int>, children ...component) node {
+    for var n = times {
+        children
+    }
+}
+
+component repeated node {
+    repeat(times=[1, 2]) {
+        text #copy(value="x")
+    }
+}
+
+func testSlotContentInsertedInALoopIsAList(t Test, c repeated) {
+    t.assert(c.copy.length() == 2)
+}
+
+// A boundary with a fallback stands it in place of its content, so both halves
+// are options. Without one the content always renders.
+component guarded node {
+    boundary {
+        button #go(text="Go", @click { error.raise("boom", "") })
+
+        component failed {
+            text #gone(value="gone")
+        }
+    }
+}
+
+func testABoundaryWithAFallbackMakesBothHalvesOptions(t Test, c guarded) {
+    t.assert(c.gone == null)
+    if c.go != null {
+        c.go.click()
+    }
+    t.assert(c.go == null)
+    t.assert(c.gone != null)
+}
+
+component reporting node {
+    var caught = ""
+
+    boundary(@error(e) { caught = e.message }) {
+        button #go(text="Go", @click { error.raise("boom", "") })
+    }
+}
+
+func testABoundaryWithoutAFallbackLeavesItsContentOne(t Test, c reporting) {
+    c.go.click()
+    t.assert(c.caught == "boom")
+}
+
+window {
+}

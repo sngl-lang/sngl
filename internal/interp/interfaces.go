@@ -18,6 +18,10 @@ type TestingT interface {
 // reads, field writes, method dispatch, and list/toggle writebacks.
 type ComponentValue interface {
 	GetField(field string) (any, error)
+	// ElementRef is every node `#id` names under this instance, in mount
+	// order: an element as its props, a component of the program's as its own
+	// value. The read's ir.RefCount says what shape the caller gets.
+	ElementRef(id string) ([]any, error)
 	SetField(op ast.AssignOp, field string, val any) error
 	// InvokeMethod attempts to dispatch `method` on the component. Returns
 	// (result, true, err) when the method exists (including `@event` no-ops);

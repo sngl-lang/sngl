@@ -1512,7 +1512,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// InputEvent{value="x"} can be written {value="x"}).
 	var argSig *ir.FuncSig
 	event := ""
-	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
+	if evt := c.elementEvent(receiverExpr, sel.Field); evt != nil {
 		event = evt.Name
 		if evt.Type != nil {
 			// Mark the param optional via a placeholder Default so
@@ -1538,15 +1538,20 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	}
 }
 
-// elementEvent returns the event declared on the component addressed by
-// `operand` (either `c.<id>` — look up #id inside c's component — or a
-// bare element ref) whose name matches `event`, or nil when `operand`
-// doesn't address a component or the component has no such event. This
-// is how a sigil-free `c.inc.click()` is recognised as an event trigger
-// rather than an ordinary method call.
-func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
-	comp := c.elementHostComponent(operand)
-	if comp == nil {
+// elementEvent returns the event named event declared on the component recv
+// reads by `#id` -- `c.inc`, `c.lbl[0]`, or an option of one narrowed to its
+// node -- or nil. This is how a sigil-free `c.inc.click()` is recognised as an
+// event trigger rather than an ordinary method call.
+func (c *checker) elementEvent(recv ir.Expr, event string) *ir.EventDecl {
+	if !isElementRefRead(recv) {
+		return nil
+	}
+	t := exprType(recv)
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := t.Decl.(*ir.Component)
+	if !ok {
 		return nil
 	}
 	for _, e := range comp.Events {
@@ -1555,151 +1560,6 @@ func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 		}
 	}
 	return nil
-}
-
-// elementHostComponent resolves `operand` to the component instance
-// hosting the addressed widget. Handles `c.<id>` where c is a
-// component-typed param/var and <id> matches a NodeInst inside c's
-// body. Returns nil for shapes the resolver doesn't recognise.
-func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
-	sel, ok := operand.(*ast.SelectExpr)
-	if !ok {
-		return nil
-	}
-	ident, ok := sel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return nil
-	}
-	sym, ok := c.scope.Lookup(ident.Name)
-	if !ok {
-		return nil
-	}
-	var compType *ir.Type
-	switch v := sym.(type) {
-	case *ir.Param:
-		compType = v.Type
-	case *ir.Var:
-		compType = v.Type
-	}
-	if compType == nil || compType.Kind != ir.TypeComponent || compType.Decl == nil {
-		return nil
-	}
-	comp, ok := compType.Decl.(*ir.Component)
-	if !ok {
-		return nil
-	}
-	// Walk the component's AST (its IR body may not be checked yet
-	// at this point in pass2) looking for a visual node with id =
-	// sel.Field. The target's tag identifies the host component
-	// (stdlib `input` → InputEvent on @input, etc.).
-	if comp.AST == nil {
-		return nil
-	}
-	return c.findHostComponentAST(comp.AST.Body.Stmts, sel.Field)
-}
-
-func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Component {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ast.VisualNode:
-			if n.ID == id {
-				return c.componentNamed(visualNodeTarget(n))
-			}
-			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
-				return comp
-			}
-			// A population's block is written in this component's body, so an
-			// id in it resolves here. See collectElementRefIDs, which draws
-			// the same line for the same reason.
-			for _, inner := range n.Block.Stmts {
-				cd, isDecl := inner.(*ast.ComponentDecl)
-				if !isDecl {
-					continue
-				}
-				if comp := c.findHostComponentAST(cd.Body.Stmts, id); comp != nil {
-					return comp
-				}
-			}
-		case *ast.CallStmt:
-			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				return c.componentNamed(name)
-			}
-		case *ast.IfStmt:
-			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
-				return comp
-			}
-			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
-				return comp
-			}
-		case *ast.ForStmt:
-			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
-				return comp
-			}
-			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
-				return comp
-			}
-		}
-	}
-	return nil
-}
-
-// findDescendantHost searches the components instantiated within comp's body
-// (transitively, with cycle detection) for an element ref named id, returning
-// its host component. A ref living inside a child component is collected across
-// the whole rendered subtree, so callers type it as list<host>. Recursion is
-// bounded by `visited` — a self-instantiating component (e.g. a recursive tree
-// view) is searched once. Returns nil if no descendant declares the id.
-func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[string]bool) *ir.Component {
-	if comp == nil || comp.AST == nil || visited[comp.Name] {
-		return nil
-	}
-	visited[comp.Name] = true
-	for _, child := range c.childComponents(comp.AST.Body.Stmts) {
-		if host := c.findHostComponentAST(child.AST.Body.Stmts, id); host != nil {
-			return host
-		}
-		if host := c.findDescendantHost(child, id, visited); host != nil {
-			return host
-		}
-	}
-	return nil
-}
-
-// childComponents returns the user components instantiated directly in stmts
-// (descending through if/for/platform branches and nested node blocks, but not
-// into the instantiated components' own definitions — that is findDescendantHost's
-// job). Both `Comp()` call-statement and `Comp { }` visual-node forms count.
-func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
-	var out []*ir.Component
-	lookup := func(name string) {
-		if comp := c.componentNamed(name); comp != nil && comp.AST != nil {
-			out = append(out, comp)
-		}
-	}
-	var walk func(stmts []ast.Stmt)
-	walk = func(stmts []ast.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ast.VisualNode:
-				lookup(visualNodeTarget(n))
-				walk(n.Block.Stmts)
-			case *ast.CallStmt:
-				if name, _, isElem := elementRefCallInfo(n.Call); isElem {
-					lookup(name)
-				} else {
-					lookup(callTargetName(n.Call.Func))
-				}
-			case *ast.IfStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
-			case *ast.ForStmt:
-				walk(n.Body.Stmts)
-				walk(n.Else.Stmts)
-			}
-		}
-	}
-	walk(stmts)
-	return out
 }
 
 // isPrimitiveMethodReceiver reports whether a method-call receiver type's full
@@ -2005,28 +1865,8 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// its value type is the host element's component type. Resolve
 				// against the operand's already-known component type so inline
 				// chains work, not just bare-ident operands.
-				if comp.AST != nil {
-					// The host is named in the component's body, so it resolves
-					// through the imports of the file that body was written in
-					// -- not through this one's. A test naming `c.out` would
-					// otherwise have to import the vocabulary the component
-					// renders with before it could ask about a ref.
-					restore := c.fileOf(compDeclPos(comp))
-					host := c.findHostComponentAST(comp.AST.Body.Stmts, x.Field)
-					// A ref declared inside a child component is collected across
-					// the rendered subtree, so it reads as list<host> (e.g.
-					// `c.lbl[0]`, or `c.val[i]` from a recursive view).
-					var descendant *ir.Component
-					if host == nil {
-						descendant = c.findDescendantHost(comp, x.Field, map[string]bool{})
-					}
-					restore()
-					if host != nil {
-						return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
-					}
-					if descendant != nil {
-						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
-					}
+				if host, k := c.elementRef(comp, x.Field); host != nil {
+					return &ir.Select{AST: x, Type: k.Wrap(host.SymType()), Operand: operandExpr, Field: x.Field, Ref: k}
 				}
 				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
 			}

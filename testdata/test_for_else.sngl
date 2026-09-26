@@ -14,12 +14,12 @@ component emptylist node {
 }
 
 func testShowsElseForEmptyList(t Test, c emptylist) {
-    t.assert(c.empty.value == "No items yet")
+    t.assert(c.empty != null && c.empty.value == "No items yet")
 }
 
 func testHidesElseWhenListHasItems(t Test, c emptylist) {
     c.items = ["hello"]
-    t.assert(c.item.value == "hello")
+    t.assert(c.item[0].value == "hello")
 }
 
 window {

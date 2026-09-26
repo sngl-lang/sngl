@@ -265,3 +265,37 @@ func capturedContext(env *Env) map[*ir.Context]any {
 	}
 	return maps.Clone(env.ContextVals)
 }
+
+// shapeElementRef hands back the nodes a `c.<id>` read found in the shape the
+// checker typed it by: a list whatever its length, an option as the node or
+// nil, and one node as itself. A count the position does not allow is a
+// disagreement between the checker's walk and the rendered tree, and is
+// reported rather than papered over.
+func shapeElementRef(e *ir.Select, nodes []any) (any, error) {
+	switch e.Ref {
+	case ir.RefList:
+		if nodes == nil {
+			return []any{}, nil
+		}
+		return nodes, nil
+	case ir.RefOption:
+		switch len(nodes) {
+		case 0:
+			return nil, nil
+		case 1:
+			return nodes[0], nil
+		}
+	case ir.RefOne:
+		if len(nodes) == 1 {
+			return nodes[0], nil
+		}
+	}
+	return nil, fmt.Errorf("#%s names %d nodes, where its position allows %s", e.Field, len(nodes), refAllows(e.Ref))
+}
+
+func refAllows(k ir.RefCount) string {
+	if k == ir.RefOption {
+		return "at most one"
+	}
+	return "exactly one"
+}

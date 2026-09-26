@@ -138,6 +138,34 @@ type Select struct {
 	Type    *Type
 	Operand Expr
 	Field   string
+	// Ref is set when Field names a `#id` rendered under the component
+	// Operand is, and says how many nodes the read names. Type already says
+	// so; this is what tells an evaluator the value is a node lookup rather
+	// than a member.
+	Ref RefCount `json:",omitempty"`
+}
+
+// RefCount is how many nodes an element ref names, which its position
+// decides: a node reached through a `for` is any number, one reached through
+// a conditional but no loop is at most one, and any other is exactly one.
+type RefCount uint8
+
+const (
+	RefNone RefCount = iota
+	RefOne
+	RefOption
+	RefList
+)
+
+// Wrap is t as a read with this count types it.
+func (k RefCount) Wrap(t *Type) *Type {
+	switch k {
+	case RefOption:
+		return OptionOf(t)
+	case RefList:
+		return ListOf(t)
+	}
+	return t
 }
 
 // Index is a resolved index operation: operand[index].
