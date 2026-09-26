@@ -13,9 +13,8 @@ by hardcoding them:
   says so, and every `lib/` function defaults to pure.
 - A component inlines when `passInlinePure.isPure` infers it; a platform
   package's component that does not is a lowering error with no position.
-- Codegen reads about twenty props as literals and falls back silently when
-  one is not: fyne's `spec`, bubbletea's blueprint records, html's raw element
-  `tag`/`attrs`, canvas `width`/`height`, gtk4's enum props.
+- fyne's `spec` and bubbletea's blueprint records describe what codegen emits
+  and are read as literals, falling back silently to empty when one is not.
 
 None of it is writable by a program or visible in a declaration. A user
 cannot say "this is a build-time value" and have the compiler hold callers to
@@ -177,28 +176,38 @@ on primitives and runtime instances.
 
 ### Codegen
 
-The props codegen reads as literals become `const` declarations, and each
-silent fallback becomes `panic("internal: … not folded")`:
+**`const` never removes a reactive feature.** A prop is marked only when it is
+a build-time value by nature — a *descriptor* of what codegen emits, which no
+program has a reason to change while it runs. A prop codegen happens to read
+only as a literal today is a codegen gap, and marking it `const` would turn
+the gap into a contract.
 
-- fyne: `Widget`/`Container`/`Wrapper`'s `spec`
-- bubbletea: blueprint records (`dim`, `prop`/`get`/`set`, `on`/`key`)
-- html: raw element `tag`/`attrs`; window `href` (a plain string since route
-  parameters became a struct; static mode still refuses `{param}`)
-- canvas `width`/`height`
-- gtk4: GIR-synthesized enum and bitfield props, emitted `const` by the
-  generator
-- android: the equivalents found while doing the above
+Marked, with the silent fallback becoming `panic("internal: … not folded")`:
 
-Window `title` and `favicon` stay non-const: a reactive title is legitimate on
-gtk4, fyne and android. html silently dropping a non-literal title is a
-separate gap, reported rather than papered over.
+- fyne: `Widget`/`Container`/`Wrapper`'s `spec` — the Go constructor, type,
+  setters and handlers a widget is built from.
+- bubbletea: the blueprint descriptors — `Layout.join`, `Widget.model`,
+  `Widget.binds`, `Styled.events`.
+
+Deliberately **not** marked:
+
+- The value props beside those descriptors (fyne's `text`, `number`, `flag`,
+  `options`, `style`; bubbletea's `focus`, `placement`, `dim`, `style` and the
+  template operands): each is reactive, or has a runtime path.
+- html: raw element `tag`/`attrs`, window `href`/`title`/`favicon`. Reactive
+  values are already handled or already diagnosed there.
+- canvas `width`/`height`: a reactive size is silently 0 on every platform
+  today. That is a gap to fix, not a contract.
+- gtk4 GIR enum and bitfield props: an `int` value is already reactive.
 
 ### Library marking
 
 - `const func` on every `lib/` and target-package func whose body the purity
   fixpoint finds pure, and on the pure intrinsics.
-- `const component` on every `lib/` base whose overrides all pass the render
-  rule.
+- `lib/` component bases are **not** marked `const`. A base's `const` binds
+  every override, a program's own included, and a program override whose
+  render reads its state is legitimate today (it is kept as an instance). The
+  target-package rule already holds the platform overrides to it.
 
 ## Phases
 
@@ -210,9 +219,9 @@ One spec, implemented in order; each phase leaves the suite green.
 2. `const func`: body check, `IsConst` Call case, `pure` removed from
    `#[foreign]`, importers, intrinsic and library defaults, `lib/` marking.
 3. `const component` and `const` slot: render check, override inheritance,
-   target-package rule, `passInlinePure`, reactivity, `lib/` marking.
-4. `foldConstArgs`; codegen literal-only props marked `const`; silent
-   fallbacks become panics.
+   target-package rule, `passInlinePure`, reactivity.
+4. `foldConstArgs`; fyne's and bubbletea's descriptor props marked `const`;
+   their silent fallbacks become panics.
 
 ## Testing
 
