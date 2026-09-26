@@ -165,21 +165,15 @@ func (vc *irViewContext) withSpanStyle(c spanCascade, e ir.Expr) spanCascade {
 	return c
 }
 
-// enumMember names the member an enum-valued prop holds. A bare member is an
-// *ir.Ident carrying it; the qualified `Weight.bold` the platform bodies write
-// survives as an *ir.Select. Mirrors extractJoinDir, which asks the same
-// question of JoinDir.
+// enumMember names the member an enum-valued prop holds: an *ir.Ident carrying
+// it, whether the member was written bare or as `Weight.bold`. Mirrors
+// extractJoinDir, which asks the same question of JoinDir.
 func enumMember(e ir.Expr) string {
-	switch v := e.(type) {
-	case *ir.Ident:
+	if v, ok := e.(*ir.Ident); ok {
 		return v.Member
-	case *ir.Select:
-		return v.Field
 	}
-	if s, ok := codegen.IRLiteralString(e); ok {
-		return s
-	}
-	return ""
+	s, _ := codegen.IRLiteralString(e)
+	return s
 }
 
 // spanSeedFields are the fields of a flow's own `ui.Style` that seed the
@@ -289,9 +283,20 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 			vc.renderSpan(child, accVar, c)
 		}
 	case *ir.SlotInst:
-		if vc.slotVar != "" {
-			vc.line(`%s += %s`, accVar, vc.slotVar)
+		fn, call := vc.slotCall(s, accVar)
+		vc.line("if %s != nil {", fn)
+		vc.indent++
+		vc.line("%s += %s", accVar, call)
+		vc.indent--
+		if len(s.Children) > 0 {
+			vc.line("} else {")
+			vc.indent++
+			for _, child := range s.Children {
+				vc.renderSpan(child, accVar, c)
+			}
+			vc.indent--
 		}
+		vc.line("}")
 	default:
 		// Anything else in a flow renders nothing: an imperative statement a
 		// lowering pass hoisted here has no words to contribute.

@@ -957,11 +957,6 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 	return h
 }
 
-func (b *builder) buildIdentList(it nodeIter) []string {
-	names, _ := b.buildIdentListWithPos(it)
-	return names
-}
-
 // buildIdentListWithPos returns parallel slices of names and their
 // source positions, in iteration order.
 func (b *builder) buildIdentListWithPos(it nodeIter) ([]string, []ast.Pos) {

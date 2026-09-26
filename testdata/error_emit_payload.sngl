@@ -27,12 +27,12 @@ component emitter(
 
 // The field's own type is not the payload's, however few fields it has.
 component fieldValue(@one Payload) node {
-    text(value="d", @click { one("x") }) // ERROR(check) "cannot use string as Payload for parameter 1 of event \"one\""
+    text(value="d", @click { one("x") }) // ERROR(check) "cannot pass string as Payload"
 }
 
 component wrongType(@one Payload) node {
     var flag = false
-    text(value="e", @click { one(flag) }) // ERROR(check) "cannot use bool as Payload for parameter 1 of event \"one\""
+    text(value="e", @click { one(flag) }) // ERROR(check) "cannot pass bool as Payload"
 }
 
 // A payload with no fields is still a payload: an empty literal is one, and a
@@ -42,7 +42,7 @@ component emptyPayload(@none FocusEvent) node {
 }
 
 component emptyPayloadWrongType(@none FocusEvent) node {
-    text(value="g", @click { none("x") }) // ERROR(check) "cannot use string as FocusEvent for parameter 1 of event \"none\""
+    text(value="g", @click { none("x") }) // ERROR(check) "cannot pass string as FocusEvent"
 }
 
 component tooManyArgs(@one Payload) node {

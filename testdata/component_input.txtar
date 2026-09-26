@@ -194,8 +194,7 @@ package main
 import "testing"
 
 func TestInputValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.name == "World")) { t.Errorf("assert failed: %s", "(c.name == \"World\")") }
 	c.name = "SNGL"
@@ -241,6 +240,12 @@ func (m *Model) __n0_input_handler(s string) {
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
 }
 
+func (m *Model) __n0_change_handler(s string) {
+	m.name = s
+	m.__n0.SetText(m.name)
+	m.__n1.SetText((("Hello, " + m.name) + "!"))
+}
+
 func (m *Model) Name() string {
 	return m.name
 }
@@ -256,6 +261,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetText(m.name)
 	m.__n0.SetPlaceHolder("Enter your name")
 	m.__n0.OnChanged = m.__n0_input_handler
+	m.__n0.OnSubmitted = m.__n0_change_handler
 	m.__n2.Add(m.__n0)
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
@@ -279,8 +285,7 @@ package main
 import "testing"
 
 func TestInputValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.name == "World")) { t.Errorf("assert failed: %s", "(c.name == \"World\")") }
 	c.name = "SNGL"
@@ -344,6 +349,12 @@ func (m *Model) __n0_changed_handler() {
 	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
 }
 
+func (m *Model) __n0_activate_handler() {
+	m.name = gtk4rt.EditableGetText(m.__n0)
+	gtk4rt.EditableSetText(m.__n0, m.name)
+	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
+}
+
 func (m *Model) Name() string {
 	return m.name
 }
@@ -363,6 +374,7 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.EntryNew()
 	gtk4rt.EditableSetText(m.__n0, m.name)
 	gtk4rt.Connect(m.__n0, "changed", m.__n0_changed_handler)
+	gtk4rt.Connect(m.__n0, "activate", m.__n0_activate_handler)
 	gtk4rt.BoxAppend(m.__n2, m.__n0)
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, (("Hello, " + m.name) + "!"))
@@ -490,6 +502,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { name: "World" };
@@ -524,15 +547,17 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6fc4953c00764921808235f504c2a906
+pass sha256:cb3a2bc9dce7aea637128f23cee18dbd
 -- run/go/fyne --
-pass sha256:c12e15ff686aa8e7f46a2b72cb2d58b8
+pass sha256:9d524c211445bbafaff5f7f09f185cea
 -- run/go/gtk4 --
-pass sha256:bc362683b11f3e1c36473c43aca041d2
+pass sha256:be40365eb156e073da41bb883a84c77c
 -- run/kotlin/android --
 pass sha256:314c0c2a6d761f58033f63a883939e6c
 -- run/none/html --
-pass sha256:ff633896ab749853b2b7a7b8997a687f
+pass sha256:07a44e6459c2826aeb628bea7e6d261f

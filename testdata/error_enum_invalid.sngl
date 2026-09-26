@@ -5,7 +5,7 @@ enum Status { active, inactive, pending }
 component main node {
     var status Status = unknown // ERROR(check) "undefined: unknown"
 
-    text(value=status)
+    text(value="{status}")
 }
 
 window {

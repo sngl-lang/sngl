@@ -687,12 +687,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { pal: null };
   state.pal = { keyword: { r: 207, g: 34, b: 46, a: 255 }, type: { r: 149, g: 56, b: 0, a: 255 }, function: { r: 130, g: 80, b: 223, a: 255 }, constant: { r: 5, g: 80, b: 174, a: 255 }, string: { r: 10, g: 48, b: 105, a: 255 }, number: { r: 5, g: 80, b: 174, a: 255 }, comment: { r: 110, g: 119, b: 129, a: 255 }, plain: { a: 0, r: 0, g: 0, b: 0 }, variable: { a: 0, r: 0, g: 0, b: 0 }, operator: { a: 0, r: 0, g: 0, b: 0 }, punctuation: { a: 0, r: 0, g: 0, b: 0 } };
-  function Palette(plain, keyword, type, function_, variable, constant, string, number, comment, operator, punctuation) {
-    return { plain, keyword, type, function: function_, variable, constant, string, number, comment, operator, punctuation };
-  }
-  function color(r, g, b, a) {
-    return { r, g, b, a };
-  }
   function tokenColor(p, kind) {
     if (kind === "keyword") {
       ;
@@ -773,4 +767,4 @@ pass sha256:c2bea7b1ac09ac2164ae959ba00ce349
 -- run/kotlin/android --
 pass sha256:5f396f3bcd8b30b4cfb6d0ea04a833b9
 -- run/none/html --
-pass sha256:f85723847a4419550d9f830c36a88592
+pass sha256:9aebdac3f3c53ee7b3dc387b1e146c7f

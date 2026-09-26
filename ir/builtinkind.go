@@ -66,8 +66,8 @@ const (
 	// any wrapper does -- so the passes asking "is this rendered rather than
 	// composed" have to tell it from a specialised family.
 	BuiltinTreeNode BuiltinKind = "treeNode"
-	// TreeShape is the drawing tree. passCanvas emits that package's own
-	// primitives, so it is the one specialised tree there are rules about.
+	// TreeShape is the drawing tree. A node hosting its members is a canvas,
+	// whose shapes passShapeDraw turns into the statements that paint them.
 	BuiltinTreeShape BuiltinKind = "treeShape"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a

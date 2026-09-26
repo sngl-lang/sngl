@@ -541,7 +541,7 @@ body { font-family: system-ui, sans-serif; }
     return __toCommonJS(i18n_entry_exports);
   })();
   var state = { count: 1 };
-  function label() {
+  function label(__ctx_locale) {
     return i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
   }
   var $1 = document.getElementById("$1");
@@ -549,14 +549,14 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
     state.count = state.count + 1;
-    __n0.textContent = label();
+    __n0.textContent = label(i18n.defaultLocale());
   });
   $2.addEventListener("click", function() {
     state.count = 0;
-    __n0.textContent = label();
+    __n0.textContent = label(i18n.defaultLocale());
   });
   function __sngl_init() {
-    __n0.textContent = label();
+    __n0.textContent = label(i18n.defaultLocale());
   }
   __sngl_init();
 })();

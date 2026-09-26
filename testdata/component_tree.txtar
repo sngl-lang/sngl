@@ -163,8 +163,7 @@ package main
 import "testing"
 
 func TestTreeSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "")) { t.Errorf("assert failed: %s", "(c.sel == \"\")") }
 	c.sel = "Photos"
@@ -231,8 +230,7 @@ package main
 import "testing"
 
 func TestTreeSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "")) { t.Errorf("assert failed: %s", "(c.sel == \"\")") }
 	c.sel = "Photos"
@@ -354,6 +352,17 @@ body { font-family: system-ui, sans-serif; }
 </ul>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { sel: "" };
@@ -371,13 +380,15 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testTreeSelectedMutates });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7231f18a841bee87f57610c9ea259bd8
+pass sha256:b854d8fc4f9dc65c5ac51937ae711b49
 -- run/go/fyne --
-pass sha256:0e4173fbbeb55b92c7d737f6443a3244
+pass sha256:76dcccdef30312bbedc6bc23744c20aa
 -- run/kotlin/android --
 pass sha256:ce54071b300022b51e362c122fe30705
 -- run/none/html --
-pass sha256:4929e6bfe11659b1f7120224ae6c82b7
+pass sha256:ac4d21c97d69fe70c0a5141da474608d

@@ -77,9 +77,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var entries = globalThis.__snglShared.entries;
   var state = { pick: 0, shown: 2 };
-  function Entry(title, href) {
-    return { title, href };
-  }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
     __n1.textContent = entries[state.shown].href;
@@ -111,9 +108,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { pick: 0, shown: 2 };
-  function Entry(title, href) {
-    return { title, href };
-  }
 })();
 </script>
 </body></html>
@@ -154,9 +148,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var entries = globalThis.__snglShared.entries;
   var state = { pick: 0, shown: 2 };
-  function Entry(title, href) {
-    return { title, href };
-  }
   var $5 = document.getElementById("$5");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $5.addEventListener("click", function() {
@@ -171,4 +162,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2dd1c10975f19b7efafa7983cabeb322
+pass sha256:d1f2d20dc4c3dcb770897ff515cd929a

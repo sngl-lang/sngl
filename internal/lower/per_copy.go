@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -46,7 +47,92 @@ func perCopyCells(at string, body []ir.Stmt, vars []*ir.Var, funcs []*ir.Func, l
 		fn.Params = append(fn.Params, param)
 		fn.Block = rewriteCells(fn.Block, cells, keyed, temps, func() ir.Expr { return paramIdent(param) })
 	}
-	return rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) }), nil
+	body = rewriteCells(body, cells, keyed, temps, func() ir.Expr { return CopyKey(loops) })
+	passLoopVars(body, funcs, loops)
+	return body, nil
+}
+
+// passLoopVars hands each func the loop variables it reads as parameters.
+// The funcs are hoisted to the owner, outside the loops, while a prop the
+// instance was given -- `row(label = it)` -- was substituted into them as the
+// loop variable it names, which is in scope only where the copy is.
+func passLoopVars(body []ir.Stmt, funcs []*ir.Func, loops []*ir.For) {
+	loopVars := map[*ir.LoopVar]bool{}
+	for _, fs := range loops {
+		for _, lv := range []*ir.LoopVar{fs.KeySym, fs.ValueSym} {
+			if lv != nil {
+				loopVars[lv] = true
+			}
+		}
+	}
+	if len(loopVars) == 0 {
+		return
+	}
+	reads := map[*ir.Func][]*ir.LoopVar{}
+	has := func(fn *ir.Func, lv *ir.LoopVar) bool { return slices.Contains(reads[fn], lv) }
+	for changed := true; changed; {
+		changed = false
+		for _, fn := range funcs {
+			if fn == nil {
+				continue
+			}
+			_ = ir.Walk(fn.Block, func(nd ir.Node) error {
+				var need []*ir.LoopVar
+				switch x := nd.(type) {
+				case *ir.Ident:
+					if lv, ok := x.Sym.(*ir.LoopVar); ok && loopVars[lv] {
+						need = []*ir.LoopVar{lv}
+					}
+				case *ir.Call:
+					need = reads[x.Func]
+				}
+				for _, lv := range need {
+					if !has(fn, lv) {
+						reads[fn] = append(reads[fn], lv)
+						changed = true
+					}
+				}
+				return nil
+			})
+		}
+	}
+	params := map[*ir.Func]map[*ir.LoopVar]*ir.Param{}
+	for fn, lvs := range reads {
+		params[fn] = map[*ir.LoopVar]*ir.Param{}
+		for _, lv := range lvs {
+			p := &ir.Param{Name: lv.Name, Type: lv.Type}
+			fn.Params = append(fn.Params, p)
+			params[fn][lv] = p
+		}
+	}
+	// Inside a func a loop variable is its parameter; in the body it is itself.
+	route := func(stmts []ir.Stmt, own map[*ir.LoopVar]*ir.Param) {
+		arg := func(lv *ir.LoopVar) ir.Expr {
+			if p := own[lv]; p != nil {
+				return paramIdent(p)
+			}
+			return &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv}
+		}
+		_ = ir.Rewrite(stmts, func(nd ir.Node) (ir.Node, error) {
+			switch x := nd.(type) {
+			case *ir.Ident:
+				if lv, ok := x.Sym.(*ir.LoopVar); ok && own[lv] != nil {
+					return paramIdent(own[lv]), nil
+				}
+			case *ir.Call:
+				for _, lv := range reads[x.Func] {
+					x.Args = append(x.Args, ir.CallArg{Value: arg(lv)})
+				}
+			}
+			return nd, nil
+		})
+	}
+	for _, fn := range funcs {
+		if fn != nil {
+			route(fn.Block, params[fn])
+		}
+	}
+	route(body, nil)
 }
 
 // cellFuncs is the funcs that read or write a cell, directly or through one
