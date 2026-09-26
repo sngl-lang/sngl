@@ -84,6 +84,19 @@ the optimizer stopped treating `contents.value()` as effect-free, declined to
 duplicate it into `Result.ok`'s inlined body, and emitted a Go method call on a
 native type that has none (`cmd/sngl/testdata/remote_http_build.txt`).
 
+**Inferred purity counts a call it knows nothing about.** An undeclared
+native's `Purity` is `PurityUnknown`, which ranks *below* pure, so
+`highestCalledPurity` used to let it through: a function whose body only calls
+one came out pure, and passCSE merged `roll() + roll()` into one roll
+(`testdata/cse_unknown_native_not_shared.txtar`). Such a call now counts as
+read-only -- the host may answer differently each time, and it has no way to
+name a program's state to write it. That also stopped the optimizer inlining
+an async computed into the prop that reads it, which is what had hidden a
+`NoAsyncReactive` ordering bug: it hoisted the call into an async `__hoist_0`
+before lowering the computed to a plain read, leaving `await` outside an
+`async` function. Named computeds are lowered first now
+(`testdata/generate_async_computed_lowered.txtar`).
+
 A library base is deliberately **not** marked `const`: it would bind every
 override, a program's own included, and a program override whose render reads
 its state is legitimate (it is kept as an instance).

@@ -1475,7 +1475,15 @@ func highestCalledPurity(fn *ir.Func) ir.Purity {
 			return
 		case *ir.Call:
 			if x.Func != nil {
-				bump(x.Func.Purity)
+				// A callee nothing says anything about -- a native not
+				// declared const, whose body is the host's -- may depend on
+				// anything, so a call to it is not a pure one. It cannot write
+				// a program's state, which it has no way to name, so it reads.
+				p := x.Func.Purity
+				if p == ir.PurityUnknown {
+					p = ir.PurityReadonly
+				}
+				bump(p)
 			}
 			if x.Callee != nil {
 				walkExpr(x.Callee)
