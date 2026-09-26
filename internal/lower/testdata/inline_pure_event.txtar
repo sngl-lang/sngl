@@ -12,7 +12,7 @@ component main node {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component clicker(@click dyn) node {
+component clicker(@click) node {
     button(text="click", @click {
         click()
     })

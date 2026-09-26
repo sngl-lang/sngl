@@ -45,7 +45,7 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 	}
 
 	if named == nil {
-		if comp.Treeless || c.treeOptional(decl, comp) {
+		if comp.Treeless || c.treeOptional(decl) {
 			return
 		}
 		if c.inLibSource() {
@@ -94,12 +94,12 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 // read as "no tree" for, rather than as the missing annotation it now is.
 //
 // An extension body (`component ui.vbox[platform]`) restates no part of the
-// declaration it merges into, so it names no tree either. `output` is the
-// other: it parses as a component but the compiler reads it as a build
-// directive before any tree question is asked, and it is declared in
-// `sngl:builtin`, which cannot import the package the root tree lives in.
-func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool {
-	return decl.Target != nil || strings.Contains(decl.Name, ".") || comp.Builtin.IsDirective()
+// declaration it merges into, so it names no tree either. That is the only
+// one: the directives -- `output`, `cache.inputs` -- used to be let off too,
+// while the root family lived in `sngl:ui` and `sngl:builtin` could not import
+// it, and now name `root` like a window does.
+func (c *checker) treeOptional(decl *ast.ComponentDecl) bool {
+	return decl.Target != nil || strings.Contains(decl.Name, ".")
 }
 
 // treeTransparent reports the blocks a statement carries the tree question

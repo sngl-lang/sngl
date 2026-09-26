@@ -23,18 +23,34 @@ var snglsrc embed.FS
 // derived from the host -- which is what will let a target serve its package
 // from somewhere else entirely.
 func (g *Generator) PackageFS() fs.FS {
-	reg, err := g.gir()
-	if err != nil {
+	if !g.widgets() {
 		// No introspection data, so the package is withheld whole rather than
 		// served half. Its overrides are written against gtk4.Gtk* widgets the
 		// generated half declares, so serving the written half alone would
 		// report every one of those widgets as undefined.
 		return nil
 	}
-	g.fsOnce.Do(func() {
-		g.pkgFS = fstest.MapFS{widgetSourceFile: &fstest.MapFile{Data: widgetSource(reg)}}
-	})
 	return mergedFS{written: snglsrc, generated: g.pkgFS}
+}
+
+// widgets loads the generated declarations once, from the gtk4.widgets entry
+// of the store: the file is served exactly as the store holds it, directive
+// included, so what the checker reads says what it was generated from.
+func (g *Generator) widgets() bool {
+	g.fsOnce.Do(func() {
+		req, err := girRequest(widgetsProducer, g.girOpt)
+		if err != nil {
+			g.fsErr = err
+			return
+		}
+		data, err := g.genStore().Get(req)
+		if err != nil {
+			g.fsErr = err
+			return
+		}
+		g.pkgFS = fstest.MapFS{widgetSourceFile: &fstest.MapFile{Data: data}}
+	})
+	return g.fsErr == nil
 }
 
 // mergedFS reads one package out of two filesystems. The generated half wins a

@@ -69,7 +69,7 @@ body { font-family: system-ui, sans-serif; }
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((e) => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
@@ -207,4 +207,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:316cb67ebe7100034fceefdcd3dfe0df
+pass sha256:0f3b14b6b24e0ebdaf36534b02ad5645

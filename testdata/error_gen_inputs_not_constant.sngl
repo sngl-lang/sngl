@@ -1,0 +1,14 @@
+// An input is compared against the world before the program runs, so every
+// value in the directive is one the build can evaluate.
+import cache "sngl:x/gen/cache"
+import ui "sngl:ui"
+
+var where = "/tmp"
+
+cache.inputs {
+    cache.absent(path=where) // ERROR(check) "must be constant"
+}
+
+ui.window {
+    ui.text(value="hi")
+}

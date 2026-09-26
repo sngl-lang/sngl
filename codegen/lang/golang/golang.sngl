@@ -1,6 +1,3 @@
-// Go language package. Declarations here are visible at every output target
-// that selects --lang go.
-
 import . "sngl:macro"
 import ir "sngl:internal/ir"
 import http "sngl:remote/http"

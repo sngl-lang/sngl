@@ -264,11 +264,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		props = append(props, param)
 	}
 	for _, e := range comp.Events {
-		ed := ast.EventDecl{Name: e.Name}
-		if e.Type != nil {
-			ed.Type = c.convertType(e.Type)
-		}
-		props = append(props, ed)
+		props = append(props, c.convertEventDecl(e))
 	}
 	for _, s := range comp.Slots {
 		ct := c.slotType(s)
@@ -766,7 +762,9 @@ func (c *converter) treePkg() string { return c.aliasFor("tree") }
 // last segment of its URI — which is the alias an unaliased import binds.
 func (c *converter) aliasFor(uri string) string {
 	uri = strings.TrimPrefix(uri, "sngl:")
-	if c.dotted[uri] {
+	// sngl:builtin is ambient: every file reaches its names bare, and it
+	// cannot be imported under any alias.
+	if c.dotted[uri] || uri == "builtin" {
 		return ""
 	}
 	if a := c.aliases[uri]; a != "" {
@@ -1163,6 +1161,25 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 		pl.Params = append(pl.Params, ap)
 	}
 	return pl
+}
+
+// convertEventDecl spells an event so it parses as the same declaration: the
+// bare `@change T` for one unnamed parameter, `@tick` for the loose `dyn` one
+// that spelling has always meant, and the parenthesised list otherwise --
+// `@done()` for none, since a bare `@done` would read back as the loose form.
+func (c *converter) convertEventDecl(e *EventDecl) ast.EventDecl {
+	ed := ast.EventDecl{Name: e.Name}
+	if len(e.Params) == 1 && e.Params[0].Name == "" {
+		if t := e.Params[0].Type; t != nil && t.Kind != TypeDyn {
+			ed.Params = []ast.FuncTypeParam{{Type: c.convertType(t)}}
+		}
+		return ed
+	}
+	ed.HasParens = true
+	for _, p := range e.Params {
+		ed.Params = append(ed.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
+	}
+	return ed
 }
 
 func (c *converter) convertEventHandler(h *EventHandler) ast.EventHandler {

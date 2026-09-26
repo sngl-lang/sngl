@@ -1,0 +1,42 @@
+// An event's parameter list is a signature, and both ends are held to it.
+//
+// A handler binds by position and may stop short, but it may not bind a
+// parameter the event does not pass, and a type it writes has to be the one
+// declared at that position. An emit supplies every declared parameter, each
+// assignable to its position's type, because a handler that binds one would
+// otherwise read a value nobody sent -- or none at all, which forwards what
+// the handler it is written in received.
+
+import . "sngl:ui"
+
+func takesSwapped(f func(string, int)) {
+    f("x", 1)
+}
+
+func takesFirst(f func(int)) {
+    f(1)
+}
+
+component picker(@pick(index int, label string), @done()) node {
+    button(text="too many", @click { pick(0, "a", true) }) // ERROR(check) "event \"pick\" passes 2 parameters, got 3 arguments"
+    button(text="too few", @click { pick(0) })             // ERROR(check) "event \"pick\" passes 2 parameters, got 1 argument"
+    button(text="swapped", @click { pick("a", 0) })        // ERROR(check) "cannot pass string as int"
+    button(text="done", @click { done(1) })                // ERROR(check) "event \"done\" passes no parameters, got 1 argument"
+    effect(@mount {
+        takesSwapped(pick) // ERROR(check) "event \"pick\" cannot be used as func(string, int): parameter \"index\" is int"
+        takesFirst(pick)   // ERROR(check) "event \"pick\" cannot be used as func(int): it passes 2 parameters"
+    })
+}
+
+component main node {
+    var at = 0
+
+    picker(@pick(i, l, extra) { at = i })  // ERROR(check) "@pick binds 3 parameters, but the event passes 2"
+    picker(@pick(i int, l int) { at = i }) // ERROR(check) "cannot use int as string for parameter \"l\" of @pick"
+    picker(@done(x) { at = 1 })            // ERROR(check) "@done binds 1 parameter, but the event passes none"
+    text(value="{at}")
+}
+
+window {
+    main
+}

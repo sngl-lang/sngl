@@ -905,7 +905,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let n = props.n ?? 0;
-    let report = props.report ?? ((__e) => {
+    let report = props.report ?? ((__e0) => {
     });
     let __prop_n = n;
     let __prop_report = report;
@@ -1052,4 +1052,4 @@ pass sha256:a40f18107a5ae0d7255f07318d4b44a6
 -- run/kotlin/android --
 pass sha256:8fced1626b74d4e7e0c5aefcb1148baf
 -- run/none/html --
-pass sha256:37b984f6715c28f9922e47c630b4321a
+pass sha256:7cfb974a1b89c786332992283815996b

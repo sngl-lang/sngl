@@ -1181,7 +1181,7 @@ func (b *builder) buildParamEntries(it nodeIter, openLine int, multiline *bool, 
 }
 
 func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
-	// Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr ] .
+	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
 	attrs := b.buildParamAttrs(&it)
 	if it.done() {
 		return ast.Param{Attrs: attrs}
@@ -1202,6 +1202,20 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		Bidirectional: bidi,
 		Attrs:         attrs,
 	}
+	var evParams []ast.FuncTypeParam
+	evParens := false
+	if !it.done() && it.isNonTerminal() && it.symbol() == EventParams {
+		// EventParams = lparen [ FuncTypeParamList ] rparen .
+		evParens = true
+		inner := it.enter()
+		for !inner.done() {
+			if inner.isNonTerminal() && inner.symbol() == FuncTypeParamList {
+				evParams = b.buildFuncTypeParamList(inner.enter())
+				continue
+			}
+			inner.skip() // lparen, rparen
+		}
+	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		p.Type = b.buildType(it.enter())
 	}
@@ -1217,7 +1231,10 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 	if p.Default != nil {
 		b.errorf(p.Pos, "event %q takes no default value", p.Name)
 	}
-	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Type: p.Type, Attrs: attrs}
+	if p.Type != nil {
+		evParams = []ast.FuncTypeParam{{Type: p.Type}}
+	}
+	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Params: evParams, HasParens: evParens, Attrs: attrs}
 }
 
 // --- Components ---

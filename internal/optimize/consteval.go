@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -1041,8 +1042,11 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	return nil, false
 }
 
-// evalFileFunc evaluates file: scheme functions (path, contents).
+// evalFileFunc evaluates file: scheme functions (path, contents, names).
 func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) {
+	if funcName == "names" {
+		return fileNames(dirPath, filename)
+	}
 	f := ctx.evalCache().file(dirPath, filename)
 	if f.err != nil {
 		return nil, false
@@ -1068,6 +1072,27 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 		return string(f.data), true
 	}
 	return nil, false
+}
+
+// fileNames is file:'s names(pattern): the names in dirPath that pattern
+// matches, sorted, as the list<string> the declaration returns. A pattern
+// reaching outside the directory matches nothing rather than listing a
+// directory the import was not allowed to name.
+func fileNames(dirPath, pattern string) (any, bool) {
+	if _, err := filepath.Match(pattern, ""); err != nil || strings.ContainsAny(pattern, `/\\`) {
+		return nil, false
+	}
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, false
+	}
+	out := []any{}
+	for _, e := range entries {
+		if ok, _ := filepath.Match(pattern, e.Name()); ok {
+			out = append(out, e.Name())
+		}
+	}
+	return out, true
 }
 
 // --- Helper functions ---

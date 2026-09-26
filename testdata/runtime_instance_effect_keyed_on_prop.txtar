@@ -1040,7 +1040,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let tag = props.tag ?? "";
-    let seen = props.seen ?? ((__e) => {
+    let seen = props.seen ?? ((__e0) => {
     });
     let __prop_tag = tag;
     let __prop_seen = seen;
@@ -1192,4 +1192,4 @@ pass sha256:17815aa4f8953bf84c19e8122ade6179
 -- run/kotlin/android --
 pass sha256:e46731cf494878bc8149c4ed338f3858
 -- run/none/html --
-pass sha256:6f6391e8dff1a198a5c44fe384442a86
+pass sha256:f2c0f1c484d17c6294e6e9ece5f3c129

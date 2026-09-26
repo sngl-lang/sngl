@@ -5,7 +5,8 @@ import marks "sngl:internal/marks"
 // pairs to build, and the options each is built with.
 //
 // Written at the root of a file, once per package -- any file of the
-// package may carry it. The contents are an ordinary component tree:
+// package may carry it. It is a member of `root`, the family a package body
+// accepts, like a window. The contents are an ordinary component tree:
 // `output` hosts languages, a language hosts platforms.
 //
 //     output {
@@ -65,4 +66,4 @@ component output(
     // guess and therefore left unanswered.
     entry dyn,
     targets ...component build.language,
-) {}
+) root {}

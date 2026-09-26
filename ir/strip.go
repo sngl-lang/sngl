@@ -222,7 +222,9 @@ func (s *stripper) stripComponent(c *Component) {
 		s.stripExpr(p.Default)
 	}
 	for _, e := range c.Events {
-		e.Type = nil
+		for _, p := range e.Params {
+			p.Type = nil
+		}
 	}
 	c.ChildrenType = nil
 	for _, v := range c.Vars {

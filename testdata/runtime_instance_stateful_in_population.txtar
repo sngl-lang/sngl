@@ -1089,7 +1089,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let tag = props.tag ?? "";
-    let seen = props.seen ?? ((__e) => {
+    let seen = props.seen ?? ((__e0) => {
     });
     let __prop_tag = tag;
     let __prop_seen = seen;
@@ -1170,7 +1170,7 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let start = props.start ?? 0;
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((s) => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop_start = start;
     let __prop___p0 = __p0;
@@ -1279,4 +1279,4 @@ pass sha256:986f32f5e8af93b94adb87527e9bb344
 -- run/kotlin/android --
 pass sha256:b028f42c2045d676ff53c5510125d5c1
 -- run/none/html --
-pass sha256:e4f767b503bb1576507f8b31a893f608
+pass sha256:3df27cc9b9a4b340783bdc11f7e67d6a

@@ -1649,7 +1649,7 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let start = props.start ?? 0;
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((k) => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop_start = start;
     let __prop___p0 = __p0;
@@ -1979,4 +1979,4 @@ pass sha256:ef58876a1d66f7f2e7c0fcf9c452b5c0
 -- run/kotlin/android --
 pass sha256:240c001b2528aae2f65b2b28178cc836
 -- run/none/html --
-pass sha256:3d9f4bdd42a94372feb86f2c421b363b
+pass sha256:c075bd8cee968a590985b8e906a05ad9

@@ -1,0 +1,12 @@
+// The directive hosts inputs and nothing else: a widget written there is a
+// member of the wrong family, not an input nobody checks.
+import cache "sngl:x/gen/cache"
+import ui "sngl:ui"
+
+cache.inputs {
+    ui.text(value="hi") // ERROR(check) "input"
+}
+
+ui.window {
+    ui.text(value="hi")
+}

@@ -922,7 +922,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((e) => {
+    let __on0 = props.__on0 ?? ((__e0) => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
@@ -1086,4 +1086,4 @@ pass sha256:19349c8904bbac96cec255cd5570aa9a
 -- run/go/gtk4 --
 pass sha256:71f40539eda9b06ac978d46e32d68344
 -- run/none/html --
-pass sha256:a79d01187c52e83e4da579f8bc254f7c
+pass sha256:32adce2982b59b6f3d22c40c9c6aa352

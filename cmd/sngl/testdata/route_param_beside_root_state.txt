@@ -44,7 +44,7 @@ struct PageParams {
     id string
 }
 
-component main ui.root {
+component main root {
     var hits = 0
 
     ui.window #page(title="t", href=`/p/{id}`, params=PageParams{}) {

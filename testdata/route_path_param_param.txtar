@@ -21,7 +21,7 @@ Two other expression forms had to be taken back from the Go lowering for the
 same reason, each in its own archive: a ternary in route_path_param_ternary.txtar
 and a list lambda in route_path_param_lambda.txtar.
 
-`main` names ui.root because what it renders is a window, and #214 is what
+`main` names root because what it renders is a window, and #214 is what
 makes that the only spelling: a component's own body is now asked which family
 it renders into, so `component main ui.node` is a check error here rather than a
 window a backend swallows without a word.

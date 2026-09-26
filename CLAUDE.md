@@ -89,6 +89,37 @@ rather than `AST.Body.IsDefined()` — that reports whether a block came from
 as "has a body" made `sngl dump --stage checked` print every empty-bodied
 component back as a signature.
 
+## Event syntax
+
+An event declares the parameters its handlers receive, with a func type's
+parameter list — `@pick(index int, label string)` — and `ir.EventDecl.Params`
+is that list. Three spellings, one mechanism:
+
+- `@pick(index int, label string)` — the list; names are optional, as in a
+  func type, and are documentation rather than contract.
+- `@change T` — the one-parameter case without the parens.
+- `@done()` passes nothing. A bare `@tick` is **not** that: it is one unnamed
+  `dyn` parameter, the loose payload a bare event has always carried, which is
+  why `ir.Convert` prints an empty list as `@done()`.
+
+A handler binds **by position**, the way a func literal does, and may leave
+trailing parameters unbound; binding more than the event passes, or annotating
+one with a type other than its position's, is a positioned error
+(`bindParams`). An emit supplies every declared parameter
+(`checkEmitArgs`) — or **none at all, which forwards**: written in a handler,
+`click()` hands on what that handler received, position for position
+(`bindEventParams`), and it is how every platform override re-fires its host
+widget's event. An event used as a callback (`eventAsFunc`) takes the event's
+parameters exactly, or none.
+
+A host widget's event — a DOM click, a Fyne callback, a boundary's `@error` —
+hands its handler one value, and `EventDecl.Payload()` is the type the code
+dispatching one reads. A parameter list reaches a backend through a *user*
+component's event, where passInlinePure substitutes it and
+passInstanceEvents turns it into a func-typed prop with that signature;
+`testdata/event_params.txtar` and `testdata/event_params_instance.txtar` are
+the two routes.
+
 ## Loop forms
 
 `for` has one head, and its *type* says what the loop does — the grammar does
@@ -376,6 +407,8 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **android** — generates Android app code; supports `kotlin` and `golang`.
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
+  The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what `PackageFS` serves, directive included, and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
+
   `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
@@ -410,8 +443,8 @@ because grouping by kind splits every subject in two.
 
 The tiers, and the split between them is the whole point of the system:
 
-- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output` and the error channel. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `root` family and the `window` that is its one member, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
+- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`, the error channel and `root`, the family a package body accepts. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
@@ -424,19 +457,23 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the caching inputs for a generated file, is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
-A library package documents itself with a **package comment**: a run of line
-comments at the top of a file, separated from what follows by a blank line
+A package documents itself with a **package comment**: a run of line comments
+at the top of its `doc.sngl`, separated from what follows by a blank line
 (without the blank line it documents the declaration below it instead). The
 text is markdown, and `sngl doc` renders it as the package description — so
 adding a `lib/` directory with a package comment needs no code change.
 
-Go's semantics apply when several files carry one: they are concatenated,
-blank-line separated, in load order. That order is not guaranteed, so prose
-that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
-by convention, as `lib/ui/doc.sngl` does.
+**Only `doc.sngl` answers** (`checker.PackageDocFile`, enforced in
+`checker.PackageDoc`), which is where Go's semantics are dropped: every file's
+comment counting, in a load order nothing guarantees, published whichever file
+header a directory listed first. It is also what keeps a stored file's
+`// Code generated … DO NOT EDIT.` header, which gtk4 serves as part of its
+package, out of that package's description. A leading comment in any other
+file is an ordinary comment about that file. Target packages under `codegen/`
+follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
@@ -755,14 +792,29 @@ interpreter nor any target catches them there. And a call through a **func
 value** with no `@error` of its own is never fallible, since nothing about a
 func type says whether it raises; a lambda body's raise leaves the lambda.
 
-**`sngl:ui`'s `root` is the family a package body accepts**, and that is the
-whole of what makes a window top-level — no syntactic rule names the
+**`sngl:builtin`'s `root` is the family a package body accepts**, and that is
+the whole of what makes a window top-level — no syntactic rule names the
 construct. So a `node` at the root of a file is the ordinary
 tree-membership error, an `if` or a `for` there still works (neither is a
 node), and a component that names `root` itself renders windows, which reach
-the build when something instantiates it. `output` is exempt: it is read as a
-build directive before any tree question is asked, and `sngl:builtin` cannot
-import `sngl:ui`, where the root tree lives.
+the build when something instantiates it.
+
+It is **ambient** because it describes every package rather than widgets. It
+lived in `sngl:ui`, and that forced an exemption: `output` is declared in
+`sngl:builtin`, which cannot import `sngl:ui`, so `treeOptional` let the
+directives — `output` and `cache.inputs` — omit a return position. Both now
+name `root` like `window` does, and `treeOptional` answers only for an
+extension body. Load order is not a problem: `lib/builtin/root.sngl` imports
+`sngl:tree` for the mark, which `sngl:builtin` already reached through
+`sngl:build`, and nothing in `sngl:tree` needs the ambient scope. `ir.Convert`
+spells it bare, as it spells every ambient name.
+
+What membership does *not* replace is the directives' own rule: each is
+diverted in `registerRootVisualNode` and read once, before anything runs, so
+one written anywhere but the root of a file is still its own error ("output may
+only be written at the root of a file") rather than a family question. A
+component whose family is `root` could otherwise render one, and nothing would
+read it.
 
 **Which windows there are is `ir.AllWindows`**, and the field is only half the
 answer. The checker registers a window written at the root of a file on
@@ -891,7 +943,7 @@ both.
 the way every other component's does: something instantiates it,
 `passNoInlineComponents` splices the body into the body that wrote the
 instantiation, and the splice renames what the component declared per
-instantiation. `component main ui.root { var hits = 0; window … }` with
+instantiation. `component main root { var hits = 0; window … }` with
 `main()` at the root of the file emits `hits__inst0`;
 `testdata/root_component_state.txtar` is that on four targets.
 
@@ -1000,8 +1052,8 @@ out, a spread none of whose fields names one is an error, and a field
 naming one already given is "already provided". Two consequences:
 
 - **A list whose parameters carry no name takes no spread.**
-  `cell component(Row)` and an event's payload are both one unnamed
-  parameter, so `cell(...r)` and `fired(...ev)` name nothing; `cell(r)` and
+  `cell component(Row)` is one unnamed parameter and an event binds its
+  parameters by position, so `cell(...r)` and `fired(...ev)` name nothing; `cell(r)` and
   `fired(ev)` are the spellings. Before, both kept the spread whole, and an
   `ir.Spread` reached `SlotInst.Args` and `Emit.Args`, where Go emitted the
   bare struct and Kotlin `*r.toTypedArray()`.
@@ -1471,6 +1523,17 @@ costs, because a foreign function's SNGL body describes it rather than
 implementing it and nothing may be inferred from it. `pure` is the sharp edge:
 it lets the compiler evaluate a call at build time, so a wrongly marked
 function runs during a build.
+
+**A pure function's value depends on its arguments and its source and on
+nothing it reads while it runs.** Its result is stored between builds, keyed
+by the call and validated against the Go closure it was built from, and
+nothing records a file opened or a variable read at run time -- so such a
+read is replayed stale after the thing it read changes, which for a folded
+const is a wrong build. Hand the data in as an argument instead:
+`file:`'s `names(pattern)` lists a directory at build time, which is how
+website.sngl gives `docs.LibraryComponents` the snapshots it used to `os.Stat`.
+Reading the compiler's own generated source is the one exception, and only
+because the store reports it.
 
 The mark imports nothing, resolves nothing and validates nothing, and never
 confers type identity — only a scheme importer's `Foreign.Origin` unifies two
@@ -2365,6 +2428,26 @@ targets in parallel) is not a saving.
   writing ~1200 files, where per-page costs dominate. Its compile step is
   `sngl generate --platform html --lang none website.sngl` once
   `internal/playground/assets/sngl.wasm` is staged.
+- **What another process produces is SNGL, and it is stored.** A step
+  whose output the compiler reads but did not write -- the compile-time
+  evaluator's run, gtk4's GIR -- is a *producer* registered with
+  `internal/gencache`, and what it hands back is a SNGL file whose root
+  `cache.inputs` directive (`sngl:x/gen/cache`) lists every input it read,
+  recorded before reading it. The store is separate from the file: keyed by
+  the request and the compiler's identity (the executable's hash, since a
+  producer's code is an input nothing in a file can record), it re-checks the
+  recorded inputs and hands back the stored file when all still hold. Under
+  `os.UserCacheDir()/sngl/gen`, `SNGL_GENCACHE_DIR` to move it,
+  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU.
+  An `entry` input names another producer's output by digest, which is how a
+  consteval value depends on the `go.deps` closure of the packages its
+  program imported without restating hundreds of files, and on whatever of the
+  compiler's own generated source the evaluator read (`codegen.GeneratedInputs`,
+  reported as `//gencache` comment records in the results file). A batch
+  producer uses `Lookup`/`Put` rather than `Get`: the evaluator looks each call
+  up and runs its misses as one program. The docs site's warm compile answers
+  every call from the store and runs no subprocess. js: calls are not stored
+  yet, nor are go: import declarations -- both are producers still to move.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target but the last, and `ir.ClonePackage` copies by
   reflection everything reachable — library IR included, since per-target

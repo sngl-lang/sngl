@@ -59,7 +59,7 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 
 // lowerPropBindings transforms all PropBindings on inst into EventDecl +
 // EventHandler pairs. For each PropBinding{PropName:"count", Target:steps}:
-//  1. Adds EventDecl{Name:"count", Type:prop.Type} to the child component (idempotent).
+//  1. Adds EventDecl{Name:"count", Params:[prop.Type]} to the child component (idempotent).
 //  2. Rewrites count+=1 / count=x / count!! in the component body/funcs to
 //     ir.Emit{Name:"count", Args:[newVal]}.
 //     2a. If step 2 found no mutations (e.g. for stdlib native components that
@@ -84,8 +84,8 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		// 1. Add synthetic EventDecl to component (idempotent).
 		if !hasBindingEvent(comp, b.PropName) {
 			comp.Events = append(comp.Events, &ir.EventDecl{
-				Name: b.PropName,
-				Type: prop.Type,
+				Name:   b.PropName,
+				Params: []*ir.Param{{Type: prop.Type}},
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component.
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
@@ -215,8 +215,8 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 // component declares, for a handler that has to be given a parameter.
 func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
 	for _, ev := range comp.Events {
-		if slices.Contains(candidates, ev.Name) && ev.Type != nil {
-			return ev.Type
+		if slices.Contains(candidates, ev.Name) && ev.Payload() != nil {
+			return ev.Payload()
 		}
 	}
 	return ir.TypDyn

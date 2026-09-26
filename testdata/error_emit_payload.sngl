@@ -46,7 +46,7 @@ component emptyPayloadWrongType(@none FocusEvent) node {
 }
 
 component tooManyArgs(@one Payload) node {
-    text(value="h", @click { one({value="a"}, {value="b"}) }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
+    text(value="h", @click { one({value="a"}, {value="b"}) }) // ERROR(check) "event \"one\" passes 1 parameter, got 2 arguments"
 }
 
 window {

@@ -391,10 +391,10 @@ func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
 //
 // The parameters have to line up, and what lines up is defined by what an
 // author could write by hand: a callback taking nothing becomes `{ tick() }`,
-// an emit with no arguments, which is legal for a payloadless event and for one
-// whose payload is dyn -- a bare `@tick` gets the second. A callback taking one
-// value forwards it. Anything else is reported against the event, because by
-// then the name has resolved and "undefined" would be the wrong thing to say.
+// the forwarding emit, and one taking values passes them as the emit's
+// arguments -- so it takes exactly the event's, each assignable to the one at
+// its position. Anything else is reported against the event, because by then
+// the name has resolved and "undefined" would be the wrong thing to say.
 func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 	want := c.expected
 	if want == nil || want.Kind != ir.TypeFunc || want.Sig == nil || c.currentComponent == nil {
@@ -424,18 +424,21 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 	// the expected one exactly: a `func()` written with no return annotation
 	// carries a nil Return, and `func() void` is not assignable to it.
 	fn := &ir.Func{Return: want.Sig.Return, Purity: ir.PurityMutates}
+	if k := len(want.Sig.Params); k > 0 && k != len(evt.Params) {
+		if len(evt.Params) == 0 {
+			return fail("it carries no value to pass")
+		}
+		return fail("it passes " + countOf(len(evt.Params), "parameter"))
+	}
 	var args []ir.CallArg
-	switch {
-	case len(want.Sig.Params) == 0:
-	case len(want.Sig.Params) == 1 && evt.Type != nil && want.Sig.Params[0].Type != nil &&
-		want.Sig.Params[0].Type.IsAssignableTo(evt.Type):
-		p := &ir.Param{Name: "__e", Type: want.Sig.Params[0].Type}
-		fn.Params = []*ir.Param{p}
-		args = []ir.CallArg{{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}}
-	case evt.Type == nil:
-		return fail("it carries no value to pass")
-	default:
-		return fail("its payload is " + evt.Type.String())
+	for i, wp := range want.Sig.Params {
+		et := evt.Params[i].Type
+		if wp.Type == nil || et == nil || !wp.Type.IsAssignableTo(et) {
+			return fail(fmt.Sprintf("%s is %s", eventParamLabel(evt, i), et))
+		}
+		p := &ir.Param{Name: fmt.Sprintf("__e%d", i), Type: wp.Type}
+		fn.Params = append(fn.Params, p)
+		args = append(args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
 	}
 	fn.Block = []ir.Stmt{&ir.Emit{Name: evt.Name, Args: args}}
 	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}, Func: fn}
@@ -1521,15 +1524,15 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	event := ""
 	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
 		event = evt.Name
-		if evt.Type != nil {
-			// Mark the param optional via a placeholder Default so
+		if len(evt.Params) > 0 {
+			// Mark each param optional via a placeholder Default so
 			// `c.btn.click()` (zero args) and `c.entry.input({…})`
-			// (one struct arg) both pass arity, while the single
-			// positional arg still gets the payload's expected type.
-			argSig = &ir.FuncSig{Params: []*ir.Param{{
-				Type:    evt.Type,
-				Default: &ir.Literal{Type: evt.Type},
-			}}}
+			// (one struct arg) both pass arity, while each positional
+			// arg still gets its parameter's expected type.
+			argSig = &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
+			for i, p := range evt.Params {
+				argSig.Params[i] = &ir.Param{Name: p.Name, Type: p.Type, Default: &ir.Literal{Type: p.Type}}
+			}
 		}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
@@ -2886,16 +2889,16 @@ func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 // an event declared to carry another, and the mismatch surfaced as a type error
 // in the generated program rather than against the declaration that was wrong.
 //
-// The argument is the payload, or there is none. A shorthand accepting the
-// payload's single field instead would tie the rule to the payload's shape:
-// adding a second field to a one-field event would stop every such call site
-// checking, so a change that is backward compatible in the declaration would
-// not be in the checker. Writing the payload out costs a call site nothing and
-// keeps the two independent.
+// An emit is a call of the event's signature: one argument per declared
+// parameter, by position, each checked against its parameter's type -- so a
+// struct literal here is typed by the declaration, and `change({value = opt})`
+// names no type and needs none. A handler may stop short; an emit may not,
+// because a handler that binds the parameter would read a value nobody sent.
 //
-// The argument is checked against the payload rather than on its own, so a
-// struct literal here is typed by the declaration -- `change({value = opt})`
-// names no type and needs none.
+// The exception is an emit with no arguments at all, which *forwards*: written
+// in a handler, it hands on what that handler received, position for position
+// (bindEventParams). It is how every platform override re-fires its host
+// widget's event -- `@clicked { click() }` -- so it is legal for any event.
 func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList) []ir.CallArg {
 	var vals []ast.Expr
 	for _, a := range args.Args {
@@ -2905,24 +2908,52 @@ func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList
 		}
 		vals = append(vals, arg.Value)
 	}
-	switch {
-	case len(vals) == 0:
-		return nil
-	case len(vals) > 1:
-		c.error(pos, "event %q takes at most one argument, got %d", evt.Name, len(vals))
-		return nil
-	case evt.Type == nil:
-		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
+	if len(vals) != len(evt.Params) && len(vals) > 0 {
+		passes := "no parameters"
+		if len(evt.Params) > 0 {
+			passes = countOf(len(evt.Params), "parameter")
+		}
+		c.error(pos, "event %q passes %s, got %s", evt.Name, passes, countOf(len(vals), "argument"))
 		return nil
 	}
-	// The payload is one unnamed parameter, so it binds positionally: a name,
-	// or a spread's fields, has nothing to name.
-	sig := &ir.FuncSig{Params: []*ir.Param{{Type: evt.Type}}}
+	if len(vals) == 0 {
+		return nil
+	}
+	// An event's parameter names are documentation, so the arguments bind
+	// positionally: a name, or a spread's fields, has nothing to name.
+	sig := &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
+	for i, p := range evt.Params {
+		sig.Params[i] = &ir.Param{Type: p.Type}
+	}
 	bound, ok := c.bindArgs(args.Pos, args.Args, sig)
-	if !ok || bound[0] == nil {
+	if !ok {
 		return nil
 	}
-	return []ir.CallArg{{Value: *bound[0]}}
+	out := make([]ir.CallArg, len(bound))
+	for i, b := range bound {
+		if b == nil {
+			return nil
+		}
+		out[i] = ir.CallArg{Value: *b}
+	}
+	return out
+}
+
+// eventParamLabel names an event's parameter in a diagnostic: by the name the
+// declaration gave it, or by its ordinal from one when it has none.
+func eventParamLabel(evt *ir.EventDecl, i int) string {
+	if n := evt.Params[i].Name; n != "" {
+		return "parameter " + strconv.Quote(n)
+	}
+	return fmt.Sprintf("parameter %d", i+1)
+}
+
+// countOf is "1 parameter", "2 parameters".
+func countOf(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
@@ -3879,7 +3910,7 @@ func (c *checker) errorEventType() *ir.Type {
 	}
 	for _, e := range c.boundaryComp.Events {
 		if e.Name == "error" {
-			return e.Type
+			return e.Payload()
 		}
 	}
 	return nil
@@ -3896,6 +3927,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	kind, builtinComp := c.builtinNode(name)
 	if kind == ir.BuiltinOutput && vn != c.outputDecl {
 		c.error(vn.Pos, "output may only be written at the root of a file: it is the package's build directive, not a node")
+		return nil
+	}
+	if kind == ir.BuiltinGenInputs && !slices.Contains(c.genInputs, vn) {
+		c.error(vn.Pos, "%s may only be written at the root of a file: it says what the file was generated from, not what it renders", name)
 		return nil
 	}
 	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
@@ -4331,13 +4366,30 @@ func onComponent(comp *ir.Component) string {
 	return " on component " + comp.Name
 }
 
-func componentEventType(comp *ir.Component, name string) *ir.Type {
+// componentEventParams is the signature a handler for the named event binds
+// against: a declared event's, or the wildcard event covering the name. Nil
+// when the component declares neither, which is reported elsewhere.
+func componentEventParams(comp *ir.Component, name string) []*ir.Param {
+	if comp == nil {
+		return nil
+	}
 	for _, e := range comp.Events {
 		if e.Name == name {
-			return e.Type
+			return nonNilParams(e.Params)
 		}
 	}
+	if e, ok, _ := wildcardEvent(comp, name); ok {
+		return nonNilParams(e.Params)
+	}
 	return nil
+}
+
+// nonNilParams keeps "declares none" distinct from "no signature to read".
+func nonNilParams(ps []*ir.Param) []*ir.Param {
+	if ps == nil {
+		return []*ir.Param{}
+	}
+	return ps
 }
 
 func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component) {
@@ -4577,10 +4629,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				continue
 			}
 			seen[arg.Name] = arg.Pos
-			var want *ir.Type
-			if comp != nil {
-				want = componentEventType(comp, arg.Name)
-			}
+			want := componentEventParams(comp, arg.Name)
 			fn := &ir.Func{Params: c.bindParams(arg.Params, want, "@"+arg.Name, "the event")}
 			// Check the handler body in a scoped context.
 			c.pushScope()
@@ -4749,12 +4798,11 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 
 		case ast.EventHandler:
 			c.pushScope()
-			for _, p := range arg.Params.Params {
+			want := componentEventParams(comp, arg.Name)
+			for i, p := range arg.Params.Params {
 				typ := c.resolveType(p.Type)
-				if typ.Kind == ir.TypeDyn {
-					if et := componentEventType(comp, arg.Name); et != nil {
-						typ = et
-					}
+				if typ.Kind == ir.TypeDyn && i < len(want) && want[i].Type != nil {
+					typ = want[i].Type
 				}
 				c.declare(p.Pos, &ir.Param{Name: p.Name, Type: typ})
 			}

@@ -1,11 +1,3 @@
-// BubbleTea (Charm TUI) platform package.
-//
-// Components render through four inlined blueprint primitives — Layout,
-// Styled, Widget and Overlay — whose props are the blueprint records below
-// (JoinDir, Model, Focus, Bind, Event). The Go extractor in blueprint.go reads
-// these off the inlined NodeInst; see view_ir.go / compiler_ir.go for how each
-// primitive lowers to lipgloss / bubbles model code.
-
 import ui "sngl:ui"
 import time "sngl:time"
 import markup "sngl:ui/markup"

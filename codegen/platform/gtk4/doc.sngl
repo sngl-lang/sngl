@@ -1,0 +1,20 @@
+// GTK4 platform package.
+//
+// Each component in gtk4.sngl overrides the corresponding stdlib abstract component
+// with a GTK4-native implementation. The widget types those bodies are written
+// against — `GtkButton`, `GtkLabel`, one per GTK class — are the other half of
+// this package: the platform generates them from the `Gtk-4.0.gir`
+// introspection data installed on the machine, since the widget set is a
+// property of the host and not of this repository. A GIR property becomes a
+// typed prop, a GLib signal an event, and `#[intrinsic("gtk4:<CType>")]` names
+// the C type the emitter reads the class's C API back out of the same GIR
+// under. With no GIR file the platform reports itself unavailable and
+// contributes nothing, gtk4.sngl included.
+//
+// Inside a `platform gtk4 { ... }` body a native widget tag needs its `gtk4.`
+// prefix (e.g. `gtk4.GtkBox`): the stdlib component it overrides is in scope
+// too, and carries a body of its own.
+//
+// The view renderer walks each component body, finds the root
+// VisualNode, reads its widget type and prop/event bindings, and emits the
+// corresponding GTK4 Go code.

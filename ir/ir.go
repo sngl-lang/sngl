@@ -787,13 +787,27 @@ type Prop struct {
 // EventDecl is a resolved event declaration on a component.
 type EventDecl struct {
 	Name string
-	Type *Type // payload type; nil for void events
-	// Params replaces Type for an event a lowering synthesized to carry more
-	// than one value, which no source declaration can spell.
+	// Params are what a handler receives, in order: the FuncSig shape. A
+	// handler binds them by position, the way a func literal binds its
+	// parameters, and may stop short -- so unlike a slot's, the names here are
+	// documentation rather than contract, and an entry with none carries "".
+	// `@change T` is one unnamed entry and `@done()` is none. A bare `@tick`
+	// is one unnamed `dyn` entry, the loose payload it has always carried.
 	Params []*Param `json:",omitempty"`
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
+}
+
+// Payload is the type of the event's only parameter, or nil when it does not
+// declare exactly one. A host widget's event -- a DOM click, a Fyne callback,
+// a boundary's error -- hands its handler one value, and this is what the code
+// dispatching one reads.
+func (e *EventDecl) Payload() *Type {
+	if e == nil || len(e.Params) != 1 {
+		return nil
+	}
+	return e.Params[0].Type
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a

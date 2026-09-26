@@ -163,12 +163,36 @@ module.exports = grammar({
       seq($.func_param, repeat(seq(",", $.func_param)), optional(",")),
 
     func_param: ($) =>
-      prec.right(seq(
-      optional(choice(":", "@")),
-      field("name", $.identifier),
-      optional(field("type", $.type_identifier)),
-      optional(seq("=", field("default", $._expression)))
+      prec.right(choice(
+      seq(
+        optional(":"),
+        field("name", $.identifier),
+        optional(field("type", $.type_identifier)),
+        optional(seq("=", field("default", $._expression)))
+      ),
+      // An event declares the parameters its handlers receive, the way a
+      // func type does: `@pick(index int, label string)`. `@change T` is the
+      // one-parameter case without the parens.
+      seq(
+        "@",
+        field("name", $.identifier),
+        optional(choice(
+          field("params", $.event_params),
+          field("type", $.type_identifier)
+        ))
+      )
     )),
+
+    event_params: ($) =>
+      seq("(", optional(seq($.event_param, repeat(seq(",", $.event_param)))), ")"),
+
+    // A name is optional, as it is in a func type: `(T)` and `(v T)` are both
+    // one parameter.
+    event_param: ($) =>
+      choice(
+      seq(field("name", $.identifier), field("type", $.type_identifier)),
+      field("type", $.type_identifier)
+    ),
 
     // prec.right resolves the shift/reduce conflict the optional block creates
     // at `component X • {` in favour of the shift; without it

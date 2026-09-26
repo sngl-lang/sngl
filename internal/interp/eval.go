@@ -1974,7 +1974,7 @@ func eventPayload(inst *ir.NodeInst, event string) *ir.Type {
 	}
 	for _, e := range inst.Component.Events {
 		if e.Name == event {
-			return e.Type
+			return e.Payload()
 		}
 	}
 	return nil

@@ -717,10 +717,7 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident}}, nil
 			case ast.EventDecl:
 				if pp.Name == ident {
-					payload := ""
-					if pp.Type != nil {
-						payload = parser.FormatType(pp.Type)
-					}
+					payload := parser.FormatEventSignature(pp)
 					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Event: payload}}, nil
 				}
 			}
@@ -818,42 +815,12 @@ func providedPackageDocs(pkg string) []*ast.Document {
 	return nil
 }
 
-// The one file a package's prose is read from. Go's semantics — every file's
-// package comment counts, concatenated in load order — cannot say which order,
-// and the blank line that separates a package comment from a declaration
-// comment is easy to leave in by accident: three files in lib/remote opened
-// with a file header and the package read as whichever the directory listed
-// first. So a package holding a doc.sngl is documented by it alone.
-//
-// A package with no doc.sngl keeps go's semantics, which costs nothing: the
-// packages in that position are the single-file ones a target serves for
-// itself (`sngl:platform/html`, `sngl:language/go`), where there is no order
-// to leave unpinned. lib/packagedoc_test.go holds lib/ to the stricter rule.
-const packageDocFile = "doc.sngl"
-
-// documentFile is the file a parsed document came from. An *ast.Document does
-// not carry one, so it is recovered from the first statement's position —
-// parseStdlibDocs and ProvidedDocs both parse under the base name.
-func documentFile(doc *ast.Document) string {
-	if len(doc.Stmts) == 0 {
-		return ""
-	}
-	p := doc.Stmts[0].StmtPos()
-	if p == nil {
-		return ""
-	}
-	return filepath.Base(p.File)
-}
-
-// packageProse is one package's own description, read from packageDocFile
-// alone when the package has one.
+// packageProse is one package's own description. Only its
+// checker.PackageDocFile answers checker.PackageDoc, so at most one document
+// contributes.
 func packageProse(src []*ast.Document) string {
-	fromDoc := slices.ContainsFunc(src, func(d *ast.Document) bool { return documentFile(d) == packageDocFile })
 	var prose []string
 	for _, d := range src {
-		if fromDoc && documentFile(d) != packageDocFile {
-			continue
-		}
 		if doc := checker.PackageDoc(d); doc != "" {
 			prose = append(prose, doc)
 		}

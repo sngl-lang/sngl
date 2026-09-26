@@ -1014,7 +1014,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e) => {
+    let tick = props.tick ?? ((__e0) => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -1253,4 +1253,4 @@ pass sha256:0f6fd8f7cb4d5c7a24c1caa0965772ac
 -- run/go/gtk4 --
 pass sha256:c5b87e67120c80efe0b3ef4f9ec6554f
 -- run/none/html --
-pass sha256:be2961dd3e75e16ab6b1a98efad79da7
+pass sha256:2f58632ce70d49cb5ca387cd55625313

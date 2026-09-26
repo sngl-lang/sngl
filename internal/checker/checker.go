@@ -376,6 +376,10 @@ type checker struct {
 
 	outputDecl *ast.VisualNode
 
+	// genInputs holds each `cache.inputs` directive written at the root of a
+	// file, recorded in pass1 and checked in pass2 (see genInputs.go).
+	genInputs []*ast.VisualNode
+
 	// pendingPkgBody holds the statements written at the package's top level,
 	// collected in pass1 and checked in pass2. They cannot be checked where
 	// they are found: they read vars and instantiate components that pass1 is
@@ -509,7 +513,7 @@ type checker struct {
 	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
 	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootTree *ir.StructDef
@@ -2809,8 +2813,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
-				Name: pd.Name,
-				Type: c.resolveType(pd.Type),
+				Name:   pd.Name,
+				Params: c.eventParams(pd),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
@@ -2943,6 +2947,14 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	switch kind, _ := c.builtinNode(name); kind {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
+	case ir.BuiltinGenInputs:
+		// A library package's -- a target serving generated source -- is not
+		// checked: library source is registered here and not body-checked,
+		// and pass2 would check it in the program's scope, where the
+		// library's imports are not. The store holding the file reads it.
+		if !c.inLibSource() {
+			c.genInputs = append(c.genInputs, vn)
+		}
 	default:
 		// An ordinary visual node at the top level is the package's own body:
 		// what the program renders, with the package's vars as its state. Held
@@ -3455,6 +3467,7 @@ func (c *checker) pass2() {
 
 	c.checkPackageBody()
 	c.checkOutputTree()
+	c.checkGenInputs()
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
@@ -4779,7 +4792,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
+			h.Func.Params = c.bindParams(h.AST.Params, []*ir.Param{{Type: v.Type}}, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)

@@ -45,11 +45,11 @@ func eventParamName(e string) string { return "on" + strings.ToUpper(e[:1]) + e[
 func eventParams(comp *ir.Component) []string {
 	var out []string
 	for _, e := range comp.Events {
-		payload := ""
-		if e.Type != nil {
-			payload = kotlin.IRTypeToKt(e.Type)
+		types := make([]string, len(e.Params))
+		for i, p := range e.Params {
+			types[i] = kotlin.IRTypeToKt(p.Type)
 		}
-		out = append(out, eventParamName(e.Name)+": (("+payload+") -> Unit)? = null")
+		out = append(out, eventParamName(e.Name)+": (("+strings.Join(types, ", ")+") -> Unit)? = null")
 	}
 	return out
 }

@@ -11,7 +11,7 @@ import (
 // whole preview section, snapshots included.
 func TestLibraryExamplesPreview(t *testing.T) {
 	n := 0
-	for _, c := range LibraryComponents() {
+	for _, c := range LibraryComponents(nil) {
 		if len(c.Examples) == 0 {
 			continue
 		}
