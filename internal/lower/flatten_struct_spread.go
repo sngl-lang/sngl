@@ -220,27 +220,12 @@ func structDefOf(sl *ir.StructLit) *ir.StructDef {
 	}
 	for _, f := range sl.Fields {
 		if f.Spread && f.Value != nil {
-			if t := exprStructType(f.Value); t != nil {
+			if t := f.Value.ExprType(); t != nil {
 				if sd, ok := t.Decl.(*ir.StructDef); ok {
 					return sd
 				}
 			}
 		}
-	}
-	return nil
-}
-
-// exprStructType returns the static *Type of an expr when it carries one.
-func exprStructType(e ir.Expr) *ir.Type {
-	switch x := e.(type) {
-	case *ir.Ident:
-		return x.Type
-	case *ir.Select:
-		return x.Type
-	case *ir.Call:
-		return x.Type
-	case *ir.Index:
-		return x.Type
 	}
 	return nil
 }

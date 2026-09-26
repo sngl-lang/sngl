@@ -150,21 +150,46 @@ func TestReactiveStyleRuns(t *testing.T) {
 	runEmitted(t, "fyne-reactive-style-", []byte(model), reactiveStyleDriver)
 }
 
-// styleValueSrc hands a node a whole Style held in state, replaced by one
-// handler and written a field at a time by another.
+// styleValueSrc hands nodes a whole Style held in state: a var replaced by one
+// handler and written a field at a time by another, a ternary between two
+// literals, and the var again in each copy of a reactive loop.
 const styleValueSrc = `
 import . "sngl:ui"
 
 window {
     var s Style = {color=#ff0000, fontSize=14px}
+    var on = false
+    var rows = ["r1"]
 
-    button(text="swap", @click { s = {color=#0000ff, fontSize=20px, fontWeight=bold} })
-    button(text="tint", @click { s.color = #00ff00 })
+    button(text="swap", @click {
+        s = {color=#0000ff, fontSize=20px, fontWeight=bold}
+        on = !on
+    })
+    button(text="tint", @click {
+        s.color = #00ff00
+        rows = ["r1", "r2"]
+    })
     text(value="styled", style=s)
+    text(value="picked", style=on ? {color=#00ffff} : {color=#ff00ff})
+    vbox {
+        for var r = rows {
+            text(value=r, style=s)
+        }
+    }
 }
 `
 
 const styleValueDriver = styleDriverHelpers + `
+func count(root fyne.CanvasObject, s string) int {
+	n := 0
+	walk(root, func(o fyne.CanvasObject) {
+		if tx, ok := o.(*canvas.Text); ok && tx.Text == s {
+			n++
+		}
+	})
+	return n
+}
+
 func TestStyleValue(t *testing.T) {
 	test.NewApp()
 	m := New()
@@ -172,24 +197,32 @@ func TestStyleValue(t *testing.T) {
 	defer w.Close()
 	root := w.Content()
 
-	check := func(when string, want color.NRGBA, size float32, bold bool) {
+	check := func(when, label string, want color.NRGBA, size float32, bold bool) {
 		t.Helper()
-		txt := drawn(t, root, "styled")
+		txt := drawn(t, root, label)
 		if got := rgba(txt.Color); got != want {
-			t.Errorf("%s: color %v, want %v", when, got, want)
+			t.Errorf("%s: %s color %v, want %v", when, label, got, want)
 		}
 		if txt.TextSize != size {
-			t.Errorf("%s: size %v, want %v", when, txt.TextSize, size)
+			t.Errorf("%s: %s size %v, want %v", when, label, txt.TextSize, size)
 		}
 		if face(txt) != theme.DefaultTheme().Font(fyne.TextStyle{Bold: bold}) {
-			t.Errorf("%s: bold is not %v", when, bold)
+			t.Errorf("%s: %s bold is not %v", when, label, bold)
 		}
 	}
-	check("initially", color.NRGBA{255, 0, 0, 255}, 14, false)
+	check("initially", "styled", color.NRGBA{255, 0, 0, 255}, 14, false)
+	check("initially", "picked", color.NRGBA{255, 0, 255, 255}, 14, false)
+	check("initially", "r1", color.NRGBA{255, 0, 0, 255}, 14, false)
 	tap(t, root, "swap")
-	check("after the swap", color.NRGBA{0, 0, 255, 255}, 20, true)
+	check("after the swap", "styled", color.NRGBA{0, 0, 255, 255}, 20, true)
+	check("after the swap", "picked", color.NRGBA{0, 255, 255, 255}, 14, false)
+	check("after the swap", "r1", color.NRGBA{0, 0, 255, 255}, 20, true)
 	tap(t, root, "tint")
-	check("after the tint", color.NRGBA{0, 255, 0, 255}, 20, true)
+	check("after the tint", "styled", color.NRGBA{0, 255, 0, 255}, 20, true)
+	check("after the tint", "r2", color.NRGBA{0, 255, 0, 255}, 20, true)
+	if n := count(root, "r1"); n != 1 {
+		t.Errorf("after the loop re-rendered, r1 is drawn %d times, want 1", n)
+	}
 }
 `
 

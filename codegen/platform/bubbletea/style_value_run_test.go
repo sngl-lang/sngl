@@ -7,17 +7,23 @@ import (
 	"testing"
 )
 
-// styleValueRunSrc hands a node a whole Style held in state, replaced by one
-// handler and written a field at a time by another.
+// styleValueRunSrc hands nodes a whole Style held in state: a var replaced by
+// one handler and written a field at a time by another, and a ternary between
+// two literals.
 const styleValueRunSrc = `
 import . "sngl:ui"
 
 window {
     var s Style = {color=#ff0000}
+    var on = false
 
-    button #swap(text="swap", @click { s = {color=#0000ff, fontWeight=bold} })
+    button #swap(text="swap", @click {
+        s = {color=#0000ff, fontWeight=bold}
+        on = !on
+    })
     button #tint(text="tint", @click { s.color = #00ff00 })
     text(value="styled", style=s)
+    text(value="picked", style=on ? {color=#00ffff} : {color=#ff00ff})
 }
 `
 
@@ -31,26 +37,32 @@ import (
 	"testing"
 )
 
-func styled(t *testing.T, m Model) string {
+func sgr(t *testing.T, m Model, label string) string {
 	t.Helper()
-	got := regexp.MustCompile("\x1b\\[([0-9;]*)m[^\x1b]*styled").FindStringSubmatch(fmt.Sprint(m.View().Content))
+	got := regexp.MustCompile("\x1b\\[([0-9;]*)m[^\x1b]*" + label).FindStringSubmatch(fmt.Sprint(m.View().Content))
 	if got == nil {
-		t.Fatalf("no styled text in %q", fmt.Sprint(m.View().Content))
+		t.Fatalf("no styled %s in %q", label, fmt.Sprint(m.View().Content))
 	}
 	return got[1]
 }
 
 func TestStyleValue(t *testing.T) {
 	m := New()
-	if got := styled(t, m); got != "38;2;255;0;0" {
+	if got := sgr(t, m, "styled"); got != "38;2;255;0;0" {
 		t.Errorf("initially %q, want the red foreground alone", got)
 	}
+	if got := sgr(t, m, "picked"); got != "38;2;255;0;255" {
+		t.Errorf("picked initially %q, want magenta", got)
+	}
 	m.swapClick()
-	if got := styled(t, m); got != "1;38;2;0;0;255" {
+	if got := sgr(t, m, "styled"); got != "1;38;2;0;0;255" {
 		t.Errorf("after the swap %q, want bold and blue", got)
 	}
+	if got := sgr(t, m, "picked"); got != "38;2;0;255;255" {
+		t.Errorf("picked after the swap %q, want cyan", got)
+	}
 	m.tintClick()
-	if got := styled(t, m); got != "1;38;2;0;255;0" {
+	if got := sgr(t, m, "styled"); got != "1;38;2;0;255;0" {
 		t.Errorf("after the tint %q, want bold and green", got)
 	}
 }

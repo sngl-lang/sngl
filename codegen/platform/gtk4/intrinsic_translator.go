@@ -784,7 +784,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
 	// declaration reserves the name for style, so it is not theirs.
 	if prop == stylePropName {
-		return nil
+		return discardStyleTemps(value)
 	}
 	bare := codegen.IdentBareName(node)
 	cType, ok := t.idCTypes[bare]
@@ -1377,4 +1377,24 @@ func invokerStateSetter(cType string, wrapped bool) string {
 		return "C.gtk_switch_set_active"
 	}
 	return ""
+}
+
+// discardStyleTemps reads the temps a style write names and nothing else, since
+// this platform paints no Style: NoTernary hoists `style=on ? a : b`, or a field
+// written that way, into a `var __ltN` Go refuses to leave unread.
+func discardStyleTemps(style ir.Expr) []ir.Stmt {
+	var out []ir.Stmt
+	seen := map[string]bool{}
+	_ = ir.WalkExprs(style, func(e ir.Expr) error {
+		id, ok := e.(*ir.Ident)
+		if !ok || !id.Synthesized || id.IsElementRef || seen[id.Name] {
+			return nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && v.Synthesized {
+			seen[id.Name] = true
+			out = append(out, &ir.Assign{Target: &ir.Ident{Name: "_", Type: ir.TypDyn}, Op: ast.AssignSet, Value: id})
+		}
+		return nil
+	})
+	return out
 }
