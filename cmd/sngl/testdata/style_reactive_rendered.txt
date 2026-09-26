@@ -1,0 +1,60 @@
+# A style field that reads state, rendered by a real browser.
+#
+# html wrote a style literal's fields only when the build could read them, so a
+# field reading state wrote nothing: not in the markup, not on first render and
+# not after the state changed. testdata/html_style_reactive.txtar shows the
+# writes the page now makes; this runs them, and reads the style back off the
+# DOM as Chromium parsed it -- so a helper that produced text a browser refuses
+# (a color it cannot parse, a length with no unit) shows up as a declaration
+# missing from the element rather than as a passing grep over the source.
+#
+# Confirmed by reverting the html change: both snapshots then carry only the
+# static `text-align: center`.
+
+# Chromium orders a calc()'s terms itself, hence 2em before 3px below.
+
+[!chromium] skip 'a rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout 'PASS'
+
+grep 'color: rgb\(255, 255, 255\)' app.sngl.snapshots/before.html
+grep 'font-weight: normal' app.sngl.snapshots/before.html
+grep 'padding: 0px' app.sngl.snapshots/before.html
+grep 'width: 10%' app.sngl.snapshots/before.html
+
+grep 'color: rgb\(51, 51, 51\)' app.sngl.snapshots/after.html
+grep 'font-weight: bold' app.sngl.snapshots/after.html
+grep 'padding: 2px' app.sngl.snapshots/after.html
+grep 'width: calc\(2em \+ 3px\)' app.sngl.snapshots/after.html
+grep 'text-align: center' app.sngl.snapshots/after.html
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+output { none { html } }
+
+component main node {
+    var active = 0
+
+    button #flip(text="x", @click { active = 1 })
+    text(value="y", style={
+        color = active == 0 ? #ffffff : #333333,
+        fontWeight = active == 0 ? normal : bold,
+        padding = active * 2,
+        width = active == 0 ? 10pct : 3px + 2em,
+        textAlign = center,
+    })
+}
+
+func testStyleFollowsState(t Test, c main) {
+    t.snapshot("before")
+    c.flip.click()
+    t.snapshot("after")
+}
+
+window {
+    main
+}

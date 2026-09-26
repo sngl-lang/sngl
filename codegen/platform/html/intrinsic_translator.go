@@ -348,11 +348,11 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// DOM sink accepts: passed through it stringifies to "[object Object]".
 	if prop == "style" {
 		if sl, ok := value.(*ir.StructLit); ok {
-			css := htmlutil.BuildCSSStyleIR([]ir.Arg{{Name: "style", Value: sl}})
-			if css == "" {
-				return nil
+			var out []ir.Stmt
+			if css := htmlutil.BuildCSSStyleIR([]ir.Arg{{Name: "style", Value: sl}}); css != "" {
+				out = setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 			}
-			return setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
+			return append(out, t.styleWriteStmts(node, dynamicStyleWrites(sl))...)
 		}
 	}
 	if prop == spanStyleProp {
