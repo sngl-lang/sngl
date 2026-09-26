@@ -270,12 +270,6 @@ func newTestComponent() *Model {
 	return m
 }
 
-// Stdlib event payload structs — surfaced for test bodies that
-// construct InputEvent{...} / ChangeEvent{...} / SubmitEvent{...}.
-type InputEvent struct{ Value string }
-type ChangeEvent struct{ Value string }
-type SubmitEvent struct{ Value string }
-
 func main() { testagent.Main() }
 `)
 				if err := writeRawFile(sink, "agent_main.go", agentMainBytes(c.cfg.Package, c.wrapped, mainSrc)); err != nil {

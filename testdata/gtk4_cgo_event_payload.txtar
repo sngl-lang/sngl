@@ -67,10 +67,6 @@ import (
 	"os"
 )
 
-type ChangeEvent struct {
-	Value string
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	last         string
@@ -156,9 +152,11 @@ func (m *Model) boxInput(s string) {
 }
 
 // boxChange invokes the OnSubmitted callback on the #box widget; for tests.
-func (m *Model) boxChange(e ChangeEvent) {
-	if m.box.OnSubmitted != nil {
-		m.box.OnSubmitted(e.Value)
+func (m *Model) boxChange(s string) {
+	if cb := m.box.OnSubmitted; cb != nil {
+		m.box.OnSubmitted = nil
+		cb(s)
+		m.box.OnSubmitted = cb
 	}
 }
 
@@ -691,6 +689,6 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:a19d352d2620394606015b4839640b1f
+pass sha256:8952fdcc60c8afde87486c13bedda2c8
 -- run/go/gtk4 --
 pass sha256:05038bd63e7cdc1b2da80df1973b9363

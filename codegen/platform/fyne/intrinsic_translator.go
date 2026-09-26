@@ -780,7 +780,7 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, handler 
 	}
 	if pt, sd := codegen.HandlerPayload(handler); sd != nil && inv.ParamType != "" {
 		for _, f := range sd.Fields {
-			if f != nil && f.Type != nil && golang.IRTypeToGo(f.Type) == inv.ParamType {
+			if f != nil && f.Type != nil && f.Name != "value" && golang.IRTypeToGo(f.Type) == inv.ParamType {
 				inv.Payload = golang.IRTypeToGo(pt)
 				inv.PayloadField = golang.ExportName(f.Name)
 				break
