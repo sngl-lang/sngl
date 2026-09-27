@@ -2504,19 +2504,20 @@ func (c *checker) stdlibHintFor(name string, want hintRole) string {
 // hintFor phrases the hint for a name this package declares, saying how to
 // reach it rather than only which package has it.
 func (c *checker) hintFor(name, libName string, pkg *ir.Package) string {
-	{
-		path := "sngl:" + libName
-		// Already imported under an alias: the name is reachable, just not bare.
-		for _, imp := range c.pkg.Imports {
-			if imp.Pkg == pkg {
-				if imp.Alias == "." {
-					return ""
-				}
-				return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
+	// Already imported under an alias: the name is reachable, just not bare.
+	for _, imp := range c.pkg.Imports {
+		if imp.Pkg == pkg {
+			if imp.Alias == "." {
+				return ""
 			}
+			return fmt.Sprintf("; %s declares it, reach it as %s.%s", imp.Path, imp.Alias, name)
 		}
-		return fmt.Sprintf("; %s declares it, add import . %q", path, path)
 	}
+	alias := path.Base(libName)
+	if _, taken := c.scope.Lookup(alias); taken {
+		return fmt.Sprintf("; sngl:%s declares it, import it under an alias other than %s, which is already bound here", libName, alias)
+	}
+	return fmt.Sprintf("; sngl:%s declares it, add import %s \"sngl:%s\" and reach it as %s.%s", libName, alias, libName, alias, name)
 }
 
 // isLibraryNamespace reports whether name is in scope as a namespace bound to

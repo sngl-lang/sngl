@@ -1,0 +1,9 @@
+import ui "sngl:ui"
+
+var time = 3
+
+// The alias the hint would suggest is already bound here, so it names none.
+var d date // ERROR(check) "unknown type \"date\"; sngl:time declares it, import it under an alias other than time, which is already bound here"
+
+ui.window {
+}

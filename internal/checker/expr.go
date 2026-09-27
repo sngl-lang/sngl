@@ -1673,20 +1673,62 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 // the whole rendered subtree, so callers type it as list<host>. Recursion is
 // bounded by `visited` — a self-instantiating component (e.g. a recursive tree
 // view) is searched once. Returns nil if no descendant declares the id.
-func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[string]bool) *ir.Component {
-	if comp == nil || comp.AST == nil || visited[comp.Name] {
+func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[*ir.Component]bool) *ir.Component {
+	if comp == nil || comp.AST == nil || visited[comp] {
 		return nil
 	}
-	visited[comp.Name] = true
-	for _, child := range c.childComponents(comp.AST.Body.Stmts) {
-		if host := c.findHostComponentAST(child.AST.Body.Stmts, id); host != nil {
+	visited[comp] = true
+	// Another package's body names things through that package's scope,
+	// which this checker does not hold; its IR is already checked.
+	if !slices.Contains(c.pkg.Components, comp) {
+		host, children := nodesInCheckedBody(comp.Body, id)
+		if host != nil {
 			return host
+		}
+		for _, child := range children {
+			if host := c.findDescendantHost(child, id, visited); host != nil {
+				return host
+			}
+		}
+		return nil
+	}
+	restore := c.fileOf(compDeclPos(comp))
+	children := c.childComponents(comp.AST.Body.Stmts)
+	restore()
+	for _, child := range children {
+		if slices.Contains(c.pkg.Components, child) {
+			restore := c.fileOf(compDeclPos(child))
+			host := c.findHostComponentAST(child.AST.Body.Stmts, id)
+			restore()
+			if host != nil {
+				return host
+			}
 		}
 		if host := c.findDescendantHost(child, id, visited); host != nil {
 			return host
 		}
 	}
 	return nil
+}
+
+// nodesInCheckedBody is findHostComponentAST and childComponents over a body
+// that has already been checked.
+func nodesInCheckedBody(body []ir.Stmt, id string) (host *ir.Component, children []*ir.Component) {
+	_ = ir.WalkStmts(body, func(s ir.Stmt) error {
+		n, ok := s.(*ir.NodeInst)
+		if !ok || n.Component == nil {
+			return nil
+		}
+		if n.ID == id {
+			host = n.Component
+			return ir.SkipAll
+		}
+		if n.Component.AST != nil {
+			children = append(children, n.Component)
+		}
+		return nil
+	})
+	return host, children
 }
 
 // childComponents returns the user components instantiated directly in stmts
@@ -1715,8 +1757,8 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 			case *ast.CallStmt:
 				if name, _, isElem := elementRefCallInfo(n.Call); isElem {
 					lookup(name)
-				} else if id, ok := n.Call.Func.(*ast.IdentExpr); ok {
-					lookup(id.Name)
+				} else {
+					lookup(callTargetName(n.Call.Func))
 				}
 			case *ast.IfStmt:
 				walk(n.Body.Stmts)
@@ -2047,7 +2089,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					// `c.lbl[0]`, or `c.val[i]` from a recursive view).
 					var descendant *ir.Component
 					if host == nil {
-						descendant = c.findDescendantHost(comp, x.Field, map[string]bool{})
+						descendant = c.findDescendantHost(comp, x.Field, map[*ir.Component]bool{})
 					}
 					restore()
 					if host != nil {

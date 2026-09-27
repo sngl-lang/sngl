@@ -60,7 +60,7 @@ stderr 'unknown component "helper" in package w'
 # application wants for itself -- rect, line, path -- is free unless the file
 # asks for sngl:ui/draw.
 ! sngl check draw_unimported.sngl
-stderr 'unknown component "canvas"; sngl:ui/draw declares it'
+stderr 'unknown component "canvas"; sngl:ui/draw declares it, add import draw "sngl:ui/draw" and reach it as draw.canvas'
 
 sngl check draw_imported.sngl
 stdout 'draw_imported.sngl: ok'
