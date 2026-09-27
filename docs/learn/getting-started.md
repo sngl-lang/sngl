@@ -5,7 +5,7 @@ description: Build a SNGL app from Hello World to a todo list
 ---
 
 ```sngl mode=package
-import ui "sngl:ui"
+import "sngl:ui"
 
 var runPlatform = "html"
 var generateTarget = "html"
@@ -22,9 +22,7 @@ component whenSelected(selected string, value string, content ...component ui.no
 
 This tutorial walks through building a SNGL app from a one-line Hello World up
 to a full todo list, then shows how to embed the generated code in a larger
-project. Every snippet is real SNGL and type-checks; copy one into a file and
-run it. The only exceptions are marked: a `// ...` elides code shown earlier,
-and the persistence example imports a Go package you supply.
+project.
 
 ## Hello, World
 
@@ -32,14 +30,14 @@ A SNGL app is one or more windows, each the root of a tree of components. The
 smallest app is a window holding a single text node:
 
 ```sngl
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.window(title="Hello") {
     ui.text(value="Hello, World!")
-}
+}`
 ```
 
-`import ui "sngl:ui"` brings in the UI library under the name `ui`. Save the
+`import "sngl:ui"` brings in the UI library under the name `ui`. Save the
 file as `hello.sngl` and run it in a browser:
 
 ```bash
@@ -52,7 +50,7 @@ State is declared with `var` (mutable) or a zero-argument `func` (derived). The
 `:value` prefix on a prop is two-way binding: changes flow both ways.
 
 ```sngl
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.window(title="Hello") {
     var name = "World"
@@ -72,7 +70,7 @@ the text re-renders. No subscriptions to wire up.
 Pick a target. The same source compiles to all of them:
 
 ```sngl mode=island
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.hbox(style={gap=8}) {
     ui.button(text="HTML", @click { runPlatform = "html" })
@@ -84,7 +82,7 @@ ui.hbox(style={gap=8}) {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="html") {
     markup.codeBlock {
@@ -105,7 +103,7 @@ whenSelected(selected=runPlatform, value="html") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="bubbletea") {
     markup.codeBlock {
@@ -118,7 +116,7 @@ whenSelected(selected=runPlatform, value="bubbletea") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="fyne") {
     markup.codeBlock {
@@ -131,7 +129,7 @@ whenSelected(selected=runPlatform, value="fyne") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="gtk4") {
     markup.codeBlock {
@@ -144,7 +142,7 @@ whenSelected(selected=runPlatform, value="gtk4") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=runPlatform, value="android") {
     markup.codeBlock {
@@ -163,7 +161,7 @@ project, use `sngl generate`, which writes the code to a directory (`-o`) and
 stops. Pick a target:
 
 ```sngl mode=island
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.hbox(style={gap=8}) {
     ui.button(text="Static HTML", @click { generateTarget = "html" })
@@ -174,7 +172,7 @@ ui.hbox(style={gap=8}) {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="html") {
     markup.codeBlock {
@@ -191,7 +189,7 @@ whenSelected(selected=generateTarget, value="html") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="gohtml") {
     markup.codeBlock {
@@ -216,7 +214,7 @@ whenSelected(selected=generateTarget, value="gohtml") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="go") {
     markup.codeBlock {
@@ -253,7 +251,7 @@ whenSelected(selected=generateTarget, value="go") {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="kotlin") {
     markup.codeBlock {
@@ -280,7 +278,7 @@ source declares the targets up front; bare `sngl run` and `sngl generate` then
 pick them up automatically.
 
 <!-- SNGL-top
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.window {
     ui.text(value="")
@@ -309,7 +307,7 @@ checkbox per item. Walk through it section by section — every line is part of
 the running app.
 
 ```sngl
-import ui "sngl:ui"
+import "sngl:ui"
 
 struct Todo {
     text string = ""
@@ -362,7 +360,7 @@ its exported functions become SNGL functions with the same signature.
 
 ```sngl
 import "go:myapp/store"
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.window(title="Todos") {
     var todos list<Todo> = store.Load() @change {
@@ -383,7 +381,7 @@ persistence package for that platform.
 code drops into a program you already have. Pick a host:
 
 ```sngl mode=island
-import ui "sngl:ui"
+import "sngl:ui"
 
 ui.hbox(style={gap=8}) {
     ui.button(text="Go web server", @click { embedTarget = "html" })
@@ -393,7 +391,7 @@ ui.hbox(style={gap=8}) {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="html") {
     markup.codeBlock {
@@ -420,7 +418,7 @@ func main() {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="fyne") {
     markup.codeBlock {
@@ -449,7 +447,7 @@ func main() {
 ```
 
 ```sngl mode=island
-import markup "sngl:ui/markup"
+import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="kotlin") {
     markup.codeBlock {
