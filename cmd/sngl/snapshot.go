@@ -136,7 +136,6 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 	var docs []snapshot.DocEntry
 
 	examples := checker.PrefixedExamples(doc)
-	imports := checker.DocumentExampleImports(doc)
 	for name, src := range examples {
 		if !force && snapshotAllExist(effectiveOutDir, name, platforms) {
 			for _, plat := range platforms {
@@ -146,7 +145,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 		}
 
 		tmpFile := filepath.Join(tmpDir, name+".sngl")
-		if err := os.WriteFile(tmpFile, []byte(exampleSource(imports, src, platforms)), 0o644); err != nil {
+		if err := os.WriteFile(tmpFile, []byte(exampleSource(src, platforms)), 0o644); err != nil {
 			return fmt.Errorf("writing temp file for %s: %w", name, err)
 		}
 		docs = append(docs, snapshot.DocEntry{ID: name, SourceFile: tmpFile})

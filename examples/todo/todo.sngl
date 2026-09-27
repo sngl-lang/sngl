@@ -37,6 +37,6 @@ ui.window {
                 ui.checkbox(checked=item.done, label=item.text, @change { todos[index].done!! })
             }
         }
-        ui.button(text="Remove", @click { todos.remove(todos.length - 1) }, style={alignItems="center"})
+        ui.button(text="Remove", @click { todos.remove(todos.length - 1) }, style={alignItems=center})
     }
 }

@@ -456,8 +456,8 @@ func buildIndex(tgt *target) *DeclIndex {
 	case tgt.library:
 		// No package comment in lib/<name>/. Say how to import it, which is
 		// the one thing true of every library package.
-		idx.Description = "Import it to bring its declarations into scope: `import . " + quote(tgt.title) +
-			"` to write them unqualified, or `import <alias> " + quote(tgt.title) + "` to qualify them."
+		idx.Description = "Import it to bring its declarations into scope: `" + importLine(tgt.title) +
+			"`, and write each name qualified by the alias."
 	}
 	if tgt.native != nil {
 		populateNativeIndex(idx, tgt.native)
@@ -945,7 +945,14 @@ func (o LibraryOrigin) ImportLine() string {
 	if o.Ambient {
 		return ""
 	}
-	return `import . ` + quote(o.Pkg)
+	return importLine(o.Pkg)
+}
+
+// importLine imports pkg under its last path segment, the alias the
+// repository's own source writes.
+func importLine(pkg string) string {
+	alias := pkg[strings.LastIndexAny(pkg, ":/")+1:]
+	return "import " + alias + " " + quote(pkg)
 }
 
 // FindInLibrary reports every public library package declaring name. Only

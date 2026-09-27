@@ -166,11 +166,11 @@ component card(
 component _example_card node {
     hbox(style={gap=16, padding=16}) {
         card(variant="outlined") {
-            text(value="Outlined", style={fontWeight="bold"})
+            text(value="Outlined", style={fontWeight=bold})
             text(value="With a border")
         }
         card(variant="elevated") {
-            text(value="Elevated", style={fontWeight="bold"})
+            text(value="Elevated", style={fontWeight=bold})
             text(value="With a shadow")
         }
     }

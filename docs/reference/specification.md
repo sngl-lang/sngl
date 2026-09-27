@@ -29,13 +29,18 @@ to implement a conforming compiler front end and semantic analyzer.
 The core language is deliberately small. Two bodies of functionality live
 *outside* this specification and are required to build complete programs:
 
-- **The standard library** — components (`text`, `button`, `vbox`, …), types
-  (`color`, `Style`, the event payload structs, the `measurement` and
-  `duration` units), and functions, all written in SNGL and distributed as
-  source under `lib/<package>/*.sngl`, one directory per importable package. A conforming implementation parses and checks the
+- **The standard library** — components (`ui.text`, `ui.button`, `ui.vbox`,
+  …), types (`color`, `ui.Style`, the event payload structs, the
+  `ui.measurement` and `time.duration` units), and functions, all written in
+  SNGL and distributed as source under `lib/<package>/*.sngl`, one directory
+  per importable package. A conforming implementation parses and checks the
   standard library with the same front end it applies to user code; the
   library is not privileged by the grammar. This manual references standard
-  library entities by example but does not define them.
+  library entities by example but does not define them. A few library
+  declarations stand for a construct the compiler itself implements —
+  `ui.window`, `output`, `effect`, `context`, `boundary`, and the tree
+  families — and are recognized by a `#[builtin]` mark rather than by name.
+  This manual specifies those constructs by the role they play.
 - **Platform and language plugins** — the code generators that lower checked
   programs to a particular platform/language pair, and the *capabilities* they
   declare (see [Platform and language plugins](#platform-and-language-plugins)).
@@ -113,10 +118,10 @@ It is the way to comment out a statement, a declaration, or a visual node
 <!-- SNGL-component -->
 
 ```sngl
-vbox {
-    text(value="shown")
-    /- text(value="hidden")
-    /- button(text="also gone", @click {})
+ui.vbox {
+    ui.text(value="shown")
+    /- ui.text(value="hidden")
+    /- ui.button(text="also gone", @click {})
 }
 ```
 
@@ -160,8 +165,9 @@ ASCII only; non-ASCII letters are not permitted in identifiers.
 identifier = ( letter | "_" ) { letter | digit | "_" } .
 ```
 
-Identifiers beginning with two underscores (`__`) are reserved for
-compiler-synthesized names and should not be declared by user code.
+The compiler synthesizes names beginning with two underscores (`__`), so user
+code should not declare them; the prefixes `__async_` and `__hoist_` are
+rejected outright.
 
 ### Keywords
 
@@ -169,9 +175,9 @@ The following words are reserved and may not be used as identifiers:
 
 <!-- BEGIN GENERATED: keywords -->
 
-`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `platform` `return` `struct` `unit` `var`
+`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `return` `struct` `unit` `var`
 
-The following names are **predeclared identifiers**, not keywords: `true`, `false`, `null`, `output`, `timer`, `window`, `style`. They have meaning in context but may be shadowed by user declarations.
+`true`, `false` and `null` are **predeclared identifiers**, not keywords, and may be shadowed by user declarations. Every other name a program uses without importing it — `int`, `string`, `list`, `output`, `effect`, `boundary` — is declared in `sngl:builtin`.
 
 <!-- END GENERATED: keywords -->
 
@@ -198,8 +204,8 @@ int_lit = digit { digit | "_" } .
 A float literal is a decimal mantissa, a `.`, and a decimal fraction. The
 decimal point must be followed by at least one digit, so `1.` is not a float
 literal. Underscores may separate digits on either side. There is **no
-exponent syntax**: `1e9` lexes as the integer `1` followed by the identifier
-`e9`.
+exponent syntax**: `1e9` lexes as the unit literal `1e` followed by the
+integer `9`.
 
 ```
 float_lit = digit { digit | "_" } "." digit { digit | "_" } .
@@ -293,7 +299,7 @@ The lexer does **not** distinguish a color from an
 text after `#`, which may begin with a digit). Position alone decides: a
 `#`-token in value position is a color literal — the checker validates the hex
 shape and reports `invalid color literal` otherwise — while as a postfix it is
-an element reference. Because the lexer no longer guesses by shape, no
+an element reference. Because the lexer does not guess by shape, no
 identifier is "stolen" by the color rule: `#facade` and `#deadbeef` are valid
 element-reference names, and `#0f0f0f` is a valid color.
 
@@ -303,12 +309,14 @@ A unit literal is a numeric literal (integer or float form) immediately
 followed, with no intervening whitespace, by a unit suffix consisting of one or
 more ASCII letters: `5ms`, `3.5s`, `100px`, `1rem`. The suffix names a member
 of a `unit` type (see [Unit types](#unit-types)); the numeric part is the
-quantity in that suffix.
+quantity in that suffix. Which unit a suffix belongs to is read from the
+expected type at the literal's position, not from the suffix alone, so a unit
+literal where nothing expects a unit type (`var d = 2s`) is an error.
 
 ### Element references
 
 An element reference is the `#`-token used as a postfix declaration tag: it
-names a visual node (`button #submit(…)`) or a context declaration
+names a visual node (`ui.button #submit(…)`) or a context declaration
 (`context #locale(…)`). Its value is the text after `#`, and — since the lexer
 does not split `#`-tokens by shape — that name may be any identifier, including
 one made of hex digits (`#deadbeef`). An element reference is never a standalone
@@ -325,11 +333,17 @@ what follows it: a declaration, a statement, a function parameter or a
 component prop.
 
 ```
-MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } ] ")" ] "]"
+MacroAttr = "#[" IDENT [ "." IDENT ] [ "(" [ Expr { "," Expr } [ "," ] ] ")" ] "]"
 ```
 
 Brackets nest within the attribute, and the closing `]` suppresses automatic
 semicolon insertion so the decorated construct may begin on the following line.
+
+A macro is an ordinary declaration of a package, and none is ambient: the
+attribute names it through the file's import of that package, qualified by the
+import's alias like any other member — `#[tree.kind]` after
+`import tree "sngl:tree"`, `#[macro.foreign(…)]` after
+`import macro "sngl:macro"`. A macro name that does not resolve is an error.
 
 ### The slashdash prefix
 
@@ -351,8 +365,9 @@ deleting its text.
 &   *                     reference / dereference (unary)
 .   ,   ;                 selector, separators
 (   )   [   ]   {   }     grouping, lists, blocks
+:                         binding parameter / argument (prefix)
 @                         events and handlers
-=>                        expression-body function
+=>                        expression body, import redirect
 ...                       spread / variadic
 /-                        slashdash (disable)
 #[ ]                      macro attribute
@@ -377,10 +392,12 @@ StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
 The top level admits the same statement forms as a block (see
 [Statements](#statements)); in practice a file consists of imports, an
-`output` block, type declarations (`struct`, `enum`, `unit`), `const` and `var`
-declarations, `func` declarations, component declarations, and root visual
-nodes such as `window` and `timer`. Declaration order is not significant (see
-[Declarations and scope](#declarations-and-scope)).
+`output` directive, type declarations (`struct`, `enum`, `unit`), `const` and
+`var` declarations, `func` declarations, component declarations, and the root
+nodes of the program — its `ui.window`s. Declaration order is not significant
+(see [Declarations and scope](#declarations-and-scope)). An `import` may be
+written only at the root of a file. What a file's root nodes may be, and what
+makes a package a program, is described under [Programs](#programs).
 
 ## Types
 
@@ -402,9 +419,10 @@ A type may be designated *string-representable*: it has a canonical textual
 form and converts implicitly to and from `string` in both directions (a literal
 such as `"2026-03-12"` is therefore a valid value for one). This is a property a
 type opts into rather than a fixed set of built-in names. The standard library's
-`color`, `date`, `time`, and `datetime` are string-representable types; the
-library also supplies the `measurement` and `duration` units used by `Style` and
-`timer`. None of these are core types — they are defined in SNGL under `lib/`.
+`color` (ambient) and `time.date`, `time.time` and `time.datetime` are
+string-representable types; the library also supplies the `ui.measurement` and
+`time.duration` units used by `ui.Style` and `time.timer`. None of these are
+core types — they are defined in SNGL under `lib/`.
 
 ### Composite and generic types
 
@@ -413,12 +431,16 @@ library also supplies the `measurement` and `duration` units used by `Style` and
 | `list<T>`   | An ordered sequence of `T`. Literal: `[a, b, c]`.                     |
 | `option<T>` | Either a `T` or absent (`null`).                                      |
 | `map<K, V>` | A mapping from comparable keys `K` to values `V`. Literal: `{k = v}`. |
-| `iter<T>`   | An opaque iterator yielding `T`; the loop type for `for`.             |
+| `iter<T>`   | An opaque pull sequence yielding `T`; no methods and no fields.       |
 | `ref<T>`    | A mutable reference to a `T` (see [References](#references)).         |
 
-`list<T>`, `map<K, V>`, and `iter<T>` are also declared in the standard library
-as generic structs carrying methods (`length`, `map`, `filter`, `keys`, …);
-the type constructors themselves are built in.
+All five are declarations in `sngl:builtin`, marked as the construct they
+stand for; `list<T>` and `map<K, V>` carry methods there (`length`, `map`,
+`filter`, `keys`, `contains`, `get`, …). A `list<T>` converts implicitly to
+`iter<T>`; a `map<K, V>` does not, so a map never reaches an `iter` position
+with its map-ness erased. The integer sequences a counting loop walks are
+`iter<int>` values produced by `sngl:seq` — `seq.count(n)`,
+`seq.range(start, end)` and `seq.step(start, end, by)`.
 
 A `map` literal is written `{k1 = v1, k2 = v2}` and is distinguished from a
 struct literal by the expected type at its position. The key type `K` must be
@@ -436,9 +458,13 @@ yields the result type's zero value).
 ### Struct, enum, and unit types
 
 `struct`, `enum`, and `unit` declare named types. Each may also appear
-*anonymously* in a type position — `var p {x int; y int}` gives `p` an
-anonymous struct type — but a name may only be bound at the point of
+*anonymously* in a type position — `var p struct { x int; y int }` gives `p`
+an anonymous struct type — but a name may only be bound at the point of
 declaration.
+
+A type declared inside a body — a component, window or function body — is
+scoped to that body: its name is visible there and nowhere else, and two
+bodies each declaring `struct Local` declare two distinct types.
 
 #### Struct types
 
@@ -455,43 +481,67 @@ A struct may carry methods declared as `func StructName.method(…)` (see
 
 #### Enum types
 
-An enum is a finite set of named members, each an identifier optionally bound
-to a value. A member is referenced through the enum type's namespace
+An enum is a finite set of named members. A member is a name, not a value; the
+grammar admits `name = value` so that a declaration describing a host
+enumeration can record the host constant a member corresponds to, which does
+not change what the member means in SNGL. A member is referenced through the
+enum type's namespace
 (`Status.active`) or, where the expected type makes the enum unambiguous, by
 its bare name. Enums are comparable and may be used as map keys. An enum may
 also carry methods.
 
 #### Unit types
 
-A unit type declares a family of measurement suffixes that share a dimension,
-with conversion factors between them:
+A unit type declares a set of suffixes. A suffix written bare is a **base**; a
+suffix written `name = literal` is **reduced**, defined as a multiple of an
+already-declared suffix:
 
 ```
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
+unit measurement { px, em, rem = 16em, vw, vh, pct }
 ```
 
-The first suffix is the base; each subsequent suffix's value expresses it in
-terms of an already-declared suffix. Unit literals (`5ms`, `2s`) have the unit
-type. Within a single unit type, values of different suffixes are comparable
-and combine arithmetically with the conversion factors applied. The integer
-literal `0` is assignable to any unit type; other bare numbers must be scaled
-by a unit literal (`5 * 1s`).
+A value of a unit type is a magnitude per base. `duration` has one base, so a
+value is one number counted in `ms`; `measurement` has five, so
+`3px + 2em` is a single value holding 3 in `px` and 2 in `em`, and `2rem` is
+32 in `em`. Unit literals (`5ms`, `2s`) have the unit type the position
+expects (see [Unit literals](#unit-literals)).
+
+- **Arithmetic** is per base: `+` and `-` combine two values of one unit type
+  base by base, `*` and `/` by a number scale every base, and dividing two
+  values of a single-base unit yields a dimensionless `float`.
+- **Equality** compares every base.
+- **Ordering** (`<`, `<=`, `>`, `>=`) is defined only for a single-base unit;
+  two values of a multi-base unit may each be the larger on a different base,
+  so comparing them is an error.
+- **Members.** A multi-base unit has one `float` member per base — `m.px`,
+  `m.em` — reading that base's magnitude. A single-base unit has no members.
+- **Conversion.** `int(x)` and `float(x)` read the magnitude of a single-base
+  unit, counted in its base; on a multi-base unit they are an error, since
+  there is no single number to produce. `string(x)` and interpolation print
+  the magnitude per base, joined by plus signs (`3px + 2em`), with an all-zero
+  value printed in the first declared base (`0px`).
+
+The integer literal `0` is assignable to any unit type; other bare numbers must
+be scaled by a unit literal (`5 * 1s`).
 
 ### The dynamic type
 
 `dyn` is the dynamic type and the type assigned to a binding that has no
-annotation and no inferable initializer. Any value is assignable to `dyn`, and
-operations on a `dyn` operand bypass static operand checking. A `dyn` value is
-**not** implicitly assignable to a concrete type; it must be converted
-explicitly.
+annotation and no inferable initializer. Any value is assignable to `dyn`, a
+`dyn` value is assignable to any type, and operations on a `dyn` operand bypass
+static operand checking. Where the checker knows what a `dyn` binding was
+initialized with, it holds later uses to that type.
 
 ### References
 
-`ref<T>` is a mutable reference to a value of type `T`. References are not
-written directly by user programs; they arise from the address-of operator `&`
-and, most importantly, from reference loop variables (`for var &x = xs`), which
-make writes to the loop variable flow back to the underlying list element. See
-[The for statement](#the-for-statement).
+`ref<T>` is a mutable reference to a value of type `T`: what holds one goes on
+seeing what the referenced cell becomes. `&x` makes one and `*r` reads through
+it. References arise chiefly from reference loop variables (`for var &x = xs`),
+which make writes to the loop variable flow back to the underlying list element
+(see [The for statement](#the-for-statement)). A parameter declared `ref<T>`
+also accepts a plain `T`, which is then an ordinary value — permitted only
+where the callee does nothing with the parameter but read through it.
 
 ### Type identity
 
@@ -511,7 +561,7 @@ A value of type `A` may be used where type `B` is expected when any of the
 following holds:
 
 1. `A` and `B` are identical.
-2. `B` is `dyn` (any value is assignable to `dyn`).
+2. `A` or `B` is `dyn` (see [The dynamic type](#the-dynamic-type)).
 3. `A` is `null` and `B` is an `option` type or a function type.
 4. `A` is `int` and `B` is `float`.
 5. one of `A` and `B` is `string` and the other is a string-representable type
@@ -530,8 +580,6 @@ struct is a value in SNGL, so a later write to what was wrapped does not reach
 the option.
 
 ```sngl
-import . "sngl:ui"
-
 struct box {
     value int = 0
 }
@@ -557,7 +605,7 @@ An explicit conversion is written `T(x)`, naming a type and an operand. The
 permitted conversions among primitives are:
 
 - to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
-  unit;
+  single-base unit;
 - to `float` — from the same set as `int`;
 - to `string` — from `int`, `float`, `bool`, an enum, a unit, or a
   string-representable type;
@@ -566,8 +614,8 @@ permitted conversions among primitives are:
 
 A `dyn` operand may be converted to any primitive type (this is how `dyn` is
 narrowed). Conversions whose operand is a struct, component, function, list,
-option, or `null` are rejected. Unit conversions are governed by the unit type's
-factors, with the literal `0` convertible to any unit.
+option, or `null` are rejected, and so are `int` and `float` of a multi-base
+unit (see [Unit types](#unit-types)).
 
 ### Narrowing an option
 
@@ -575,8 +623,6 @@ A comparison against `null` says what a value is in the branch where the
 comparison holds. Within that branch an `option<T>` reads as a `T`:
 
 ```sngl
-import . "sngl:ui"
-
 func doubled(maybe option<int>) int {
     if maybe != null {
         return maybe * 2 // maybe is an int here
@@ -614,8 +660,10 @@ called, which may be after the test has stopped holding.
 ### Generic type parameters
 
 Type parameters are introduced by a type-parameter list (`<T>`, `<K, V>`) on a
-struct, enum, unit, or method, and within a function name. They are bound to
-concrete types by inference rather than written at the call site:
+struct, a function, a method's receiver or name, or a component. A type
+parameter may carry a default (`<T = struct {}>`), used when nothing binds it.
+In a type position the arguments are written (`Box<int>`); at a call site they
+are bound by inference rather than written:
 
 - A **receiver type parameter** of a method on a generic type is bound from the
   receiver's concrete type. For `func list<T>.first() T`, a call on a
@@ -629,6 +677,10 @@ concrete types by inference rather than written at the call site:
 Inference walks parameter and argument types structurally, recursing through
 function signatures and type arguments, and substitutes the bound types into the
 signature's result.
+
+A **component's** type parameters are bound from its arguments, and a slot's
+content is an argument: the children written in a slot typed `component T` bind
+`T` to the family they belong to (see [Trees and families](#trees-and-families)).
 
 ## Declarations and scope
 
@@ -648,15 +700,17 @@ throughout the file that imports it.
 
 Scopes nest from the innermost outward:
 
-- the **predeclared scope**, holding the built-in type names and the
-  predeclared identifiers `true`, `false`, `null`;
-- the **built-in scope**, holding the ambient declarations of `sngl:builtin`;
-- the **package scope**, holding the user program's top-level declarations and
-  the names its dot imports lift;
+- the **built-in scope**, holding the ambient declarations of `sngl:builtin` —
+  the predeclared types and identifiers;
+- the **package scope**, holding the package's top-level declarations and, per
+  file, that file's import aliases and the names its dot imports lift;
 - a **component scope** for each component, holding its parameters, variables,
-  nested functions, and nested types;
+  nested functions, nested components, and nested types; a component nested in
+  another body also sees that body's declarations;
 - a **function scope** for each function or method body, holding its
-  parameters;
+  parameters. A `func` declared inside a function body is hoisted rather than
+  closed over: it sees its sibling declarations and the scope its enclosing
+  function was entered from, but not that function's parameters or locals;
 - a fresh **block scope** for each `if` branch, `else` branch, `for` body, and
   nested statement block, holding that block's local variables;
 - a **loop scope** wrapping a `for` body, holding the loop variables.
@@ -671,54 +725,79 @@ method of the same name on the same type.
 
 ### Predeclared identifiers and the library tiers
 
-Everything predeclared is an ordinary declaration in `sngl:builtin` —
-the scalar and collection types (`int`, `float`, `string`, `list`, `map`,
-`option`, `ref`, `iter`, `color`, `date`, `time`, `datetime`) with their
-methods, and the constants `true`, `false`, `null`, `PLATFORM` and `LANGUAGE`.
-That package is
-dot-imported into every file implicitly and cannot be imported explicitly; it
-is the only implicit import in the language.
+Apart from `bool` and `dyn`, everything predeclared is an ordinary declaration
+in `sngl:builtin`: the scalar and collection types (`int`, `float`, `string`,
+`color`, `list`, `map`, `option`, `ref`, `iter`) with their methods; the constants
+`true`, `false`, `null`, `PLATFORM` and `LANGUAGE`; the `platform` and
+`language` target-identity types; the `error` type; and the compiler's node
+constructs `output`, `effect`, `context` and `boundary`. That package is in
+scope in every file implicitly and cannot be imported explicitly; it is the
+only implicit import in the language.
 
-`PLATFORM` and `LANGUAGE` name the target a build is producing — `"html"`,
-`"go"`, and so on. Comparing one against a literal gates code on the target:
-the comparison folds at build time and the branch not taken is removed. The
-compiler supplies their values, so a declaration of your own by either name is
-an ordinary constant and shadows the predeclared one.
+`PLATFORM` and `LANGUAGE` name the target a build is producing. Their types are
+`platform` and `language`, which have no literal: a value of one is the identity
+constant a target's own package declares, so a platform is compared as
+`PLATFORM == html.platform` (after `import html "sngl:platform/html"`), and
+`PLATFORM == "html"` is a type error. The comparison folds at build time and
+the branch not taken is removed. See
+[Target-dependent code](#target-dependent-code).
 
-Nothing here is a keyword. `true`, `false` and `null` resolve through the scope
-chain like every other name, and a declaration of your own by one of those
-names shadows it — the grammar reserves none of them.
+Nothing here is a keyword. `true`, `false`, `null` and the rest resolve through
+the scope chain like every other name, and a declaration of your own by one of
+those names shadows it — the grammar reserves none of them.
 
-Everything else the standard library provides is imported. The components,
-event payload types, style enums, `Style` and the `window` they are placed on
-belong to `sngl:ui`; `date`, `time`, `datetime`, `duration` and `timer` to
-`sngl:time`; `Alert` and `File` to `sngl:dialog`; `Test` to `sngl:test`; and
-the translation surface to `sngl:i18n`:
+Everything else the standard library provides is imported, and each directory
+under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
+
+| Package             | Provides                                                                                           |
+|---------------------|----------------------------------------------------------------------------------------------------|
+| `sngl:ui`           | the portable components, `window`, the `node` family, `Style`, the style enums, `measurement`      |
+| `sngl:ui/draw`      | `canvas` and the 2D `shape` family it hosts                                                        |
+| `sngl:ui/markup`    | inline rich text: the `span` family, `richText`, and the block components a document is written in |
+| `sngl:ui/markup/md` | the vocabulary of the `md:` scheme, such as the `order` mark                                       |
+| `sngl:remote`       | `Value<T>`, the three-state box a data adapter returns                                             |
+| `sngl:remote/http`  | `fetch`: an HTTP request whose answer is a `remote.Value`                                          |
+| `sngl:build`        | the `language` and `platform` families an `output` directive holds                                 |
+| `sngl:x/gen`        | what a target package says about what it generates                                                 |
+| `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
+| `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
+| `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
+| `sngl:tree`         | the `kind` and `none` marks, and the `one<T>` slot count                                           |
+| `sngl:math`         | `pi`, `tau`                                                                                        |
+| `sngl:async`        | `spawn`, `post`                                                                                    |
+| `sngl:dialog`       | `Alert`, `File`                                                                                    |
+| `sngl:test`         | `Test`                                                                                             |
+| `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
+| `sngl:macro`        | the marks a package writes to describe its own declarations (`foreign`, …)                         |
+
+A library package is imported under an alias, conventionally its last path
+segment, and its members are written qualified:
 
 ```sngl
-import . "sngl:ui"
-import sngl "sngl:ui"
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window(title="Shapes") {
+    draw.canvas(width=100px, height=100px) {
+        draw.circle(cx=50, cy=50, r=20)
+    }
+}
 ```
 
-The dot form flattens the package's declarations into the file, so they are
-written unqualified (`text(...)`). The alias form binds a namespace instead,
-under whatever name the importer chooses (`sngl.text(...)`).
+The dot form, `import . "sngl:ui"`, is also legal and flattens the package's
+declarations into the file so they are written unqualified; the qualified form
+is the recommended one. Imported packages register beneath the package scope,
+so a top-level declaration named like a library entity takes precedence over it
+within the package.
 
-Both packages register beneath the package scope, so a top-level declaration
-named like a library entity takes precedence over it within the package.
-
-The library is not limited to those two packages. `sngl:ui/draw` holds `canvas`
-and the 2D shapes it hosts, and is imported the same way. A library package may
-also carry macros next to the declarations they apply to: `import "sngl:ui/draw"`
-brings both the shape components and the `#[draw.shape]` mark that declares new
-ones.
+A library package may carry macros next to the declarations they apply to:
+`import tree "sngl:tree"` brings the `#[tree.kind]` mark that declares a new
+family (see [Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
-intrinsics a backend implements natively — the string, list, map and formatting
-primitives the packages above are written against — and the marks that identify
-them. A program may name one, as it may any package, but nothing there is part
-of the language a program is written in, and documentation indexes leave them
-out.
+intrinsics a backend implements natively and the marks that identify built-in
+constructs. Only library source may import one; a program's import of one is an
+error.
 
 ### Package comments
 
@@ -756,23 +835,25 @@ a struct literal (`w.Box{_hidden = 2}`), a method call, an enum member reached
 through its type (`w.Mode._B`) or resolved bare against an expected enum type,
 and an assignment target are all rejected alike.
 
-### One name, one meaning at file scope
+### One name, one meaning
 
-A name may be bound once at file scope. Two declarations of it, two imports
-claiming it as an alias, two dot imports lifting it, or a declaration taking a
-name an import alias already binds are all errors — none of them has a
+A name has one meaning over the scope its binding has. A top-level declaration
+is package-wide, so two files of one package declaring the same name is an
+error. An import binds into one file, so two imports claiming one alias, two
+dot imports lifting one name, or a declaration taking a name one of the file's
+import aliases binds are errors within that file. None of these has a
 tiebreak, so resolving by source order would make meaning depend on ordering.
 
-The single exception is shadowing, where exactly one of the two bindings is
-written in this file: a declaration may shadow a name that a dot import lifted,
-including a built-in. This is what lets a package define its own `text` or
-`color` over the library's.
+The single exception is shadowing, where only one of the two bindings is
+written in this package: a declaration may shadow a name that a dot import
+lifted, including a built-in. This is what lets a package define its own `text`
+or `color` over the library's.
 
-The rule covers every kind of declaration a file scope holds — types,
-components, free functions, constants and variables alike — and the alias an
-import binds. Where a name is genuinely taken, an alias resolves it: an import
-chooses its own alias, so `import d "sngl:ui/draw"` reaches a package
-whose default name a dot import already claimed.
+The rule covers every kind of declaration — types, components, free functions,
+constants and variables alike — and the alias an import binds. Where a name is
+genuinely taken, an alias resolves it: an import chooses its own alias, so
+`import d "sngl:ui/draw"` reaches a package under a name nothing else in the
+file claims.
 
 Two bindings that mean the same package are a restatement, not a conflict. The
 standard library exposes the intrinsic namespaces it imports, so a file may
@@ -810,11 +891,13 @@ VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 <!-- END GENERATED: grammar-constants-variables -->
 
 A `const` declaration binds an immutable name. Its initializer must be a
-*constant expression*: a literal, an enum member, a primitive conversion, a
-reference to another constant, or one of the predeclared constants `true`,
-`false`, `null`, `PLATFORM`, `LANGUAGE`. A constant initializer may not
-reference a variable, a function, or a context, and may not forward-reference a
-name not yet declared. Assigning to a constant is an error.
+*constant expression*: a literal (including a list, map or struct literal whose
+elements are constant), an enum member, an operator applied to constant
+operands, a primitive conversion, a reference to another constant, one of the
+predeclared constants `true`, `false`, `null`, `PLATFORM`, `LANGUAGE`, or a
+call to a [const function](#const-functions) with constant arguments. A constant initializer may not reference a variable, an ordinary
+function, or a context. Constants may refer to one another in any source order.
+Assigning to a constant is an error.
 
 A `var` declaration binds a mutable name. The type may be given explicitly,
 inferred from the initializer, or — if neither is present — defaults to `dyn`.
@@ -887,20 +970,30 @@ A function has one of two bodies, and no third form exists:
 - an **expression body** — `func name(params) => expr` — whose result type is
   always inferred and which therefore may not carry a return type annotation.
 
-The form `func name(params) -> Type` is not valid syntax; the arrow `->` is
-reserved for function *type* expressions only.
+The form `func name(params) -> Type` is not valid syntax, and `->` appears
+nowhere in the grammar: a function type writes its result type directly after
+the parameter list, `func(int) string`.
+
+A block body may also be omitted. A function with no body is a *signature*,
+and the checker requires its body to come from somewhere the declaration names:
+a `#[macro.foreign]` mark describing a host function, or a per-target override
+(see [Target-dependent code](#target-dependent-code)).
 
 A parameter is a name with an optional type and an optional default value. The
 parameter list itself is optional: `func now => …` declares a parameterless
-function. A function declared with no parameters and an expression body is a
-*computed* value; in an operand position where a value is expected it is called
-implicitly.
+function. A parameterless function is a *computed* value (see
+[Reactivity](#reactivity)); where it is read as a value in a node property, an
+interpolation, or a condition, it is called implicitly. Elsewhere it is a value
+of function type and is called explicitly.
 
 A **method** is a function whose name is qualified by a receiver type,
 `func Type.method(…)`. Type parameters may appear after the receiver type
 (receiver-level) and after the method name (method-level); see
 [Generic type parameters](#generic-type-parameters). A method is dispatched on
-the type of the receiver expression.
+the type of the receiver expression. A `func` written inside a `struct` or
+`enum` body is a method of that type, and its body reads the receiver's fields
+by bare name. A `func` written in a component body is a method of the
+component.
 
 A **function literal** (`FuncLit`) is an anonymous function written `func(params) => expr` or `func(params) [Type] { … }`; it is an ordinary expression of
 function type and may capture variables from the enclosing scope.
@@ -944,7 +1037,9 @@ propagates along the call graph to a fixed point. An asynchronous function that
 takes parameters may not be used in a *reactive expression* (a property of a
 visual node), because the reactive update mechanism keys a single cached result
 per computed and cannot distinguish per-argument results; asynchronous calls
-are permitted in event handlers, timer bodies, and ordinary function bodies.
+are permitted in event handlers and ordinary function bodies. Constructing a
+function literal is not calling it: a body that only builds a closure over an
+asynchronous call is not itself asynchronous.
 
 ## Expressions
 
@@ -1159,12 +1254,13 @@ ArgExprCont =
 - Equality `==` / `!=` applies when the operands have the same kind, when both
   are numeric, or when one is `null`; it yields `bool`.
 - The relational operators `<`, `<=`, `>`, `>=` apply to two numbers, to two
-  values of one unit type, or to two strings.
+  values of one single-base unit type, or to two strings.
 - `+` is addition on numbers, concatenation when either operand is a `string`,
-  and the dimension-preserving sum of two values of one unit type.
+  and the per-base sum of two values of one unit type.
 - `-`, `*`, `/`, `%` are the arithmetic operators; `int` divided by `int`
   truncates. A unit may be scaled by a number (`5px * 2`), and dividing two
-  values of one unit type yields a dimensionless `float`.
+  values of one single-base unit type yields a dimensionless `float` (see
+  [Unit types](#unit-types)).
 
 When a binary arithmetic operator mixes `int` and `float` operands, the `int`
 operand is converted to `float` and the result is `float`.
@@ -1198,9 +1294,10 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 
 In the condition of an `if` and the iterator of a `for`, a `{` begins the
 statement block that follows, so the expression grammar in these positions
-(`CondExpr`) excludes the bare-identifier struct literal and the trailing
-statement block. Parenthesize a struct literal if one is genuinely needed in a
-condition.
+(`CondExpr`) excludes the bare-identifier struct literal, a leading
+anonymous-struct or map literal, and the trailing statement block. A head
+expression therefore never begins with `{`. Parenthesize a struct or map
+literal if one is genuinely needed in a condition.
 
 ## Statements
 
@@ -1240,12 +1337,14 @@ IncDecOp = "++" | "--"
 ### Assignment
 
 An assignment `target = value` stores `value` into an *lvalue*: a variable, a
-parameter, a loop variable, a field selection, an index expression, or an
-element reference. The value must be assignable to the target's type. The
-compound forms `+= -= *= /= %=` apply the corresponding arithmetic operator to
-the current value; `target++` and `target--` are shorthand for adding or
-subtracting `1` and require a numeric target. Constants and contexts may not be
-assigned.
+parameter, a loop variable, a field selection, or an index expression. The
+value must be assignable to the target's type. The compound forms
+`+= -= *= /= %=` apply the corresponding arithmetic operator to the current
+value; `target++` and `target--` are shorthand for adding or subtracting `1`
+and require a numeric target. Constants and contexts may not be assigned, and
+neither may a visual node's property reached through its element reference
+(`box.value = …`): a property says what the node shows for as long as it is
+rendered, so change the state it reads instead.
 
 ### The toggle statement
 
@@ -1276,12 +1375,16 @@ stream, so there is no iteration for an escape to cut short.
 ### The if statement
 
 ```
-IfNode = "if" CondExpr StmtBlock [ "else" StmtBlock ]
+IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 ```
 
 The condition must be `bool` (or `dyn`); a parameterless `bool`-returning
 computed is called implicitly. The `if` body and the optional `else` body are
-each their own scope.
+each their own scope; `else if` chains without nesting braces.
+
+A comparison of `PLATFORM` or `LANGUAGE` against a target identity folds at
+build time, so the branch not taken is removed rather than tested at run time
+(see [Target-dependent code](#target-dependent-code)).
 
 ### The for statement
 
@@ -1297,9 +1400,27 @@ Iterating a list, an iterator, or a map:
 
 - `for var x = xs` binds `x` to each element of a list or iterator;
 - `for var i, x = xs` binds `i` to the index (an `int`) and `x` to the element;
+  over an iterator, which has no index, `i` counts the elements yielded so far;
 - `for var k, v = m` binds `k` and `v` to each key and value of a map; map
   iteration requires the two-variable form;
 - `for xs` binds nothing, for a loop whose body never names the element.
+
+A counting loop iterates a `sngl:seq` sequence:
+
+<!-- SNGL-component -->
+
+```sngl
+import seq "sngl:seq"
+import ui "sngl:ui"
+
+for var i = seq.count(3) {
+    ui.text(value="row {i}")
+}
+```
+
+`seq.count(n)` yields `0 … n-1`, `seq.range(start, end)` yields
+`start … end-1`, and `seq.step(start, end, by)` steps by `by`, stopping short
+of `end`.
 
 A loop that names its element declares a variable, and `var` says so, as it
 does everywhere else a name is introduced. It is also what tells the two forms
@@ -1321,8 +1442,8 @@ an error — there is no element for it to bind — and the headless form has no
 way to write `var` at all, since the grammar takes it only in the branch that
 goes on to require an `=` and an expression.
 
-Both are restricted to **imperative bodies** — a function, a handler, a timer.
-A view body repeats its body once per element of something, which is what
+Both are restricted to **imperative bodies** — a function or a handler. A view
+body repeats its body once per element of something, which is what
 gives the rendered tree a shape: a list gives that a length and a counted
 sequence gives it a number, while a condition gives it neither. Writing either
 form in a view body is an error.
@@ -1344,12 +1465,11 @@ A loop's `else` block runs when **the body never ran**:
 <!-- SNGL-component -->
 
 ```sngl
-import . "sngl:ui"
 var items list<string> = []
 for var item = items {
-    text(value=item)
+    ui.text(value=item)
 } else {
-    text(value="Nothing yet")
+    ui.text(value="Nothing yet")
 }
 ```
 
@@ -1361,23 +1481,17 @@ never ran.
 `for { } else { }` is an error: a loop with no condition always runs its body,
 so the block would be unreachable rather than an empty case.
 
-### The platform statement
-
-```
-PlatformNode = "platform" IDENT StmtBlock
-```
-
-A `platform` block contains statements that apply only when compiling for the
-named platform; for any other target the block is dropped. Within the block the
-named platform's package is added to the scope as a fallback, so platform-
-specific names (including raw target elements, such as HTML tags) resolve.
+In a view body the emptiness is asked of the iterable on every render, so the
+head of a view loop with an `else` must be **measurable** — a list, a map, or a
+`sngl:seq` range, whose emptiness is known without consuming an element; a
+general `iter<T>` is an error there — and must be safe to evaluate twice.
 
 ### The emit statement
 
 An **emit** fires an event declared on the enclosing component, invoking the
 handler the caller attached. It is written as an ordinary call on the event's
 name — `event(args)` — and carries no sigil; the checker resolves the name to
-the declared event. See [Events](#events).
+the declared event. See [Parameters](#parameters).
 
 ## Components
 
@@ -1393,23 +1507,34 @@ ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex 
 <!-- END GENERATED: grammar-components -->
 
 ```
-component Name(params) ChildrenType { body }
+component Name<TypeParams>(params) Family { body }
 ```
 
-The parameter list defines the component's public interface; the optional
-children type declares what the component may contain; the body is a sequence
-of statements, chiefly visual node instantiations. An optional `.Variant`
-suffix on the name (`component Name.Variant(…)`) is accepted by the grammar and
-reserved for platform-level specialization.
+The parameter list defines the component's public interface — props, events
+and slots alike. The type after it, the **return position**, names the tree
+family the component *is* a member of (`ui.node` for a widget, `draw.shape`
+for a shape); what it *hosts* is said by its slots (see
+[Trees and families](#trees-and-families)). The body is a sequence of
+statements, chiefly visual node instantiations.
 
 The body is optional, as a function's is, and the two spellings say different
-things. An empty body — `component Spacer() { }` — says the component renders
-nothing. **No body at all** — `component Name(params) Tree` — is a
+things. An empty body — `component Spacer() ui.node { }` — says the component
+renders nothing. **No body at all** — `component Name(params) Family` — is a
 *signature*: the render comes from somewhere the declaration names, and the
 checker requires that to be true. The answer a program can write is a
-per-target override; `#[intrinsic]` and `#[builtin]` are the library's own, and
-are accepted for it. An override may not itself be bodyless, since an override
-*is* the body a target renders.
+per-target override (see [Target-dependent code](#target-dependent-code));
+`#[intrinsic]` and `#[builtin]` are the library's own, and are accepted for
+it. An override may not itself be bodyless, since an override *is* the body a
+target renders.
+
+The dotted name and the bracketed index, `component ui.text[html.platform](…)`,
+are the override form: the name is the declaration being overridden, reached
+through an import alias when it lives in another package, and the index is
+the target the override is for.
+
+A component written in another component's body is scoped to that body, and
+its body sees the enclosing body's props, variables and functions; a write it
+makes to one of them is a write to the enclosing component's own state.
 
 ### Const components
 
@@ -1435,22 +1560,29 @@ const slots, which is what requires every value in one to be constant.
 
 ### Parameters
 
-A component parameter is one of three kinds:
+A component parameter is one of four kinds:
 
-- a **regular parameter** — `name Type = default` — a read-only input supplied
-  by the caller, with an optional default;
+- a **regular parameter** — `name Type = default` — an input supplied by the
+  caller, with an optional default, and constant at every call site when
+  written `const name Type` (see [the const prefix](#the-const-prefix));
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
-  passes an lvalue with `:name = target`, and the component writes back to that
-  lvalue by emitting the corresponding change, so parent and child stay in
-  sync;
+  passes an lvalue with `:name = target`, and an assignment the component makes
+  to `name` is written back to that lvalue, so parent and child stay in sync;
 - an **event parameter** — `@name(a A, b B)` — an outgoing event the
   component fires by calling its name (`name(x, y)`) and the caller handles
   with `@name(a, b) { … }`. The list is a func type's, names optional;
   `@name T` is the one-parameter case written without the parens, `@name()`
-  passes nothing, and a bare `@name` carries one untyped value. A handler
-  binds the parameters by position and may leave trailing ones unbound. A
-  call of the event supplies every parameter, or none, which forwards what the
-  handler it is written in received.
+  passes nothing, and a bare `@name` carries one untyped value;
+- a **slot** — `name component …` — a region of UI the caller supplies,
+  described next.
+
+A caller supplies a handler as an event argument, `@name { … }` or
+`@name(a, b) { … }`. A handler binds the parameters by position and may leave
+trailing ones unbound; binding more than the event passes, or annotating a
+type other than its position's, is an error. A call of the event supplies
+every parameter, or none, which forwards what the handler it is written in
+received. There is no value form of an event reference: `@name` alone is not
+an argument.
 
 ### Slots and children
 
@@ -1460,9 +1592,10 @@ and slots — is one parameter list:
 
 - `header component` — any number of nodes, of whatever family the component
   itself belongs to;
-- `shapes component shape` — any number of that tree's members;
-- `body component tree.one<T>` — exactly one;
-- `badge component option<T>` — zero or one;
+- `shapes component draw.shape` — any number of that family's members;
+- `body component tree.one<ui.node>` — exactly one (bare `tree.one` is exactly
+  one of whatever the slot already accepts);
+- `badge component option<ui.node>` — zero or one;
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
   the population binds a name for it.
 
@@ -1480,14 +1613,14 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) node { vbox { for var r = rows { cell(r) } } }
+component table(rows list<Row>, cell component(Row)) ui.node { ui.vbox { for var r = rows { cell(r) } } }
 var rs list<Row> = []
 -->
 
 ```sngl
 table(rows=rs) {
     component cell(row) {
-        text(value=row.title)
+        ui.text(value=row.title)
     }
 }
 ```
@@ -1501,12 +1634,21 @@ type is a count bound saying the slot collects everything the caller did not
 supply by name:
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component card(header component, content ...component) node {
-    vbox {
+component card(header component, content ...component) ui.node {
+    ui.vbox {
         header {}
         content
+    }
+}
+
+ui.window {
+    card {
+        component header {
+            ui.text(value="Title")
+        }
+        ui.text(value="Body")
     }
 }
 ```
@@ -1514,9 +1656,20 @@ component card(header component, content ...component) node {
 A component declares at most one rest slot, and a component that declares none
 accepts no children at all. `...` composes with a count bound — `content ...component tree.one` is "the bare children, of which exactly one" — because
 the two say different things: `...` says which children arrive here, the
-wrapper how many. A rest slot names no invocation parameters — bare
-children are written once, with nothing to bind them to — and populating it by
-name *and* writing bare children populates it twice.
+wrapper how many. Populating a rest slot by name *and* writing bare children
+populates it twice.
+
+A rest slot may be scoped — `children ...component(v T) ui.node` — and then
+the population written by name, `component children(v) { … }`, is the only
+form that reaches its arguments. Children written bare see none of them: a
+spread has nowhere to write a name.
+
+A slot's invocation list may itself declare a component entry —
+`layout component(page Page, content component ui.node) ui.node` — which the
+insertion populates by name, `layout(p) { component content { … } }`, and the
+population inserts under its own positional name. The bare block written at
+an insertion is that slot's fallback, and `...` may not appear in an
+invocation list.
 
 A `component` declaration in a body is read by **position**: at the root of a
 component definition it is a nested declaration, and directly in a child node's
@@ -1528,12 +1681,14 @@ function body — is an error.
 A statement of the form `Name(args) { children }` instantiates a component or a
 platform element as a **visual node**. Its arguments may be positional, named,
 binding (`:prop = target`), and event (`@event { … }`) arguments; nested
-statements form its children. A node may be labeled with an element reference,
-`Name #id(args)`, naming it for later use.
+statements form its children, which fill the component's rest slot, and a
+`component` declaration directly in the block populates a named slot. Every
+child must belong to the family the slot it lands in accepts. A node may be
+labeled with an element reference, `Name #id(args)`, naming it for later use.
 
 ### Element references
 
-Attaching `#id` to a node (`button #id(…)`) names it within the component and
+Attaching `#id` to a node (`ui.button #id(…)`) names it within the component and
 introduces `id` as a component-scoped binding: an opaque, immutable handle to
 that node (it does not shadow an existing name). The node is reached either by
 that bare name or, from a handle to its container, by ordinary field
@@ -1543,17 +1698,28 @@ name, `value.event(args)`). The `#` sigil itself appears only as the node- or
 context-naming declaration tag; it is never a selection field nor written on
 its own as an operand.
 
+A handle is for reading. A node's properties may not be assigned through it
+(see [Assignment](#assignment)), and a node may not read its own `#id` in its
+own arguments (`ui.text #t(value = t.value)`), since the id names the instance
+that argument list is building. A handle that is read may not be rendered more
+than once — two copies of one body would share it, and neither read could say
+which it meant.
+
 ## Reactivity
 
 SNGL is reactive: when state changes, the parts of the UI that depend on it
-update, with the dependencies determined entirely at compile time. There is no
-virtual DOM and no run-time diffing of the whole tree.
+update, with the dependencies determined entirely at compile time. How a target
+applies an update — patching exactly the nodes that depend on the change, or
+re-rendering from state for a host framework that reconciles — is the
+target's choice; the observable result is the same.
 
 ### State and derivation
 
 - A **reactive variable** is any non-constant `var` at package, component, or
   window scope. Its initializer runs once; thereafter its value changes only by
-  assignment.
+  assignment. A window owns no state of its own: a `var` in a window body
+  belongs to what holds the window — the package, or the component that renders
+  it.
 - A **derived value** is a parameterless function (`func total => price * qty`).
   It re-evaluates whenever a reactive variable it reads is assigned.
 
@@ -1566,6 +1732,10 @@ dependencies change.
 This is the central reason `var` and `func` differ: `var x = expr` captures a
 value once, while `func x => expr` defines a relationship that the compiler
 keeps current. Use `var` for state and `func` for anything derived from it.
+
+A handler runs when its event fires. What a handler reads does not subscribe
+it to anything; only node properties, conditions, loop heads and computed
+functions are re-evaluated because of what they read.
 
 ### Variable handlers
 
@@ -1587,17 +1757,251 @@ to its fields — write back to the list by index, as described under
 list's elements in place; structs are otherwise value types and copying them
 would discard the mutation.
 
+### Effects
+
+`effect` (from `sngl:builtin`) brackets a lifetime. It is a node placed in the
+tree, so it lives exactly as long as the position it occupies: `@mount` runs
+when it enters the tree and `@unmount` when it leaves. One inside an `if` lives
+as long as that branch.
+
+`on` makes the bracket keyed: while `on` holds the same value it is the same
+effect, and a different value ends the old lifetime (`@unmount`) and begins a
+new one (`@mount`). Each handler receives the key its own lifetime was begun
+with. An effect declaring neither handler brackets nothing and is an error.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var room = "lobby"
+    var log = ""
+
+    effect(
+        on=room,
+        @mount(r) {
+            log = "joined {r}"
+        },
+        @unmount(r) {
+            log = "left {r}"
+        },
+    )
+    ui.text(value=log)
+    ui.button(text="Next room", @click {
+        room = "hall"
+    })
+}
+```
+
+`effect` belongs to no tree family, so it may be placed in any of them — inside
+a layout, a drawing, or a menu.
+
+### Contexts
+
+A context is a value supplied to a subtree rather than passed down as a
+parameter. `context #name(default)` at the root of a file declares one, typed by
+its default, and binds `name`; reading `name` anywhere yields the value supplied
+by the nearest enclosing provider, or the default. Instantiating the context as
+a node, `name(value) { … }`, provides `value` to everything under it:
+
+```sngl
+import ui "sngl:ui"
+
+context #theme("light")
+
+component badge() ui.node {
+    ui.text(value="theme: {theme}")
+}
+
+ui.window {
+    badge()
+    theme("dark") {
+        badge()
+    }
+}
+```
+
+A context may not be assigned, and may not be captured into a `var`, which
+would freeze the value and miss later changes; read it where it is used.
+
 ### Timers
 
-A `timer` node fires its `@tick` handler at a fixed interval while it is
-enabled:
+`time.timer` (from `sngl:time`) fires its `@tick` handler every `interval`
+while `enabled` is true:
 
-```
-timer(interval = 100ms, enabled = running, @tick { progress += 0.1 })
+<!-- SNGL-component -->
+
+```sngl
+import time "sngl:time"
+import ui "sngl:ui"
+
+var running = true
+var progress = 0.0
+time.timer(interval=100ms, enabled=running, @tick {
+    progress += 0.1
+})
+ui.text(value="{progress}")
 ```
 
-Toggling the enabling variable cancels or restarts the timer; a timer is torn
-down when its component is removed. The interval is a `duration`.
+Toggling `enabled` stops or restarts the timer; a timer is torn down when the
+position it occupies leaves the tree. The interval is a `time.duration`. Like
+`effect`, a timer belongs to no tree family.
+
+### Error boundaries
+
+`error.raise(message, kind)` raises an `error`, a struct carrying `message` and
+`kind`. The error propagates to the nearest enclosing `boundary`, which catches
+errors raised in the event handlers and expressions of its content. A boundary
+has two halves: `@error(e) { … }` reports the error, and a `failed` slot
+replaces the content from then on. Either is enough on its own, and one is
+required — a boundary with neither would catch an error and do nothing with it.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var last = ""
+
+    boundary(@error(e) {
+        last = e.message
+    }) {
+        ui.button(text="Fail", @click {
+            error.raise("could not save", "io")
+        })
+        component failed {
+            ui.text(value="Something went wrong: {last}")
+        }
+    }
+}
+```
+
+`boundary` is generic over the family of what it wraps: its content binds the
+family, and `failed` must belong to the same one, since it stands where the
+content stood. A window's `@error` is its outermost boundary. An error no
+boundary catches goes to the platform's default handler.
+
+## Trees and families
+
+A user interface is a tree, and it is segmented into **families**: a container
+accepts members of its own family and nothing else. Widgets are one family
+(`ui.node`), the shapes a canvas draws are another (`draw.shape`), the windows
+and build directive at the root of a file a third (`root`, declared in `sngl:builtin` and so in scope everywhere).
+
+A family is declared by a struct carrying the `#[tree.kind]` mark. The struct
+holds nothing and no value of it exists; it *is* the family, identified by its
+declaration rather than its name, so two packages each declaring
+`struct item {}` declare two families.
+
+```sngl
+import tree "sngl:tree"
+import ui "sngl:ui"
+
+#[tree.kind]
+struct item {}
+
+component entry(label string) item {}
+
+component menu(items ...component item) ui.node {}
+
+ui.window {
+    menu {
+        entry(label="Open")
+        entry(label="Save")
+    }
+}
+```
+
+The rules:
+
+- **The return position says what a component is.** `component entry(…) item`
+  is a member of `item`. Naming a type there that is not a family is an error.
+- **A slot says what a component hosts.** A slot typed with a family accepts
+  that family's members; a slot naming none accepts the family its component
+  belongs to. A component that declares no slot hosts nothing.
+- **A component's body is held to its own family.** What the body puts in the
+  tree must belong to the family the return position names, so a
+  `ui.node` component whose body renders a window is an error.
+- **An omitted return position is inferred from the body**: a declaration
+  whose body renders widgets is a widget. The evidence is what the body itself
+  places, reached through any `if`, `for`, `boundary` or context provider
+  around it. A body rendering members of two families, or of none, is an
+  error. A library declaration always names its family.
+- **`#[tree.none]` says a component belongs to no family.** It may be placed in
+  any tree and may not render a member of any: `effect`, `context`, and
+  `time.timer` are such components.
+- **`if`, `for`, `boundary` and context providers are transparent**: they say
+  when, how many, and under what conditions nodes appear, but put nothing in
+  the tree themselves, so every membership rule looks through them.
+
+A component generic over the family it wraps writes a type parameter where a
+family goes — `component boundary<T>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+
+## Programs
+
+A package is a **program** when it declares at least one window; a package that
+declares none is a library, which may be type-checked but has nothing to run.
+
+The package body — the statements at the root of its files — is a slot that
+accepts the `root` family, whose members are `ui.window` and the `output`
+directive. A `ui.node` written at the root of a file is therefore a family
+error, while an `if` or `for` there is not a node and may hold windows. There is
+no entry-point function or component: a component named `main` is an ordinary
+component. A component whose return position is `root` renders windows, and
+they reach the program when something at the root instantiates it.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window #home(title="Home", href="/") {
+    var count = 0
+    ui.button(text="Clicked {count} times", @click {
+        count++
+    })
+}
+
+ui.window #about(title="About", href="/about") {
+    ui.text(value="A two-window program.")
+}
+
+output(entry=home) {
+    none {
+        html()
+    }
+    go {
+        bubbletea()
+    }
+}
+```
+
+A window's props are `title`, `href` and `favicon`. A route with `{name}`
+placeholders hands its values to the window as one struct value in the
+`params` prop; the body that reads them is the population of the window's
+`content` slot, `component content(p) { … }`, and each placeholder must name a
+field of that struct.
+
+A window's body is its content; state it declares belongs to what holds the
+window (see [State and derivation](#state-and-derivation)). Where several
+windows read one package-level variable, whether they share one value or each
+get a copy is the target's: windows that are one process share it, windows
+that are separate documents copy it.
+
+### The output directive
+
+`output` says what a package compiles to. It is written at the root of a file,
+at most once per package, and its contents are an ordinary component tree:
+`output` hosts language nodes and a language node hosts platform nodes, each
+declared by that target's own package (`go`, `js`, `kotlin`, `none`; `html`,
+`bubbletea`, `fyne`, `gtk4`, `android`, `none`). A target node needs no
+import: inside the directive it is resolved against the registered targets, so
+a misspelled one is an unresolved name. Build options are the props of the
+node they belong to — `output(name = …)` for options every target shares,
+`go(goVersion = …)` for a language's, `html(minify = …)` for a platform's — and
+every value in the tree must be constant, since the directive is read before
+the program runs. A build that names its targets on the command line ignores
+the directive.
+
+`entry` names the window a build opens at, by its element reference. A program
+with one window needs it only for emphasis; past one, it says which window is
+the program's start.
 
 ## Modules
 
@@ -1622,35 +2026,105 @@ An import binds a *namespace* through which another package's exported names are
 reached:
 
 ```
-import "widgets"            // namespace "widgets"; widgets.Button
-import w "widgets"          // explicit alias: w.Button
-import "ui/cards"           // namespace "cards" (last path segment)
+import "./widgets"          // namespace "widgets"; widgets.Button
+import w "./widgets"        // explicit alias: w.Button
+import "./ui/cards"         // namespace "cards" (last path segment)
+import . "./widgets"        // dot import: Button, unqualified
 ```
 
-Without an explicit alias, the namespace name is the last segment of the path.
-A member is accessed as `namespace.Member`.
+A directory path is resolved relative to the importing file. Without an
+explicit alias, the namespace name is the last segment of the path. A member is
+accessed as `namespace.Member`. A dot import lifts the package's exported names
+into the file instead; it is legal, but the qualified form is recommended, and
+a package does not re-export the names it dot-imports. An import may be written
+only at the root of a file, and binds only in that file.
 
 The `=> "target"` form redirects a local import path to another target while
 keeping the local name:
 
 ```
-import "cdn/ui" => "https://cdn.example.com/ui"
+import "./cdn/ui" => "https://cdn.example.com/ui"
 ```
+
+The redirect applies to the whole package: every import of that local path, in
+any of the package's files, resolves to the target.
 
 ### Scheme imports and target routing
 
 An import path may carry a URI scheme, which routes the import to a provider
 rather than to a directory of `.sngl` files:
 
-- `import "go:fmt"`, `import "ts://lodash"` — import declarations from a host
-  language package, so generated code in that language can call into it;
-- `import "sngl:platform/html"`, `import "sngl:language/go"` — bring a
-  platform's or language's contributed package into scope;
-- other schemes may be resolved by the host to fetch remote SNGL sources.
+- `sngl:` — a standard library package (`import ui "sngl:ui"`), or a target's
+  own package (`import html "sngl:platform/html"`,
+  `import go "sngl:language/go"`), which is served by that target's plugin;
+- `go:`, `js:`, `c:` — declarations describing a host-language package
+  (`import strings "go:strings"`, `import slug "js:slugify"`), so generated
+  code in that language can call into it;
+- `git:`, `http:`, `https:` — SNGL source fetched from elsewhere;
+- `md:` — a markdown document (`import doc "md:./guide.md"`) or directory
+  (`import docs "md:./docs/"`) imported as SNGL source: a file is a package
+  holding one `document` component, and a directory is a site of page
+  components with a `site` component that renders each through a layout.
 
 An import of a host-language package is the boundary at which the *language*
-selected for compilation matters: see the next section. Members of a scheme
-import are namespaced exactly like directory imports.
+selected for compilation matters: see
+[Platform and language plugins](#platform-and-language-plugins). Members of a
+scheme import are namespaced exactly like directory imports.
+
+## Target-dependent code
+
+A program is written once for every target, and says where it differs in two
+ways.
+
+**A comparison against the target identity.** `PLATFORM` and `LANGUAGE` hold
+the target a build produces. Each target's package declares its identity
+constant — `html.platform`, `go.language` — and a comparison against one folds
+at build time, removing the branch not taken:
+
+<!-- SNGL-component -->
+
+```sngl
+import html "sngl:platform/html"
+import ui "sngl:ui"
+
+if PLATFORM == html.platform {
+    ui.text(value="Running in a browser")
+} else {
+    ui.text(value="Running natively")
+}
+```
+
+**A per-target override.** A function or component declaration indexed by a
+target identity is that target's body for the declaration of the same name,
+used in place of the unindexed one when building for that target:
+
+```sngl
+import html "sngl:platform/html"
+import ui "sngl:ui"
+
+func greeting() => "hello"
+
+func greeting[html.platform]() => "hello, web"
+
+component badge(label string) ui.node
+
+component badge[html.platform](label) {
+    html.span {
+        ui.text(value=label)
+    }
+}
+
+ui.window {
+    badge(label=greeting())
+}
+```
+
+An override's parameter list selects the props of the declaration it overrides
+by name and carries no types of its own. The base may be a signature with no
+body, as `badge` is here; an override satisfies it for every target, so a
+target with no override renders nothing for it. An override may itself not be
+bodyless. A target's raw elements, such as `html.span`, are reached through an
+import of its package like any other name.
 
 ## Platform and language plugins
 
@@ -1667,19 +2141,19 @@ The contract has these observable facts:
   representation produced by the front end this manual specifies, never the
   source text. Anything a plugin needs about a program is present in that
   representation.
-- **Capabilities gate lowering.** A language declares the features it supports
-  natively (ternaries, lambdas, reactivity primitives, and so on). The compiler
+- **Capabilities gate lowering.** A target declares, in its own package, the
+  constructs it emits natively (ternaries, lambdas, reactivity primitives, and
+  so on); a capability it does not name is one it does not hold. The compiler
   runs capability-driven lowering passes between checking and code generation,
-  each gated by a feature flag, so that a program is rewritten into the subset a
-  target can express — for example replacing lambdas, ternaries, or reactive
-  bindings where a target lacks them. These rewrites preserve the observable
-  semantics defined in this manual; they do not change what a well-formed
-  program means.
-- **Platform packages contribute names.** A platform or language may contribute
-  a package of declarations reachable through a `sngl:platform/…` or
-  `sngl:language/…` import, and `platform` blocks may resolve
-  otherwise-unknown identifiers against the active platform (for example raw
-  HTML tag names).
+  so that a program is rewritten into the subset a target can express — for
+  example replacing lambdas, ternaries, or reactive bindings where a target
+  lacks them. These rewrites preserve the observable semantics defined in this
+  manual; they do not change what a well-formed program means.
+- **Target packages contribute names.** Each platform and language serves a
+  package of declarations reachable through a `sngl:platform/…` or
+  `sngl:language/…` import: its identity constant, its node in the `output`
+  tree, its raw elements (for example HTML tags), and its overrides of library
+  components.
 - **Some targets restrict programs.** A platform may support only certain
   languages, and a language may lack a capability that a program relies on; such
   a combination is rejected at build time rather than mis-compiled.

@@ -3,7 +3,7 @@ import ir "sngl:internal/ir"
 import build "sngl:build"
 import gen "sngl:x/gen"
 
-// The `js` node of a build directive: `output { js { html() } }`. It carries
+// The `js` node of a build directive. It carries
 // no props, which is a fact rather than an omission -- this target takes no
 // build options -- and a misplaced option is reported against it.
 #[gen.can(

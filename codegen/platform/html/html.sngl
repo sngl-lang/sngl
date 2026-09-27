@@ -9,7 +9,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import gen "sngl:x/gen"
 
-// The `html` node of a build directive: `output { js { html() } }`. Its props
+// The `html` node of a build directive: `output { none { html() } }`. Its props
 // are the build options this platform accepts.
 // Both modes write the tree as markup -- static mode to a file, route mode into
 // a handler -- so a view body is never host-language statements.

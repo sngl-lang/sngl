@@ -19,7 +19,7 @@ import marks "sngl:internal/marks"
 // under the language it is built with:
 //
 //     output {
-//         js {
+//         none {
 //             html(minify = true)
 //         }
 //         go {

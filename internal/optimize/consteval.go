@@ -245,6 +245,11 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if !ok {
 			return nil, false
 		}
+		if x.Field == "length" {
+			if n, ok := constLength(x.Operand.ExprType(), recv); ok {
+				return n, true
+			}
+		}
 		if s, ok := recv.(*interp.Struct); ok {
 			if v, exists := s.Get(x.Field); exists {
 				return v, true
@@ -1115,6 +1120,30 @@ func fileNames(dirPath, pattern string) (any, bool) {
 }
 
 // --- Helper functions ---
+
+// constLength folds the `.length` select the checker types as int on a list,
+// a map or a string. Asked of the operand's type, since a map value may hold a
+// "length" key.
+func constLength(t *ir.Type, v any) (int, bool) {
+	if t == nil {
+		return 0, false
+	}
+	switch t.Kind {
+	case ir.TypeList:
+		if l, ok := v.([]any); ok {
+			return len(l), true
+		}
+	case ir.TypeMap:
+		if m, ok := v.(map[string]any); ok {
+			return len(m), true
+		}
+	case ir.TypeString:
+		if s, ok := v.(string); ok {
+			return utf8.RuneCountInString(s), true
+		}
+	}
+	return 0, false
+}
 
 func toInt(v any) (int, bool) {
 	if n, ok := v.(int); ok {
