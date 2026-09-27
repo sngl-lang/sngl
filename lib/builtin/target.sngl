@@ -26,11 +26,11 @@ struct language {}
 // so a target name cannot be misspelled into a branch that is silently never
 // taken.
 #[marks.builtin("targetPlatform")]
-#[tree.kind]
+// #[tree.kind]
 const PLATFORM = ""
 
 // The language this build emits: `LANGUAGE == go.language`. Behaves like
 // PLATFORM in every respect.
 #[marks.builtin("targetLanguage")]
-#[tree.kind]
+// #[tree.kind]
 const LANGUAGE = ""

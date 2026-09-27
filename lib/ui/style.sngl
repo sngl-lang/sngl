@@ -1,4 +1,4 @@
-TODO how many of these enums are fine to inline on the style struct?
+// TODO how many of these enums are fine to inline on the style struct?
 
 // Layout length used throughout `Style`. Unit literals: `px`, `em`,
 // `rem` (= 16em), `vw`, `vh`, `pct`.
