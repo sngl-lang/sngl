@@ -1,0 +1,50 @@
+# A component built at run time is emitted once for every instance, so which
+# boundary an instance sits under is not something its body can know
+# statically. A raise such a body lets out, under a boundary, is refused with
+# a position rather than emitted going nowhere. bubbletea keeps no state of an
+# instance's own and splices each copy, so it resolves each one instead; the
+# interpreter follows the render tree at run time.
+
+! sngl generate --platform html --out out app.sngl
+stderr 'app.sngl:25:16: a raise in row cannot reach the @error around this instance: row is built at run time here'
+
+! sngl generate --platform android --lang kotlin --out out app.sngl
+stderr 'a raise in row cannot reach the @error around this instance'
+
+sngl generate --platform bubbletea --lang go --out out app.sngl
+grep 'recover\(\)' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import seq "sngl:seq"
+
+func check(s string) {
+    if s.length == 0 {
+        error.raise("empty", "validation")
+    }
+}
+
+component row node {
+    var after = false
+    button(text="go", @click {
+        check("")
+        after = true
+    })
+}
+
+component list node {
+    var n = 2
+    var problem = "none"
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        for var i = seq.count(n) {
+            row()
+        }
+    }
+    text(value=problem)
+}
+
+window #home(title="t", href="/index.html") {
+    list()
+}

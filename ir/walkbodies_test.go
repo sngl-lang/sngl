@@ -82,6 +82,8 @@ var referenceSlots = map[string]bool{
 	// Aliases Call.ErrorHandler or a handler owned by an enclosing boundary
 	// or window, each of which is walked where it is owned.
 	"Call.ResolvedHandler": true,
+	// The same alias, on the catch block passErrorCatch renders it from.
+	"If.Catch": true,
 	// The lifted body, appended to pkg.Funcs by passLambda; this field stores
 	// the pointer so the closure's construction site can name it.
 	"Closure.Func": true,

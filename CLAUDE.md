@@ -526,7 +526,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Eight run always and are not capability-gated because they answer for every target: `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does) and `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Ten run always and are not capability-gated because they answer for every target: `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) and `ErrorCatch` (the catch block a handler body resolved to a boundary or window becomes, so the raise ends the handler). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -765,7 +765,7 @@ wrote a boundary. It keeps its own boundary case, because a boundary is the one
 transparent statement that is not: it pushes its handler onto the scope, which
 is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
-`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves — a CLI script, because nothing executes the test functions in a `testdata/test_*.sngl`: `sngl test ./...` does not walk `testdata/`, and no Go harness drives them. Those files are checked and their assertions never run.
+`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`codegen/platform/none/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
@@ -855,40 +855,83 @@ The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.
 
-**A raise is caught at the call that resolved a handler**, and
-`ir.CatchingHandler` names it: the call's own `@error` (`ErrorPerCall`) or
-the boundary's or window's (`ErrorInvokeAndTerminate`). The handler runs with
-the error and execution continues after the call, which is what the
-interpreter's `dispatchRaise` does. Inside the callee a raise is the host's
-native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an
-`Error` with a `kind` on JavaScript — so each language's `catchAtCall` runs
-the call under a recover or a try and inlines the handler there, rethrowing
-anything that is not a raise; a `fails` native reports through its error
-result on Go, which gets an `if err` instead, and through any exception on
-JavaScript and Kotlin, which is caught whole
-(`call_error_handler_catches_raises_only.txtar`). Only a direct
-`error.raise` was answered before, so a raise one call down escaped every
-handler written for it (`testdata/call_error_handler.txtar`,
-`boundary_catches_called_raise.txtar`). A `return` in a handler ends the
-handler, so a body holding one runs as a function of its own rather than a
-block of the function it was inlined into (`error_handler_return.txtar`).
-A boundary's or window's handler is inlined at the call as well as emitted
-where it is declared, and `ir.Walk` does not follow `ResolvedHandler`, so
+**A raise unwinds to the handler that resolved it, and what that handler
+answers for decides what runs after it.** Inside a callee a raise is the host's
+native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an `Error`
+with a `kind` on JavaScript — and it passes through every fallible function
+between with no signature change. Where it stops has two shapes:
+
+- **A call's own `@error`** (`ErrorPerCall`) answers for that call alone: the
+  handler runs and the statement after the call runs next. Each language's
+  `catchAtCall` runs the call under a recover or a try and inlines the handler
+  there, rethrowing anything that is not a raise; a `fails` native reports
+  through its error result on Go, which gets an `if err` instead, and through
+  any exception on JavaScript and Kotlin, which is caught whole
+  (`call_error_handler_catches_raises_only.txtar`). The handler does not
+  answer for the call's arguments, which are evaluated first, so
+  `passErrorCatch` binds an argument that may raise to a temp ahead of the
+  statement.
+- **A boundary's or window's `@error`** (`ErrorInvokeAndTerminate`) ends the
+  event handler that made the call, as an exception would: `passErrorCatch`
+  makes the whole handler body one catch block (`ir.If` with `Catch` set and
+  the literal `true` for a condition, so every analysis that reads an `if`'s
+  body still reads it), and nothing after the raise runs — in the function
+  that raised, in a caller between, or in the handler. Each language renders
+  the block through `irwalk`'s `Catch` hook. A `fails` native the block covers
+  is made to raise (`raiseFailure`: its error result panics on Go, its exception
+  is rethrown as a raise elsewhere); caught at its own call instead, the handler
+  ran and the click went on, into whatever raised next
+  (`error_catch_fails_native.txtar`). A catch block in the half
+  `passAsyncOffload` spawned recovers off the drawing thread, so its handler is
+  posted back through `async.post` (`error_catch_async_offload.txtar`). The interpreter's `dispatchRaise` returns
+  a marked `returnSignal`, which `invokeHandler` and an emitted event's
+  handler pass on, so a raise caught from inside either ends the handler it
+  was run from too.
+
+A `return` in a handler ends the handler, so a body holding one runs as a
+function of its own rather than a block of the function it was inlined into
+(`error_handler_return.txtar`), the catch clause of a block included
+(`error_catch_handler_return.txtar`). A handler rendered somewhere other than where
+it is declared — inlined by `catchAtCall`, or the `Catch` of a block — is not
+reached by `ir.Walk` there (`ResolvedHandler` and `If.Catch` are aliases), so
 whatever asks what a block contains has to ask of it too: `codegen.WalkLowered`,
 or a widget write in a window's `@error` reaches fyne and gtk4 untranslated
 (`window_error_handler_updates_view.txtar`), and `codegen.PackageStateFuncs`,
 or a mount the handler is inlined into is emitted as a free func writing the
 Model (`effect_mount_caught_by_window.txtar`).
 
-Three shapes are resolved and not yet answered. A call in **expression
-position** (`v = risky(7, @error(e) { … })`) is refused
-(`refuseExprErrorHandler`): the checker attaches a handler only to a call
-statement, and what the call evaluates to after a caught raise is undecided.
-A **component instantiated under a boundary or window** resolves its own
-handlers' raises against its declaration, not its instance, so neither the
-interpreter nor any target catches them there. And a call through a **func
-value** with no `@error` of its own is never fallible, since nothing about a
-func type says whether it raises; a lambda body's raise leaves the lambda.
+**Which handler is the render tree's answer, not the declaration's.** The
+checker resolves a raise inside the component it was written in, and one that
+reaches no boundary there is left native. A compiled target settles it in
+`passErrorScope`, right after `passNoInlineComponents`: every instance has been
+spliced into the tree that renders it by then, each splice its own clone, so
+the boundaries and windows around each instance are there to walk and one
+declaration rendered under two boundaries answers to both. A handler is read
+wherever the node carries it — in `Handlers`, or as a lambda in `Props`, which
+is where android's override substitution has put it. A component built at run
+time is not spliced, so its body is shared by every instance; one of those
+under a boundary, whose body lets a raise out, is refused with a position
+rather than emitted with the raise going nowhere. The interpreter answers at
+run time instead: the mounter pushes each boundary's and window's handler onto
+a frame list it keeps among the context values a node is mounted under
+(`raiseScope`), and `underHandler` -- the outermost event handler's entry, not a
+lambda or an emitted event's -- offers a raise that left it to those frames,
+starting outside the handler that let it out
+(`error_raise_render_tree_runs.txt`, `error_raise_render_tree.txtar`,
+`internal/interp/raise_scope_test.go`).
+
+**Slot content is the exception.** A handler written in the caller and
+rendered in a callee's slot is resolved by the checker against the *caller's*
+boundaries, so where the caller has one it wins over a nearer boundary the
+callee wraps the slot in; only where the caller has none does the render tree
+answer. And a raise in a `var`'s `@change` is resolved by neither.
+
+A call in **expression position** that carries its own `@error`
+(`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the
+handler would replace the rest of the statement, so the call has nothing to
+evaluate to. And a call through a **func value** with no `@error` of its own is
+never fallible, since nothing about a func type says whether it raises; a
+lambda body's raise leaves the lambda.
 
 **`sngl:builtin`'s `root` is the family a package body accepts**, and that is
 the whole of what makes a window top-level — no syntactic rule names the

@@ -50,8 +50,8 @@ var (
 //     body, likewise appended to pkg.Funcs by passLambda. Lambda.Func,
 //     Timer.Handler, EventHandler.Func and ErrorBoundary.Handler are owned and
 //     are walked.
-//   - Call.ResolvedHandler — aliases Call.ErrorHandler or a handler owned by
-//     an enclosing boundary or window.
+//   - Call.ResolvedHandler, If.Catch — alias Call.ErrorHandler or a handler
+//     owned by an enclosing boundary or window.
 //   - NodeInst.Component — the component being instantiated, owned by
 //     pkg.Components; the instance owns only its Props, Handlers and Children.
 //   - StructLit.Def — the struct being constructed, owned by pkg.Structs.

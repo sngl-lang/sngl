@@ -326,7 +326,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			// A window renders no node of its own -- see the key walk, which
 			// has to agree with this one path for path.
 			if ir.IsWindowNode(n) {
+				restore := func() {}
+				if n.ErrorHandler != nil {
+					restore = env.pushRaiseScope(n.ErrorHandler)
+				}
 				nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("window@%d", next("window"))))
+				restore()
 				if err != nil {
 					return nil, err
 				}
@@ -390,7 +395,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 					body = n.Failed
 				}
 			}
+			restore := func() {}
+			if n.Handler != nil {
+				restore = env.pushRaiseScope(n.Handler)
+			}
 			nodes, err := m.stmts(env, body, join(fmt.Sprintf("boundary@%d", next("boundary"))))
+			restore()
 			if raised, ok := err.(*RaisedError); ok && n.Handler != nil {
 				// A raise from *mounting* a child, which is the recursion
 				// bound and nothing else today: an ordinary error.raise is
@@ -401,6 +411,9 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 				// boundary that should catch a nested instance is the dynamic
 				// one -- which the mounter is standing in.
 				err = env.invokeHandler(n.Handler, raised.Event)
+				if IsReturn(err) {
+					err = nil
+				}
 				nodes = nil
 			}
 			if err != nil {

@@ -64,6 +64,7 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	passErrorScope,
 	passWindowNesting,
 	passRecursionDepth,
 	passInstanceSlots,
@@ -93,6 +94,7 @@ var passes = []pass{
 	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
+	passErrorCatch,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,

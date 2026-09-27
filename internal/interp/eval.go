@@ -325,12 +325,16 @@ type Env struct {
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
+	// handling counts the event handlers running, shared by every env of one
+	// program so that a nested dispatch can tell it is one.
+	handling *int
 }
 
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
+		handling:  new(int),
 	}
 }
 
@@ -478,6 +482,7 @@ func (env *Env) Snapshot() *Env {
 		inst:       env.inst,
 		origin:     env,
 		spreadVals: env.spreadVals,
+		handling:   env.handling,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
@@ -1232,6 +1237,15 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if u, ok := obj.(unitValue); ok {
 		return u.baseAmount(e.Field)
 	}
+	// The checker types `.length` on a string or list as a select, not a call.
+	if e.Field == "length" {
+		switch obj.(type) {
+		case string:
+			return intrinsics["string.length"]([]any{obj})
+		case []any:
+			return intrinsics["list.length"]([]any{obj})
+		}
+	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
 }
 
@@ -1574,6 +1588,14 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	v, err := env.evalCallSite(call)
+	if raised, ok := err.(*RaisedError); ok {
+		return nil, env.dispatchRaise(call, raised)
+	}
+	return v, err
+}
+
+func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
 	// the wrapper is inlined, so neither is reliably a namespace call by the
@@ -1796,7 +1818,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 						return nil, err
 					}
 					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
-					res, err := handlerEnv.underContext(provided, func() (any, error) {
+					res, err := handlerEnv.underHandler(provided, func() (any, error) {
 						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
 							return nil, err
 						}
@@ -2866,4 +2888,21 @@ func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (
 	}
 	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
 	return fn()
+}
+
+// underHandler is underContext for an event handler's entry. A raise the
+// handler lets out is offered to the frames it was mounted under -- but only by
+// the outermost one, since a handler run from inside another (an emitted event)
+// is part of the raise that one is making.
+func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (any, error) {
+	if env.handling == nil {
+		env.handling = new(int)
+	}
+	*env.handling++
+	res, err := env.underContext(vals, fn)
+	*env.handling--
+	if *env.handling == 0 {
+		err = catchEscaped(vals, err)
+	}
+	return res, err
 }

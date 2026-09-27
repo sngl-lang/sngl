@@ -301,8 +301,28 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := kc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{kc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's exception into a SnglRaise, so
+// the catch block around it takes it for one.
+func (kc *KtIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	return []string{
+		"try {",
+		"\t" + kc.EvalExpr(call),
+		"} catch (__err: SnglRaise) {",
+		"\tthrow __err",
+		"} catch (__err: Exception) {",
+		"\tthrow SnglRaise(ErrorEvent(__err.message ?: \"\", \"\"))",
+		"}",
+	}
 }
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
@@ -849,6 +869,24 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 		return kc.emitHandlerInvoke(evt, call.ErrorHandler)
 	}
 	return nil
+}
+
+// Catch renders a catch block as try/catch over SnglRaise, the exception a
+// raise throws, so a host exception is not taken for one.
+func (kc *KtIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	lines := []string{"try {"}
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines, "} catch (__e: SnglRaise) {")
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		lines = append(lines, "\tval "+h.Func.Params[0].Name+" = __e.event")
+	}
+	if h.Func != nil {
+		lines = append(lines, kc.handlerBody(h)...)
+	}
+	return append(lines, "}")
 }
 
 func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {

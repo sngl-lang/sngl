@@ -81,6 +81,10 @@ func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 				if h := ir.CatchingHandler(e); h != nil && h != e.ErrorHandler && h.Func != nil {
 					_ = ir.Walk(h.Func.Block, visit)
 				}
+			case *ir.If:
+				if e.Catch != nil && e.Catch.Func != nil {
+					_ = ir.Walk(e.Catch.Func.Block, visit)
+				}
 			}
 			return nil
 		}

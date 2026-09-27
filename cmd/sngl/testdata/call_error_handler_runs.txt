@@ -9,8 +9,9 @@
 # including the ones whose call raised.
 #
 # boundary.sngl is testdata/boundary_catches_called_raise.txtar's program: a
-# boundary catching a raise from a called function, in a click and in an
-# effect's @mount, and a call through a func value catching its own. fyne and
+# boundary catching a raise from a called function, in a click -- which the
+# raise ends, so the click appends nothing to `after` -- and in an effect's
+# @mount, and a call through a func value catching its own. fyne and
 # gtk4 implement no boundary, so it runs on the interpreter and html only.
 #
 # return.sngl is testdata/error_handler_return.txtar's program: a `return` in
@@ -126,7 +127,7 @@ func testBoundaryAndLambdaCatch(t Test, c main) {
     c.stmt.click()
     c.lam.click()
     t.assert(c.caught == "too big;too big;lam:lam;")
-    t.assert(c.after == "sl")
+    t.assert(c.after == "l")
 }
 
 window {
@@ -181,7 +182,7 @@ window {
 }
 
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:c6096dd2a77c92c03b831b71cbb0ba4f
+sha256:0be1e40af5f5a705fe20e72b411af2c7
 {
   "results": [
     {
@@ -191,7 +192,7 @@ sha256:c6096dd2a77c92c03b831b71cbb0ba4f
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:d8271706d258586226bf34d45ff46a58
+sha256:379cbefbdddf332a602c80b2d875f669
 {
   "results": [
     {
@@ -201,7 +202,7 @@ sha256:d8271706d258586226bf34d45ff46a58
   ]
 }
 -- testrun/html/none/boundary.sngl/main/1 --
-sha256:25608c14df3864ead06f35af66f9eec6
+sha256:8de5e2291bbad767d6e53b566949adde
 {
   "results": [
     {

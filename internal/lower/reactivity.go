@@ -1014,6 +1014,12 @@ func handlerBodiesIn(s ir.Stmt) []*ir.Func {
 				out = append(out, x.Func)
 			}
 			return ir.SkipDir
+		case *ir.Call:
+			// A per-call @error is a body the call carries; the walk goes on
+			// into the arguments, and stops at the handler's statements.
+			if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+				out = append(out, x.ErrorHandler.Func)
+			}
 		}
 		return nil
 	})
