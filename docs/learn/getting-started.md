@@ -34,7 +34,7 @@ import "sngl:ui"
 
 ui.window(title="Hello") {
     ui.text(value="Hello, World!")
-}`
+}
 ```
 
 `import "sngl:ui"` brings in the UI library under the name `ui`. Save the
