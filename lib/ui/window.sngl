@@ -31,8 +31,9 @@ import marks "sngl:internal/marks"
 component window<T = struct {}>(
     title string,
     href string,
-    favicon string,
+    favicon string, // TODO should our components that take images use a component family for that with a slot? That could make imports work well for embedding and remotely fetching work.
     params T,
     @error error,
     content ...component(v T) node,
-) root {}
+) root
+

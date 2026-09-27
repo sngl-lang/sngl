@@ -5,6 +5,6 @@
 // value to resolve against nor anything to fold, so one survived only where
 // the optimizer ran.
 //
-// The functions in `sngl:builtin`'s `float` — `sin`, `atan2`, `sqrt` and the
+// TODO The functions in `sngl:builtin`'s `float` — `sin`, `atan2`, `sqrt` and the
 // rest — belong here too and will move. They are intrinsics with per-language
 // emitters, so moving them is its own change.

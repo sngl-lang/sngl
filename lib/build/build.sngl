@@ -1,5 +1,7 @@
 import tree "sngl:tree"
 
+// TODO These exist in builtin as the type of a platform package. We should double-up those identifiers
+
 // The family a build-target language belongs to: the members `output` hosts.
 #[tree.kind]
 struct language {}

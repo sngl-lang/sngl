@@ -32,3 +32,6 @@
 // overrides a component (`component <alias>.vbox`); it is the form this
 // repository writes. `import . "sngl:ui"` writes them unqualified and remains
 // supported.
+
+// Syntax highlighting broken. Comments/Props/Types/Macros look like normal text. Only keywords highlight.
+// Seems like LSP doesn't see sibling files, it complaints about definitions not found. It's also all janky on the stdlib because it doesn't see the internal imports while editing lib/ in the repo.

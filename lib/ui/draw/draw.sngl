@@ -1,8 +1,4 @@
-// std is qualified rather than dot-imported: a lib package is loaded into the
-// checker's own symbol table, so names it lifts become indistinguishable from
-// names it declares and would be re-lifted by `import . "sngl:ui/draw"`. User
-// packages do not re-export a dot import, and neither should this one.
-import std "sngl:ui"
+import ui "sngl:ui"
 
 // `#[tree.kind]` is what marks the shape struct below as naming a tree, and
 // `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
@@ -13,12 +9,13 @@ import marks "sngl:internal/marks"
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
+// TODO Should this be just called "Style"? draw.Style and ui.Style are easy to tell apart.
 struct CanvasStyle {
     fill color = color{a=0}
     stroke color = color{a=0}
     strokeWidth float = 1.0
-    lineCap string = "butt"
-    lineJoin string = "miter"
+    lineCap string = "butt" // TODO enum
+    lineJoin string = "miter" // TODO enum
     fontSize float = 16.0
     fontFamily string = "sans-serif"
 }
@@ -28,7 +25,7 @@ struct CanvasStyle {
 // points and the end point, `arcTo` one control point, the end point and
 // the radius `r`. The rest keep their zero value.
 struct PathCmd {
-    op string
+    op string // TODO enum
     x float = 0.0
     y float = 0.0
     cx1 float = 0.0
@@ -72,13 +69,13 @@ enum ScalingMode { center, fit, fill, stretch }
 // Those two are the coordinate space and not the size on screen: a canvas laid
 // out bigger than it draws shows the picture per `scalingMode`.
 component canvas(
-    width std.measurement,
-    height std.measurement,
+    width ui.measurement,
+    height ui.measurement,
     scalingMode ScalingMode,
     style CanvasStyle,
-    @click std.ClickEvent,
+    @click ui.ClickEvent,
     shapes ...component shape,
-) std.node {}
+) ui.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) shape
@@ -94,6 +91,7 @@ component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) sha
 component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape
 
 // Arbitrary shape built from a list of PathCmd steps.
+// TODO Should the path commands be another family with the children on the path?
 component path(cmds list<PathCmd>, style CanvasStyle) shape
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
@@ -101,7 +99,7 @@ component path(cmds list<PathCmd>, style CanvasStyle) shape
 component canvasText(x float, y float, content string, style CanvasStyle) shape
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
-// or asset path as `std.image`.
+// or asset path as `ui.image`.
 component canvasImage(x float, y float, w float, h float, src string) shape
 
 // --- Geometry ---

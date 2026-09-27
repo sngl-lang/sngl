@@ -15,6 +15,8 @@ struct platform {}
 #[marks.builtin("language")]
 struct language {}
 
+// TODO build exists to expose these same names as tree families. Let's make these pull double-duty.
+
 // The platform this build targets. Compare it against a platform's own
 // identity const — `PLATFORM == html.platform` — to gate code on the target;
 // the comparison folds at build time and the branch not taken is removed. The
@@ -24,9 +26,11 @@ struct language {}
 // so a target name cannot be misspelled into a branch that is silently never
 // taken.
 #[marks.builtin("targetPlatform")]
+#[tree.kind]
 const PLATFORM = ""
 
 // The language this build emits: `LANGUAGE == go.language`. Behaves like
 // PLATFORM in every respect.
 #[marks.builtin("targetLanguage")]
+#[tree.kind]
 const LANGUAGE = ""

@@ -18,5 +18,5 @@ import marks "sngl:internal/marks"
 // tree by the mark and not by the pair "sngl:ui" and "node", so renaming
 // either leaves the role where it was written.
 #[tree.kind]
-#[marks.builtin("treeNode")]
+#[marks.builtin("treeNode")] // TODO How important is this marker? Component families should be mostly compiler agnostic now.
 struct node {}

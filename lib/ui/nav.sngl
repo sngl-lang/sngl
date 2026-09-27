@@ -4,14 +4,14 @@
 // the current view or opens a new window. `@click` runs before
 // navigation and can short-circuit it by raising an error.
 component link(
-    style Style,
-    href string,
     text string,
-    target string,
+    href string,
+    target string, // TODO enum
     disabled bool,
     focusable bool = true,
+    style Style,
     @click ClickEvent,
-) node {}
+) node
 
 component _example_link node {
     hbox(style={gap=16, padding=16}) {
@@ -25,14 +25,15 @@ component _example_link node {
 // `tabs` are the panels: one per item, in the same order. `variant`
 // styles the tab strip ("underline", "pills"); `@change` fires with
 // the newly selected index.
+// TODO Use families pass the tabs as children
 component tabs(
-    style Style,
     items list<string>,
     selected int,
-    variant string,
+    variant string, // TODO enum
+    style Style,
     @change SelectEvent,
     panels ...component,
-) node {}
+) node
 
 component _example_tabs node {
     var selected = 0
@@ -49,13 +50,14 @@ component _example_tabs node {
 // `open` is two-way bound visibility. `@select` fires with the chosen
 // item, `@close` when the menu dismisses without selection (click
 // outside, Escape).
+// TODO Use families pass the items as children
 component menu(
     style Style,
     items list<string>,
     open bool,
     @select MenuEvent,
     @close DismissEvent,
-) node {}
+) node
 
 component _example_menu node {
     var showMenu = false
@@ -69,11 +71,12 @@ component _example_menu node {
 // Each entry in `items` is rendered as a top-level menu title;
 // sub-menu items are provided by the host platform's menu
 // integration. `@select` fires with the activated menu path.
+// TODO Use families pass the items as children
 component menubar(
     style Style,
     items list<string>,
     @select MenuEvent,
-) node {}
+) node
 
 component _example_menubar node {
     vbox(style={padding=16}) {
@@ -85,12 +88,13 @@ component _example_menubar node {
 // buttons; nesting children lets you build custom toolbar contents
 // (mix of buttons, separators, spacers). `@select` fires when an
 // item from `items` is activated.
+// TODO Use families pass the items as children
 component toolbar(
     style Style,
     items list<string>,
     @select MenuEvent,
     controls ...component,
-) node {}
+) node
 
 component _example_toolbar node {
     vbox(style={padding=16}) {

@@ -1,5 +1,7 @@
 import marks "sngl:internal/marks"
 
+// TODO Rename to start
+
 // Runs f without waiting for it, on whatever the host gives for work that must
 // not block the caller: a goroutine in Go, a microtask in JavaScript, a
 // coroutine in Kotlin.
@@ -12,6 +14,8 @@ import marks "sngl:internal/marks"
 // written a data race rather than a background task.
 #[marks.intrinsic("async.spawn")]
 func spawn(f func())
+
+// TODO Terrible name, async.do is much better
 
 // Runs f back on the thread the target draws on.
 //

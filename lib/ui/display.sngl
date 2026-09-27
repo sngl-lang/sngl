@@ -1,13 +1,23 @@
+// TODO The formatter should add spaces similar to structs to make the props easier to read
+//
+// TODO Components take positional arguments. We prefer putting the ones that make sense early,
+// but a user could use them all that way. We should make a way to cut off positional arguments.
+// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
+// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.
+//
+// TODO Components should be documented better. Comments on each prop.
+
+
 // Displays a text string. `value` is the content; set `selectable=true`
 // to allow the platform to offer copy. Typography (size, weight, color,
 // alignment, `maxLines` truncation) is driven entirely by `style`.
 // The `@click` event fires on tap/click for simple text-as-action use.
 component text(
-    style Style,
     value string,
     selectable bool,
+    style Style,
     @click ClickEvent,
-) node {}
+) node
 
 component _example_text node {
     vbox(style={gap=8, padding=16}) {
@@ -24,14 +34,14 @@ component _example_text node {
 // the same value `error.raise` throws and a `boundary` catches, because a
 // failure is a failure whoever noticed it.
 component image(
-    style Style,
     src string,
     alt string,
     fit ObjectFit,
+    style Style,
     @click ClickEvent,
     @load LoadEvent,
     @error error,
-) node {}
+) node
 
 component _example_image node {
     vbox(style={gap=8, padding=16}) {
@@ -43,11 +53,11 @@ component _example_image node {
 // category tag. `variant` styles the color ("primary", "success",
 // "warning", "error", "neutral"); `size` is "small" or "medium".
 component badge(
-    style Style,
     value string,
     variant string,
     size string,
-) node {}
+    style Style,
+) node // TODO Define in terms of text as a deafult
 
 component _example_badge node {
     hbox(style={gap=8, padding=16, alignItems="center"}) {
@@ -62,16 +72,16 @@ component _example_badge node {
 // `@remove`. `selected` styles the chip as active (two-way bound
 // when used as a filter). `variant` styles the chip color.
 component chip(
-    style Style,
     label string,
     variant string,
     removable bool,
     selected bool,
     disabled bool,
     focusable bool = true,
+    style Style,
     @click ClickEvent,
     @remove DismissEvent,
-) node {}
+) node // TODO Define in terms of text as a default
 
 component _example_chip node {
     hbox(style={gap=8, padding=16}) {
@@ -86,14 +96,14 @@ component _example_chip node {
 // a preset ("small", "medium", "large") or a length; `variant` is
 // "circle" (default) or "square".
 component avatar(
-    style Style,
+    initials string,
+    size string, // TODO enum
+    variant string, // TODO: Enum
     src string,
     alt string,
-    initials string,
-    size string,
-    variant string,
+    style Style,
     @click ClickEvent,
-) node {}
+) node // TODO define in terms of image and text
 
 component _example_avatar node {
     hbox(style={gap=8, padding=16}) {
@@ -123,7 +133,7 @@ component progress(
     label string,
     variant string,
     showValue bool,
-) node {}
+) node
 
 component _example_progress node {
     vbox(style={gap=8, padding=16}) {
@@ -138,11 +148,11 @@ component _example_progress node {
 // "medium", or "large". `label` adds an accessible description
 // announced by screen readers.
 component spinner(
-    style Style,
     label string,
-    variant string,
-    size string,
-) node {}
+    variant string, // TODO enum
+    size string, // TODO enum
+    style Style,
+) node
 
 component _example_spinner node {
     hbox(style={gap=16, padding=16, alignItems="center"}) {
@@ -160,6 +170,7 @@ component _example_spinner node {
 // "desc") reflect the current sort and are two-way bound. `@sort`
 // fires when the user changes sort, `@select` when the selection
 // changes.
+// TODO should use families to define rows as children
 component table(
     style Style,
     columns list<string>,
@@ -168,10 +179,10 @@ component table(
     :selected int,
     sortable bool,
     sortColumn string,
-    sortDirection string,
+    sortDirection string, // TODO enum
     @select SelectEvent,
     @sort ChangeEvent,
-) node {}
+) node
 
 component _example_table node {
     vbox(style={padding=16}) {
@@ -184,6 +195,7 @@ component _example_table node {
 // two-way bound. `expanded` is the list of expanded node indices,
 // also two-way bound. `@select` fires on row pick, `@expand` when the
 // user toggles a node.
+// TODO should use families to define nodes as children
 component tree(
     style Style,
     items list<string>,
@@ -191,7 +203,7 @@ component tree(
     expanded list<int>,
     @select SelectEvent,
     @expand ExpandEvent,
-) node {}
+) node
 
 component _example_tree node {
     vbox(style={padding=16}) {

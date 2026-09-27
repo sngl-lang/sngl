@@ -1,13 +1,13 @@
 import marks "sngl:internal/marks"
 
-// UTF-8 string. Strings are immutable; methods on the `string` receiver
+// Unicode string. Strings are immutable; methods on the `string` receiver
 // return new values rather than mutating in place. Use `+` for
 // concatenation and the `string.*` helpers (`length`, `upper`, `split`,
 // `replace`, …) for everything else.
 #[marks.builtin("string")]
 struct string {}
 
-// Number of Unicode characters in s (not bytes).
+// Number of Unicode codepoints in s (not bytes).
 #[marks.intrinsic("string.length")]
 const func string.length(s string) int
 

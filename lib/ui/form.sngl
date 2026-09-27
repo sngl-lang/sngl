@@ -6,14 +6,14 @@ import time "sngl:time"
 // `@click` fires on activation; `@longPress` fires after a sustained
 // press on pointer/touch platforms.
 component button(
-    style Style,
     text string,
     disabled bool,
     focusable bool = true,
+    style Style,
     @click ClickEvent,
     @longPress LongPressEvent,
     content ...component,
-) node {}
+) node
 
 component _example_button node {
     var count = 0
@@ -34,20 +34,20 @@ component _example_button node {
 // behavior. `@input` fires on every keystroke, `@change` on commit
 // (blur or Enter), `@submit` on Enter. `maxLength` caps accepted input.
 component input(
-    style Style,
-    :value string,
     placeholder string,
-    disabled bool,
     readonly bool,
-    type string,
+    :value string,
+    disabled bool,
+    type string, // TODO enum
     maxLength int,
     focusable bool = true,
+    style Style,
     @input InputEvent,
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
     @submit SubmitEvent,
-) node {}
+) node
 
 component _example_input node {
     var name = ""
@@ -64,19 +64,19 @@ component _example_input node {
 // `@change` on commit. `rows` controls the initial visible row count;
 // the editor still scrolls when content exceeds it.
 component textarea(
-    style Style,
-    :value string,
     placeholder string,
-    disabled bool,
     readonly bool,
+    :value string,
+    disabled bool,
     rows int,
     maxLength int,
     focusable bool = true,
+    style Style,
     @input InputEvent,
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) node {}
+) node
 
 component _example_textarea node {
     var notes = ""
@@ -92,13 +92,13 @@ component _example_textarea node {
 // a bare checkbox. `@change` fires each time the user toggles, and
 // carries the new state.
 component checkbox(
-    style Style,
-    :checked bool,
     label string,
+    :checked bool,
     disabled bool,
     focusable bool = true,
+    style Style,
     @change ToggleEvent,
-) node {}
+) node
 
 component _example_checkbox node {
     var darkMode = false
@@ -113,14 +113,15 @@ component _example_checkbox node {
 // equality). `direction` is "horizontal" or "vertical" and controls
 // how choices are laid out. `@change` fires with the newly selected
 // value on user selection.
+// TODO Should this use children for the options?
 component radio(
-    style Style,
-    :value string,
     options list<string>,
+    :value string,
     disabled bool,
-    direction string,
+    direction string, // TODO enum
+    style Style,
     @change ChangeEvent,
-) node {}
+) node
 
 component _example_radio node {
     var size = "medium"
@@ -134,13 +135,13 @@ component _example_radio node {
 // equivalent to `checkbox` but rendered as a switch affordance on
 // platforms that distinguish the two.
 component toggle(
-    style Style,
-    :checked bool,
     label string,
+    :checked bool,
     disabled bool,
     focusable bool = true,
+    style Style,
     @change ToggleEvent,
-) node {}
+) node
 
 component _example_toggle node {
     var notifications = false
@@ -154,18 +155,19 @@ component _example_toggle node {
 // `value` is the current selection, two-way bound. Set `multiple=true`
 // to allow multi-select (value becomes a newline-joined string of
 // selected labels). `placeholder` shows when nothing is selected.
+// TODO Should this use children for the options?
 component select(
-    style Style,
-    :value string,
     options list<string>,
     placeholder string,
+    :value string,
     disabled bool,
     multiple bool,
     focusable bool = true,
+    style Style,
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) node {}
+) node
 
 component _example_select node {
     var fruit = ""
@@ -184,16 +186,16 @@ component _example_select node {
 // and a `date` has no value meaning "none": its zero is the first day of year
 // one, which is a date a picker would happily show.
 component datepicker(
-    style Style,
-    value option<time.date>,
+    placeholder string,
     min option<time.date>,
     max option<time.date>,
+    value option<time.date>, // TODO Two-way binding
     disabled bool,
-    placeholder string,
+    style Style,
     @change DateEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) node {}
+) node
 
 component _example_datepicker node {
     vbox(style={padding=16}) {

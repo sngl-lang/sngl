@@ -1,5 +1,7 @@
 import marks "sngl:internal/marks"
 
+// TODO Does this package go away? We have a _much_ better design with effect and normal async functions. Value definitely goes away.
+
 // A value fetched from outside the program: absent until it arrives, able to
 // fail, and able to arrive again. T is the fetched type.
 //

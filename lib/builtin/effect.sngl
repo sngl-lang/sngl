@@ -6,11 +6,6 @@ import tree "sngl:tree"
 // program has to give back -- a subscription, a scheduled callback, a request
 // in flight.
 //
-// Ambient for the reason `context` is: the form that brackets a lifetime has to
-// be available wherever a package declares state, and every tier above this one
-// builds its own setup and teardown out of it. The mark is what the checker
-// matches, so the name `effect` is shadowable like any other.
-//
 // It is placed, not declared: an effect is a node, so it sits where it belongs
 // in the body and takes its lifetime from the tree around it. One inside an
 // `if` lives as long as that branch does. A component places as many as it has
@@ -42,5 +37,5 @@ import tree "sngl:tree"
 component effect<T = struct {}>(
     on T,
     @mount T,
-    @unmount T,
+    @unmount T, // TODO This syntax should go away. Event handler params and args should behave like funcs
 ) {}

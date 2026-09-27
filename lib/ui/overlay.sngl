@@ -13,7 +13,7 @@ component modal(
     size string,
     @close DismissEvent,
     content ...component,
-) node {}
+) node
 
 component _example_modal node {
     var showModal = false
@@ -61,7 +61,7 @@ component tooltip(
     text string,
     position string,
     delay int,
-    trigger ...component tr.one,
+    trigger ...component tr.one<node>,
 ) node {}
 
 component _example_tooltip node {

@@ -6,9 +6,9 @@ import tr "sngl:tree"
 // to opt in to pull-to-refresh on platforms that support it. Use
 // `style.gap` to control spacing between children.
 component vbox(
-    style Style,
     scroll bool,
     refreshing bool,
+    style Style,
     @refresh RefreshEvent,
     children ...component,
 ) node {}

@@ -1,9 +1,11 @@
-// Receiver type for test-only helpers. Used by the stdlib test runner:
-// each test function declares `t Test` as its first parameter and the
+// Receiver type for test-only helpers. Used by the test runner:
+// each test function declares `t test.Test` as its first parameter and the
 // runner injects a value that carries the assertion facility. Tests
 // are top-level functions whose name starts with "test" and that call
 // `t.assert(cond)` to declare expected conditions.
 struct Test {}
+
+// TODO These should be bodyless if they don't have real implementations (intrinsics)
 
 // Asserts that b is true; fails the enclosing test otherwise. The
 // assertion records a failure on the test and continues executing

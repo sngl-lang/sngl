@@ -9,3 +9,7 @@ import tree "sngl:tree"
 #[tree.none]
 #[marks.builtin("context")]
 component context(default dyn) {}
+
+//TODO Should be generic
+//component context<T, V>(default V) T
+//func context.value<T,V>() V 

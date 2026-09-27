@@ -1,3 +1,6 @@
+// TODO Now that events can have multiple ars, most of these should probably go away
+//
+
 // Payload emitted by `@click` when a component is activated. Fires on
 // tap, mouse click, Enter-on-focused-button, or the platform's
 // activation gesture. Currently carries no fields — consult the

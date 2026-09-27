@@ -1,6 +1,8 @@
+// TODO tree isn't a great name here. "family" is the accepted name.
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
 
+// TODO There's got to be a better way to declare these.
 // Marks a struct as naming a tree. The struct is the tree: nothing is stored in
 // it and no value of it exists, so a component naming it says which family it
 // is a member of rather than what it holds.
@@ -9,6 +11,7 @@ import marks "sngl:internal/marks"
 // unresolved name at the declaration rather than a family nobody joins.
 func kind() ir.Macro
 
+// TODO This isn't needed anymore. We have generics on components to handle the families
 // Marks a component as belonging to no tree. It may be placed in any of them
 // and may contain a member of none, which is what a component that renders
 // nothing wants: a lifetime bracket, a scheduler, a context override.
@@ -18,6 +21,8 @@ func kind() ir.Macro
 // one — so tree-lessness is a claim the declaration makes.
 func none() ir.Macro
 
+// TODO should we switch to list<T> for multiple so this can go? Or replace option<T> with a decl here.
+// TODO Do we need to control the number of children anywhere yet?
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.
 //
