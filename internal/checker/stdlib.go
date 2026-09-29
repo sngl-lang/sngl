@@ -1371,7 +1371,11 @@ func (c *checker) checkPendingExtensions() {
 			// checkComponentBody checks comp.Funcs in the component's own
 			// scope, so the override's are checked with its vars and props
 			// visible by having been appended above.
+			if pe.user {
+				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+			}
 			c.checkComponentBody(pe.comp)
+			c.overrideFile = overrideFile{}
 			// While the override's state is still installed, because that is
 			// the body a component nested in it was written in. Left to
 			// pass2's checkComponentBodies it runs after the restore below,

@@ -352,8 +352,16 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	var visit func(fn *ir.Func)
 	walk := func(stmts []ir.Stmt) {
 		newExprWalker(func(e ir.Expr) ir.Expr {
-			if call, ok := e.(*ir.Call); ok {
-				visit(call.Func)
+			switch x := e.(type) {
+			case *ir.Call:
+				visit(x.Func)
+			case *ir.Ident:
+				// Held as a value -- handed to a func-typed prop, stored in a
+				// record -- a function is as much the program's as one it
+				// calls, and nothing else would declare it.
+				if fn, ok := x.Sym.(*ir.Func); ok {
+					visit(fn)
+				}
 			}
 			return e
 		}).stmts(stmts)

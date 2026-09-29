@@ -253,6 +253,8 @@ type checker struct {
 	// the work is driven by the package's declarations rather than by its
 	// files.
 	fileScopesByName map[string]*ir.Scope
+	// overrideFile says which file an installed override's body came from.
+	overrideFile overrideFile
 	// shellMarks queues the marks on a struct shell, enum or unit while pass1
 	// is still registering declarations, so a package's own macro is in scope
 	// by the time one that names it runs. Non-nil only for that window.
@@ -877,6 +879,24 @@ func funcDeclPos(fn *ir.Func) ast.Pos {
 		return fn.AST.Pos
 	}
 	return ast.Pos{}
+}
+
+// overrideFile is the override whose body is installed on comp while
+// checkPendingExtensions checks it. A program's override may be written in a
+// file other than the declaration's, and it is the override's file whose
+// imports its body was written against.
+type overrideFile struct {
+	comp *ir.Component
+	pos  ast.Pos
+}
+
+// bodyFilePos is the position of the file comp's body is being read from: the
+// override's, while one is installed, and the declaration's otherwise.
+func (c *checker) bodyFilePos(comp *ir.Component) ast.Pos {
+	if c.overrideFile.comp == comp && comp != nil {
+		return c.overrideFile.pos
+	}
+	return compDeclPos(comp)
 }
 
 func compDeclPos(comp *ir.Component) ast.Pos {
@@ -4025,7 +4045,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 }
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
-	defer c.fileOf(compDeclPos(comp))()
+	defer c.fileOf(c.bodyFilePos(comp))()
 	c.pushScope()
 	defer c.popScope()
 
