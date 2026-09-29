@@ -577,7 +577,9 @@ Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `l
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `window` in `ui`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
-`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements as the package's own identity const, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the const reaches it.
+`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements by the package's own build-target node, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the node reaches it.
+
+**A target is its build-target node.** A platform package declares `#[gen.name("html")] component platform(…) build.platform`, a language package `component language(…) build.language`: the node is named for its tier by convention, and `#[gen.name]` is the string the CLI, the Go registry and an `output` block's bare `html` match on (`ir.TargetNode`, `GenCaps.TargetName`). The same declaration is the option schema, carries the `#[gen.can]` marks and is the identity: `[platform]` and `[html.platform]` resolve to it (`resolveTargetIndex`), and read as a value it has sngl:builtin's `platform` type (`targetValueType`), folding to its name in the optimizer and the interpreter, so `PLATFORM == html.platform` is unchanged. There used to be a generated `const platform = "html"` mounted into every target package (`identityDoc`, `#[macro.identity]`), a second declaration that could disagree with the first. A build-target node without the mark is an error, as is the mark anywhere else. Diagnostics name a node by `Component.DisplayName`, its target name, since every platform's node is called `platform`.
 
 **A target carries its own library package.** `sngl:platform/<name>` and `sngl:language/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
 
@@ -2097,11 +2099,10 @@ level that declares it, `output(name=…)` for the ones every target shares,
 `ir.Output` is the projection a build reads: one per pair, with the three levels
 of props flattened into `Options`.
 
-Three things follow. A target package now declares a component sharing the
-package's own name, and the package binds *itself* as a namespace under that
-name so its bodies can write `html.div`; the namespace wins inside the package,
-and an output block reaches the node off the package rather than through that
-scope. Resolution inside the directive is by level rather than by scope
+Three things follow. A target package declares a node named for its tier and
+binds *itself* as a namespace under the package's name so its bodies can write
+`html.div`, and an output block reaches the node off the package, by its
+`#[gen.name]`, rather than through that scope. Resolution inside the directive is by level rather than by scope
 (`checker.targetNode`, keyed on `c.outputDepth`), trying the tier that level
 accepts first and the other second — `none` is both a language and a platform,
 and trying the other tier second is what makes a misplaced target a

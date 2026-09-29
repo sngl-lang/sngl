@@ -33,7 +33,8 @@ import gen "sngl:x/gen"
     structSpread,
 )]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
-component html(
+#[gen.name("html")]
+component platform(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
     const preview bool,
     // Emit a test harness instead of the normal app bundle.

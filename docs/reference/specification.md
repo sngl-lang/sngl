@@ -735,8 +735,9 @@ scope in every file implicitly and cannot be imported explicitly; it is the
 only implicit import in the language.
 
 `PLATFORM` and `LANGUAGE` name the target a build is producing. Their types are
-`platform` and `language`, which have no literal: a value of one is the identity
-constant a target's own package declares, so a platform is compared as
+`platform` and `language`, which have no literal: a value of one is the
+build-target node a target's own package declares, read as a value, so a
+platform is compared as
 `PLATFORM == html.platform` (after `import html "sngl:platform/html"`), and
 `PLATFORM == "html"` is a type error. The comparison folds at build time and
 the branch not taken is removed. See
@@ -2080,9 +2081,9 @@ A program is written once for every target, and says where it differs in two
 ways.
 
 **A comparison against the target identity.** `PLATFORM` and `LANGUAGE` hold
-the target a build produces. Each target's package declares its identity
-constant — `html.platform`, `go.language` — and a comparison against one folds
-at build time, removing the branch not taken:
+the target a build produces. Each target's package declares its build-target
+node, named for its tier — `html.platform`, `go.language` — and a comparison
+against one folds at build time, removing the branch not taken:
 
 <!-- SNGL-component -->
 
@@ -2154,8 +2155,8 @@ The contract has these observable facts:
   manual; they do not change what a well-formed program means.
 - **Target packages contribute names.** Each platform and language serves a
   package of declarations reachable through a `sngl:platform/…` or
-  `sngl:language/…` import: its identity constant, its node in the `output`
-  tree, its raw elements (for example HTML tags), and its overrides of library
+  `sngl:language/…` import: its node in the `output` tree, which is also its
+  identity, its raw elements (for example HTML tags), and its overrides of library
   components.
 - **Some targets restrict programs.** A platform may support only certain
   languages, and a language may lack a capability that a program relies on; such

@@ -7,16 +7,18 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The identity of a build target is a value of its own type rather than a
-// string: `platform` and `language` are declared in lib/builtin and marked
-// #[builtin], and each registered target gets one const of that type
-// synthesized into its own package. So `html.platform` is the only way to name
-// the html target, `PLATFORM == "html"` does not type-check, and a misspelled
-// target name is an unresolved selector rather than a branch nobody takes.
+// A build target is named by its node: the `component platform(…)
+// build.platform` or `component language(…) build.language` its own package
+// declares, carrying `#[gen.name]`. Inside that package it is `platform`,
+// and a program names it through the package, `html.platform`, the way it
+// names any other declaration there. Nothing is synthesized: the declaration
+// that is the target's option schema and carries its `#[gen]` marks is also
+// its identity, so there is no second one to disagree with it.
 //
-// The consts are synthesized rather than declared because a plugin that
-// declared its own could disagree with the name it registered under, and
-// because a target outside this repository then needs to know nothing.
+// As a value it is the identity PLATFORM and LANGUAGE are compared against:
+// its type is sngl:builtin's `platform` or `language` (targetValueType), so
+// `PLATFORM == "html"` still does not type-check, and a misspelled target is
+// an unresolved name rather than a branch nobody takes.
 
 // typeTargetConsts gives PLATFORM and LANGUAGE their types. It runs after the
 // whole of lib/builtin is registered: the consts and the types they carry are
@@ -31,13 +33,24 @@ func (c *checker) typeTargetConsts() {
 	}
 }
 
-// targetConstName is the predeclared const a target identity is compared
-// against — the inverse of the member name a target's identity const carries.
-func targetConstName(member string) string {
-	if member == "language" {
-		return "LANGUAGE"
+// targetValueType is the type a reference to a build-target node has where it
+// is read as a value: sngl:builtin's `platform` or `language`, the types
+// PLATFORM and LANGUAGE carry. Nil for any other symbol.
+func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
+	node, _, ok := ir.TargetNode(sym)
+	if !ok {
+		return nil
 	}
-	return "PLATFORM"
+	if node.Tree.Name == "language" {
+		if c.languageType != nil {
+			return c.languageType.SymType()
+		}
+		return nil
+	}
+	if c.platformType != nil {
+		return c.platformType.SymType()
+	}
+	return nil
 }
 
 // targetTierMember is the identity a target of this kind carries, as it is
@@ -106,28 +119,18 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 
 // targetIdentity reads the target a symbol identifies. Both spellings of the
 // index -- the package's own `platform` and another package's `html.platform`
-// -- name one const, so what makes it an identity is checked in one place.
+// -- name one build-target node, so what makes it an identity is checked in one
+// place.
 func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (string, ir.BuiltinKind, bool) {
-	v, isVar := sym.(*ir.Var)
-	if !isVar || !v.IsConst || v.Type == nil || v.Init == nil {
-		c.error(pos, "%s is not a target identity", spelling)
+	node, name, ok := ir.TargetNode(sym)
+	if !ok {
+		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	k := ir.BuiltinNone
-	switch {
-	case c.platformType != nil && v.Type.Decl == c.platformType:
-		k = ir.BuiltinPlatform
-	case c.languageType != nil && v.Type.Decl == c.languageType:
-		k = ir.BuiltinLanguage
-	default:
-		c.error(pos, "%s is a %s, not a target identity", spelling, v.Type)
-		return "", ir.BuiltinNone, false
+	if node.Tree.Name == "language" {
+		return name, ir.BuiltinLanguage, true
 	}
-	lit, isLit := v.Init.(*ir.Literal)
-	if !isLit {
-		return "", ir.BuiltinNone, false
-	}
-	return lit.Value, k, true
+	return name, ir.BuiltinPlatform, true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program

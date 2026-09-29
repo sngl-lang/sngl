@@ -22,7 +22,8 @@ import gen "sngl:x/gen"
 // instance: each mount is an environment of its own.
 #[gen.can(instanceState)]
 #[gen.cannot(structSpread)]
-component none() build.platform {}
+#[gen.name("none")]
+component platform() build.platform {}
 
 // A deadline that recurs. The interpreter's clock finds these in the rendered
 // tree and fires each one's `@tick` when the clock reaches its deadline.

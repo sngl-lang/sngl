@@ -29,7 +29,8 @@ import gen "sngl:x/gen"
     viewStatements,
     asyncSpawn,
 )]
-component go(
+#[gen.name("go")]
+component language(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.
     const goVersion string,

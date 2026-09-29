@@ -3,10 +3,10 @@ import go "sngl:language/go"
 
 // The block family, emitted as Go.
 //
-// PROPOSED: an override keyed by the build node's declaration. `[go]` is
-// `sngl:language/go`'s `component go(…) build.language`; the bracket position
-// only ever names a build node, so it resolves by level rather than to the
-// `go` package namespace this file also imports.
+// `[go.language]` is `sngl:language/go`'s build-target node,
+// `#[gen.name("go")] component language(…) build.language`: the node is the
+// target, so an override names it the way it names any declaration of that
+// package.
 //
 // A *language* override because none of this depends on the host: gtk4, fyne
 // and a headless loop all pick it through the platform → language →
@@ -17,7 +17,7 @@ import go "sngl:language/go"
 // applied: no ternary, no lambda, no reactivity. That is the smallest IR there
 // is, and the claim-nothing default is what keeps it correct as the language
 // grows.
-component block[go] {
+component block[go.language] {
     // PROPOSED: `gen.emit` runs at generate time, in the interpreter, over the
     // lowered IR of every place the program renders this family.
     //

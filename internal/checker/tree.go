@@ -39,6 +39,9 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		}
 		// A wildcard is a primitive too, and html is why: its widgets are one
 		// `element` every tag resolves to rather than a declaration each.
+		if g.TargetName != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
+			c.error(decl.Pos, "component %s: #[gen.name] names a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
 		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
 			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
 		}
@@ -81,6 +84,11 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		if comp.IsFamily() {
 			c.checkFamilyDecl(decl, comp)
 			return
+		}
+		// A build-target node is the target's identity as well as its option
+		// schema, and #[gen.name] is the half the world outside SNGL reads.
+		if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
+			c.error(decl.Pos, "component %s is a build-target node: say what the build calls it with #[gen.name(\"…\")]", comp.Name)
 		}
 		// A painted shape has nothing to raise an event from. This is drawing's
 		// rule rather than one about trees, and it sits here because membership

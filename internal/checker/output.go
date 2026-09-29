@@ -66,11 +66,13 @@ func (c *checker) targetNode(name string, depth int) *ir.Component {
 		if pkg == nil || pkg.Symbols == nil {
 			continue
 		}
-		sym, ok := pkg.Symbols.LookupRootComponent(name)
+		// The node is named for its tier, `platform` or `language`, and the
+		// name the directive wrote is the one #[gen.name] gives it.
+		sym, ok := pkg.Symbols.LookupRootComponent(targetTierMember(kind))
 		if !ok {
 			continue
 		}
-		if comp, ok := sym.(*ir.Component); ok {
+		if comp, got, ok := ir.TargetNode(sym); ok && got == name {
 			return comp
 		}
 	}
@@ -108,7 +110,7 @@ func (c *checker) unregisteredTargetNode(name string, depth int) *ir.Component {
 		return comp
 	}
 	langTree, platTree := c.buildTrees()
-	comp := &ir.Component{Name: name, Stdlib: true, Tree: platTree}
+	comp := &ir.Component{Name: name, Stdlib: true, Tree: platTree, Gen: &ir.GenCaps{TargetName: name}}
 	if depth == 1 {
 		comp.Tree = langTree
 		comp.ChildrenType = &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypDyn}}
@@ -169,8 +171,8 @@ func (c *checker) collectOutputs(root *ir.NodeInst) {
 				continue
 			}
 			out := &ir.Output{
-				Lang:     langNode.Component.Name,
-				Platform: platNode.Component.Name,
+				Lang:     targetName(langNode.Component),
+				Platform: targetName(platNode.Component),
 				LangComp: langNode.Component,
 				PlatComp: platNode.Component,
 				Options:  outputOptions(root, langNode, platNode),
@@ -283,4 +285,14 @@ func (c *checker) reportUnknownTarget(pos ast.Pos, name string, depth int) {
 	}
 	slices.Sort(names)
 	c.error(pos, "unknown %s %q in output (available: %s)", what, name, strings.Join(names, ", "))
+}
+
+// targetName is the name a build reads a target node by, which is its
+// #[gen.name] rather than the component's own: every platform's node is
+// called `platform`.
+func targetName(node *ir.Component) string {
+	if _, name, ok := ir.TargetNode(node); ok {
+		return name
+	}
+	return node.Name
 }

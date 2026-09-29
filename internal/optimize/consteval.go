@@ -32,6 +32,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
+		if _, _, ok := ir.TargetNode(x.Sym); ok {
+			return true // a target's identity is its name
+		}
 		if _, ok := x.Sym.(*ir.Namespace); ok {
 			return true // namespace refs are compile-time resolvable
 		}
@@ -91,6 +94,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Select:
 		if v, ok := nsConst(x); ok {
 			return v.Init != nil || v.Builtin.IsConst()
+		}
+		if _, ok := nsTarget(x); ok {
+			return true
 		}
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Index:
@@ -241,6 +247,9 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if v, ok := nsConst(x); ok {
 			return evalIdent(&ir.Ident{Name: x.Field, Sym: v}, ctx)
 		}
+		if name, ok := nsTarget(x); ok {
+			return name, true
+		}
 		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
@@ -293,6 +302,11 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 	// supplies the value. The build target is keyed off the #[builtin] mark
 	// rather than the name, so a declaration shadowing PLATFORM is an
 	// ordinary const and folds to whatever it was declared as.
+	// A build-target node read as a value is the target's identity, and that
+	// is its registered name -- the value PLATFORM and LANGUAGE fold to.
+	if _, name, ok := ir.TargetNode(x.Sym); ok {
+		return name, true
+	}
 	if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 		switch v.Builtin {
 		case ir.BuiltinTargetPlatform:
@@ -1192,6 +1206,25 @@ func nsConst(x *ir.Select) (*ir.Var, bool) {
 		return nil, false
 	}
 	return v, true
+}
+
+// nsTarget is the registered name of the build-target node a package member
+// select names, as in `html.platform`.
+func nsTarget(x *ir.Select) (string, bool) {
+	id, ok := x.Operand.(*ir.Ident)
+	if !ok {
+		return "", false
+	}
+	ns, ok := id.Sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+		return "", false
+	}
+	sym, ok := ns.Pkg.Symbols.LookupMember(x.Field)
+	if !ok {
+		return "", false
+	}
+	_, name, ok := ir.TargetNode(sym)
+	return name, ok
 }
 
 // unitConversionString spells a folded unit value the way every target

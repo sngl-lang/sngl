@@ -17,7 +17,8 @@ import gen "sngl:x/gen"
 #[gen.can(effects, instanceState)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
-component android(
+#[gen.name("android")]
+component platform(
     // Kotlin package / Android application ID.
     const package string,
     // Display name used in AndroidManifest.xml.

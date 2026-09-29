@@ -771,6 +771,11 @@ func (c *checker) symType(sym ir.Symbol) *ir.Type {
 	if sym == nil {
 		return nil
 	}
+	// A build-target node read as a value is the target's identity, which is
+	// what PLATFORM and LANGUAGE are compared against.
+	if t := c.targetValueType(sym); t != nil {
+		return t
+	}
 	return sym.SymType()
 }
 

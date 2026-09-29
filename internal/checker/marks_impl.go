@@ -23,7 +23,6 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "cnative"}:            markCNative,
 	{"macro", "unusable"}:           markUnusable,
 	{"language/kotlin", "native"}:   markKotlinNative,
-	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
 	{"language/js", "native"}:       markJSNative,
@@ -31,6 +30,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "cannot"}:             markGenCannot,
 	{"x/gen", "wants"}:              markGenWants,
 	{"x/gen", "renders"}:            markGenRenders,
+	{"x/gen", "name"}:               markGenName,
 	{"ui/markup/md", "order"}:       markMdOrder,
 }
 
@@ -728,64 +728,6 @@ func (c *checker) checkConstructProps() {
 	}
 }
 
-// markIdentity implements #[identity], which names the const carrying a
-// target's own identity.
-//
-// The const is named for the type it has -- `platform`, `language` -- so it
-// cannot annotate itself: the annotation would resolve to the const being
-// declared rather than to the builtin struct it shadows. The mark supplies the
-// type instead, choosing it by that name, and retypes the literal with it so
-// the value compares equal to nothing but another identity of the same kind.
-func markIdentity(m *mark) error {
-	v, ok := m.sym.(*ir.Var)
-	if !ok || !v.IsConst {
-		return fmt.Errorf("#[identity] cannot mark %s; only a const carries a target identity", ast.DeclFormName(m.decl))
-	}
-	var typ *ir.StructDef
-	switch v.Name {
-	case "platform":
-		typ = m.c.platformType
-	case "language":
-		typ = m.c.languageType
-	default:
-		return fmt.Errorf("#[identity] on %q: a target identity is named for its type, `platform` or `language`", v.Name)
-	}
-	if typ == nil {
-		return fmt.Errorf("#[identity]: sngl:builtin declares no %q type", v.Name)
-	}
-	// Read the value from the source rather than the IR: a const's initialiser
-	// is checked in a deferred pass, so at mark time there is nothing on the
-	// var yet. Supplying both halves here is also what takes this const out of
-	// that pass, which would otherwise check a string against a target type.
-	decl, ok := m.decl.(*ast.ConstDecl)
-	if !ok {
-		return fmt.Errorf("#[identity] cannot mark %s", ast.DeclFormName(m.decl))
-	}
-	name, ok := identityLiteral(decl, v.Name)
-	if !ok {
-		return fmt.Errorf("#[identity] on %q: the value is the target's name, written as a string literal", v.Name)
-	}
-	v.Type = typ.SymType()
-	v.Init = &ir.Literal{Type: typ.SymType(), Value: name}
-	v.Synthesized = true
-	return nil
-}
-
-// identityLiteral is the string a const declaration gives the named const.
-func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
-	for _, spec := range decl.Specs {
-		if !slices.Contains(spec.Names, name) {
-			continue
-		}
-		lit, ok := spec.Default.(*ast.LiteralExpr)
-		if !ok {
-			return "", false
-		}
-		return lit.StringValue()
-	}
-	return "", false
-}
-
 // claimForeign records fm on a declaration that has no host identity yet.
 //
 // A second native mark is refused rather than overwriting the first: ir.Foreign
@@ -814,6 +756,29 @@ func markGenCan(m *mark) error     { return markGen(m, "can") }
 func markGenCannot(m *mark) error  { return markGen(m, "cannot") }
 func markGenWants(m *mark) error   { return markGen(m, "wants") }
 func markGenRenders(m *mark) error { return markGen(m, "renders") }
+
+// markGenName implements #[gen.name]: the string a build-target node is known
+// by outside SNGL. Where it may be written -- a build-target node, and only
+// one -- is finishTreeMarks' question, for the reason the other gen marks'
+// placement is.
+func markGenName(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[gen.name] cannot mark %s; it belongs on the build-tree node a target package declares", ast.DeclFormName(m.decl))
+	}
+	name := m.args.String("target")
+	if name == "" {
+		return fmt.Errorf("#[gen.name] requires a non-empty name")
+	}
+	if comp.Gen == nil {
+		comp.Gen = &ir.GenCaps{}
+	}
+	if comp.Gen.TargetName != "" {
+		return fmt.Errorf("#[gen.name(%q)]: already named %q", name, comp.Gen.TargetName)
+	}
+	comp.Gen.TargetName = name
+	return nil
+}
 
 func markGen(m *mark, kind string) error {
 	comp, ok := m.sym.(*ir.Component)

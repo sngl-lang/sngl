@@ -1,0 +1,16 @@
+// A build-target node is the target's identity and its option schema, and
+// #[gen.name] is the name the world outside SNGL looks it up by -- so a node
+// without one is refused, and the mark is refused anywhere but on a node.
+
+import build "sngl:build"
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component platform() build.platform {} // ERROR(check) "component platform is a build-target node: say what the build calls it with #[gen.name"
+
+#[gen.name("widget")] // ERROR(check) "component widget: #[gen.name] names a build target, and belongs on a build-target node"
+component widget() ui.node {}
+
+ui.window {
+    widget()
+}

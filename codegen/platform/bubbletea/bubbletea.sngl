@@ -13,7 +13,8 @@ import gen "sngl:x/gen"
 // re-rasterises with it, so an explicit redraw would be the second of two.
 #[gen.cannot(inlineComponents, implicitRecv, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
-component bubbletea(
+#[gen.name("bubbletea")]
+component platform(
     // Go package name for the generated files.
     const package string,
     // Emit a standalone main() or a library-style module.

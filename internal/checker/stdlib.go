@@ -216,59 +216,7 @@ func (c *checker) libDocs(name string) []*ast.Document {
 	if docs == nil {
 		docs = append(PackageDocsFor(name), c.providedDocs(name)...)
 	}
-	return append(docs, c.identityDoc(name)...)
-}
-
-// identityFile is the name the generated identity declaration is mounted
-// under. The prefix keeps it clear of anything a plugin would write, and it
-// reads as a file of the package because it is one.
-const identityFile = "sngl__identity.sngl"
-
-// identityDoc is the target identity mounted into a target's package: one
-// generated file declaring the const that `[platform]` names.
-//
-// It is added here rather than to the fs.FS a plugin serves, because that is
-// not the only way a target package's source arrives -- Config.LibSources
-// substitutes the whole package for the in-test stubs, and a stub is as much a
-// target as a plugin is. This is the one place they meet.
-//
-// Generated rather than injected into the loaded IR: the identity is then an
-// ordinary declaration of the package, parsed, registered and documented like
-// everything else it serves, and nothing downstream has to know the compiler
-// wrote it.
-func (c *checker) identityDoc(pkgName string) []*ast.Document {
-	member, ok := targetNamespaceMember(pkgName)
-	if !ok {
-		return nil
-	}
-	name, _ := targetNamespaceName(pkgName)
-	// Qualified, not dot-imported: imports are file scope, so a dot import
-	// here would collide with nothing -- it would just lift the package's
-	// names into a file that uses one mark and declares one const.
-	src := fmt.Sprintf(`import macro "sngl:macro"
-
-// The %s %s, as a value: compare %s against it. The comparison folds at
-// build time, so the branch not taken is removed.
-#[macro.identity]
-const %s = %q
-`, name, member, targetConstName(member), member, name)
-	doc, err := parser.Parse(identityFile, []byte(src))
-	if err != nil {
-		panic("sngl: generated target identity does not parse: " + err.Error())
-	}
-	return []*ast.Document{doc}
-}
-
-// targetNamespaceMember is the identity const a package of this name carries:
-// `platform` for a platform tier, `language` for a language one.
-func targetNamespaceMember(pkgName string) (string, bool) {
-	switch {
-	case strings.HasPrefix(pkgName, "platform/"):
-		return "platform", true
-	case strings.HasPrefix(pkgName, "language/"):
-		return "language", true
-	}
-	return "", false
+	return docs
 }
 
 // providedDocs is the source the registered target of this package name
@@ -696,22 +644,26 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 // TargetNode returns the build-directive node `sngl:<uri>` declares -- the
 // component an output block writes to name that target -- or nil when the
-// package declares none. A target package names its node after itself, which
-// is what an output block writes.
+// package declares none. The node is named for its tier, `platform` or
+// `language`, and carries the target's name in #[gen.name], which is what an
+// output block writes.
 func TargetNode(uri string) *ir.Component {
 	pkg := LibPackage(uri)
 	if pkg == nil || pkg.Symbols == nil {
 		return nil
 	}
-	name := uri
-	if i := strings.LastIndexByte(uri, '/'); i >= 0 {
-		name = uri[i+1:]
-	}
-	sym, ok := pkg.Symbols.LookupRootComponent(name)
+	name, kind, ok := targetTierName(uri)
 	if !ok {
 		return nil
 	}
-	comp, _ := sym.(*ir.Component)
+	sym, ok := pkg.Symbols.LookupRootComponent(targetTierMember(kind))
+	if !ok {
+		return nil
+	}
+	comp, got, ok := ir.TargetNode(sym)
+	if !ok || got != name {
+		return nil
+	}
 	return comp
 }
 

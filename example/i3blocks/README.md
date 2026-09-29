@@ -17,7 +17,7 @@ a GTK window that a click on a block opens:
   under `if details`.
 - `i3/i3.sngl` declares the family (`block`), its members (`text`, `gap`) and
   the root member that hosts them (`bar`).
-- `i3/go.sngl` is `block[go]`, the family's emitter for Go. It runs at generate
+- `i3/go.sngl` is `block[go.language]`, the family's emitter for Go. It runs at generate
   time over the lowered IR and writes `i3bar.go` into whichever Go host the build
   picked.
 
@@ -27,12 +27,12 @@ both reach the bar through the same language override.
 ## The proposal it is written against
 
 1. **A family is a component in `build.family`.** `component block build.family`
-   replaces `#[tree.kind] struct block {}`. `sngl:ui`'s `node` becomes one too.
+   replaces `#[tree.kind] struct block {}`. *Done.* `sngl:ui`'s `node` becomes one too.
    A platform supports a family by overriding it, as in `ui.node[gtk4]`.
-2. **An override is keyed by a build node's declaration.** `[go]` names
-   `sngl:language/go`'s `component go(…) build.language`, and the synthesized
-   `platform` const goes away. The bracket position resolves by level, so it
-   does not reach the `go` package namespace.
+2. **An override is keyed by a build node's declaration.** *Done.*
+   `[go.language]` names `sngl:language/go`'s
+   `#[gen.name("go")] component language(…) build.language`, and the
+   synthesized `platform` const is gone.
 3. **A family's override is its emitter**, chosen platform → language →
    declaration, or else the per-target bodyless error at the position the
    program reached. i3 needs a language override because nothing it writes

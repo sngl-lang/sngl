@@ -33,8 +33,8 @@ component text(
 component gap(width int = 9) block
 
 // PROPOSED: a bodyless root member whose rest slot takes a family is answered
-// by that family's emitter -- there is nothing for a `bar[go]` override to say
-// that `block[go]` does not already. Today a package-body node that is neither
+// by that family's emitter -- there is nothing for a `bar[go.language]` override to say
+// that `block[go.language]` does not already. Today a package-body node that is neither
 // a window nor a directive lowers to a `CreateNode` nothing renders.
 //
 // One per process: i3bar reads one status stream from one child. The emitter

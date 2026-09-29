@@ -1041,6 +1041,10 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
+	// A build-target node read as a value, bare inside its own package.
+	if _, name, ok := ir.TargetNode(e.Sym); ok {
+		return name, nil
+	}
 	if e.Sym != nil {
 		if v, ok := env.Value(e.Sym); ok {
 			return v, nil
@@ -1260,6 +1264,11 @@ func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
 	sym, ok := ns.Pkg.Symbols.LookupMember(field)
 	if !ok {
 		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
+	}
+	// A build-target node read as a value is the target's identity: its
+	// registered name, which is what PLATFORM holds.
+	if _, name, ok := ir.TargetNode(sym); ok {
+		return name, nil
 	}
 	v, isVar := sym.(*ir.Var)
 	if !isVar {

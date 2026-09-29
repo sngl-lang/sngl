@@ -21,7 +21,8 @@ import gen "sngl:x/gen"
 // reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
-component gtk4(
+#[gen.name("gtk4")]
+component platform(
     // Go package name for the generated files.
     const package string,
     // Emit a standalone main() or a library-style module.

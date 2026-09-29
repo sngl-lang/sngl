@@ -69,6 +69,18 @@ func cannot(caps list<Capability>) ir.Macro
 // Asks for each named lowering pass.
 func wants(passes list<Pass>) ir.Macro
 
+// Names a build-target node for everything outside SNGL that looks a target
+// up by string: `sngl generate --platform html`, and the generator a plugin
+// registers under that name.
+//
+// The node itself is named for its tier by convention -- a platform package
+// declares `component platform(…) build.platform`, a language package
+// `component language(…) build.language` -- so inside the package an override
+// says `[platform]` and a program says `[html.platform]`. Both name the node,
+// and the node is the target: nothing else carries its identity. Every
+// build-target node carries one of these.
+func name(target string) ir.Macro
+
 // Says the nodes this primitive renders support each named thing.
 //
 // The one mark here written on something other than a build-target node, and

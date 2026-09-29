@@ -8,7 +8,7 @@
 //
 // Nothing here is a platform. The family is rendered by whichever host the
 // build picks -- gtk4, fyne, a headless Go loop -- because what it generates
-// is Go, not widgets: `block[go]` is a *language* override, and the host only
+// is Go, not widgets: `block[go.language]` is a *language* override, and the host only
 // has to give it a Model to hang fields on, a loop to post onto and a `main`
 // to run before.
 //

@@ -4148,7 +4148,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 		switch {
 		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", spec.Name)
+			c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
 		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
 			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
@@ -4156,7 +4156,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 		owner, node, at := c.currentComponent, spec, vn.Pos
 		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.Name)
+			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
 		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
@@ -4455,7 +4455,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			if _, err := componentWildcardProp(comp, name); err != nil {
 				c.error(vn.Pos, "%s", err)
 			} else if !componentHasProp(comp, name) && !componentDeclaresEventNamed(comp, name) {
-				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.Name)
+				c.error(vn.Pos, "unknown prop %q on component %s", arg.Name, comp.DisplayName())
 			}
 		case ast.EventHandler:
 			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
@@ -4812,7 +4812,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 					propName = propName[1:]
 				}
 				if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
-					c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
+					c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.DisplayName())
 					continue
 				}
 				expected = componentPropType(comp, propName)
@@ -4902,7 +4902,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			if _, err := componentWildcardProp(comp, propName); err != nil {
 				c.error(*call.Func.ExprPos(), "%s", err)
 			} else if !componentHasProp(comp, propName) && !componentDeclaresEventNamed(comp, propName) {
-				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.Name)
+				c.error(*call.Func.ExprPos(), "unknown prop %q on component %s", arg.Name, comp.DisplayName())
 			}
 		case ast.EventHandler:
 			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
@@ -5694,7 +5694,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 			if sp := stmtPos(s.AST); sp != nil {
 				at = *sp
 			}
-			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.Name)
+			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.DisplayName())
 		}
 	}
 }

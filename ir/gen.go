@@ -20,6 +20,12 @@ type GenCaps struct {
 	// build-tree node; this describes one primitive, which is the finer grain
 	// the tier exists for.
 	Renders []string `json:",omitempty"`
+	// TargetName is `#[gen.name]`: the string a build-target node is known by
+	// outside SNGL -- the `--platform html` a command line passes, the name a
+	// plugin registers its generator under. The node itself is named
+	// `platform` or `language` by convention, so it is this, not the
+	// component's name, that a registry and the CLI match on.
+	TargetName string `json:",omitempty"`
 }
 
 // RenderedIdentity is the one thing a primitive can claim about its nodes: a
@@ -107,6 +113,30 @@ func GenCapsOf(c *Component) *GenCaps {
 // BuildTreePkg is the package declaring the two families a build-target node
 // belongs to.
 const BuildTreePkg = "sngl:build"
+
+// TargetNode reports the registered name of the build-target node sym is, and
+// whether it is one: a component in `build.language` or `build.platform`
+// carrying `#[gen.name]`. A reference to one is how a program names a target
+// -- `[platform]` on an override, `PLATFORM == html.platform` in a gate -- and
+// its value is that name.
+func TargetNode(sym Symbol) (*Component, string, bool) {
+	c, ok := sym.(*Component)
+	if !ok || c.Gen == nil || c.Gen.TargetName == "" || !IsBuildTargetTree(c.Tree) {
+		return nil, "", false
+	}
+	return c, c.Gen.TargetName, true
+}
+
+// DisplayName is the name a diagnostic gives a component: a build-target
+// node's #[gen.name], since every platform's node is called `platform` and
+// "unknown prop on component platform" says nothing about which one, and the
+// component's own name otherwise.
+func (c *Component) DisplayName() string {
+	if _, name, ok := TargetNode(c); ok {
+		return name
+	}
+	return c.Name
+}
 
 // IsBuildTargetTree reports whether f is `build.language` or `build.platform`
 // -- the families a target package's own node is a member of.

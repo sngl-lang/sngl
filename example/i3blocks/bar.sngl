@@ -11,7 +11,7 @@ import ui "sngl:ui"
 import time "sngl:time"
 import i3 "./i3"
 
-// One binary per host. Both are Go, so both pick `i3.block[go]`; each host
+// One binary per host. Both are Go, so both pick `i3.block[go.language]`; each host
 // renders the window its own way and answers `p.post` and `p.main` for the bar.
 output {
     go {
