@@ -1,0 +1,19 @@
+// Package i3 is the i3bar protocol as a family: a status line is a tree of
+// `block`s under a `bar`, and the running program writes it to stdout every
+// time the state it reads changes.
+//
+// DESIGN SKETCH -- this does not compile. It is written against the proposal
+// in `example/i3blocks/README.md`, and every construct that does not exist yet
+// is marked `PROPOSED` where it is used.
+//
+// Nothing here is a platform. The family is rendered by whichever host the
+// build picks -- gtk4, fyne, a headless Go loop -- because what it generates
+// is Go, not widgets: `block[go]` is a *language* override, and the host only
+// has to give it a Model to hang fields on, a loop to post onto and a `main`
+// to run before.
+//
+// The protocol, for reference (https://i3wm.org/docs/i3bar-protocol.html):
+// a header line, `[`, then one JSON array of blocks per status line, each
+// followed by a comma. With `click_events` set, i3bar writes an endless JSON
+// array of click objects to stdin, each naming the block's `name` and
+// `instance`.

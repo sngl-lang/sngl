@@ -1,0 +1,42 @@
+import build "sngl:build"
+
+// PROPOSED: a family is a component in `build.family`, replacing
+// `#[tree.kind] struct block {}`. It is bodyless, so every target the program
+// reaches it on must supply an override -- the per-target bodyless rule, with a
+// position, for a target nobody taught to emit it. `go.sngl` is the one this
+// package ships.
+component block build.family
+
+// How a block's text is aligned inside its `minWidth`.
+enum Align { left, center, right }
+
+// One segment of the status line.
+//
+// `name` and `instance` are what i3bar hands back in a click, so a block with a
+// `@click` needs a `name`; the emitter supplies the instance.
+component text(
+    name string,
+    full string,
+    // Shown instead of `full` when the bar runs out of room.
+    short string,
+    color color,
+    background color,
+    urgent bool,
+    minWidth int,
+    align Align,
+    // Draw i3bar's separator after this block. The protocol's default is on.
+    separator bool = true,
+    @click(button int, x int, y int),
+) block
+
+// Space between two blocks, with no separator line drawn.
+component gap(width int = 9) block
+
+// PROPOSED: a bodyless root member whose rest slot takes a family is answered
+// by that family's emitter -- there is nothing for a `bar[go]` override to say
+// that `block[go]` does not already. Today a package-body node that is neither
+// a window nor a directive lowers to a `CreateNode` nothing renders.
+//
+// One per process: i3bar reads one status stream from one child. The emitter
+// refuses a second with a position.
+component bar(blocks ...component block) root
