@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -180,6 +181,25 @@ type Package struct {
 	// reason Teardown is: whether there is anything to call, and what it is
 	// called, are the lowering's answers and not a name to look up.
 	Mounts []*Func `json:"-"`
+}
+
+// RootMounts are the first settles of the brackets written at the root of a
+// file: the calls the effect lowering appended to the package body. A target
+// that emits its windows from the package body and drops the rest of it --
+// fyne and gtk4 -- runs these once its entry window's widgets exist, which is
+// where the body would have run them.
+func (p *Package) RootMounts() []Stmt {
+	if p == nil || len(p.Mounts) == 0 {
+		return nil
+	}
+	var out []Stmt
+	for _, st := range p.Body {
+		cs, ok := st.(*CallStmt)
+		if ok && cs.Call != nil && slices.Contains(p.Mounts, cs.Call.Func) {
+			out = append(out, st)
+		}
+	}
+	return out
 }
 
 // EntryPoints are the handlers a platform calls from its own scaffolding

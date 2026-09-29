@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -238,7 +239,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	if len(wins) <= 1 {
 		if len(wins) > 0 && len(wins[0].Body) > 0 {
-			bodyStmts := wins[0].Body
+			// The package body is not emitted here, so its first settles run
+			// once the entry window's widgets exist.
+			bodyStmts := append(slices.Clip(wins[0].Body), ctx.Pkg.RootMounts()...)
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
@@ -280,14 +283,18 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			widgetFields = append(widgetFields, irWidgetField{windowBoxField(w.Name), "*fyne.Container"})
 		}
 
-		for _, w := range wins {
+		for i, w := range wins {
 			buildFn := windowBuildFunc(w.Name)
 			var winBuf strings.Builder
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport, failProp).withLocalRefs(w.Window.LocalRefs)
 			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-			body := codegen.WalkLowered(context.Background(), w.Body, tr)
+			winBody := w.Body
+			if i == 0 {
+				winBody = append(slices.Clip(winBody), ctx.Pkg.RootMounts()...)
+			}
+			body := codegen.WalkLowered(context.Background(), winBody, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
 					fmt.Fprintf(&winBuf, "\t%s\n", line)

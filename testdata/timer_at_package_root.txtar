@@ -332,6 +332,7 @@ func (m *Model) SetGen__inst0(v int) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
+	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -457,6 +458,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:772aa81d95f67f58f787f63bb86bd7b6
 -- run/go/fyne --
-pass sha256:1cac723386e9d4f9a48fcb2b4a8d3092
+pass sha256:c553e908835f455a83c0c9ccf5971f2b
 -- run/none/html --
 pass sha256:6f7b5f7b828f12f594dfd5138f8774a0

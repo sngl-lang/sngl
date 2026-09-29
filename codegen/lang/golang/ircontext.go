@@ -850,6 +850,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// names: writeRouteFuncs renames each func before emitting, because
 		// there they are methods on a per-request State struct. Same split as
 		// MutTargetIdent makes for a state var.
+		//
+		// A func emitted free is named the way a call to it is, exported and
+		// with no receiver: handed as a value to a component's func-typed
+		// prop, `render=encode` came out `m.encode` beside `func Encode`.
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
+			return ExportName(name)
+		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return gc.recvFor(sym) + "." + ExportName(name)

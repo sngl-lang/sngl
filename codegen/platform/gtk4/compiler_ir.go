@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -124,7 +125,9 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		return wins[0].Body
+		// The package body is not emitted, so its first settles run once the
+		// entry window's widgets exist.
+		return append(slices.Clip(wins[0].Body), ctx.Pkg.RootMounts()...)
 	}
 	if main := ctx.RootDecl(); main != nil {
 		return main.Body
