@@ -1,9 +1,8 @@
 import marks "sngl:internal/marks"
-import tree "sngl:tree"
+import build "sngl:build"
 
 // The family a producer's inputs belong to: the members `inputs` hosts.
-#[tree.kind]
-struct input {}
+component input build.family
 
 // Lists what the file it is written in was generated from.
 //

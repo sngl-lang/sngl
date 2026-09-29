@@ -545,8 +545,8 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
-- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
-- **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
+- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
+- **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
@@ -600,24 +600,25 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`) mark a
 component, and the checker dispatches a visual node to the matching IR construct
-off the mark. Three tree kinds are the odd ones out and mark a *tree* rather than a
-component: `treeRoot` (the family a package body accepts), `treeNode` (the
-widget family) and `treeShape` (the drawing tree). Each is a family the
-compiler itself has to name — to check the body against, to tell an ordinary
-component from a rendered one, to know which node is a canvas — and
-every other family it compares by declaration alone. Marking them is what
-keeps `ir.go` from holding a package URI and a name for each: `ir.IsUITree`
-and its two siblings read `StructDef.Builtin`, so a family may be renamed or
-moved and a program's own `struct shape` does not become the painted one.
+off the mark. Four tree kinds mark a *family* — itself a component, but one
+that is never rendered: `treeFamily` (the family of families), `treeRoot` (the
+family a package body accepts), `treeNode` (the widget family) and `treeShape`
+(the drawing family). Each is a family the compiler itself has to name — to
+know what a family is, to check the body against, to tell an ordinary component
+from a rendered one, to know which node is a canvas — and every other family it
+compares by declaration alone. Marking them is what keeps `ir.go` from holding
+a package URI and a name for each: `ir.IsUITree` and its siblings read
+`Component.Builtin`, so a family may be renamed or moved and a program's own
+`shape` family does not become the painted one.
 The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.kind]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
+`#[tree.none]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
 `#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which
 is why every `lib/` file carrying a mark declares it. The alias is an
 ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
-means `#[t.kind]`.
+means `#[t.none]`.
 
 **Write the qualified form.** A dot import stays legal and supported — with
 `import . "sngl:internal/marks"` the mark is the bare `#[builtin("...")]` —
@@ -628,22 +629,21 @@ unaffected: it is ambient rather than dot-imported, and it is how `int`,
 `string` and `color` are named.
 
 A lib package may carry macros alongside its declarations — `sngl:tree`
-ships the `kind` mark next to the default tree it applies to — so the
+ships the `none` mark next to the `one` count — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
 makes a package exist, macro-only ones included. `sngl:internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
 or both. `internal/marks` declares only macros; `internal/ir` declares `Macro`,
 the type a macro returns, and the flag enums the marks take.
 
-**A tree is a declared type, and `#[tree.kind]` marks the struct that names
-one.** `sngl:tree` describes a segmented component tree: a family whose
-members are not interchangeable widgets, where a container accepts only its
-own family. Drawing is the first user, rich text and menus are the next, and
-nothing in the mechanism knows what a shape is.
+**A family is a declared component, a member of `sngl:build`'s `family`.**
+A segmented component tree is one whose members are not interchangeable
+widgets, where a container accepts only its own family. Drawing is the first
+user, rich text and menus are the next, and nothing in the mechanism knows what
+a shape is.
 
 ```sngl
-#[tree.kind]
-struct shape {}
+component shape build.family
 
 component circle(…)                          shape {}   // is a shape
 component canvas(shapes ...component shape)   ui.node {}   // hosts shapes, is a widget
@@ -657,9 +657,25 @@ own without saying so — but declaring a slot at all is what makes it host
 anything. Naming something that is not a tree in the return position is an
 error: a children contract is a slot's to declare.
 
-The tree is the *declaration*, not its name, so a misspelling is an unresolved
-name where it is written, and two packages each declaring `struct shape`
-declare two trees. A tree struct holds nothing and no value of it exists.
+The family is the *declaration*, not its name, so a misspelling is an
+unresolved name where it is written, and two packages each declaring a `shape`
+family declare two. `ir.Component.Tree` points at it, and `Component.IsFamily`
+is "a member of the family of families", which is the one declaration that is a
+member of itself (`#[marks.builtin("treeFamily")]` on `build.family`, where the
+regress stops). A family takes no parameters and has no body — a body is where
+how a family is generated will be written, and nothing reads one yet, so it is
+refused rather than dropped — and writing one in a tree is an error rather than
+a membership mismatch. It is exempt from the bodyless-component rule for the
+same reason.
+
+**A family registers before what names it.** A component is bound only once its
+own signature resolves, so a member declared above its family would name
+nothing. `familiesFirst` orders pass1's component registration by the
+same-package names each return position and slot type mentions — which is also
+what puts `family` ahead of `language` and `platform` in `sngl:build`. Structs
+get the same freedom from their shells. `resolveQualifiedType` lets a family
+through where it looks for a type, since `ir.IsTypeDecl` names only structs,
+enums and units.
 
 **`sngl:ui`'s `node` is the widget family**, and it is a family like any
 other: naming it in a slot accepts widgets and nothing else, which is what
@@ -1708,7 +1724,7 @@ and only the *name* is body-scoped: it binds through `c.declare` in the scope
 `collectComponentDecls` pushed and reaches `claimTopLevel` not at all. So it is
 keyed by nothing — the declaration is its identity, and two bodies each writing
 `struct Local` declare two incompatible types, the rule that makes two
-packages each declaring `struct shape` declare two trees; a body-local
+packages each declaring a `shape` family declare two; a body-local
 `component card` likewise shadows a top-level one inside that body and is
 undefined outside it. A component body needs the binding in both passes and a
 scope cannot span them, so the symbols travel on `ir.Component.BodyDecls` and
@@ -2122,7 +2138,7 @@ document there was no other way to say, and a document is a `vbox` of
 `richText` flows interleaved with anything else a `ui.node` can be — which is
 also what makes a document extensible without the vocabulary growing.
 
-`span` is an ordinary `#[tree.kind]` family, and that is the design rather
+`span` is an ordinary family, and that is the design rather
 than a shortcut. A member holds its own family and never a `node`, so
 emphasis around a link and a link inside emphasis are both one flow, and a box
 in the middle of a sentence is a membership error rather than a content model

@@ -108,12 +108,12 @@ func GenCapsOf(c *Component) *GenCaps {
 // belongs to.
 const BuildTreePkg = "sngl:build"
 
-// IsBuildTargetTree reports whether sd is `build.language` or `build.platform`
+// IsBuildTargetTree reports whether f is `build.language` or `build.platform`
 // -- the families a target package's own node is a member of.
 //
 // By package and name rather than by a mark, because neither carries one: the
 // three trees the compiler marks are the ones it has to name for itself, and
 // this one it reaches through the declaration it is asking about.
-func IsBuildTargetTree(sd *StructDef) bool {
-	return sd != nil && sd.Pkg == BuildTreePkg && (sd.Name == "language" || sd.Name == "platform")
+func IsBuildTargetTree(f *Component) bool {
+	return f.IsFamily() && f.Pkg == BuildTreePkg && (f.Name == "language" || f.Name == "platform")
 }

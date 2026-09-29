@@ -1,0 +1,20 @@
+// What a family declaration refuses. A family names the components that join
+// it and holds nothing, so there is nothing for a parameter to set; nothing
+// renders it, so it is never placed in a tree; and a body is where how it is
+// generated will be written, which nothing reads yet.
+
+import build "sngl:build"
+import ui "sngl:ui"
+
+component sized(n int) build.family // ERROR(check) "component sized is a family, which holds nothing"
+
+component bodied build.family { // ERROR(check) "component bodied is a family, and a family has no body yet"
+}
+
+component block build.family
+
+component para() block {}
+
+ui.window {
+    block() // ERROR(check) "block is a family, which is named in a return position or a slot and never placed in a tree"
+}

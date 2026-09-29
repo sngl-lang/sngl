@@ -268,6 +268,16 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		}
 		return typ
 	}
+	// A family is a component, and the one kind of component a type position
+	// names: a return position or a slot saying which family.
+	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
+		if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
+			if c.rejectUnexported(ast.Pos{}, sym) {
+				return TypDyn
+			}
+			return f.SymType()
+		}
+	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
 	return TypDyn
 }
@@ -722,7 +732,7 @@ func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t == nil || t.Kind == ir.TypeDyn {
 		return t
 	}
-	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.IsTree {
+	if ir.TypeFamily(t) != nil {
 		return t
 	}
 	// A type parameter is a tree the call site names: the wrapper that returns
@@ -731,7 +741,7 @@ func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t.Kind == ir.TypeTypeParam {
 		return t
 	}
-	c.error(pos, "a slot accepts a tree, and %s is not one", t)
+	c.error(pos, "a slot accepts a family, and %s is not one", t)
 	return nil
 }
 

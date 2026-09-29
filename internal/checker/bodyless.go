@@ -22,7 +22,7 @@ func (c *checker) reportBodylessComponents() {
 		return
 	}
 	for _, comp := range c.pkg.Components {
-		if comp.AST == nil || !comp.Bodyless || renderSuppliedElsewhere(comp) {
+		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || renderSuppliedElsewhere(comp) {
 			continue
 		}
 		c.error(comp.AST.Pos, "component %q has no body: give it one, or say where the render comes from with a per-target override", comp.Name)

@@ -16,7 +16,6 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"tree", "kind"}:                markTreeKind,
 	{"tree", "none"}:                markTreeNone,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
@@ -562,18 +561,6 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 		}
 	}
 	return flags, nil
-}
-
-func markTreeKind(m *mark) error {
-	sd, ok := m.sym.(*ir.StructDef)
-	if !ok {
-		return fmt.Errorf("#[tree.kind] cannot mark %s; a tree is named by a struct", ast.DeclFormName(m.decl))
-	}
-	if decl, ok := m.decl.(*ast.StructDef); ok && len(decl.Body) > 0 {
-		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
-	}
-	sd.IsTree = true
-	return nil
 }
 
 // markTreeNone implements #[tree.none]: this component belongs to no family.

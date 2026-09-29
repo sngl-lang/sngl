@@ -89,7 +89,7 @@ type Package struct {
 	// its own shapes) nor sufficient (inlining flattens a canvas out of the
 	// package that imported it), so the declarations are the only honest
 	// signal.
-	TreeKinds map[*StructDef]bool `json:"-"`
+	TreeKinds map[*Component]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -274,45 +274,63 @@ func (p *Package) usesTreeRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
-	for sd := range p.TreeKinds {
-		if isTreeRole(sd, kind) {
+	for f := range p.TreeKinds {
+		if isTreeRole(f, kind) {
 			return true
 		}
 	}
 	return false
 }
 
-// NoteTreeKind records that a member of a tree reaches this package.
-func (p *Package) NoteTreeKind(sd *StructDef) {
-	if p == nil || sd == nil {
+// NoteTreeKind records that a member of a family reaches this package.
+func (p *Package) NoteTreeKind(f *Component) {
+	if p == nil || f == nil {
 		return
 	}
 	if p.TreeKinds == nil {
-		p.TreeKinds = map[*StructDef]bool{}
+		p.TreeKinds = map[*Component]bool{}
 	}
-	p.TreeKinds[sd] = true
+	p.TreeKinds[f] = true
 }
 
-// isTreeRole reports whether sd is the tree carrying kind. The three roles a
-// phase asks after are marked on their declarations (#[marks.builtin]), so
-// nothing here spells a package and a name: a tree renamed or moved keeps its
-// role, and a program declaring `struct shape` of its own does not acquire one.
-func isTreeRole(sd *StructDef, kind BuiltinKind) bool {
-	return sd != nil && sd.IsTree && sd.Builtin == kind
+// IsFamily reports whether c declares a family: a component that is itself a
+// member of `build.family`. The family of families is the one declaration that
+// is a member of itself, which is what its #[builtin("treeFamily")] mark says.
+func (c *Component) IsFamily() bool {
+	return c != nil && c.Tree != nil && c.Tree.Builtin == BuiltinTreeFamily
 }
 
-// IsDrawShapeTree reports whether sd is the drawing tree.
-func IsDrawShapeTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeShape) }
+// isTreeRole reports whether f is the family carrying kind. The roles a phase
+// asks after are marked on their declarations (#[marks.builtin]), so nothing
+// here spells a package and a name: a family renamed or moved keeps its role,
+// and a program declaring a `shape` family of its own does not acquire one.
+func isTreeRole(f *Component, kind BuiltinKind) bool {
+	return f.IsFamily() && f.Builtin == kind
+}
 
-// IsUITree reports whether sd is the widget family.
-func IsUITree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeNode) }
+// IsDrawShapeTree reports whether f is the drawing family.
+func IsDrawShapeTree(f *Component) bool { return isTreeRole(f, BuiltinTreeShape) }
 
-// IsAppRootTree reports whether sd is the family a package body accepts.
-func IsAppRootTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeRoot) }
+// IsUITree reports whether f is the widget family.
+func IsUITree(f *Component) bool { return isTreeRole(f, BuiltinTreeNode) }
 
-// IsSegmentedTree reports whether sd is a tree with its own rendering rules --
-// any tree but the widget family.
-func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }
+// IsAppRootTree reports whether f is the family a package body accepts.
+func IsAppRootTree(f *Component) bool { return isTreeRole(f, BuiltinTreeRoot) }
+
+// IsSegmentedTree reports whether f is a family with its own rendering rules --
+// any family but the widget one.
+func IsSegmentedTree(f *Component) bool { return f.IsFamily() && !IsUITree(f) }
+
+// TypeFamily is the family t names in a return position or a slot, or nil.
+func TypeFamily(t *Type) *Component {
+	if t == nil || t.Kind != TypeComponent {
+		return nil
+	}
+	if f, ok := t.Decl.(*Component); ok && f.IsFamily() {
+		return f
+	}
+	return nil
+}
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
 func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
@@ -649,10 +667,11 @@ type Component struct {
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
-	// Tree is the segmented tree this component is a member of, named in its
-	// return position. Nil for a component that belongs to no tree: it may be
-	// placed in any of them and may contain none of their members.
-	Tree *StructDef `json:"-"`
+	// Tree is the family this component is a member of, named in its return
+	// position: a component that is itself a member of `build.family`. Nil for
+	// a component that belongs to no family: it may be placed in any of them
+	// and may contain none of their members.
+	Tree *Component `json:"-"`
 	// Treeless is the #[tree.none] mark: the declaration belongs to no family
 	// and says so. Nil Tree without it is a declaration that forgot to name
 	// one, which is an error, so the two states are told apart here rather
@@ -991,9 +1010,6 @@ func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	// IsTree is set by #[tree.kind]: this struct names a segmented tree rather
-	// than describing a value, and components name it to say they are members.
-	IsTree     bool `json:",omitempty"`
 	AST        *ast.StructDef
 	Name       string
 	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>

@@ -34,7 +34,7 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 	// read off that primitive. A mark written anywhere else resolves and is
 	// asked nothing, which is the failure the mark table exists to prevent.
 	if g := comp.Gen; g != nil {
-		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(treeStruct(named)) {
+		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.can], #[gen.cannot] and #[gen.wants] say what a target can do, and belong on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}
 		// A wildcard is a primitive too, and html is why: its widgets are one
@@ -42,6 +42,16 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
 			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
 		}
+	}
+
+	// The family of families is the one member of itself: every other family
+	// names it in the return position, and it has nothing to name.
+	if comp.Builtin == ir.BuiltinTreeFamily {
+		if named != nil {
+			c.error(decl.Pos, "component %s is the family of families, and a member of itself: it names no family in the return position", comp.Name)
+		}
+		comp.Tree = comp
+		return
 	}
 
 	if named == nil {
@@ -65,9 +75,13 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		return
 	}
 
-	if sd := treeStruct(named); sd != nil {
-		comp.Tree = sd
-		pkg.NoteTreeKind(sd)
+	if f := ir.TypeFamily(named); f != nil {
+		comp.Tree = f
+		pkg.NoteTreeKind(f)
+		if comp.IsFamily() {
+			c.checkFamilyDecl(decl, comp)
+			return
+		}
 		// A painted shape has nothing to raise an event from. This is drawing's
 		// rule rather than one about trees, and it sits here because membership
 		// is conferred here -- until a tree can carry rules of its own.
@@ -76,7 +90,7 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		// event is not the shape raising anything, it is the target calling in
 		// with the drawing context, which is how an override says what to
 		// paint. Only an #[intrinsic] declaration can be one.
-		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 && comp.Intrinsic == "" {
+		if ir.IsDrawShapeTree(f) && len(comp.Events) > 0 && comp.Intrinsic == "" {
 			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
 		}
 		return
@@ -86,8 +100,23 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		comp.TreeParam = named.ParamName
 		return
 	}
-	c.error(decl.Pos, "component %s: the return position names the tree a component belongs to, and %s is not one",
+	c.error(decl.Pos, "component %s: the return position names the family a component belongs to, and %s is not one",
 		comp.Name, named)
+}
+
+// checkFamilyDecl holds a family's declaration to naming a family and nothing
+// else. A family holds nothing and is never rendered, so a prop, a slot or an
+// event would be read by nobody. A body is where how a family is generated
+// will be written, and nothing reads one yet -- refused rather than dropped,
+// so that the first program to write one is not one whose body silently did
+// nothing.
+func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
+	if len(decl.Props.Props) > 0 || len(decl.TypeParams) > 0 || decl.HasParens {
+		c.error(decl.Pos, "component %s is a family, which holds nothing: declare it with no parameter list", comp.Name)
+	}
+	if !comp.Bodyless {
+		c.error(decl.Pos, "component %s is a family, and a family has no body yet: remove the block", comp.Name)
+	}
 }
 
 // treeOptional reports the declarations an omitted return position is still

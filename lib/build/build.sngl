@@ -1,10 +1,19 @@
-import tree "sngl:tree"
+import marks "sngl:internal/marks"
+
+// The family of families. A family is a component that is a member of this
+// one, `component shape build.family`, and a member of a family is a component
+// that names it in its return position, `component circle(…) shape`.
+//
+// It is the one member of itself, which is what the mark says: every other
+// family names it in the return position, and there is nothing left for it to
+// name. A family holds nothing and is never rendered -- naming one says which
+// family a component joins, or which a slot accepts.
+#[marks.builtin("treeFamily")]
+component family
 
 // The family a build-target language belongs to: the members `output` hosts.
-#[tree.kind]
-struct language {}
+component language family
 
 // The family a build-target platform belongs to: the members a language node
 // hosts.
-#[tree.kind]
-struct platform {}
+component platform family

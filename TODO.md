@@ -857,7 +857,7 @@ What this means for markup: `richText` and the `span` family were already
 built as an ordinary tree, and every hole the branch had to punch for them
 (`hostsLoweredTree`, the window arms in its own walks) is closed on main or
 was deleted by the merge. A new boundary starts from an ordinary
-`#[tree.kind]` family, a host component, and one override per member on each
+family (`component x build.family`), a host component, and one override per member on each
 platform. It needs no pass of its own, and it no longer needs a
 lowering-side exception.
 

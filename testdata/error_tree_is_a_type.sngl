@@ -1,22 +1,20 @@
 // What the tree model refuses at a use site.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import build "sngl:build"
 
-#[tr.kind]
-struct block {}
+component block build.family
 
-#[tr.kind]
-struct inline {}
+component inline build.family
 
 component document(children ...component block) node {}
 component para(children ...component inline) block {}
 component bold(weight int) inline {}
 
 component main node {
-    // A tree holds nothing and no value of it exists, which is what makes it
-    // usable as a slot's type and not as a var's.
-    var bad block = 0 // ERROR(check) "names a tree, which has no values"
+    // A family holds nothing and no value of it exists, which is what makes
+    // it usable as a slot's type and not as a var's.
+    var bad block = 0 // ERROR(check) "names a family, which has no values"
 
     document() {
         bold(weight=700) // ERROR(check) "expected block component in document, got bold"

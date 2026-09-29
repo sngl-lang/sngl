@@ -1,14 +1,6 @@
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
 
-// Marks a struct as naming a tree. The struct is the tree: nothing is stored in
-// it and no value of it exists, so a component naming it says which family it
-// is a member of rather than what it holds.
-//
-// A name resolves or it does not, which is the point — a misspelled tree is an
-// unresolved name at the declaration rather than a family nobody joins.
-func kind() ir.Macro
-
 // Marks a component as belonging to no tree. It may be placed in any of them
 // and may contain a member of none, which is what a component that renders
 // nothing wants: a lifetime bracket, a scheduler, a context override.

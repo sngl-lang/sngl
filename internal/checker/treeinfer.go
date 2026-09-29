@@ -98,7 +98,7 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 // the answer off the question. Its *fallback* is evidence, and the distinction
 // is who wrote the nodes: the insertion stands for the caller's, the fallback
 // is this component's own, rendered when the caller supplies none.
-func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.StructDef) ([]*ir.StructDef, bool) {
+func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.Component) ([]*ir.Component, bool) {
 	var unsettled bool
 	nested := func(blocks ...[]ir.Stmt) {
 		for _, b := range blocks {
@@ -107,7 +107,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			unsettled = unsettled || u
 		}
 	}
-	note := func(sd *ir.StructDef) {
+	note := func(sd *ir.Component) {
 		if sd != nil && !slices.Contains(found, sd) {
 			found = append(found, sd)
 		}

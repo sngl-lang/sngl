@@ -71,8 +71,9 @@ component html(
 // This rejects SVG, whose vocabulary is camelCase inside foreign content
 // (`linearGradient`, `clipPath`, `feGaussianBlur`). Reaching it by widening the
 // pattern would cost the misspelling check for every HTML tag, so SVG is left
-// for a tree kind of its own -- `#[tree.kind]` names a family of nodes and
-// says which host accepts them, which is what an SVG subtree is. Until then it
+// for a family of its own -- `component svg build.family` names a family of
+// nodes and a slot says which host accepts them, which is what an SVG subtree
+// is. Until then it
 // is written through `element(tag=..., attrs={...})`, which the diagnostics
 // below point at.
 // A DOM element is still there while the page runs, so a `#id` on one names

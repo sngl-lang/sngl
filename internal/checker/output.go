@@ -13,10 +13,10 @@ import (
 // `build.platform` ones.
 const buildPkg = "build"
 
-// buildTrees are the tree structs `sngl:build` declares, resolved once.
-// Membership is compared against these declarations, so a package declaring its
-// own `struct language` declares a different tree and its nodes do not pass.
-func (c *checker) buildTrees() (lang, platform *ir.StructDef) {
+// buildTrees are the families `sngl:build` declares, resolved once. Membership
+// is compared against these declarations, so a package declaring its own
+// `language` family declares a different one and its nodes do not pass.
+func (c *checker) buildTrees() (lang, platform *ir.Component) {
 	if c.buildTreesSet {
 		return c.langTree, c.platformTree
 	}
@@ -25,12 +25,15 @@ func (c *checker) buildTrees() (lang, platform *ir.StructDef) {
 	if pkg == nil {
 		return nil, nil
 	}
-	for _, sd := range pkg.Structs {
-		switch sd.Name {
+	for _, f := range pkg.Components {
+		if !f.IsFamily() {
+			continue
+		}
+		switch f.Name {
 		case "language":
-			c.langTree = sd
+			c.langTree = f
 		case "platform":
-			c.platformTree = sd
+			c.platformTree = f
 		}
 	}
 	return c.langTree, c.platformTree

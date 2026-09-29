@@ -1382,7 +1382,7 @@ import . "sngl:ui/draw"
 component myWidget() node {
     var bad shape = 0
 }
-`, "names a tree, which has no values")
+`, "names a family, which has no values")
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {

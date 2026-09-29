@@ -54,9 +54,13 @@ const (
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 
-	// The three trees the compiler itself has to name, each marked on the
-	// struct that declares it so no phase spells a package and a name.
+	// The four families the compiler itself has to name, each marked on the
+	// component that declares it so no phase spells a package and a name.
 	//
+	// TreeFamily is `sngl:build`'s `family`, the family of families: every
+	// family is a component that is a member of it, and it is the one member of
+	// itself. The mark is where that regress stops.
+	BuiltinTreeFamily BuiltinKind = "treeFamily"
 	// TreeRoot is the tree a package body accepts: the windows a program opens
 	// and the build directive saying what it compiles to. It is what makes
 	// those top-level without a syntactic rule naming them.
@@ -149,13 +153,14 @@ func (b BuiltinKind) IsSlotBound() bool {
 	return b == BuiltinTreeOne
 }
 
-// IsTreeRole reports whether the kind marks a tree the compiler itself has to
-// name. Three do -- the package body's, the widget family, and the drawing
-// tree -- because a phase asks after each by role rather than by declaration.
-// Every other tree is compared by declaration and never spelled.
+// IsTreeRole reports whether the kind marks a family the compiler itself has
+// to name. Four do -- the family of families, the package body's, the widget
+// family, and the drawing family -- because a phase asks after each by role
+// rather than by declaration. Every other family is compared by declaration
+// and never spelled.
 func (b BuiltinKind) IsTreeRole() bool {
 	switch b {
-	case BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape:
+	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape:
 		return true
 	}
 	return false
@@ -206,7 +211,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
-		BuiltinTreeOne, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
+		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinOutput, BuiltinGenInputs,
 		BuiltinPlatform, BuiltinLanguage,

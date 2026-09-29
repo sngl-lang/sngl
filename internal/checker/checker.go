@@ -402,8 +402,8 @@ type checker struct {
 	synthTargets map[string]*ir.Component
 
 	// The two `sngl:build` tree kinds, resolved once.
-	langTree      *ir.StructDef
-	platformTree  *ir.StructDef
+	langTree      *ir.Component
+	platformTree  *ir.Component
 	buildTreesSet bool
 
 	// The #[builtin("window")] component, and its instance type. Window
@@ -516,7 +516,7 @@ type checker struct {
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
-	rootTree *ir.StructDef
+	rootTree *ir.Component
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
@@ -1303,7 +1303,8 @@ func (c *checker) pass1() {
 	}
 	c.runShellMarks()
 
-	for _, p := range pendingComponents {
+	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
+		p := pendingComponents[i]
 		c.resumeFile(p.doc)
 		c.registerComponent(p.decl)
 	}
@@ -2922,8 +2923,8 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
 			typ := c.resolveType(spec.Type)
-			if sd := treeStruct(typ); sd != nil {
-				c.error(s.Pos, "%s names a tree, which has no values", sd.Name)
+			if f := ir.TypeFamily(typ); f != nil {
+				c.error(s.Pos, "%s names a family, which has no values", f.Name)
 				typ = TypDyn
 			}
 			for _, name := range spec.Names {
@@ -4979,4 +4980,65 @@ func (c *checker) nodeHandleSym(id string) *ir.Var {
 		return nil
 	}
 	return v
+}
+
+// familiesFirst orders a package's component declarations so each is
+// registered after the ones in this package its return position and slot types
+// name, and otherwise in source order.
+//
+// A family is a component, so the declarations naming it -- its members in
+// their return position, its hosts in a slot -- need it registered first: a
+// component is bound only once its own signature has resolved, and a name
+// resolving to nothing is an error rather than a forward reference. Structs
+// have shells for the same reason. What the order gives is `sngl:build`'s
+// `family` ahead of the families naming it and a family ahead of its members,
+// whichever order the files were written in. A cycle is left in source order,
+// where the name that closes it reports itself as unresolved.
+func familiesFirst[T any](pending []T, decl func(T) *ast.ComponentDecl) []int {
+	byName := make(map[string]int, len(pending))
+	for i, p := range pending {
+		byName[decl(p).Name] = i
+	}
+	deps := func(d *ast.ComponentDecl) []int {
+		var out []int
+		note := func(t ast.TypeExpr) {
+			if nt, ok := t.(*ast.NamedType); ok && nt.Package == "" {
+				if j, ok := byName[nt.Name]; ok {
+					out = append(out, j)
+				}
+			}
+		}
+		note(d.ChildrenType)
+		for _, p := range d.Props.Props {
+			if pd, ok := p.(ast.Param); ok {
+				if ct, _, isSlot := ast.SlotType(pd.Type); isSlot && ct != nil {
+					note(ct.Tree)
+					if nt, ok := ct.Tree.(*ast.NamedType); ok {
+						for _, arg := range nt.TypeArgs {
+							note(arg)
+						}
+					}
+				}
+			}
+		}
+		return out
+	}
+	order := make([]int, 0, len(pending))
+	state := make([]uint8, len(pending)) // 0 unvisited, 1 visiting, 2 done
+	var visit func(i int)
+	visit = func(i int) {
+		if state[i] != 0 {
+			return
+		}
+		state[i] = 1
+		for _, j := range deps(decl(pending[i])) {
+			visit(j)
+		}
+		state[i] = 2
+		order = append(order, i)
+	}
+	for i := range pending {
+		visit(i)
+	}
+	return order
 }

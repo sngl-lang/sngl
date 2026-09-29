@@ -24,9 +24,9 @@ package ir
 // A canvas hosts shapes; a rect, being one, hosts its own. The distinction is
 // the slot, not the return position, which is what IsShapeContainer puts
 // together.
-func TreeHosted(comp *Component) *StructDef {
-	if sd := RestSlotTree(comp); sd != nil && IsSegmentedTree(sd) {
-		return sd
+func TreeHosted(comp *Component) *Component {
+	if f := RestSlotTree(comp); IsSegmentedTree(f) {
+		return f
 	}
 	return nil
 }
@@ -34,16 +34,16 @@ func TreeHosted(comp *Component) *StructDef {
 // RestSlotTree is the family a component's rest slot accepts, whichever family
 // that is, and nil for a component that declares no rest slot or whose slot
 // names no tree.
-func RestSlotTree(comp *Component) *StructDef {
+func RestSlotTree(comp *Component) *Component {
 	if comp == nil {
 		return nil
 	}
 	for _, s := range comp.Slots {
-		if !s.Rest || s.Content == nil || s.Content.Kind != TypeStruct {
+		if !s.Rest {
 			continue
 		}
-		if sd, ok := s.Content.Decl.(*StructDef); ok && sd.IsTree {
-			return sd
+		if f := TypeFamily(s.Content); f != nil {
+			return f
 		}
 	}
 	return nil

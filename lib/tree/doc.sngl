@@ -6,10 +6,12 @@
 // runs) and menus (items, separators) are others. Nothing here knows what a
 // shape is — the compiler compares declarations.
 //
-// A tree is a type. A component says which one it belongs to by naming that
-// type in its return position, and a slot says which one it accepts by naming
-// it as the slot's type. How many it accepts is the wrapper: bare is any
-// number, `tree.one<T>` is exactly one, `option<T>` is none or one.
+// A family is declared in `sngl:build` -- `component shape build.family` --
+// and this package is the rest of the vocabulary. A component says which
+// family it belongs to by naming it in its return position, and a slot says
+// which one it accepts by naming it as the slot's type. How many it accepts is
+// the wrapper: bare is any number, `tree.one<T>` is exactly one, `option<T>`
+// is none or one.
 //
 // Naming nothing asks: a component whose return position is empty joins the
 // family its body renders, and one whose body renders members of two families

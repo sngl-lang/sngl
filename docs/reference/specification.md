@@ -341,7 +341,7 @@ semicolon insertion so the decorated construct may begin on the following line.
 
 A macro is an ordinary declaration of a package, and none is ambient: the
 attribute names it through the file's import of that package, qualified by the
-import's alias like any other member — `#[tree.kind]` after
+import's alias like any other member — `#[tree.none]` after
 `import tree "sngl:tree"`, `#[macro.foreign(…)]` after
 `import macro "sngl:macro"`. A macro name that does not resolve is an error.
 
@@ -791,8 +791,9 @@ so a top-level declaration named like a library entity takes precedence over it
 within the package.
 
 A library package may carry macros next to the declarations they apply to:
-`import tree "sngl:tree"` brings the `#[tree.kind]` mark that declares a new
-family (see [Trees and families](#trees-and-families)).
+`import tree "sngl:tree"` brings the `#[tree.none]` mark beside the
+`tree.one` count it qualifies slots with (see
+[Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
 intrinsics a backend implements natively and the marks that identify built-in
@@ -1886,17 +1887,18 @@ accepts members of its own family and nothing else. Widgets are one family
 (`ui.node`), the shapes a canvas draws are another (`draw.shape`), the windows
 and build directive at the root of a file a third (`root`, declared in `sngl:builtin` and so in scope everywhere).
 
-A family is declared by a struct carrying the `#[tree.kind]` mark. The struct
-holds nothing and no value of it exists; it *is* the family, identified by its
+A family is declared by a component that is a member of `build.family`, the
+family of families in `sngl:build`. It takes no parameters, has no body, holds
+nothing and is never placed in a tree; it *is* the family, identified by its
 declaration rather than its name, so two packages each declaring
-`struct item {}` declare two families.
+`component item build.family` declare two families. A family may be declared
+after the components that name it.
 
 ```sngl
-import tree "sngl:tree"
+import build "sngl:build"
 import ui "sngl:ui"
 
-#[tree.kind]
-struct item {}
+component item build.family
 
 component entry(label string) item {}
 
@@ -1913,7 +1915,8 @@ ui.window {
 The rules:
 
 - **The return position says what a component is.** `component entry(…) item`
-  is a member of `item`. Naming a type there that is not a family is an error.
+  is a member of `item`. Naming anything there that is not a family is an
+  error.
 - **A slot says what a component hosts.** A slot typed with a family accepts
   that family's members; a slot naming none accepts the family its component
   belongs to. A component that declares no slot hosts nothing.

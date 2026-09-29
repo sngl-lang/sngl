@@ -740,12 +740,11 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 		}
 		return nil
 	}
-	sd, _ := s.Content.Decl.(*StructDef)
 	var elem ast.TypeExpr
-	if sd != nil {
-		// A tree is spelled through whatever this file imported its package as;
-		// convertType reads the name off the declaration and loses that.
-		elem = c.treeName(sd)
+	if f := TypeFamily(s.Content); f != nil {
+		// A family is spelled through whatever this file imported its package
+		// as; convertType reads the name off the declaration and loses that.
+		elem = c.treeName(f)
 	} else {
 		elem = c.convertType(s.Content)
 	}
@@ -779,12 +778,12 @@ func (c *converter) aliasFor(uri string) string {
 	return uri
 }
 
-// treeName spells a tree the way the file that names it does: qualified when it
-// was declared elsewhere, bare when it was declared here.
-func (c *converter) treeName(sd *StructDef) *ast.NamedType {
-	nt := &ast.NamedType{Name: sd.Name}
-	if sd.Pkg != "" {
-		nt.Package = c.aliasFor(sd.Pkg)
+// treeName spells a family the way the file that names it does: qualified when
+// it was declared elsewhere, bare when it was declared here.
+func (c *converter) treeName(f *Component) *ast.NamedType {
+	nt := &ast.NamedType{Name: f.Name}
+	if f.Pkg != "" {
+		nt.Package = c.aliasFor(f.Pkg)
 	}
 	return nt
 }

@@ -36,25 +36,11 @@ func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
 		c.error(pos, "expression yields no value")
 		return true
 	}
-	if sd := treeStruct(t); sd != nil {
-		c.error(pos, "%s names a tree, which has no values", sd.Name)
+	if f := ir.TypeFamily(t); f != nil {
+		c.error(pos, "%s names a family, which has no values", f.Name)
 		return true
 	}
 	return false
-}
-
-// treeStruct is the tree declaration t names, or nil. A tree struct holds
-// nothing and no value of it exists: naming one says which family a component
-// or a slot belongs to.
-func treeStruct(t *ir.Type) *ir.StructDef {
-	if t == nil || t.Kind != ir.TypeStruct {
-		return nil
-	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	if !ok || !sd.IsTree {
-		return nil
-	}
-	return sd
 }
 
 func (c *checker) checkExpr(e ast.Expr) ir.Expr {
@@ -3140,8 +3126,8 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
-		if sd := treeStruct(typ); sd != nil {
-			c.error(decl.Pos, "%s names a tree, which has no values", sd.Name)
+		if f := ir.TypeFamily(typ); f != nil {
+			c.error(decl.Pos, "%s names a family, which has no values", f.Name)
 			typ = TypDyn
 		}
 		var initExpr ir.Expr
@@ -4116,6 +4102,13 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		// Past the function-call fallthrough above, so the name is a
 		// component rather than something that parsed like one.
 		if c.rejectNodeInFuncBody(vn.Pos, name) {
+			return nil
+		}
+		// A family names the components that join it and is not one of them:
+		// nothing renders it, so writing one in a tree is written in no
+		// family's place.
+		if comp.IsFamily() {
+			c.error(vn.Pos, "%s is a family, which is named in a return position or a slot and never placed in a tree", comp.Name)
 			return nil
 		}
 		// A stand-in for a target with no registry here declares no props and
@@ -5568,7 +5561,7 @@ func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what str
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
-func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
+func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 	if slot == nil {
 		return nil
 	}
@@ -5578,14 +5571,7 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 		}
 		return owner.Tree
 	}
-	if slot.Content.Kind != ir.TypeStruct {
-		return nil
-	}
-	sd, ok := slot.Content.Decl.(*ir.StructDef)
-	if !ok || !sd.IsTree {
-		return nil
-	}
-	return sd
+	return ir.TypeFamily(slot.Content)
 }
 
 // slotWant is the tree one population of a slot is held to: what the
@@ -5595,7 +5581,7 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 // owner is the specialization the call site produced, so a parameter a prop
 // pinned is already substituted and only an unpinned one reaches the second
 // case.
-func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.StructDef {
+func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Component {
 	if sd := slotTree(owner, slot); sd != nil {
 		return sd
 	}
@@ -5621,7 +5607,7 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Str
 // treeTransparent's *binding* blocks, which is every block but a boundary's
 // fallback: that one stands where the content stood and is held to the
 // content's answer rather than supplying one.
-func childrenTree(content []ir.Stmt) *ir.StructDef {
+func childrenTree(content []ir.Stmt) *ir.Component {
 	for _, st := range content {
 		if _, binds, ok := treeTransparent(st); ok {
 			for _, b := range binds {
@@ -5662,7 +5648,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.
-func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
+func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
 	if want == nil {
 		return
 	}
