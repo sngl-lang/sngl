@@ -1,0 +1,18 @@
+# A generated program builds when sngl's cache sits inside a repository git
+# cannot read. The build directory is under the user cache, and what encloses
+# that is whatever the user's home is -- a dotfiles checkout, often. `go build`
+# stamps VCS information from the enclosing repository by default and failed
+# with "error obtaining VCS status: exit status 128"; a generated program has no
+# revision worth recording.
+
+mkdir home/.git home/cache
+env XDG_CACHE_HOME=$PWD/home/cache
+sngl build --lang go --platform bubbletea -o out app.sngl
+exists out/app
+
+-- app.sngl --
+import ui "sngl:ui"
+
+ui.window {
+    ui.text(value="hi")
+}

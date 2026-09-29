@@ -9,8 +9,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 )
 
-// goBuild runs `go build -trimpath -o out .` in dir and returns its combined
-// output.
+// goBuild runs `go build -buildvcs=false -o out .` in dir and returns its
+// combined output.
+//
+// VCS stamping is off because dir is sngl's build cache, and what encloses it
+// is whatever repository the user's home happens to be -- a dotfiles checkout
+// is common, and one git cannot read from there fails the build with "error
+// obtaining VCS status: exit status 128". A generated program has no revision
+// worth recording in any case.
 //
 // A failure that names the module graph rather than the code is retried once
 // after `go mod tidy`. codegen.WriteGoMod seeds the temp module from the
@@ -20,7 +26,7 @@ import (
 func goBuild(ctx context.Context, goPath, dir, out string) (string, error) {
 	run := func() (string, error) {
 		var buf bytes.Buffer
-		cmd := exec.CommandContext(ctx, goPath, "build", "-o", out, ".")
+		cmd := exec.CommandContext(ctx, goPath, "build", "-buildvcs=false", "-o", out, ".")
 		cmd.Dir = dir
 		cmd.Stdout = &buf
 		cmd.Stderr = &buf

@@ -162,7 +162,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 	// Beside the directory, not in it: the directory is emptied before each
 	// generation, and `go build -o` relinks whenever its output is missing.
 	binPath := tmpDir + ".snapshot"
-	build := exec.Command(goPath, "build", "-o", binPath, ".")
+	build := exec.Command(goPath, "build", "-buildvcs=false", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

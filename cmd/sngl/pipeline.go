@@ -151,11 +151,19 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		return err
 	}
 	for _, res := range results {
-		if err := writeFiles(res.Files, p.outDir, p.quiet); err != nil {
+		out := p.outDir
+		// A command that builds what it generates -- run, build -- owns its
+		// output directory, and each target is a program of its own: written
+		// into one directory, the second target's build found the first's
+		// files beside its own and declared main twice.
+		if p.onTarget != nil && len(results) > 1 {
+			out = filepath.Join(p.outDir, res.Target.Lang+"-"+res.Target.Platform)
+		}
+		if err := writeFiles(res.Files, out, p.quiet); err != nil {
 			return err
 		}
 		if p.onTarget != nil {
-			if err := p.onTarget(res.Target, res.Pkg, dir, p.outDir); err != nil {
+			if err := p.onTarget(res.Target, res.Pkg, dir, out); err != nil {
 				return err
 			}
 		}

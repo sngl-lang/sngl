@@ -536,7 +536,7 @@ func runConstEvalBatch(dir string, reqs []*nativeRequest) ([]byte, error) {
 func buildConstEval(dir, srcDir, binPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), evalTimeout)
 	defer cancel()
-	build := exec.CommandContext(ctx, "go", "build", "-o", binPath, "./"+filepath.Base(srcDir))
+	build := exec.CommandContext(ctx, "go", "build", "-buildvcs=false", "-o", binPath, "./"+filepath.Base(srcDir))
 	build.Dir = dir
 	start := time.Now()
 	if out, err := build.CombinedOutput(); err != nil {
