@@ -1,6 +1,9 @@
 package checker
 
 import (
+	"cmp"
+	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -453,5 +456,77 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
+	}
+}
+
+// reportTargetNames holds every build-target node this check can see to a
+// name no other node of its tier carries, and a target package's node to its
+// package's own name.
+//
+// The name is what the command line, the Go registry and an output block look
+// a target up by, so two nodes answering to one would make `--platform html`
+// mean whichever was found first -- and a package's node answering to another
+// package's name is found by nothing, since the lookup goes through the
+// package the name says. The tier is part of the key: `none` is both a
+// language and a platform, and each is found in its own tier.
+//
+// Last, like the bodyless sweep, because a library package may be loaded by
+// anything in the check, and the answer must not depend on which came first:
+// the nodes are sorted by package and position, library packages ahead of
+// the program, and every one after the first of a name is reported, naming
+// that first.
+func (c *checker) reportTargetNames() {
+	var nodes []*ir.Component
+	collect := func(pkg *ir.Package) {
+		if pkg == nil {
+			return
+		}
+		for _, comp := range pkg.Components {
+			if _, _, ok := ir.TargetNode(comp); ok && comp.AST != nil {
+				nodes = append(nodes, comp)
+			}
+		}
+	}
+	collect(c.pkg)
+	if c.libs != nil {
+		for _, path := range slices.Sorted(maps.Keys(c.libs.pkgs)) {
+			collect(c.libs.pkgs[path])
+		}
+	}
+	// A library's nodes first: a program's node that takes a shipped
+	// target's name is the one that has to change, so it is the one reported.
+	slices.SortStableFunc(nodes, func(a, b *ir.Component) int {
+		if (a.Pkg == "") != (b.Pkg == "") {
+			if a.Pkg == "" {
+				return 1
+			}
+			return -1
+		}
+		if n := cmp.Compare(a.Pkg, b.Pkg); n != 0 {
+			return n
+		}
+		if n := cmp.Compare(a.AST.Pos.File, b.AST.Pos.File); n != 0 {
+			return n
+		}
+		if n := cmp.Compare(a.AST.Pos.Line, b.AST.Pos.Line); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.AST.Pos.Column, b.AST.Pos.Column)
+	})
+	first := map[string]*ir.Component{}
+	for _, n := range nodes {
+		tier, name := n.Tree.Name, n.Gen.TargetName
+		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
+			targetTierMember(kind) == tier && owner != name {
+			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
+			continue
+		}
+		key := tier + "/" + name
+		if prev, dup := first[key]; dup {
+			c.error(n.AST.Pos, "%s %q is already declared at %s: a target's name is how the build finds it, so no two %ss share one",
+				tier, name, prev.AST.Pos, tier)
+			continue
+		}
+		first[key] = n
 	}
 }

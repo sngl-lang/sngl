@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // targetNodeDoc is the build-target node a stub target package declares for
@@ -38,4 +40,34 @@ component %s%s build.%s {}
 		t.Fatalf("targetNodeDoc: %v", err)
 	}
 	return doc
+}
+
+// A target package's node answers to the package's own name: the build finds
+// sngl:platform/<name> by that name, so a node calling itself anything else is
+// found by nothing.
+func TestTargetPackageNodeCarriesItsPackageName(t *testing.T) {
+	stub, err := parser.Parse("pkgstub.sngl", []byte(`import build "sngl:build"
+import gen "sngl:x/gen"
+
+#[gen.name("other")]
+component platform() build.platform {}
+`))
+	if err != nil {
+		t.Fatalf("parse stub: %v", err)
+	}
+	doc, err := parser.Parse("main.sngl", []byte("import p \"sngl:platform/pkgstub\"\n"))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{
+		Platforms:  []ir.Platform{namedStubPlatform{"pkgstub"}},
+		LibSources: map[string][]*ast.Document{"platform/pkgstub": {stub}},
+	})
+	want := `sngl:platform/pkgstub names its platform "other": a target package's node carries the package's own name, "pkgstub"`
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, want) {
+			return
+		}
+	}
+	t.Errorf("want %q, got %v", want, diags)
 }

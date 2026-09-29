@@ -229,6 +229,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.
 	c.reportBodylessLibComponents()
+	c.reportTargetNames()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }
