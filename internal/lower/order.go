@@ -52,6 +52,13 @@ var orderConstraints = []orderConstraint{
 	{"PropBindings", "NoToggle",
 		"the same, for a binding whose handler toggles its target: NoToggle rewrites the Toggle stmt PropBindings emits"},
 
+	{"NoInlineComponents", "DirectCalls",
+		"the call through a name that this pass makes direct is one the inliner leaves, by substituting a func-typed prop with the function it was given"},
+	{"DirectCalls", "Effect",
+		"an effect's settle is placed by the state its key reads, followed through Call.Func; a key calling through a name reads nothing, and no write settles it"},
+	{"DirectCalls", "NoReactivity",
+		"the same, for a render slot whose condition calls through a name"},
+
 	{"SpreadOnce", "NoAsyncCalls",
 		"the temp a spread's operand is bound to is a statement of its own, and a blocking call in it has to be in a statement by the time the offload splits a body around one"},
 

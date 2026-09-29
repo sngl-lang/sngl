@@ -151,3 +151,25 @@ func (w *effectWalker) rootVar(e ir.Expr) *ir.Var {
 		}
 	}
 }
+
+// AnalyzeSynthesizedFunc gives fn, a package-level function the build wrote
+// after the check, the Purity, Reads and Writes the checker's own analysis
+// gives one written in source: its direct effects over the package's state,
+// then the highest purity of what it calls. The lowering reads both -- what a
+// key reads is which writes settle it -- so a function without them would be
+// a key nothing rekeys.
+func AnalyzeSynthesizedFunc(pkg *ir.Package, fn *ir.Func) {
+	vars := make(map[*ir.Var]struct{}, len(pkg.Vars))
+	for _, v := range pkg.Vars {
+		vars[v] = struct{}{}
+	}
+	for _, w := range pkg.Windows {
+		for _, v := range windowStateVars(w) {
+			vars[v] = struct{}{}
+		}
+	}
+	analyzeEffects(fn, vars)
+	if p := highestCalledPurity(fn); p > fn.Purity {
+		fn.Purity = p
+	}
+}

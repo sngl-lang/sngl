@@ -1,10 +1,11 @@
-A free function handed as a value is named the way a call to it is.
+A free function held as a value is named the way a call to it is.
 
 A top-level func that reads no state is emitted free on the Go targets, under
-its exported name, and a call to it says so. Read as a value -- passed to a
-component's func-typed prop, which the inliner substitutes into the call the
-body makes -- it came out as a Model method value, `m.encode`, beside a file
-declaring `func Encode`, and the program did not compile.
+its exported name, and a call to it says so. Held as a value -- passed to a
+component's func-typed prop and stored in a record, which is how a value hands
+over the function that belongs to it -- it came out as a Model method value,
+`m.encode`, beside a file declaring `func Encode`, and the program did not
+compile.
 
 deny out/go/fyne/model.go `m\.encode` -- encode is free, not a Model method
 deny out/go/gtk4/model.go `m\.encode` -- likewise
@@ -19,6 +20,10 @@ output {
     }
 }
 
+struct Holder {
+    f func(xs list<string>) string
+}
+
 func encode(xs list<string>) string {
     var s = ""
     for var x = xs {
@@ -28,7 +33,9 @@ func encode(xs list<string>) string {
 }
 
 component show(render func(xs list<string>) string) ui.node {
-    ui.text(value=render(["a"]))
+    var h = Holder{f=render}
+
+    ui.text(value=h.f(["a"]))
 }
 
 ui.window {
@@ -46,14 +53,21 @@ import (
 	"os"
 )
 
+type Holder struct {
+	F func([]string) string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
+	h__inst0 Holder
+
 	__n0 *widget.Label
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.h__inst0 = Holder{F: Encode}
 	return m
 }
 
@@ -65,10 +79,18 @@ func Encode(xs []string) string {
 	return s
 }
 
+func (m *Model) H__inst0() Holder {
+	return m.h__inst0
+}
+
+func (m *Model) SetH__inst0(v Holder) {
+	m.h__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(Encode([]string{"a"}))
+	m.__n0.SetText(m.h__inst0.F([]string{"a"}))
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -103,16 +125,22 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
+type Holder struct {
+	F func([]string) string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	h__inst0 Holder
+	__n0     gtk4rt.Handle
+	__root   gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.h__inst0 = Holder{F: Encode}
 	return m
 }
 
@@ -124,13 +152,21 @@ func Encode(xs []string) string {
 	return s
 }
 
+func (m *Model) H__inst0() Holder {
+	return m.h__inst0
+}
+
+func (m *Model) SetH__inst0(v Holder) {
+	m.h__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, Encode([]string{"a"}))
+	gtk4rt.LabelSetText(m.__n0, m.h__inst0.F([]string{"a"}))
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }
 
@@ -143,6 +179,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:2e7a2f249ee963c4a7214ff8107d29d9
+pass sha256:2f5602066ce6bde7f3003ab77bde9af2
 -- run/go/gtk4 --
-pass sha256:3108c3058837b8f28f34d2662c705d70
+pass sha256:15f1a39af7bc334dbb1651338fc55f2c

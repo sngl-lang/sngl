@@ -286,11 +286,17 @@ func walkCallLambdas(ctx context.Context, call *ir.Call, t IntrinsicTranslator) 
 			changed = true
 		}
 	}
-	if !changed {
+	// A lambda called where it is written, `func(b int) { … }(x)`, is how a
+	// handler runs where an event is fired from inside a value.
+	callee, movedCallee := walkExprLambdas(ctx, call.Callee, t)
+	if !changed && !movedCallee {
 		return call, false
 	}
 	cp := *call
 	cp.Args = args
+	if movedCallee {
+		cp.Callee = callee
+	}
 	return &cp, true
 }
 

@@ -1,0 +1,153 @@
+# A generated family whose content reads state runs: the bar prints its line at
+# start, prints it again when a click changes what it shows, prints nothing when
+# a click leaves it as it was, and exits when its input closes. Each host builds
+# the same SNGL -- the family's gen.emit instantiated where the bar stood -- so
+# each prints the same lines.
+#
+# testdata/emit_family_state.txtar is the code this runs; this asserts what the
+# code does. A GUI host needs a display, which the headless compositor
+# `go tool verify` runs the suite under supplies.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 app.sngl
+[gtk4] exec sh -c './gtk4/app <clicks.txt'
+[gtk4] cmp stdout want.txt
+
+sngl build --lang go --platform fyne -o fyne app.sngl
+exec sh -c './fyne/app <clicks.txt'
+cmp stdout want.txt
+
+# Click the second block with button 1: n = 1 + 1, so the first block loses its
+# color and `labelled` appears. Then the first with button 2: n = 0 + 2, the
+# same line, so nothing is printed. Then `labelled`'s block, which has no
+# handler.
+-- clicks.txt --
+1 1
+0 2
+2 0
+-- want.txt --
+start
+a#fff|b
+a|b|n=2
+-- app.sngl --
+import async "sngl:async"
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+output {
+    go {
+        fyne
+        gtk4
+    }
+}
+
+component block build.family
+
+component text(full string, color string = "", @click(button int)) block
+
+component labelled(label string, n int) block {
+    text(full="{label}={n}")
+}
+
+component bar(blocks ...component block) root
+
+// What one member contributes: its data, and the handler a click on it runs.
+struct Entry {
+    full string
+    color string
+    click func(button int)
+}
+
+#[go.native("os", "*os.File")]
+struct File {}
+
+#[go.native("os", "os.Stdin")]
+const stdin File
+
+#[go.native("bufio", "*bufio.Scanner")]
+struct Scanner {}
+
+#[go.native("bufio", "bufio.NewScanner")]
+func newScanner(f File) Scanner
+
+#[go.native("bufio", "bufio.Scanner.Scan", method)]
+func Scanner.scan() bool
+
+#[go.native("bufio", "bufio.Scanner.Text", method)]
+func Scanner.text() string
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+// The status line: a pure function of the members, so it is what the build
+// keys the re-render on.
+func encode(members list<Entry>) string {
+    var parts list<string> = []
+    for var e = members {
+        parts.push(e.color == "" ? e.full : "{e.full}#{e.color}")
+    }
+    return parts.join("|")
+}
+
+// A click arrives as "<index> <button>" on a line of stdin. When stdin closes
+// the bar is gone, and so is the program -- posted, so every click read before
+// it has run.
+func readClicks(members func() list<Entry>) {
+    var in = newScanner(stdin)
+    for in.scan() {
+        var fields = in.text().trim().split(" ")
+        async.post(func() {
+            var ms = members()
+            var i = int.parse(fields[0], 10)
+            if i < ms.length {
+                ms[i].click(int.parse(fields[1], 10))
+            }
+        })
+    }
+    async.post(func() {
+        exit(0)
+    })
+}
+
+component block[go.language] {
+    gen.emit(
+        render=encode,
+        @start(members) {
+            print("start\n")
+            async.spawn(func() {
+                readClicks(members)
+            })
+        },
+        @change(line) {
+            print(line + "\n")
+        },
+    )
+}
+
+component text[go.language] {
+    gen.node(value=Entry{full=full, color=color, click=click})
+}
+
+var n = 0
+var names = ["a", "b"]
+
+bar {
+    for var i, w = names {
+        text(full=w, color=i == n ? "fff" : "", @click(button) {
+            n = i + button
+        })
+    }
+    if n > 0 {
+        labelled(label="n", n=n)
+    }
+}
+
+ui.window {
+    ui.text(value="{n}")
+}

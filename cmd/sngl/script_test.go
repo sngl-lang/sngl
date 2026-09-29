@@ -17,6 +17,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"git.duckfam.us/jonathan/sngl/internal/headless"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -44,6 +45,13 @@ func TestScript(t *testing.T) {
 		"gtk4 development libraries and introspection data are available",
 		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil &&
 			codegen.PlatformUnavailable("gtk4") == nil,
+	)
+	// `headless` is true inside the cage compositor `go tool verify` runs the
+	// suite under, so a GUI program a script builds can run to completion
+	// without a desktop and without reaching one.
+	conds["headless"] = script.BoolCondition(
+		"running inside the headless compositor",
+		headless.Active(),
 	)
 	// `node` is true when a node binary is on PATH. Compile-time evaluation of
 	// a pure js: function shells out to it; the CI image ships chromium and

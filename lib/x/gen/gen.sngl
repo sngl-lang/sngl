@@ -91,37 +91,88 @@ func name(target string) ir.Macro
 // argument check with a list of what the enum does accept.
 func renders(these list<Rendered>) ir.Macro
 
-// What a family's override writes for the family: one file, named `file`,
-// bracketed by `open` and `close` around what its members write.
+// How a family's override generates the family, written as the whole of the
+// override's body. The build walks each place the program renders the family
+// -- a component whose rest slot takes it -- and each member supplies its own
+// part with `node`, so nothing here asks what kind of member it is looking at.
+// There are two ways to say what the walk produces.
 //
-// A family whose members a target does not render one by one says how it is
-// generated instead, by overriding the family for that target and writing
-// this as the whole of the override's body:
+// **A file**, named `file`: `open`, then what each member's `node` writes,
+// then `close`, all at build time.
 //
 //     component block[go.language] {
 //         gen.emit(file="blocks.txt", open="[\n", close="]\n")
 //     }
 //
-// The build walks each place the program renders the family -- a component
-// whose rest slot takes it -- and writes one file per target. The walk is the
-// compiler's: each member supplies its own part with `node`, so nothing here
-// asks what kind of member it is looking at.
-//
-// A member's props are read at build time, so what reaches an emitted file is
-// a value the build can compute: a prop, an `if` or a `for` reading state is
+// A member's props are read at build time, so what reaches the file is a
+// value the build can compute: a prop, an `if` or a `for` reading state is
 // refused where it is written.
+//
+// **Code the program runs**, when `render` is given: the content may read
+// state. Each member contributes a value of `T` -- its `node`'s `value` -- and
+// the members are what the host's content holds *now*, in the order it is
+// written, `if`s and `for`s included. `render` turns them into text, and must
+// be a pure function of them: it is what the program re-evaluates when state
+// the members read changes, and `@change` runs with the text each time it
+// differs. `@start` runs once, when the program starts, and is handed the
+// members to read again later -- which is how a handler a member carries is
+// reached, from a click the program learns of some other way.
+//
+//     component block[go.language] {
+//         gen.emit(
+//             render=encode,
+//             @start(members) { async.spawn(func() { readClicks(members) }) },
+//             @change(line) { print(line) },
+//         )
+//     }
+//
+// The build compiles that as SNGL: it writes a function returning the
+// members' values and instantiates this component where the host stood,
+// handing it that function as `members`. The body below is the whole of what
+// it means, so a target compiles it with nothing to learn. `members` is the
+// build's to supply and a program does not write it.
 #[marks.builtin("genEmit")]
 #[tree.none]
-component emit(file string, open string = "", close string = "") {}
+component emit<T = struct {}>(
+    file string = "",
+    open string = "",
+    close string = "",
+    // The defaults are never read: code mode needs a `render`, and the build
+    // always supplies `members`. They are typed by T's default because a
+    // default is checked against what T stands for in the declaration.
+    render func(members list<T>) string = func(members list<struct {}>) => "",
+    members func() list<T> = func() list<struct {}> {
+        return []
+    },
+    @start(members func() list<T>),
+    @change(text string),
+) {
+    effect(@mount {
+        start(members)
+    })
+    effect(on=render(members()), @mount(text) {
+        change(text)
+    })
+}
 
 // What one member writes, written as the whole body of the member's override
-// for a target whose family emits. `open` is written where the member is
-// reached, then whatever its children write, then `close`; both are evaluated
-// with the member's props in scope, which is how a member says what it holds:
+// for a target whose family emits.
+//
+// For a file, `open` is written where the member is reached, then whatever its
+// children write, then `close`; both are evaluated with the member's props in
+// scope, which is how a member says what it holds:
 //
 //     component text[go.language] {
 //         gen.node(open="{name}: {full}\n")
 //     }
+//
+// For code, `value` is what the member contributes, also read with its props
+// in scope -- and its events, each a func running the handler the call site
+// wrote for it, or nothing where it wrote none:
+//
+//     component text[go.language] {
+//         gen.node(value=Entry{full=full, click=click})
+//     }
 #[marks.builtin("genNode")]
 #[tree.none]
-component node(open string = "", close string = "") {}
+component node<T = struct {}>(open string = "", close string = "", value T = {}) {}

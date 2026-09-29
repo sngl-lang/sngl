@@ -62,6 +62,8 @@ var alwaysOn = []string{
 	"AsyncCapable",
 	"BoundaryFailed",
 	"CSE",
+	// A call through a name the inliner bound to a declared function.
+	"DirectCalls",
 	// A raise is a raise on every target, and the catch it unwinds to is a block
 	// every language renders.
 	"ErrorCatch",
