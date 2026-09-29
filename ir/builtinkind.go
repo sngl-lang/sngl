@@ -94,8 +94,15 @@ const (
 	// source of its own.
 	BuiltinGenInputs BuiltinKind = "genInputs"
 
-	// Target identities. An opaque value type each of whose values is a const
-	// the compiler synthesizes into one target's package -- html.platform,
+	// GenEmit and GenNode are `sngl:x/gen`'s `emit` and `node`: what a
+	// family's override and a member's override say about the file a build
+	// writes for the family. Neither is rendered; the emitter pass reads them
+	// where they are written and nowhere else.
+	BuiltinGenEmit BuiltinKind = "genEmit"
+	BuiltinGenNode BuiltinKind = "genNode"
+
+	// Target identities. An opaque value type each of whose values is one
+	// target's build-tree node read as a value -- html.platform,
 	// go.language. There is no literal, so a string cannot stand in for one,
 	// which is the reason the type exists rather than the name being a string.
 	BuiltinPlatform BuiltinKind = "platform"
@@ -193,6 +200,12 @@ func (b BuiltinKind) IsDirective() bool {
 	return b == BuiltinOutput || b == BuiltinGenInputs
 }
 
+// IsEmitter reports whether the kind marks one of the declarations an emitter
+// is written from.
+func (b BuiltinKind) IsEmitter() bool {
+	return b == BuiltinGenEmit || b == BuiltinGenNode
+}
+
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
 // are stamped on const declarations, and the compiler replaces the declared
 // type and value.
@@ -213,7 +226,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
-		BuiltinOutput, BuiltinGenInputs,
+		BuiltinOutput, BuiltinGenInputs, BuiltinGenEmit, BuiltinGenNode,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
@@ -223,5 +236,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsTargetID() || b.IsConst()
 }

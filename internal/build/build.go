@@ -139,6 +139,14 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	root := codegen.OptionString(target.Options, "rootComponent")
 	IsolateRootComponent(tpkg, root)
 
+	// Ahead of the optimizer, which has no reason to keep a bodyless host it
+	// cannot render: the emitter reads the host as it was written, and takes
+	// it out of the package so nothing after it has to know it was there.
+	emitted, err := emitFamilies(tpkg, target)
+	if err != nil {
+		return Result{}, err
+	}
+
 	optCfg := &optimize.Config{
 		Platform:    target.Platform,
 		Language:    target.Lang,
@@ -178,7 +186,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		return Result{Target: target, Pkg: tpkg}, nil
+		return Result{Target: target, Pkg: tpkg, Files: emitted}, nil
 	}
 
 	feats, err := codegen.CapsFor(target.Lang, target.Platform)
@@ -214,6 +222,12 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 	slog.Info("codegen", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
+	for name, data := range emitted {
+		if _, dup := files[name]; dup {
+			return Result{}, fmt.Errorf("%s: an emitted family writes %s, which the %s platform also generates", o.Dir, name, target.Platform)
+		}
+		files[name] = data
+	}
 	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
 }
 

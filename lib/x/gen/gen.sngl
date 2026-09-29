@@ -1,4 +1,6 @@
 import ir "sngl:internal/ir"
+import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // A SNGL construct a target may emit without help.
 //
@@ -88,3 +90,38 @@ func name(target string) ir.Macro
 // target capability here, or a rendered one in `can`, is refused by the
 // argument check with a list of what the enum does accept.
 func renders(these list<Rendered>) ir.Macro
+
+// What a family's override writes for the family: one file, named `file`,
+// bracketed by `open` and `close` around what its members write.
+//
+// A family whose members a target does not render one by one says how it is
+// generated instead, by overriding the family for that target and writing
+// this as the whole of the override's body:
+//
+//     component block[go.language] {
+//         gen.emit(file="blocks.txt", open="[\n", close="]\n")
+//     }
+//
+// The build walks each place the program renders the family -- a component
+// whose rest slot takes it -- and writes one file per target. The walk is the
+// compiler's: each member supplies its own part with `node`, so nothing here
+// asks what kind of member it is looking at.
+//
+// A member's props are read at build time, so what reaches an emitted file is
+// a value the build can compute: a prop, an `if` or a `for` reading state is
+// refused where it is written.
+#[marks.builtin("genEmit")]
+#[tree.none]
+component emit(file string, open string = "", close string = "") {}
+
+// What one member writes, written as the whole body of the member's override
+// for a target whose family emits. `open` is written where the member is
+// reached, then whatever its children write, then `close`; both are evaluated
+// with the member's props in scope, which is how a member says what it holds:
+//
+//     component text[go.language] {
+//         gen.node(open="{name}: {full}\n")
+//     }
+#[marks.builtin("genNode")]
+#[tree.none]
+component node(open string = "", close string = "") {}

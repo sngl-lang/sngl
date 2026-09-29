@@ -80,6 +80,12 @@ func (c *checker) reportBodylessLibComponents() {
 // hasOverrideFor mirrors ir.SpecializeForTarget's choice: the platform's
 // override answers first, and the language's is the fallback.
 func hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
+	// A host of a family that emits is answered by the family's override: the
+	// emitter consumes the host where it is written, so there is nothing of
+	// the host's own left for a target to render.
+	if f := ir.EmittedFamily(comp); f != nil && hasOverrideFor(f, t) {
+		return true
+	}
 	if t.Platform != "" && comp.PlatformOverrides != nil {
 		if _, ok := comp.PlatformOverrides[t.Platform]; ok {
 			return true
@@ -109,6 +115,9 @@ func describeTarget(t ir.StaticTarget) string {
 // the override maps -- mergeTargetExtensions in newChecker, collectUserOverrides
 // and checkPendingExtensions before pass2.
 func renderSuppliedElsewhere(comp *ir.Component) bool {
+	if f := ir.EmittedFamily(comp); f != nil && renderSuppliedElsewhere(f) {
+		return true
+	}
 	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
 		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
 }

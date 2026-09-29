@@ -230,6 +230,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// overrides merged.
 	c.reportBodylessLibComponents()
 	c.reportTargetNames()
+	c.reportEmitterPlacement()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }

@@ -530,3 +530,81 @@ func (c *checker) reportTargetNames() {
 		first[key] = n
 	}
 }
+
+// reportEmitterPlacement holds gen.emit and gen.node to the one place each is
+// read: the whole body of an override, of a family for gen.emit and of a
+// member for gen.node. The emitter pass reads them there and nowhere else, so
+// one written in a window, a component body or beside other statements would
+// be checked, lowered and then generate nothing.
+//
+// A family's override is a gen.emit and nothing more, for the same reason: it
+// is never rendered, so anything beside the gen.emit is read by nobody.
+func (c *checker) reportEmitterPlacement() {
+	if c.pkg == nil {
+		return
+	}
+	allowed := map[*ir.NodeInst]bool{}
+	var bodies [][]ir.Stmt
+	for _, comp := range c.pkg.Components {
+		bodies = append(bodies, comp.Body)
+		for _, overrides := range []map[string]ir.Body{comp.PlatformOverrides, comp.LanguageOverrides} {
+			for _, target := range slices.Sorted(maps.Keys(overrides)) {
+				body := overrides[target]
+				want := ir.BuiltinGenNode
+				if comp.IsFamily() {
+					want = ir.BuiltinGenEmit
+				}
+				if ni := soleEmitterNode(body, want); ni != nil {
+					allowed[ni] = true
+				} else if comp.IsFamily() && comp.AST != nil {
+					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
+				}
+				bodies = append(bodies, body.Stmts)
+			}
+		}
+	}
+	for _, owner := range ir.Owners(c.pkg) {
+		bodies = append(bodies, owner.Stmts())
+	}
+	seen := map[*ir.NodeInst]bool{}
+	for _, b := range bodies {
+		for _, st := range b {
+			c.reportMisplacedEmitters(st, allowed, seen)
+		}
+	}
+}
+
+func (c *checker) reportMisplacedEmitters(st ir.Stmt, allowed, seen map[*ir.NodeInst]bool) {
+	{
+		ir.Walk(st, func(n ir.Node) error { //nolint:errcheck // the visit never fails
+			ni, ok := n.(*ir.NodeInst)
+			if !ok || ni.Component == nil || !ni.Component.Builtin.IsEmitter() || allowed[ni] || seen[ni] {
+				return nil
+			}
+			seen[ni] = true
+			var at ast.Pos
+			if sp := stmtPos(ni.AST); sp != nil {
+				at = *sp
+			}
+			what := "a member's override for the target whose family emits"
+			if ni.Component.Builtin == ir.BuiltinGenEmit {
+				what = "a family's override"
+			}
+			c.error(at, "gen.%s is written as the whole body of %s, where the build reads it", ni.Component.Name, what)
+			return nil
+		})
+	}
+}
+
+// soleEmitterNode is the one statement of an override body, when it is a gen
+// node of the given kind.
+func soleEmitterNode(body ir.Body, kind ir.BuiltinKind) *ir.NodeInst {
+	if len(body.Stmts) != 1 {
+		return nil
+	}
+	ni, ok := body.Stmts[0].(*ir.NodeInst)
+	if !ok || ni.Component == nil || ni.Component.Builtin != kind {
+		return nil
+	}
+	return ni
+}

@@ -679,6 +679,29 @@ get the same freedom from their shells. `resolveQualifiedType` lets a family
 through where it looks for a type, since `ir.IsTypeDecl` names only structs,
 enums and units.
 
+**A family may be generated rather than rendered.** A target overrides the
+family itself with a `gen.emit` as the override's whole body --
+`component block[go.language] { gen.emit(file="blocks.txt", open=…, close=…) }`
+-- and each bodyless member it reaches overrides itself with a `gen.node`
+(`open`/`close` templates, evaluated with the member's props bound). A bodyless
+*host*, a component whose rest slot takes the family (`ir.EmittedFamily`), is
+then answered by the family's override in both bodyless rules. The build
+(`internal/build/emit.go`, ahead of the first optimize, which would drop a
+bodyless host it cannot render) walks each host written at the root of a file
+into data: a member with a `gen.node` override is a node, a member with a body
+composes -- its body read with its props bound, its rest slot inserting what it
+was written with -- and an `if` or a `for` is decided there, so every value is a
+build-time one and a read of state is refused at the read. The host is then
+removed from the package, and a runner turns the tree into the target's extra
+file. The walk and the runner are separate on purpose: the tree
+(`emittedNode`) carries no IR a process could not be handed, so an emitter that
+runs another program takes the same data. Where `gen.emit`/`gen.node` may be
+written is `reportEmitterPlacement`; what a build refuses is
+`cmd/sngl/testdata/emit_family_refused.txt`, and `testdata/emit_family.txtar`
+is the code. What is not here yet: content that reads state, which needs the
+emitter to write host-language code (`p.expr`) rather than text, and a host
+anywhere but the root of a file.
+
 **`sngl:ui`'s `node` is the widget family**, and it is a family like any
 other: naming it in a slot accepts widgets and nothing else, which is what
 makes `vbox { circle(…) }` an error. It is named for what a member *is* — a
