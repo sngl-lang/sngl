@@ -432,7 +432,7 @@ type Func struct {
 	// A macro needs it: a mark is bound to the declaration it was written from,
 	// and that binding is (package, name).
 	Pkg      string
-	Receiver string // "int" for int.abs (empty for plain funcs)
+	Receiver string // "int" for int.abs (empty for plain funcs) // TODO This should be a *Type
 	// RecvParam is the implicit `this` of a method on a generic built-in whose
 	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
 	// item)`. The checker binds it into the body's scope without putting it in
@@ -513,15 +513,17 @@ type Func struct {
 	// Stdlib is true for functions declared in the SNGL standard library
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
-	Stdlib bool
+	Stdlib bool //TODO this shouldn't exist
 	// Nested says the declaration was written inside another *function* body
 	// and hoisted out of it. A func at the root of a window body is hoisted
 	// too and is not this: it is the window's own.
-	Nested bool `json:"-"`
+	Nested bool `json:"-"` // TODO Why do we need this?
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
 	MutatesReceiver bool
+
+	// TODO should these be limited to lowering datastructures, they appear to be scratch space
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms
@@ -644,7 +646,7 @@ type Component struct {
 	// (lib/*.sngl). Stdlib component props without explicit defaults are
 	// optional (rendered as zero-values by the platform); only user-defined
 	// component props without defaults are required at call sites.
-	Stdlib bool
+	Stdlib bool // TODO This needs to go; there's no reason anything should care about things being stdlib or not
 	// Builtin carries the #[builtin("window")] mark from the declaration, so the
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
@@ -662,7 +664,7 @@ type Component struct {
 	// position, for a wrapper whose family is whatever it was handed. Nil Tree
 	// and a TreeParam is a third state: tree-less at the declaration, and a
 	// member of whatever its children turn out to be at each call site.
-	TreeParam string `json:",omitempty"`
+	TreeParam string `json:",omitempty"` // TODO why is this a string?
 	// Bodyless is a declaration written with no block at all, as against one
 	// written `{}`, which renders nothing. The two are different declarations
 	// and only this says which: ast.StmtBlock.IsDefined() reports whether a
@@ -708,7 +710,7 @@ type Component struct {
 	// Nil for the components that are neither, which is nearly all of them.
 	Gen *GenCaps `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg string
+	Pkg string // TODO this should be a pointer. Decls should have an embeedded struct for common fields for package, name, macro marks,
 	// TypeParams are the component's generic parameters, in declaration
 	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
@@ -719,7 +721,7 @@ type Component struct {
 	Slots      []*SlotDecl `json:",omitempty"`
 
 	ChildrenType *Type
-	Vars         []*Var
+	Vars         []*Var // TODO: Several of these should be replaced with an embedded Body. That should simplify handling overrides
 	Funcs        []*Func
 	Body         []Stmt // type-checked body statements
 	// PlatformOverrides holds the body each target implements this component
@@ -922,6 +924,7 @@ func IsWindowNode(n *NodeInst) bool {
 	return n != nil && n.Component != nil && n.Component.Builtin == BuiltinWindow
 }
 
+// TODO These don't belong here anymore
 // The window props the compiler itself reads. Each is declared in
 // lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
 // matches, not a second declaration of them, and nothing enumerates the set --
