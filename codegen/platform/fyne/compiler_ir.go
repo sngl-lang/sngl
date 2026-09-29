@@ -191,6 +191,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	var buildBuf strings.Builder
 	var widgetFields []irWidgetField
+	// The entry window's `#id` names the fyne.Window main creates, which is
+	// what `open` and `close` reach it through.
+	winID := entryWindowID(ctx)
+	if winID != "" {
+		widgetFields = append(widgetFields, irWidgetField{name: winID, goType: "fyne.Window"})
+	}
 	var eventInvokers []fyneEventInvoker
 	var entrySync []entrySyncRec
 	widgetImports := map[string]bool{}
@@ -499,7 +505,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	if cfg.Main {
-		emitIRMain(&b, cfg, info, ctx.Pkg)
+		emitIRMain(&b, cfg, info, ctx.Pkg, winID)
 	}
 
 	imports := make([]string, 0, len(td.Imports)+8)
@@ -863,15 +869,30 @@ func renderIRComponentMethod(
 	return b.String(), compFields, startLabel, startContainer
 }
 
-func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package) {
+// entryWindowID is the `#id` of the window main creates, when the program
+// opens or closes it, and "" otherwise.
+func entryWindowID(ctx *codegen.CodegenCtx) string {
+	if !codegen.OpensWindows(ctx.Pkg) {
+		return ""
+	}
+	if wins := ctx.Windows(); len(wins) > 0 && wins[0].Window != nil {
+		return wins[0].Window.ID
+	}
+	return ""
+}
+
+func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package, winID string) {
 	if pkg != nil && pkg.Run != nil {
-		emitIRRunMain(b, cfg, pkg)
+		emitIRRunMain(b, cfg, pkg, winID)
 		return
 	}
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tm := New()\n")
+	if winID != "" {
+		fmt.Fprintf(b, "\tm.%s = w\n", winID)
+	}
 	// fyne 2.7 lays out SetContent's tree against the *current* window
 	// size, so set content before resizing — otherwise the canvas
 	// reports its default 0×0 dimensions at first paint and the user
@@ -900,28 +921,38 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 // is an ordinary update of widgets that exist; `run` then shows the window and
 // runs the loop, and a handler that never calls it gets the loop alone, which
 // fyne keeps running with no window until something quits.
-func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
+func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package, winID string) {
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	b.WriteString("\tm := New()\n")
-	b.WriteString("\tcontent := m.BuildUI()\n")
+	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
+	if winID != "" {
+		fmt.Fprintf(b, "\tm.%s = w\n", winID)
+	}
+	b.WriteString("\tw.SetContent(m.BuildUI())\n")
+	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	if pkg.RemoteSettle != nil {
 		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
 	}
 	b.WriteString("\tran := false\n")
-	fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
-	b.WriteString("\t\tran = true\n")
-	fmt.Fprintf(b, "\t\tw := a.NewWindow(%q)\n", cfg.AppName)
-	b.WriteString("\t\tw.SetContent(content)\n")
-	b.WriteString("\t\tw.Resize(fyne.NewSize(480, 640))\n")
-	b.WriteString("\t\tw.ShowAndRun()\n")
-	b.WriteString("\t})\n")
+	// An empty handler is emitted as no function at all, and never calls run.
+	if len(pkg.Run.Block) > 0 {
+		fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
+		b.WriteString("\t\tran = true\n")
+		b.WriteString("\t\tw.ShowAndRun()\n")
+		b.WriteString("\t})\n")
+	}
 	b.WriteString("\tif !ran {\n")
+	// Started with no window on screen, the program does not end when the
+	// window it later opens is closed: the close hides it, and `open` brings
+	// it back.
+	b.WriteString("\t\tw.SetCloseIntercept(w.Hide)\n")
 	b.WriteString("\t\ta.Run()\n")
 	b.WriteString("\t}\n")
 	if pkg.Teardown != nil {
 		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
 	}
+	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
 }
 

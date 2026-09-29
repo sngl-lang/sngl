@@ -36,3 +36,16 @@ component window<T = struct {}>(
     @error error,
     content ...component(v T) node,
 ) root {}
+
+// Puts the window on screen and in front, on a target that holds windows the
+// program can show and hide: gtk4 and fyne. Reached through the window's
+// `#id` -- `window #details(…)`, then `details.open()` from a handler -- which
+// is what lets a program started with no window on screen, one whose `@run`
+// never called `run`, bring one up in answer to something.
+#[marks.intrinsic("window.open")]
+func window.open()
+
+// Takes the window off screen without ending the program; `open` brings it
+// back as it was.
+#[marks.intrinsic("window.close")]
+func window.close()

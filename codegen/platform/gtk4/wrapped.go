@@ -223,7 +223,15 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.
-func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string, fields map[string]bool) {
+//
+// winID is the entry window's `#id`, whose Model field is set to the window
+// BuildUI creates so that `open` and `close` can reach it.
+func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string, fields map[string]bool, winID string) {
+	keep := func(win string) {
+		if winID != "" {
+			fmt.Fprintf(b, "\tm.%s = %s\n", winID, win)
+		}
+	}
 	// A ref the translator did not put in the Model is a local in
 	// buildWidgetTree; see buildRef, which answers the same question for the
 	// inline-cgo path.
@@ -239,7 +247,9 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
-		b.WriteString("\treturn gtk4rt.ApplicationWindowNew(app)\n")
+		b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
+		keep("win")
+		b.WriteString("\treturn win\n")
 		b.WriteString("}\n\n")
 		return
 	}
@@ -251,6 +261,7 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
 		b.WriteString("\tm.buildWidgetTree()\n")
+		keep(mref(topLevelRefs[0]))
 		fmt.Fprintf(b, "\treturn %s\n", mref(topLevelRefs[0]))
 		b.WriteString("}\n\n")
 		return
@@ -273,6 +284,7 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 		fmt.Fprintf(b, "\tgtk4rt.WindowSetTitle(win, %s)\n", title)
 	}
 	b.WriteString("\tgtk4rt.WindowSetChild(win, m.__root)\n")
+	keep("win")
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
 }
@@ -355,11 +367,17 @@ func init() {
 // gets the loop with the window hidden.
 //
 // run is the call's spelling of the handler's function, receiver included.
+// An empty handler is emitted as no function at all, and never calls run.
 func emitGTK4RunMainWrapped(b *strings.Builder, run string) {
 	b.WriteString("\nfunc main() {\n")
 	b.WriteString("\tgtk4rt.Init()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
+	if run == "" {
+		b.WriteString("\tgtk4rt.RunHidden(m.BuildUI)\n")
+		b.WriteString("}\n")
+		return
+	}
 	b.WriteString("\tran := false\n")
 	fmt.Fprintf(b, "\t%s(gtk4rt.Args(), func() {\n", run)
 	b.WriteString("\t\tran = true\n")

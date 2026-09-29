@@ -572,6 +572,11 @@ under `--window`. Left: emitter layers, the interpreter, and bubbletea.
 
 ### Phase C: hosts beyond the file root, and reactive windows
 
+*In part:* a click opening a window is `details.open()` through the window's
+`#id` (`window.open`/`window.close`, gtk4 and fyne), which is what the i3
+example does. A window created and destroyed with a reactive `if` is still
+open, as is a second window on gtk4 or fyne.
+
 Decision 5, and a window under a reactive root `if` on gtk4 and fyne -- the
 bar's click opening a window is `if details { ui.window … }`, and a window
 `@close` writing the condition back. Unverified today whether those hosts can

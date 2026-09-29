@@ -2179,6 +2179,16 @@ emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
 `cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
 
+**A window's `#id` opens and closes it**: `window.open()` and `window.close()`
+(`lib/ui/window.sngl`) are intrinsics a platform answers
+(`codegen/platform/{gtk4,fyne}/window.go`). The entry window is always built
+and the Model keeps it in a field named by its `#id`, set where the host
+creates it, so the Go context's ordinary handle spelling (`m.details`) is the
+receiver. Started with no window on screen, the window manager's close hides
+rather than quits. Only the entry window: gtk4 and fyne build one. On gtk4
+`WAYLAND_DEBUG` is how a script tells a window reached the screen
+(`cmd/sngl/testdata/window_open_runs.txt`).
+
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it
 (`internal/build.Check`, the fixture harness). A platform's own test harness

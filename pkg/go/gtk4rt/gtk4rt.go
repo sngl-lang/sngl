@@ -563,7 +563,14 @@ func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 		return
 	}
 	win := activateFn(Handle(unsafe.Pointer(app)))
-	if win != nil && !hidden {
+	switch {
+	case win == nil:
+	case hidden:
+		// Started with no window on screen, the program does not end when the
+		// window it later opens is closed: the close hides it, and `open`
+		// brings it back.
+		C.gtk_window_set_hide_on_close((*C.GtkWindow)(p(win)), 1)
+	default:
 		C.gtk_window_present((*C.GtkWindow)(p(win)))
 	}
 }
@@ -594,6 +601,21 @@ func Run(build func(app Handle) Handle) int {
 func RunHidden(build func(app Handle) Handle) int {
 	hidden = true
 	return Run(build)
+}
+
+// WindowPresent puts win on screen and in front. Nil is a window the program
+// has not built yet, and is left alone.
+func WindowPresent(win Handle) {
+	if win != nil {
+		C.gtk_window_present((*C.GtkWindow)(p(win)))
+	}
+}
+
+// WindowHide takes win off screen; WindowPresent brings it back as it was.
+func WindowHide(win Handle) {
+	if win != nil {
+		C.gtk_widget_set_visible((*C.GtkWidget)(p(win)), 0)
+	}
 }
 
 // Args is the command line after the program's name, which is what a `@run`

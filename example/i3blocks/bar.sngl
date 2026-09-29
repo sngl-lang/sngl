@@ -1,5 +1,5 @@
-// An i3 status bar, and -- with `--window` -- a GTK or Fyne window in the
-// same process that shows what the bar is showing.
+// An i3 status bar, and a GTK or Fyne window in the same process that pops up
+// when the bar's load block is clicked.
 //
 // In ~/.config/i3/config:
 //
@@ -15,8 +15,8 @@ import ui "sngl:ui"
 // One binary per host. Both are Go, so both pick `i3.block[go.language]`.
 //
 // Launched by i3 the program is the bar alone: `@run` never calls `run`, so
-// the loop runs -- the timer, the clicks -- with no window. `--window` opens
-// the window beside it.
+// the loop runs -- the timer, the clicks -- with no window until a click on
+// the load block opens one. `--window` opens it at start.
 output {
     go {
         gtk4(@run(args, run) {
@@ -39,7 +39,6 @@ var (
     samples list<int> = []
     workspaces = ["web", "code", "chat"]
     focused = 0
-    details = false
 )
 
 func load() => samples.length == 0 ? 0 : samples[samples.length - 1]
@@ -64,31 +63,34 @@ i3.bar {
         )
     }
     i3.gap(width=24)
+    // A click on the load block pops the window up: the bar and the window
+    // are one process, so the handler reaches the window by its `#id`.
     i3.text(
         name="load",
         full="load {load()}",
         color=load() > 7 ? #ff5555 : #a3be8c,
         urgent=load() > 9,
-        @click(button) {
-            // Left click shows the samples in the window; right click hides
-            // them.
-            details = button == 1
+        @click {
+            details.open()
         },
     )
     i3.text(name="uptime", full="up {uptime}s", short="{uptime}s")
 }
 
-ui.window(title="Load") {
+ui.window #details(title="Load") {
     ui.vbox(style={gap=8, padding=16}) {
         ui.text(value="{workspaces[focused]}: load {load()} after {uptime}s", style={fontWeight=bold})
-        if details {
-            ui.vbox(style={gap=2}) {
-                for var s = samples {
-                    ui.text(value="{s}")
-                }
+        ui.vbox(style={gap=2}) {
+            for var s = samples {
+                ui.text(value="{s}")
             }
+        }
+        ui.hbox(style={gap=8}) {
             ui.button(text="Clear", @click {
                 samples = []
+            })
+            ui.button(text="Close", @click {
+                details.close()
             })
         }
     }
