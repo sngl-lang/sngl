@@ -1,5 +1,5 @@
-// An i3 status bar, and a GTK or Fyne window in the same process that shows
-// what the bar is showing.
+// An i3 status bar, and -- with `--window` -- a GTK or Fyne window in the
+// same process that shows what the bar is showing.
 //
 // In ~/.config/i3/config:
 //
@@ -13,10 +13,24 @@ import time "sngl:time"
 import ui "sngl:ui"
 
 // One binary per host. Both are Go, so both pick `i3.block[go.language]`.
+//
+// Launched by i3 the program is the bar alone: `@run` never calls `run`, so
+// the loop runs -- the timer, the clicks -- with no window. `--window` opens
+// the window beside it.
 output {
     go {
-        gtk4
-        fyne
+        gtk4(@run(args, run) {
+            start(args, run)
+        })
+        fyne(@run(args, run) {
+            start(args, run)
+        })
+    }
+}
+
+func start(args list<string>, run func()) {
+    if args.contains("--window") {
+        run()
     }
 }
 

@@ -348,6 +348,29 @@ func init() {
 `)
 }
 
+// emitGTK4RunMainWrapped is the entry point for a program that wrote `@run`.
+// The tree is built first -- its first settle included -- so a write the
+// handler makes is an ordinary update of widgets that exist; `run` then
+// presents the window and runs the loop, and a handler that never calls it
+// gets the loop with the window hidden.
+//
+// run is the call's spelling of the handler's function, receiver included.
+func emitGTK4RunMainWrapped(b *strings.Builder, run string) {
+	b.WriteString("\nfunc main() {\n")
+	b.WriteString("\tgtk4rt.Init()\n")
+	b.WriteString("\tm := New()\n")
+	b.WriteString("\tm.buildWidgetTree()\n")
+	b.WriteString("\tran := false\n")
+	fmt.Fprintf(b, "\t%s(gtk4rt.Args(), func() {\n", run)
+	b.WriteString("\t\tran = true\n")
+	b.WriteString("\t\tgtk4rt.Run(m.BuildUI)\n")
+	b.WriteString("\t})\n")
+	b.WriteString("\tif !ran {\n")
+	b.WriteString("\t\tgtk4rt.RunHidden(m.BuildUI)\n")
+	b.WriteString("\t}\n")
+	b.WriteString("}\n")
+}
+
 // emitGTK4MainWrapped emits the wrapped-mode program entry point. All GTK
 // bootstrapping lives in gtk4rt.Run, so the generated main is cgo-free.
 func emitGTK4MainWrapped(b *strings.Builder) {

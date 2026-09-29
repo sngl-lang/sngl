@@ -553,13 +553,17 @@ func snglGoDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
 
 var activateFn func(app Handle) Handle
 
+// hidden says the window activate builds is not to be presented. It is still
+// added to the application, which is what keeps the loop running.
+var hidden bool
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	if activateFn == nil {
 		return
 	}
 	win := activateFn(Handle(unsafe.Pointer(app)))
-	if win != nil {
+	if win != nil && !hidden {
 		C.gtk_window_present((*C.GtkWindow)(p(win)))
 	}
 }
@@ -581,6 +585,20 @@ func Run(build func(app Handle) Handle) int {
 	)
 	return int(C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil))
 }
+
+// RunHidden is Run without presenting the window build returns: the loop runs
+// -- timers, idle callbacks, posted work -- and nothing is on screen. A
+// program whose `@run` handler never called `run` starts this way. The window
+// is created all the same, since an application with a window added is one
+// that keeps running.
+func RunHidden(build func(app Handle) Handle) int {
+	hidden = true
+	return Run(build)
+}
+
+// Args is the command line after the program's name, which is what a `@run`
+// handler is handed.
+func Args() []string { return os.Args[1:] }
 
 // Init initializes GTK. It is idempotent (gtk_init may be called repeatedly)
 // and is used by the test-agent harness to materialise widgets outside a

@@ -4461,7 +4461,7 @@ func (c *checker) validateVisualNodeProps(vn *ast.VisualNode, comp *ir.Component
 			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
 				c.error(vn.Pos, "%s", err)
 			} else if !ok && !componentHasEvent(comp, arg.Name) {
-				c.error(vn.Pos, "unknown event %q on component %s", arg.Name, comp.Name)
+				c.error(vn.Pos, "unknown event %q on component %s", arg.Name, comp.DisplayName())
 			}
 		}
 	}
@@ -4863,7 +4863,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			c.checkBlock(&arg.Body)
 			c.popScope()
 			if !componentAcceptsEvent(comp, arg.Name) {
-				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
+				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.DisplayName())
 			}
 		}
 	}
@@ -4908,7 +4908,7 @@ func (c *checker) validateCallStmtComponentArgs(call *ast.CallExpr, comp *ir.Com
 			if ok, err := componentWildcardEvent(comp, arg.Name); err != nil {
 				c.error(*call.Func.ExprPos(), "%s", err)
 			} else if !ok && !componentHasEvent(comp, arg.Name) {
-				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.Name)
+				c.error(*call.Func.ExprPos(), "unknown event %q on component %s", arg.Name, comp.DisplayName())
 			}
 		}
 	}

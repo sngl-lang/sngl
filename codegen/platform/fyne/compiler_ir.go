@@ -864,6 +864,10 @@ func renderIRComponentMethod(
 }
 
 func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package) {
+	if pkg != nil && pkg.Run != nil {
+		emitIRRunMain(b, cfg, pkg)
+		return
+	}
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
@@ -888,6 +892,36 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
 	}
 	b.WriteString("\t_ = os.Stderr\n")
+	b.WriteString("}\n")
+}
+
+// emitIRRunMain is the entry point for a program that wrote `@run`. The tree
+// is built first -- its first settle included -- so a write the handler makes
+// is an ordinary update of widgets that exist; `run` then shows the window and
+// runs the loop, and a handler that never calls it gets the loop alone, which
+// fyne keeps running with no window until something quits.
+func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
+	b.WriteString("func main() {\n")
+	b.WriteString("\ta := app.New()\n")
+	b.WriteString("\tm := New()\n")
+	b.WriteString("\tcontent := m.BuildUI()\n")
+	if pkg.RemoteSettle != nil {
+		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
+	}
+	b.WriteString("\tran := false\n")
+	fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
+	b.WriteString("\t\tran = true\n")
+	fmt.Fprintf(b, "\t\tw := a.NewWindow(%q)\n", cfg.AppName)
+	b.WriteString("\t\tw.SetContent(content)\n")
+	b.WriteString("\t\tw.Resize(fyne.NewSize(480, 640))\n")
+	b.WriteString("\t\tw.ShowAndRun()\n")
+	b.WriteString("\t})\n")
+	b.WriteString("\tif !ran {\n")
+	b.WriteString("\t\ta.Run()\n")
+	b.WriteString("\t}\n")
+	if pkg.Teardown != nil {
+		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
+	}
 	b.WriteString("}\n")
 }
 

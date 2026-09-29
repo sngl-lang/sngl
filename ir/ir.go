@@ -181,6 +181,12 @@ type Package struct {
 	// reason Teardown is: whether there is anything to call, and what it is
 	// called, are the lowering's answers and not a name to look up.
 	Mounts []*Func `json:"-"`
+
+	// Run is the build's function for the target's `@run` handler: it takes
+	// the command line and the host's `run`, and the host's own entry point
+	// calls it before anything the program renders exists. Nil where the
+	// program wrote none, and the host starts as it always has.
+	Run *Func `json:"-"`
 }
 
 // RootMounts are the first settles of the brackets written at the root of a
@@ -203,8 +209,8 @@ func (p *Package) RootMounts() []Stmt {
 }
 
 // EntryPoints are the handlers a platform calls from its own scaffolding
-// rather than from anything in the IR: the teardown, the store's settle, and
-// the effect mounts. Each is recorded rather than named because whether it
+// rather than from anything in the IR: the teardown, the store's settle, the
+// `@run` function and the effect mounts. Each is recorded rather than named because whether it
 // exists and what it is called are the lowering's answers -- which is exactly
 // what makes them invisible to any walk that follows calls, the tree-shaker
 // included.
@@ -214,8 +220,8 @@ func (p *Package) EntryPoints() []*Func {
 	if p == nil {
 		return nil
 	}
-	out := make([]*Func, 0, 2+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle}, p.Mounts...) {
+	out := make([]*Func, 0, 3+len(p.Mounts))
+	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle, p.Run}, p.Mounts...) {
 		if fn != nil {
 			out = append(out, fn)
 		}
@@ -989,6 +995,10 @@ type Output struct {
 	Options  *StructLit
 	LangComp *Component `json:"-"`
 	PlatComp *Component `json:"-"`
+	// Run is the `@run` handler written on the platform's node, when the
+	// platform declares one and the program wrote it: the process start,
+	// wrapped. The build makes it the package's Run function.
+	Run *EventHandler `json:"-"`
 }
 
 // ReceiverParam is the surface name of the implicit method receiver (SNGL's

@@ -138,6 +138,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	// into what, so the isolation has to be in place before anything moves.
 	root := codegen.OptionString(target.Options, "rootComponent")
 	IsolateRootComponent(tpkg, root)
+	installRun(tpkg, target)
 
 	// Ahead of the optimizer, which has no reason to keep a bodyless host it
 	// cannot render: the emitter reads the host as it was written, and takes

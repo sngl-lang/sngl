@@ -50,6 +50,17 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	return out
 }
 
+// ModelCallee is how a Model-receiver platform's own scaffolding names a
+// package function it calls -- `m.__run`, or `__run` when the function reads
+// no state and was emitted free. The same rule a call in the program follows,
+// for a caller written as a string rather than as IR.
+func ModelCallee(pkg *ir.Package, fn *ir.Func, recv string) string {
+	if ModelFreeFuncs(pkg)[fn.Name] {
+		return ExportName(fn.Name)
+	}
+	return recv + "." + fn.Name
+}
+
 // ModelStateFuncs names the top-level funcs a Model-receiver platform must
 // emit as Model methods even though they belong to no component: the ones that
 // read or write a package-level var, and everything that reaches one through a

@@ -177,6 +177,11 @@ func (c *checker) collectOutputs(root *ir.NodeInst) {
 				PlatComp: platNode.Component,
 				Options:  outputOptions(root, langNode, platNode),
 			}
+			for i := range platNode.Handlers {
+				if platNode.Handlers[i].Name == "run" {
+					out.Run = &platNode.Handlers[i]
+				}
+			}
 			if vn, ok := platNode.AST.(*ast.VisualNode); ok {
 				out.AST = vn
 			} else if vn, ok := root.AST.(*ast.VisualNode); ok {

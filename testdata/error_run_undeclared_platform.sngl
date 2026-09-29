@@ -1,0 +1,18 @@
+// `@run` is declared by the platforms that can wrap their process start --
+// gtk4 and fyne -- and nowhere else. A page has no process start to wrap, so
+// on html it is an event the node does not declare, named by the target it is
+// written on rather than by the `platform` every target's node is called.
+
+import ui "sngl:ui"
+
+output {
+    none {
+        html(@run(args, run) { // ERROR(check) "unknown event \"run\" on component html"
+            run()
+        })
+    }
+}
+
+ui.window {
+    ui.text(value="x")
+}

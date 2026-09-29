@@ -488,7 +488,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg)
+		if err := emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg); err != nil {
+			c.shared.errs = append(c.shared.errs, err)
+		}
 	}
 
 	if len(c.shared.errs) > 0 {
@@ -1387,10 +1389,17 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) error {
+	if pkg != nil && pkg.Run != nil {
+		if !wrapped {
+			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
+		}
+		emitGTK4RunMainWrapped(b, golang.ModelCallee(pkg, pkg.Run, "m"))
+		return nil
+	}
 	if wrapped {
 		emitGTK4MainWrapped(b)
-		return
+		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
 	if teardown {
@@ -1429,6 +1438,7 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package)
 	b.WriteString("\t\tos.Exit(int(status))\n")
 	b.WriteString("\t}\n")
 	b.WriteString("}\n")
+	return nil
 }
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {

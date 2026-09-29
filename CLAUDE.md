@@ -2160,6 +2160,25 @@ declare `const` slots and their members `const` props, so it is the general
 const-argument and const-slot rules (see *The const prefix*). `entry` is the
 exception, naming a declaration rather than holding a value.
 
+**A platform node may declare `@run`, which wraps the process start** --
+`gtk4(@run(args, run) { … })`. A handler is not a value, so the const rule
+does not reach it, and its body is program code: `enterFuncBody` resets
+`outputDepth`, or a call in it resolved as a target at the next level down.
+The event is what says a platform supports it: gtk4 and fyne declare it, and
+on html or android it is an event the node does not declare. The build
+(`internal/build/run.go`) makes the handler a function of the program's,
+`ir.Package.Run`, so every lowering pass reads it as it reads any other --
+a handler reached only through `ir.Output` is in no body. Each host's `main`
+builds the tree first, its first settle included, so a write in the handler
+updates widgets that exist; then calls the function with the command line and
+a `run` that presents the window and runs the loop. A handler that never calls
+it gets the loop with no window presented (`gtk4rt.RunHidden`, fyne's
+`a.Run()`), which is how a status bar launched by i3 starts.
+`golang.ModelCallee` spells the call, since a handler that touches no state is
+emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
+`testdata/platform_run_handler.txtar` is the code and
+`cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
+
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it
 (`internal/build.Check`, the fixture harness). A platform's own test harness

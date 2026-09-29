@@ -3633,10 +3633,16 @@ func (c *checker) enterFuncBody() func() {
 	c.funcDepth++
 	savedLoops := c.loopDepth
 	c.loopDepth = 0
+	// A handler written on a build-target node -- `gtk4(@run(args, run) {
+	// … })` -- is program code, not the directive's tree, so a call in it
+	// names a function and not a target at the next level down.
+	savedOutput := c.outputDepth
+	c.outputDepth = 0
 	restoreNarrow := c.clearNarrowings()
 	return func() {
 		c.funcDepth--
 		c.loopDepth = savedLoops
+		c.outputDepth = savedOutput
 		restoreNarrow()
 	}
 }

@@ -28,8 +28,8 @@ component text[go.language] {
 ```
 
 That much works today, for build-time content and for content that reads
-state (see *Done*). The remainder is `@main`, hosts beyond the file root and
-reactive windows, then the import schemes, the trust model and the commands.
+state (see *Done*). The remainder is emitter layers of `@run`, hosts beyond the
+file root and reactive windows, then the import schemes, the trust model and the commands.
 
 `example/i3blocks/` is the program the work is steered by. It compiles and runs
 on gtk4 and fyne; its README lists what it still works around.
@@ -166,7 +166,7 @@ is kept open for both:
 | `p.post(code)`                                                         | the host's hand-off to its loop thread (`async.post`) followed by its updates                                            |
 | `p.onUpdate(code)`                                                     | render-model: run after every state change                                                                               |
 | `p.updater(deps, code)`                                                | mutation-model: `CommonAnalysis` deps -- *open* whether it is needed from the start                                      |
-| `p.main(before, after)`                                                | a layer of the `@main` chain (decision 6)                                                                                |
+| `p.main(before, after)`                                                | a layer of the `@run` chain (decision 6)                                                                                 |
 | `p.error(pos, msg)`                                                    | a positioned build error                                                                                                 |
 
 **Per-family capabilities** are moot for the SNGL runner -- what it writes is
@@ -185,18 +185,45 @@ component renders. `bar` is a root member, so the next places are a root-level
 `if`/`for` and a component whose family is `root`. A host under a reactive
 `if` needs decision 4 first.
 
-### 6. `@main` is a chain
+### 6. `@run` wraps the process start, on the platform's node
 
-A package-level `main(@main(run) { … })` wraps the process start: code before
-`run()` runs on the main thread before the loop, code after it after the loop
-exits. Layers nest outermost first: the program's, then each emitter's
-(`p.main`), then the host's loop. The body is a new owner kind and has to be in
-`ir.Owners`, or the passes that enumerate blocks skip it (the timer-in-window
-history). The interpreter runs the chain for `sngl run --lang none`; static
-html maps it to page load; route mode wraps `ListenAndServe`. *Open:* android,
-whose state lives inside a composable and has nowhere to be written before
-`run()`, and whether `output(entry=…)` keeps only its routing meaning
-(which page is `/`) once desktop start-up is the tree plus `@main`.
+*Landed for the program's layer.* The handler is written on the platform's own
+node in the output block, and the event is what says a platform supports it:
+
+```sngl
+output {
+    go {
+        gtk4(@run(args, run) {
+            if args.contains("--window") {
+                run()               // present the windows and run the loop
+            }
+        })                          // not called: the loop runs, no window
+    }
+}
+```
+
+It was `@main` at package level in the first version of this plan; it is
+`@run` because every platform node already has a `main` prop, and it is on the
+node because not every platform can support it -- a page has no process start
+to wrap, and android's state lives inside a composable -- so html and android
+simply do not declare it. The build makes the handler a function
+(`ir.Package.Run`), which answers the owner problem this decision named: as a
+function it is lowered like any other, with no new owner kind in `ir.Owners`.
+
+The host builds the tree first, its first settle included, then calls the
+handler. Code before `run` runs before the loop and code after it once the loop
+has exited; a handler that never calls `run` gets the loop with no window
+presented.
+
+*Open:*
+
+- **Emitter layers** (`p.main`), nested inside the program's. A family whose
+  generator writes SNGL has no layer to add yet; the i3 header is written by
+  `@start`, with the first settle.
+- **The interpreter and bubbletea.** `none` does not declare `@run`, so
+  `sngl run --lang none` starts as before; bubbletea owns stdio and was left
+  out.
+- Whether `output(entry=…)` keeps only its routing meaning.
 
 ### 7. The host API records its own inputs
 
@@ -538,10 +565,10 @@ each found on the way:
 - `example/i3blocks/` is compiled by nothing in the suite; a script or test
   building it would keep it from rotting.
 
-### Phase B: `@main`
+### Phase B: `@run` -- the program's layer done
 
-Decision 6, with a fixture per pass that enumerates blocks, the interpreter,
-and page load on html. Then emitter layers.
+Decision 6 on gtk4 and fyne, with `example/i3blocks/` opening its window only
+under `--window`. Left: emitter layers, the interpreter, and bubbletea.
 
 ### Phase C: hosts beyond the file root, and reactive windows
 
