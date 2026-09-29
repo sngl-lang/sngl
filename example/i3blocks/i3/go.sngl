@@ -1,190 +1,108 @@
+import async "sngl:async"
 import gen "sngl:x/gen"
 import go "sngl:language/go"
 
-// The block family, emitted as Go.
+// The block family, generated for Go.
 //
-// `[go.language]` is `sngl:language/go`'s build-target node,
-// `#[gen.name("go")] component language(…) build.language`: the node is the
-// target, so an override names it the way it names any declaration of that
-// package.
+// A *language* override, because none of this depends on the host: gtk4 and
+// fyne both pick it, and compile what it becomes the way they compile any
+// other SNGL. `render` is what makes it code rather than a file: the build
+// writes a function returning each block's `Entry`, re-evaluates `encode` over
+// it whenever state a block reads changes, and runs `@change` with the new
+// line when it differs.
 //
-// A *language* override because none of this depends on the host: gtk4, fyne
-// and a headless loop all pick it through the platform → language →
-// declaration order, and only `p.post` and `p.main` differ per host -- which
-// the host answers, not this file.
-//
-// It claims no capability, so its subtrees reach it with every lowering pass
-// applied: no ternary, no lambda, no reactivity. That is the smallest IR there
-// is, and the claim-nothing default is what keeps it correct as the language
-// grows.
+// `@start` writes the header, which has to reach stdout before the first
+// status line, and starts the reader before any click can be lost.
 component block[go.language] {
-    // PROPOSED: `gen.emit` runs at generate time, in the interpreter, over the
-    // lowered IR of every place the program renders this family.
-    //
-    // `tree.hosts` is each `bar` the program wrote, and `host.members` its
-    // lowered content: nodes, and the `if`s and `for`s around them.
-    gen.emit(@generate(tree gen.Tree, p gen.Program) {
-        if tree.hosts.length > 1 {
-            p.error(tree.hosts[1].pos, "i3bar reads one status line per process; this is a second bar")
-            return
-        }
+    gen.emit(
+        render=encode,
+        @start(members) {
+            print(header)
+            async.spawn(func() {
+                readClicks(members)
+            })
+        },
+        @change(line) {
+            print(line + "\n")
+        },
+    )
+}
 
-        var f = p.file("i3bar.go")
-        f.require("encoding/json")
-        f.require("bufio")
-        f.require("fmt")
-        f.require("os")
-
-        f.open(`type i3Block struct {`)
-        f.line(`Name string ` + "`json:\"name,omitempty\"`")
-        f.line(`Instance string ` + "`json:\"instance,omitempty\"`")
-        f.line(`FullText string ` + "`json:\"full_text\"`")
-        f.line(`ShortText string ` + "`json:\"short_text,omitempty\"`")
-        f.line(`Color string ` + "`json:\"color,omitempty\"`")
-        f.line(`Background string ` + "`json:\"background,omitempty\"`")
-        f.line(`Urgent bool ` + "`json:\"urgent,omitempty\"`")
-        f.line(`MinWidth int ` + "`json:\"min_width,omitempty\"`")
-        f.line(`Align string ` + "`json:\"align,omitempty\"`")
-        f.line(`Separator *bool ` + "`json:\"separator,omitempty\"`")
-        f.line(`SeparatorBlockWidth *int ` + "`json:\"separator_block_width,omitempty\"`")
-        f.close(`}`)
-
-        f.open(`type i3Click struct {`)
-        f.line(`Name string ` + "`json:\"name\"`")
-        f.line(`Instance string ` + "`json:\"instance\"`")
-        f.line(`Button int ` + "`json:\"button\"`")
-        f.line(`X int ` + "`json:\"relative_x\"`")
-        f.line(`Y int ` + "`json:\"relative_y\"`")
-        f.close(`}`)
-
-        // PROPOSED: fields on the host's Model. The emitter names them; the
-        // host decides where the Model is and spells `m`.
-        p.field("i3Last", "string")
-        p.field("i3Handlers", "map[string]func(int, int, int)")
-
-        // Render: the whole status line from the current state. The protocol
-        // resends the line anyway, so a render-model emitter is the right
-        // shape even on a mutation-model host.
-        f.open(`func (m *Model) i3Render() {`)
-        f.line(`var blocks []i3Block`)
-        f.line(`m.i3Handlers = map[string]func(int, int, int){}`)
-        emitMembers(f, p, tree.hosts[0].members)
-        f.line(`line, _ := json.Marshal(blocks)`)
-        f.line(`if string(line) == m.i3Last { return }`)
-        f.line(`m.i3Last = string(line)`)
-        f.line(`os.Stdout.Write(append(line, ',', '\n'))`)
-        f.close(`}`)
-
-        // Clicks arrive on stdin, off the loop thread, and are posted onto
-        // it. A handler writes state; the host runs its updates after the
-        // posted call returns, which is what re-renders a window the handler
-        // opened.
-        f.open(`func (m *Model) i3ReadClicks() {`)
-        f.line(`dec := json.NewDecoder(bufio.NewReader(os.Stdin))`)
-        f.line(`dec.Token() // the opening '[' of an array that never closes`)
-        f.open(`for dec.More() {`)
-        f.line(`var ev i3Click`)
-        f.line(`if dec.Decode(&ev) != nil { return }`)
-        // PROPOSED: `p.post(code)` is the host's spelling of "run this on
-        // the loop thread, then update" -- `fyne.Do` on fyne, an idle source
-        // on gtk4, a channel send on a headless loop.
-        f.open(p.post(`func() {`))
-        f.line(`if h := m.i3Handlers[ev.Name+"/"+ev.Instance]; h != nil { h(ev.Button, ev.X, ev.Y) }`)
-        f.close(`}`)
-        f.close(`}`)
-        f.close(`}`)
-
-        // PROPOSED: re-render after every state change. A mutation-model host
-        // could be asked for `p.updater(deps, code)` instead, with the deps the
-        // members' props read; the dedupe above makes the coarse form cheap.
-        p.onUpdate(`m.i3Render()`)
-
-        // PROPOSED: a layer of the `@main` chain, contributed by an emitter.
-        // The header must reach stdout before the first status line, which
-        // no mount-time effect can promise; the reader starts before the loop
-        // so no click is lost.
-        p.main(
-            before=`os.Stdout.WriteString("{\"version\":1,\"click_events\":true}\n[\n"); m.i3Render(); go m.i3ReadClicks()`,
-        )
+// A member says what it contributes, with its props in scope -- and its
+// events, each a func running the handler the call site wrote.
+component text[go.language] {
+    gen.node(value=Entry{
+        name = name,
+        full = full,
+        short = short,
+        color = color,
+        background = background,
+        urgent = urgent,
+        minWidth = minWidth,
+        align = align,
+        separator = separator,
+        click = click,
     })
 }
 
-// Writes the Go that appends each rendered block, walking the `if`s and `for`s
-// around them so a block under a loop is one entry per iteration.
-//
-// PROPOSED: `gen.Stmt` is `sngl:x/gen/ir`'s view of a lowered statement, and
-// `p.expr`, `p.ifHead` and `p.forHead` are the host language's own
-// translation -- this file never spells a Go expression itself.
-func emitMembers(f gen.File, p gen.Program, body list<gen.Stmt>) {
-    for var s = body {
-        if s.kind == gen.StmtKind.node {
-            emitBlock(f, p, s.node)
-        } else if s.kind == gen.StmtKind.branch {
-            f.open(p.ifHead(s) + ` {`)
-            emitMembers(f, p, s.body)
-            if s.els.length > 0 {
-                f.reopen(`} else {`)
-                emitMembers(f, p, s.els)
-            }
-            f.close(`}`)
-        } else if s.kind == gen.StmtKind.loop {
-            f.open(p.forHead(s) + ` {`)
-            emitMembers(f, p, s.body)
-            f.close(`}`)
-        } else {
-            p.error(s.pos, "a bar holds blocks, ifs and fors; this is a " + s.kind.name())
-        }
-    }
+component gap[go.language] {
+    gen.node(value=Entry{
+        full = "",
+        separator = false,
+        separatorWidth = width,
+        click = func(button int, x int, y int) {},
+    })
 }
 
-func emitBlock(f gen.File, p gen.Program, n gen.Node) {
-    // PROPOSED: a node's declaration compared by identity, the way a family is.
-    if n.decl == gap {
-        f.line(`{ w := ` + p.expr(n.prop("width")) + `; blocks = append(blocks, i3Block{FullText: "", Separator: new(bool), SeparatorBlockWidth: &w}) }`)
-        return
-    }
-
-    f.open(`{`)
-    f.line(`b := i3Block{FullText: ` + p.expr(n.prop("full")) + `}`)
-    if n.has("name") {
-        f.line(`b.Name = ` + p.expr(n.prop("name")))
-    }
-    if n.has("short") {
-        f.line(`b.ShortText = ` + p.expr(n.prop("short")))
-    }
-    // `p.text` is the host's string conversion -- the one interpolation uses
-    // -- so a color arrives as `#rrggbb` whatever the language holds it as.
-    if n.has("color") {
-        f.line(`b.Color = ` + p.text(n.prop("color")))
-    }
-    if n.has("background") {
-        f.line(`b.Background = ` + p.text(n.prop("background")))
-    }
-    if n.has("urgent") {
-        f.line(`b.Urgent = ` + p.expr(n.prop("urgent")))
-    }
-    if n.has("minWidth") {
-        f.line(`b.MinWidth = ` + p.expr(n.prop("minWidth")))
-    }
-    if n.has("align") {
-        f.line(`b.Align = ` + p.text(n.prop("align")))
-    }
-    if n.has("separator") {
-        f.line(`{ s := ` + p.expr(n.prop("separator")) + `; b.Separator = &s }`)
-    }
-    if n.hasEvent("click") {
-        if !n.has("name") {
-            p.error(n.pos, "a block with @click needs a name: i3bar reports a click by the block's name")
+// Clicks arrive on stdin, off the drawing thread, and are posted onto it. A
+// click asks for the members again rather than keeping the ones it rendered:
+// a handler is a closure over the iteration that wrote it, and the members
+// now are the ones the line i3bar last showed was built from. When stdin
+// closes i3bar has gone, and so does the program -- posted, so every click
+// read before it runs first.
+func readClicks(members func() list<Entry>) {
+    var in = newScanner(stdin)
+    for in.scan() {
+        var line = in.text()
+        var instance = clickField(line, "instance")
+        if instance != "" {
+            var button = int.parse(clickField(line, "button"), 10)
+            var x = int.parse(clickField(line, "relative_x"), 10)
+            var y = int.parse(clickField(line, "relative_y"), 10)
+            async.post(func() {
+                var ms = members()
+                var i = int.parse(instance, 10)
+                if i >= 0 && i < ms.length {
+                    ms[i].click(button, x, y)
+                }
+            })
         }
-        // Instance is the block's position in this render, so a block under
-        // a loop is told apart from its siblings, and the handler map is
-        // rebuilt with the line -- a closure over this iteration's variables.
-        //
-        // PROPOSED: `p.lambda` is the handler, lowered, as a host func
-        // literal taking the event's parameters.
-        f.line(`b.Instance = fmt.Sprint(len(blocks))`)
-        f.line(`m.i3Handlers[b.Name+"/"+b.Instance] = ` + p.lambda(n.event("click")))
     }
-    f.line(`blocks = append(blocks, b)`)
-    f.close(`}`)
+    async.post(func() {
+        exit(0)
+    })
 }
+
+#[go.native("os", "*os.File")]
+struct File {}
+
+#[go.native("os", "os.Stdin")]
+const stdin File
+
+#[go.native("bufio", "*bufio.Scanner")]
+struct Scanner {}
+
+#[go.native("bufio", "bufio.NewScanner")]
+func newScanner(f File) Scanner
+
+#[go.native("bufio", "bufio.Scanner.Scan", method)]
+func Scanner.scan() bool
+
+#[go.native("bufio", "bufio.Scanner.Text", method)]
+func Scanner.text() string
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)

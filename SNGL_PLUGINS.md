@@ -27,12 +27,12 @@ component text[go.language] {
 }
 ```
 
-That much works today, for build-time content (see *Done*). The remainder is
-making an emitter write host-language code, so the content can read state, and
-then the import schemes, the trust model and the commands.
+That much works today, for build-time content and for content that reads
+state (see *Done*). The remainder is `@main`, hosts beyond the file root and
+reactive windows, then the import schemes, the trust model and the commands.
 
-`example/i3blocks/` is the design sketch the work is steered by. It does not
-compile, and marks each construct it needs with `PROPOSED`.
+`example/i3blocks/` is the program the work is steered by. It compiles and runs
+on gtk4 and fyne; its README lists what it still works around.
 
 ## Done
 
@@ -67,6 +67,22 @@ On `feat/family-components`:
   (`reportEmitterPlacement`). Fixtures: `testdata/emit_family.txtar`,
   `cmd/sngl/testdata/emit_family_refused.txt`,
   `testdata/error_emitter_placement.sngl`.
+- **Content that reads state is generated as SNGL** (Phase A, decision 4). A
+  `gen.emit` giving `render` is code mode: the walk keeps `if`/`for` and hands
+  a runner a tree of data plus handles into a table of expressions and handlers
+  (`internal/build/emitcode.go`). The SNGL runner writes one function returning
+  each member's `gen.node(value=…)` -- props bound, events a call of the
+  call-site handler -- and puts the family's `gen.emit`, now an ordinary bodied
+  component of two effects, where the host stood. Six host gaps closed on the
+  way: package-root effects never mounted on fyne/gtk4, lambdas in struct/map
+  literals and returns and called in place missed by `WalkLowered`, a free
+  func spelled as a method value, calls through a substituted func-typed prop
+  invisible to the call graph (`passDirectCalls`), a directory package's
+  function held only as a value never emitted, and an override in another file
+  of its package checked against the declaration's file's imports. Fixtures:
+  `testdata/emit_family_state.txtar`, `cmd/sngl/testdata/emit_family_state_runs.txt`
+  (runs the bar on gtk4 and fyne under the headless compositor), and one per
+  gap.
 
 ## Decisions
 
@@ -106,10 +122,41 @@ takes the same tree, serialized, and returns files; it goes through the host
 API and trust gates of decisions 7 and 11. Keep the tree free of IR pointers
 when it grows.
 
-### 4. An emitter that reads state writes host-language code
+### 4. An emitter that reads state writes code the host compiles
 
-*The next slice.* Content that reads state cannot be decided at build time, so
-the emitter has to write code the host runs. What it is handed, `gen.Program`:
+*Landed, as SNGL.* Content that reads state cannot be decided at build time,
+so the generator writes code the host runs. The first generator writes
+**SNGL**, not host code: the host is rewritten before the first optimize into a
+function returning the members' values and an instance of the family's
+`gen.emit`, whose body is two effects. That was chosen over the `gen.Program`
+API below because every host already compiles effects, lambdas and
+`async.post`, so no host grew a hook; the Go-only parts of a family are
+`#[go.native]` declarations in the family's own package.
+
+```sngl
+component block[go.language] {
+    gen.emit(
+        render=encode,                       // func(list<T>) string: pure, the key
+        @start(members) { … },               // once; members() reads them again later
+        @change(line) { print(line) },       // each time render's answer differs
+    )
+}
+component text[go.language] {
+    gen.node(value=Entry{full=full, click=click})   // an event read as a value is its handler
+}
+```
+
+**Several generators, one walk.** The walk hands a runner data and handles
+rather than IR, so the SNGL runner is one of several. Still open, and the door
+is kept open for both:
+
+- **A direct API**, the `gen.Program` below: a handler on a gen node, run in the
+  interpreter, writing host code through the language's own translator. For
+  output no SNGL construct expresses. Its interpreter cost has to be measured
+  on a large host before it is built on (decision 9); the SNGL runner does not
+  run the interpreter at all, so Phase A did not measure it.
+- **An external process**, handed the walked tree serialized -- likely as
+  protobuf -- and returning files or SNGL (decision 3, Phase F).
 
 | call                                                                   | backed by today                                                                                                          |
 |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
@@ -122,17 +169,14 @@ the emitter has to write code the host runs. What it is handed, `gen.Program`:
 | `p.main(before, after)`                                                | a layer of the `@main` chain (decision 6)                                                                                |
 | `p.error(pos, msg)`                                                    | a positioned build error                                                                                                 |
 
-The walk stops deciding `if`/`for` and hands them over, and a member's props
-arrive as IR expressions rather than values. Two parts are *open*:
+**Per-family capabilities** are moot for the SNGL runner -- what it writes is
+lowered for the host like the rest of the program -- and stay open for a direct
+runner, with the recommendation standing: a family may only withhold
+capabilities the host holds.
 
-- **The template form.** `gen.node(open=…)` strings suit text. For code, a
-  member's contribution is probably a handler on its gen node receiving `p`
-  and running in the interpreter, with multi-line string literals for the
-  chunks of code.
-- **Per-family capabilities.** A family's subtrees are lowered for the host
-  today. Recommendation: a family may only *withhold* capabilities the host
-  holds (its subtrees get extra lowering), never claim more, so every pass
-  stays valid; per-subtree lowering is a later refinement.
+**What code mode refuses today**, each with a position: a member holding
+children, a handler on a composed member, a composed member rendering itself,
+and a member whose `gen.node` gives no value.
 
 ### 5. Hosts anywhere a root member goes
 
@@ -481,14 +525,18 @@ a stored producer output.
 Each lands with fixtures written first, confirmed to fail on the tree before
 it.
 
-### Phase A: an emitter that writes code
+### Phase A: an emitter that writes code -- done
 
-Decision 4. The fixture is the i3 bar on bubbletea and gtk4: a golden for the
-generated Go, and a CLI script that runs the bar against a fake i3bar on stdin
-and stdout. Bring `example/i3blocks/` up to date with it -- today it still uses
-the older `@generate(tree, p)` shape -- and turn it into a compiling example
-once it does. Measure the interpreter's cost on a large host before going
-further.
+Decision 4, as a SNGL runner. The bar builds for gtk4 and fyne (bubbletea draws
+its TUI on the stdio i3bar owns, so it is in no fixture that runs). Left over,
+each found on the way:
+
+- A **qualified** function value -- `render=p.shout` from another package --
+  emits the namespace into Go (`undefined: p`).
+- An effect settles after every write, so a handler writing two cells prints
+  two status lines.
+- `example/i3blocks/` is compiled by nothing in the suite; a script or test
+  building it would keep it from rotting.
 
 ### Phase B: `@main`
 

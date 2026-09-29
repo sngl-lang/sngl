@@ -1,10 +1,9 @@
 import build "sngl:build"
 
-// PROPOSED: a family is a component in `build.family`, replacing
-// `#[tree.kind] struct block {}`. It is bodyless, so every target the program
-// reaches it on must supply an override -- the per-target bodyless rule, with a
-// position, for a target nobody taught to emit it. `go.sngl` is the one this
-// package ships.
+// A status line is a tree of these. The family is bodyless, so every target a
+// program reaches it on must say how it is generated -- `go.sngl` is the one
+// this package ships, and a build for any other language is refused at the
+// bar with a position.
 component block build.family
 
 // How a block's text is aligned inside its `minWidth`.
@@ -12,18 +11,20 @@ enum Align { left, center, right }
 
 // One segment of the status line.
 //
-// `name` and `instance` are what i3bar hands back in a click, so a block with a
-// `@click` needs a `name`; the emitter supplies the instance.
+// `name` is what i3bar hands back in a click beside the block's position, so
+// it is how a handler reading the protocol tells blocks apart; the emitter
+// supplies the position.
 component text(
-    name string,
+    name string = "",
     full string,
     // Shown instead of `full` when the bar runs out of room.
-    short string,
-    color color,
-    background color,
-    urgent bool,
-    minWidth int,
-    align Align,
+    short string = "",
+    // Transparent is "the bar's own": the protocol's field is left out.
+    color color = #00000000,
+    background color = #00000000,
+    urgent bool = false,
+    minWidth int = 0,
+    align Align = Align.left,
     // Draw i3bar's separator after this block. The protocol's default is on.
     separator bool = true,
     @click(button int, x int, y int),
@@ -32,11 +33,8 @@ component text(
 // Space between two blocks, with no separator line drawn.
 component gap(width int = 9) block
 
-// PROPOSED: a bodyless root member whose rest slot takes a family is answered
-// by that family's emitter -- there is nothing for a `bar[go.language]` override to say
-// that `block[go.language]` does not already. Today a package-body node that is neither
-// a window nor a directive lowers to a `CreateNode` nothing renders.
+// The status line. Bodyless: its family's emitter answers it, reading the
+// blocks written inside it where they are written.
 //
-// One per process: i3bar reads one status stream from one child. The emitter
-// refuses a second with a position.
+// One per process -- i3bar reads one status stream from one child.
 component bar(blocks ...component block) root

@@ -1,18 +1,18 @@
-// An i3 status bar that opens a GTK window when a block is clicked.
-//
-// DESIGN SKETCH -- see README.md. `PROPOSED` marks what does not exist yet.
+// An i3 status bar, and a GTK or Fyne window in the same process that shows
+// what the bar is showing.
 //
 // In ~/.config/i3/config:
 //
 //     bar {
 //         status_command ~/bin/i3blocks-demo
 //     }
-import ui "sngl:ui"
-import time "sngl:time"
+//
+// Build with `sngl build --lang go --platform gtk4 --opt name=i3blocks-demo -o ~/bin bar.sngl`.
 import i3 "./i3"
+import time "sngl:time"
+import ui "sngl:ui"
 
-// One binary per host. Both are Go, so both pick `i3.block[go.language]`; each host
-// renders the window its own way and answers `p.post` and `p.main` for the bar.
+// One binary per host. Both are Go, so both pick `i3.block[go.language]`.
 output {
     go {
         gtk4
@@ -25,8 +25,6 @@ var (
     samples list<int> = []
     workspaces = ["web", "code", "chat"]
     focused = 0
-    // The window is part of the tree while this is true. Nothing opens or
-    // closes it: a click writes state, and the tree says what exists.
     details = false
 )
 
@@ -46,7 +44,9 @@ i3.bar {
             full=w,
             color=i == focused ? #ffffff : #888888,
             separator=false,
-            @click { focused = i },
+            @click {
+                focused = i
+            },
         )
     }
     i3.gap(width=24)
@@ -56,32 +56,26 @@ i3.bar {
         color=load() > 7 ? #ff5555 : #a3be8c,
         urgent=load() > 9,
         @click(button) {
-            // Left click opens the details window; right click closes it.
+            // Left click shows the samples in the window; right click hides
+            // them.
             details = button == 1
         },
     )
     i3.text(name="uptime", full="up {uptime}s", short="{uptime}s")
 }
 
-// PROPOSED: a window under a reactive `if` at the package root is created and
-// destroyed with the condition. Unverified on gtk4 today, where windows may be
-// collected once at startup.
-if details {
-    // PROPOSED: `@close` on a window, so the window manager closing it writes
-    // the state back. Without it, the tree and the screen disagree until the
-    // next click.
-    ui.window #detailsWin(title="Load", @close { details = false }) {
-        ui.vbox(style={gap=8, padding=16}) {
-            ui.text(value="load {load()} after {uptime}s", style={fontWeight=bold})
+ui.window(title="Load") {
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="{workspaces[focused]}: load {load()} after {uptime}s", style={fontWeight=bold})
+        if details {
             ui.vbox(style={gap=2}) {
                 for var s = samples {
                     ui.text(value="{s}")
                 }
             }
-            ui.hbox(style={gap=8}) {
-                ui.button(text="Clear", @click { samples = [] })
-                ui.button(text="Close", @click { details = false })
-            }
+            ui.button(text="Clear", @click {
+                samples = []
+            })
         }
     }
 }
