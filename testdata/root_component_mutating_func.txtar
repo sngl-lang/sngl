@@ -72,11 +72,10 @@ import (
 type Model struct {
 	total__inst0 int
 
-	activeWindow string
-	windowABox   *fyne.Container
-	windowBBox   *fyne.Container
-	__n0         *widget.Label
-	__n1         *widget.Label
+	a    *snglWindow
+	b    *snglWindow
+	__n0 *widget.Label
+	__n1 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -104,35 +103,132 @@ func (m *Model) SetTotal__inst0(v int) {
 	m.total__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once.
-func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.activeWindow == "" {
-		m.activeWindow = "a"
-	}
-	m.windowABox = container.NewStack(m.buildWindowA())
-	m.windowBBox = container.NewStack(m.buildWindowB())
-	if m.activeWindow != "a" {
-		m.windowABox.Hide()
-	}
-	if m.activeWindow != "b" {
-		m.windowBBox.Hide()
-	}
-	var windowObjects []fyne.CanvasObject
-	windowObjects = append(windowObjects, m.windowABox)
-	windowObjects = append(windowObjects, m.windowBBox)
-	return container.NewStack(windowObjects...)
+// snglWindow is one window of the program: the fyne window the host shows,
+// around a widget tree the program builds once.
+type snglWindow struct {
+	title   string
+	content fyne.CanvasObject
+	onClose func()
+	w       fyne.Window
+	mounted bool
+	open    bool
 }
 
-func (m *Model) navigate(name string) {
-	m.activeWindow = name
-	m.windowABox.Hide()
-	m.windowBBox.Hide()
-	switch name {
-	case "a":
-		m.windowABox.Show()
-	case "b":
-		m.windowBBox.Show()
+var (
+	snglApp     fyne.App
+	snglStarted bool
+	snglHidden  bool
+	snglWindows []*snglWindow
+	snglAnchor  fyne.Window
+)
+
+// Mount says the window exists. Before the loop starts it is created when the
+// loop does; after, it is created and put on screen at once.
+func (w *snglWindow) Mount() {
+	if w.mounted {
+		return
 	}
+	w.mounted = true
+	snglWindows = append(snglWindows, w)
+	if snglStarted {
+		w.create()
+		w.Open()
+	}
+}
+
+// Unmount closes the fyne window. The content is kept for a later Mount.
+func (w *snglWindow) Unmount() {
+	if !w.mounted {
+		return
+	}
+	w.mounted = false
+	w.open = false
+	for i, x := range snglWindows {
+		if x == w {
+			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
+			break
+		}
+	}
+	if w.w != nil {
+		w.w.SetContent(container.NewStack())
+		w.w.Close()
+		w.w = nil
+	}
+}
+
+// Open puts a mounted window on screen.
+func (w *snglWindow) Open() {
+	w.open = true
+	if w.w != nil {
+		w.w.Show()
+	}
+}
+
+// Close takes the window off screen; Open brings it back as it was.
+func (w *snglWindow) Close() {
+	w.open = false
+	if w.w != nil {
+		w.w.Hide()
+	}
+}
+
+func (w *snglWindow) create() {
+	if w.w != nil {
+		return
+	}
+	w.w = snglApp.NewWindow(w.title)
+	// fyne lays SetContent's tree out against the current size, so the
+	// content goes in before the resize.
+	w.w.SetContent(w.content)
+	w.w.Resize(fyne.NewSize(480, 640))
+	w.w.SetCloseIntercept(w.closeRequested)
+}
+
+// closeRequested is the window manager's close. The handler decides what it
+// means; with none, the window hides. Either way a close that leaves nothing
+// on screen ends the program, unless it started with nothing on screen.
+func (w *snglWindow) closeRequested() {
+	if w.onClose != nil {
+		w.onClose()
+	} else {
+		w.Close()
+	}
+	if snglHidden {
+		return
+	}
+	for _, x := range snglWindows {
+		if x.open {
+			return
+		}
+	}
+	snglApp.Quit()
+}
+
+// snglRunWindows runs the loop over the windows mounted so far and those
+// mounted later. show puts the mounted ones on screen at start.
+func snglRunWindows(show bool) {
+	snglHidden = !show
+	snglAnchor = snglApp.NewWindow("")
+	snglStarted = true
+	for _, w := range append([]*snglWindow(nil), snglWindows...) {
+		w.create()
+		if show || w.open {
+			w.Open()
+		}
+	}
+	snglApp.Run()
+}
+
+// BuildUI creates every window's widget tree. Call once.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.a != nil {
+		return m.a.content
+	}
+	m.a = &snglWindow{title: "A", content: m.buildWindowA()}
+	m.a.Mount()
+	m.b = &snglWindow{title: "B", content: m.buildWindowB()}
+	m.b.Mount()
+	return m.a.content
 }
 
 func (m *Model) buildWindowA() fyne.CanvasObject {
@@ -151,12 +247,10 @@ func (m *Model) buildWindowB() fyne.CanvasObject {
 }
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("SNGL App")
+	snglApp = app.New()
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	snglRunWindows(true)
 	_ = os.Stderr
 }
 -- out/none/html/b.html --
@@ -243,6 +337,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7a1b6a97b5dacd0d6f522cf96333c462
+pass sha256:8f970528d8586a9cb22eba7baee23e6a
 -- run/none/html --
 pass sha256:9adfeaa2e23206909fd8ba1fe7ee1b5f

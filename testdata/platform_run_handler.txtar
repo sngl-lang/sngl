@@ -282,7 +282,6 @@ func main() {
 		w.ShowAndRun()
 	})
 	if !ran {
-		w.SetCloseIntercept(w.Hide)
 		a.Run()
 	}
 	m.__snglTeardown()
@@ -480,6 +479,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:6ae7ada21e9e07931a5ee86adbcc87cf
+pass sha256:fb5c0868a9a19f25e4823882c610250f
 -- run/go/gtk4 --
 pass sha256:7906e32115dd758695639d0bbd486362

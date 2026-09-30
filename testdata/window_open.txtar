@@ -1,14 +1,13 @@
 A window's `#id` opens and closes it, from anywhere a handler can reach it.
 
 `window.open()` and `window.close()` are intrinsics each platform answers: on
-gtk4 and fyne the entry window is always built, the Model keeps it in a field
+gtk4 and fyne every window is built, the Model keeps its record in a field
 named by its `#id`, and the two present and hide it. A program started with no
 window on screen -- `@run` never called `run` -- is the case that wants it: a
 status bar opening a window when one of its blocks is clicked. Started that
 way, the window manager's close hides the window rather than ending the
-program (hide-on-close on gtk4, a close intercept on fyne).
-
-Only the entry window: gtk4 and fyne build one window today.
+program, which is the rule for any close with no `@close` written
+(window_several.txtar).
 
 -- app.sngl --
 import go "sngl:language/go"
@@ -89,9 +88,8 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
-	details fyne.Window
+	details *snglWindow
 	__n0    *widget.Label
-	__n1    *widget.Button
 }
 
 // New creates a Model with default values.
@@ -136,7 +134,7 @@ func (m *Model) __effect0_mount() {
 						m.ticks += 1
 						m.__n0.SetText(fmt.Sprint(m.ticks))
 						if (m.ticks == 1) && m.wanted {
-							m.details.Show()
+							m.details.Open()
 						}
 						if m.ticks == 2 {
 							os.Exit(0)
@@ -224,7 +222,7 @@ func (m *Model) __snglTeardown() {
 }
 
 func (m *Model) __n1_click_handler() {
-	m.details.Hide()
+	m.details.Close()
 }
 
 func (m *Model) Wanted() bool {
@@ -275,35 +273,153 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+// snglWindow is one window of the program: the fyne window the host shows,
+// around a widget tree the program builds once.
+type snglWindow struct {
+	title   string
+	content fyne.CanvasObject
+	onClose func()
+	w       fyne.Window
+	mounted bool
+	open    bool
+}
+
+var (
+	snglApp     fyne.App
+	snglStarted bool
+	snglHidden  bool
+	snglWindows []*snglWindow
+	snglAnchor  fyne.Window
+)
+
+// Mount says the window exists. Before the loop starts it is created when the
+// loop does; after, it is created and put on screen at once.
+func (w *snglWindow) Mount() {
+	if w.mounted {
+		return
+	}
+	w.mounted = true
+	snglWindows = append(snglWindows, w)
+	if snglStarted {
+		w.create()
+		w.Open()
+	}
+}
+
+// Unmount closes the fyne window. The content is kept for a later Mount.
+func (w *snglWindow) Unmount() {
+	if !w.mounted {
+		return
+	}
+	w.mounted = false
+	w.open = false
+	for i, x := range snglWindows {
+		if x == w {
+			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
+			break
+		}
+	}
+	if w.w != nil {
+		w.w.SetContent(container.NewStack())
+		w.w.Close()
+		w.w = nil
+	}
+}
+
+// Open puts a mounted window on screen.
+func (w *snglWindow) Open() {
+	w.open = true
+	if w.w != nil {
+		w.w.Show()
+	}
+}
+
+// Close takes the window off screen; Open brings it back as it was.
+func (w *snglWindow) Close() {
+	w.open = false
+	if w.w != nil {
+		w.w.Hide()
+	}
+}
+
+func (w *snglWindow) create() {
+	if w.w != nil {
+		return
+	}
+	w.w = snglApp.NewWindow(w.title)
+	// fyne lays SetContent's tree out against the current size, so the
+	// content goes in before the resize.
+	w.w.SetContent(w.content)
+	w.w.Resize(fyne.NewSize(480, 640))
+	w.w.SetCloseIntercept(w.closeRequested)
+}
+
+// closeRequested is the window manager's close. The handler decides what it
+// means; with none, the window hides. Either way a close that leaves nothing
+// on screen ends the program, unless it started with nothing on screen.
+func (w *snglWindow) closeRequested() {
+	if w.onClose != nil {
+		w.onClose()
+	} else {
+		w.Close()
+	}
+	if snglHidden {
+		return
+	}
+	for _, x := range snglWindows {
+		if x.open {
+			return
+		}
+	}
+	snglApp.Quit()
+}
+
+// snglRunWindows runs the loop over the windows mounted so far and those
+// mounted later. show puts the mounted ones on screen at start.
+func snglRunWindows(show bool) {
+	snglHidden = !show
+	snglAnchor = snglApp.NewWindow("")
+	snglStarted = true
+	for _, w := range append([]*snglWindow(nil), snglWindows...) {
+		w.create()
+		if show || w.open {
+			w.Open()
+		}
+	}
+	snglApp.Run()
+}
+
+// BuildUI creates every window's widget tree. Call once.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.details != nil {
+		return m.details.content
+	}
+	m.details = &snglWindow{title: "Details", content: m.buildWindowDetails()}
+	m.details.Mount()
+	m.__effects0_settle()
+	return m.details.content
+}
+
+func (m *Model) buildWindowDetails() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
-	m.__n1 = widget.NewButton("", nil)
-	m.__n1.SetText("Close")
-	m.__n1.OnTapped = m.__n1_click_handler
-	m.__effects0_settle()
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n1)
-	return container.NewVBox(parts...)
+	__n1 := widget.NewButton("", nil)
+	__n1.SetText("Close")
+	__n1.OnTapped = m.__n1_click_handler
+	return container.NewVBox(m.__n0, __n1)
 }
 
 func main() {
-	a := app.New()
+	snglApp = app.New()
 	m := New()
-	w := a.NewWindow("SNGL App")
-	m.details = w
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
+	m.BuildUI()
 	ran := false
 	m.__run(os.Args[1:], func() {
 		ran = true
-		w.ShowAndRun()
+		snglRunWindows(true)
 	})
 	if !ran {
-		w.SetCloseIntercept(w.Hide)
-		a.Run()
+		snglRunWindows(false)
 	}
 	m.__snglTeardown()
 	_ = os.Stderr
@@ -322,11 +438,12 @@ func main() {
 	ran := false
 	m.__run(gtk4rt.Args(), func() {
 		ran = true
-		gtk4rt.Run(m.BuildUI)
+		gtk4rt.RunWindows(true)
 	})
 	if !ran {
-		gtk4rt.RunHidden(m.BuildUI)
+		gtk4rt.RunWindows(false)
 	}
+	m.__snglTeardown()
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -360,7 +477,7 @@ type Model struct {
 	__n0                gtk4rt.Handle
 	__n1                gtk4rt.Handle
 	__root              gtk4rt.Handle
-	details             gtk4rt.Handle
+	details             *gtk4rt.Window
 }
 
 // New creates a Model with default values. Binds initialize
@@ -388,7 +505,7 @@ func (m *Model) __effect0_mount() {
 		m.ticks += 1
 		gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
 		if (m.ticks == 1) && m.wanted {
-			gtk4rt.WindowPresent(m.details)
+			m.details.Open()
 		}
 		if m.ticks == 2 {
 			os.Exit(0)
@@ -465,7 +582,7 @@ func (m *Model) __snglTeardown() {
 }
 
 func (m *Model) __n1_clicked_handler() {
-	gtk4rt.WindowHide(m.details)
+	m.details.Close()
 }
 
 func (m *Model) Wanted() bool {
@@ -502,22 +619,24 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n1, "Close")
 	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
-	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
+	m.details = &gtk4rt.Window{Title: "Details", Content: m.__root}
+	m.details.Mount()
+	m.__effects0_settle()
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	win := gtk4rt.ApplicationWindowNew(app)
 	gtk4rt.WindowSetDefaultSize(win, 480, 640)
 	gtk4rt.WindowSetTitle(win, "Details")
 	gtk4rt.WindowSetChild(win, m.__root)
-	m.details = win
 	return win
 }
 -- run/go/fyne --
-pass sha256:81f1d57b56c84e52667b2d1884d7e5e6
+pass sha256:1e7dd0d1775e12a7c942b768d9da761c
 -- run/go/gtk4 --
-pass sha256:34b79707b7d20d56e2c2eb43f8ffc874
+pass sha256:f5456eba5e048e948e257ee4af5600be

@@ -74,7 +74,6 @@ func main() {
 		w.ShowAndRun()
 	})
 	if !ran {
-		w.SetCloseIntercept(w.Hide)
 		a.Run()
 	}
 	_ = os.Stderr
@@ -146,6 +145,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:f23b62cff8bebc6ccea33504a11ce8c7
+pass sha256:210a00bdeb27d6ff659a8058c2050f64
 -- run/go/gtk4 --
 pass sha256:054b46d4dd282d88179c50c24c41452f

@@ -1,5 +1,10 @@
 package ir
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Owner is a declaration that owns state: the vars it declares and the body
 // that reads them. There are two kinds -- the package itself and a component.
 //
@@ -38,7 +43,8 @@ type Owner struct {
 	Funcs  []*Func
 
 	// Handlers is what the declaration itself subscribes to, which today is a
-	// window's @error and nothing else -- a component catches with a boundary,
+	// window's @error and its own events (`@close`) and nothing else -- a
+	// component catches with a boundary,
 	// which is a statement in its body rather than a declaration on it. A
 	// snapshot, as the four above are.
 	Handlers []*EventHandler
@@ -145,9 +151,7 @@ func Owners(pkg *Package) []Owner {
 		}
 		seen[w] = true
 		o := Owner{Pkg: pkg, Win: w, Body: &w.Children}
-		if w.ErrorHandler != nil {
-			o.Handlers = []*EventHandler{w.ErrorHandler}
-		}
+		o.Handlers = WindowHandlers(w)
 		out = append(out, o)
 	}
 	for _, w := range pkg.Windows {
@@ -244,4 +248,46 @@ func AllWindows(pkg *Package) []*Window {
 		}
 	}
 	return out
+}
+
+// WindowHandlers is every handler a window subscribes to: its @error, then its
+// own events (`@close`), in that order so the temps a pass names off it keep
+// their numbers. Nil for a window with none.
+func WindowHandlers(w *Window) []*EventHandler {
+	var out []*EventHandler
+	if w.ErrorHandler != nil {
+		out = append(out, w.ErrorHandler)
+	}
+	for i := range w.Handlers {
+		out = append(out, &w.Handlers[i])
+	}
+	return out
+}
+
+// WindowRootName is the synthesized var a window's top-level render slots are
+// parented to: `__root` for the first of ir.AllWindows, `__root<N>` for the
+// Nth after it. One name per window, because a host that holds several
+// windows puts each one's content in a box of its own, and a slot re-rendered
+// into another window's box would move its widgets there.
+func WindowRootName(pkg *Package, w *Window) string {
+	for i, x := range AllWindows(pkg) {
+		if x == w && i > 0 {
+			return "__root" + strconv.Itoa(i)
+		}
+	}
+	return "__root"
+}
+
+// IsRootSlotVarName reports whether name is a WindowRootName.
+func IsRootSlotVarName(name string) bool {
+	rest, ok := strings.CutPrefix(name, "__root")
+	if !ok {
+		return false
+	}
+	for _, r := range rest {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

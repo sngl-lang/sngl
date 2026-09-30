@@ -27,6 +27,14 @@ import marks "sngl:internal/marks"
 //
 // A program must declare at least one: the package body renders nothing on
 // its own, so a program with no window has nowhere to draw.
+//
+// `@close` runs when the user closes the window through the window manager,
+// on a target whose windows the user can close (gtk4 and fyne). The handler
+// says what a close means and the tree decides whether the window still
+// exists: one under `if details` whose `@close` writes `details = false` is
+// destroyed, and one whose handler writes nothing stays on screen. A window
+// with no `@close` is hidden -- `open` brings it back -- and a close that
+// leaves no window on screen ends the program, unless it started with none.
 #[marks.builtin("window")]
 component window<T = struct {}>(
     title string,
@@ -34,6 +42,7 @@ component window<T = struct {}>(
     favicon string,
     params T,
     @error error,
+    @close(),
     content ...component(v T) node,
 ) root {}
 

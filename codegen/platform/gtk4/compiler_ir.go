@@ -193,7 +193,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		// they are asked only where there is a declaration to ask.
 		v := tv.Var()
 		if v != nil && v.Synthesized {
-			if v.Name == "__root" {
+			if ir.IsRootSlotVarName(v.Name) {
 				// The __root sentinel is initialized lazily inside BuildUI:
 				// cgo calls aren't valid in struct init.
 				info.binds = append(info.binds, irBind{
@@ -349,9 +349,50 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	var widgetFields []widgetField
+	// A program holding several windows, or one it opens, closes or hears the
+	// close of, gets a record per window; see codegen.HostWindows.
+	hostWins := codegen.HostWindows(c.ctx)
+	if hostWins != nil && !c.wrapped {
+		return nil, nil, errors.New("gtk4: a program whose windows are opened, closed or more than one needs the gtk4rt runtime, and this program's generated code calls into cgo directly")
+	}
+	var winBuilds []windowBuild
 	// lower.passPlatformExtensionBody is always on, so every platform override
 	// is already resolved to its body here.
 	bodyStmts := mainBodyStmts(c.ctx)
+	if hostWins != nil {
+		bodyStmts = nil
+	}
+	walkBody := func(stmts []ir.Stmt, localRefs map[string]bool, buf *strings.Builder) *gtk4Translator {
+		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
+			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
+			withLocalRefs(localRefs).withWrapped(c.wrapped).
+			withInvokerSink(func(inv gtkEventInvoker) {
+				vc.eventInvokers = append(vc.eventInvokers, inv)
+			})
+		tr.collectTagComponents(stmts)
+		body := codegen.WalkLowered(context.Background(), stmts, tr)
+		for _, stmt := range body {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(buf, "\t%s\n", line)
+			}
+		}
+		return tr
+	}
+	for _, hw := range hostWins {
+		wb := windowBuild{HostWindow: hw}
+		tr := walkBody(hw.Body, nil, &wb.buf)
+		wb.tops = tr.topLevel
+		if t := hw.Window.Prop(ir.WindowTitle); t != nil {
+			wb.title = gc.EvalExpr(t)
+		}
+		winBuilds = append(winBuilds, wb)
+	}
+	var mountsBuf strings.Builder
+	if hostWins != nil {
+		// The package body is not emitted, so its first settles run once
+		// every window's widgets exist.
+		walkBody(c.ctx.Pkg.RootMounts(), nil, &mountsBuf)
+	}
 	var topLevelRefs []string
 	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {
@@ -422,9 +463,25 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 	}
 
+	for _, wb := range winBuilds {
+		if wb.Close != nil {
+			emitGTK4Func(&funcBuf, &ir.Func{
+				Name:        windowCloseMethod(wb.Field),
+				Return:      ir.TypVoid,
+				Synthesized: true,
+				Block:       wb.Close.Func.Block,
+			}, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+		}
+	}
+
 	// The Model struct needs the __root field whenever emitBuildUI will emit
 	// the synthetic wrapper; needsRootWrapper mirrors its conditions.
-	if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
+	if hostWins != nil {
+		for _, wb := range winBuilds {
+			widgetFields = appendWidgetFieldOnce(widgetFields, widgetField{name: wb.Root, goType: gtk4rtHandleType})
+			widgetFields = appendWidgetFieldOnce(widgetFields, widgetField{name: wb.Field, goType: "*gtk4rt.Window"})
+		}
+	} else if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
 		hasRoot := false
 		for _, wf := range widgetFields {
 			if wf.name == "__root" {
@@ -443,15 +500,14 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// The entry window's `#id` names the GtkWindow BuildUI creates, which is
 	// what `open` and `close` reach it through.
-	winID := entryWindowID(c.ctx)
-	if winID != "" && c.wrapped {
-		widgetFields = append(widgetFields, widgetField{name: winID, goType: gtk4rtHandleType})
-	}
-
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc), widgetFieldNames(widgetFields), winID)
+	if hostWins != nil {
+		emitBuildUIWindows(&buildUIBuf, winBuilds, &mountsBuf, widgetFieldNames(widgetFields))
+	} else {
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc), widgetFieldNames(widgetFields))
+	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 && !c.wrapped {
@@ -495,7 +551,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		if err := emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg); err != nil {
+		if err := emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg, hostWins != nil); err != nil {
 			c.shared.errs = append(c.shared.errs, err)
 		}
 	}
@@ -1101,18 +1157,6 @@ func isWindowClass(cType string) bool {
 
 // windowTitleGo is the Go expression for the window's `title` prop, or "" when
 // it declares none.
-// entryWindowID is the `#id` of the window BuildUI builds, when the program
-// opens or closes it, and "" otherwise.
-func entryWindowID(ctx *codegen.CodegenCtx) string {
-	if !codegen.OpensWindows(ctx.Pkg) {
-		return ""
-	}
-	if wins := ctx.Windows(); len(wins) > 0 && wins[0].Window != nil {
-		return wins[0].Window.ID
-	}
-	return ""
-}
-
 func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
 	wins := ctx.Windows()
 	if len(wins) == 0 {
@@ -1129,9 +1173,9 @@ func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string, fields map[string]bool, winID string) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields, winID)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -1408,7 +1452,15 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) error {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, windows bool) error {
+	if windows {
+		callee := ""
+		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
+			callee = golang.ModelCallee(pkg, pkg.Run, "m")
+		}
+		emitGTK4WindowsMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		return nil
+	}
 	if pkg != nil && pkg.Run != nil {
 		if !wrapped {
 			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")

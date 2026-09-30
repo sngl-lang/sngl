@@ -140,6 +140,8 @@ func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
 type windowOwner struct {
 	w   *ir.Window
 	pkg *ir.Package
+	// root is the window's own ir.WindowRootName.
+	root string
 }
 
 func (o windowOwner) addVar(v *ir.Var)   { o.pkg.Vars = append(o.pkg.Vars, v) }
@@ -186,7 +188,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		st.collectFromStmts(comp.Body)
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg}
+		st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
 		st.collectFromStmts(w.Children)
 	}
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
@@ -212,7 +214,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			st.synthesizeRemoteSettle()
 		}
 		for _, w := range ir.AllWindows(pkg) {
-			st.owner = windowOwner{w: w, pkg: pkg}
+			st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
 			st.synthesizeRemoteSettle()
 		}
 	}()
@@ -236,10 +238,12 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		}
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg}
+		st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
 		w.Children = st.rewriteAndInject(w.Children)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
+		for _, h := range ir.WindowHandlers(w) {
+			if h.Func != nil {
+				h.Func.Block = st.rewriteAndInject(h.Func.Block)
+			}
 		}
 	}
 	// Package-level funcs last, because the walks above are what create most
@@ -267,6 +271,13 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// An owned func is skipped: the checker registers a component-body func in
 	// pkg.Funcs *as well*, and its owner's loop above has already injected.
 	owned := ownedFuncs(pkg)
+	// A package func belongs to no one window, so it is not handed the last
+	// window's root to synthesize: the first window's `__root` is what it has
+	// always been given.
+	if o, ok := st.owner.(windowOwner); ok {
+		o.root = ""
+		st.owner = o
+	}
 	for _, f := range pkg.Funcs {
 		if owned[f] || injected[f] {
 			continue
@@ -365,8 +376,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					rootVar := st.findSlotVar(st.rootName())
+					ref = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -378,8 +389,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					rootVar := st.findSlotVar(st.rootName())
+					ref = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -473,8 +484,8 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		rootVar := st.findSlotVar("__root")
-		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+		rootVar := st.findSlotVar(st.rootName())
+		parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -533,15 +544,24 @@ func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it.
 func (st *reactivityState) synthesizeRootVar() {
-	if existing := st.findSlotVar("__root"); existing != nil {
+	if existing := st.findSlotVar(st.rootName()); existing != nil {
 		return
 	}
 	v := &ir.Var{
-		Name:        "__root",
+		Name:        st.rootName(),
 		Type:        ir.TypDyn,
 		Synthesized: true,
 	}
 	st.owner.addVar(v)
+}
+
+// rootName is the var the owner's top-level render slots are parented to: a
+// component's own `__root`, or the window's ir.WindowRootName.
+func (st *reactivityState) rootName() string {
+	if o, ok := st.owner.(windowOwner); ok && o.root != "" {
+		return o.root
+	}
+	return "__root"
 }
 
 func (st *reactivityState) findSlotVar(name string) *ir.Var {
@@ -1195,8 +1215,8 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			rootVar := st.findSlotVar("__root")
-			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+			rootVar := st.findSlotVar(st.rootName())
+			parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,

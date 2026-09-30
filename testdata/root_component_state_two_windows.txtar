@@ -39,13 +39,10 @@ scoping to it chooses nothing. Without that, every read here rendered as a bare
 `hits` the emitted Go never declared, standing beside the Model field it should
 have projected onto.
 
-Two pre-existing multi-window limits show through and are not this fixture's
-subject. android renders the first window and drops the second, which is why
-its golden below is one screen. And gtk4 builds only the entry window's tree
-while emitting updaters for every window's nodes, so it names a handle it never
-declares -- that reproduces with package-level state and two file-root windows,
-so gtk4 is left out of the output block here rather than having the defect
-baked into a golden.
+One pre-existing multi-window limit shows through and is not this fixture's
+subject: android renders the first window and drops the second, which is why
+its golden below is one screen. fyne and gtk4 build both, as two OS windows
+over the one Model (window_several.txtar).
 
 deny out/go/bubbletea/model.go `(?sm)^\thits\s+int$.*^\thits\s+int$` -- one Model, one cell: the var is mounted on both windows and must be declared once
 deny out/go/fyne/model.go `(?sm)^\thits\s+int$.*^\thits\s+int$` -- as above, for fyne's Model
@@ -59,6 +56,7 @@ output {
     go {
         bubbletea
         fyne
+        gtk4
     }
     none {
         html
@@ -219,11 +217,10 @@ import (
 type Model struct {
 	hits__inst0 int
 
-	activeWindow string
-	windowABox   *fyne.Container
-	windowBBox   *fyne.Container
-	__n0         *widget.Label
-	__n1         *widget.Label
+	a    *snglWindow
+	b    *snglWindow
+	__n0 *widget.Label
+	__n1 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -247,35 +244,132 @@ func (m *Model) SetHits__inst0(v int) {
 	m.hits__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once.
-func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.activeWindow == "" {
-		m.activeWindow = "a"
-	}
-	m.windowABox = container.NewStack(m.buildWindowA())
-	m.windowBBox = container.NewStack(m.buildWindowB())
-	if m.activeWindow != "a" {
-		m.windowABox.Hide()
-	}
-	if m.activeWindow != "b" {
-		m.windowBBox.Hide()
-	}
-	var windowObjects []fyne.CanvasObject
-	windowObjects = append(windowObjects, m.windowABox)
-	windowObjects = append(windowObjects, m.windowBBox)
-	return container.NewStack(windowObjects...)
+// snglWindow is one window of the program: the fyne window the host shows,
+// around a widget tree the program builds once.
+type snglWindow struct {
+	title   string
+	content fyne.CanvasObject
+	onClose func()
+	w       fyne.Window
+	mounted bool
+	open    bool
 }
 
-func (m *Model) navigate(name string) {
-	m.activeWindow = name
-	m.windowABox.Hide()
-	m.windowBBox.Hide()
-	switch name {
-	case "a":
-		m.windowABox.Show()
-	case "b":
-		m.windowBBox.Show()
+var (
+	snglApp     fyne.App
+	snglStarted bool
+	snglHidden  bool
+	snglWindows []*snglWindow
+	snglAnchor  fyne.Window
+)
+
+// Mount says the window exists. Before the loop starts it is created when the
+// loop does; after, it is created and put on screen at once.
+func (w *snglWindow) Mount() {
+	if w.mounted {
+		return
 	}
+	w.mounted = true
+	snglWindows = append(snglWindows, w)
+	if snglStarted {
+		w.create()
+		w.Open()
+	}
+}
+
+// Unmount closes the fyne window. The content is kept for a later Mount.
+func (w *snglWindow) Unmount() {
+	if !w.mounted {
+		return
+	}
+	w.mounted = false
+	w.open = false
+	for i, x := range snglWindows {
+		if x == w {
+			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
+			break
+		}
+	}
+	if w.w != nil {
+		w.w.SetContent(container.NewStack())
+		w.w.Close()
+		w.w = nil
+	}
+}
+
+// Open puts a mounted window on screen.
+func (w *snglWindow) Open() {
+	w.open = true
+	if w.w != nil {
+		w.w.Show()
+	}
+}
+
+// Close takes the window off screen; Open brings it back as it was.
+func (w *snglWindow) Close() {
+	w.open = false
+	if w.w != nil {
+		w.w.Hide()
+	}
+}
+
+func (w *snglWindow) create() {
+	if w.w != nil {
+		return
+	}
+	w.w = snglApp.NewWindow(w.title)
+	// fyne lays SetContent's tree out against the current size, so the
+	// content goes in before the resize.
+	w.w.SetContent(w.content)
+	w.w.Resize(fyne.NewSize(480, 640))
+	w.w.SetCloseIntercept(w.closeRequested)
+}
+
+// closeRequested is the window manager's close. The handler decides what it
+// means; with none, the window hides. Either way a close that leaves nothing
+// on screen ends the program, unless it started with nothing on screen.
+func (w *snglWindow) closeRequested() {
+	if w.onClose != nil {
+		w.onClose()
+	} else {
+		w.Close()
+	}
+	if snglHidden {
+		return
+	}
+	for _, x := range snglWindows {
+		if x.open {
+			return
+		}
+	}
+	snglApp.Quit()
+}
+
+// snglRunWindows runs the loop over the windows mounted so far and those
+// mounted later. show puts the mounted ones on screen at start.
+func snglRunWindows(show bool) {
+	snglHidden = !show
+	snglAnchor = snglApp.NewWindow("")
+	snglStarted = true
+	for _, w := range append([]*snglWindow(nil), snglWindows...) {
+		w.create()
+		if show || w.open {
+			w.Open()
+		}
+	}
+	snglApp.Run()
+}
+
+// BuildUI creates every window's widget tree. Call once.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.a != nil {
+		return m.a.content
+	}
+	m.a = &snglWindow{title: "A", content: m.buildWindowA()}
+	m.a.Mount()
+	m.b = &snglWindow{title: "B", content: m.buildWindowB()}
+	m.b.Mount()
+	return m.a.content
 }
 
 func (m *Model) buildWindowA() fyne.CanvasObject {
@@ -294,13 +388,100 @@ func (m *Model) buildWindowB() fyne.CanvasObject {
 }
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("SNGL App")
+	snglApp = app.New()
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	snglRunWindows(true)
 	_ = os.Stderr
+}
+-- out/go/gtk4/callbacks.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+
+func main() {
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
+}
+-- out/go/gtk4/model.go --
+// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"fmt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+)
+
+// Model holds the state and widget references for this SNGL UI.
+type Model struct {
+	hits__inst0 int
+	__n0        gtk4rt.Handle
+	__n2        gtk4rt.Handle
+	__n1        gtk4rt.Handle
+	__root      gtk4rt.Handle
+	a           *gtk4rt.Window
+	__root1     gtk4rt.Handle
+	b           *gtk4rt.Window
+}
+
+// New creates a Model with default values. Binds initialize
+// sequentially so later inits can reference earlier `m.<name>` fields.
+func New() *Model {
+	m := &Model{}
+	m.hits__inst0 = 0
+	return m
+}
+
+func (m *Model) __n2_clicked_handler() {
+	m.hits__inst0 = (m.hits__inst0 + 1)
+	gtk4rt.LabelSetText(m.__n0, ("a " + fmt.Sprint(m.hits__inst0)))
+	gtk4rt.LabelSetText(m.__n1, ("b " + fmt.Sprint(m.hits__inst0)))
+}
+
+func (m *Model) Hits__inst0() int {
+	return m.hits__inst0
+}
+
+func (m *Model) SetHits__inst0(v int) {
+	m.hits__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__root != nil {
+		return
+	}
+	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n0, ("a " + fmt.Sprint(m.hits__inst0)))
+	m.__n2 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n2, "go")
+	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
+	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(m.__root, m.__n2)
+	m.a = &gtk4rt.Window{Title: "A", Content: m.__root}
+	m.a.Mount()
+	m.__root1 = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, ("b " + fmt.Sprint(m.hits__inst0)))
+	gtk4rt.BoxAppend(m.__root1, m.__n1)
+	m.b = &gtk4rt.Window{Title: "B", Content: m.__root1}
+	m.b.Mount()
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
+func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
+	m.buildWidgetTree()
+	win := gtk4rt.ApplicationWindowNew(app)
+	gtk4rt.WindowSetDefaultSize(win, 480, 640)
+	gtk4rt.WindowSetTitle(win, "A")
+	gtk4rt.WindowSetChild(win, m.__root)
+	return win
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -426,7 +607,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f00ddb871fa365e4dbe4f55058db223c
 -- run/go/fyne --
-pass sha256:1d0355887d80f7ac3605de9d488576fb
+pass sha256:51d737a04e713040d9ac154419d686e3
+-- run/go/gtk4 --
+pass sha256:41c471ace70513772b62d7b5697c3c98
 -- run/kotlin/android --
 pass sha256:d81c15b3878cc8482be0f2a1e352d667
 -- run/none/html --

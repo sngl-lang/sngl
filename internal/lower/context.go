@@ -754,7 +754,9 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Children = lowerInStmts(w.Children, windowActive, pc)
-		lowerInHandler(w.ErrorHandler, windowActive, pc)
+		for _, h := range ir.WindowHandlers(w) {
+			lowerInHandler(h, windowActive, pc)
+		}
 		// The provider unwrap splices a provider's children up to window-body
 		// level, which can put a fresh LocalVar there after passHoistState
 		// already ran. Promote those too, into the same slice.

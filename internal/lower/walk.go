@@ -185,7 +185,9 @@ func walkWindow(w *ir.Window, fns walkFuncs) {
 	if fns.stmts != nil {
 		w.Children = fns.stmts(w.Children)
 	}
-	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil && fns.stmts != nil {
-		w.ErrorHandler.Func.Block = fns.stmts(w.ErrorHandler.Func.Block)
+	for _, h := range ir.WindowHandlers(w) {
+		if h.Func != nil && fns.stmts != nil {
+			h.Func.Block = fns.stmts(h.Func.Block)
+		}
 	}
 }

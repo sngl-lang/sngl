@@ -3255,13 +3255,14 @@ func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
 	seen[w.ID] = true
 }
 
-// windowPropArgs is vn's arguments without its event handlers: what
+// windowPropArgs is vn's arguments without its @error: what
 // checkAndSplitArgs is given so that it does not check an @error body
-// buildErrorHandler is about to check again.
+// buildErrorHandler is about to check again. Every other handler -- `@close`
+// -- is an ordinary event of the window's declaration and is checked there.
 func windowPropArgs(args ast.ArgList) ast.ArgList {
 	out := ast.ArgList{Pos: args.Pos, IsMultiline: args.IsMultiline}
 	for _, a := range args.Args {
-		if _, isHandler := a.(ast.EventHandler); !isHandler {
+		if eh, isHandler := a.(ast.EventHandler); !isHandler || eh.Name != "error" {
 			out.Args = append(out.Args, a)
 		}
 	}
@@ -4260,7 +4261,7 @@ func (c *checker) checkWindow(w *ir.Window) {
 	// bidirectional, so `:title` is reported by extractBindings rather than
 	// returned. The handlers are held back by windowPropArgs, because an
 	// @error is a boundary's handler rather than a widget's event.
-	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	w.Props, w.Handlers, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
 	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {

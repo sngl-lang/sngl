@@ -1,14 +1,13 @@
-Regression test for #36: several `window` blocks in one package, plus link
-navigation. Every window is emitted as its own buildWindow<Name> method with a
-container field on the Model, BuildUI hides the inactive one at startup, and
-navigate() shows and hides those containers.
+Regression test for #36: several `window` blocks in one package, plus a link
+between them. Every window is emitted as its own buildWindow<Name> method, and
+each is an OS window of its own: BuildUI wraps each one's content in the
+snglWindow record that shows it (window_several.txtar).
 
-What is not wired yet is the link's own tap interception. `link` declares no
-event binding in fyne.sngl, so the AttachHandler intrinsic finds no target and
-nothing rewrites an internal href into `m.navigate("settings")` -- the link
-still opens the OS browser. The scaffold around it, above, is correct. The fix
-is either a declarative-lowering href-to-navigate rewrite or an event binding
-on link.
+A link does not navigate between them, and is not meant to: a window is a
+surface and a link names a destination, which is `sngl:ui/nav`'s page
+(SNGL_PLUGINS.md, decision 15). fyne's in-window switcher, which is what an
+href would have navigated, is gone with it; the link still opens the OS
+browser.
 
 -- app.sngl --
 import . "sngl:ui"
@@ -42,9 +41,8 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	activeWindow      string
-	windowAppBox      *fyne.Container
-	windowSettingsBox *fyne.Container
+	app      *snglWindow
+	settings *snglWindow
 }
 
 // New creates a Model with default values.
@@ -53,35 +51,132 @@ func New() *Model {
 	return m
 }
 
-// BuildUI creates the widget tree. Call once.
-func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.activeWindow == "" {
-		m.activeWindow = "app"
-	}
-	m.windowAppBox = container.NewStack(m.buildWindowApp())
-	m.windowSettingsBox = container.NewStack(m.buildWindowSettings())
-	if m.activeWindow != "app" {
-		m.windowAppBox.Hide()
-	}
-	if m.activeWindow != "settings" {
-		m.windowSettingsBox.Hide()
-	}
-	var windowObjects []fyne.CanvasObject
-	windowObjects = append(windowObjects, m.windowAppBox)
-	windowObjects = append(windowObjects, m.windowSettingsBox)
-	return container.NewStack(windowObjects...)
+// snglWindow is one window of the program: the fyne window the host shows,
+// around a widget tree the program builds once.
+type snglWindow struct {
+	title   string
+	content fyne.CanvasObject
+	onClose func()
+	w       fyne.Window
+	mounted bool
+	open    bool
 }
 
-func (m *Model) navigate(name string) {
-	m.activeWindow = name
-	m.windowAppBox.Hide()
-	m.windowSettingsBox.Hide()
-	switch name {
-	case "app":
-		m.windowAppBox.Show()
-	case "settings":
-		m.windowSettingsBox.Show()
+var (
+	snglApp     fyne.App
+	snglStarted bool
+	snglHidden  bool
+	snglWindows []*snglWindow
+	snglAnchor  fyne.Window
+)
+
+// Mount says the window exists. Before the loop starts it is created when the
+// loop does; after, it is created and put on screen at once.
+func (w *snglWindow) Mount() {
+	if w.mounted {
+		return
 	}
+	w.mounted = true
+	snglWindows = append(snglWindows, w)
+	if snglStarted {
+		w.create()
+		w.Open()
+	}
+}
+
+// Unmount closes the fyne window. The content is kept for a later Mount.
+func (w *snglWindow) Unmount() {
+	if !w.mounted {
+		return
+	}
+	w.mounted = false
+	w.open = false
+	for i, x := range snglWindows {
+		if x == w {
+			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
+			break
+		}
+	}
+	if w.w != nil {
+		w.w.SetContent(container.NewStack())
+		w.w.Close()
+		w.w = nil
+	}
+}
+
+// Open puts a mounted window on screen.
+func (w *snglWindow) Open() {
+	w.open = true
+	if w.w != nil {
+		w.w.Show()
+	}
+}
+
+// Close takes the window off screen; Open brings it back as it was.
+func (w *snglWindow) Close() {
+	w.open = false
+	if w.w != nil {
+		w.w.Hide()
+	}
+}
+
+func (w *snglWindow) create() {
+	if w.w != nil {
+		return
+	}
+	w.w = snglApp.NewWindow(w.title)
+	// fyne lays SetContent's tree out against the current size, so the
+	// content goes in before the resize.
+	w.w.SetContent(w.content)
+	w.w.Resize(fyne.NewSize(480, 640))
+	w.w.SetCloseIntercept(w.closeRequested)
+}
+
+// closeRequested is the window manager's close. The handler decides what it
+// means; with none, the window hides. Either way a close that leaves nothing
+// on screen ends the program, unless it started with nothing on screen.
+func (w *snglWindow) closeRequested() {
+	if w.onClose != nil {
+		w.onClose()
+	} else {
+		w.Close()
+	}
+	if snglHidden {
+		return
+	}
+	for _, x := range snglWindows {
+		if x.open {
+			return
+		}
+	}
+	snglApp.Quit()
+}
+
+// snglRunWindows runs the loop over the windows mounted so far and those
+// mounted later. show puts the mounted ones on screen at start.
+func snglRunWindows(show bool) {
+	snglHidden = !show
+	snglAnchor = snglApp.NewWindow("")
+	snglStarted = true
+	for _, w := range append([]*snglWindow(nil), snglWindows...) {
+		w.create()
+		if show || w.open {
+			w.Open()
+		}
+	}
+	snglApp.Run()
+}
+
+// BuildUI creates every window's widget tree. Call once.
+func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.app != nil {
+		return m.app.content
+	}
+	m.app = &snglWindow{title: "App", content: m.buildWindowApp()}
+	m.app.Mount()
+	m.settings = &snglWindow{title: "Settings", content: m.buildWindowSettings()}
+	m.settings.Mount()
+	return m.app.content
 }
 
 func (m *Model) buildWindowApp() fyne.CanvasObject {
@@ -103,13 +198,11 @@ func (m *Model) buildWindowSettings() fyne.CanvasObject {
 }
 
 func main() {
-	a := app.New()
-	w := a.NewWindow("SNGL App")
+	snglApp = app.New()
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	snglRunWindows(true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:0cb6997b5d087b89ae247aa1a8d981f6
+pass sha256:b970ce1d87b98c21cbaf574ac57cc078

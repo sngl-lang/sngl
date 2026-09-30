@@ -509,8 +509,10 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 			w.Props[i].Value = foldExpr(w.Props[i].Value, ctx)
 		}
 	}
-	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
+	for _, h := range ir.WindowHandlers(w) {
+		if h.Func != nil {
+			h.Func.Block = foldStmts(h.Func.Block, ctx)
+		}
 	}
 	w.Children = foldStmts(w.Children, ctx)
 }

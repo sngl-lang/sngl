@@ -2179,15 +2179,41 @@ emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
 `cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
 
-**A window's `#id` opens and closes it**: `window.open()` and `window.close()`
-(`lib/ui/window.sngl`) are intrinsics a platform answers
-(`codegen/platform/{gtk4,fyne}/window.go`). The entry window is always built
-and the Model keeps it in a field named by its `#id`, set where the host
-creates it, so the Go context's ordinary handle spelling (`m.details`) is the
-receiver. Started with no window on screen, the window manager's close hides
-rather than quits. Only the entry window: gtk4 and fyne build one. On gtk4
-`WAYLAND_DEBUG` is how a script tells a window reached the screen
-(`cmd/sngl/testdata/window_open_runs.txt`).
+**A window on gtk4 and fyne is a record around content built once.** Every
+window of a program that holds several, or opens, closes or hears the close
+of one, gets a Model field named by its `#id` (`__win<N>` without one) holding
+a `gtk4rt.Window` or fyne's inline `snglWindow` (`codegen.HostWindows`); a
+lone window that does none of that keeps the old single-window output. Its
+widgets are built into a root box of its own -- `ir.WindowRootName`, `__root`
+for the first window and `__root<N>` after, which is also the parent its
+top-level render slots re-render into -- and the record's `Mount` creates a
+toplevel around that box and `Unmount` destroys it. The content is retained
+and outlives the toplevel, so an updater never reaches a freed widget and a
+window mounted again shows the state as it now is. `window.open()` and
+`window.close()` (`lib/ui/window.sngl`, answered in
+`codegen/platform/{gtk4,fyne}/window.go`) show and hide the record through
+the handle's ordinary spelling, `m.details`.
+
+Every window the tree holds is mounted while the tree is built, before the
+first settle, and `run` puts them on screen: a program whose `@run` never
+calls it runs the loop with none shown. A mount before the loop starts is
+created when it does (a toplevel needs the application), and one after it is
+put on screen at once. gtk4 holds the application (`g_application_hold`) and
+fyne keeps a window it never shows, because both would otherwise end when the
+last window goes. Both need the runtime: gtk4's inline-cgo mode refuses a
+program with records.
+
+**A window's `@close` is its answer to the window manager**, and the tree
+decides what exists: the handler runs, and a window it did not unmount or
+close stays on screen. With no `@close` the window hides. Either way a close
+that leaves no window on screen ends the program, unless it started with none
+(`pkg/go/gtk4rt/windows_test.go` drives those rules through
+`Window.RequestClose`). `@close` is an ordinary event of `ui.window`, checked
+by `checkAndSplitArgs` beside the props; only `@error` is held back, and
+`ir.WindowHandlers` is the one list of a window's handlers every walk reads.
+On gtk4 `WAYLAND_DEBUG` is how a script tells a window reached the screen
+(`cmd/sngl/testdata/window_open_runs.txt`,
+`cmd/sngl/testdata/window_several_runs.txt`).
 
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it
