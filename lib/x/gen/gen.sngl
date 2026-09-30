@@ -17,8 +17,11 @@ import tree "sngl:tree"
 // than withdrawals -- the platform's container can place a child, a span can
 // hold a render slot, the platform can reach its drawing thread, the language
 // can spawn -- and a pass reads each to choose what to emit rather than whether
-// to run.
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects }
+// to run. `windowLifetimes` is one more: the platform creates and destroys a
+// window while the program runs, so a window under an `if` that reads state
+// comes and goes with it; withheld, such a window is refused where it is
+// written.
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, windowLifetimes }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component

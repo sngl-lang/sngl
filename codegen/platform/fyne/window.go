@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,6 +19,20 @@ func init() {
 			return "", nil
 		}
 		return tr(args[0]) + ".Open()", nil
+	})
+	// A window that comes and goes with a condition is mounted and unmounted
+	// by the effect passWindowLifetimes leaves in its place.
+	codegen.RegisterPlatformIntrinsic("fyne", lower.WindowMountIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if len(args) != 1 {
+			return "", nil
+		}
+		return tr(args[0]) + ".Mount()", nil
+	})
+	codegen.RegisterPlatformIntrinsic("fyne", lower.WindowUnmountIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if len(args) != 1 {
+			return "", nil
+		}
+		return tr(args[0]) + ".Unmount()", nil
 	})
 	codegen.RegisterPlatformIntrinsic("fyne", codegen.WindowCloseIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		if len(args) != 1 {
@@ -47,12 +62,14 @@ func emitIRWindowsCode(b *strings.Builder, wins []codegen.HostWindow, windowCode
 		if t := hw.Window.Prop(ir.WindowTitle); t != nil {
 			fmt.Fprintf(b, "title: %s, ", gc.EvalExpr(t))
 		}
-		fmt.Fprintf(b, "content: m.%s()", windowBuildFunc(hw.Name))
+		fmt.Fprintf(b, "content: m.%s()", windowBuildFunc(hw.Field))
 		if hw.Close != nil {
 			fmt.Fprintf(b, ", onClose: m.%s", windowCloseMethod(hw.Field))
 		}
 		b.WriteString("}\n")
-		fmt.Fprintf(b, "\tm.%s.Mount()\n", hw.Field)
+		if !hw.Lifetime {
+			fmt.Fprintf(b, "\tm.%s.Mount()\n", hw.Field)
+		}
 	}
 	b.WriteString(mounts.String())
 	fmt.Fprintf(b, "\treturn m.%s.content\n", wins[0].Field)

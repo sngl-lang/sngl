@@ -42,7 +42,7 @@ stdout ' → Effect → '
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,WindowLifetimes,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 ! stdout 'SlotChildInstances'
 cp stdout fyne.txt
 

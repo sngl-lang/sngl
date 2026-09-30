@@ -99,6 +99,9 @@ var alwaysOn = []string{
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
 	"ViewForElse",
+	// A window under an `if` that reads state is lowered to a lifetime or
+	// refused, on every target: the capability chooses which.
+	"WindowLifetimes",
 	"WindowNesting",
 }
 
@@ -187,6 +190,10 @@ var soleGate = map[string][]string{
 	// NoReactivity reads it to choose where a reactive `if` among spans
 	// renders; it turns no pass on.
 	"InlineSlots": nil,
+
+	// WindowLifetimes reads it to choose between a lifetime and a refusal;
+	// it turns no pass on.
+	"WindowLifetimes": nil,
 
 	// Also gates nothing: the offload pass is asked for by NoAsyncCalls and
 	// reads this itself to choose between the rewrite and refusing the

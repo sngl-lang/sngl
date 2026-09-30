@@ -2203,6 +2203,33 @@ fyne keeps a window it never shows, because both would otherwise end when the
 last window goes. Both need the runtime: gtk4's inline-cgo mode refuses a
 program with records.
 
+**A window under an `if` that reads state comes and goes with it**, which is
+`passWindowLifetimes` (`internal/lower/window_lifetimes.go`) on a platform
+holding `#[gen.can(windowLifetimes)]` -- gtk4 and fyne. A window's position
+says whether it exists the way an effect's says whether its lifetime runs, so
+the pass says it in `passEffect`'s terms rather than being a second
+reconciler: the window moves to `pkg.Windows` with its condition on
+`NodeInst.Presence`, and an `effect` takes its place whose mount and unmount
+call `window.mount` / `window.unmount` on the window's handle (a synthesized
+`__win<N>` when nothing names it, numbered as `codegen.HostWindows` numbers
+records). So the settle runs wherever the condition's state is written -- the
+window's own `@close` included, which is how closing it writes the condition
+back -- and the first settle at start. `passEffect` starts every effect in the
+window's body at the `Presence` frame, so those live as long as the window
+does, and every page scope's `@unmount`s share the one exit handler. Only an
+`if` at the root of the package body: a window a root component renders has
+been spliced there by then, and one under a `for` is untouched (a copy per
+element is more than one record per window statement holds). A target without
+the capability refuses the window with a position
+(`cmd/sngl/testdata/window_under_if_refused.txt`); a condition that reads no
+state is not a lifetime and builds anywhere. `testdata/window_under_if.txtar`
+is the code and `cmd/sngl/testdata/window_under_if_runs.txt` runs it.
+
+A node's `#id` handle counts as state in `codegen.PackageStateFuncs`, since
+every target keeps it where it keeps the tree: the effect's mount reads the
+window's handle and nothing else, and was emitted as a free Go function
+naming `m`.
+
 **A window's `@close` is its answer to the window manager**, and the tree
 decides what exists: the handler runs, and a window it did not unmount or
 close stays on screen. With no `@close` the window hides. Either way a close

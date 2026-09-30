@@ -297,7 +297,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 		for _, hw := range hostWins {
 			w := hw.WindowCtx
-			buildFn := windowBuildFunc(w.Name)
+			buildFn := windowBuildFunc(hw.Field)
 			var winBuf strings.Builder
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})

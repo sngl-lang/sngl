@@ -1,0 +1,66 @@
+# A window under `if details` is created each time `details` turns true and
+# destroyed each time it turns false: the timer turns it on, off and on again,
+# so gtk4's Wayland log shows its toplevel created twice and destroyed once,
+# and the effect in its body -- which lives as long as the window -- mounts
+# twice and unmounts once, on both hosts.
+#
+# testdata/window_under_if.txtar is the code.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 app.sngl
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/app 2>&1 | grep -c "xdg_toplevel.*set_title(\"Load\")" || true'
+[gtk4] stdout '^2$'
+[gtk4] exec ./gtk4/app
+[gtk4] cmp stdout want.txt
+
+sngl build --lang go --platform fyne -o fyne app.sngl
+exec ./fyne/app
+cmp stdout want.txt
+
+-- want.txt --
+mounted
+unmounted
+mounted
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+#[go.native("fmt", "fmt.Println")]
+func println(s string)
+
+var (
+    details = false
+    ticks = 0
+)
+
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks <= 3 {
+        details = !details
+    }
+    if ticks == 5 {
+        exit(0)
+    }
+})
+
+ui.window #main(title="Main") {
+    ui.text(value="{ticks}")
+}
+
+if details {
+    ui.window(title="Load", @close {
+        details = false
+    }) {
+        ui.text(value="load")
+        effect(@mount {
+            println("mounted")
+        }, @unmount {
+            println("unmounted")
+        })
+    }
+}

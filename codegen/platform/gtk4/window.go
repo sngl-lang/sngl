@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -17,6 +18,20 @@ func init() {
 			return "", nil
 		}
 		return tr(args[0]) + ".Open()", nil
+	})
+	// A window that comes and goes with a condition is mounted and unmounted
+	// by the effect passWindowLifetimes leaves in its place.
+	codegen.RegisterPlatformIntrinsic("gtk4", lower.WindowMountIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if len(args) != 1 {
+			return "", nil
+		}
+		return tr(args[0]) + ".Mount()", nil
+	})
+	codegen.RegisterPlatformIntrinsic("gtk4", lower.WindowUnmountIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if len(args) != 1 {
+			return "", nil
+		}
+		return tr(args[0]) + ".Unmount()", nil
 	})
 	codegen.RegisterPlatformIntrinsic("gtk4", codegen.WindowCloseIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		if len(args) != 1 {
@@ -81,7 +96,9 @@ func emitBuildUIWindows(b *strings.Builder, wins []windowBuild, mounts *strings.
 			fmt.Fprintf(b, ", OnClose: m.%s", windowCloseMethod(wb.Field))
 		}
 		b.WriteString("}\n")
-		fmt.Fprintf(b, "\tm.%s.Mount()\n", wb.Field)
+		if !wb.Lifetime {
+			fmt.Fprintf(b, "\tm.%s.Mount()\n", wb.Field)
+		}
 	}
 	b.WriteString(mounts.String())
 	b.WriteString("}\n\n")

@@ -174,7 +174,13 @@ type effectFrame struct {
 }
 
 func (st *effectState) owner(o ir.Owner) error {
-	body, err := st.stmts(o.Stmts(), &o, nil)
+	// A window that comes and goes with a condition holds its effects for as
+	// long as it exists (passWindowLifetimes).
+	var frames []effectFrame
+	if o.Win != nil && o.Win.Presence != nil {
+		frames = []effectFrame{{cond: deepCloneExpr(o.Win.Presence)}}
+	}
+	body, err := st.stmts(o.Stmts(), &o, frames)
 	if err != nil {
 		return err
 	}
@@ -852,8 +858,17 @@ func (st *effectState) finishTeardown() error {
 		}
 		tears[o] = append(tears[o], fx)
 	}
-	var page *owner
-	for _, o := range order {
+	// Every page scope -- the package and each window -- shares the one exit
+	// handler the platform calls, since a window owns nothing and what it
+	// holds is its container's. Reversed across scopes as within one, so the
+	// scope set up last is released first.
+	var page []ir.Stmt
+	// Where the exit handler lives: the page scope's own owner when there is
+	// one -- a harness root component's teardown is one of its methods -- and
+	// the package, which every window's declarations belong to, when there
+	// are several.
+	var pageOwner *owner
+	for _, o := range slices.Backward(order) {
 		// Reverse the order the program wrote them in: an effect set up later
 		// may hold something an earlier one handed it, so releasing in
 		// acquisition order can release a thing still in use.
@@ -866,20 +881,30 @@ func (st *effectState) finishTeardown() error {
 				fn.Block = append(fn.Block, body...)
 				continue
 			}
-		} else if page != nil && *page != o {
-			return fmt.Errorf("Effect: @unmount handlers in two page scopes have no one exit handler to share")
+			st.addFunc(&ir.Owner{Comp: o.comp}, &ir.Func{
+				Name:   TeardownFunc,
+				Return: ir.TypVoid,
+				Purity: ir.PurityMutates,
+				Block:  body,
+			})
+			continue
 		}
+		page = append(page, body...)
+		if pageOwner == nil {
+			pageOwner = &o
+		} else if *pageOwner != o {
+			pageOwner = &owner{}
+		}
+	}
+	if page != nil {
 		fn := &ir.Func{
 			Name:   TeardownFunc,
 			Return: ir.TypVoid,
 			Purity: ir.PurityMutates,
-			Block:  body,
+			Block:  page,
 		}
-		st.addFunc(&ir.Owner{Comp: o.comp, Win: o.win}, fn)
-		if o.comp == nil || !o.comp.RuntimeInstance {
-			page = &o
-			st.pkg.Teardown = fn
-		}
+		st.addFunc(&ir.Owner{Comp: pageOwner.comp, Win: pageOwner.win}, fn)
+		st.pkg.Teardown = fn
 	}
 	return nil
 }

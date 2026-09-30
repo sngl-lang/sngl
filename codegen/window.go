@@ -43,6 +43,11 @@ type HostWindow struct {
 	Root string
 	// Close is the window's `@close`, or nil.
 	Close *ir.EventHandler
+	// Lifetime says the window comes and goes with a condition
+	// (ir.NodeInst.Presence): it is not mounted while the tree is built, and
+	// the effect in its place calls lower.WindowMountIntrinsic and
+	// lower.WindowUnmountIntrinsic on its handle.
+	Lifetime bool
 }
 
 // HostWindows is the record each window of ctx gets on a host that holds
@@ -60,7 +65,7 @@ func HostWindows(ctx *CodegenCtx) []HostWindow {
 	}
 	need := len(wins) > 1 || OpensWindows(ctx.Pkg)
 	for _, w := range wins {
-		if windowClose(w.Window) != nil {
+		if windowClose(w.Window) != nil || w.Window.Presence != nil {
 			need = true
 		}
 	}
@@ -78,6 +83,7 @@ func HostWindows(ctx *CodegenCtx) []HostWindow {
 			Field:     field,
 			Root:      ir.WindowRootName(ctx.Pkg, w.Window),
 			Close:     windowClose(w.Window),
+			Lifetime:  w.Window.Presence != nil,
 		})
 	}
 	return out

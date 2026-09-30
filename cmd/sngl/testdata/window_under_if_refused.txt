@@ -1,0 +1,43 @@
+# A window under an `if` that reads state comes and goes with it only where the
+# platform can create and destroy a window while the program runs
+# (`#[gen.can(windowLifetimes)]`: gtk4 and fyne). Everywhere else it is refused
+# at the window, rather than emitted as if the `if` were not there -- which is
+# what every target did before, gtk4 included.
+
+! sngl generate --lang none --platform html -o html app.sngl
+stderr 'app.sngl:10:14: a window under an `if` that reads state is created and destroyed with it, which html cannot do'
+
+! sngl generate --lang go --platform bubbletea -o tea app.sngl
+stderr 'app.sngl:10:14: a window under an `if` that reads state is created and destroyed with it, which bubbletea cannot do'
+
+# A condition that reads no state is not a lifetime, and builds anywhere.
+sngl generate --lang none --platform html -o html2 const.sngl
+
+-- app.sngl --
+import ui "sngl:ui"
+
+var details = false
+
+ui.window #main(title="Main") {
+    ui.button(text="Details", @click { details = !details })
+}
+
+if details {
+    ui.window(title="Load") {
+        ui.text(value="load")
+    }
+}
+-- const.sngl --
+import ui "sngl:ui"
+
+const wide = true
+
+ui.window #main(title="Main") {
+    ui.text(value="main")
+}
+
+if wide {
+    ui.window(title="Wide", href="/wide.html") {
+        ui.text(value="wide")
+    }
+}
