@@ -73,6 +73,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -87,43 +90,53 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("medium") }
     var chosen__inst0 by remember { mutableStateOf("") }
     val more__inst0 = remember { mutableStateListOf("a", "b") }
-    var value__inst1 by remember { mutableStateOf(pick__inst0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
     var value__inst2 by remember { mutableStateOf(pick__inst0) }
     var value__inst3 by remember { mutableStateOf(pick__inst0) }
+    var value__inst4 by remember { mutableStateOf(pick__inst0) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Row(modifier = Modifier.padding(4.dp)) {
-            for (opt in listOf("small", "medium", "large")) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (value__inst1 == opt), onClick = {
-                        value__inst1 = opt
-                        chosen__inst0 = opt
-                    })
-                    Text(text = opt, modifier = Modifier)
-                }
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Column(modifier = Modifier.padding(5.dp)) {
-            for (opt in listOf("one", "two")) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (value__inst2 == opt), onClick = {
-                        value__inst2 = opt
-                    })
-                    Text(text = opt, modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Row(modifier = Modifier.padding(4.dp)) {
+                for (opt in listOf("small", "medium", "large")) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst2 == opt), onClick = {
+                            value__inst2 = opt
+                            chosen__inst0 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
                 }
             }
-        }
-        Column(modifier = Modifier) {
-            for (opt in more__inst0) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (value__inst3 == opt), onClick = {
-                        value__inst3 = opt
-                    })
-                    Text(text = opt, modifier = Modifier)
+            Column(modifier = Modifier.padding(5.dp)) {
+                for (opt in listOf("one", "two")) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst3 == opt), onClick = {
+                            value__inst3 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
+                }
+            }
+            Column(modifier = Modifier) {
+                for (opt in more__inst0) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst4 == opt), onClick = {
+                            value__inst4 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
                 }
             }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:1741d5264fb700cf52629d374012d2f6
+pass sha256:868d4513d5301d5a4338f8337125d0fd

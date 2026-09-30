@@ -88,7 +88,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	pages__inst0 int
+	pages__inst0   int
+	visible__inst1 bool
 
 	width, height int
 }
@@ -97,6 +98,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.pages__inst0 = 2
+	m.visible__inst1 = true
 	return m
 }
 
@@ -121,6 +123,21 @@ func SetPages__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setPages__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -132,13 +149,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setPages__inst0Msg:
 		m = m.SetPages__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -146,36 +171,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("One"))
-	content_0Children = append(content_0Children, content_0_0)
-	var content_0_1 string
-	var content_0_1Children []string
-	var content_0_1_0 string
-	content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint((("first of " + fmt.Sprint(m.pages__inst0)) + " pages")))
-	content_0_1Children = append(content_0_1Children, content_0_1_0)
-	content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
-	content_0Children = append(content_0Children, content_0_1)
-	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("Two"))
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	var content_1_1Children []string
-	var content_1_1_0 string
-	content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("no content supplied"))
-	content_1_1Children = append(content_1_1Children, content_1_1_0)
-	content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("One"))
+		content_0Children = append(content_0Children, content_0_0)
+		var content_0_1 string
+		var content_0_1Children []string
+		var content_0_1_0 string
+		content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint((("first of " + fmt.Sprint(m.pages__inst0)) + " pages")))
+		content_0_1Children = append(content_0_1Children, content_0_1_0)
+		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
+		content_0Children = append(content_0Children, content_0_1)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("Two"))
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		var content_1_1Children []string
+		var content_1_1_0 string
+		content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("no content supplied"))
+		content_1_1Children = append(content_1_1Children, content_1_1_0)
+		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -214,6 +241,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -226,18 +256,28 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var pages__inst0 by remember { mutableStateOf(2) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Column(modifier = Modifier) {
-            Text(text = "One", modifier = Modifier)
-            Column(modifier = Modifier) {
-                Text(text = (("first of " + pages__inst0.toString()) + " pages"), modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Column(modifier = Modifier) {
-            Text(text = "Two", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
             Column(modifier = Modifier) {
-                Text(text = "no content supplied", modifier = Modifier)
+                Text(text = "One", modifier = Modifier)
+                Column(modifier = Modifier) {
+                    Text(text = (("first of " + pages__inst0.toString()) + " pages"), modifier = Modifier)
+                }
+            }
+            Column(modifier = Modifier) {
+                Text(text = "Two", modifier = Modifier)
+                Column(modifier = Modifier) {
+                    Text(text = "no content supplied", modifier = Modifier)
+                }
             }
         }
     }
@@ -287,8 +327,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b7977464ad6e506c119caaf13da8714f
+pass sha256:7995bf56a91d9cde83a8f2908ebd2974
 -- run/kotlin/android --
-pass sha256:041b39b853c6d798fc14eca0f75a4a85
+pass sha256:0143d8f534f303fe4340d23fdec741ba
 -- run/none/html --
 pass sha256:6bd135e49c98af5d5ef9c96173744295

@@ -7,14 +7,15 @@ import (
 )
 
 // passWindowUnderIf refuses a window written under an `if` that reads state on
-// a target that still renders `window` as the builtin it is marked: html,
-// bubbletea and android. Such a window says it exists only while the condition
-// holds, and those targets build every window they find once, so emitting it
-// would be emitting it as if the `if` were not there.
+// a target that still renders `window` as the builtin it is marked: html, until
+// Phase C2 moves its pages to `nav.page`. Such a window says it exists only
+// while the condition holds, and html writes every window it finds once, as a
+// document, so emitting it would be emitting it as if the `if` were not there.
 //
-// Where a platform overrides `ui.window` -- gtk4 and fyne, with a Toplevel --
-// the window is an ordinary node by now (composeOverriddenBuiltins) and the
-// `if` is an ordinary render slot, so there is nothing here to refuse. A
+// Where a platform overrides `ui.window` -- gtk4 and fyne with a Toplevel,
+// bubbletea and android with a Screen -- the window is an ordinary node by now
+// (composeOverriddenBuiltins) and the `if` is an ordinary conditional, so
+// there is nothing here to refuse. A
 // condition that reads no state is not a lifetime either: the optimizer has
 // decided it, or it never changes.
 //
@@ -57,4 +58,44 @@ func refuseWindowsUnderIf(pkg *ir.Package, _ Features, opts Options) error {
 		return nil
 	}
 	return walk(pkg.Body, false)
+}
+
+// passWindowSurface refuses what a window says about being on screen, on a
+// target that renders `window` as the builtin it is marked -- html, where a
+// window is a document or a route until Phase C2 moves pages to `nav.page`. A
+// page cannot take itself off screen and is told of no close it could answer,
+// so a `:visible` binding, a `visible` other than the default and an
+// `@closed` each say something that would be emitted and ignored.
+//
+// A target that overrides `ui.window` has composed its windows away by now
+// (composeOverriddenBuiltins), so there is nothing here for it. Phase C3
+// deletes this with the builtin.
+var passWindowSurface = pass{
+	name:    "WindowSurface",
+	enabled: func(Features) bool { return true },
+	apply:   refuseWindowSurface,
+}
+
+func refuseWindowSurface(pkg *ir.Package, _ Features, opts Options) error {
+	if pkg == nil || opts.Platform == "" {
+		return nil
+	}
+	for _, w := range ir.AllWindows(pkg) {
+		for _, b := range w.Bindings {
+			if b.PropName == "visible" {
+				return fmt.Errorf("%s: %s cannot show or hide a window, so its `visible` cannot be bound", windowPos(w), opts.Platform)
+			}
+		}
+		if v := w.Prop("visible"); v != nil {
+			if lit, ok := v.(*ir.Literal); !ok || lit.Value != "true" {
+				return fmt.Errorf("%s: %s cannot show or hide a window, so its `visible` is always true", windowPos(w), opts.Platform)
+			}
+		}
+		for _, h := range w.Handlers {
+			if h.Name == "closed" {
+				return fmt.Errorf("%s: %s reports no close of a window, so its `@closed` would never run", windowPos(w), opts.Platform)
+			}
+		}
+	}
+	return nil
 }

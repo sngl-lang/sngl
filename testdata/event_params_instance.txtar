@@ -67,7 +67,8 @@ type Model struct {
 	picked__inst0       string
 	at__inst0           int
 	names__inst0        []string
-	clicks__inst1       map[string]int
+	visible__inst1      bool
+	clicks__inst2       map[string]int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -80,7 +81,8 @@ func New() Model {
 	m.picked__inst0 = ""
 	m.at__inst0 = 0
 	m.names__inst0 = []string{"a", "b"}
-	m.clicks__inst1 = map[string]int{}
+	m.visible__inst1 = true
+	m.clicks__inst2 = map[string]int{}
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -169,19 +171,34 @@ func SetNames__inst0Cmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setNames__inst0Msg{value: v} }
 }
 
-func (m Model) Clicks__inst1() map[string]int {
-	return m.clicks__inst1
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m Model) SetClicks__inst1(v map[string]int) Model {
-	m.clicks__inst1 = v
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
 	return m
 }
 
-type setClicks__inst1Msg struct{ value map[string]int }
+type setVisible__inst1Msg struct{ value bool }
 
-func SetClicks__inst1Cmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setClicks__inst1Msg{value: v} }
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
+func (m Model) Clicks__inst2() map[string]int {
+	return m.clicks__inst2
+}
+
+func (m Model) SetClicks__inst2(v map[string]int) Model {
+	m.clicks__inst2 = v
+	return m
+}
+
+type setClicks__inst2Msg struct{ value map[string]int }
+
+func SetClicks__inst2Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setClicks__inst2Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -199,15 +216,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetAt__inst0(msg.value)
 	case setNames__inst0Msg:
 		m = m.SetNames__inst0(msg.value)
-	case setClicks__inst1Msg:
-		m = m.SetClicks__inst1(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
+	case setClicks__inst2Msg:
+		m = m.SetClicks__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -219,16 +244,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = n
 					if m.__focusLoop0_cursor == __focusPos0 {
-						var __cell1_clicks__inst1 int = func() int {
-							if __v, __ok := m.clicks__inst1[fmt.Sprint(__copy0)]; __ok {
+						var __cell1_clicks__inst2 int = func() int {
+							if __v, __ok := m.clicks__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_clicks__inst1 += 1
-						m.clicks__inst1[fmt.Sprint(__copy0)] = __cell1_clicks__inst1
+						__cell1_clicks__inst2 += 1
+						m.clicks__inst2[fmt.Sprint(__copy0)] = __cell1_clicks__inst2
 						m.at__inst0 = func() int {
-							if __v, __ok := m.clicks__inst1[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.clicks__inst2[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
@@ -245,32 +270,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	var part0Items []string
-	for __copy0, n := range m.names__inst0 {
-		_ = __copy0
-		_ = n
-		var part0Item string
-		part0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		part0ItemPrefix := " "
-		if part0ItemFocused {
-			part0ItemPrefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		var contentPart_0Items []string
+		for __copy0, n := range m.names__inst0 {
+			_ = __copy0
+			_ = n
+			var contentPart_0Item string
+			contentPart_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			contentPart_0ItemPrefix := " "
+			if contentPart_0ItemFocused {
+				contentPart_0ItemPrefix = ">"
+			}
+			contentPart_0Item = lipgloss.NewStyle().Render(contentPart_0ItemPrefix + " " + fmt.Sprint(n))
+			__focusPos0++
+			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		part0Item = lipgloss.NewStyle().Render(part0ItemPrefix + " " + fmt.Sprint(n))
-		__focusPos0++
-		part0Items = append(part0Items, part0Item)
+		contentPart_0 = strings.Join(contentPart_0Items, "")
+		if contentPart_0 != "" {
+			contentParts = append(contentParts, contentPart_0)
+		}
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = strings.Join(part0Items, "")
-	if part0 != "" {
-		parts = append(parts, part0)
-	}
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0))))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -816,7 +844,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:731e3f4ec0c987537f244f75d7990961
+pass sha256:bc71b1403c28f56965b7f124f1c2f021
 -- run/go/fyne --
 pass sha256:604db28eb601123a72b2516c6abcbd1d
 -- run/go/gtk4 --

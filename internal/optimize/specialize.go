@@ -249,6 +249,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if n.ID != "" {
 		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
+	ir.AttachNodeSite(folded, n)
 	return folded
 }
 

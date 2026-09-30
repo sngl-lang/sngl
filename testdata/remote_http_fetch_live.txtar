@@ -55,9 +55,10 @@ var blank http.Response = http.Response{Status: 0, Body: "", Headers: map[string
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	url       string
-	__focusID int
-	blank     http.Response
+	url            string
+	visible__inst0 bool
+	__focusID      int
+	blank          http.Response
 
 	width, height int
 }
@@ -66,6 +67,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.url = "https://example.com/"
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
 	return m
@@ -104,6 +106,21 @@ func SetUrlCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setUrlMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -115,6 +132,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setUrlMsg:
 		m = m.SetUrl(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case remoteSettledMsg:
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -122,7 +141,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -135,21 +160,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(remote.Query[http.Response](remote.Default, "http.fetch", ([]any)([]string{m.url}), func() (http.Response, error) {
-		return (func() http.Response { return func() http.Response { v, _ := http.Get(m.url); return v }() })(), nil
-	}).Or(m.blank).Body))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 0)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(remote.Query[http.Response](remote.Default, "http.fetch", ([]any)([]string{m.url}), func() (http.Response, error) {
+			return (func() http.Response { return func() http.Response { v, _ := http.Get(m.url); return v }() })(), nil
+		}).Or(m.blank).Body))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 0)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("go"))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("go"))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -168,4 +196,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:c8280877e093815dda96eb934213c73f
+broken sha256:b5719a5f20739e18203fa49581882445

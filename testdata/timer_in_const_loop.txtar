@@ -78,10 +78,11 @@ type loopTimerTickMsg1 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	n         int
-	shown     bool
-	__focusID int
-	periods   []time.Duration
+	n              int
+	shown          bool
+	visible__inst0 bool
+	__focusID      int
+	periods        []time.Duration
 
 	__loopTimer0    map[string]int
 	__loopTimer0Seq map[string]int
@@ -99,6 +100,7 @@ func New() Model {
 	m.__loopTimer1Seq = map[string]int{}
 	m.n = 0
 	m.shown = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 	return m
@@ -152,6 +154,21 @@ func SetShownCmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setShownMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.__loopTimer0Sync()...)
@@ -168,6 +185,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN(msg.value)
 	case setShownMsg:
 		m = m.SetShown(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case loopTimerTickMsg0:
 		for __copy0, p := range m.periods {
 			if fmt.Sprint(__copy0) == msg.key && m.__loopTimer0[msg.key] == msg.gen {
@@ -188,7 +207,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -249,43 +274,46 @@ func (m *Model) __loopTimer1Sync() []tea.Cmd {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	var part0Items []string
-	for _, p := range m.periods {
-		_ = p
-		var part0Item string
-		part0Items = append(part0Items, part0Item)
-	}
-	part0 = strings.Join(part0Items, "")
-	if part0 != "" {
-		parts = append(parts, part0)
-	}
-	var part1 string
-	var part1Items []string
-	for _, p := range m.periods {
-		_ = p
-		var part1Item string
-		if m.shown {
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		var contentPart_0Items []string
+		for _, p := range m.periods {
+			_ = p
+			var contentPart_0Item string
+			contentPart_0Items = append(contentPart_0Items, contentPart_0Item)
 		}
-		part1Items = append(part1Items, part1Item)
+		contentPart_0 = strings.Join(contentPart_0Items, "")
+		if contentPart_0 != "" {
+			contentParts = append(contentParts, contentPart_0)
+		}
+		var contentPart_1 string
+		var contentPart_1Items []string
+		for _, p := range m.periods {
+			_ = p
+			var contentPart_1Item string
+			if m.shown {
+			}
+			contentPart_1Items = append(contentPart_1Items, contentPart_1Item)
+		}
+		contentPart_1 = strings.Join(contentPart_1Items, "")
+		if contentPart_1 != "" {
+			contentParts = append(contentParts, contentPart_1)
+		}
+		var contentPart_2 string
+		contentPart_2Focused := (m.__focusID == 0)
+		contentPart_2Prefix := " "
+		if contentPart_2Focused {
+			contentPart_2Prefix = ">"
+		}
+		contentPart_2 = lipgloss.NewStyle().Render(contentPart_2Prefix + " " + fmt.Sprint("hide"))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
+		contentParts = append(contentParts, contentPart_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part1 = strings.Join(part1Items, "")
-	if part1 != "" {
-		parts = append(parts, part1)
-	}
-	var part2 string
-	part2Focused := (m.__focusID == 0)
-	part2Prefix := " "
-	if part2Focused {
-		part2Prefix = ">"
-	}
-	part2 = lipgloss.NewStyle().Render(part2Prefix + " " + fmt.Sprint("hide"))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.n)))
-	parts = append(parts, part3)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -1293,7 +1321,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:146477a18828bf62ccb78a149d2018d5
+pass sha256:b8d9bb590e478c4e45f913b1fba557f8
 -- run/go/fyne --
 pass sha256:f69b6ee345215a40d8659be1f98f3523
 -- run/go/gtk4 --

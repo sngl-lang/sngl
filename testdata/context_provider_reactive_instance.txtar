@@ -63,9 +63,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	txt       string
-	xs        []int
-	__focusID int
+	txt            string
+	xs             []int
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -75,6 +76,7 @@ func New() Model {
 	m := Model{}
 	m.txt = "b"
 	m.xs = []int{1, 2}
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -127,6 +129,21 @@ func SetXsCmd(v []int) tea.Cmd {
 	return func() tea.Msg { return setXsMsg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -140,13 +157,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTxt(msg.value)
 	case setXsMsg:
 		m = m.SetXs(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -160,28 +185,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Items []string
+		for _, x := range m.xs {
+			_ = x
+			var content_1Item string
+			content_1Item = lipgloss.NewStyle().Render(fmt.Sprint(((m.txt + " ") + fmt.Sprint(x))))
+			content_1Items = append(content_1Items, content_1Item)
+		}
+		content_1 = strings.Join(content_1Items, "\n")
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("flip"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Items []string
-	for _, x := range m.xs {
-		_ = x
-		var content_1Item string
-		content_1Item = lipgloss.NewStyle().Render(fmt.Sprint(((m.txt + " ") + fmt.Sprint(x))))
-		content_1Items = append(content_1Items, content_1Item)
-	}
-	content_1 = strings.Join(content_1Items, "\n")
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -602,6 +629,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -615,15 +645,25 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var txt by remember { mutableStateOf("b") }
     val xs = remember { mutableStateListOf(1, 2) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            txt = "c"
-        }, modifier = Modifier) {
-            Text(text = "flip", modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        for (x in xs) {
-            Show(n = x, __ctx_label = txt)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                txt = "c"
+            }, modifier = Modifier) {
+                Text(text = "flip", modifier = Modifier)
+            }
+            for (x in xs) {
+                Show(n = x, __ctx_label = txt)
+            }
         }
     }
 }
@@ -750,12 +790,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e2f01b52c79ffb3e1d87876d679ad7a1
+pass sha256:a2fa734f7cc07f13b93243cab2f78cd4
 -- run/go/fyne --
 pass sha256:4c72052b5ff579b3ff06cb1016547188
 -- run/go/gtk4 --
 pass sha256:b65e13cba7a9af3f632f05890729afd5
 -- run/kotlin/android --
-pass sha256:aaa3ed2b02a32f2f3d45b2f9c8f71363
+pass sha256:2bd10715e56de4c5015b0e04eeea1a0c
 -- run/none/html --
 pass sha256:4e10c54ba28fbbcf979c48286385bb02

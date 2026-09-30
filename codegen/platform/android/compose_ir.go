@@ -22,6 +22,8 @@ type irComposeContext struct {
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
 	parentAxis string
+	// screen is the window the view draws, which the system back closes.
+	screen *codegen.Screen
 	// atRoot marks the window's own content, which is the node the display
 	// cutout has to be kept out of.
 	atRoot bool
@@ -50,6 +52,10 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		// it and the LaunchedEffect it becomes is emitted with the model,
 		// not here.
 		if ir.IsTimerPrimitive(s.Component) {
+			return
+		}
+		if cc.screen != nil && s == cc.screen.Node {
+			cc.renderScreen(s)
 			return
 		}
 		cc.renderNode(s)

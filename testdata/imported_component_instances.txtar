@@ -63,9 +63,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	n__inst0  int
-	n__inst1  int
-	__focusID int
+	n__inst0       int
+	n__inst1       int
+	visible__inst2 bool
+	__focusID      int
 
 	width, height int
 }
@@ -75,6 +76,7 @@ func New() Model {
 	m := Model{}
 	m.n__inst0 = 1
 	m.n__inst1 = 10
+	m.visible__inst2 = true
 	m.__focusID = 0
 	return m
 }
@@ -135,6 +137,21 @@ func SetN__inst1Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setN__inst1Msg{value: v} }
 }
 
+func (m Model) Visible__inst2() bool {
+	return m.visible__inst2
+}
+
+func (m Model) SetVisible__inst2(v bool) Model {
+	m.visible__inst2 = v
+	return m
+}
+
+type setVisible__inst2Msg struct{ value bool }
+
+func SetVisible__inst2Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -148,13 +165,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN__inst0(msg.value)
 	case setN__inst1Msg:
 		m = m.SetN__inst1(msg.value)
+	case setVisible__inst2Msg:
+		m = m.SetVisible__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst2 {
+				m.visible__inst2 = false
+			}
+			if !(m.visible__inst2) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -170,38 +195,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(("n is " + fmt.Sprint(m.n__inst0))))
-	content_0Children = append(content_0Children, content_0_0)
-	var content_0_1 string
-	content_0_1Focused := (m.__focusID == 0)
-	content_0_1Prefix := " "
-	if content_0_1Focused {
-		content_0_1Prefix = ">"
+	if m.visible__inst2 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(("n is " + fmt.Sprint(m.n__inst0))))
+		content_0Children = append(content_0Children, content_0_0)
+		var content_0_1 string
+		content_0_1Focused := (m.__focusID == 0)
+		content_0_1Prefix := " "
+		if content_0_1Focused {
+			content_0_1Prefix = ">"
+		}
+		content_0_1 = lipgloss.NewStyle().Render(content_0_1Prefix + " " + fmt.Sprint("add"))
+		content_0Children = append(content_0Children, content_0_1)
+		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(("n is " + fmt.Sprint(m.n__inst1))))
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		content_1_1Focused := (m.__focusID == 1)
+		content_1_1Prefix := " "
+		if content_1_1Focused {
+			content_1_1Prefix = ">"
+		}
+		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("add"))
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0_1 = lipgloss.NewStyle().Render(content_0_1Prefix + " " + fmt.Sprint("add"))
-	content_0Children = append(content_0Children, content_0_1)
-	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(("n is " + fmt.Sprint(m.n__inst1))))
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	content_1_1Focused := (m.__focusID == 1)
-	content_1_1Prefix := " "
-	if content_1_1Focused {
-		content_1_1Prefix = ">"
-	}
-	content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("add"))
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -240,6 +267,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -253,22 +283,32 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var n__inst0 by remember { mutableStateOf(1) }
     var n__inst1 by remember { mutableStateOf(10) }
+    var visible__inst2 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Row(modifier = Modifier) {
-            Text(text = ("n is " + n__inst0.toString()), modifier = Modifier)
-            Button(onClick = {
-                n__inst0 = (n__inst0 + 1)
-            }, modifier = Modifier) {
-                Text(text = "add", modifier = Modifier)
+    if (visible__inst2) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst2 = false
+            if (!(visible__inst2)) {
+                __activity?.finish()
             }
         }
-        Row(modifier = Modifier) {
-            Text(text = ("n is " + n__inst1.toString()), modifier = Modifier)
-            Button(onClick = {
-                n__inst1 = (n__inst1 + 1)
-            }, modifier = Modifier) {
-                Text(text = "add", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Row(modifier = Modifier) {
+                Text(text = ("n is " + n__inst0.toString()), modifier = Modifier)
+                Button(onClick = {
+                    n__inst0 = (n__inst0 + 1)
+                }, modifier = Modifier) {
+                    Text(text = "add", modifier = Modifier)
+                }
+            }
+            Row(modifier = Modifier) {
+                Text(text = ("n is " + n__inst1.toString()), modifier = Modifier)
+                Button(onClick = {
+                    n__inst1 = (n__inst1 + 1)
+                }, modifier = Modifier) {
+                    Text(text = "add", modifier = Modifier)
+                }
             }
         }
     }
@@ -331,8 +371,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:883777124ab58d18f2cc49278bd976df
+pass sha256:40d6cc3a42af21d94108cdaf99bb516f
 -- run/kotlin/android --
-pass sha256:e0606227ba008d7a8edb454653a7a7af
+pass sha256:4615ca97248ee84ebd32418c2700b22c
 -- run/none/html --
 pass sha256:b189ac7f63341c75c1e0d4c52b24bdb5

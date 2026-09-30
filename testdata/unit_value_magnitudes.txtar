@@ -137,6 +137,7 @@ type Model struct {
 	short__inst0    time.Duration
 	long__inst0     time.Duration
 	total__inst0    time.Duration
+	visible__inst1  bool
 
 	width, height int
 }
@@ -150,6 +151,7 @@ func New() Model {
 	m.short__inst0 = time.Duration(100) * time.Millisecond
 	m.long__inst0 = time.Duration(1000) * time.Millisecond
 	m.total__inst0 = (m.short__inst0 + m.long__inst0)
+	m.visible__inst1 = true
 	return m
 }
 
@@ -249,6 +251,21 @@ func SetTotal__inst0Cmd(v time.Duration) tea.Cmd {
 	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -270,33 +287,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLong__inst0(msg.value)
 	case setTotal__inst0Msg:
 		m = m.SetTotal__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.samebase__inst0)))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.reduced__inst0)))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.mixed__inst0)))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.total__inst0)))
-	parts = append(parts, part3)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.samebase__inst0)))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.reduced__inst0)))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.mixed__inst0)))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.total__inst0)))
+		contentParts = append(contentParts, contentPart_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -335,6 +363,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
@@ -360,12 +391,22 @@ fun MainScreen() {
     var short__inst0 by remember { mutableStateOf(100L) }
     var long__inst0 by remember { mutableStateOf(1000L) }
     var total__inst0 by remember { mutableStateOf((short__inst0 + long__inst0)) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -411,8 +452,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5d05b22832d4f0b87c11da1596ebfe41
+pass sha256:a3bac2465367a4eca1c22011cd296412
 -- run/kotlin/android --
-pass sha256:23431c51a015a73cb3bdb4d338747559
+pass sha256:d85016d44ae97074afd3aa7444186d33
 -- run/none/html --
 pass sha256:2f0cf93d897e556fdc240afd690e07de

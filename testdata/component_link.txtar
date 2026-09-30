@@ -45,12 +45,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -58,6 +61,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -69,13 +87,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -83,14 +109,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Example"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint("New tab"))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Example"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint("New tab"))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -435,6 +463,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -446,9 +477,20 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "Example", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
-        Text(text = "New tab", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "Example", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+            Text(text = "New tab", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -481,12 +523,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9f270ae718fa30f36914188480eecdf0
+pass sha256:dcd4f7cdb9702baa7d9dcb569a9ce88d
 -- run/go/fyne --
 pass sha256:5a1695c0f44ed212ffb34e9b912cd674
 -- run/go/gtk4 --
 pass sha256:42480428dc337ee20c59c50ee81ca875
 -- run/kotlin/android --
-pass sha256:3ded672d5cd1567769a2babc4fa205ba
+pass sha256:a0c904dc3e94e8847ecb9f217e0e4a9b
 -- run/none/html --
 pass sha256:3dae505ff86f03d61e35b72c349cd4ec

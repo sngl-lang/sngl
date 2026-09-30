@@ -103,7 +103,9 @@ var alwaysOn = []string{
 	"ViewForElse",
 	"WindowNesting",
 	// A window still a builtin on its target is refused under an `if` that
-	// reads state; where it is a node it has composed away, on every target.
+	// reads state, and its `visible` and `@closed` are, which it cannot
+	// answer; where it is a node it has composed away, on every target.
+	"WindowSurface",
 	"WindowUnderIf",
 }
 

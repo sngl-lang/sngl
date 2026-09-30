@@ -92,9 +92,10 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	depth     int
-	mark      string
-	__focusID int
+	depth          int
+	mark           string
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -104,6 +105,7 @@ func New() Model {
 	m := Model{}
 	m.depth = 2
 	m.mark = "*"
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -160,6 +162,21 @@ func SetMarkCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setMarkMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -173,13 +190,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetDepth(msg.value)
 	case setMarkMsg:
 		m = m.SetMark(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -193,24 +218,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("deeper"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1_label := func(d int) string {
+			var result string
+			result = lipgloss.NewStyle().Render(fmt.Sprint(((("level " + m.describe(d)) + " of ") + fmt.Sprint(m.depth))))
+			return result
+		}
+		content_1 = m.renderFrame(m.depth, 0, content_1_label)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("deeper"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1_label := func(d int) string {
-		var result string
-		result = lipgloss.NewStyle().Render(fmt.Sprint(((("level " + m.describe(d)) + " of ") + fmt.Sprint(m.depth))))
-		return result
-	}
-	content_1 = m.renderFrame(m.depth, 0, content_1_label)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -965,6 +992,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -982,19 +1012,29 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var depth by remember { mutableStateOf(2) }
     var mark by remember { mutableStateOf("*") }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
 
     fun describe(d: Int): String = (d.toString() + mark)
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            depth = (depth + 1)
-        }, modifier = Modifier) {
-            Text(text = "deeper", modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Frame(n = depth, __depth = 0, label = { d ->
-            Text(text = ((("level " + describe(d)) + " of ") + depth.toString()), modifier = Modifier)
-        })
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                depth = (depth + 1)
+            }, modifier = Modifier) {
+                Text(text = "deeper", modifier = Modifier)
+            }
+            Frame(n = depth, __depth = 0, label = { d ->
+                Text(text = ((("level " + describe(d)) + " of ") + depth.toString()), modifier = Modifier)
+            })
+        }
     }
 }
 
@@ -1267,12 +1307,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3c757c4d76bdf884e3b0f4bfcc118757
+pass sha256:7c1343a835725a14f34af08834fb42ce
 -- run/go/fyne --
 pass sha256:60012974c4ecd698e62a1f457812fa4d
 -- run/go/gtk4 --
 pass sha256:1871b24b0478bd82b5abda77bd38fb71
 -- run/kotlin/android --
-pass sha256:ac61f0937f1bca720d5d69ff514c9cec
+pass sha256:0b292c87bf8cfc857df7442479358834
 -- run/none/html --
 pass sha256:71ce51a8bd55c5ba5e5a071206aa4f73

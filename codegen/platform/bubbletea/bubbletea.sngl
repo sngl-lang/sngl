@@ -124,6 +124,35 @@ component Overlay(
     children ...component,
 ) ui.node
 
+// --- The window ---
+
+// The screen: what a `ui.window` is on a terminal, which shows one. The
+// package body holds it, and View draws its content; a program declares one
+// window here, and a second is refused where it is written.
+//
+// A hidden screen draws nothing, and what it holds stays: its timers tick and
+// its effects stay mounted, since hiding a window is not destroying it.
+//
+// ctrl+c is the window's close, the terminal's counterpart of a window
+// manager's: it fires `@closed`, which the override reports as
+// `visible = false` before the window's own handler runs, and the program
+// ends when no screen is drawn after it.
+#[intrinsic("bubbletea:Screen")]
+component Screen(
+    visible bool,
+    @closed(),
+    content ...component ui.node,
+) root
+
+const component ui.window[platform] {
+    Screen(visible=visible, @closed {
+        visible = false
+        closed()
+    }) {
+        content(params)
+    }
+}
+
 // --- Core Layout ---
 
 const component ui.vbox[platform] {

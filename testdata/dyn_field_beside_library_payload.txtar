@@ -64,10 +64,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	typed        string
-	tree         Item
-	value__inst0 string
-	__focusID    int
+	typed          string
+	tree           Item
+	value__inst0   string
+	visible__inst1 bool
+	__focusID      int
 
 	widget0 textinput.Model
 
@@ -80,6 +81,7 @@ func New() Model {
 	m.typed = ""
 	m.tree = Item{Value: 3, Next: Item{Value: 4, Next: nil}}
 	m.value__inst0 = m.typed
+	m.visible__inst1 = true
 	m.__focusID = 0
 	m.widget0 = textinput.New()
 	m.widget0.SetValue(m.value__inst0)
@@ -158,6 +160,21 @@ func SetValue__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setValue__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -173,6 +190,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTree(msg.value)
 	case setValue__inst0Msg:
 		m = m.SetValue__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -180,7 +199,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
@@ -216,14 +241,17 @@ func (m *Model) __widget0_input(__v string) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = m.widget0.View()
-	parts = append(parts, part0)
-	var part1 string
-	part1 = m.renderShow(m.tree, 0)
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = m.widget0.View()
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = m.renderShow(m.tree, 0)
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -475,6 +503,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:3dfbfb7025ef688f1922533c84636dfe
+pass sha256:f0afe416daf76041c02cebde6688d708
 -- run/go/fyne --
 pass sha256:5235e278a4de4d914b4a77d18c278003

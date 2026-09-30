@@ -2312,11 +2312,56 @@ declaration the target overrides is composed like any component
 repoints each node at a per-build copy of the declaration with the mark off,
 since library IR is shared between builds), and the windows `pkg.Windows`
 held join the package body ahead of it -- the one window-specific step, and
-C3's to delete. html, bubbletea and android render `window` as the builtin it
-is marked and answer as before; `passWindowUnderIf` still refuses a window
-there under an `if` that reads state
-(`cmd/sngl/testdata/window_under_if_refused.txt`), and their translators treat
-a node attached to `__app` as the unparented root it was.
+C3's to delete. html alone renders `window` as the builtin it is marked, a
+document or a route, until C2 moves its pages to `nav.page`:
+`passWindowUnderIf` refuses a window there under an `if` that reads state
+(`cmd/sngl/testdata/window_under_if_refused.txt`), `passWindowSurface` a
+`:visible`, a `visible` other than the literal default and an `@closed`, none
+of which a page can answer (`window_visible_refused.txt`), and its translator
+treats a node attached to `__app` as the unparented root it was.
+
+**bubbletea and android show one window, and a `Screen` is it.** Each
+overrides `ui.window` with `Screen(visible=visible, …) { content(params) }`: a
+hidden screen draws nothing, while what it holds stays mounted -- its timers
+tick and its effects stay -- since hiding is not destroying. Both re-render
+the whole view from state, so a window under `if details` is an ordinary
+conditional and needs no slot. The view is the package body (`viewStmts`), and `codegen.SoleScreen`
+finds the Screen in it and the conditions it is drawn under, following a
+component built at run time into its body -- which is where android's window
+under a reactive `if` lands, the implicit-state wrapper being a `remember`ing
+composable there. A second window is refused at the second, one in the other
+branch of an `if` and one under a `for` included; both targets used to take
+`wins[0]` and drop the rest without a word
+(`cmd/sngl/testdata/window_second_refused.txt`). The close is the host's:
+ctrl+c on bubbletea, the system back on android (a `BackHandler` inside the
+Screen). It runs the Screen's `@closed`, which the override answers with
+`visible = false` and then the window's own handler, and the program quits
+(`tea.Quit`, `Activity.finish`) when the conditions say the window is off
+screen after it (`Screen.Shown`: the conditions and the Screen's own
+`visible`) -- on android the innermost body's, which is the scope a runtime
+instance's composable can evaluate. `testdata/window_screen.txtar` and
+`window_under_if_screen.txtar` are the code, and
+`codegen/platform/bubbletea/window_close_run_test.go` drives ctrl+c through
+Update and ticks a hidden window's timer. The fixture harnesses compile every
+multi-window fixture in `testdata/` for these two as well, and skip one on
+`codegen.OneWindowError` rather than fail it.
+
+Two gaps composing the window there exposed are general. A library component
+with no state of its own in a reactive position is spliced rather than
+elected a runtime instance, since nothing emits a library body as one:
+`ui.window` has methods, so passInlinePure leaves it to passNoInlineComponents,
+and on bubbletea the implicit-state wrapper around it is spliced per copy,
+leaving the window under the `if` with no declaration any backend writes. And
+`ir.NodeInst.Site` is the node a program wrote where an override's body was
+substituted for it (`ir.AttachNodeSite`, in both inliners, and in expandCall
+for a library body), since the node's own AST is then the platform
+package's; `ir.NodePos` reads it, and the second-window refusal is the first
+diagnostic that needed it.
+
+One divergence stays: bubbletea keeps no state of an instance's own, so the
+`visible` cell of a window under `if details` is spliced into the Model and
+survives the condition turning false, where every other target starts it
+again.
 
 **A window under an `if details` is a node in a render slot**: created with
 the slot, destroyed with it, content and effects included. The slot's body is

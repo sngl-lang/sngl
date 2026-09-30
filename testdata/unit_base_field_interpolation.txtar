@@ -99,12 +99,13 @@ type Tick float64
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	m__inst0   Measurement
-	r__inst0   Measurement
-	sum__inst0 Measurement
-	t__inst0   Tick
-	d__inst0   time.Duration
-	w__inst0   float64
+	m__inst0       Measurement
+	r__inst0       Measurement
+	sum__inst0     Measurement
+	t__inst0       Tick
+	d__inst0       time.Duration
+	w__inst0       float64
+	visible__inst1 bool
 
 	width, height int
 }
@@ -118,6 +119,7 @@ func New() Model {
 	m.t__inst0 = Tick(4)
 	m.d__inst0 = time.Duration(500) * time.Millisecond
 	m.w__inst0 = 2.5
+	m.visible__inst1 = true
 	return m
 }
 
@@ -217,6 +219,21 @@ func SetW__inst0Cmd(v float64) tea.Cmd {
 	return func() tea.Msg { return setW__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -238,42 +255,53 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetD__inst0(msg.value)
 	case setW__inst0Msg:
 		m = m.SetW__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(("px is " + fmt.Sprint(m.m__inst0.Px))))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(("w is " + fmt.Sprint(m.w__inst0))))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(("em is " + fmt.Sprint(m.m__inst0.Em))))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(("sum px is " + fmt.Sprint(m.sum__inst0.Px))))
-	parts = append(parts, part3)
-	var part4 string
-	part4 = lipgloss.NewStyle().Render(fmt.Sprint(("sum em is " + fmt.Sprint(m.sum__inst0.Em))))
-	parts = append(parts, part4)
-	var part5 string
-	part5 = lipgloss.NewStyle().Render(fmt.Sprint(("tk is " + fmt.Sprint(float64(m.t__inst0)))))
-	parts = append(parts, part5)
-	var part6 string
-	part6 = lipgloss.NewStyle().Render(fmt.Sprint(("ms is " + fmt.Sprint(int(m.d__inst0/time.Millisecond)))))
-	parts = append(parts, part6)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(("px is " + fmt.Sprint(m.m__inst0.Px))))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(("w is " + fmt.Sprint(m.w__inst0))))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(("em is " + fmt.Sprint(m.m__inst0.Em))))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(("sum px is " + fmt.Sprint(m.sum__inst0.Px))))
+		contentParts = append(contentParts, contentPart_3)
+		var contentPart_4 string
+		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(("sum em is " + fmt.Sprint(m.sum__inst0.Em))))
+		contentParts = append(contentParts, contentPart_4)
+		var contentPart_5 string
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(("tk is " + fmt.Sprint(float64(m.t__inst0)))))
+		contentParts = append(contentParts, contentPart_5)
+		var contentPart_6 string
+		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(("ms is " + fmt.Sprint(int(m.d__inst0/time.Millisecond)))))
+		contentParts = append(contentParts, contentPart_6)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -312,6 +340,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
@@ -337,15 +368,25 @@ fun MainScreen() {
     var t__inst0 by remember { mutableStateOf(4.0) }
     var d__inst0 by remember { mutableStateOf(500L) }
     var w__inst0 by remember { mutableStateOf(2.5) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = ("px is " + _snglFloatStr(m__inst0.px)), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("w is " + _snglFloatStr(w__inst0)), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("em is " + _snglFloatStr(m__inst0.em)), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("sum px is " + _snglFloatStr(sum__inst0.px)), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("sum em is " + _snglFloatStr(sum__inst0.em)), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("tk is " + _snglFloatStr(t__inst0.toDouble())), modifier = Modifier.safeDrawingPadding())
-        Text(text = ("ms is " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = ("px is " + _snglFloatStr(m__inst0.px)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("w is " + _snglFloatStr(w__inst0)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("em is " + _snglFloatStr(m__inst0.em)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("sum px is " + _snglFloatStr(sum__inst0.px)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("sum em is " + _snglFloatStr(sum__inst0.em)), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("tk is " + _snglFloatStr(t__inst0.toDouble())), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("ms is " + d__inst0.toInt().toString()), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -405,8 +446,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1e38977cade627ae90d5338d1520cca5
+pass sha256:59654b5e7d236ab2d5aafe91a915ed17
 -- run/kotlin/android --
-pass sha256:56000d5e68b8d9a80f24bfe826a8db64
+pass sha256:63c9095f7c23d352333efa87cc9a648a
 -- run/none/html --
 pass sha256:085fda6ab51c09da4c63306567121035

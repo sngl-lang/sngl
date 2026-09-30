@@ -90,6 +90,17 @@ func IsErrorRaiseFunc(fn *Func) bool {
 // Each statement's AST field points back at the originating AST node whose Pos
 // is the position. Returns the zero Pos for statements with no AST origin
 // (e.g. lower-pass-synthesized statements).
+// NodePos is where the program wrote n: its Site where an override was
+// substituted for it, and its own position otherwise.
+func NodePos(n *NodeInst) ast.Pos {
+	if n != nil && n.Site != nil {
+		if p := n.Site.StmtPos(); p != nil {
+			return *p
+		}
+	}
+	return StmtPos(n)
+}
+
 func StmtPos(s Stmt) ast.Pos {
 	switch n := s.(type) {
 	case *Assign:

@@ -833,19 +833,24 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		atRoot: true,
 	}
 
-	wins := ctx.Windows()
-	if len(wins) > 0 && len(wins[0].Body) > 0 {
-		bodyStmts := wins[0].Body
-		if len(bodyStmts) == 1 {
-			cc.renderStmt(bodyStmts[0])
-		} else {
-			cc.line("Column {")
-			cc.indent++
-			for _, s := range bodyStmts {
-				cc.renderStmt(s)
-			}
-			cc.indent--
-			cc.line("}")
+	// The package body is the view, and the Screen in it is the window: a
+	// harness that isolated a component has none, and draws that component's
+	// body in its place.
+	view := viewStmts(ctx)
+	screen, err := codegen.SoleScreen(view, intrinsicNS+"Screen", "android", screenPos)
+	if err != nil {
+		ctx.Fail(err)
+	}
+	cc.screen = screen
+	switch {
+	case screen == nil && len(ctx.Windows()) > 0:
+		cc.renderContent(view)
+	case screen == nil:
+		// No window, which only a package that is not a program has: nothing
+		// is on screen.
+	default:
+		for _, s := range view {
+			cc.renderStmt(s)
 		}
 	}
 
@@ -853,7 +858,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonRootComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo())
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen)
 	}
 
 	// User functions (non-GoLib). In test mode the state class holds them,
@@ -912,7 +917,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String()), testRewrites
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen) {
 	b.WriteString("\n@Composable\n")
 	var params []string
 	for _, p := range cc.Props {
@@ -990,6 +995,9 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		buf:    b,
 		indent: 1,
 		combo:  combo,
+		// The window, where it is under a reactive `if` and so in a
+		// composable of its own.
+		screen: screen,
 	}
 
 	for _, s := range cc.Body {

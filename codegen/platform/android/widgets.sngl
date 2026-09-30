@@ -7,6 +7,17 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:internal/marks"
+// --- The window ---
+
+const component ui.window[platform] {
+    Screen(visible=visible, onBack=func() {
+        visible = false
+        closed()
+    }) {
+        content(params)
+    }
+}
+
 // --- Core Layout ---
 
 const component ui.vbox[platform] {

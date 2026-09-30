@@ -63,10 +63,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	names__inst0  []string
-	total__inst0  int
-	joined__inst0 string
-	__focusID     int
+	names__inst0   []string
+	total__inst0   int
+	joined__inst0  string
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -77,6 +78,7 @@ func New() Model {
 	m.names__inst0 = []string{"a", "b"}
 	m.total__inst0 = 0
 	m.joined__inst0 = ""
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -144,6 +146,21 @@ func SetJoined__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setJoined__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -159,13 +176,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTotal__inst0(msg.value)
 	case setJoined__inst0Msg:
 		m = m.SetJoined__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -181,19 +206,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("run"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.joined__inst0))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("run"))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(m.joined__inst0))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -232,6 +260,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -246,17 +277,27 @@ fun MainScreen() {
     val names__inst0 = remember { mutableStateListOf("a", "b") }
     var total__inst0 by remember { mutableStateOf(0) }
     var joined__inst0 by remember { mutableStateOf("") }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            for ((i, name) in names__inst0.withIndex()) {
-            	total__inst0 = (total__inst0 + (i * 10))
-            	joined__inst0 = (joined__inst0 + name)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "run", modifier = Modifier)
         }
-        Text(text = joined__inst0, modifier = Modifier.safeDrawingPadding())
+        Column {
+            Button(onClick = {
+                for ((i, name) in names__inst0.withIndex()) {
+                	total__inst0 = (total__inst0 + (i * 10))
+                	joined__inst0 = (joined__inst0 + name)
+                }
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "run", modifier = Modifier)
+            }
+            Text(text = joined__inst0, modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -301,8 +342,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c1a9fb49ea8c2349f116551da2697379
+pass sha256:2eaa622b75ae4e134ffa067b7e88ea84
 -- run/kotlin/android --
-pass sha256:e567ddf9606d67dc6651df38220ef070
+pass sha256:1bf7a93825053c0963ddae52f4f31196
 -- run/none/html --
 pass sha256:e2edcacce6882fea5ede978fb3b4382f

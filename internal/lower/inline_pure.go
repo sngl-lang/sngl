@@ -682,6 +682,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	if callsite.ID != "" {
 		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
 	}
+	// Where the program wrote it travels to the same node, for a platform's
+	// diagnostic about the primitive it became.
+	ir.AttachNodeSite(body, callsite)
 
 	// Event-handler transfer (platform-independent rule): any pure wrapper
 	// that declares its events purely as metadata — rather than emitting

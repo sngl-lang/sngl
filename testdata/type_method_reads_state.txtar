@@ -90,11 +90,12 @@ type Calc struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	log         string
-	calc__inst0 Calc
-	n__inst0    int
-	out__inst0  int
-	__focusID   int
+	log            string
+	calc__inst0    Calc
+	n__inst0       int
+	out__inst0     int
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -106,6 +107,7 @@ func New() Model {
 	m.calc__inst0 = Calc{Base: 3}
 	m.n__inst0 = 4
 	m.out__inst0 = 0
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -208,6 +210,21 @@ func SetOut__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setOut__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -225,13 +242,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN__inst0(msg.value)
 	case setOut__inst0Msg:
 		m = m.SetOut__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -244,19 +269,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("go"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.out__inst0) + fmt.Sprint(CalcPlain(m.calc__inst0, m.n__inst0)))))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("go"))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.out__inst0) + fmt.Sprint(CalcPlain(m.calc__inst0, m.n__inst0)))))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -565,7 +593,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:bf086aa0a6fa2bf3dcaa97e0ca27ddd3
+pass sha256:376ba14909ab1b026b3674c23cb52bf9
 -- run/go/fyne --
 pass sha256:53306afca56fc171dd5316abc5bfb79a
 -- run/go/gtk4 --

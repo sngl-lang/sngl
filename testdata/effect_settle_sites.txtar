@@ -102,6 +102,7 @@ type Model struct {
 	items__inst0        []string
 	k__inst0            int
 	log__inst0          []string
+	visible__inst1      bool
 	__effect0_key       int
 	__effect0_live      []int
 	__effect0_desired   []int
@@ -125,6 +126,7 @@ func New() Model {
 	m.items__inst0 = []string{"a"}
 	m.k__inst0 = 0
 	m.log__inst0 = []string{}
+	m.visible__inst1 = true
 	m.__effect0_key = 0
 	m.__effect0_live = []int{}
 	m.__effect0_desired = []int{}
@@ -356,6 +358,21 @@ func SetLog__inst0Cmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setLog__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	cmds = append(cmds, tea.Tick(1000*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
@@ -373,6 +390,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetK__inst0(msg.value)
 	case setLog__inst0Msg:
 		m = m.SetLog__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case timerTickMsg0:
 		m.k__inst0 = (m.k__inst0 + 1)
 		m.__effects0_settle()
@@ -383,7 +402,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -399,16 +424,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	if m.visible__inst1 {
+		var part0Parts []string
+		var part0Part_0 string
+		part0Part_0Focused := (m.__focusID == 0)
+		part0Part_0Prefix := " "
+		if part0Part_0Focused {
+			part0Part_0Prefix = ">"
+		}
+		part0Part_0 = lipgloss.NewStyle().Render(part0Part_0Prefix + " " + fmt.Sprint("add"))
+		part0Parts = append(part0Parts, part0Part_0)
+		var part0Part_1 string
+		part0Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
+		part0Parts = append(part0Parts, part0Part_1)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("add"))
 	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.log__inst0, ",")))
-	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -427,4 +458,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:9b28a5f8cafee8c13de9657f5d580915
+pass sha256:93bd5dd9ae31676fcea9c9af2bd6b85f

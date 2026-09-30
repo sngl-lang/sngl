@@ -83,16 +83,32 @@ func TransparentBlocks(st Stmt) [][]Stmt {
 // read of the id resolves to that binding, and separating them leaves a rename
 // with nothing to repoint and uniqueNodeIDs with nothing to key on.
 func AttachNodeID(body []Stmt, id string, handle *Var) bool {
+	return attachNode(body, func(ni *NodeInst) { ni.ID, ni.Handle = id, handle })
+}
+
+// AttachNodeSite records on the node AttachNodeID picks that it stands for
+// callsite, keeping the outermost site through nested substitutions.
+func AttachNodeSite(body []Stmt, callsite *NodeInst) bool {
+	site := callsite.Site
+	if site == nil {
+		site = callsite.AST
+	}
+	if site == nil {
+		return false
+	}
+	return attachNode(body, func(ni *NodeInst) { ni.Site = site })
+}
+
+func attachNode(body []Stmt, set func(*NodeInst)) bool {
 	for _, s := range body {
 		if ni, ok := s.(*NodeInst); ok {
-			ni.ID = id
-			ni.Handle = handle
+			set(ni)
 			return true
 		}
 		// Through the four, because a component whose body opens with a
 		// conditional still renders whatever is inside it.
 		for _, block := range TransparentBlocks(s) {
-			if AttachNodeID(block, id, handle) {
+			if attachNode(block, set) {
 				return true
 			}
 		}

@@ -67,9 +67,10 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	caught    string
-	n         int
-	__focusID int
+	caught         string
+	n              int
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -79,6 +80,7 @@ func New() Model {
 	m := Model{}
 	m.caught = "none"
 	m.n = 0
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -137,6 +139,21 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -150,13 +167,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetCaught(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -189,19 +214,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("go"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("go"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -537,6 +564,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -554,27 +584,37 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var caught by remember { mutableStateOf("none") }
     var n by remember { mutableStateOf(0) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            try {
-            	check("")
-            	n = 2
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	fun __onError() {
-            		caught = ("window: " + e.message)
-            		if ((n > 3)) {
-            			return
-            		}
-            		n = (n + 1)
-            	}
-            	__onError()
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier) {
-            Text(text = "go", modifier = Modifier)
         }
-        Text(text = caught, modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                try {
+                	check("")
+                	n = 2
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	fun __onError() {
+                		caught = ("window: " + e.message)
+                		if ((n > 3)) {
+                			return
+                		}
+                		n = (n + 1)
+                	}
+                	__onError()
+                }
+            }, modifier = Modifier) {
+                Text(text = "go", modifier = Modifier)
+            }
+            Text(text = caught, modifier = Modifier)
+        }
     }
 }
 
@@ -651,7 +691,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:66317a69fec1018501c02414bb64bd51
+pass sha256:65bd69c3a902caa5920f053c5d2aaaf5
 -- run/go/fyne --
 pass sha256:eb14c0aab21109d9f67efa8e07f298a2
 -- run/go/gtk4 --
@@ -659,6 +699,6 @@ pass sha256:a8225bb560b2171381ceafd36da123fa
 -- run/go/html --
 pass sha256:59018dd30db3198aa186be8954dabc52
 -- run/kotlin/android --
-pass sha256:28440576d9db73ef51a3688cce247bb6
+pass sha256:f9f954940226329dd65c59d9ce06e0f0
 -- run/none/html --
 pass sha256:3aabb7dd58ab5cf8777c3a3d7c1d9dfd

@@ -60,8 +60,9 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	caught    string
-	__focusID int
+	caught         string
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -70,6 +71,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.caught = ""
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -122,6 +124,21 @@ func SetCaughtCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setCaughtMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -133,13 +150,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCaughtMsg:
 		m = m.SetCaught(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -200,27 +225,30 @@ func (m *Model) directClick() {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Call"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 1)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("Raise"))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
+		contentParts = append(contentParts, contentPart_2)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("Call"))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 1)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
-	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("Raise"))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -589,6 +617,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -605,8 +636,16 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var caught by remember { mutableStateOf("") }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column {
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
         Button(onClick = {
             try {
             	risky(5)
@@ -712,7 +751,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a548db9f682a705ddf92e1b0ae2c37b0
+pass sha256:0b020ad03655c74dab5ad08e042a2c54
 -- run/go/fyne --
 pass sha256:394712a937039c5381ea8a05b2ad0691
 -- run/go/gtk4 --
@@ -720,6 +759,6 @@ pass sha256:3a3ac41f720029a3ef49cf9bd3f23d8a
 -- run/go/html --
 pass sha256:559e2ed49f91957d76ce31e67dff04c4
 -- run/kotlin/android --
-pass sha256:3d4094ccdfd044190381815e4d45c3d0
+pass sha256:6901500691808a98bd49cc64d876a3dd
 -- run/none/html --
 pass sha256:2a778a6359fadf96b7b825f0807f5d07

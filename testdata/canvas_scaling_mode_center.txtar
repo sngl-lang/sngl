@@ -549,6 +549,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -632,8 +635,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Canvas(modifier = Modifier.size(200.dp, 100.dp)) {
-        drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Canvas(modifier = Modifier.size(200.dp, 100.dp)) {
+            drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+        }
     }
 }
 -- out/none/html/index.html --
@@ -710,6 +724,6 @@ pass sha256:e1e92e10f27d074a73027616345a29b8
 -- run/go/gtk4 --
 pass sha256:5c51eec056f63649d0cfc8487a73c8b6
 -- run/kotlin/android --
-pass sha256:ae61e9928cec87ddb6b10d1ca658d49e
+pass sha256:4d794c5cc5a61b0d89884de7b02342a2
 -- run/none/html --
 pass sha256:8e746f36e2ffd5a497746a3afaa51c2f

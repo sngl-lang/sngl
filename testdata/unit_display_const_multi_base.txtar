@@ -90,7 +90,8 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	held Measurement
+	held           Measurement
+	visible__inst0 bool
 
 	width, height int
 }
@@ -99,6 +100,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.held = Measurement{Px: 16}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -123,6 +125,21 @@ func SetHeldCmd(v Measurement) tea.Cmd {
 	return func() tea.Msg { return setHeldMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -134,33 +151,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setHeldMsg:
 		m = m.SetHeld(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint("A 16px B"))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint((("C " + snglStrMeasurement(m.held)) + " D")))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint("E 18em F"))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint("G 0px H"))
-	parts = append(parts, part3)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("A 16px B"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint((("C " + snglStrMeasurement(m.held)) + " D")))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint("E 18em F"))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint("G 0px H"))
+		contentParts = append(contentParts, contentPart_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -206,6 +234,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8ed49efc7503f63e1dc4679b7aec17d9
+pass sha256:585cf5c9f639ab53c81e65bd479ea048
 -- run/none/html --
 pass sha256:610d7f2467169d7f777c1a4e589dd88a

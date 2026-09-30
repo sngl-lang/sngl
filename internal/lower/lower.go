@@ -39,6 +39,7 @@ var passes = []pass{
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
+	passWindowSurface,
 	passImplicitState,
 	// After it, because which primitive a declaration renders is the override
 	// this target supplied; before passInlinePure, which carries a `#id` onto

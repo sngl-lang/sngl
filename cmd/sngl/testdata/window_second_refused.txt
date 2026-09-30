@@ -1,0 +1,64 @@
+# bubbletea and android show one window: a terminal is one screen and an
+# activity one content view. A second window is refused at the second, where
+# it used to be dropped without a word -- including one in the other branch
+# of an `if`, which is still a second window the program says exists. A
+# program wanting several screens on one surface wants a navigator (Phase C2).
+# gtk4 builds the same source, two toplevels.
+
+! sngl generate --lang go --platform bubbletea -o tea two.sngl
+stderr 'two.sngl:9:15: bubbletea shows one window, and this is a second; the first is at two.sngl:5:16'
+
+! sngl generate --lang kotlin --platform android -o droid two.sngl
+stderr 'two.sngl:9:15: android shows one window, and this is a second; the first is at two.sngl:5:16'
+
+! sngl generate --lang go --platform bubbletea -o tea2 branches.sngl
+stderr 'branches.sngl:10:14: bubbletea shows one window, and this is a second; the first is at branches.sngl:6:14'
+
+! sngl generate --lang go --platform bubbletea -o tea3 loop.sngl
+stderr 'loop.sngl:6:14: bubbletea shows one window, and a `for` makes a copy of this one per element'
+
+sngl generate --lang go --platform gtk4 -o gtk4 two.sngl
+sngl generate --lang go --platform bubbletea -o one one.sngl
+
+-- two.sngl --
+import ui "sngl:ui"
+
+var n = 0
+
+ui.window #main(title="Main") {
+    ui.text(value="{n}")
+}
+
+ui.window #log(title="Log") {
+    ui.text(value="log")
+}
+-- branches.sngl --
+import ui "sngl:ui"
+
+var wide = false
+
+if wide {
+    ui.window(title="Wide") {
+        ui.text(value="wide")
+    }
+} else {
+    ui.window(title="Narrow") {
+        ui.text(value="narrow")
+    }
+}
+-- loop.sngl --
+import ui "sngl:ui"
+
+var names = ["a", "b"]
+
+for var name = names {
+    ui.window(title=name) {
+        ui.text(value=name)
+    }
+}
+-- one.sngl --
+import ui "sngl:ui"
+
+ui.window #main(title="Main") {
+    ui.text(value="one")
+}

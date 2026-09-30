@@ -59,6 +59,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -72,18 +75,28 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     val xs = remember { mutableStateListOf(1, 2, 3) }
     var mp by remember { mutableStateOf(mapOf("a" to 1)) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = ((xs.size.toString() + " ") + mp.size.toString()), modifier = Modifier.safeDrawingPadding())
-        Button(onClick = {
-            (listOf(9, 8)).let { __v -> xs.clear(); xs.addAll(__v) }
-            (xs.filter({ x: Int -> (x > 8) })).let { __v -> xs.clear(); xs.addAll(__v) }
-            mp = mp + ("b" to 2)
-            mp = mp + ("a" to (mp["a"] ?: 0) + 5)
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "go", modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = ((xs.size.toString() + " ") + mp.size.toString()), modifier = Modifier.safeDrawingPadding())
+            Button(onClick = {
+                (listOf(9, 8)).let { __v -> xs.clear(); xs.addAll(__v) }
+                (xs.filter({ x: Int -> (x > 8) })).let { __v -> xs.clear(); xs.addAll(__v) }
+                mp = mp + ("b" to 2)
+                mp = mp + ("a" to (mp["a"] ?: 0) + 5)
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "go", modifier = Modifier)
+            }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:33dbb7f45512288ce9fb9a14596fa2a6
+pass sha256:b5f96229002f157b4e014c2140a33c9c

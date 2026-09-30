@@ -39,7 +39,13 @@ func SlotNames(slots map[string]*SlotContent) []string {
 // NodeInst is a resolved component or platform-element instantiation.
 // Component is non-nil when instantiating a user-defined component.
 type NodeInst struct {
-	AST       ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	AST ast.Stmt // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	// Site is the node a program wrote that this one stands for, where a
+	// platform override's body was substituted for it: AST is then the
+	// override's node, in the platform package, and a diagnostic about what
+	// the program wrote belongs at Site. Nil for a node written where it
+	// stands. NodePos reads it.
+	Site      ast.Stmt       `json:"-"`
 	Name      string         // resolved element/component name
 	Component *Component     // non-nil for user component; nil for platform element
 	Props     []Arg          // property assignments (positional and named)

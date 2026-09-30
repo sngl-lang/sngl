@@ -122,8 +122,9 @@ type Model struct {
 	xs                  []int
 	taps__inst0         map[string]int
 	hits__inst1         int
-	width__inst2        map[string]int
-	opened__inst3       int
+	visible__inst2      bool
+	width__inst3        map[string]int
+	opened__inst4       int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -137,8 +138,9 @@ func New() Model {
 	m.xs = []int{1}
 	m.taps__inst0 = map[string]int{}
 	m.hits__inst1 = 0
-	m.width__inst2 = map[string]int{}
-	m.opened__inst3 = 0
+	m.visible__inst2 = true
+	m.width__inst3 = map[string]int{}
+	m.opened__inst4 = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -258,34 +260,49 @@ func SetHits__inst1Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setHits__inst1Msg{value: v} }
 }
 
-func (m Model) Width__inst2() map[string]int {
-	return m.width__inst2
+func (m Model) Visible__inst2() bool {
+	return m.visible__inst2
 }
 
-func (m Model) SetWidth__inst2(v map[string]int) Model {
-	m.width__inst2 = v
+func (m Model) SetVisible__inst2(v bool) Model {
+	m.visible__inst2 = v
 	return m
 }
 
-type setWidth__inst2Msg struct{ value map[string]int }
+type setVisible__inst2Msg struct{ value bool }
 
-func SetWidth__inst2Cmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setWidth__inst2Msg{value: v} }
+func SetVisible__inst2Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
 }
 
-func (m Model) Opened__inst3() int {
-	return m.opened__inst3
+func (m Model) Width__inst3() map[string]int {
+	return m.width__inst3
 }
 
-func (m Model) SetOpened__inst3(v int) Model {
-	m.opened__inst3 = v
+func (m Model) SetWidth__inst3(v map[string]int) Model {
+	m.width__inst3 = v
 	return m
 }
 
-type setOpened__inst3Msg struct{ value int }
+type setWidth__inst3Msg struct{ value map[string]int }
 
-func SetOpened__inst3Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setOpened__inst3Msg{value: v} }
+func SetWidth__inst3Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setWidth__inst3Msg{value: v} }
+}
+
+func (m Model) Opened__inst4() int {
+	return m.opened__inst4
+}
+
+func (m Model) SetOpened__inst4(v int) Model {
+	m.opened__inst4 = v
+	return m
+}
+
+type setOpened__inst4Msg struct{ value int }
+
+func SetOpened__inst4Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setOpened__inst4Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -305,17 +322,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTaps__inst0(msg.value)
 	case setHits__inst1Msg:
 		m = m.SetHits__inst1(msg.value)
-	case setWidth__inst2Msg:
-		m = m.SetWidth__inst2(msg.value)
-	case setOpened__inst3Msg:
-		m = m.SetOpened__inst3(msg.value)
+	case setVisible__inst2Msg:
+		m = m.SetVisible__inst2(msg.value)
+	case setWidth__inst3Msg:
+		m = m.SetWidth__inst3(msg.value)
+	case setOpened__inst4Msg:
+		m = m.SetOpened__inst4(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst2 {
+				m.visible__inst2 = false
+			}
+			if !(m.visible__inst2) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -357,76 +382,78 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	var content_0Items []string
-	for __copy0, x := range m.xs {
-		_ = __copy0
-		_ = x
-		var content_0Item string
-		var content_0ItemChildren []string
-		var content_0Item_0 string
-		content_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(("w" + fmt.Sprint(func() int {
-			if __v, __ok := m.width__inst2[fmt.Sprint(__copy0)]; __ok {
-				return __v
+	if m.visible__inst2 {
+		var contentChildren []string
+		var content_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		var content_0Items []string
+		for __copy0, x := range m.xs {
+			_ = __copy0
+			_ = x
+			var content_0Item string
+			var content_0ItemChildren []string
+			var content_0Item_0 string
+			content_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(("w" + fmt.Sprint(func() int {
+				if __v, __ok := m.width__inst3[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 1
+			}()))))
+			content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
+			var content_0Item_1 string
+			content_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			content_0Item_1Prefix := " "
+			if content_0Item_1Focused {
+				content_0Item_1Prefix = ">"
 			}
-			return 1
-		}()))))
-		content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
-		var content_0Item_1 string
-		content_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		content_0Item_1Prefix := " "
-		if content_0Item_1Focused {
-			content_0Item_1Prefix = ">"
+			content_0Item_1 = lipgloss.NewStyle().Render(content_0Item_1Prefix + " " + fmt.Sprint(("tap " + fmt.Sprint(func() int {
+				if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()))))
+			__focusPos0++
+			content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
+			content_0Item = lipgloss.JoinHorizontal(lipgloss.Top, content_0ItemChildren...)
+			content_0Items = append(content_0Items, content_0Item)
 		}
-		content_0Item_1 = lipgloss.NewStyle().Render(content_0Item_1Prefix + " " + fmt.Sprint(("tap " + fmt.Sprint(func() int {
-			if __v, __ok := m.taps__inst0[fmt.Sprint(__copy0)]; __ok {
-				return __v
-			}
-			return 0
-		}()))))
-		__focusPos0++
-		content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
-		content_0Item = lipgloss.JoinHorizontal(lipgloss.Top, content_0ItemChildren...)
-		content_0Items = append(content_0Items, content_0Item)
+		content_0 = strings.Join(content_0Items, "\n")
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
+		}
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0Focused := (m.__focusID == 1)
+		content_1_0Prefix := " "
+		if content_1_0Focused {
+			content_1_0Prefix = ">"
+		}
+		content_1_0 = lipgloss.NewStyle().Render(content_1_0Prefix + " " + fmt.Sprint("done"))
+		content_1Children = append(content_1Children, content_1_0)
+		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		var content_2Children []string
+		var content_2_0 string
+		content_2_0 = lipgloss.NewStyle().Render(fmt.Sprint(("opened " + fmt.Sprint(m.opened__inst4))))
+		content_2Children = append(content_2Children, content_2_0)
+		var content_2_1 string
+		content_2_1Focused := (m.__focusID == 2)
+		content_2_1Prefix := " "
+		if content_2_1Focused {
+			content_2_1Prefix = ">"
+		}
+		content_2_1 = lipgloss.NewStyle().Render(content_2_1Prefix + " " + fmt.Sprint(("named " + fmt.Sprint(m.hits__inst1))))
+		content_2Children = append(content_2Children, content_2_1)
+		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		contentChildren = append(contentChildren, content_2)
+		var content_3 string
+		content_3 = lipgloss.NewStyle().Render(fmt.Sprint(("got=" + fmt.Sprint(m.got))))
+		contentChildren = append(contentChildren, content_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = strings.Join(content_0Items, "\n")
-	if content_0 != "" {
-		contentChildren = append(contentChildren, content_0)
-	}
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0Focused := (m.__focusID == 1)
-	content_1_0Prefix := " "
-	if content_1_0Focused {
-		content_1_0Prefix = ">"
-	}
-	content_1_0 = lipgloss.NewStyle().Render(content_1_0Prefix + " " + fmt.Sprint("done"))
-	content_1Children = append(content_1Children, content_1_0)
-	content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	var content_2Children []string
-	var content_2_0 string
-	content_2_0 = lipgloss.NewStyle().Render(fmt.Sprint(("opened " + fmt.Sprint(m.opened__inst3))))
-	content_2Children = append(content_2Children, content_2_0)
-	var content_2_1 string
-	content_2_1Focused := (m.__focusID == 2)
-	content_2_1Prefix := " "
-	if content_2_1Focused {
-		content_2_1Prefix = ">"
-	}
-	content_2_1 = lipgloss.NewStyle().Render(content_2_1Prefix + " " + fmt.Sprint(("named " + fmt.Sprint(m.hits__inst1))))
-	content_2Children = append(content_2Children, content_2_1)
-	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	content_3 = lipgloss.NewStyle().Render(fmt.Sprint(("got=" + fmt.Sprint(m.got))))
-	contentChildren = append(contentChildren, content_3)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -965,6 +992,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -979,40 +1009,50 @@ fun MainScreen() {
     var got by remember { mutableStateOf(0) }
     val xs = remember { mutableStateListOf(1) }
     var hits__inst0 by remember { mutableStateOf(0) }
-    var opened__inst2 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
+    var opened__inst3 by remember { mutableStateOf(0) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        for (x in xs) {
-            Picker(onPicked = { v ->
-                got = (v + x)
-            })
-        }
-        Row(modifier = Modifier) {
-            Button(onClick = {
-                got = 8
-            }, modifier = Modifier) {
-                Text(text = "done", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Column(modifier = Modifier) {
-            Text(text = ("opened " + opened__inst2.toString()), modifier = Modifier)
-            Button(onClick = {
-                got = 9
-            }, modifier = Modifier) {
-                Text(text = ("named " + hits__inst0.toString()), modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            for (x in xs) {
+                Picker(onPicked = { v ->
+                    got = (v + x)
+                })
             }
+            Row(modifier = Modifier) {
+                Button(onClick = {
+                    got = 8
+                }, modifier = Modifier) {
+                    Text(text = "done", modifier = Modifier)
+                }
+            }
+            Column(modifier = Modifier) {
+                Text(text = ("opened " + opened__inst3.toString()), modifier = Modifier)
+                Button(onClick = {
+                    got = 9
+                }, modifier = Modifier) {
+                    Text(text = ("named " + hits__inst0.toString()), modifier = Modifier)
+                }
+            }
+            Text(text = ("got=" + got.toString()), modifier = Modifier)
         }
-        Text(text = ("got=" + got.toString()), modifier = Modifier)
     }
 }
 
 @Composable
 fun Picker(onPicked: ((Int) -> Unit)? = null) {
     var taps by remember { mutableStateOf(0) }
-    var width__inst1 by remember { mutableStateOf(1) }
+    var width__inst2 by remember { mutableStateOf(1) }
 
     Row(modifier = Modifier) {
-        Text(text = ("w" + width__inst1.toString()), modifier = Modifier)
+        Text(text = ("w" + width__inst2.toString()), modifier = Modifier)
         Button(onClick = {
             taps = (taps + 1)
             onPicked?.invoke(7)
@@ -1181,12 +1221,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:56a7ac254b98dceaa7d2a3b2ef75eea8
+pass sha256:5d50d4777e8a0bfd6b1c7bc3589e71d4
 -- run/go/fyne --
 pass sha256:14fe614fa9dd12f8fbe9a34894ba1d62
 -- run/go/gtk4 --
 pass sha256:da89b46403eaf07de9506087e3f968fc
 -- run/kotlin/android --
-pass sha256:ce0dc925d4be58ee495a8669d98263c1
+pass sha256:cb1f82ec954fc751cb64f7488e7b2741
 -- run/none/html --
 pass sha256:3a35d8c8accbb889dde90854fead8e64

@@ -148,8 +148,9 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 // two-way prop unbound.
 func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	comp := n.Component
-	// A window still a builtin on this target -- html, bubbletea, android --
-	// is no component to wrap, and its `visible` is a prop they do not read.
+	// A window still a builtin on this target -- html -- is no component to
+	// wrap, and passWindowSurface has refused anything but the default for its
+	// `visible`.
 	// Where a platform overrides the window it is an ordinary component by
 	// now (composeOverriddenBuiltins) and gets its cell like any other.
 	if comp == nil || ir.IsWindowNode(n) {
@@ -467,10 +468,9 @@ func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.
 
 // refuseUnsplicedHandleCalls reports a method called through a node's `#id`
 // that no splice answered: the node is built at run time, or the target
-// renders it as the builtin it is marked -- a window on html, bubbletea and
-// android -- and in neither case is there one instance's method to call.
-// Emitted, it was `details.open()` against nothing on html and a method the
-// Model does not have on bubbletea.
+// renders it as the builtin it is marked -- a window on html -- and in neither
+// case is there one instance's method to call. Emitted, it was
+// `details.open()` against nothing on html.
 func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 	var bad error
 	_ = ir.Walk(pkg, func(n ir.Node) error {

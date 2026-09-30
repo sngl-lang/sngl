@@ -53,6 +53,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	progress__inst0 float64
+	visible__inst1  bool
 
 	widget0 progress.Model
 
@@ -63,6 +64,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.progress__inst0 = 0.25
+	m.visible__inst1 = true
 	m.widget0 = progress.New()
 	m.resizeWidgets()
 	return m
@@ -95,6 +97,21 @@ func SetProgress__inst0Cmd(v float64) tea.Cmd {
 	return func() tea.Msg { return setProgress__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -106,6 +123,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setProgress__inst0Msg:
 		m = m.SetProgress__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -113,7 +132,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -121,14 +146,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = m.widget0.ViewAs(tui.Percent(float64(m.progress__inst0), float64(1.0)))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.progress__inst0)))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = m.widget0.ViewAs(tui.Percent(float64(m.progress__inst0), float64(1.0)))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.progress__inst0)))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -650,6 +677,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -662,12 +692,22 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var progress__inst0 by remember { mutableStateOf(0.25) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        LinearProgressIndicator(progress = fun(): Float {
-            return (progress__inst0 / 1.0).toFloat()
-        }, modifier = Modifier)
-        Text(text = _snglFloatStr(progress__inst0), modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            LinearProgressIndicator(progress = fun(): Float {
+                return (progress__inst0 / 1.0).toFloat()
+            }, modifier = Modifier)
+            Text(text = _snglFloatStr(progress__inst0), modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -773,12 +813,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:852bbb4bba95308380f624ab88b680c5
+pass sha256:1e5220570df317fa47637c48a85a35c5
 -- run/go/fyne --
 pass sha256:f2ce1d7ee03866d5d93631252e843fee
 -- run/go/gtk4 --
 pass sha256:abe97216fd6cbd75b4e5fad002e566f2
 -- run/kotlin/android --
-pass sha256:7180128bb046c1c6cfb0ca94066b2868
+pass sha256:fdef94f62b1b9847544fab17cb438d99
 -- run/none/html --
 pass sha256:ab8f7d58ca59326a38550ee8c07de114

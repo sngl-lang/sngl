@@ -75,6 +75,7 @@ type Model struct {
 	total               int
 	labels              []string
 	label__inst0        map[string]string
+	visible__inst1      bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -94,6 +95,7 @@ func New() Model {
 	m.total = m.start
 	m.labels = []string{"a", "b"}
 	m.label__inst0 = map[string]string{}
+	m.visible__inst1 = true
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
@@ -278,6 +280,21 @@ func SetLabel__inst0Cmd(v map[string]string) tea.Cmd {
 	return func() tea.Msg { return setLabel__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -295,13 +312,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLabels(msg.value)
 	case setLabel__inst0Msg:
 		m = m.SetLabel__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -327,40 +352,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	var part0Children []string
-	var part0_0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	var part0_0Items []string
-	for __copy0, l := range m.labels {
-		_ = __copy0
-		_ = l
-		var part0_0Item string
-		part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		part0_0ItemPrefix := " "
-		if part0_0ItemFocused {
-			part0_0ItemPrefix = ">"
-		}
-		part0_0Item = lipgloss.NewStyle().Render(part0_0ItemPrefix + " " + fmt.Sprint(((func() string {
-			if __v, __ok := m.label__inst0[fmt.Sprint(__copy0)]; __ok {
-				return __v
+	if m.visible__inst1 {
+		var part0Children []string
+		var part0_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		var part0_0Items []string
+		for __copy0, l := range m.labels {
+			_ = __copy0
+			_ = l
+			var part0_0Item string
+			part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			part0_0ItemPrefix := " "
+			if part0_0ItemFocused {
+				part0_0ItemPrefix = ">"
 			}
-			return (l + ":")
-		}() + " ") + fmt.Sprint(m.total))))
-		__focusPos0++
-		part0_0Items = append(part0_0Items, part0_0Item)
+			part0_0Item = lipgloss.NewStyle().Render(part0_0ItemPrefix + " " + fmt.Sprint(((func() string {
+				if __v, __ok := m.label__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return (l + ":")
+			}() + " ") + fmt.Sprint(m.total))))
+			__focusPos0++
+			part0_0Items = append(part0_0Items, part0_0Item)
+		}
+		part0_0 = strings.Join(part0_0Items, "\n")
+		if part0_0 != "" {
+			part0Children = append(part0Children, part0_0)
+		}
+		var part0_1 string
+		part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
+		part0Children = append(part0Children, part0_1)
+		var part0_2 string
+		part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(("from " + fmt.Sprint(m.start))))
+		part0Children = append(part0Children, part0_2)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	}
-	part0_0 = strings.Join(part0_0Items, "\n")
-	if part0_0 != "" {
-		part0Children = append(part0Children, part0_0)
-	}
-	var part0_1 string
-	part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
-	part0Children = append(part0Children, part0_1)
-	var part0_2 string
-	part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(("from " + fmt.Sprint(m.start))))
-	part0Children = append(part0Children, part0_2)
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -981,6 +1008,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -997,13 +1027,23 @@ var total by mutableStateOf(start)
 @Composable
 fun MainScreen() {
     val labels = remember { mutableStateListOf("a", "b") }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        for (l in labels) {
-            Row(name = l)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Text(text = total.toString(), modifier = Modifier)
-        Text(text = ("from " + start.toString()), modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            for (l in labels) {
+                Row(name = l)
+            }
+            Text(text = total.toString(), modifier = Modifier)
+            Text(text = ("from " + start.toString()), modifier = Modifier)
+        }
     }
 }
 
@@ -1220,12 +1260,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f9f54d2f75a8543cc87031a392219cd4
+pass sha256:192cbb3f026574a97c73b2dd286146ec
 -- run/go/fyne --
 pass sha256:e759ca590ef15901d4e84965aa2146a9
 -- run/go/gtk4 --
 pass sha256:17bca6bda0446f94293fc364d4ee80ea
 -- run/kotlin/android --
-pass sha256:4ffa09189aa41104afea7fb8a840eb20
+pass sha256:eb0cb6cc8c77a080cc48ffa002e7118b
 -- run/none/html --
 pass sha256:4c8fbc3f4893f5d2cc3962c51371b3e4

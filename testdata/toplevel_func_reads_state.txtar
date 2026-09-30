@@ -62,8 +62,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	log string
-	n   int
+	log            string
+	n              int
+	visible__inst0 bool
 
 	width, height int
 }
@@ -73,6 +74,7 @@ func New() Model {
 	m := Model{}
 	m.log = ""
 	m.n = 4
+	m.visible__inst0 = true
 	return m
 }
 
@@ -128,6 +130,21 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -141,13 +158,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLog(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -155,7 +180,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log)))
+	if m.visible__inst0 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.viaBump(m.n)) + fmt.Sprint(Countdown(m.n))) + m.log)))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -390,7 +417,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:62bee4647745a42daf80bbf06ccf4025
+pass sha256:b87b92b6eddb1f67574f7684344ea13b
 -- run/go/fyne --
 pass sha256:1ce0eef797f18a02fb0eb90eba0407bb
 -- run/go/gtk4 --

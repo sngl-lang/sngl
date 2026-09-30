@@ -165,6 +165,9 @@ type irAnalysis struct {
 	gc        *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
 	loopTimers []codegen.LoopTimer
+	// screen is the window, the one Screen the view draws, and nil for a
+	// harness that isolated a component.
+	screen *codegen.Screen
 }
 
 // overlayInfo records one modal/drawer Overlay primitive for Update()'s
@@ -215,6 +218,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc:             gc,
 	}
 	pkg := ctx.Pkg
+	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)
+	if err != nil {
+		ctx.Fail(err)
+	}
+	info.screen = screen
 
 	for _, path := range golang.BaseImports(pkg) {
 		gc.RequireImport(path)
@@ -276,71 +284,67 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
-	wins := ctx.Windows()
-	for _, win := range wins {
-		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			if btIntrinsic(n) != "Widget" {
-				return false
-			}
-			bp := extractBlueprint(n)
-			if bp.Kind != bpWidget {
-				return false
-			}
-			fieldName := ctx.Namer.Next("widget")
-			placeholder := ""
-			if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
-				placeholder = s
-			}
-			// A `:value` bind lowers to a handler named after the prop, and an
-			// explicit @input/@change handler carries the same write; take the
-			// first whose body assigns to a var, prop-named handler first.
-			var binds []widgetBind
-			for _, bm := range bp.Binds {
-				target := ""
-				for _, hname := range []string{bm.Prop, "input", "change", "select"} {
-					if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
-						if t := extractIRAssignTarget(h.Func.Block); t != "" {
-							target = t
-							break
-						}
+	view := viewStmts(ctx)
+	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
+		if btIntrinsic(n) != "Widget" {
+			return false
+		}
+		bp := extractBlueprint(n)
+		if bp.Kind != bpWidget {
+			return false
+		}
+		fieldName := ctx.Namer.Next("widget")
+		placeholder := ""
+		if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
+			placeholder = s
+		}
+		// A `:value` bind lowers to a handler named after the prop, and an
+		// explicit @input/@change handler carries the same write; take the
+		// first whose body assigns to a var, prop-named handler first.
+		var binds []widgetBind
+		for _, bm := range bp.Binds {
+			target := ""
+			for _, hname := range []string{bm.Prop, "input", "change", "select"} {
+				if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
+					if t := extractIRAssignTarget(h.Func.Block); t != "" {
+						target = t
+						break
 					}
 				}
-				binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
 			}
-			if bp.Model.Pkg != "" {
-				gc.RequireImport(bp.Model.Pkg)
+			binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
+		}
+		if bp.Model.Pkg != "" {
+			gc.RequireImport(bp.Model.Pkg)
+		}
+		// A no-token string passes through unchanged, so its output stays
+		// byte-identical.
+		model := bp.Model
+		model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
+		model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
+		model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
+		model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
+		model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
+		// A model string may name a pkg/go/tui helper inline, without the
+		// `|conv` token whose path would have required the import.
+		for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
+			if strings.Contains(s, "tui.") {
+				gc.RequireImport(tuiImportPath)
+				break
 			}
-			// A no-token string passes through unchanged, so its output stays
-			// byte-identical.
-			model := bp.Model
-			model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
-			model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
-			model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
-			model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
-			model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
-			// A model string may name a pkg/go/tui helper inline, without the
-			// `|conv` token whose path would have required the import.
-			for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
-				if strings.Contains(s, "tui.") {
-					gc.RequireImport(tuiImportPath)
-					break
-				}
-			}
-			info.widgets = append(info.widgets, widgetInfo{
-				fieldName:   fieldName,
-				model:       model,
-				binds:       binds,
-				placeholder: placeholder,
-				focusExpr:   nodeStaticFocusExpr(n, gc),
-				node:        n,
-			})
-			return false
+		}
+		info.widgets = append(info.widgets, widgetInfo{
+			fieldName:   fieldName,
+			model:       model,
+			binds:       binds,
+			placeholder: placeholder,
+			focusExpr:   nodeStaticFocusExpr(n, gc),
+			node:        n,
 		})
-	}
+		return false
+	})
 
-	for _, win := range wins {
-		collectOverlays(win.Body, nil, gc, &info.overlays)
-	}
+	collectOverlays(view, nil, gc, &info.overlays)
 
 	for _, b := range info.binds {
 		if b.name == "__focusID" {
@@ -982,7 +986,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
 	b.WriteString("\t\tswitch {\n")
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
-	b.WriteString("\t\t\treturn m, tea.Quit\n")
+	emitScreenClose(b, info, gc)
 
 	// Escape closes the topmost open overlay. Overlays are listed in source
 	// order; the last-declared open one is closed first (a simple modal-over-
@@ -1029,10 +1033,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// each background case so its activation keys don't fire while frozen;
 	// handlers inside an Overlay primitive stay unguarded (see
 	// emitIRButtonHandlers) so overlay-content buttons keep working.
-	wins := ctx.Windows()
-	for _, win := range wins {
-		emitIRButtonHandlers(b, win.Body, info, gc, caseGuard, invokerSink)
-	}
+	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1548,4 +1549,45 @@ func loopVarUsed(block []ir.Stmt, name string, sym ir.Symbol) bool {
 		return nil
 	})
 	return found
+}
+
+// emitScreenClose is ctrl+c: the window's close on a terminal, the
+// counterpart of a window manager's. With the window on screen it runs the
+// Screen's `@closed` -- which the override reports as `visible = false` before
+// the window's own handler -- and the program ends when the window is off
+// screen after that, or was already. A harness that isolated a component has
+// no window, and ctrl+c quits.
+func emitScreenClose(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
+	sc := info.screen
+	shown := ""
+	if sc != nil {
+		shown = sc.Shown(gc.EvalExpr)
+	}
+	if shown == "" {
+		if sc != nil {
+			emitScreenClosedHandler(b, sc.Node, info, gc, "\t\t\t")
+		}
+		b.WriteString("\t\t\treturn m, tea.Quit\n")
+		return
+	}
+	fmt.Fprintf(b, "\t\t\tif %s {\n", shown)
+	emitScreenClosedHandler(b, sc.Node, info, gc, "\t\t\t\t")
+	b.WriteString("\t\t\t}\n")
+	fmt.Fprintf(b, "\t\t\tif !(%s) {\n", shown)
+	b.WriteString("\t\t\t\treturn m, tea.Quit\n")
+	b.WriteString("\t\t\t}\n")
+	b.WriteString("\t\t\treturn m, nil\n")
+}
+
+func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysis, gc *golang.GoIRContext, indent string) {
+	h := codegen.NodeHandler(n, "closed")
+	if h == nil || h.Func == nil {
+		return
+	}
+	for _, stmt := range h.Func.Block {
+		for _, line := range gc.EvalStmt(stmt) {
+			fmt.Fprintf(b, "%s%s\n", indent, line)
+		}
+	}
+	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }

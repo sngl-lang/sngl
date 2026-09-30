@@ -70,6 +70,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class SnglInputEvent(val value: String)
@@ -90,41 +93,51 @@ fun MainScreen() {
     var value__inst0 by remember { mutableStateOf(name) }
     var value__inst1 by remember { mutableStateOf(plain) }
     var value__inst2 by remember { mutableStateOf(fruit) }
+    var visible__inst3 by remember { mutableStateOf(true) }
 
-    Column {
-        OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-            val e = SnglInputEvent(newValue)
-            value__inst0 = e.value
-            name = e.value
-        }, label = {
-            Text(text = "Name", modifier = Modifier)
-        })
-        OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-            val e = SnglInputEvent(newValue)
-            value__inst1 = e.value
-        })
-        var expanded1 by remember { mutableStateOf(false) }
-        Box(modifier = Modifier) {
-            OutlinedButton(onClick = { expanded1 = true }) {
-                Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
-            }
-            DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
-                listOf("Apple", "Banana").forEach { opt ->
-                    DropdownMenuItem(text = { Text(opt) }, onClick = {
-                        value__inst2 = opt
-                        expanded1 = false
-                    })
-                }
+    if (visible__inst3) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst3 = false
+            if (!(visible__inst3)) {
+                __activity?.finish()
             }
         }
-        LinearProgressIndicator(progress = fun(): Float {
-            return 0.2f
-        }, modifier = Modifier.safeDrawingPadding())
-        OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
-            Text(text = "Birthday", modifier = Modifier)
-        })
-        OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+        Column {
+            OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+                val e = SnglInputEvent(newValue)
+                value__inst0 = e.value
+                name = e.value
+            }, label = {
+                Text(text = "Name", modifier = Modifier)
+            })
+            OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+                val e = SnglInputEvent(newValue)
+                value__inst1 = e.value
+            })
+            var expanded1 by remember { mutableStateOf(false) }
+            Box(modifier = Modifier) {
+                OutlinedButton(onClick = { expanded1 = true }) {
+                    Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
+                }
+                DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
+                    listOf("Apple", "Banana").forEach { opt ->
+                        DropdownMenuItem(text = { Text(opt) }, onClick = {
+                            value__inst2 = opt
+                            expanded1 = false
+                        })
+                    }
+                }
+            }
+            LinearProgressIndicator(progress = fun(): Float {
+                return 0.2f
+            }, modifier = Modifier.safeDrawingPadding())
+            OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
+                Text(text = "Birthday", modifier = Modifier)
+            })
+            OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+        }
     }
 }
 -- run/kotlin/android --
-pass sha256:b55d162b4e02cdbd99f253c32c5f14aa
+pass sha256:fcdcfa5aad1405a9d3aed1915da99bb0

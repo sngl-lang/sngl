@@ -779,7 +779,7 @@ hosts can create and destroy a toplevel from their loop at any time (probed:
 gtk4 needs `g_application_hold` to live with none, fyne a window it never
 shows, since its driver quits when the last one goes).
 
-### Phase C1: the window as a component
+### Phase C1: the window as a component -- done
 
 Decisions 16 and 17, in order, each landing with its fixtures:
 
@@ -812,15 +812,34 @@ Decisions 16 and 17, in order, each landing with its fixtures:
    `if details` is a node in a render slot, destroyed with its content and
    effects (`destroyBuiltInstances`). Phase C's machinery is gone:
    `passWindowLifetimes` (its refusal survives as `passWindowUnderIf` for the
-   three targets that still build a builtin window), `NodeInst.Presence`,
+   targets that still build a builtin window, which after step 4 is html), `NodeInst.Presence`,
    `window.mount`/`unmount`, `codegen.HostWindows`, `ir.WindowRootName`,
    gtk4rt's `Window`, fyne's `snglWindow` and the kept-alive content.
    `testdata/window_visible.txtar` and `cmd/sngl/testdata/window_visible_runs.txt`
    are new; the three window goldens and `window_under_if_runs.txt` are
    rewritten, the last asserting a counter in the window starts again at zero.
-4. html, bubbletea and android answer `AppendChild(app, window)` as they do
-   today: html's documents, the others' one window. The html `<dialog>` for a
-   second window is Phase C2's.
+4. **html, bubbletea and android answer the window** -- *done.* bubbletea
+   and android override `ui.window` with a `Screen` primitive,
+   `Screen(visible=visible, …) { content(params) }`, so the window is a
+   component on both: the view is the package body, a hidden window draws
+   nothing while its content stays mounted, a window under `if details` is an
+   ordinary conditional, and
+   `open`/`close`/`:visible` work. The close is ctrl+c and the system back,
+   reported as `visible = false` before `@closed`, and the program ends when
+   the window is off screen after it. They show one window, and a second is
+   refused at the second (`codegen.SoleScreen`) where it used to be dropped.
+   html keeps the builtin through C2 -- a document or a route, which
+   `optimize.Documents` and route mode read as windows, byte-identical -- and
+   refuses what a page cannot answer: `:visible`, a `visible` other than the
+   default and `@closed` (`passWindowSurface`), beside the `if` and the method
+   call it refused already. `testdata/window_screen.txtar`,
+   `testdata/window_under_if_screen.txtar`,
+   `codegen/platform/bubbletea/window_close_run_test.go`,
+   `cmd/sngl/testdata/window_second_refused.txt` and
+   `window_visible_refused.txt`. Left: on bubbletea, which keeps no state of an
+   instance's own, the `visible` cell of a window under `if details` survives
+   the condition turning false. The html `<dialog>` for a second window is
+   Phase C2's.
 
 ### Phase C2: navigators
 

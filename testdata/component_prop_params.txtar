@@ -48,7 +48,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	count__inst0 int
+	count__inst0   int
+	visible__inst1 bool
 
 	width, height int
 }
@@ -57,6 +58,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.count__inst0 = 0
+	m.visible__inst1 = true
 	return m
 }
 
@@ -81,6 +83,21 @@ func SetCount__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -92,13 +109,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCount__inst0Msg:
 		m = m.SetCount__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -106,11 +131,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("Clicks: " + fmt.Sprint(m.count__inst0))))
-	contentChildren = append(contentChildren, content_0)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("Clicks: " + fmt.Sprint(m.count__inst0))))
+		contentChildren = append(contentChildren, content_0)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -324,6 +351,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -336,9 +366,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var count__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = ("Clicks: " + count__inst0.toString()), modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = ("Clicks: " + count__inst0.toString()), modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -375,12 +415,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bae896bbd081afe61294c0003813d46c
+pass sha256:a15d86bc807e5c781ee4635ef39e5337
 -- run/go/fyne --
 pass sha256:0d2af677d11ee137338d85baa19c3cef
 -- run/go/gtk4 --
 pass sha256:01e31400e46e8b120d64a22df1da1252
 -- run/kotlin/android --
-pass sha256:9abef4286dcaaa447fd450eb4fc045ed
+pass sha256:d2b642060a7fd01844fe015fb51e3e49
 -- run/none/html --
 pass sha256:454d718a837638fb44aa8881097a71d4

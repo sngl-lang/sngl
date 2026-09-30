@@ -87,12 +87,15 @@ type PathCmd struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -123,6 +126,21 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -132,13 +150,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
@@ -147,11 +173,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = tui.RenderTerminal(40, 10, 1, func() image.Image {
-		__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
-		m._canvasDraw0(__c)
-		return __c.Result()
-	})
+	if m.visible__inst0 {
+		content = tui.RenderTerminal(40, 10, 1, func() image.Image {
+			__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
+			m._canvasDraw0(__c)
+			return __c.Result()
+		})
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -248,6 +276,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:96506efe40824d5a468bbe6d28eb9f73
+pass sha256:332991e961bbd0411f20b5b8464f2ae5
 -- run/none/html --
 pass sha256:6a9b52e9f49a1f4a72af0184d73c67ec

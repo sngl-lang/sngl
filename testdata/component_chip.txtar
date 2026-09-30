@@ -44,7 +44,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	__focusID int
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -52,6 +53,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -90,6 +92,21 @@ func (m *Model) __focusPrev() {
 	}
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -99,13 +116,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -117,32 +142,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("Tag"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1Focused := (m.__focusID == 1)
+		content_1Prefix := " "
+		if content_1Focused {
+			content_1Prefix = ">"
+		}
+		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("Removable"))
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		content_2Focused := (m.__focusID == 2)
+		content_2Prefix := " "
+		if content_2Focused {
+			content_2Prefix = ">"
+		}
+		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("Success"))
+		contentChildren = append(contentChildren, content_2)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("Tag"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1Focused := (m.__focusID == 1)
-	content_1Prefix := " "
-	if content_1Focused {
-		content_1Prefix = ">"
-	}
-	content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("Removable"))
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	content_2Focused := (m.__focusID == 2)
-	content_2Prefix := " "
-	if content_2Focused {
-		content_2Prefix = ">"
-	}
-	content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("Success"))
-	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -262,6 +289,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -273,10 +303,21 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "Tag", modifier = Modifier)
-        Text(text = "Removable", modifier = Modifier)
-        Text(text = "Success", modifier = Modifier)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "Tag", modifier = Modifier)
+            Text(text = "Removable", modifier = Modifier)
+            Text(text = "Success", modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -312,10 +353,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a102a0a3d8dea2073b487d52c0242abb
+pass sha256:fabc62bfac7b0e93d0a74c1a1dd49248
 -- run/go/fyne --
 pass sha256:71c77a6f42a032d13eeb40325fbbacdf
 -- run/kotlin/android --
-pass sha256:2b6c706e87d1f6a5e7d2d4a44a88a5a9
+pass sha256:f661bd23c3dcac24ee4f5614f6c996c8
 -- run/none/html --
 pass sha256:00c9dc47a128469e303c5764caf13c56

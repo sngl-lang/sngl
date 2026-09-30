@@ -1010,6 +1010,20 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
+		// A library declaration with no state of its own is spliced even here:
+		// nothing emits a library body as a component built at run time, and
+		// with nothing to keep per copy there is no instance to build. It
+		// reaches this position only when it could not be substituted earlier
+		// -- `ui.window`, whose methods keep passInlinePure off it, composed
+		// under a reactive `if` on bubbletea, where the implicit-state wrapper
+		// around it was spliced per copy.
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Stdlib && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			spliced, err := st.expandCall(n)
+			if err != nil {
+				return nil, false, err
+			}
+			return spliced, true, nil
+		}
 		// Left to the main walk: a capturing body cannot be the runtime
 		// instance this branch elects, and the pre-pass already refused it.
 		//
@@ -1328,6 +1342,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
 	}
 	body = substituteSlots(body, n)
+	// A library body -- a builtin node this target composes, and the
+	// override it renders -- was written in the library, and a diagnostic
+	// about what it became belongs where the program wrote the node.
+	if comp.Stdlib {
+		ir.AttachNodeSite(body, n)
+	}
 
 	return body, nil
 }

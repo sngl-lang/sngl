@@ -43,12 +43,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -56,6 +59,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -67,13 +85,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -81,22 +107,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("Left"))
-	content_0Children = append(content_0Children, content_0_0)
-	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("Right"))
-	content_1Children = append(content_1Children, content_1_0)
-	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("Left"))
+		content_0Children = append(content_0Children, content_0_0)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("Right"))
+		content_1Children = append(content_1Children, content_1_0)
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -218,6 +246,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -229,12 +260,23 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Column(modifier = Modifier) {
-            Text(text = "Left", modifier = Modifier)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Column(modifier = Modifier) {
-            Text(text = "Right", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Column(modifier = Modifier) {
+                Text(text = "Left", modifier = Modifier)
+            }
+            Column(modifier = Modifier) {
+                Text(text = "Right", modifier = Modifier)
+            }
         }
     }
 }
@@ -268,10 +310,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a4c0160cc9ec6dd9f7d530f74a89f42f
+pass sha256:35cb5ee9515c9ef7c52951ae98db2938
 -- run/go/fyne --
 pass sha256:eb47bff6835282cdce3bd253d37f5e47
 -- run/kotlin/android --
-pass sha256:9e59086831d14087a34ed3e0fbedaebf
+pass sha256:422e2192f7098fdcd722986ba7b84c55
 -- run/none/html --
 pass sha256:e07b24de1dc5a52ef58db528e8b2e773

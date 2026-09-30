@@ -79,6 +79,21 @@ component platform(
 // Kotlin package: the platform codegen emits the call, not the language
 // translator.
 
+// The screen: what a `ui.window` is on android, which shows one. It is not
+// a composable: MainScreen draws its content, and a program declares one
+// window here, a second being refused where it is written.
+//
+// A hidden screen draws nothing. The system back at the root is the window's
+// close, the counterpart of a window manager's: `onBack` runs -- the override
+// reports `visible = false` before the window's own `@closed` -- and the
+// activity finishes when no screen is drawn after it.
+#[intrinsic("android:Screen")]
+component Screen(
+    visible bool,
+    onBack func(),
+    children ...component ui.node,
+) root
+
 #[gen.renders(identity)]
 #[intrinsic("android:Column")]
 component Column(

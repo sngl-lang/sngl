@@ -66,6 +66,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -83,19 +86,29 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var caught__inst0 by remember { mutableStateOf("") }
     var got__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            try {
-            	ratio(0)
-            } catch (__err: SnglRaise) {
-            	val e = __err.event
-            	caught__inst0 = e.message
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier.testTag("b").safeDrawingPadding()) {
-            Text(text = "b", modifier = Modifier)
         }
-        Text(text = (caught__inst0 + got__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        Column {
+            Button(onClick = {
+                try {
+                	ratio(0)
+                } catch (__err: SnglRaise) {
+                	val e = __err.event
+                	caught__inst0 = e.message
+                }
+            }, modifier = Modifier.testTag("b").safeDrawingPadding()) {
+                Text(text = "b", modifier = Modifier)
+            }
+            Text(text = (caught__inst0 + got__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 
@@ -163,6 +176,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/kotlin/android --
-pass sha256:3b8b6951e4600aeb5b2af1a5f0bffaca
+pass sha256:c9b0ccc593b239f6dbd5b08c7582d759
 -- run/none/html --
 pass sha256:2c37fd47d25b664186d6974a260a72db

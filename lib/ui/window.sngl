@@ -29,9 +29,12 @@ import marks "sngl:internal/marks"
 // its own, so a program with no window has nowhere to draw.
 //
 // `visible` is whether the window is on screen, on a target whose windows the
-// program can show and hide (gtk4 and fyne). It is a two-way prop: a window
-// manager's close is the host reporting `visible = false`, the way a checkbox
-// reports a click, and `@closed` fires after it. So `:visible=shown` writes
+// program can show and hide: gtk4 and fyne, and bubbletea and android, which
+// show one window and draw nothing while it is hidden. html cannot take a page
+// off screen, and refuses a `visible` binding or value and an `@closed`. It is
+// a two-way prop: a window manager's close is the host reporting
+// `visible = false`, the way a checkbox reports a click, and `@closed` fires
+// after it. On bubbletea the close is ctrl+c, and on android the system back. So `:visible=shown` writes
 // `shown` back, and a window nothing binds keeps the value in a cell of its
 // own, which `open` and `close` below write. What the tree says decides what
 // exists: a window under `if details` whose `@closed` writes
@@ -56,8 +59,8 @@ component window<T = struct {}>(
     // with no window on screen, one whose `@run` never called `run`, bring
     // one up in answer to something. The write lands on whatever `visible`
     // is: the caller's var where `:visible=shown` bound one, the window's own
-    // cell where nothing did. html, bubbletea and android render a window as
-    // the builtin it is marked and refuse the call.
+    // cell where nothing did. html renders a window as the builtin it is
+    // marked, a document, and refuses the call.
     func open() {
         visible = true
     }

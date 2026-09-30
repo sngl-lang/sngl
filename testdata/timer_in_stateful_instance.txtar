@@ -55,8 +55,9 @@ type loopTimerTickMsg0 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	ticks__inst0 map[string]int
-	periods      []time.Duration
+	ticks__inst0   map[string]int
+	visible__inst1 bool
+	periods        []time.Duration
 
 	__loopTimer0    map[string]int
 	__loopTimer0Seq map[string]int
@@ -69,6 +70,7 @@ func New() Model {
 	m.__loopTimer0 = map[string]int{}
 	m.__loopTimer0Seq = map[string]int{}
 	m.ticks__inst0 = map[string]int{}
+	m.visible__inst1 = true
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 	return m
 }
@@ -94,6 +96,21 @@ func SetTicks__inst0Cmd(v map[string]int) tea.Cmd {
 	return func() tea.Msg { return setTicks__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.__loopTimer0Sync()...)
@@ -107,6 +124,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setTicks__inst0Msg:
 		m = m.SetTicks__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case loopTimerTickMsg0:
 		for __copy0, p := range m.periods {
 			if fmt.Sprint(__copy0) == msg.key && m.__loopTimer0[msg.key] == msg.gen {
@@ -132,7 +151,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__loopTimer0Sync()...)
@@ -164,20 +189,22 @@ func (m *Model) __loopTimer0Sync() []tea.Cmd {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentItems []string
-	for __copy0, p := range m.periods {
-		_ = __copy0
-		_ = p
-		var contentItem string
-		contentItem = lipgloss.NewStyle().Render(fmt.Sprint(((snglStrDuration(p) + ": ") + fmt.Sprint(func() int {
-			if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
-				return __v
-			}
-			return 0
-		}()))))
-		contentItems = append(contentItems, contentItem)
+	if m.visible__inst1 {
+		var contentItems []string
+		for __copy0, p := range m.periods {
+			_ = __copy0
+			_ = p
+			var contentItem string
+			contentItem = lipgloss.NewStyle().Render(fmt.Sprint(((snglStrDuration(p) + ": ") + fmt.Sprint(func() int {
+				if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return 0
+			}()))))
+			contentItems = append(contentItems, contentItem)
+		}
+		content = strings.Join(contentItems, "")
 	}
-	content = strings.Join(contentItems, "")
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -901,7 +928,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ba3447f0fef0bbfc9899ca80375527b4
+pass sha256:17c0bf6401f9e6b9a273020f0a7f09a7
 -- run/go/fyne --
 pass sha256:0d89e48a9f526f33104722d57c9efec5
 -- run/go/gtk4 --
