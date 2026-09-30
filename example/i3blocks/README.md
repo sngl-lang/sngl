@@ -18,9 +18,10 @@ It lives under `example/` rather than `examples/` because `docsgen` loads every
 ## What it demonstrates
 
 - `bar.sngl` is the program: state, a timer, an `i3.bar` of blocks whose props
-  read that state and whose `@click`s write it, and a window `#details`. `@run`
-  starts the program with no window on screen; the load block's `@click` calls
-  `details.open()`, and the window's Close button `details.close()`.
+  read that state and whose `@click`s write it, and a window under
+  `if details`. `@run` starts the program with no window on screen; the load
+  block's `@click` toggles `details`, which creates and destroys the window,
+  and the window's `@close` and its Close button write `details = false`.
 - `i3/i3.sngl` declares the family (`block`), its members (`text`, `gap`) and the
   root member that hosts them (`bar`).
 - `i3/protocol.sngl` is the i3bar protocol in SNGL: the `Entry` each block
@@ -48,13 +49,15 @@ mode. The build rewrites the `bar` into SNGL before anything else sees it:
 
 So a state write re-renders the bar because an effect's key read that state, and
 a click is a closure posted to the drawing thread with `async.post`. Neither host
-has any code for i3.
+has any code for i3. The window is the same mechanism once more: under
+`if details` it is lowered to an effect whose mount and unmount create and
+destroy it.
+
+`cmd/sngl/testdata/example_i3blocks.txt` builds this directory for both hosts
+and runs it as i3bar would, so a change that breaks it fails the suite.
 
 ## Not yet
 
-- **A window under a reactive `if`** (`if details { ui.window … }`), created and
-  destroyed with its condition: Phase C of `SNGL_PLUGINS.md`. `open` and
-  `close` show and hide one window that always exists instead.
 - **The header before the host starts.** It is written by `@start`, which
   runs with the tree's first settle -- once the host has built the tree and
   before `@run`. Nothing here needs it earlier; an emitter's own layer of the

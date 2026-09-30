@@ -84,6 +84,20 @@ On `feat/family-components`:
   (runs the bar on gtk4 and fyne under the headless compositor), and one per
   gap.
 
+- **Hosts beyond the file root, and windows that come and go** (Phase C,
+  decision 5). A window is an OS window of its own on gtk4 and fyne, each
+  openable by `#id`, around content built once (`codegen.HostWindows`); a
+  window under an `if` that reads state is created and destroyed with it
+  (`passWindowLifetimes`, lowered to an effect, `#[gen.can(windowLifetimes)]`,
+  refused elsewhere); `@close` is the window manager's close, with the tree
+  deciding what exists. A generated host is read under a root `if` -- its
+  gen.emit's effects mount and unmount with the branch, which passEffect
+  already gave -- and in a root component. `example/i3blocks/` toggles its
+  window with `if details` and is built and run by
+  `cmd/sngl/testdata/example_i3blocks.txt`. Fixtures: `testdata/window_several.txtar`,
+  `testdata/window_under_if.txtar`, `testdata/emit_family_under_if.txtar`,
+  and a `_runs.txt` script for each.
+
 ## Decisions
 
 Settled unless marked *open*.
@@ -180,10 +194,13 @@ and a member whose `gen.node` gives no value.
 
 ### 5. Hosts anywhere a root member goes
 
-*Open.* The walk reads hosts at the root of a file and refuses one a
-component renders. `bar` is a root member, so the next places are a root-level
-`if`/`for` and a component whose family is `root`. A host under a reactive
-`if` needs decision 4 first.
+*Landed, but for `for`.* The walk reads a host at the root of a file, under an
+`if` there, and in a component whose family is `root`. A code-mode host under
+an `if` is rewritten in place, so its effects are the branch's; a template-mode
+one needs the `if` decidable at build time. A host under a `for` is refused:
+each copy would be an emitter of its own, and the members function is a
+function the loop's variables do not reach -- the effect under the loop would
+read them from a handler, which passEffect refuses.
 
 ### 6. `@run` wraps the process start, on the platform's node
 
@@ -632,25 +649,24 @@ each found on the way:
   emits the namespace into Go (`undefined: p`).
 - An effect settles after every write, so a handler writing two cells prints
   two status lines.
-- `example/i3blocks/` is compiled by nothing in the suite; a script or test
-  building it would keep it from rotting.
 
 ### Phase B: `@run` -- the program's layer done
 
 Decision 6 on gtk4 and fyne, with `example/i3blocks/` opening its window only
 under `--window`. Left: emitter layers, the interpreter, and bubbletea.
 
-### Phase C: hosts beyond the file root, and reactive windows
+### Phase C: hosts beyond the file root, and reactive windows -- done
 
-*In part:* a click opening a window is `details.open()` through the window's
-`#id` (`window.open`/`window.close`, gtk4 and fyne), which is what the i3
-example does. A window created and destroyed with a reactive `if` is still
-open, as is a second window on gtk4 or fyne.
+Decision 5, several OS windows and a window under a reactive root `if` on gtk4
+and fyne, and `@close`. Left, each found on the way:
 
-Decision 5, and a window under a reactive root `if` on gtk4 and fyne -- the
-bar's click opening a window is `if details { ui.window … }`, and a window
-`@close` writing the condition back. Unverified today whether those hosts can
-create and destroy a window from a render slot.
+- **A window under a `for`** keeps one record per window *statement*, which a
+  copy per element is more than; it is not a lifetime and not refused.
+- **A host under a `for`**, above.
+- **A top-level render slot renders before its window's static children** are
+  appended to the window's box, so its content lands first. It did in the
+  single-window output before this phase too.
+- **A window's title is read once**, when its record is made.
 
 Settled for it: a window the window manager closes runs its `@close`, and
 the tree decides whether the window still exists. With no `@close` the close
