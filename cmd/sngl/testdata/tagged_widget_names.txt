@@ -86,7 +86,7 @@ sha256:fdc197ec3356044b4e81b8792feaa117
   ]
 }
 -- testrun/html/none/tagged.sngl/counter/1 --
-sha256:653e1d12f2a7548bae794a4dbe655c59
+sha256:4a5c31f68f5e8e03e9de8bfbf7e2e59f
 {
   "results": [
     {

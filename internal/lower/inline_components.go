@@ -39,8 +39,12 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}}
+	cellOwners := implicitCellOwners(pkg)
 	if err := st.run(); err != nil {
+		return err
+	}
+	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
@@ -350,6 +354,9 @@ type inlineCompState struct {
 	// demoted is the clones dropReceiver made receiverless, so the call sites
 	// renameIdents repointed at them can give their receiver up too.
 	demoted map[*ir.Func]bool
+	// cells is each implicit cell (ir.Var.Cell) and the copies splicing its
+	// component made of it, for repointCellReads.
+	cells map[*ir.Var][]*ir.Var
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -1197,6 +1204,9 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Init = deepCloneExpr(v.Init)
 		renames[v] = clone.Name
 		symRenames[v] = clone
+		if v.Cell && st.cells != nil {
+			st.cells[v] = append(st.cells[v], clone)
+		}
 		// The clone is as reactive as the original. st.reactive was computed
 		// once, before this pass created any of these, so a `for` iterating an
 		// inlined component's own state read as non-reactive -- and the

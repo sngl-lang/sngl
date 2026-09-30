@@ -55,6 +55,13 @@ func TestNoWidgetPropIsConstructOnly(t *testing.T) {
 // says which half it broke.
 func TestSelectAssignsOptionsBeforeSelected(t *testing.T) {
 	model := generateFyneModelBuilt(t, selectOptionsSrc)
+	// The build, where the two are first written. The change handler above
+	// it re-syncs the selection a binding wrote, which is no initial one.
+	build := strings.Index(model, "func (m *Model) BuildUI(")
+	if build < 0 {
+		t.Fatal("generated model has no BuildUI")
+	}
+	model = model[build:]
 	opts := strings.Index(model, ".SetOptions(")
 	sel := strings.Index(model, ".SetSelected(")
 	if opts < 0 || sel < 0 {

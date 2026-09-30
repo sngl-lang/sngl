@@ -64,9 +64,10 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	typed     string
-	tree      Item
-	__focusID int
+	typed        string
+	tree         Item
+	value__inst0 string
+	__focusID    int
 
 	widget0 textinput.Model
 
@@ -78,9 +79,10 @@ func New() Model {
 	m := Model{}
 	m.typed = ""
 	m.tree = Item{Value: 3, Next: Item{Value: 4, Next: nil}}
+	m.value__inst0 = m.typed
 	m.__focusID = 0
 	m.widget0 = textinput.New()
-	m.widget0.SetValue(m.typed)
+	m.widget0.SetValue(m.value__inst0)
 	m.widget0.Focus()
 	m.resizeWidgets()
 	return m
@@ -116,7 +118,6 @@ func (m Model) Typed() string {
 
 func (m Model) SetTyped(v string) Model {
 	m.typed = v
-	m.widget0.SetValue(m.typed)
 	return m
 }
 
@@ -141,6 +142,22 @@ func SetTreeCmd(v Item) tea.Cmd {
 	return func() tea.Msg { return setTreeMsg{value: v} }
 }
 
+func (m Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m Model) SetValue__inst0(v string) Model {
+	m.value__inst0 = v
+	m.widget0.SetValue(m.value__inst0)
+	return m
+}
+
+type setValue__inst0Msg struct{ value string }
+
+func SetValue__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setValue__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -154,6 +171,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTyped(msg.value)
 	case setTreeMsg:
 		m = m.SetTree(msg.value)
+	case setValue__inst0Msg:
+		m = m.SetValue__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -182,7 +201,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
-		m.typed = m.widget0.Value()
+		m.value__inst0 = m.widget0.Value()
 		if __v := m.widget0.Value(); __v != __prev {
 			m.__widget0_input(__v)
 		}
@@ -191,9 +210,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) __widget0_input(__v string) {
-	e := struct{ Value string }{Value: __v}
-	_ = e
-	m.typed = e.Value
+	__input0 := struct{ Value string }{Value: __v}
+	_ = __input0
+	m.typed = __input0.Value
 }
 
 func (m Model) View() tea.View {
@@ -264,8 +283,9 @@ type Item struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	typed string
-	tree  Item
+	typed        string
+	tree         Item
+	value__inst0 string
 
 	__n1     *widget.Entry
 	__n2     *ShowInstance
@@ -277,15 +297,19 @@ func New() *Model {
 	m := &Model{}
 	m.typed = ""
 	m.tree = Item{Value: 3, Next: Item{Value: 4, Next: nil}}
+	m.value__inst0 = m.typed
 	return m
 }
 
 func (m *Model) __n1_input_handler(s string) {
+	m.value__inst0 = s
+	m.__n1.SetText(m.value__inst0)
 	m.typed = s
-	m.__n1.SetText(m.typed)
 }
 
 func (m *Model) __n1_change_handler(s string) {
+	m.value__inst0 = s
+	m.__n1.SetText(m.value__inst0)
 }
 
 func (m *Model) Typed() string {
@@ -304,10 +328,18 @@ func (m *Model) SetTree(v Item) {
 	m.tree = v
 }
 
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewEntry()
-	m.__n1.SetText(m.typed)
+	m.__n1.SetText(m.value__inst0)
 	m.__n1.SetPlaceHolder("")
 	m.__n1.OnChanged = m.__n1_input_handler
 	m.__n1.OnSubmitted = m.__n1_change_handler
@@ -416,6 +448,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:7b4a9fe90d6e1138835f0555d4f019e9
+pass sha256:3dfbfb7025ef688f1922533c84636dfe
 -- run/go/fyne --
-pass sha256:4189a309ea688a9312f6e84608359d8f
+pass sha256:3f0bf53056f419e23f83eef77031e8d2

@@ -373,7 +373,11 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
-			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp)
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp,
+				func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) },
+				func(name, goType string) {
+					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+				})
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}

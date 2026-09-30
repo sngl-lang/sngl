@@ -226,6 +226,9 @@ func (n *Node) Map() map[string]any {
 	if n.Inst != nil {
 		m["__inst"] = n.Inst
 	}
+	if n.CompEnv != nil {
+		m["__compEnv"] = n.CompEnv
+	}
 	return m
 }
 
@@ -299,6 +302,18 @@ func (m *mounter) add(n *Node) {
 	m.view.byKey[n.Key] = n
 	if n.ID != "" {
 		m.view.byID[n.ID] = append(m.view.byID[n.ID], n)
+	}
+}
+
+// bindHandle makes a read of the node's `#id` in the scope it was written in
+// the node as it is now mounted: `box.checked` beside the checkbox reads what
+// the box shows, which for a two-way prop nobody bound is the instance's cell.
+//
+// A read written above the node in the same body reads what the previous
+// mount bound, since the mount is in order and the node is not there yet.
+func (m *mounter) bindHandle(env *Env, inst *ir.NodeInst, n *Node) {
+	if inst.Handle != nil && env != nil {
+		env.Set(inst.Handle, n.Map())
 	}
 }
 
@@ -480,6 +495,17 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
 		node.CompEnv = child
+		// An unbound two-way prop shows the instance's cell rather than the
+		// argument, which only says where the cell started.
+		for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+			if v, ok := child.vals[p.Sym]; ok {
+				if _, had := node.Props[p.Name]; !had {
+					node.PropOrder = append(node.PropOrder, p.Name)
+				}
+				node.Props[p.Name] = v
+			}
+		}
+		m.bindHandle(env, inst, node)
 		if !node.Expanded {
 			// Nothing of its own to render, so it stands in the tree as the
 			// element does -- children included, which is what the element
@@ -522,6 +548,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	node.Props, node.PropOrder = evalProps(env, inst.Props)
 	node.Handlers = handlersOf(inst)
 	m.add(node)
+	m.bindHandle(env, inst, node)
 
 	kids, err := m.stmts(env, inst.Children, path)
 	if err != nil {

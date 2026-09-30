@@ -48,8 +48,26 @@ import { Snapshots } from './testagent/testagent.js';
 // Browser-side snapshot capture for html. Serialises the document
 // element as text/html bytes. Per-testRunner name prefix is empty —
 // html is a single-backend platform.
+//
+// What a control holds is a property, which outerHTML does not carry: typed
+// text and a ticked box are written onto a copy as the attributes they would
+// be, so the snapshot shows what the user sees.
 Snapshots.register('', () => {
-    const text = document.documentElement.outerHTML;
+    const copy = document.documentElement.cloneNode(true);
+    const live = document.querySelectorAll('input, textarea');
+    const copies = copy.querySelectorAll('input, textarea');
+    live.forEach((el, i) => {
+        const c = copies[i];
+        if (!c) return;
+        if (el.type === 'checkbox' || el.type === 'radio') {
+            if (el.checked) c.setAttribute('checked', '');
+        } else if (el.tagName === 'TEXTAREA') {
+            c.textContent = el.value;
+        } else if (el.value !== '') {
+            c.setAttribute('value', el.value);
+        }
+    });
+    const text = copy.outerHTML;
     return ['text/html', new TextEncoder().encode(text)];
 });
 `

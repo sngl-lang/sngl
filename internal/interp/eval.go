@@ -1814,7 +1814,8 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			if m, ok := recv.(map[string]any); ok {
 				h, _ := m["@"+event].(*ir.Func)
 				inst, _ := m["__inst"].(*ir.NodeInst)
-				if h != nil || boundByEvent(inst, event) {
+				cells, _ := m["__compEnv"].(*Env)
+				if h != nil || boundByEvent(inst, event) || cells.cellByEvent(inst, event) {
 					handlerEnv := env
 					if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
 						handlerEnv = oe
@@ -1828,6 +1829,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					}
 					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
 					res, err := handlerEnv.underHandler(provided, func() (any, error) {
+						cells.writeCells(inst, event, vals)
 						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
 							return nil, err
 						}
@@ -2044,6 +2046,57 @@ func boundPayloadField(inst *ir.NodeInst, b ir.PropBinding, event string) string
 		}
 	}
 	return ""
+}
+
+// cellByEvent reports whether event writes one of the cells an instance keeps
+// for the two-way props its call site left unbound (ir.UnboundProps). env is
+// the instance's own scope, and nil for a node that is no component's.
+func (env *Env) cellByEvent(inst *ir.NodeInst, event string) bool {
+	if env == nil || inst == nil {
+		return false
+	}
+	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+		if boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// writeCells is writeBindings for those cells: the payload's field of the
+// prop's type, written into the instance's scope, where bindProps leaves it
+// on every mount after the first.
+func (env *Env) writeCells(inst *ir.NodeInst, event string, vals []any) {
+	if env == nil || inst == nil || len(vals) == 0 {
+		return
+	}
+	st, ok := vals[0].(*Struct)
+	if !ok {
+		return
+	}
+	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+		if field := boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event); field != "" {
+			v, _ := st.Get(field)
+			env.Set(p.Sym, v)
+			// The node's `#id` is bound to what the last mount showed
+			// (bindHandle); the handler about to run reads it before the
+			// next one does.
+			if inst.Handle != nil {
+				if m, ok := env.parentValue(inst.Handle).(map[string]any); ok {
+					m[p.Name] = v
+				}
+			}
+		}
+	}
+}
+
+// parentValue is sym's value in the scope env was mounted from, or nil.
+func (env *Env) parentValue(sym ir.Symbol) any {
+	if env.parent == nil {
+		return nil
+	}
+	v, _ := env.parent.Value(sym)
+	return v
 }
 
 // writeBindings writes an event's payload back through the node's bindings

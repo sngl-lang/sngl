@@ -1338,7 +1338,22 @@ func widgetEventMethod(w widgetInfo, event string) string {
 // carries: the event types are declarations nothing else here emits.
 func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	for _, w := range info.widgets {
-		_, hasInput, hasChange := widgetPayloadEvents(w)
+		get, hasInput, hasChange := widgetPayloadEvents(w)
+		// A text widget whose only subscriber is its binding -- a cell the
+		// call site left unbound, or a `:value` with no @input -- still takes
+		// a test's typing: into the widget, and back into the var the way
+		// Update writes it.
+		if get != "" && !hasInput && w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n") {
+			fmt.Fprintf(b, "// %sInput types v into the #%s widget; for tests.\n", w.node.ID, w.node.ID)
+			fmt.Fprintf(b, "func (m *Model) %sInput(v string) {\n", w.node.ID)
+			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			for _, bd := range w.binds {
+				if bindTargetSyncs(info.binds, bd.target) {
+					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+				}
+			}
+			b.WriteString("}\n\n")
+		}
 		for _, ev := range []struct {
 			name string
 			on   bool
@@ -1367,6 +1382,13 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
 			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
 			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			// What Update writes back from the widget before it runs the
+			// handler, so a handler reading the bound var reads the text.
+			for _, bd := range w.binds {
+				if bindTargetSyncs(info.binds, bd.target) {
+					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+				}
+			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
 		}
 	}

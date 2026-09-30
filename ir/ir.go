@@ -651,6 +651,13 @@ type Var struct {
 	// getter counterpart to the platform hook the write side uses -- so the
 	// only read that works on those is a native call's receiver.
 	NodeHandle bool `json:"NodeHandle,omitempty"`
+
+	// Cell marks the state lowering gives a two-way prop the call site left
+	// unbound (UnboundProps): a var of the component passImplicitState wraps
+	// the node in. A read of the prop off the node's `#id` names it, from
+	// outside that component, so the inliner repoints the read at the one
+	// copy it splices. Copied with the var, so a clone says it too.
+	Cell bool `json:"-"`
 }
 
 func (v *Var) SymName() string { return v.Name }

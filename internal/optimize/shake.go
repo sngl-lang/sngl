@@ -34,9 +34,43 @@ func shakeUnused(pkg *ir.Package, documents bool) error {
 	pkg.Consts, pkg.BuildConsts = consts, buildConsts
 	pkg.Vars = filterVars(pkg.Vars, used)
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
+	dropDetachedHandlers(pkg)
 	pkg.Structs = filterStructs(pkg.Structs, used)
 	pkg.Enums = filterEnums(pkg.Enums, used)
 	return promoteForeignStructs(pkg)
+}
+
+// dropDetachedHandlers removes each handler passDeclarative promoted to a
+// func whose node a later fold removed: the AttachHandler naming it went with
+// the branch, so nothing attaches it, and emitted it names a widget no build
+// creates. A branch decided only once components are inlined is how that
+// happens -- `sngl:ui/markup`'s listItem renders its checkbox under
+// `if task == Task.none`, whose operands meet as constants after the splice.
+//
+// Asked of the package's funcs and every component's, because a root
+// component keeps its own, and only of promoted handlers: every other
+// synthesized func is reached through scaffolding this walk cannot read.
+func dropDetachedHandlers(pkg *ir.Package) {
+	named := map[*ir.Func]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if f, ok := id.Sym.(*ir.Func); ok {
+				named[f] = true
+			}
+		}
+		return nil
+	})
+	keep := func(fs []*ir.Func) []*ir.Func {
+		return slices.DeleteFunc(fs, func(f *ir.Func) bool {
+			return f != nil && f.LoweredFromNode != "" && !named[f]
+		})
+	}
+	pkg.Funcs = keep(pkg.Funcs)
+	for _, c := range pkg.Components {
+		if c != nil {
+			c.Funcs = keep(c.Funcs)
+		}
+	}
 }
 
 // promoteForeignStructs adds a library package's struct to this package's list
@@ -140,11 +174,32 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	visit := func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
+			// A node a `#id` names gets a test invoker per event it
+			// declares, whether or not the program subscribes; and a node
+			// with a two-way prop, bound or not, has its value written back
+			// from the event's payload with no handler written anywhere. The
+			// emitters prune what nothing reads.
+			if v.Component != nil && (v.Handle != nil || hasTwoWayProp(v.Component)) {
+				for _, e := range v.Component.Events {
+					if t := e.Payload(); t != nil {
+						out = append(out, t)
+					}
+				}
+			}
 			for _, h := range v.Handlers {
 				if h.Func != nil && !h.Func.Synthesized {
 					for _, p := range h.Func.Params {
 						out = append(out, p.Type)
 					}
+				}
+			}
+		case *ir.Lambda:
+			// A closure's parameter is in its signature, which a Go func
+			// type spells: a handler lifted out of a component built at run
+			// time travels in as one.
+			if v.Func != nil {
+				for _, p := range v.Func.Params {
+					out = append(out, p.Type)
 				}
 			}
 		case *ir.Call:
@@ -159,12 +214,33 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	for _, o := range ir.Owners(pkg) {
 		_ = ir.Walk(*o.Body, visit)
 	}
+	// And an event a component the package holds declares, since an
+	// instance record's constructor and setters name its type.
+	for _, c := range pkg.Components {
+		if c == nil {
+			continue
+		}
+		for _, e := range c.Events {
+			for _, p := range e.Params {
+				out = append(out, p.Type)
+			}
+		}
+	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil && fn.IsTest {
 			_ = ir.Walk(fn.Block, visit)
 		}
 	}
 	return out
+}
+
+func hasTwoWayProp(c *ir.Component) bool {
+	for _, p := range c.Props {
+		if p.Bidirectional {
+			return true
+		}
+	}
+	return false
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries

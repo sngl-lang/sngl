@@ -20,6 +20,7 @@ type Todo struct {
 type Model struct {
 	newTodo             string
 	todos               []Todo
+	checked__inst0      map[string]bool
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -33,6 +34,7 @@ func New() Model {
 	m := Model{}
 	m.newTodo = ""
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
+	m.checked__inst0 = map[string]bool{}
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.widget0 = textinput.New()
@@ -146,6 +148,21 @@ func SetTodosCmd(v []Todo) tea.Cmd {
 	return func() tea.Msg { return setTodosMsg{value: v} }
 }
 
+func (m Model) Checked__inst0() map[string]bool {
+	return m.checked__inst0
+}
+
+func (m Model) SetChecked__inst0(v map[string]bool) Model {
+	m.checked__inst0 = v
+	return m
+}
+
+type setChecked__inst0Msg struct{ value map[string]bool }
+
+func SetChecked__inst0Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -159,6 +176,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetNewTodo(msg.value)
 	case setTodosMsg:
 		m = m.SetTodos(msg.value)
+	case setChecked__inst0Msg:
+		m = m.SetChecked__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -191,6 +210,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
+						__bound_checked := !func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
+						__cell1_checked__inst0 := func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
+						__cell1_checked__inst0 = __bound_checked
+						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
 						return
 					}
@@ -204,21 +237,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
 		m.newTodo = m.widget0.Value()
-		if __v := m.widget0.Value(); __v != __prev {
-			m.__widget0_input(__v)
-		}
 	}
 	return m, tea.Batch(cmds...)
-}
-
-func (m *Model) __widget0_input(__v string) {
-	e := struct{ Value string }{Value: __v}
-	_ = e
-	m.newTodo = e.Value
 }
 
 func (m Model) View() tea.View {

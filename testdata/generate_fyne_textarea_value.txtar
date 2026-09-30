@@ -1,7 +1,7 @@
-Regression test for the textarea value-update path. `textarea(value=expr)` and
-`input(value=expr)` must SetText the value at BuildUI time -- not only for
-bindTarget binds -- and re-sync the entry whenever a var the value depends on
-changes.
+Regression test for the textarea value-update path. `textarea(:value=v)` and
+`input(:value=v)` must SetText the value at BuildUI time and re-sync the entry
+whenever the var changes. A one-way `value=expr` is only where the widget's own
+cell starts (testdata/unbound_prop_state.txtar), so the fixture binds.
 
 Reactivity flows through the shared NoReactivity lowering pass, which splices
 an explicit `m.__n0.SetText(...)` after every Assign that mutates a tracked
@@ -23,7 +23,7 @@ window #app(title="t") {
     var content = "initial value"
 
     vbox {
-        textarea(value=content, rows=4)
+        textarea(:value=content, rows=4)
         button(text="set", @click { content = "after click" })
     }
 }
@@ -57,9 +57,13 @@ func New() *Model {
 }
 
 func (m *Model) __n0_input_handler(s string) {
+	m.content = s
+	m.__n0.SetText(m.content)
 }
 
 func (m *Model) __n0_change_handler(s string) {
+	m.content = s
+	m.__n0.SetText(m.content)
 }
 
 func (m *Model) __n2_click_handler() {
@@ -103,4 +107,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:6ec1b57c80ee635ebf9adfec16815490
+pass sha256:8da4da639d0531556be6ade51b3f7a7e

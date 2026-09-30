@@ -80,8 +80,8 @@ type Model struct {
 	__slot1         []fyne.CanvasObject
 	__slot1_at      fyne.CanvasObject
 
-	__n6 *fyne.Container
 	__n7 *fyne.Container
+	__n8 *fyne.Container
 	more *widget.Button
 }
 
@@ -105,12 +105,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	for _, it := range m.items {
-		__n0 := container.NewHBox()
-		__n1 := widget.NewLabel("")
-		__n1.SetText(it)
-		__n0.Add(__n1)
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-		m.__slot0 = append(m.__slot0, __n0)
+		__n1 := container.NewHBox()
+		__n2 := widget.NewLabel("")
+		__n2.SetText(it)
+		__n1.Add(__n2)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
+		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
 
@@ -121,27 +121,24 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	for _, it := range m.items {
-		__n2 := container.NewHBox()
-		__n3 := widget.NewCheck("", nil)
-		__n3.SetText("")
-		__n3.SetChecked(true)
-		__n3.OnChanged = func(b bool) {
-		}
-		__n2.Add(__n3)
-		__n4 := container.NewVBox()
-		__n5 := widget.NewLabel("")
-		__n5.SetText(it)
-		__n4.Add(__n5)
-		__n2.Add(__n4)
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
-		m.__slot1 = append(m.__slot1, __n2)
+		__n3 := container.NewHBox()
+		__n4 := new__checkbox_state0Instance(m, true, true)
+		__n4__el := __n4.Root
+		__n3.Add(__n4__el)
+		__n5 := container.NewVBox()
+		__n6 := widget.NewLabel("")
+		__n6.SetText(it)
+		__n5.Add(__n6)
+		__n3.Add(__n5)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
+		m.__slot1 = append(m.__slot1, __n3)
 	}
 }
 
 func (m *Model) more_click_handler() {
 	m.items = append(m.items, "b")
-	m.__renderSlot0(m.__n6)
-	m.__renderSlot1(m.__n7)
+	m.__renderSlot0(m.__n7)
+	m.__renderSlot1(m.__n8)
 }
 
 // moreClick invokes the OnTapped callback on the #more widget; for tests.
@@ -161,18 +158,63 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
-	m.__renderSlot0(m.__n6)
 	m.__n7 = container.NewVBox()
-	m.__renderSlot1(m.__n7)
-	m.__n6.Add(m.__n7)
+	m.__renderSlot0(m.__n7)
+	m.__n8 = container.NewVBox()
+	m.__renderSlot1(m.__n8)
+	m.__n7.Add(m.__n8)
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
-	m.__n6.Add(m.more)
-	content := fyne.CanvasObject(m.__n6)
+	m.__n7.Add(m.more)
+	content := fyne.CanvasObject(m.__n7)
 	return content
 }
+
+// __checkbox_state0Instance is one live instance of the __checkbox_state0 component.
+type __checkbox_state0Instance struct {
+	Root             fyne.CanvasObject
+	__model          *Model
+	__prop___checked bool
+	__prop_disabled  bool
+	checked          bool
+	__root           *fyne.Container
+	__slot0          []fyne.CanvasObject
+	__slot0_at       fyne.CanvasObject
+	__slot1          []fyne.CanvasObject
+	__slot1_at       fyne.CanvasObject
+	__n0             *widget.Check
+}
+
+func new__checkbox_state0Instance(__model *Model, __a___checked bool, __a_disabled bool) *__checkbox_state0Instance {
+	c := &__checkbox_state0Instance{}
+	c.__model = __model
+	c.__prop___checked = __a___checked
+	c.__prop_disabled = __a_disabled
+	c.checked = c.__prop___checked
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__n0 = widget.NewCheck("", nil)
+	c.__n0.SetText("")
+	c.__n0.SetChecked(c.checked)
+	c.__n0.OnChanged = func(b bool) {
+		c.checked = b
+		c.__n0.SetChecked(c.checked)
+	}
+	c.Root = c.__n0
+	return c
+}
+
+func (c *__checkbox_state0Instance) Set__checked(__v bool) {
+	c.__prop___checked = __v
+}
+
+func (c *__checkbox_state0Instance) SetDisabled(__v bool) {
+	c.__prop_disabled = __v
+}
+
+func (c *__checkbox_state0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
@@ -244,8 +286,8 @@ type Model struct {
 	__slot0_at      gtk4rt.Handle
 	__slot1         []gtk4rt.Handle
 	__slot1_at      gtk4rt.Handle
-	__n6            gtk4rt.Handle
 	__n7            gtk4rt.Handle
+	__n8            gtk4rt.Handle
 	more            gtk4rt.Handle
 }
 
@@ -270,14 +312,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	for _, it := range m.items {
-		__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n0, 6)
-		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, it)
-		gtk4rt.BoxAppend(__n0, __n1)
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
-		m.__slot0 = append(m.__slot0, __n0)
+		__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationHorizontal)
+		gtk4rt.BoxSetSpacing(__n1, 6)
+		__n2 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n2, it)
+		gtk4rt.BoxAppend(__n1, __n2)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
 
@@ -288,31 +330,85 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	for _, it := range m.items {
-		__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationHorizontal)
-		gtk4rt.BoxSetSpacing(__n2, 6)
-		__n3 := gtk4rt.CheckButtonNew()
-		gtk4rt.CheckButtonSetLabel(__n3, "")
-		gtk4rt.CheckButtonSetActive(__n3, true)
-		gtk4rt.Connect(__n3, "toggled", func() {
-		})
-		gtk4rt.BoxAppend(__n2, __n3)
-		__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-		gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
-		gtk4rt.BoxSetSpacing(__n4, 6)
-		__n5 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n5, it)
-		gtk4rt.BoxAppend(__n4, __n5)
-		gtk4rt.BoxAppend(__n2, __n4)
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
-		m.__slot1 = append(m.__slot1, __n2)
+		__n3 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n3, gtk4rt.OrientationHorizontal)
+		gtk4rt.BoxSetSpacing(__n3, 6)
+		__n4 := new__checkbox_state0Instance(m, true, true)
+		__n4__el := __n4.Root
+		gtk4rt.BoxAppend(__n3, __n4__el)
+		__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
+		gtk4rt.BoxSetSpacing(__n5, 6)
+		__n6 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n6, it)
+		gtk4rt.BoxAppend(__n5, __n6)
+		gtk4rt.BoxAppend(__n3, __n5)
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+		m.__slot1 = append(m.__slot1, __n3)
 	}
 }
 
 func (m *Model) more_clicked_handler() {
 	m.items = append(m.items, "b")
-	m.__renderSlot0(m.__n6)
-	m.__renderSlot1(m.__n7)
+	m.__renderSlot0(m.__n7)
+	m.__renderSlot1(m.__n8)
+}
+
+// __checkbox_state0Instance is one live instance of the __checkbox_state0 component.
+type __checkbox_state0Instance struct {
+	Root             gtk4rt.Handle
+	__model          *Model
+	__prop___checked bool
+	__prop_disabled  bool
+	checked          bool
+	__root           gtk4rt.Handle
+	__slot0          []gtk4rt.Handle
+	__slot0_at       gtk4rt.Handle
+	__slot1          []gtk4rt.Handle
+	__slot1_at       gtk4rt.Handle
+	__n0             gtk4rt.Handle
+}
+
+func new__checkbox_state0Instance(__model *Model, __a___checked bool, __a_disabled bool) *__checkbox_state0Instance {
+	c := &__checkbox_state0Instance{}
+	c.__model = __model
+	c.__prop___checked = __a___checked
+	c.__prop_disabled = __a_disabled
+	c.checked = c.__prop___checked
+	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__slot0 = nil
+	c.__slot1 = nil
+	c.__n0 = gtk4rt.CheckButtonNew()
+	gtk4rt.CheckButtonSetLabel(c.__n0, "")
+	gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+	gtk4rt.Connect(c.__n0, "toggled", func() {
+		c.checked = gtk4rt.CheckButtonGetActive(c.__n0)
+		gtk4rt.CheckButtonSetActive(c.__n0, c.checked)
+	})
+	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
+	return c
+}
+
+func (c *__checkbox_state0Instance) Set__checked(__v bool) {
+	c.__prop___checked = __v
+}
+
+func (c *__checkbox_state0Instance) SetDisabled(__v bool) {
+	c.__prop_disabled = __v
+}
+
+func (c *__checkbox_state0Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
 }
 
 func (m *Model) Items() []string {
@@ -328,20 +424,20 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
-	m.__renderSlot0(m.__n6)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n7, 6)
-	m.__renderSlot1(m.__n7)
-	gtk4rt.BoxAppend(m.__n6, m.__n7)
+	m.__renderSlot0(m.__n7)
+	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	m.__renderSlot1(m.__n8)
+	gtk4rt.BoxAppend(m.__n7, m.__n8)
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
-	gtk4rt.BoxAppend(m.__n6, m.more)
-	gtk4rt.BoxAppend(m.__root, m.__n6)
+	gtk4rt.BoxAppend(m.__n7, m.more)
+	gtk4rt.BoxAppend(m.__root, m.__n7)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -358,6 +454,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:da6dfa4a9b1ebd12fbf8966b77210fbb
+pass sha256:61c04627ab8f07dcda96e7630a8c7980
 -- run/go/gtk4 --
-pass sha256:678eb7cad03cadebba3b2b6d656a95c0
+pass sha256:828f5c5e7947e2a57fdf09c287a293d3

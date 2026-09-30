@@ -357,7 +357,7 @@ component Tour ui.node {
                 label="Dark mode",
                 @change { darkMode!! },
             )
-            ui.toggle(checked=toggleOn, label="Notifications")
+            ui.toggle(:checked=toggleOn, label="Notifications")
             ui.radio(
                 direction="horizontal",
                 options=["small", "medium", "large"],

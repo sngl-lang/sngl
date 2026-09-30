@@ -283,6 +283,7 @@ body { font-family: system-ui, sans-serif; }
       __prop_label = __v;
     }
     let b = document.createElement("button");
+    b.setAttribute("data-sngl-id", "b");
     b.disabled = false;
     b.addEventListener("click", () => {
       hits = hits + 1;
@@ -359,4 +360,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1f99b78ad634cc5d04afcb901f48d42e
 -- run/none/html --
-pass sha256:65f259f3b346f5976b02e3d9e7de9f19
+pass sha256:2374528bc1df20d7df183008a66b9864

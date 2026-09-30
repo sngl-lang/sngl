@@ -56,6 +56,10 @@ struct Arg {
 struct Setter {
     prop string
     call string
+    // current is the Go field holding what `call` writes, for a widget whose
+    // setter fires its own change callback even for the value it holds:
+    // the write is skipped then.
+    current string
 }
 
 // The Go callback field one declared event is assigned to.
@@ -292,7 +296,7 @@ const component Select(
             args = [Arg{raw="nil"}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
             setters = [
-                Setter{prop="text", call="SetSelected"},
+                Setter{prop="text", call="SetSelected", current="Selected"},
                 Setter{prop="options", call="SetOptions"},
             ],
             handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],

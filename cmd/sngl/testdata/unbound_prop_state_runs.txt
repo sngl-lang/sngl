@@ -1,0 +1,175 @@
+# A two-way prop the caller leaves unbound is state of the instance, run on
+# every target a test can execute on.
+#
+# testdata/unbound_prop_state.txtar is the code; this is the answer. The
+# checkbox nobody binds keeps what the host reports, a read of `box.checked`
+# reads that cell, and a one-way value is where the cell starts rather than a
+# value the widget is held to. A compiled target's test reads a component's
+# state and not a widget's, so the handler writes what the read answered into
+# `seen`; the handler runs after the host's report has written the cell, as a
+# binding's write-back runs before its handler.
+#
+# The flips alternate from the state each control is in, because bubbletea's
+# key press and android's click flip the control whatever the payload says.
+#
+# refs.sngl reads the cells off the handles, which only the interpreter's test
+# surface can do: through the node, in the text beside it, and per row of a
+# loop, each row's cell its own.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=none refs.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+[!gtk4] stop 'gtk4 needs its development libraries to build'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component main node {
+    var seen = "none"
+    vbox {
+        checkbox #box(label="alone", @change { seen = "box {box.checked}" })
+        checkbox #start(checked=true, label="starts on", @change { seen = "start {start.checked}" })
+    }
+}
+
+func testUnboundKeepsWhatTheHostReports(t Test, c main) {
+    c.box.change({checked=true})
+    t.assert(c.seen == "box true")
+    c.box.change({checked=false})
+    t.assert(c.seen == "box false")
+}
+
+func testOneWayValueIsWhereItStarts(t Test, c main) {
+    c.start.change({checked=false})
+    t.assert(c.seen == "start false")
+    c.start.change({checked=true})
+    t.assert(c.seen == "start true")
+}
+
+window {
+    main
+}
+-- refs.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component main node {
+    var items = ["a", "b"]
+    vbox {
+        checkbox #box(label="alone")
+        text #shown(value=box.checked ? "on" : "off")
+        checkbox #start(checked=true, label="starts on")
+        for var it = items {
+            checkbox #row(label=it)
+        }
+    }
+}
+
+func testReadOffTheHandle(t Test, c main) {
+    t.assert(c.box.checked == false)
+    t.assert(c.shown.value == "off")
+    c.box.change({checked=true})
+    t.assert(c.box.checked == true)
+    t.assert(c.shown.value == "on")
+    t.assert(c.start.checked == true)
+    c.start.change({checked=false})
+    t.assert(c.start.checked == false)
+}
+
+func testEachRowKeepsItsOwn(t Test, c main) {
+    c.row[1].change({checked=true})
+    t.assert(c.row[0].checked == false)
+    t.assert(c.row[1].checked == true)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:7fb1586eefd8cdbfff09ae1c5b236aa2
+{
+  "results": [
+    {
+      "Desc": "OneWayValueIsWhereItStarts",
+      "Passed": true
+    },
+    {
+      "Desc": "UnboundKeepsWhatTheHostReports",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:3d22af4c9be409d5404855607775d2d6
+{
+  "results": [
+    {
+      "Desc": "OneWayValueIsWhereItStarts",
+      "Passed": true
+    },
+    {
+      "Desc": "UnboundKeepsWhatTheHostReports",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:5509c7f5eb4d46a2ca19268c705ab3f0
+{
+  "results": [
+    {
+      "Desc": "OneWayValueIsWhereItStarts",
+      "Passed": true
+    },
+    {
+      "Desc": "UnboundKeepsWhatTheHostReports",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:c0eb339335dd1f799aa7700f233fe98d
+{
+  "results": [
+    {
+      "Desc": "OneWayValueIsWhereItStarts",
+      "Passed": true
+    },
+    {
+      "Desc": "UnboundKeepsWhatTheHostReports",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:cc77397268ef4a17c9ccc62c6d51f262
+{
+  "results": [
+    {
+      "Desc": "OneWayValueIsWhereItStarts",
+      "Passed": true
+    },
+    {
+      "Desc": "UnboundKeepsWhatTheHostReports",
+      "Passed": true
+    }
+  ]
+}

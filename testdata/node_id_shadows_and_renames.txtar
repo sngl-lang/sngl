@@ -92,6 +92,7 @@ body { font-family: system-ui, sans-serif; }
     __slot0 = [];
     if (state.show) {
       let label__1 = document.createElement("span");
+      label__1.setAttribute("data-sngl-id", "label__1");
       label__1.textContent = "node";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
@@ -104,6 +105,7 @@ body { font-family: system-ui, sans-serif; }
       }
       __slot0.push(label__1);
       let tag__1 = document.createElement("span");
+      tag__1.setAttribute("data-sngl-id", "tag__1");
       tag__1.textContent = "inner";
       let __place0_i_ref1 = null;
       if (__place0_i < __place0_prev.length) {
@@ -145,4 +147,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:70df7d0de496be593be8a273242b6eaa
+pass sha256:034674c8551d88e81d6b5fdc4f425d51

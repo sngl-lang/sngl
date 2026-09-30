@@ -3393,6 +3393,58 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	for _, h := range g.handlers {
 		emit(h, h.snglID)
 	}
+	// An element built at run time -- inside a component instance or a
+	// render slot -- does not exist when the page starts, so its invoker
+	// finds it when it is called, by the mark OnCreateNode gives it.
+	for _, h := range g.runtimeHandlers() {
+		name := h.id + capitalizeFirst(h.event)
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		lookup := fmt.Sprintf("document.querySelector('[data-sngl-id=%q]')", h.id)
+		if h.event == "click" {
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, lookup)
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (p) => { const el = %s; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, lookup, h.event)
+	}
+}
+
+// runtimeHandler is one listener the lowered IR attaches to an element a
+// program named, where the element is built by code rather than markup.
+type runtimeHandler struct{ id, event string }
+
+// runtimeHandlers is every such listener, in the order the package holds
+// them.
+func (g *htmlGen) runtimeHandlers() []runtimeHandler {
+	if g.pkg == nil {
+		return nil
+	}
+	var out []runtimeHandler
+	_ = ir.Walk(g.pkg, func(n ir.Node) error {
+		cs, ok := n.(*ir.CallStmt)
+		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != ir.NodeOpAttachHandler || len(cs.Call.Args) < 2 {
+			return nil
+		}
+		id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+		if !ok || !isProgramID(id.Name) {
+			return nil
+		}
+		lit, ok := cs.Call.Args[1].Value.(*ir.Literal)
+		if !ok {
+			return nil
+		}
+		var decl *ir.Component
+		if node := g.idToNode[id.Name]; node != nil {
+			decl = node.Component
+		}
+		if ev := domEventName(decl, lit.Value); ev != "" {
+			out = append(out, runtimeHandler{id: id.Name, event: ev})
+		}
+		return nil
+	})
+	return out
 }
 
 // capitalizeFirst upper-cases the first letter, matching golang.ExportName on

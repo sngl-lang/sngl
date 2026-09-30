@@ -87,12 +87,16 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("medium") }
     var chosen__inst0 by remember { mutableStateOf("") }
     val more__inst0 = remember { mutableStateListOf("a", "b") }
+    var value__inst1 by remember { mutableStateOf(pick__inst0) }
+    var value__inst2 by remember { mutableStateOf(pick__inst0) }
+    var value__inst3 by remember { mutableStateOf(pick__inst0) }
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Row(modifier = Modifier.padding(4.dp)) {
             for (opt in listOf("small", "medium", "large")) {
                 Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {
+                    RadioButton(selected = (value__inst1 == opt), onClick = {
+                        value__inst1 = opt
                         chosen__inst0 = opt
                     })
                     Text(text = opt, modifier = Modifier)
@@ -102,7 +106,9 @@ fun MainScreen() {
         Column(modifier = Modifier.padding(5.dp)) {
             for (opt in listOf("one", "two")) {
                 Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {})
+                    RadioButton(selected = (value__inst2 == opt), onClick = {
+                        value__inst2 = opt
+                    })
                     Text(text = opt, modifier = Modifier)
                 }
             }
@@ -110,7 +116,9 @@ fun MainScreen() {
         Column(modifier = Modifier) {
             for (opt in more__inst0) {
                 Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {})
+                    RadioButton(selected = (value__inst3 == opt), onClick = {
+                        value__inst3 = opt
+                    })
                     Text(text = opt, modifier = Modifier)
                 }
             }
@@ -118,4 +126,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:f884ff5d601d3f08c6aece2020d27eef
+pass sha256:1741d5264fb700cf52629d374012d2f6

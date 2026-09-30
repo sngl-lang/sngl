@@ -4748,7 +4748,22 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
-	return c.extractBindings(comp, props, handlers)
+	props, handlers, bindings := c.extractBindings(comp, props, handlers)
+	c.refuseUnboundConstProps(args.Pos, comp, bindings)
+	return props, handlers, bindings
+}
+
+// refuseUnboundConstProps holds a const component's two-way props to a
+// binding. One left unbound is state of the instance (ir.UnboundProps), and a
+// const component keeps none: its render depends only on its props. A
+// one-way value is no answer, since all it says is where the cell starts.
+func (c *checker) refuseUnboundConstProps(pos ast.Pos, comp *ir.Component, bindings []ir.PropBinding) {
+	if comp == nil || !comp.Const {
+		return
+	}
+	for _, p := range ir.UnboundProps(comp, bindings) {
+		c.error(pos, "%s is const, so it keeps no state of its own: bind :%s", comp.DisplayName(), p.Name)
+	}
 }
 
 // checkComponentCallArgs validates and type-checks a component call (text(value="hi"))

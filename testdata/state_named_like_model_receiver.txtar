@@ -370,9 +370,10 @@ type Model struct {
 	__slot0_at   fyne.CanvasObject
 	__inst0_live []*CounterInstance
 
-	__n3 *fyne.Container
-	__n1 *widget.Label
-	bump *widget.Button
+	__n3        *fyne.Container
+	__n1        *widget.Label
+	bump        *widget.Button
+	__named_inc *widget.Button
 }
 
 // New creates a Model with default values.
@@ -431,6 +432,13 @@ func (m *Model) bump_click_handler() {
 func (m *Model) bumpClick() {
 	if m.bump.OnTapped != nil {
 		m.bump.OnTapped()
+	}
+}
+
+// incClick invokes the OnTapped callback on the #inc widget; for tests.
+func (m *Model) incClick() {
+	if m.__named_inc.OnTapped != nil {
+		m.__named_inc.OnTapped()
 	}
 }
 
@@ -501,6 +509,7 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	}
 	__n4.Add(c.inc)
 	c.Root = __n4
+	c.__model.__named_inc = c.inc
 	return c
 }
 
@@ -575,6 +584,7 @@ type Model struct {
 	__n3         gtk4rt.Handle
 	__n1         gtk4rt.Handle
 	bump         gtk4rt.Handle
+	__named_inc  gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -668,6 +678,7 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	})
 	gtk4rt.BoxAppend(__n4, c.inc)
 	c.Root = __n4
+	c.__model.__named_inc = c.inc
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -734,9 +745,14 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
+
+// incClick fires the "clicked" signal on the #inc widget; for tests.
+func (m *Model) incClick() {
+	gtk4rt.Emit(m.__named_inc, "clicked")
+}
 -- run/go/bubbletea --
 pass sha256:884f5f4e4d90b472ca618abd6b9bef81
 -- run/go/fyne --
-pass sha256:b6e234774d185739c12f385c5ec9788d
+pass sha256:80bd62ac13560f7b35e3718d8218479f
 -- run/go/gtk4 --
-pass sha256:1f2e686f23b52228f767194e136356eb
+pass sha256:5a8798128d0a2748992c82c4c2c13dc6

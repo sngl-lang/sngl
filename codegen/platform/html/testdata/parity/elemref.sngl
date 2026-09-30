@@ -7,7 +7,7 @@ window {
     var name string = ""
 
     vbox {
-        input(placeholder="Type here", value=name, @input(e) { name = e.value })
+        input(placeholder="Type here", :value=name)
         text(value="Hello, " + name + "!")
         button(text="Clear", @click { name = "" })
     }

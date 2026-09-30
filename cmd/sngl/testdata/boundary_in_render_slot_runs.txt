@@ -205,7 +205,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/inInstance/1 --
-sha256:20017c9c590ae55c84391112f7b5f75e
+sha256:d95aff9e157f804820d5d8374b74a96e
 {
   "results": [
     {
@@ -218,7 +218,7 @@ sha256:20017c9c590ae55c84391112f7b5f75e
   }
 }
 -- testrun/html/none/app.sngl/inSlot/1 --
-sha256:355e76cc8da8d27189e8db72364f725e
+sha256:25fa0060e20ab00ed13a92ebdc14c91d
 {
   "results": [
     {
@@ -231,7 +231,7 @@ sha256:355e76cc8da8d27189e8db72364f725e
   }
 }
 -- testrun/html/none/app.sngl/underIf/1 --
-sha256:ad4c3f41ae667954a6d864477f5057c9
+sha256:63a6cdbec4437ff7b3347f8b716aa6fe
 {
   "results": [
     {
@@ -241,7 +241,7 @@ sha256:ad4c3f41ae667954a6d864477f5057c9
   ]
 }
 -- testrun/html/none/direct.sngl/main/1 --
-sha256:26c821b80e43ef5155f8a5b01bbaa579
+sha256:3f665bc7425576c251e01c5ae5b833fa
 {
   "results": [
     {
@@ -254,7 +254,7 @@ sha256:26c821b80e43ef5155f8a5b01bbaa579
   }
 }
 -- testrun/html/none/failed.sngl/main/1 --
-sha256:99d1b1d6c6091c2c26cdef4e396a16ff
+sha256:8352dc11fbba02474ba8128817b3e167
 {
   "results": [
     {

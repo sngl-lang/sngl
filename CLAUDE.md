@@ -526,7 +526,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Eleven run always and are not capability-gated because they answer for every target: `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) and `ErrorCatch` (the catch block a handler body resolved to a boundary or window becomes, so the raise ends the handler). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Twelve run always and are not capability-gated because they answer for every target: `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) and `ErrorCatch` (the catch block a handler body resolved to a boundary or window becomes, so the raise ends the handler). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -2028,6 +2028,75 @@ a slot insertion, a boundary, a canvas or a window, or declares a handle
 something reads. bubbletea and android re-render the view anyway and are
 untouched (`testdata/slot_body_updates_in_place.txtar`,
 `cmd/sngl/testdata/slot_body_updates_in_place_runs.txt`).
+
+**A two-way prop the caller leaves unbound is state of the instance**
+(`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
+or its default, or its type's zero, and that the host's reports write, as if
+the component had declared a `var` for it. A one-way value on a two-way prop
+is *only* where the cell starts (Jonathan's call): after
+`checkbox(checked=done)`, a later write to `done` does not reach the box, and
+`:checked=done` is the spelling for one that should. So a checkbox nobody binds
+keeps what it is clicked to, which before this reported its clicks into nothing.
+
+`passImplicitState` (`internal/lower/implicit_state.go`, always on) says it in
+the inliner's vocabulary: it wraps each such node in a component written for
+that call site, `__checkbox_state0`, whose `var` is the cell and whose body is
+the node bound to it with `:checked=`. The inliner then does what it does with
+any component with a var -- splices it once where it stands, builds it at run
+time in a reactive position, keeps a cell per copy under a `for` on bubbletea
+-- and no backend is told. One wrapper per call site rather than per
+declaration, because the node's `#id` moves inside with it: the handle is what
+a test drives the widget through. A read of the prop off the `#id`
+(`box.checked`) names the cell, and since it sits outside the wrapper the
+inliner repoints it at the one copy it spliced (`repointCellReads`); a read of
+one built at run time, or rendered more than once, cannot say which copy it
+means and is refused with a position, on the terms `uniqueNodeIDs` holds a
+handle to. That is also why `box.checked` beside an input under a reactive `if`
+is refused: the wrapper there is an instance of its own. Bare children stay at
+the call site and reach the node through the wrapper's own rest slot; two
+shapes are refused, neither reachable from `sngl:ui`, whose components carry
+one two-way prop and take no content: a call site binding one two-way prop and
+not another, and one populating a named slot.
+
+A `const` component keeps no state, so a two-way prop of one left unbound is a
+checker error at the call site (`refuseUnboundConstProps`); a one-way value is
+no answer, since all it says is where the cell starts. A two-way prop cannot
+itself be `const` (`checkConstProp`), so the callee is the only question. The
+interpreter keeps the cell natively, on the prop's symbol in the instance's
+cached env: `bindProps` binds it on the first mount only, a node's prop shows
+the cell, and `writeCells` writes it from the payload before the handler runs.
+The interpreter also answers a `#id` read in a view now (`bindHandle`), which it
+never did for any prop. `testdata/unbound_prop_state.txtar`,
+`cmd/sngl/testdata/unbound_prop_state_runs.txt` and
+`testdata/error_unbound_prop_const.sngl` are the three halves.
+
+**A test reaches a `#id` inside a component built at run time**, which the
+typed-text half of `slot_body_updates_in_place_runs.txt` needs: on html an
+element a program named and built by code carries `data-sngl-id` and the
+invoker looks it up when called (`runtimeHandlers`); on fyne and gtk4 the
+instance's ctor hands the widget to a Model field `__named_<id>` and the
+invoker goes through that, so it reaches whichever instance built it last. A
+handler emitted as a closure records the component event it serves as well as
+a promoted one (`LoweredFromComponentEvent`), or a gtk4 invoker was named for
+the GTK signal. html's snapshot writes each control's text and checkedness
+onto a copy of the document, since `outerHTML` carries neither.
+
+Giving every unbound input a write-back put a binding where none had been,
+and five gaps it had hidden came with it. fyne's `Select.SetSelected` fires
+`OnChanged` for the value it already holds, so a re-sync from inside the
+callback recursed; a `Setter` names the Go field holding the current value
+(`current`) and the write is skipped when it would change nothing. A handler
+`passDeclarative` promoted from a branch the post-lowering fold then decided
+away -- `listItem`'s checkbox under `if task == Task.none`, whose operands meet
+as constants only after the splice -- named a widget nobody built; the shake
+drops a promoted handler nothing names (`dropDetachedHandlers`), from every
+component's funcs as well as the package's, since a root component keeps its
+own. A handler lifted out of a slot body relays its event whole, which gtk4's
+parameterless trampoline answers by building the one-field payload from the
+widget (`codegen.SubstituteEventPayload`). The shake roots the payload types
+an instance's events and a closure's parameters name. And the test invokers:
+fyne's commit sets the entry's text quietly first, as gtk4's does, and
+bubbletea's writes the binding back before the handler, as Update does.
 
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea

@@ -266,6 +266,7 @@ body { font-family: system-ui, sans-serif; }
       __slot0.push(__n1);
     } else {
       let go = document.createElement("button");
+      go.setAttribute("data-sngl-id", "go");
       go.disabled = false;
       go.addEventListener("click", () => {
         try {
@@ -349,4 +350,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:55037c0f721e69f21c52ce1763250cf7
 -- run/none/html --
-pass sha256:8176b93da1e8e5fc4ea7cf2caab3cdea
+pass sha256:3a6b72e022e132cb800fc0a997fc921a

@@ -29,6 +29,11 @@ body { font-family: system-ui, sans-serif; }
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
+  __n0.addEventListener("change", function(e) {
+    state.name = e.target.value;
+    __n0.value = state.name;
+    __n1.textContent = "Hello, " + state.name + "!";
+  });
   $1.addEventListener("click", function() {
     state.name = "";
     __n0.value = state.name;

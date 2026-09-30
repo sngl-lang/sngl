@@ -80,6 +80,12 @@ type fyneSpec struct {
 	// receiver: "SetText" emits `w.SetText(v)`. A prop absent here has no
 	// Fyne surface to reach, so the assignment is dropped.
 	Setters map[string]string
+	// Currents maps a prop to the Go field holding the value its setter
+	// writes, for a widget whose setter fires its own change callback even
+	// when the value is the one it holds: the assignment is skipped then, or
+	// a binding's write-back re-syncing the widget from inside that callback
+	// calls it again until the stack runs out (Select.SetSelected).
+	Currents map[string]string
 	// Handlers maps a declared event to its callback field.
 	Handlers map[string]fyneHandler
 	// CtorProps holds the expression the instantiation gave each prop an Arg
@@ -210,6 +216,7 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	lit := specRecord(tag, specPropName, raw)
 	sp := &fyneSpec{
 		Setters:   map[string]string{},
+		Currents:  map[string]string{},
 		Handlers:  map[string]fyneHandler{},
 		CtorProps: props,
 	}
@@ -240,6 +247,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				call := specString(tag, "Setter.call", structField(sl, "call"))
 				if prop != "" && call != "" {
 					sp.Setters[prop] = call
+				}
+				if cur := specString(tag, "Setter.current", structField(sl, "current")); prop != "" && cur != "" {
+					sp.Currents[prop] = cur
 				}
 			}
 		case "handlers":

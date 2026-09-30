@@ -845,6 +845,17 @@ ui.window {
 
 When the child assigns `count += 1`, the parent variable `steps` automatically updates. The binding works transparently across component boundaries.
 
+A two-way prop the caller leaves unbound is state of the instance, as if the component had declared a `var` for it. An unbound checkbox keeps what it is clicked to. A one-way value is only where that state starts: after `ui.checkbox(checked=done)`, a later write to `done` does not reach the box, so bind it with `:checked=done` when it should. Read the state off the node's `#id`:
+
+<!-- SNGL-component -->
+
+```sngl
+ui.checkbox #remember(label="Remember me")
+ui.text(value=remember.checked ? "remembered" : "forgotten")
+```
+
+A `const` component keeps no state of its own, so a two-way prop of one must be bound.
+
 ### Inline styles
 
 Apply styles directly on any node:

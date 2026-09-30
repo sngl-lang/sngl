@@ -699,12 +699,15 @@ window visible, unless it started with none.
 
 ### 17. An unbound two-way prop is state of its own
 
-*Settled, not built.* A `:prop` a caller leaves unbound today has no cell: a
-`ui.checkbox` nobody binds reports clicks into nothing, and an unbound
+*Built* (Phase C1 step 2). A `:prop` a caller left unbound had no cell: a
+`ui.checkbox` nobody binds reported clicks into nothing, and an unbound
 `:visible` could not be closed without the tree and the host disagreeing.
 Instead **an unbound two-way prop is implicit state of the instance**,
 initialised from the prop's default and written by the host's reports, as
-if the component declared a `var` for it. Three consequences:
+if the component declared a `var` for it. **A one-way value on a two-way prop
+leaves it unbound**: `checkbox(checked=done)` is a cell that starts at `done`,
+and a later write to `done` does not reach the box -- `:checked=done` is the
+spelling for one that should. Three consequences:
 
 - **It makes the component impure**: an instance with implicit state keeps
   state, so the inliner treats it as it treats a component with a `var`
@@ -717,6 +720,15 @@ if the component declared a `var` for it. Three consequences:
 
 This fixes the unbound inputs as a class rather than per widget: every
 `:prop` in `sngl:ui` gets a cell whether or not the caller supplies one.
+
+As built, `passImplicitState` wraps each such node in a component written for
+its call site whose `var` is the cell, so the inliner's existing handling of a
+component with state is the whole implementation; the interpreter keeps the
+cell on the prop's symbol in the instance's env. A `#ref` read of the cell
+from outside a component built at run time -- a checkbox under a reactive
+`if`, read beside it -- is refused with a position, since the read cannot say
+which instance it means; so is a call site binding one two-way prop and not
+another, and one populating a named slot, which no `sngl:ui` component reaches.
 
 ## Phases
 
@@ -778,9 +790,15 @@ Decisions 16 and 17, in order, each landing with its fixtures:
    surface yet reads a widget's identity, so the script shows the patch
    landing and the golden shows the slot not re-firing; an unbound input
    inside the panel (step 2) is the first thing a test could see survive.
-2. **An unbound two-way prop is state** (decision 17): implicit per-instance
-   state, impurity, the `const` refusal, the `#ref` read -- a checkbox left
-   unbound as the first fixture.
+2. **An unbound two-way prop is state** (decision 17) -- *done.* Implicit
+   per-instance state, impurity, the `const` refusal and the `#ref` read
+   (`passImplicitState`, `refuseUnboundConstProps`).
+   `testdata/unbound_prop_state.txtar`, its `_runs.txt`, and
+   `testdata/error_unbound_prop_const.sngl`. The call sites whose one-way value
+   the program writes elsewhere were moved to `:prop=`. A test now reaches a
+   `#id` inside a component built at run time on html, fyne and gtk4, so the
+   slot script types into an unbound input in the panel and snapshots it
+   after a tick: the text is there only if the panel was patched.
 3. **The package body's parent is the application**: root nodes are
    `AppendChild(app, node)`; each platform's translator answers it. gtk4 and
    fyne declare `Toplevel`, override `ui.window`, and implement `:visible` and

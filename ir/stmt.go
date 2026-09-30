@@ -167,6 +167,36 @@ type PropBinding struct {
 	Target   Expr // must satisfy isAssignableTarget in checker
 }
 
+// UnboundProps is each two-way prop of comp that bindings leave unbound.
+//
+// Such a prop is state of the instance: a cell that starts from the value the
+// call site gave the prop -- a one-way value says where it starts, not what it
+// holds -- or from the prop's default, and that the host's reports write, as
+// if comp had declared a `var` for it. So a checkbox nobody binds keeps what
+// it is clicked to, and a read of `box.checked` reads that cell.
+func UnboundProps(comp *Component, bindings []PropBinding) []*Prop {
+	if comp == nil {
+		return nil
+	}
+	var out []*Prop
+	for _, p := range comp.Props {
+		if !p.Bidirectional || p.Wildcard != "" {
+			continue
+		}
+		bound := false
+		for _, b := range bindings {
+			if b.PropName == p.Name {
+				bound = true
+				break
+			}
+		}
+		if !bound {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func (*NodeInst) stmtNode() {}
 
 // CallStmt is a void function call — definitively not a component.

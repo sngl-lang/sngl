@@ -39,16 +39,22 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "Alice" };
+  var state = { name__inst0: "Alice", value__inst1: null };
+  state.value__inst1 = state.name__inst0;
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
+    state.value__inst1 = e.target.value;
+    __n0.value = state.value__inst1;
     state.name__inst0 = e.target.value;
-    __n0.value = state.name__inst0;
     __n1.textContent = state.name__inst0;
   });
+  __n0.addEventListener("change", function(e) {
+    state.value__inst1 = e.target.value;
+    __n0.value = state.value__inst1;
+  });
   function __sngl_init() {
-    __n0.value = state.name__inst0;
+    __n0.value = state.value__inst1;
     __n1.textContent = state.name__inst0;
   }
   __sngl_init();
@@ -56,4 +62,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d94cf945adf615f63da10fd415ad64ed
+pass sha256:9cca5713714db7f8cc4a73f5251de12e

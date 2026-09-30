@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -159,11 +160,32 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.creates = map[string]*ir.Call{}
 	}
 	t.creates[id] = createCall
-	return []ir.Stmt{&ir.LocalVar{
+	out := []ir.Stmt{&ir.LocalVar{
 		Name: id,
 		Type: ir.TypDyn,
 		Init: createCall,
 	}}
+	// An element a program named, built at run time -- by a factory or a
+	// slot renderer -- is marked the way the page's markup marks one, so a
+	// test's invoker can find it when it is called (emitEventInvokers).
+	if isProgramID(id) {
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: id},
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Value: "data-sngl-id"}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: id}},
+			},
+		}})
+	}
+	return out
+}
+
+// isProgramID reports whether an element's name is a `#id` the program wrote
+// rather than one the lowering or the page allocated.
+func isProgramID(id string) bool {
+	return id != "" && !strings.HasPrefix(id, "__") && !strings.HasPrefix(id, "$")
 }
 
 // OnCreateComponent preserves the LocalVar as-is: on the WalkLowered (JS) path

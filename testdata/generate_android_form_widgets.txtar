@@ -87,24 +87,31 @@ fun MainScreen() {
     var fruit by remember { mutableStateOf("") }
     var plain by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf<String?>(null) }
+    var value__inst0 by remember { mutableStateOf(name) }
+    var value__inst1 by remember { mutableStateOf(plain) }
+    var value__inst2 by remember { mutableStateOf(fruit) }
 
     Column {
-        OutlinedTextField(value = name, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+        OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
             val e = SnglInputEvent(newValue)
+            value__inst0 = e.value
             name = e.value
         }, label = {
             Text(text = "Name", modifier = Modifier)
         })
-        OutlinedTextField(value = plain, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+        OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+            val e = SnglInputEvent(newValue)
+            value__inst1 = e.value
+        })
         var expanded1 by remember { mutableStateOf(false) }
         Box(modifier = Modifier) {
             OutlinedButton(onClick = { expanded1 = true }) {
-                Text(if (fruit.isNotEmpty()) fruit else "Pick")
+                Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
             }
             DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
                 listOf("Apple", "Banana").forEach { opt ->
                     DropdownMenuItem(text = { Text(opt) }, onClick = {
-                        fruit = opt
+                        value__inst2 = opt
                         expanded1 = false
                     })
                 }
@@ -120,4 +127,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:522d7168e0a47260c2c8163f772444b7
+pass sha256:b55d162b4e02cdbd99f253c32c5f14aa

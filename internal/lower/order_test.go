@@ -73,6 +73,8 @@ var alwaysOn = []string{
 	"ForeignPrimitive",
 	"HoistBodyTypes",
 	"HoistState",
+	// An unbound two-way prop is state of the instance on every target.
+	"ImplicitState",
 	"IndexedIter",
 	"InlinePure",
 	"IterKind",

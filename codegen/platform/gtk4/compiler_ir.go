@@ -455,7 +455,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
-			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All())
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All(),
+				func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) },
+				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) })
 			continue
 		}
 		if createTargets[cc.Component] {
