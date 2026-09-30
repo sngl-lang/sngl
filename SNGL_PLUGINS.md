@@ -634,6 +634,90 @@ Settled:
   one `nav.page` per file in a stack, where today the layout has to *be* a
   window per page.
 
+### 16. A window is a component; the package body is the application's view
+
+*Settled, not built.* The compiler knows a window by `#[builtin("window")]`
+and answers it in about 130 places (`IsWindowNode`, `AllWindows`,
+`pkg.Windows`), and Phase C added 46 more. None of it is needed. What a window
+needs, each has a general answer:
+
+| a window needs                                 | general answer                                           |
+|------------------------------------------------|----------------------------------------------------------|
+| to stand where the root family goes            | the `root` family, already                               |
+| a host object that lives a while               | the node ops: `CreateNode`, `AppendChild`, `RemoveChild` |
+| its children in a container it owns            | the platform primitive's own codegen (below)             |
+| to survive a change inside it under an `if`    | a slot body that patches in place (below)                |
+| `@close`, `visible`                            | an event and a prop of the platform's primitive          |
+| `@error` as the outermost boundary             | a `boundary` in the platform override's body             |
+| `href`, `params`, `entry`, a document per page | `nav.page` (decision 15)                                 |
+
+**The package body is a view whose parent is the application.** Every node at
+the root of a file is `AppendChild(app, node)`, and what attaching to the
+application means is the platform's translator's answer: a toplevel presented
+on gtk4 and fyne, a document or a `<dialog>` on html, a bar's output for a
+generated family. This is the answer the language already gives for every
+other node, and it is why a code-mode host may stand at the root at all. So
+`ui.window` becomes an ordinary component of `sngl:ui`, and each platform
+implements it with a primitive it declares:
+
+```sngl
+// codegen/platform/gtk4/gtk4.sngl
+#[intrinsic("gtk4:Toplevel")]
+component Toplevel(title string, :visible bool, @close(), content ...component ui.node) root
+
+component ui.window[platform] {
+    Toplevel(title=title, :visible=visible, @close { close() }) { content() }
+}
+```
+
+A window under `if details` is then a node in a render slot like any other:
+created with it, destroyed with it -- widgets, effects and all. Nothing about
+it survives the condition turning false, which is where Phase C's runtime was
+wrong: it kept the content tree alive across an unmount. Hiding without
+destroying is `visible`.
+
+*Later, per platform:* a mark on a primitive saying its children begin a
+render tree of their own (`#[gen.renders(surface)]` beside the existing
+`identity`). A platform that wants the compiler to know uses it; none has to.
+
+**A slot body patches in place.** A render slot rebuilds its whole body when
+anything its body reads changes, so a window under `if details` whose label
+reads `uptime` would be destroyed and recreated every tick -- and so is any
+large subtree under an `if` today, which is the general form of the problem
+Phase C worked around with a window-only lowering. The slot re-renders when
+what its *structure* reads changes (the `if`'s condition, the `for`'s
+iterable); a prop inside the body is an updater like one outside it, applied
+to the nodes the live render holds.
+
+**`visible` is a two-way prop, and `open`/`close` assign it.** A window
+manager's close is a change of visibility the host reports, the way a
+checkbox reports a click: `ui.window(:visible=shown)` writes `shown = false`
+back, and `@close` fires as well. `details.open()` and `details.close()` stay
+as the imperative spelling and write the same state (decision 17 says where
+that state is when nothing is bound). The program ends when a close leaves no
+window visible, unless it started with none.
+
+### 17. An unbound two-way prop is state of its own
+
+*Settled, not built.* A `:prop` a caller leaves unbound today has no cell: a
+`ui.checkbox` nobody binds reports clicks into nothing, and an unbound
+`:visible` could not be closed without the tree and the host disagreeing.
+Instead **an unbound two-way prop is implicit state of the instance**,
+initialised from the prop's default and written by the host's reports, as
+if the component declared a `var` for it. Three consequences:
+
+- **It makes the component impure**: an instance with implicit state keeps
+  state, so the inliner treats it as it treats a component with a `var`
+  (per-instance, a record, `remember`).
+- **`const` requires the binding.** A `const` component or a `const` prop
+  cannot keep state of its own, so leaving a `:prop` of one unbound is an
+  error at the call site rather than implicit state.
+- **The state is reachable through a `#ref`**: `details.visible` reads it and
+  `details.open()` writes it, which is what `open` and `close` are.
+
+This fixes the unbound inputs as a class rather than per widget: every
+`:prop` in `sngl:ui` gets a cell whether or not the caller supplies one.
+
 ## Phases
 
 Each lands with fixtures written first, confirmed to fail on the tree before
@@ -655,10 +739,16 @@ each found on the way:
 Decision 6 on gtk4 and fyne, with `example/i3blocks/` opening its window only
 under `--window`. Left: emitter layers, the interpreter, and bubbletea.
 
-### Phase C: hosts beyond the file root, and reactive windows -- done
+### Phase C: hosts beyond the file root, and reactive windows -- done, in part superseded
 
 Decision 5, several OS windows and a window under a reactive root `if` on gtk4
-and fyne, and `@close`. Left, each found on the way:
+and fyne, and `@close`. The window half is interim: Phase C1 replaces its
+window-only machinery -- `passWindowLifetimes`, `NodeInst.Presence`,
+`window.mount`/`window.unmount`, `codegen.HostWindows`, `ir.WindowRootName`,
+gtk4rt's `Window` record and fyne's `snglWindow`, and the kept-alive content
+tree -- with decision 16. Its fixtures describe behaviour that survives and are
+rewritten rather than deleted, except where they assume content outlives an
+unmount. The host half (decision 5) stays. Left, each found on the way:
 
 - **A window under a `for`** keeps one record per window *statement*, which a
   copy per element is more than; it is not a lifetime and not refused.
@@ -676,12 +766,41 @@ hosts can create and destroy a toplevel from their loop at any time (probed:
 gtk4 needs `g_application_hold` to live with none, fyne a window it never
 shows, since its driver quits when the last one goes).
 
+### Phase C1: the window as a component
+
+Decisions 16 and 17, in order, each landing with its fixtures:
+
+1. **A slot body patches in place.** The slot re-renders on what its structure
+   reads; props inside it get updaters over the live render's nodes. General:
+   a fixture with a large `vbox` under an `if` whose label reads a ticking var,
+   asserting the vbox is not rebuilt per tick, on every platform with slots.
+2. **An unbound two-way prop is state** (decision 17): implicit per-instance
+   state, impurity, the `const` refusal, the `#ref` read -- a checkbox left
+   unbound as the first fixture.
+3. **The package body's parent is the application**: root nodes are
+   `AppendChild(app, node)`; each platform's translator answers it. gtk4 and
+   fyne declare `Toplevel`, override `ui.window`, and implement `:visible` and
+   `@close`; `open`/`close` assign `visible`. Then delete Phase C's window
+   machinery (listed above). The i3 example and the window scripts keep
+   passing, `WAYLAND_DEBUG` counting toplevels as before.
+4. html, bubbletea and android answer `AppendChild(app, window)` as they do
+   today: html's documents, the others' one window. The html `<dialog>` for a
+   second window is Phase C2's.
+
 ### Phase C2: navigators
 
 Decision 15: `sngl:ui/nav` with `stack`, `page` and `link`, every target's
 answer in the table there, the html `<dialog>` for a second window, and the
 migration of every `window(href=…)` in one commit. Lands after Phase C, which
 gives the desktop hosts real surfaces for the split to separate from pages.
+
+### Phase C3: no window in the compiler
+
+With routing on `nav.page` (C2) and a window a component (C1), delete what is
+left: `ir.Window`, `pkg.Windows`, `ir.AllWindows`, `IsWindowNode`,
+`WindowsFlat`, `#[builtin("window")]`, the checker's `windowShell` and
+`checkWindow`, window arms in the interpreter and every platform. What html
+needs of a page is `nav.page`'s. Success is `grep -rn IsWindowNode` empty.
 
 ### Phase D: groundwork for foreign code
 
