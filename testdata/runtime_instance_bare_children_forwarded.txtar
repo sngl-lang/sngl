@@ -383,7 +383,6 @@ type Row__slot0Instance struct {
 	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
 	__slot3_at   fyne.CanvasObject
-	__n6         *fyne.Container
 }
 
 func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance {
@@ -397,15 +396,17 @@ func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance 
 	c.__inst1_live = []*Card__slot2Instance{}
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n6 = container.NewHBox()
-	c.__renderSlot1(c.__n6)
-	c.Root = c.__n6
+	__n6 := container.NewHBox()
+	c.__renderSlot1(__n6)
+	c.Root = __n6
 	return c
 }
 
 func (c *Row__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	c.__renderSlot1(c.__n6)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Row__slot0Instance) __renderSlot1(__parent *fyne.Container) {
@@ -828,7 +829,6 @@ type Row__slot0Instance struct {
 	__slot2_at   gtk4rt.Handle
 	__slot3      []gtk4rt.Handle
 	__slot3_at   gtk4rt.Handle
-	__n6         gtk4rt.Handle
 }
 
 func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance {
@@ -842,18 +842,20 @@ func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance 
 	c.__inst1_live = []*Card__slot2Instance{}
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(c.__n6, 6)
-	c.__renderSlot1(c.__n6)
-	c.Root = c.__n6
+	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationHorizontal)
+	gtk4rt.BoxSetSpacing(__n6, 6)
+	c.__renderSlot1(__n6)
+	c.Root = __n6
 	gtk4rt.Retain(c.Root)
 	return c
 }
 
 func (c *Row__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
-	c.__renderSlot1(c.__n6)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
@@ -1135,7 +1137,9 @@ body { font-family: system-ui, sans-serif; }
     let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __renderSlot1(__slotAnchor_1);
+      for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+        __inst3_live[__inst3_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot1;
@@ -1308,8 +1312,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ca2e22a48a6bb4ba6585cd58c9a96f4b
+pass sha256:7cddb57af2cb4e51f3e36b643d832b40
 -- run/go/gtk4 --
-pass sha256:ee9bd2764d769c982205d121fd0e33e6
+pass sha256:fa6842965f59f9e55ab5db82f85b5567
 -- run/none/html --
-pass sha256:12de6a54708ed445e5b01c67b6a98a05
+pass sha256:b75c79ded063b66653395ab192ff015b

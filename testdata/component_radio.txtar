@@ -351,36 +351,88 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testRadioValueMutates });
   }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __p1 = props.__p1;
+    let __prop___p0 = __p0;
+    let __prop___p1 = __p1;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.value = __prop___p0;
+      __n0.checked = __prop___p0 === __prop___p1;
+      __n1.textContent = __prop___p0;
+    }
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __n0.checked = __prop___p0 === __prop___p1;
+    }
+    let __n4 = document.createElement("label");
+    __n4.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    let __n0 = document.createElement("input");
+    __n0.value = __prop___p0;
+    __n0.checked = __prop___p0 === __prop___p1;
+    __n0.disabled = false;
+    __n0.setAttribute("type", "radio");
+    __n0.addEventListener("change", () => {
+    });
+    __n4.appendChild(__n0);
+    let __n1 = document.createElement("span");
+    __n1.textContent = __prop___p0;
+    __n4.appendChild(__n1);
+    __root.appendChild(__n4);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0,
+      __set___p1
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     for (const opt of ["small", "medium", "large"]) {
-      let __n0 = document.createElement("label");
-      __n0.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
-      let __n1 = document.createElement("input");
-      __n1.value = opt;
-      __n1.checked = opt === state.sel;
-      __n1.disabled = false;
-      __n1.setAttribute("type", "radio");
-      __n1.addEventListener("change", () => {
-      });
-      __n0.appendChild(__n1);
-      let __n2 = document.createElement("span");
-      __n2.textContent = opt;
-      __n0.appendChild(__n2);
+      let __n2 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set___p0(opt);
+        __n2.__set___p1(state.sel);
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel });
+        __n2 = __n2__new;
+      }
+      __inst1_next.push(__n2);
+      __inst1_i = __inst1_i + 1;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n2__el);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -401,4 +453,4 @@ pass sha256:2c36fcf71c3aa926078ec9cdd5270d1d
 -- run/kotlin/android --
 pass sha256:51e0f7415584236ad360e19336735471
 -- run/none/html --
-pass sha256:84994e66667c55c7b95eaecbd5644cea
+pass sha256:34c555c7c1087c15d8583cff09c8d0ee

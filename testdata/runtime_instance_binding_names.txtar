@@ -422,7 +422,9 @@ func (c *Frame__slot6Instance) SetResult(__v int) {
 func (c *Frame__slot6Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n0.SetText(c.__prop_m)
-	c.__renderSlot0(c.__n16)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot6Instance) Set__depth(__v int) {
@@ -433,7 +435,9 @@ func (c *Frame__slot6Instance) Set__depth(__v int) {
 func (c *Frame__slot6Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot0(c.__n16)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot6Instance) __renderSlot0(__parent *fyne.Container) {
@@ -549,7 +553,9 @@ func (c *Frame__slot5Instance) SetResult(__v int) {
 func (c *Frame__slot5Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n2.SetText(c.__prop_m)
-	c.__renderSlot1(c.__n18)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot5Instance) Set__depth(__v int) {
@@ -560,7 +566,9 @@ func (c *Frame__slot5Instance) Set__depth(__v int) {
 func (c *Frame__slot5Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n3.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot1(c.__n18)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot5Instance) __renderSlot1(__parent *fyne.Container) {
@@ -676,7 +684,9 @@ func (c *Frame__slot4Instance) SetResult(__v int) {
 func (c *Frame__slot4Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n4.SetText(c.__prop_m)
-	c.__renderSlot2(c.__n20)
+	for __inst2_live_ui, _ := range c.__inst2_live {
+		c.__inst2_live[__inst2_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot4Instance) Set__depth(__v int) {
@@ -687,7 +697,9 @@ func (c *Frame__slot4Instance) Set__depth(__v int) {
 func (c *Frame__slot4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n5.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot2(c.__n20)
+	for __inst2_live_ui, _ := range c.__inst2_live {
+		c.__inst2_live[__inst2_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot4Instance) __renderSlot2(__parent *fyne.Container) {
@@ -803,7 +815,9 @@ func (c *Frame__slot2Instance) SetResult(__v int) {
 func (c *Frame__slot2Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n6.SetText(c.__prop_m)
-	c.__renderSlot3(c.__n22)
+	for __inst3_live_ui, _ := range c.__inst3_live {
+		c.__inst3_live[__inst3_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
@@ -814,7 +828,9 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 func (c *Frame__slot2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n7.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot3(c.__n22)
+	for __inst3_live_ui, _ := range c.__inst3_live {
+		c.__inst3_live[__inst3_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot2Instance) __renderSlot3(__parent *fyne.Container) {
@@ -930,7 +946,9 @@ func (c *Frame__slot1Instance) SetResult(__v int) {
 func (c *Frame__slot1Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n8.SetText(c.__prop_m)
-	c.__renderSlot4(c.__n24)
+	for __inst4_live_ui, _ := range c.__inst4_live {
+		c.__inst4_live[__inst4_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot1Instance) Set__depth(__v int) {
@@ -941,7 +959,9 @@ func (c *Frame__slot1Instance) Set__depth(__v int) {
 func (c *Frame__slot1Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n9.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot4(c.__n24)
+	for __inst4_live_ui, _ := range c.__inst4_live {
+		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot1Instance) __renderSlot4(__parent *fyne.Container) {
@@ -1057,7 +1077,9 @@ func (c *Frame__slot0Instance) SetResult(__v int) {
 func (c *Frame__slot0Instance) SetM(__v string) {
 	c.__prop_m = __v
 	c.__n10.SetText(c.__prop_m)
-	c.__renderSlot5(c.__n26)
+	for __inst5_live_ui, _ := range c.__inst5_live {
+		c.__inst5_live[__inst5_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
@@ -1068,7 +1090,9 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 func (c *Frame__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	c.__n11.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot5(c.__n26)
+	for __inst5_live_ui, _ := range c.__inst5_live {
+		c.__inst5_live[__inst5_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot0Instance) __renderSlot5(__parent *fyne.Container) {
@@ -1293,7 +1317,9 @@ func (c *Frame__slot6Instance) SetResult(__v int) {
 func (c *Frame__slot6Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n0, c.__prop_m)
-	c.__renderSlot0(c.__n16)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot6Instance) Set__depth(__v int) {
@@ -1304,7 +1330,9 @@ func (c *Frame__slot6Instance) Set__depth(__v int) {
 func (c *Frame__slot6Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot0(c.__n16)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot6Instance) __renderSlot0(parent gtk4rt.Handle) {
@@ -1449,7 +1477,9 @@ func (c *Frame__slot5Instance) SetResult(__v int) {
 func (c *Frame__slot5Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n2, c.__prop_m)
-	c.__renderSlot1(c.__n18)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot5Instance) Set__depth(__v int) {
@@ -1460,7 +1490,9 @@ func (c *Frame__slot5Instance) Set__depth(__v int) {
 func (c *Frame__slot5Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot1(c.__n18)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot5Instance) __renderSlot1(parent gtk4rt.Handle) {
@@ -1605,7 +1637,9 @@ func (c *Frame__slot4Instance) SetResult(__v int) {
 func (c *Frame__slot4Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n4, c.__prop_m)
-	c.__renderSlot2(c.__n20)
+	for __inst2_live_ui, _ := range c.__inst2_live {
+		c.__inst2_live[__inst2_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot4Instance) Set__depth(__v int) {
@@ -1616,7 +1650,9 @@ func (c *Frame__slot4Instance) Set__depth(__v int) {
 func (c *Frame__slot4Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot2(c.__n20)
+	for __inst2_live_ui, _ := range c.__inst2_live {
+		c.__inst2_live[__inst2_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot4Instance) __renderSlot2(parent gtk4rt.Handle) {
@@ -1761,7 +1797,9 @@ func (c *Frame__slot2Instance) SetResult(__v int) {
 func (c *Frame__slot2Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n6, c.__prop_m)
-	c.__renderSlot3(c.__n22)
+	for __inst3_live_ui, _ := range c.__inst3_live {
+		c.__inst3_live[__inst3_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
@@ -1772,7 +1810,9 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 func (c *Frame__slot2Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot3(c.__n22)
+	for __inst3_live_ui, _ := range c.__inst3_live {
+		c.__inst3_live[__inst3_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot2Instance) __renderSlot3(parent gtk4rt.Handle) {
@@ -1917,7 +1957,9 @@ func (c *Frame__slot1Instance) SetResult(__v int) {
 func (c *Frame__slot1Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n8, c.__prop_m)
-	c.__renderSlot4(c.__n24)
+	for __inst4_live_ui, _ := range c.__inst4_live {
+		c.__inst4_live[__inst4_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot1Instance) Set__depth(__v int) {
@@ -1928,7 +1970,9 @@ func (c *Frame__slot1Instance) Set__depth(__v int) {
 func (c *Frame__slot1Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot4(c.__n24)
+	for __inst4_live_ui, _ := range c.__inst4_live {
+		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot1Instance) __renderSlot4(parent gtk4rt.Handle) {
@@ -2073,7 +2117,9 @@ func (c *Frame__slot0Instance) SetResult(__v int) {
 func (c *Frame__slot0Instance) SetM(__v string) {
 	c.__prop_m = __v
 	gtk4rt.LabelSetText(c.__n10, c.__prop_m)
-	c.__renderSlot5(c.__n26)
+	for __inst5_live_ui, _ := range c.__inst5_live {
+		c.__inst5_live[__inst5_live_ui].SetM(c.__prop_m)
+	}
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
@@ -2084,7 +2130,9 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 func (c *Frame__slot0Instance) Set__p0(__v string) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot5(c.__n26)
+	for __inst5_live_ui, _ := range c.__inst5_live {
+		c.__inst5_live[__inst5_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot0Instance) __renderSlot5(parent gtk4rt.Handle) {
@@ -2379,7 +2427,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n0.textContent = __prop_m;
-      __renderSlot0(__slotAnchor_0);
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        __inst1_live[__inst1_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2388,7 +2438,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot0(__slotAnchor_0);
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        __inst1_live[__inst1_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot02;
@@ -2499,7 +2551,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n2.textContent = __prop_m;
-      __renderSlot1(__slotAnchor_1);
+      for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+        __inst3_live[__inst3_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2508,7 +2562,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot1(__slotAnchor_1);
+      for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+        __inst3_live[__inst3_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot12;
@@ -2619,7 +2675,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n4.textContent = __prop_m;
-      __renderSlot2(__slotAnchor_2);
+      for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+        __inst5_live[__inst5_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2628,7 +2686,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot2(__slotAnchor_2);
+      for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+        __inst5_live[__inst5_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot2(parent) {
       let __place4_prev = __slot22;
@@ -2739,7 +2799,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n6.textContent = __prop_m;
-      __renderSlot3(__slotAnchor_3);
+      for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
+        __inst7_live[__inst7_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2748,7 +2810,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot3(__slotAnchor_3);
+      for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
+        __inst7_live[__inst7_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot3(parent) {
       let __place6_prev = __slot32;
@@ -2859,7 +2923,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n8.textContent = __prop_m;
-      __renderSlot4(__slotAnchor_4);
+      for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
+        __inst9_live[__inst9_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2868,7 +2934,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot4(__slotAnchor_4);
+      for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
+        __inst9_live[__inst9_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot4(parent) {
       let __place8_prev = __slot42;
@@ -2979,7 +3047,9 @@ window.__sngl_boot = () => {
     function __set_m(__v) {
       __prop_m = __v;
       __n10.textContent = __prop_m;
-      __renderSlot5(__slotAnchor_5);
+      for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
+        __inst11_live[__inst11_live_ui].__set_m(__prop_m);
+      }
     }
     function __set___depth(__v) {
       __prop___depth = __v;
@@ -2988,7 +3058,9 @@ window.__sngl_boot = () => {
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
-      __renderSlot5(__slotAnchor_5);
+      for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
+        __inst11_live[__inst11_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot5(parent) {
       let __place10_prev = __slot52;
@@ -3099,10 +3171,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:c6d1873a2548e7613ce16b8440c9ca07
 -- run/go/fyne --
-pass sha256:b281f52242f33e745bff2f6c0a4bffa2
+pass sha256:c3aed8e8238ecc09f526135502241d65
 -- run/go/gtk4 --
-pass sha256:5b3ac632b5d3f357fa3a702db7c82794
+pass sha256:feb3349e80bad9e2c665ff85c34ef3fc
 -- run/kotlin/android --
 pass sha256:d240a16f922563997c98ff32f8edcc27
 -- run/none/html --
-pass sha256:6dd7582588fb06e5fb941493b2b0e98f
+pass sha256:78af8e4ad7d71513c0ffee91e8cfd65e

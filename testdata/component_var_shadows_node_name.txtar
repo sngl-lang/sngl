@@ -162,9 +162,10 @@ type Model struct {
 	progress__inst0 float64
 	__slot0         []fyne.CanvasObject
 	__slot0_at      fyne.CanvasObject
+	__inst0_live    []*__child0Instance
 
-	__n3 *fyne.Container
-	__n0 *widget.Label
+	__n4 *fyne.Container
+	__n1 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -173,6 +174,7 @@ func New() *Model {
 	m.progress__inst0 = 0.25
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
 	return m
 }
 
@@ -182,10 +184,31 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__n1 := widget.NewLabel("")
-	__n1.SetText(fmt.Sprint(m.progress__inst0))
-	fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-	m.__slot0 = append(m.__slot0, __n1)
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
+	var __n2 *__child0Instance
+	if len(m.__inst0_live) > __inst0_i {
+		__n2 = m.__inst0_live[__inst0_i]
+		__n2.Set__p0(m.progress__inst0)
+	} else {
+		if len(m.__inst0_live) > __inst0_i {
+			m.__inst0_live[__inst0_i].Destroy()
+		}
+		__n2__new := new__child0Instance(m, m.progress__inst0)
+		__n2 = __n2__new
+	}
+	__inst0_next = append(__inst0_next, __n2)
+	__inst0_i = (__inst0_i + 1)
+	__n2__el := __n2.Root
+	fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+	m.__slot0 = append(m.__slot0, __n2__el)
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
 func (m *Model) Progress__inst0() float64 {
@@ -198,14 +221,44 @@ func (m *Model) SetProgress__inst0(v float64) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
-	m.__renderSlot0(m.__n3)
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(fmt.Sprint(m.progress__inst0))
-	m.__n3.Add(m.__n0)
-	content := fyne.CanvasObject(m.__n3)
+	m.__n4 = container.NewVBox()
+	m.__renderSlot0(m.__n4)
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(fmt.Sprint(m.progress__inst0))
+	m.__n4.Add(m.__n1)
+	content := fyne.CanvasObject(m.__n4)
 	return content
 }
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        fyne.CanvasObject
+	__model     *Model
+	__prop___p0 float64
+	__root      *fyne.Container
+	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
+	__n0        *widget.Label
+}
+
+func new__child0Instance(__model *Model, __a___p0 float64) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__n0 = widget.NewLabel("")
+	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
+	c.Root = c.__n0
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v float64) {
+	c.__prop___p0 = __v
+	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
+}
+
+func (c *__child0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
@@ -403,8 +456,9 @@ type Model struct {
 	progress__inst0 float64
 	__slot0         []*C.GtkWidget
 	__slot0_at      *C.GtkWidget
-	__n3            *C.GtkBox
-	__n0            *C.GtkLabel
+	__inst0_live    []*__child0Instance
+	__n4            *C.GtkBox
+	__n1            *C.GtkLabel
 	__root          *C.GtkBox
 }
 
@@ -415,6 +469,7 @@ func New() *Model {
 	m.progress__inst0 = 0.25
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
 	return m
 }
 
@@ -424,12 +479,72 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
-	__n1 := (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.double((m.progress__inst0 / 1.0)))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.CString(""))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.gboolean(boolToInt(false)))
-	C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
-	m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
+	var __n2 *__child0Instance
+	if len(m.__inst0_live) > __inst0_i {
+		__n2 = m.__inst0_live[__inst0_i]
+		__n2.Set__p0(m.progress__inst0)
+	} else {
+		if len(m.__inst0_live) > __inst0_i {
+			m.__inst0_live[__inst0_i].Destroy()
+		}
+		__n2__new := new__child0Instance(m, m.progress__inst0)
+		__n2 = __n2__new
+	}
+	__inst0_next = append(__inst0_next, __n2)
+	__inst0_i = (__inst0_i + 1)
+	__n2__el := __n2.Root
+	C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2__el)))
+	m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2__el)))
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
+}
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        *C.GtkWidget
+	__model     *Model
+	__prop___p0 float64
+	__root      *C.GtkBox
+	__slot0     []*C.GtkWidget
+	__slot0_at  *C.GtkWidget
+	__n0        *C.GtkProgressBar
+}
+
+func new__child0Instance(__model *Model, __a___p0 float64) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	c.__slot0 = nil
+	c.__n0 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(c.__n0)), C.double((c.__prop___p0 / 1.0)))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(c.__n0)), C.CString(""))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt(false)))
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v float64) {
+	c.__prop___p0 = __v
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(c.__n0)), C.double((c.__prop___p0 / 1.0)))
+}
+
+func (c *__child0Instance) Destroy() {
+	if c.Root != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
 }
 
 func (m *Model) Progress__inst0() float64 {
@@ -445,14 +560,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n3)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n3)), C.int(6))
-	m.__renderSlot0(m.__n3)
-	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(fmt.Sprint(m.progress__inst0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n3)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	m.__n4 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n4)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n4)), C.int(6))
+	m.__renderSlot0(m.__n4)
+	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(fmt.Sprint(m.progress__inst0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -521,9 +636,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
+<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
 
@@ -531,24 +646,66 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { progress__inst0: 0.25 };
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.value = String(__prop___p0);
+    }
+    let __n0 = document.createElement("progress");
+    __n0.value = String(__prop___p0);
+    __n0.setAttribute("max", "1");
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    let __n1 = document.createElement("progress");
-    __n1.value = String(state.progress__inst0);
-    __n1.setAttribute("max", "1");
+    let __inst1_next = [];
+    let __inst1_i = 0;
+    let __n2 = null;
+    if (__inst1_live.length > __inst1_i) {
+      __n2 = __inst1_live[__inst1_i];
+      __n2.__set___p0(state.progress__inst0);
+    } else {
+      if (__inst1_live.length > __inst1_i) {
+        __inst1_live[__inst1_i].__destroy();
+      }
+      let __n2__new = __cf___child0({ __p0: state.progress__inst0 });
+      __n2 = __n2__new;
+    }
+    __inst1_next.push(__n2);
+    __inst1_i = __inst1_i + 1;
+    let __n2__el = __n2.__root;
     let __place0_i_ref0 = null;
     if (__place0_i < __place0_prev.length) {
       __place0_i_ref0 = __place0_prev[__place0_i];
     }
-    if (__place0_i_ref0 === __n1) {
+    if (__place0_i_ref0 === __n2__el) {
       __place0_i = __place0_i + 1;
     } else {
-      parent.insertBefore(__n1, __place0_i_ref0);
+      parent.insertBefore(__n2__el, __place0_i_ref0);
     }
-    __slot0.push(__n1);
+    __slot0.push(__n2__el);
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -558,11 +715,11 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n0.textContent = String(state.progress__inst0);
+    __n1.textContent = String(state.progress__inst0);
   }
   __sngl_init();
 })();
@@ -571,10 +728,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
-pass sha256:21671838dffba80020c99a89ba964065
+pass sha256:2dd1e12924ae07cc4dd2c8beb092afd3
 -- run/go/gtk4 --
-pass sha256:4c6621475bc25044fc0683c5c4afd950
+pass sha256:885dd8344e58f881c31ec853f2deef07
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --
-pass sha256:a459caade31d003a2753f4c2891ca2fc
+pass sha256:ab8f7d58ca59326a38550ee8c07de114

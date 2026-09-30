@@ -382,7 +382,9 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot0(c.__n4)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
@@ -484,7 +486,9 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 func (c *Frame__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot1(c.__n6)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
@@ -655,7 +659,9 @@ func (c *Frame__slot2Instance) Set__depth(__v int) {
 func (c *Frame__slot2Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot0(c.__n4)
+	for __inst0_live_ui, _ := range c.__inst0_live {
+		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
@@ -774,7 +780,9 @@ func (c *Frame__slot0Instance) Set__depth(__v int) {
 func (c *Frame__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot1(c.__n6)
+	for __inst1_live_ui, _ := range c.__inst1_live {
+		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
+	}
 }
 
 func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
@@ -1005,7 +1013,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot0(__slotAnchor_0);
+      for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+        __inst1_live[__inst1_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot0;
@@ -1109,7 +1119,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot1(__slotAnchor_1);
+      for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
+        __inst3_live[__inst3_live_ui].__set___p0(__prop___p0);
+      }
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot1;
@@ -1207,10 +1219,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3c757c4d76bdf884e3b0f4bfcc118757
 -- run/go/fyne --
-pass sha256:6790c2eb77194874930659aa35b7b076
+pass sha256:f955e4d386617c2d8823cf11892675a2
 -- run/go/gtk4 --
-pass sha256:e1b20c0b1bddc29d26a69346db84830e
+pass sha256:401c61fb0c2f92b268824eeb80be023b
 -- run/kotlin/android --
 pass sha256:ac61f0937f1bca720d5d69ff514c9cec
 -- run/none/html --
-pass sha256:c06bd91019c8cee3314bf78f859828bd
+pass sha256:71ce51a8bd55c5ba5e5a071206aa4f73

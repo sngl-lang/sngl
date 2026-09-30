@@ -44,6 +44,13 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
+	// reverseLive is the props of instances a slot body holds, each written
+	// to every instance the site holds when the var changes rather than by
+	// re-firing the slot (registerSlotBodyDeps).
+	reverseLive map[*ir.Var][]liveProp
+	// sites is the instance registry each slot-body instantiation keeps, by
+	// the site, so an updater and the render share one.
+	sites map[*ir.NodeInst]*slotInstance
 	// undriven are the slots no var re-fires: a loop over a const whose body
 	// holds a component built at run time. Rendered once, but a slot all the
 	// same, and reverseSlots has no key to list one under.
@@ -111,6 +118,19 @@ type reactiveSlot struct {
 	ParentRef ir.Expr // ident the source-position CallStmt uses; same ref re-used for splice updaters
 }
 
+// liveProp is one prop of an instantiation in a slot body whose value reads
+// nothing the slot binds, so one value is right for every instance the site
+// holds.
+type liveProp struct {
+	node   *ir.NodeInst
+	key    string
+	expr   ir.Expr
+	slotID string
+	// owner is the scope the slot belongs to, where the site's registry is
+	// declared whichever block first asks for it.
+	owner reactivityOwner
+}
+
 // cloneIdent shallow-copies an *ir.Ident so two splices do not alias the
 // same pointer. Non-Ident expressions pass through unchanged (parent refs
 // are always Idents today).
@@ -167,6 +187,8 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
+		reverseLive:  make(map[*ir.Var][]liveProp),
+		sites:        make(map[*ir.NodeInst]*slotInstance),
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
@@ -623,10 +645,9 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			// re-fire, so its bound props must not register standalone
 			// prop-updaters (those would reference per-slot element ids that
 			// only exist inside the slot func, leaking into outside handlers).
-			// Instead make the slot re-fire for every reactive var the body
-			// reads.
-			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
-			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+			// What the body reads reaches it through the instances it holds,
+			// or re-fires the slot where it cannot.
+			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
 	case *ir.For:
 		st.collectFromFor(n)
@@ -634,8 +655,7 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			st.collectFromStmts(n.Body)
 			st.collectFromStmts(n.Else)
 		} else {
-			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
-			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
 	case *ir.SlotInst:
 		st.collectFromStmts(n.Children)
@@ -711,17 +731,185 @@ func (st *reactivityState) collectFromFor(n *ir.For) {
 	n.LoweredSlotID = slot.SlotID
 }
 
-// registerSlotBodyDeps makes the slot named slotID re-fire whenever any
-// reactive var read by a bound prop / nested cond / nested iter in stmts
-// mutates. Used for the body of a reactive If/For: the body re-renders
-// wholesale, so individual props don't get standalone updaters — instead the
-// whole slot re-fires for any var the body depends on. Deduped per var.
-func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) {
-	slotBodyExprs(stmts, func(e ir.Expr) {
+// registerSlotBodyDeps subscribes the body of the reactive If/For s, whose
+// slot is slotID, to the vars it reads.
+//
+// The slot re-renders on what its structure reads, and a prop of an instance
+// in the body is handed to the instances the site holds instead: a registry
+// updater writes each live one through its setter, so the widgets inside are
+// patched where they stand (passSlotChildInstances lifts every node that
+// reads state into such an instance). That needs one value to be right for
+// every copy, so a prop reading something the slot binds -- a loop variable,
+// a local -- re-fires the slot as before, and so does any other read the body
+// renders from: a plain node's prop, a nested condition or iterable, and a
+// #[construct] prop, which only a rebuild can answer. Deduped per var.
+func (st *reactivityState) registerSlotBodyDeps(s ir.Stmt, slotID string) {
+	bound := boundWithin(s)
+	var arms [][]ir.Stmt
+	switch n := s.(type) {
+	case *ir.If:
+		arms = [][]ir.Stmt{n.Body, n.Else}
+	case *ir.For:
+		arms = [][]ir.Stmt{n.Body, n.Else}
+	}
+	slotDeps := func(e ir.Expr) {
 		for v := range st.exprDeps(e) {
 			st.addSlotDep(v, slotID)
 		}
+	}
+	var walk func([]ir.Stmt)
+	walk = func(ss []ir.Stmt) {
+		for _, s := range ss {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if ir.IsWindowNode(n) {
+					continue
+				}
+				live := isInstanceNode(n)
+				for _, p := range n.Props {
+					if !live || p.Name == "" || !componentAbsorbs(n.Component, p.Name) || readsAny(p.Value, bound) {
+						slotDeps(p.Value)
+						continue
+					}
+					for v := range st.exprDeps(p.Value) {
+						st.addLiveDep(v, liveProp{node: n, key: p.Name, expr: p.Value, slotID: slotID, owner: st.owner})
+					}
+				}
+				walk(ir.WidgetChildren(n))
+			case *ir.If:
+				slotDeps(n.Cond)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				slotDeps(n.Iter)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.SlotInst:
+				walk(n.Children)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			}
+		}
+	}
+	for _, arm := range arms {
+		walk(arm)
+	}
+}
+
+// boundWithin is every binding s declares for its own body: loop variables
+// and locals, its own and those of what it holds.
+func boundWithin(s ir.Stmt) map[ir.Symbol]bool {
+	out := map[ir.Symbol]bool{}
+	_ = ir.WalkStmts(s, func(x ir.Stmt) error {
+		switch n := x.(type) {
+		case *ir.For:
+			if n.KeySym != nil {
+				out[n.KeySym] = true
+			}
+			if n.ValueSym != nil {
+				out[n.ValueSym] = true
+			}
+		case *ir.LocalVar:
+			if n.Sym != nil {
+				out[n.Sym] = true
+			}
+		}
+		return nil
 	})
+	return out
+}
+
+// addLiveDep records that a write to v hands p's site its new value.
+func (st *reactivityState) addLiveDep(v *ir.Var, p liveProp) {
+	for _, q := range st.reverseLive[v] {
+		if q.node == p.node && q.key == p.key {
+			return
+		}
+	}
+	st.reverseLive[v] = append(st.reverseLive[v], p)
+}
+
+// siteInstance is the registry an instantiation in a slot body keeps, made
+// by whichever of the render and an updater asks first -- an updater in a
+// block walked before the slot's own -- and declared on the slot's owner.
+func (st *reactivityState) siteInstance(n *ir.NodeInst, owner reactivityOwner) *slotInstance {
+	if si := st.sites[n]; si != nil {
+		return si
+	}
+	saved := st.owner
+	st.owner = owner
+	si := st.newSlotInstance(n)
+	st.owner = saved
+	st.sites[n] = si
+	return si
+}
+
+// liveUpdaters hands every instance each site holds the new value of the
+// props that read the var, one loop per site. A site whose slot this update
+// re-renders is left to the render, which hands the value itself.
+//
+//	for <i>, _ = <live> {
+//	    lower.UpdateComponent(<live>[<i>], "<prop>", <expr>)
+//	}
+func (st *reactivityState) liveUpdaters(props []liveProp, slots []reactiveSlot, rewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
+	refired := map[string]bool{}
+	for _, s := range slots {
+		if s.GenFunc != nil {
+			refired[s.SlotID] = true
+		}
+	}
+	var order []*ir.NodeInst
+	bySite := map[*ir.NodeInst][]liveProp{}
+	for _, p := range props {
+		if refired[p.slotID] {
+			continue
+		}
+		if bySite[p.node] == nil {
+			order = append(order, p.node)
+		}
+		bySite[p.node] = append(bySite[p.node], p)
+	}
+	var out []ir.Stmt
+	for _, n := range order {
+		si := st.siteInstance(n, bySite[n][0].owner)
+		update := func(inst ir.Expr) []ir.Stmt {
+			var body []ir.Stmt
+			for _, p := range bySite[n] {
+				body = append(body, &ir.CallStmt{Call: &ir.Call{
+					Type:     ir.TypVoid,
+					Receiver: lowerNSIdent(),
+					Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+					Args: []ir.CallArg{
+						{Value: inst},
+						{Value: &ir.Literal{Type: ir.TypString, Value: p.key}},
+						{Value: rewriteIdentsToCaptures(deepCloneExpr(p.expr), rewrite)},
+					},
+				}})
+			}
+			return body
+		}
+		if si.keyed() {
+			k := &ir.LoopVar{Name: si.live.Name + "_uk", Type: ir.TypString}
+			v := &ir.LoopVar{Name: si.live.Name + "_uv", Type: si.elem}
+			out = append(out, &ir.For{
+				Key: k.Name, KeySym: k, Value: v.Name, ValueSym: v,
+				Iter: varRef(si.live), ElemType: si.elem,
+				Body: update(&ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true}),
+			})
+			continue
+		}
+		i := &ir.LoopVar{Name: si.live.Name + "_ui", Type: ir.TypInt}
+		out = append(out, &ir.For{
+			Key: i.Name, KeySym: i, Value: "_",
+			Iter: varRef(si.live), ElemType: si.elem,
+			Body: update(&ir.Index{
+				Type:    si.elem,
+				Operand: varRef(si.live),
+				Idx:     &ir.Ident{Name: i.Name, Type: ir.TypInt, Sym: i, Synthesized: true},
+			}),
+		})
+	}
+	return out
 }
 
 // bodyNeedsSlot reports whether a loop body renders anything a slot has to
@@ -1127,7 +1315,24 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	return st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
+	out := st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
+	if live := st.liveUpdaters(st.reverseLive[v], st.reverseSlots[v], fieldRewrite); len(live) > 0 {
+		// Ahead of the slot re-fires, which a render reading a sibling
+		// instance's state would want settled first -- the order props and
+		// slots already keep.
+		n := len(out)
+		for n > 0 && isSlotRefire(out[n-1]) {
+			n--
+		}
+		out = append(out[:n:n], append(live, out[n:]...)...)
+	}
+	return out
+}
+
+// isSlotRefire reports whether s is a call of a slot's render function.
+func isSlotRefire(s ir.Stmt) bool {
+	c, ok := s.(*ir.CallStmt)
+	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.SlotRender
 }
 
 // updaterStmts is the body of an update: reassign every dependent prop from
@@ -1662,7 +1867,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			if n.ID == "" {
 				n.ID = declSt.freshID()
 			}
-			si := st.newSlotInstance(n)
+			si := st.siteInstance(n, st.owner)
 			instances = append(instances, si)
 			sub = st.reuseOrCreate(si, n, declSt)
 			sub = append(sub, declSt.componentRootBinding(n)...)

@@ -158,7 +158,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			__n0.Set__p1(m.grow)
 			__n0.Set__on0(func() {
 				m.grow += 1.0
-				m.__renderSlot0(m.__n2)
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+				}
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -166,7 +168,9 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			}
 			__n0__new := new__canvas0Instance(m, r, m.grow, func() {
 				m.grow += 1.0
-				m.__renderSlot0(m.__n2)
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+				}
 			})
 			__n0 = __n0__new
 		}
@@ -224,7 +228,9 @@ func (m *Model) add_click_handler() {
 	m.rs = append(m.rs, 12.0)
 	m.__renderSlot0(m.__n2)
 	m.grow += 1.0
-	m.__renderSlot0(m.__n2)
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+	}
 }
 
 // addClick invokes the OnTapped callback on the #add widget; for tests.
@@ -784,7 +790,9 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			__n0.Set__p1(m.grow)
 			__n0.Set__on0(func() {
 				m.grow += 1.0
-				m.__renderSlot0(m.__n2)
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+				}
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
@@ -792,7 +800,9 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 			}
 			__n0__new := new__canvas0Instance(m, r, m.grow, func() {
 				m.grow += 1.0
-				m.__renderSlot0(m.__n2)
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+				}
 			})
 			__n0 = __n0__new
 		}
@@ -850,7 +860,9 @@ func (m *Model) add_clicked_handler() {
 	m.rs = append(m.rs, 12.0)
 	m.__renderSlot0(m.__n2)
 	m.grow += 1.0
-	m.__renderSlot0(m.__n2)
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.grow)
+	}
 }
 
 // __canvas0Instance is one live instance of the __canvas0 component.
@@ -1181,7 +1193,11 @@ window.__sngl_boot = () => {
         __n0.__set___p1(state.grow);
         __n0.__set___on0(() => {
           state.grow += 1;
-          __renderSlot0(__slotAnchor_0);
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p1(state.grow);
+          }
+          ;
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
@@ -1189,7 +1205,11 @@ window.__sngl_boot = () => {
         }
         let __n0__new = __cf___canvas0({ __p0: r, __p1: state.grow, __on0: () => {
           state.grow += 1;
-          __renderSlot0(__slotAnchor_0);
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p1(state.grow);
+          }
+          ;
         } });
         __n0 = __n0__new;
       }
@@ -1312,7 +1332,11 @@ window.__sngl_boot = () => {
     state.rs.push(12);
     __renderSlot0(__slotAnchor_0);
     state.grow += 1;
-    __renderSlot0(__slotAnchor_0);
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      ;
+      __inst1_live[__inst1_live_ui].__set___p1(state.grow);
+    }
+    ;
   });
 })();
 };
@@ -1320,8 +1344,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:d1d0834463120dbea6851ada3715756a
+pass sha256:41719f8afbe89afa33e30ff138a14e4c
 -- run/go/gtk4 --
-pass sha256:fc153dc5deb07e47a7a39254ee2f9e70
+pass sha256:762db7b7cb7778a5a64aeceb309d3bb4
 -- run/none/html --
-pass sha256:501238043052134581ab00740080d4c6
+pass sha256:263f4fef5f8997eeaf19dbf6f042c3e8

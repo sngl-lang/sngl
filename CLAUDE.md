@@ -2006,6 +2006,29 @@ two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
 record also holds a reference on its root, since the slot holding it removes
 it before appending it again and GTK frees a widget its parent held alone.
 
+**A slot re-renders on what its structure reads**, the `if`'s condition and
+the `for`'s iterable, and what its body reads beyond that is patched where it
+stands. A re-render builds the body afresh, so a slot that re-fired on
+everything its body read rebuilt a whole panel under `if details` every time
+one label in it changed, and lost what its widgets held that no state
+described -- focus, a selection, typed text. So on the three targets that
+build instances at run time, `passSlotChildInstances` lifts each top-level
+node of a slot body that reads state into a synthesized component
+(`liftSlotBodies`, `internal/lower/slot_body_instances.go`): what the subtree
+reads becomes a prop, and the slot keeps the instances across renders as it
+keeps any other. passReactivity's `registerSlotBodyDeps` then subscribes such
+an instance's props to the vars they read rather than the slot to them, and a
+write hands every live instance at the site the new value through its setter
+(`liveUpdaters`, a loop over the site's registry). A prop reading something
+the slot binds -- a loop variable, a local -- has no one value for every copy
+and still re-fires the slot, as does a `#[construct]` prop and anything else
+the body renders from; a node reading nothing is left to the rebuild, which
+only a structural change triggers. A node is not lifted when its subtree holds
+a slot insertion, a boundary, a canvas or a window, or declares a handle
+something reads. bubbletea and android re-render the view anyway and are
+untouched (`testdata/slot_body_updates_in_place.txtar`,
+`cmd/sngl/testdata/slot_body_updates_in_place_runs.txt`).
+
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea
 declares: a record on fyne and gtk4, a factory closure on html, `remember` on

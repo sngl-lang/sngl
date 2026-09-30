@@ -36,14 +36,14 @@ stdout ' → Effect → '
 # apart and neither can this list -- which is what the cmp says, rather than
 # two copies of one chain saying it by coincidence.
 #
-# SlotChildInstances is the one that does tell them apart, and html is the only
-# target with it. It gates on InsertBefore as well, because retaining a slot
-# child buys the placement match and nothing else -- a container that only
-# appends tears its children down every render, so there is no identity for
-# anything to ask about.
+# SlotChildInstances runs on all three: a slot body's node that reads state is
+# lifted into a record the slot keeps, so a write patches it where it stands
+# rather than re-rendering the slot. Converting the rows that read nothing is
+# html's alone, on InsertBefore, because retaining those buys the placement
+# match and nothing else -- inside the pass, so the list cannot show it.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,WindowLifetimes,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
-! stdout 'SlotChildInstances'
+stdout ' → SlotChildInstances → '
 cp stdout fyne.txt
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl

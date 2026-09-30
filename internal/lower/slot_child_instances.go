@@ -39,12 +39,10 @@ import (
 // into the props the render re-points.
 var passSlotChildInstances = pass{
 	name: "SlotChildInstances",
-	// InsertBefore is what makes this worth doing: without it a slot tears its
-	// children down and appends them all back, so an identity across renders is
-	// one nothing asks about, and the registry that maintains it would be pure
-	// overhead. A synthesized row holds no state of its own -- retention buys
-	// exactly the placement match and nothing else.
-	enabled: func(c Features) bool { return hasInstanceRuntime(c) && c.InsertBefore },
+	// Every target with an instance runtime lifts a slot body that reads
+	// state (liftSlotBodies); only one that can place a child also converts
+	// the rows that read none, for the reason convertChildren gives.
+	enabled: hasInstanceRuntime,
 	apply:   lowerSlotChildInstances,
 }
 
@@ -53,17 +51,50 @@ var passSlotChildInstances = pass{
 type slotChildSynth struct {
 	pkg      *ir.Package
 	reactive map[*ir.Var]bool
-	n        int
+	// cells is what a view body re-renders from beyond the package's and the
+	// components' vars: the props of a component built at run time, which
+	// passComponentProps promotes to cells after this pass -- the props of
+	// the components this pass synthesizes among them.
+	cells map[ir.Symbol]bool
+	// readHandles is every node handle something reads, which no lift may
+	// move behind a component boundary.
+	readHandles map[ir.Symbol]bool
+	n           int
 }
 
-func lowerSlotChildInstances(pkg *ir.Package, _ Features, _ Options) error {
+func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
+	st.cells = runtimeProps(pkg, rootComponent(pkg, opts))
+	st.readHandles = readNodeHandles(pkg)
 	// Rooted at the bodies a visual tree is written in. Reaching an
 	// imperative body under one costs nothing: only a view body holds a
 	// NodeInst, so a `for` in a handler has no top-level node to convert.
+	//
+	// By index, because lifting appends the components it synthesizes and
+	// each of their bodies is a view body with slots of its own.
+	for i := 0; i < len(pkg.Components); i++ {
+		if c := pkg.Components[i]; c != nil {
+			st.liftSlotBodies(c.Body)
+		}
+	}
+	st.liftSlotBodies(pkg.Body)
+	for _, w := range pkg.Windows {
+		if w != nil {
+			st.liftSlotBodies(w.Children)
+		}
+	}
+	if !caps.InsertBefore {
+		return nil
+	}
+	// InsertBefore is what makes converting the rest worth doing: without it
+	// a slot tears its children down and appends them all back, so an
+	// identity across renders is one nothing asks about, and the registry
+	// that maintains it would be pure overhead. A synthesized row holds no
+	// state of its own -- retention buys exactly the placement match and
+	// nothing else.
 	for _, c := range pkg.Components {
 		if c != nil {
 			st.walk(c.Body)
@@ -160,6 +191,9 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
 	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
+	for _, p := range comp.Props {
+		st.cells[p.Sym] = true
+	}
 
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
@@ -268,9 +302,10 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // liftValues turns every free value the subtree reads into a prop.
 //
 // Free means declared outside the node: the loop variable, and any of the
-// owner's state the body names. Both are safe to read through a cell, because
-// a slot re-renders whenever anything its body reads changes -- not only when
-// the iterable does -- so the render is always the one pushing the new value.
+// owner's state the body names. Both are safe to read through a cell: a slot
+// re-renders when what its structure reads changes, which is the only way a
+// loop variable changes, and a write to the owner's state hands every live
+// instance its new value (passReactivity's registry updaters).
 //
 // A call is a free value too, and the reason is not obvious: `decorate()`
 // names none of the owner's state and still reads it, through the body of the
@@ -281,8 +316,9 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // owner's scope. Lifting the call restores the property the whole synthesis
 // rests on: the child's subtree reads nothing but its own props. That is also
 // what makes registerSlotBodyDeps enough on its own -- the call is a prop
-// expression in the slot body now, so the slot re-fires when the func's reads
-// change, and no second guard is needed for this boundary.
+// expression in the slot body now, so the live instances are handed its value
+// when the func's reads change, and no second guard is needed for this
+// boundary.
 //
 // A call reading one of local stays where it is, its reads lifted one by one:
 // its arguments name bindings the site does not have.

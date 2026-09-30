@@ -770,10 +770,14 @@ shows, since its driver quits when the last one goes).
 
 Decisions 16 and 17, in order, each landing with its fixtures:
 
-1. **A slot body patches in place.** The slot re-renders on what its structure
-   reads; props inside it get updaters over the live render's nodes. General:
-   a fixture with a large `vbox` under an `if` whose label reads a ticking var,
-   asserting the vbox is not rebuilt per tick, on every platform with slots.
+1. **A slot body patches in place** -- *done.* The slot re-renders on what its
+   structure reads; each top-level node of its body that reads state is
+   lifted into a component built at run time, and a write hands the live
+   instances their new value (`liftSlotBodies`, `liveUpdaters`).
+   `testdata/slot_body_updates_in_place.txtar` and its `_runs.txt`. No test
+   surface yet reads a widget's identity, so the script shows the patch
+   landing and the golden shows the slot not re-firing; an unbound input
+   inside the panel (step 2) is the first thing a test could see survive.
 2. **An unbound two-way prop is state** (decision 17): implicit per-instance
    state, impurity, the `const` refusal, the `#ref` read -- a checkbox left
    unbound as the first fixture.
