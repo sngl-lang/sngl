@@ -560,7 +560,25 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		fn  *ir.Func
 	}
 	var pendingBodies []stdlibFuncBody
+	// A func a component body declares is that component's method and reads
+	// its props; checkComponentBody below checks it in that scope. Checked
+	// here, at package scope, a library component's `func open() { visible =
+	// true }` found no `visible`.
+	owned := map[*ir.Func]bool{}
+	for _, comp := range stdlibPkg.Components {
+		if comp.AST == nil || !comp.AST.Body.IsDefined() {
+			continue
+		}
+		for _, fn := range ir.BodyFuncs(comp) {
+			if fn.Receiver == "" || fn.Receiver == comp.Name {
+				owned[fn] = true
+			}
+		}
+	}
 	for _, fn := range stdlibPkg.Funcs {
+		if owned[fn] {
+			continue
+		}
 		if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) {
 			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: fn.AST, fn: fn})
 		}

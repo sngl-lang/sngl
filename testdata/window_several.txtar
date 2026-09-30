@@ -1,13 +1,17 @@
-Two windows are two OS windows on gtk4 and fyne, each opened and closed by its
-`#id`, and every window the tree holds is on screen once `run` is called.
+Two windows are two toplevels on gtk4 and fyne: two nodes at the root of the
+package body, each attached to the application, and each opened and closed by
+its `#id`.
 
-A window the window manager closes runs its `@close`, and the tree decides
-whether it still exists: `log` writes state and stays, so its close is only
-what the handler did. `main` writes none, so its close hides it, and the
-program ends when a close leaves no window on screen.
+A window the window manager closes is reported hidden, which writes its
+`visible`, and then runs its `@closed`. `log` keeps its own `visible`, so a
+close hides it and counts; `main` binds nothing either and hides the same way,
+and the program ends when a close leaves no window on screen.
 
-Each window's content is built once, into a box of its own, and outlives the
-toplevel around it.
+A reactive `if` at the root of a window's content is a render slot parented to
+the window's Toplevel like one parented to any other container.
+
+deny * `gtk4rt\.Window\{|snglWindow|\.Mount\(\)|\.Unmount\(\)` -- a window is a Toplevel node, not a record kept beside the tree
+deny * `__root1` -- a window's content has no box of its own outside the Toplevel
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -28,7 +32,7 @@ ui.window #main(title="Main") {
     })
 }
 
-ui.window #log(title="Log", @close {
+ui.window #log(title="Log", @closed {
     closes += 1
     log.close()
 }) {
@@ -51,7 +55,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
@@ -59,55 +62,88 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	closes     int
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__root1    *fyne.Container
+	closes         int
+	visible__inst0 bool
+	visible__inst1 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
 
-	main *snglWindow
-	log  *snglWindow
-	__n0 *widget.Label
-	__n1 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__n5    *widget.Button
+	__n2    *fynelayout.Toplevel
+	__n3    *widget.Label
+	__n6    *widget.Button
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.closes = 0
+	m.visible__inst0 = true
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__root1 = container.NewVBox()
 	return m
+}
+
+func (m *Model) close__inst2() {
+	m.visible__inst0 = false
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) open__inst3() {
+	m.visible__inst1 = true
+	m.__n2.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) close__inst3() {
+	m.visible__inst1 = false
+	m.__n2.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	if m.closes > 2 {
-		__n2 := widget.NewLabel("")
-		__n2.SetText("closed often")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
-		m.__slot0 = append(m.__slot0, __n2)
+		__n4 := widget.NewLabel("")
+		__n4.SetText("closed often")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4)
+		m.__slot0 = append(m.__slot0, __n4)
 	}
 }
 
-func (m *Model) __n3_click_handler() {
-	m.log.Open()
+func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n4_click_handler() {
-	m.main.Close()
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __log_close() {
+func (m *Model) __n5_click_handler() {
+	m.open__inst3()
+}
+
+func (m *Model) __n2_closed_handler() {
 	m.closes += 1
-	m.__n0.SetText((("closed the log " + fmt.Sprint(m.closes)) + " times"))
-	m.__n1.SetText(fmt.Sprint(m.closes))
-	m.__renderSlot0(m.__root1)
-	m.log.Close()
+	m.__n1.SetText((("closed the log " + fmt.Sprint(m.closes)) + " times"))
+	m.__n3.SetText(fmt.Sprint(m.closes))
+	m.__renderSlot0(m.__n2.Container)
+	m.close__inst3()
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n2.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) __n6_click_handler() {
+	m.close__inst2()
 }
 
 func (m *Model) Closes() int {
@@ -118,159 +154,63 @@ func (m *Model) SetCloses(v int) {
 	m.closes = v
 }
 
-// snglWindow is one window of the program: the fyne window the host shows,
-// around a widget tree the program builds once.
-type snglWindow struct {
-	title   string
-	content fyne.CanvasObject
-	onClose func()
-	w       fyne.Window
-	mounted bool
-	open    bool
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-var (
-	snglApp     fyne.App
-	snglStarted bool
-	snglHidden  bool
-	snglWindows []*snglWindow
-	snglAnchor  fyne.Window
-)
-
-// Mount says the window exists. Before the loop starts it is created when the
-// loop does; after, it is created and put on screen at once.
-func (w *snglWindow) Mount() {
-	if w.mounted {
-		return
-	}
-	w.mounted = true
-	snglWindows = append(snglWindows, w)
-	if snglStarted {
-		w.create()
-		w.Open()
-	}
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-// Unmount closes the fyne window. The content is kept for a later Mount.
-func (w *snglWindow) Unmount() {
-	if !w.mounted {
-		return
-	}
-	w.mounted = false
-	w.open = false
-	for i, x := range snglWindows {
-		if x == w {
-			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
-			break
-		}
-	}
-	if w.w != nil {
-		w.w.SetContent(container.NewStack())
-		w.w.Close()
-		w.w = nil
-	}
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-// Open puts a mounted window on screen.
-func (w *snglWindow) Open() {
-	w.open = true
-	if w.w != nil {
-		w.w.Show()
-	}
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
-// Close takes the window off screen; Open brings it back as it was.
-func (w *snglWindow) Close() {
-	w.open = false
-	if w.w != nil {
-		w.w.Hide()
-	}
-}
-
-func (w *snglWindow) create() {
-	if w.w != nil {
-		return
-	}
-	w.w = snglApp.NewWindow(w.title)
-	// fyne lays SetContent's tree out against the current size, so the
-	// content goes in before the resize.
-	w.w.SetContent(w.content)
-	w.w.Resize(fyne.NewSize(480, 640))
-	w.w.SetCloseIntercept(w.closeRequested)
-}
-
-// closeRequested is the window manager's close. The handler decides what it
-// means; with none, the window hides. Either way a close that leaves nothing
-// on screen ends the program, unless it started with nothing on screen.
-func (w *snglWindow) closeRequested() {
-	if w.onClose != nil {
-		w.onClose()
-	} else {
-		w.Close()
-	}
-	if snglHidden {
-		return
-	}
-	for _, x := range snglWindows {
-		if x.open {
-			return
-		}
-	}
-	snglApp.Quit()
-}
-
-// snglRunWindows runs the loop over the windows mounted so far and those
-// mounted later. show puts the mounted ones on screen at start.
-func snglRunWindows(show bool) {
-	snglHidden = !show
-	snglAnchor = snglApp.NewWindow("")
-	snglStarted = true
-	for _, w := range append([]*snglWindow(nil), snglWindows...) {
-		w.create()
-		if show || w.open {
-			w.Open()
-		}
-	}
-	snglApp.Run()
-}
-
-// BuildUI creates every window's widget tree. Call once.
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.main != nil {
-		return m.main.content
+	if m.__built {
+		return m.__n0.Container
 	}
-	m.main = &snglWindow{title: "Main", content: m.buildWindowMain()}
-	m.main.Mount()
-	m.log = &snglWindow{title: "Log", content: m.buildWindowLog(), onClose: m.__log_close}
-	m.log.Mount()
-	return m.main.content
-}
-
-func (m *Model) buildWindowMain() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText((("closed the log " + fmt.Sprint(m.closes)) + " times"))
-	__n3 := widget.NewButton("", nil)
-	__n3.SetText("Log")
-	__n3.OnTapped = m.__n3_click_handler
-	return container.NewVBox(m.__n0, __n3)
-}
-
-func (m *Model) buildWindowLog() fyne.CanvasObject {
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("Main")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint(m.closes))
-	m.__renderSlot0(m.__root1)
-	__n4 := widget.NewButton("", nil)
-	__n4.SetText("Hide main")
-	__n4.OnTapped = m.__n4_click_handler
-	m.__root1.Objects = append(m.__root1.Objects, m.__n1, __n4)
-	return m.__root1
+	m.__n1.SetText((("closed the log " + fmt.Sprint(m.closes)) + " times"))
+	m.__n0.Add(m.__n1)
+	m.__n5 = widget.NewButton("", nil)
+	m.__n5.SetText("Log")
+	m.__n5.OnTapped = m.__n5_click_handler
+	m.__n0.Add(m.__n5)
+	fynelayout.AppAttach(m.__n0)
+	m.__n2 = fynelayout.NewToplevel()
+	m.__n2.SetTitle("Log")
+	m.__n2.SetVisible(m.visible__inst1)
+	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnVisible = m.__n2_visible_handler
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(fmt.Sprint(m.closes))
+	m.__n2.Add(m.__n3)
+	m.__renderSlot0(m.__n2.Container)
+	m.__n6 = widget.NewButton("", nil)
+	m.__n6.SetText("Hide main")
+	m.__n6.OnTapped = m.__n6_click_handler
+	m.__n2.Add(m.__n6)
+	fynelayout.AppAttach(m.__n2)
+	return m.__n0.Container
 }
 
 func main() {
-	snglApp = app.New()
+	a := app.New()
 	m := New()
 	m.BuildUI()
-	snglRunWindows(true)
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -298,17 +238,18 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	closes     int
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__root1    gtk4rt.Handle
-	__n0       gtk4rt.Handle
-	__n3       gtk4rt.Handle
-	__n1       gtk4rt.Handle
-	__n4       gtk4rt.Handle
-	__root     gtk4rt.Handle
-	main       *gtk4rt.Window
-	log        *gtk4rt.Window
+	closes         int
+	visible__inst0 bool
+	visible__inst1 bool
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__n6           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -316,10 +257,26 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.closes = 0
+	m.visible__inst0 = true
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__root1 = nil
 	return m
+}
+
+func (m *Model) close__inst2() {
+	m.visible__inst0 = false
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+}
+
+func (m *Model) open__inst3() {
+	m.visible__inst1 = true
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+}
+
+func (m *Model) close__inst3() {
+	m.visible__inst1 = false
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
 }
 
 func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
@@ -329,27 +286,40 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if m.closes > 2 {
-		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, "closed often")
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
-		m.__slot0 = append(m.__slot0, __n2)
+		__n4 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n4, "closed often")
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4)
+		m.__slot0 = append(m.__slot0, __n4)
 	}
 }
 
-func (m *Model) __n3_clicked_handler() {
-	m.log.Open()
+func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) __n4_clicked_handler() {
-	m.main.Close()
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
-func (m *Model) __log_close() {
+func (m *Model) __n5_clicked_handler() {
+	m.open__inst3()
+}
+
+func (m *Model) __n2_closed_handler() {
 	m.closes += 1
-	gtk4rt.LabelSetText(m.__n0, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.closes))
-	m.__renderSlot0(m.__root1)
-	m.log.Close()
+	gtk4rt.LabelSetText(m.__n1, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.LabelSetText(m.__n3, fmt.Sprint(m.closes))
+	m.__renderSlot0(m.__n2)
+	m.close__inst3()
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+}
+
+func (m *Model) __n6_clicked_handler() {
+	m.close__inst2()
 }
 
 func (m *Model) Closes() int {
@@ -360,44 +330,63 @@ func (m *Model) SetCloses(v int) {
 	m.closes = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
-	m.__n3 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n3, "Log")
-	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n3)
-	m.main = &gtk4rt.Window{Title: "Main", Content: m.__root}
-	m.main.Mount()
-	m.__root1 = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.__n0, "Main")
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.closes))
-	m.__renderSlot0(m.__root1)
-	m.__n4 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n4, "Hide main")
-	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
-	gtk4rt.BoxAppend(m.__root1, m.__n1)
-	gtk4rt.BoxAppend(m.__root1, m.__n4)
-	m.log = &gtk4rt.Window{Title: "Log", Content: m.__root1, OnClose: m.__log_close}
-	m.log.Mount()
+	gtk4rt.LabelSetText(m.__n1, (("closed the log " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	m.__n5 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n5, "Log")
+	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.__n5)
+	gtk4rt.AppAttach(m.__n0)
+	m.__n2 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.__n2, "Log")
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, fmt.Sprint(m.closes))
+	gtk4rt.BoxAppend(m.__n2, m.__n3)
+	m.__renderSlot0(m.__n2)
+	m.__n6 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n6, "Hide main")
+	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
+	gtk4rt.BoxAppend(m.__n2, m.__n6)
+	gtk4rt.AppAttach(m.__n2)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "Main")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:200a7bd776f5ce60a9672cb6cec1775b
+pass sha256:f4ad5363a84cac33d1936540492b2f45
 -- run/go/gtk4 --
-pass sha256:319575c1c87a35cf045e2d63503f8b7b
+pass sha256:ca28e36724729b61597536718ec65c45

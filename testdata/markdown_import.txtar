@@ -160,7 +160,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.checked = state.checked__inst2;
   });
   $46.addEventListener("selected", function(e) {
-    state.selected__inst5 = 0;
+    state.selected__inst5 = e;
   });
   function __sngl_init() {
     __n1.checked = state.checked__inst2;
@@ -170,4 +170,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d222d5b81ef0f872ab1d37bfc9eef329
+pass sha256:68f13e0652341b877a74018e43b61ed1

@@ -1,9 +1,6 @@
 package ir
 
-import (
-	"strconv"
-	"strings"
-)
+import ()
 
 // Owner is a declaration that owns state: the vars it declares and the body
 // that reads them. There are two kinds -- the package itself and a component.
@@ -264,30 +261,18 @@ func WindowHandlers(w *Window) []*EventHandler {
 	return out
 }
 
-// WindowRootName is the synthesized var a window's top-level render slots are
-// parented to: `__root` for the first of ir.AllWindows, `__root<N>` for the
-// Nth after it. One name per window, because a host that holds several
-// windows puts each one's content in a box of its own, and a slot re-rendered
-// into another window's box would move its widgets there.
-func WindowRootName(pkg *Package, w *Window) string {
-	for i, x := range AllWindows(pkg) {
-		if x == w && i > 0 {
-			return "__root" + strconv.Itoa(i)
-		}
-	}
-	return "__root"
-}
+// AppParent is the parent a node at the root of the package body is attached
+// to: the application. `lower.AppendChild(__app, n)` is what the package body
+// says of each of its nodes, and what attaching to the application means is
+// each platform's answer -- a toplevel created and put on screen on gtk4 and
+// fyne. Nothing declares it: a translator recognises the name, as it
+// recognises a slot's parent, and a platform that has no application to
+// attach to treats the node as it treated an unparented root before.
+const AppParent = "__app"
 
-// IsRootSlotVarName reports whether name is a WindowRootName.
-func IsRootSlotVarName(name string) bool {
-	rest, ok := strings.CutPrefix(name, "__root")
-	if !ok {
-		return false
-	}
-	for _, r := range rest {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
+// IsAppParent reports whether e names the application a root node attaches
+// to.
+func IsAppParent(e Expr) bool {
+	id, ok := e.(*Ident)
+	return ok && id.Name == AppParent && id.Synthesized
 }

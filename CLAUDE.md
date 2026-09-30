@@ -2284,75 +2284,78 @@ a handler reached only through `ir.Output` is in no body. Each host's `main`
 builds the tree first, its first settle included, so a write in the handler
 updates widgets that exist; then calls the function with the command line and
 a `run` that presents the window and runs the loop. A handler that never calls
-it gets the loop with no window presented (`gtk4rt.RunHidden`, fyne's
-`a.Run()`), which is how a status bar launched by i3 starts.
+it gets the loop with no window presented (`RunWindows(false)` in
+`gtk4rt` and `fynelayout`), which is how a status bar launched by i3 starts.
 `golang.ModelCallee` spells the call, since a handler that touches no state is
 emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 `testdata/platform_run_handler.txtar` is the code and
 `cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
 
-**A window on gtk4 and fyne is a record around content built once.** Every
-window of a program that holds several, or opens, closes or hears the close
-of one, gets a Model field named by its `#id` (`__win<N>` without one) holding
-a `gtk4rt.Window` or fyne's inline `snglWindow` (`codegen.HostWindows`); a
-lone window that does none of that keeps the old single-window output. Its
-widgets are built into a root box of its own -- `ir.WindowRootName`, `__root`
-for the first window and `__root<N>` after, which is also the parent its
-top-level render slots re-render into -- and the record's `Mount` creates a
-toplevel around that box and `Unmount` destroys it. The content is retained
-and outlives the toplevel, so an updater never reaches a freed widget and a
-window mounted again shows the state as it now is. `window.open()` and
-`window.close()` (`lib/ui/window.sngl`, answered in
-`codegen/platform/{gtk4,fyne}/window.go`) show and hide the record through
-the handle's ordinary spelling, `m.details`.
+**The package body is the application's view, and a window is a component.**
+Every node at the root of the package body is `lower.AppendChild(__app, n)`
+(`ir.AppParent`, written by passDeclarative), and a render slot there is
+handed the application as its parent; what attaching to it means is each
+platform translator's answer. On gtk4 and fyne `ui.window` is overridden by
+the platform's `Toplevel` primitive (`title`, `:visible`, `@closed`, a rest
+slot of `ui.node`), and attaching a Toplevel creates its window: `gtk4rt.App`
+and `fynelayout.App` are what a slot is handed, and the box calls a slot makes
+(`BoxAppend`/`BoxRemove`/`InsertBefore`/`SlotAnchor`, fyne's `InsertBefore`,
+`Remove`, `SlotAnchor`) answer for the application when handed it. A Toplevel's
+handle is the box its content is appended to, so a child and a slot inside a
+window are ordinary box operations. BuildUI -- what a test and a snapshot take
+-- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
+the tree, its first settle included, and runs `RunWindows(show)`.
 
-Every window the tree holds is mounted while the tree is built, before the
-first settle, and `run` puts them on screen: a program whose `@run` never
-calls it runs the loop with none shown. A mount before the loop starts is
-created when it does (a toplevel needs the application), and one after it is
-put on screen at once. gtk4 holds the application (`g_application_hold`) and
-fyne keeps a window it never shows, because both would otherwise end when the
-last window goes. Both need the runtime: gtk4's inline-cgo mode refuses a
-program with records.
+What makes that reach the two platforms is generic: a builtin node whose
+declaration the target overrides is composed like any component
+(`composeOverriddenBuiltins` in `internal/lower/platform_extension.go`, which
+repoints each node at a per-build copy of the declaration with the mark off,
+since library IR is shared between builds), and the windows `pkg.Windows`
+held join the package body ahead of it -- the one window-specific step, and
+C3's to delete. html, bubbletea and android render `window` as the builtin it
+is marked and answer as before; `passWindowUnderIf` still refuses a window
+there under an `if` that reads state
+(`cmd/sngl/testdata/window_under_if_refused.txt`), and their translators treat
+a node attached to `__app` as the unparented root it was.
 
-**A window under an `if` that reads state comes and goes with it**, which is
-`passWindowLifetimes` (`internal/lower/window_lifetimes.go`) on a platform
-holding `#[gen.can(windowLifetimes)]` -- gtk4 and fyne. A window's position
-says whether it exists the way an effect's says whether its lifetime runs, so
-the pass says it in `passEffect`'s terms rather than being a second
-reconciler: the window moves to `pkg.Windows` with its condition on
-`NodeInst.Presence`, and an `effect` takes its place whose mount and unmount
-call `window.mount` / `window.unmount` on the window's handle (a synthesized
-`__win<N>` when nothing names it, numbered as `codegen.HostWindows` numbers
-records). So the settle runs wherever the condition's state is written -- the
-window's own `@close` included, which is how closing it writes the condition
-back -- and the first settle at start. `passEffect` starts every effect in the
-window's body at the `Presence` frame, so those live as long as the window
-does, and every page scope's `@unmount`s share the one exit handler. Only an
-`if` at the root of the package body: a window a root component renders has
-been spliced there by then, and one under a `for` is untouched (a copy per
-element is more than one record per window statement holds). A target without
-the capability refuses the window with a position
-(`cmd/sngl/testdata/window_under_if_refused.txt`); a condition that reads no
-state is not a lifetime and builds anywhere. `testdata/window_under_if.txtar`
-is the code and `cmd/sngl/testdata/window_under_if_runs.txt` runs it.
+**A window under an `if details` is a node in a render slot**: created with
+the slot, destroyed with it, content and effects included. The slot's body is
+lifted into a component built at run time (liftSlotBodies), so what the window
+renders is an instance, and an instance's teardown destroys the instances its
+own build made (`destroyBuiltInstances`) -- without that an effect in a
+component the window rendered stayed mounted after the window was gone.
+Nothing survives the condition turning false; hiding without destroying is
+`visible`. `testdata/window_under_if.txtar` is the code and
+`cmd/sngl/testdata/window_under_if_runs.txt` runs it, including a counter
+that starts again at zero the second time.
 
-A node's `#id` handle counts as state in `codegen.PackageStateFuncs`, since
-every target keeps it where it keeps the tree: the effect's mount reads the
-window's handle and nothing else, and was emitted as a free Go function
-naming `m`.
+**`visible` is a two-way prop of `ui.window`, and `open`/`close` assign it.**
+They are ordinary methods in the window's body (`func open() { visible = true }`), so `details.open()` writes the caller's var where `:visible=shown`
+bound one and the window's own cell (passImplicitState) where nothing did; a
+read `details.visible` names the same. A method called through a component's
+`#id` is repointed at the clone the inliner made where it spliced the node
+(`repointHandleCalls`, beside repointCellReads) -- before, `p.open()` came out
+as `m.p.open()` and the method was shaken away -- and the inliner now
+substitutes a component's events into its hoisted methods too, which is how a
+method's write of a bound prop reaches the caller. The override binds the prop
+through (`Toplevel(:visible=visible)`), which works because passPropBindings
+also lowers the bindings of every library body the program renders.
 
-**A window's `@close` is its answer to the window manager**, and the tree
-decides what exists: the handler runs, and a window it did not unmount or
-close stays on screen. With no `@close` the window hides. Either way a close
-that leaves no window on screen ends the program, unless it started with none
-(`pkg/go/gtk4rt/windows_test.go` drives those rules through
-`Window.RequestClose`). `@close` is an ordinary event of `ui.window`, checked
-by `checkAndSplitArgs` beside the props; only `@error` is held back, and
-`ir.WindowHandlers` is the one list of a window's handlers every walk reads.
-On gtk4 `WAYLAND_DEBUG` is how a script tells a window reached the screen
-(`cmd/sngl/testdata/window_open_runs.txt`,
-`cmd/sngl/testdata/window_several_runs.txt`).
+The host reports a window manager's close as `visible = false` and then fires
+`@closed` -- renamed from `@close`, which clashed with the `close` method --
+and the tree decides what exists: a handler writing `details = false`
+destroys the window, one calling `open()` keeps it on screen. A close that
+leaves no window on screen ends the program, unless it started with none; a
+start with none on screen reports every window hidden, which is what makes a
+later `open()` a change (`pkg/go/gtk4rt/toplevel_test.go` drives the rules
+through `ToplevelRequestClose`). Each setter ignores the value the window
+already has, since the binding's write-back sets it again. gtk4 holds the
+application (`g_application_hold`) and fyne keeps a window it never shows,
+because both would otherwise end when the last window goes. gtk4's inline-cgo
+mode builds one window with no `@closed` and no state-driven `visible`, and
+refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a script tells a window
+reached the screen (`cmd/sngl/testdata/window_open_runs.txt`,
+`window_several_runs.txt`, `window_visible_runs.txt`).
 
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it

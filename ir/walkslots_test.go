@@ -141,7 +141,6 @@ func markedPackage() *Package {
 				{Name: WindowTitle, Value: mark("Window.Props[1]")},
 			},
 			ErrorHandler: &EventHandler{Func: fn("Window.ErrorHandler")},
-			Presence:     mark("NodeInst.Presence"),
 		}},
 	}
 }

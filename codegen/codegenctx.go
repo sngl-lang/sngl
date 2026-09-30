@@ -73,6 +73,11 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	if w := ctx.EntryWindow(); w != nil {
 		c = c.ForWindow(w)
 	}
+	// A package body holding no window is the application's view, and the
+	// Model is its scope.
+	if ctx.RootDecl() == nil && len(ir.AllWindows(ctx.Pkg)) == 0 {
+		c.App = true
+	}
 	return c
 }
 

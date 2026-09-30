@@ -356,55 +356,59 @@ type ToggleEvent struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	checked__inst1 bool
+	visible__inst1 bool
 	checked__inst2 bool
+	checked__inst3 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
-	__inst0_live   []*__checkbox_state2Instance
+	__inst0_live   []*__checkbox_state3Instance
 
-	__n4 *fyne.Container
-	box  *widget.Check
-	__n1 *widget.Label
-	__n2 *widget.Check
+	__n1    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	box     *widget.Check
+	__n2    *widget.Label
+	__n3    *widget.Check
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.checked__inst1 = false
-	m.checked__inst2 = true
+	m.visible__inst1 = true
+	m.checked__inst2 = false
+	m.checked__inst3 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__checkbox_state2Instance{}
+	m.__inst0_live = []*__checkbox_state3Instance{}
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state2Instance{}
+	__inst0_next := []*__checkbox_state3Instance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
-		var __n3 *__checkbox_state2Instance
+		var __n4 *__checkbox_state3Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := new__checkbox_state2Instance(m, false, it)
-			__n3 = __n3__new
+			__n4__new := new__checkbox_state3Instance(m, false, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -415,21 +419,29 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n1.SetVisible(m.visible__inst1)
+}
+
 func (m *Model) box_change_handler(b bool) {
-	m.checked__inst1 = b
-	m.box.SetChecked(m.checked__inst1)
+	m.checked__inst2 = b
+	m.box.SetChecked(m.checked__inst2)
 	var __lt0 string
-	if m.checked__inst1 {
+	if m.checked__inst2 {
 		__lt0 = "on"
 	} else {
 		__lt0 = "off"
 	}
-	m.__n1.SetText(__lt0)
+	m.__n2.SetText(__lt0)
 }
 
-func (m *Model) __n2_change_handler(b bool) {
-	m.checked__inst2 = b
-	m.__n2.SetChecked(m.checked__inst2)
+func (m *Model) __n3_change_handler(b bool) {
+	m.checked__inst3 = b
+	m.__n3.SetChecked(m.checked__inst3)
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
@@ -447,12 +459,12 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Checked__inst1() bool {
-	return m.checked__inst1
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetChecked__inst1(v bool) {
-	m.checked__inst1 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
 func (m *Model) Checked__inst2() bool {
@@ -463,52 +475,69 @@ func (m *Model) SetChecked__inst2(v bool) {
 	m.checked__inst2 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Checked__inst3() bool {
+	return m.checked__inst3
+}
+
+func (m *Model) SetChecked__inst3(v bool) {
+	m.checked__inst3 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n5 = container.NewVBox()
 	m.box = widget.NewCheck("", nil)
 	m.box.SetText("alone")
-	m.box.SetChecked(m.checked__inst1)
+	m.box.SetChecked(m.checked__inst2)
 	m.box.OnChanged = m.box_change_handler
-	m.__n4.Add(m.box)
+	m.__n5.Add(m.box)
 	var __lt1 string
-	if m.checked__inst1 {
+	if m.checked__inst2 {
 		__lt1 = "on"
 	} else {
 		__lt1 = "off"
 	}
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(__lt1)
-	m.__n4.Add(m.__n1)
-	m.__n2 = widget.NewCheck("", nil)
-	m.__n2.SetText("starts on")
-	m.__n2.SetChecked(m.checked__inst2)
-	m.__n2.OnChanged = m.__n2_change_handler
-	m.__n4.Add(m.__n2)
-	m.__renderSlot0(m.__n4)
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText(__lt1)
+	m.__n5.Add(m.__n2)
+	m.__n3 = widget.NewCheck("", nil)
+	m.__n3.SetText("starts on")
+	m.__n3.SetChecked(m.checked__inst3)
+	m.__n3.OnChanged = m.__n3_change_handler
+	m.__n5.Add(m.__n3)
+	m.__renderSlot0(m.__n5)
+	m.__n1.Add(m.__n5)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
 
-// __checkbox_state2Instance is one live instance of the __checkbox_state2 component.
-type __checkbox_state2Instance struct {
-	Root             fyne.CanvasObject
-	__model          *Model
-	__prop___checked bool
-	__prop_label     string
-	checked          bool
-	__root           *fyne.Container
-	__slot0          []fyne.CanvasObject
-	__slot0_at       fyne.CanvasObject
-	__n0             *widget.Check
+// __checkbox_state3Instance is one live instance of the __checkbox_state3 component.
+type __checkbox_state3Instance struct {
+	Root                   fyne.CanvasObject
+	__model                *Model
+	__prop___start_checked bool
+	__prop_label           string
+	checked                bool
+	__root                 *fyne.Container
+	__slot0                []fyne.CanvasObject
+	__slot0_at             fyne.CanvasObject
+	__n0                   *widget.Check
 }
 
-func new__checkbox_state2Instance(__model *Model, __a___checked bool, __a_label string) *__checkbox_state2Instance {
-	c := &__checkbox_state2Instance{}
+func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_label string) *__checkbox_state3Instance {
+	c := &__checkbox_state3Instance{}
 	c.__model = __model
-	c.__prop___checked = __a___checked
+	c.__prop___start_checked = __a___start_checked
 	c.__prop_label = __a_label
-	c.checked = c.__prop___checked
+	c.checked = c.__prop___start_checked
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__n0 = widget.NewCheck("", nil)
@@ -522,24 +551,22 @@ func new__checkbox_state2Instance(__model *Model, __a___checked bool, __a_label 
 	return c
 }
 
-func (c *__checkbox_state2Instance) Set__checked(__v bool) {
-	c.__prop___checked = __v
+func (c *__checkbox_state3Instance) Set__start_checked(__v bool) {
+	c.__prop___start_checked = __v
 }
 
-func (c *__checkbox_state2Instance) SetLabel(__v string) {
+func (c *__checkbox_state3Instance) SetLabel(__v string) {
 	c.__prop_label = __v
 	c.__n0.SetText(c.__prop_label)
 }
 
-func (c *__checkbox_state2Instance) Destroy() {}
+func (c *__checkbox_state3Instance) Destroy() {}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -550,9 +577,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -570,16 +598,18 @@ type ToggleEvent struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	checked__inst1 bool
+	visible__inst1 bool
 	checked__inst2 bool
+	checked__inst3 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*__checkbox_state2Instance
-	__n4           gtk4rt.Handle
-	box            gtk4rt.Handle
+	__inst0_live   []*__checkbox_state3Instance
 	__n1           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	box            gtk4rt.Handle
 	__n2           gtk4rt.Handle
-	__root         gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -587,11 +617,12 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.checked__inst1 = false
-	m.checked__inst2 = true
+	m.visible__inst1 = true
+	m.checked__inst2 = false
+	m.checked__inst3 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
-	m.__inst0_live = []*__checkbox_state2Instance{}
+	m.__inst0_live = []*__checkbox_state3Instance{}
 	return m
 }
 
@@ -601,25 +632,25 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	__inst0_next := []*__checkbox_state2Instance{}
+	__inst0_next := []*__checkbox_state3Instance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
-		var __n3 *__checkbox_state2Instance
+		var __n4 *__checkbox_state3Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := new__checkbox_state2Instance(m, false, it)
-			__n3 = __n3__new
+			__n4__new := new__checkbox_state3Instance(m, false, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -630,42 +661,50 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+}
+
 func (m *Model) box_toggled_handler() {
-	m.checked__inst1 = gtk4rt.CheckButtonGetActive(m.box)
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst1)
+	m.checked__inst2 = gtk4rt.CheckButtonGetActive(m.box)
+	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst2)
 	var __lt0 string
-	if m.checked__inst1 {
+	if m.checked__inst2 {
 		__lt0 = "on"
 	} else {
 		__lt0 = "off"
 	}
-	gtk4rt.LabelSetText(m.__n1, __lt0)
+	gtk4rt.LabelSetText(m.__n2, __lt0)
 }
 
-func (m *Model) __n2_toggled_handler() {
-	m.checked__inst2 = gtk4rt.CheckButtonGetActive(m.__n2)
-	gtk4rt.CheckButtonSetActive(m.__n2, m.checked__inst2)
+func (m *Model) __n3_toggled_handler() {
+	m.checked__inst3 = gtk4rt.CheckButtonGetActive(m.__n3)
+	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst3)
 }
 
-// __checkbox_state2Instance is one live instance of the __checkbox_state2 component.
-type __checkbox_state2Instance struct {
-	Root             gtk4rt.Handle
-	__model          *Model
-	__prop___checked bool
-	__prop_label     string
-	checked          bool
-	__root           gtk4rt.Handle
-	__slot0          []gtk4rt.Handle
-	__slot0_at       gtk4rt.Handle
-	__n0             gtk4rt.Handle
+// __checkbox_state3Instance is one live instance of the __checkbox_state3 component.
+type __checkbox_state3Instance struct {
+	Root                   gtk4rt.Handle
+	__model                *Model
+	__prop___start_checked bool
+	__prop_label           string
+	checked                bool
+	__root                 gtk4rt.Handle
+	__slot0                []gtk4rt.Handle
+	__slot0_at             gtk4rt.Handle
+	__n0                   gtk4rt.Handle
 }
 
-func new__checkbox_state2Instance(__model *Model, __a___checked bool, __a_label string) *__checkbox_state2Instance {
-	c := &__checkbox_state2Instance{}
+func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_label string) *__checkbox_state3Instance {
+	c := &__checkbox_state3Instance{}
 	c.__model = __model
-	c.__prop___checked = __a___checked
+	c.__prop___start_checked = __a___start_checked
 	c.__prop_label = __a_label
-	c.checked = c.__prop___checked
+	c.checked = c.__prop___start_checked
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.CheckButtonNew()
@@ -680,16 +719,16 @@ func new__checkbox_state2Instance(__model *Model, __a___checked bool, __a_label 
 	return c
 }
 
-func (c *__checkbox_state2Instance) Set__checked(__v bool) {
-	c.__prop___checked = __v
+func (c *__checkbox_state3Instance) Set__start_checked(__v bool) {
+	c.__prop___start_checked = __v
 }
 
-func (c *__checkbox_state2Instance) SetLabel(__v string) {
+func (c *__checkbox_state3Instance) SetLabel(__v string) {
 	c.__prop_label = __v
 	gtk4rt.CheckButtonSetLabel(c.__n0, c.__prop_label)
 }
 
-func (c *__checkbox_state2Instance) Destroy() {
+func (c *__checkbox_state3Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
@@ -707,12 +746,12 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Checked__inst1() bool {
-	return m.checked__inst1
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetChecked__inst1(v bool) {
-	m.checked__inst1 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
 func (m *Model) Checked__inst2() bool {
@@ -723,44 +762,55 @@ func (m *Model) SetChecked__inst2(v bool) {
 	m.checked__inst2 = v
 }
 
+func (m *Model) Checked__inst3() bool {
+	return m.checked__inst3
+}
+
+func (m *Model) SetChecked__inst3(v bool) {
+	m.checked__inst3 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	m.__built = true
+	m.__n1 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
+	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n5, 6)
 	m.box = gtk4rt.CheckButtonNew()
 	gtk4rt.CheckButtonSetLabel(m.box, "alone")
-	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst1)
+	gtk4rt.CheckButtonSetActive(m.box, m.checked__inst2)
 	gtk4rt.Connect(m.box, "toggled", m.box_toggled_handler)
-	gtk4rt.BoxAppend(m.__n4, m.box)
+	gtk4rt.BoxAppend(m.__n5, m.box)
 	var __lt1 string
-	if m.checked__inst1 {
+	if m.checked__inst2 {
 		__lt1 = "on"
 	} else {
 		__lt1 = "off"
 	}
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, __lt1)
-	gtk4rt.BoxAppend(m.__n4, m.__n1)
-	m.__n2 = gtk4rt.CheckButtonNew()
-	gtk4rt.CheckButtonSetLabel(m.__n2, "starts on")
-	gtk4rt.CheckButtonSetActive(m.__n2, m.checked__inst2)
-	gtk4rt.Connect(m.__n2, "toggled", m.__n2_toggled_handler)
-	gtk4rt.BoxAppend(m.__n4, m.__n2)
-	m.__renderSlot0(m.__n4)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, __lt1)
+	gtk4rt.BoxAppend(m.__n5, m.__n2)
+	m.__n3 = gtk4rt.CheckButtonNew()
+	gtk4rt.CheckButtonSetLabel(m.__n3, "starts on")
+	gtk4rt.CheckButtonSetActive(m.__n3, m.checked__inst3)
+	gtk4rt.Connect(m.__n3, "toggled", m.__n3_toggled_handler)
+	gtk4rt.BoxAppend(m.__n5, m.__n3)
+	m.__renderSlot0(m.__n5)
+	gtk4rt.BoxAppend(m.__n1, m.__n5)
+	gtk4rt.AppAttach(m.__n1)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 
 // boxChange fires the "toggled" signal on the #box widget; for tests.
@@ -832,8 +882,8 @@ fun MainScreen() {
 }
 
 @Composable
-fun __checkbox_state2(__checked: Boolean = false, label: String) {
-    var checked by remember { mutableStateOf(__checked) }
+fun __checkbox_state2(__start_checked: Boolean = false, label: String) {
+    var checked by remember { mutableStateOf(__start_checked) }
 
     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, onCheckedChange = { on ->
@@ -878,14 +928,14 @@ body { font-family: system-ui, sans-serif; }
   function __cf___checkbox_state2(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let __checked = props.__checked ?? false;
+    let __start_checked = props.__start_checked ?? false;
     let label = props.label;
-    let __prop___checked = __checked;
+    let __prop___start_checked = __start_checked;
     let __prop_label = label;
-    let checked = __prop___checked;
+    let checked = __prop___start_checked;
     let __slot02 = [];
-    function __set___checked(__v) {
-      __prop___checked = __v;
+    function __set___start_checked(__v) {
+      __prop___start_checked = __v;
     }
     function __set_label(__v) {
       __prop_label = __v;
@@ -910,7 +960,7 @@ body { font-family: system-ui, sans-serif; }
       __root,
       __destroy() {
       },
-      __set___checked,
+      __set___start_checked,
       __set_label
     };
   }
@@ -987,10 +1037,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4fcad582a54a0bd19d0b0b2fe5cba983
 -- run/go/fyne --
-pass sha256:42027ed513edba98733907dd1c943ddc
+pass sha256:fc614b71207e96860ff5952cfab130a2
 -- run/go/gtk4 --
-pass sha256:c14202b7b674de276c139fe47ec817ac
+pass sha256:f5ce6d1b8a6455d9c5e766f6c8b000ee
 -- run/kotlin/android --
-pass sha256:90ee5bdfad21f202b9aa3c365dd43cff
+pass sha256:49009c67bb29b5daca320109b4de5ae5
 -- run/none/html --
-pass sha256:37801ec20cf56d5d377594a41fcb92d7
+pass sha256:5111d0338a362812ca35c75d6af3ade0

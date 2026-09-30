@@ -12,7 +12,7 @@ import gen "sngl:x/gen"
 // The `fyne` node of a build directive: `output { go { fyne() } }`.
 // fyne.Do queues onto the goroutine running the driver, which is the one that
 // owns every widget.
-#[gen.can(asyncPost, instanceState, windowLifetimes)]
+#[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nX.<prop> = <expr>`
 // after every mutation of a tracked var, which is how a Fyne widget is told
 // anything; withholding declarative flattens the tree into the
@@ -35,6 +35,28 @@ component platform(
     // line after the program's name.
     @run(args list<string>, run func()),
 ) build.platform {}
+
+// --- Windows ---
+
+// A toplevel: the host object a `ui.window` is on this platform. A node the
+// package body holds is attached to the application, and attaching one of
+// these creates the fyne.Window and puts it on screen once the loop runs;
+// removing one, as an `if` turning false does, destroys it and everything in
+// it. `visible` shows and hides it without destroying it, and the window
+// manager's close is reported as `visible = false` followed by `@closed`.
+#[intrinsic("fyne:Toplevel")]
+component Toplevel(
+    title string,
+    :visible bool,
+    @closed(),
+    content ...component ui.node,
+) root
+
+const component ui.window[platform] {
+    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+        content(params)
+    }
+}
 
 // --- The Spec vocabulary ---
 

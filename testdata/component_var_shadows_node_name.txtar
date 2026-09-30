@@ -160,18 +160,22 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	progress__inst0 float64
+	visible__inst1  bool
 	__slot0         []fyne.CanvasObject
 	__slot0_at      fyne.CanvasObject
 	__inst0_live    []*__child0Instance
 
-	__n4 *fyne.Container
-	__n1 *widget.Label
+	__n1    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	__n2    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
@@ -180,28 +184,28 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	var __n2 *__child0Instance
+	var __n3 *__child0Instance
 	if len(m.__inst0_live) > __inst0_i {
-		__n2 = m.__inst0_live[__inst0_i]
-		__n2.Set__p0(m.progress__inst0)
+		__n3 = m.__inst0_live[__inst0_i]
+		__n3.Set__p0(m.progress__inst0)
 	} else {
 		if len(m.__inst0_live) > __inst0_i {
 			m.__inst0_live[__inst0_i].Destroy()
 		}
-		__n2__new := new__child0Instance(m, m.progress__inst0)
-		__n2 = __n2__new
+		__n3__new := new__child0Instance(m, m.progress__inst0)
+		__n3 = __n3__new
 	}
-	__inst0_next = append(__inst0_next, __n2)
+	__inst0_next = append(__inst0_next, __n3)
 	__inst0_i = (__inst0_i + 1)
-	__n2__el := __n2.Root
-	fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-	m.__slot0 = append(m.__slot0, __n2__el)
+	__n3__el := __n3.Root
+	fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+	m.__slot0 = append(m.__slot0, __n3__el)
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
 		if __inst0_i_j >= __inst0_i {
@@ -209,6 +213,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		}
 	}
 	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n1.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) Progress__inst0() float64 {
@@ -219,15 +231,32 @@ func (m *Model) SetProgress__inst0(v float64) {
 	m.progress__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
-	m.__renderSlot0(m.__n4)
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint(m.progress__inst0))
-	m.__n4.Add(m.__n1)
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n5 = container.NewVBox()
+	m.__renderSlot0(m.__n5)
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText(fmt.Sprint(m.progress__inst0))
+	m.__n5.Add(m.__n2)
+	m.__n1.Add(m.__n5)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -262,11 +291,9 @@ func (c *__child0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -454,11 +481,13 @@ func boolToInt(b bool) int {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	progress__inst0 float64
+	visible__inst1  bool
 	__slot0         []*C.GtkWidget
 	__slot0_at      *C.GtkWidget
 	__inst0_live    []*__child0Instance
-	__n4            *C.GtkBox
-	__n1            *C.GtkLabel
+	__n1            *C.GtkBox
+	__n5            *C.GtkBox
+	__n2            *C.GtkLabel
 	__root          *C.GtkBox
 }
 
@@ -467,6 +496,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*__child0Instance{}
@@ -481,22 +511,22 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
-	var __n2 *__child0Instance
+	var __n3 *__child0Instance
 	if len(m.__inst0_live) > __inst0_i {
-		__n2 = m.__inst0_live[__inst0_i]
-		__n2.Set__p0(m.progress__inst0)
+		__n3 = m.__inst0_live[__inst0_i]
+		__n3.Set__p0(m.progress__inst0)
 	} else {
 		if len(m.__inst0_live) > __inst0_i {
 			m.__inst0_live[__inst0_i].Destroy()
 		}
-		__n2__new := new__child0Instance(m, m.progress__inst0)
-		__n2 = __n2__new
+		__n3__new := new__child0Instance(m, m.progress__inst0)
+		__n3 = __n3__new
 	}
-	__inst0_next = append(__inst0_next, __n2)
+	__inst0_next = append(__inst0_next, __n3)
 	__inst0_i = (__inst0_i + 1)
-	__n2__el := __n2.Root
-	C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n2__el)))
-	m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n2__el)))
+	__n3__el := __n3.Root
+	C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
+	m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
 		if __inst0_i_j >= __inst0_i {
@@ -504,6 +534,13 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		}
 	}
 	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
 }
 
 // __child0Instance is one live instance of the __child0 component.
@@ -555,19 +592,29 @@ func (m *Model) SetProgress__inst0(v float64) {
 	m.progress__inst0 = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n4 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n4)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n4)), C.int(6))
-	m.__renderSlot0(m.__n4)
-	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(fmt.Sprint(m.progress__inst0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n4)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n5 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n5)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n5)), C.int(6))
+	m.__renderSlot0(m.__n5)
+	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.CString(fmt.Sprint(m.progress__inst0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -728,9 +775,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
-pass sha256:2dd1e12924ae07cc4dd2c8beb092afd3
+pass sha256:f2ce1d7ee03866d5d93631252e843fee
 -- run/go/gtk4 --
-pass sha256:885dd8344e58f881c31ec853f2deef07
+pass sha256:abe97216fd6cbd75b4e5fad002e566f2
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --

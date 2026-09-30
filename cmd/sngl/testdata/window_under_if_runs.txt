@@ -1,8 +1,10 @@
-# A window under `if details` is created each time `details` turns true and
-# destroyed each time it turns false: the timer turns it on, off and on again,
-# so gtk4's Wayland log shows its toplevel created twice and destroyed once,
-# and the effect in its body -- which lives as long as the window -- mounts
-# twice and unmounts once, on both hosts.
+# A window under `if details` is a node in a render slot: created each time
+# `details` turns true and destroyed each time it turns false, content and
+# effects with it. The timer turns it on, off and on again, so gtk4's Wayland
+# log shows its toplevel created twice, and the effect in its body -- which
+# lives as long as the window -- mounts twice and unmounts once, on both
+# hosts. Nothing in it survives the condition turning false: the counter in
+# its body starts again at zero the second time.
 #
 # testdata/window_under_if.txtar is the code.
 
@@ -19,9 +21,9 @@ exec ./fyne/app
 cmp stdout want.txt
 
 -- want.txt --
-mounted
+mounted 1
 unmounted
-mounted
+mounted 1
 -- app.sngl --
 import go "sngl:language/go"
 import time "sngl:time"
@@ -53,14 +55,21 @@ ui.window #main(title="Main") {
 }
 
 if details {
-    ui.window(title="Load", @close {
+    ui.window(title="Load", @closed {
         details = false
     }) {
         ui.text(value="load")
-        effect(@mount {
-            println("mounted")
-        }, @unmount {
-            println("unmounted")
-        })
+        counter()
     }
+}
+
+component counter ui.node {
+    var mounts = 0
+    ui.text(value="{mounts}")
+    effect(@mount {
+        mounts += 1
+        println("mounted {mounts}")
+    }, @unmount {
+        println("unmounted")
+    })
 }

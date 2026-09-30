@@ -39,12 +39,15 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	if err := st.run(); err != nil {
 		return err
 	}
 	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
+		return err
+	}
+	if err := repointHandleCalls(pkg, st.methods); err != nil {
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
@@ -357,6 +360,9 @@ type inlineCompState struct {
 	// cells is each implicit cell (ir.Var.Cell) and the copies splicing its
 	// component made of it, for repointCellReads.
 	cells map[*ir.Var][]*ir.Var
+	// methods is, per node handle, each method of the component splicing that
+	// node cloned and the clones, for repointHandleCalls.
+	methods map[*ir.Var]map[*ir.Func][]*ir.Func
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -1233,6 +1239,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
+		if n.Handle != nil {
+			if st.methods[n.Handle] == nil {
+				st.methods[n.Handle] = map[*ir.Func][]*ir.Func{}
+			}
+			st.methods[n.Handle][f] = append(st.methods[n.Handle][f], clone)
+		}
 	}
 
 	// Apply renames to every hoisted block.
@@ -1308,6 +1320,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)
+	// A method fires the instance's events as the body does -- `open` writing
+	// a bound `visible` is an emit of it by now -- so the call site's handlers
+	// answer there too. Left as it was, the clone emitted an event nothing
+	// declared a handler for.
+	for i := funcStart; i < len(*hoist.funcs); i++ {
+		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
+	}
 	body = substituteSlots(body, n)
 
 	return body, nil

@@ -671,7 +671,6 @@ type Model struct {
 	lit            bool
 	seen           string
 	checked__inst0 bool
-	__n1           *C.GtkBox
 	box            *C.GtkCheckButton
 	sw             *C.GtkSwitch
 	__n0           *C.GtkLabel
@@ -739,25 +738,25 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	__n1 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n1)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n1)), C.int(6))
 	m.box = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
 	C.gtk_check_button_set_label((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.CString("a"))
 	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(m.box)), C.gboolean(boolToInt(m.on)))
 	snglCallbacks = append(snglCallbacks, m.box_toggled_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("toggled"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.sw = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(m.checked__inst0)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.sw)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.sw_notifyActive_handler)
 	C.sngl_connect(unsafe.Pointer(m.sw), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.sw)))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(m.seen))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1039,7 +1038,7 @@ pass sha256:a95ccfe48037f74effd14f455bbb6fa4
 -- run/go/fyne --
 pass sha256:6c972b267cf8848a85edd2557f8d44cf
 -- run/go/gtk4 --
-pass sha256:97e79d887fadbb1b8c5bf9388d1a3dfc
+pass sha256:e7d86657e50611538d49848f1349f0c6
 -- run/go/html --
 pass sha256:a95aaf38e62f3a6d4c469f8e6616cb8e
 -- run/kotlin/android --

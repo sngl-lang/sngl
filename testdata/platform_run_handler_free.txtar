@@ -36,17 +36,23 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -54,27 +60,50 @@ func __run(args []string, run func()) {
 	run()
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText("hi")
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText("hi")
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
 	m := New()
-	w := a.NewWindow("SNGL App")
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
+	m.BuildUI()
 	ran := false
 	__run(os.Args[1:], func() {
 		ran = true
-		w.ShowAndRun()
+		fynelayout.RunWindows(a, true)
 	})
 	if !ran {
-		a.Run()
+		fynelayout.RunWindows(a, false)
 	}
 	_ = os.Stderr
 }
@@ -92,10 +121,10 @@ func main() {
 	ran := false
 	__run(gtk4rt.Args(), func() {
 		ran = true
-		gtk4rt.Run(m.BuildUI)
+		gtk4rt.RunWindows(true)
 	})
 	if !ran {
-		gtk4rt.RunHidden(m.BuildUI)
+		gtk4rt.RunWindows(false)
 	}
 }
 -- out/go/gtk4/model.go --
@@ -109,14 +138,17 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	visible__inst0 bool
+	__n0           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -126,25 +158,44 @@ func __run(args []string, run func()) {
 	}
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, "hi")
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+func (m *Model) __n0_closed_handler() {
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, "hi")
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	gtk4rt.AppAttach(m.__n0)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:210a00bdeb27d6ff659a8058c2050f64
+pass sha256:d64ce714d539142d0e09a9f0833e0397
 -- run/go/gtk4 --
-pass sha256:054b46d4dd282d88179c50c24c41452f
+pass sha256:557455599dbaf138b9d466bb30892ec6

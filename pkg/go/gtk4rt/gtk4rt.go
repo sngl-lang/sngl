@@ -276,11 +276,22 @@ func BoxNew(o Orientation, spacing int) Handle {
 	return Handle(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(o), C.int(spacing))))
 }
 
+// BoxAppend and the three calls below it are also what a render slot at the
+// root of the package body calls with App as its parent, which attaches or
+// detaches a toplevel instead of placing a widget.
 func BoxAppend(box, child Handle) {
+	if box == App {
+		AppAttach(child)
+		return
+	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
 }
 
 func BoxRemove(box, child Handle) {
+	if box == App {
+		AppDetach(child)
+		return
+	}
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
 }
 
@@ -288,6 +299,10 @@ func BoxRemove(box, child Handle) {
 // when box holds it, or a new hidden child appended to box. The slot's first
 // render runs while box is being built, at the position the slot was written.
 func SlotAnchor(box, a Handle) Handle {
+	// The application's children are in no order a window shows.
+	if box == App {
+		return nil
+	}
 	if a != nil && C.gtk_widget_get_parent(widget(a)) == widget(box) {
 		return a
 	}
@@ -317,7 +332,7 @@ func ParentOf(w Handle) Handle {
 // InsertBefore puts child into box immediately before anchor, or at the end
 // of box when box does not hold anchor.
 func InsertBefore(box, anchor, child Handle) {
-	if anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+	if box == App || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
 		BoxAppend(box, child)
 		return
 	}

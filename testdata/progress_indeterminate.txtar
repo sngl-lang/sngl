@@ -148,42 +148,70 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *widget.Label
-	__n3 *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__n4    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText("2")
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("working")
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n3)
-	return container.NewVBox(parts...)
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("t")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText("2")
+	m.__n0.Add(m.__n1)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("working")
+	m.__n0.Add(m.__n4)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -345,16 +373,34 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkProgressBar
-	__n3   *C.GtkProgressBar
-	__root *C.GtkBox
+	visible__inst0 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkProgressBar
+	__n4           *C.GtkProgressBar
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -362,16 +408,18 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.double(0.2))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.CString(""))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(false)))
-	m.__n3 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.double(0.0))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.CString("working"))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(false)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.double(0.2))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.CString(""))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	m.__n4 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.double(0.0))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.CString("working"))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -455,9 +503,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5018d2986abdb352db176382de6fb7f7
 -- run/go/fyne --
-pass sha256:b2960d9af7a8e20c744c073493559ee2
+pass sha256:63242e1dc2100b63689396f06e92bc9d
 -- run/go/gtk4 --
-pass sha256:b1ff1fb197c3b6b48580228568511882
+pass sha256:dc345a1aeadcf8dec3804fd60122fd0b
 -- run/kotlin/android --
 pass sha256:8c3f82e3a48df8422faf79bfdd79658d
 -- run/none/html --

@@ -138,43 +138,71 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	rows []string
+	visible__inst0 bool
+	rows           []string
 
-	__n0 *fyne.Container
-	__n1 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	m.rows = []string{"alpha", "beta", "gamma"}
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
-	for _, row := range m.rows {
-		m.__n1 = widget.NewLabel("")
-		m.__n1.SetText(row)
-		m.__n0.Add(m.__n1)
+	if m.__built {
+		return m.__n0.Container
 	}
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewVBox()
+	for _, row := range m.rows {
+		m.__n2 = widget.NewLabel("")
+		m.__n2.SetText(row)
+		m.__n1.Add(m.__n2)
+	}
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -250,7 +278,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5f17b85b60fe6bf8c0ff05aa78ff86d4
 -- run/go/fyne --
-pass sha256:3ff36d58a4f15a2e3c58e3077342c6d3
+pass sha256:b0395be2e5cb9d4354b128c7aaf35025
 -- run/kotlin/android --
 pass sha256:d3293c463721943feaa69c7d6a7092f7
 -- run/none/html --

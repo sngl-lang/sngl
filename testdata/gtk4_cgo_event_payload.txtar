@@ -102,7 +102,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -521,7 +521,6 @@ type Model struct {
 	__slot0        []*C.GtkWidget
 	__slot0_at     *C.GtkWidget
 	__inst0_live   []*RowInstance
-	__n6           *C.GtkBox
 	box            *C.GtkEntry
 	__n3           *C.GtkSwitch
 	__n4           *C.GtkLabel
@@ -711,27 +710,27 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n6 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n6)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n6)), C.int(6))
+	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n6)), C.int(6))
 	m.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
 	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.box)), C.CString(m.value__inst0))
 	snglCallbacks = append(snglCallbacks, m.box_changed_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.box_activate_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
 	m.__n3 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
 	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(m.checked__inst1)))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n3_notifyActive_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
-	m.__renderSlot0(m.__n6)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n6)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	m.__renderSlot0(__n6)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -763,6 +762,6 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:839069766a9bd44ba7ad36b046bcf84d
+pass sha256:c22ba7f8c15e17586df82e5fcf37fbc2
 -- run/go/gtk4 --
-pass sha256:ee1a00fcd8d8de53da0c439192ffcbd0
+pass sha256:5496095a7990ed4ef423eb24479b625f

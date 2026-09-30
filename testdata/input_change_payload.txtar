@@ -98,7 +98,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -313,7 +313,6 @@ type Model struct {
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*RowInstance
-	__n6         gtk4rt.Handle
 	__n3         gtk4rt.Handle
 	__n4         gtk4rt.Handle
 }
@@ -484,19 +483,19 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
+	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n6, 6)
 	m.__n3 = gtk4rt.EntryNew()
 	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
 	gtk4rt.Connect(m.__n3, "changed", m.__n3_changed_handler)
 	gtk4rt.Connect(m.__n3, "activate", m.__n3_activate_handler)
-	gtk4rt.BoxAppend(m.__n6, m.__n3)
+	gtk4rt.BoxAppend(__n6, m.__n3)
 	m.__n4 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n4, m.last)
-	gtk4rt.BoxAppend(m.__n6, m.__n4)
-	m.__renderSlot0(m.__n6)
-	gtk4rt.BoxAppend(m.__root, m.__n6)
+	gtk4rt.BoxAppend(__n6, m.__n4)
+	m.__renderSlot0(__n6)
+	gtk4rt.BoxAppend(m.__root, __n6)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -508,6 +507,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:8852185e766f8a2b64f4063bd95f17fb
+pass sha256:36c7035d0ddfb878d664d0ba2daa51e5
 -- run/go/gtk4 --
-pass sha256:02566d1f656c8eadcf1971e9eb0b2a95
+pass sha256:af0f56c8cf96df31b7e42907678c763e

@@ -96,13 +96,6 @@ type NodeInst struct {
 	// when it is a render scope of its own, which today means a window. See
 	// internal/lower/node_escape.go and Component.LocalRefs.
 	LocalRefs map[string]bool `json:"-"`
-	// Presence is the condition a window exists under, set by lower's
-	// passWindowLifetimes for one written under an `if` that reads state: the
-	// window was moved out of the `if`, and an effect left in its place
-	// mounts and unmounts it. passEffect reads it as the first frame of every
-	// effect the window's body holds, since those live as long as the window
-	// does. Nil for a window that exists for as long as the program runs.
-	Presence Expr `json:"-"`
 }
 
 // Prop is the value written for name, or nil if the call site did not write

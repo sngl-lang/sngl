@@ -34,8 +34,11 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		destroyBuiltInstances(comp, st)
 	}
-	pkg.Body = st.processStmts(pkg.Body, &pkg.Funcs)
+	// The package body's parent is the application: each node there is
+	// attached to it (ir.AppParent), and what that means is the platform's.
+	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, ir.AppParent)
 	for _, w := range pkg.Windows {
 		w.Children = st.processStmts(w.Children, &pkg.Funcs)
 	}
@@ -242,6 +245,15 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			out = append(out, n)
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
+			// The boundary a composed window's @error became (catchInBody)
+			// has done its work by now: every raise under it is resolved to
+			// its handler through Call.ResolvedHandler, and the handler has
+			// had its updaters injected. What is left is a passthrough, which
+			// gtk4 and fyne have no emitter for.
+			if n.AST == nil && n.Handler != nil && len(n.Failed) == 0 {
+				out = append(out, n.Children...)
+				continue
+			}
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
@@ -598,4 +610,49 @@ func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeStat
 	// other slot in the package.
 	st.seedCounter(pkg)
 	return st
+}
+
+// destroyBuiltInstances gives an instance built at run time the teardown of
+// the instances its own build creates: a component rendered in its body is
+// an instance of its own, and ends when the one around it does. Without it a
+// window under `if details` was destroyed while an effect in a component it
+// rendered stayed mounted, since nothing but the slot that built the window
+// held the window, and nothing held what the window's build made.
+//
+// Only the build's own top level: an instance a render slot creates is held
+// by that slot's registry, which destroyHeld already empties.
+func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
+	if comp == nil || !comp.RuntimeInstance {
+		return
+	}
+	var destroys []ir.Stmt
+	for _, s := range comp.Body {
+		lv, ok := s.(*ir.LocalVar)
+		if !ok {
+			continue
+		}
+		call, ok := lv.Init.(*ir.Call)
+		if !ok || call.Func == nil || call.Func.Intrinsic != ir.NodeOpCreateComponent {
+			continue
+		}
+		destroys = append([]ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+			Args:     []ir.CallArg{{Value: &ir.Ident{Name: lv.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}}},
+		}}}, destroys...)
+	}
+	if len(destroys) == 0 {
+		return
+	}
+	if fn := funcNamed(comp.Funcs, TeardownFunc); fn != nil {
+		fn.Block = append(fn.Block, destroys...)
+		return
+	}
+	comp.Funcs = append(comp.Funcs, &ir.Func{
+		Name:   TeardownFunc,
+		Return: ir.TypVoid,
+		Purity: ir.PurityMutates,
+		Block:  destroys,
+	})
 }

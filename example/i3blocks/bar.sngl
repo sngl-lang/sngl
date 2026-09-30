@@ -85,7 +85,7 @@ i3.bar {
 // Closing the window through the window manager writes the state back, so
 // the next click on the load block opens it again.
 if details {
-    ui.window(title="Load", @close {
+    ui.window(title="Load", @closed {
         details = false
     }) {
         ui.vbox(style={gap=8, padding=16}) {

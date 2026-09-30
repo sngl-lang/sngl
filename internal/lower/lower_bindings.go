@@ -26,6 +26,36 @@ func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 	walkPackage(pkg, walkFuncs{
 		stmts: rewritePropBindingStmts,
 	})
+	// A library component's body is no body of the package's, and a binding
+	// written there -- an override handing its own two-way prop on to the
+	// primitive it renders, `Toplevel(:visible=visible)` -- is spliced into
+	// the program with the rest of that body, after this pass. So each one
+	// the program renders is lowered here too, and the bodies those render.
+	// Idempotent, as it has to be for a declaration every build shares:
+	// lowering a binding clears it.
+	own := make(map[*ir.Component]bool, len(pkg.Components))
+	for _, c := range pkg.Components {
+		own[c] = true
+	}
+	seen := map[*ir.Component]bool{}
+	var visit func(root any)
+	visit = func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Component == nil || own[inst.Component] || seen[inst.Component] {
+				return nil
+			}
+			c := inst.Component
+			seen[c] = true
+			if len(c.Body) == 0 {
+				return nil
+			}
+			c.Body = rewritePropBindingStmts(c.Body)
+			visit(c.Body)
+			return nil
+		})
+	}
+	visit(pkg)
 	return nil
 }
 

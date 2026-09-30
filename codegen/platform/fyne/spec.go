@@ -67,9 +67,11 @@ type fyneNative struct {
 }
 
 type fyneSpec struct {
-	New    fyneNative
-	Args   []fyneArg
-	GoType fyneNative
+	// toplevel is the platform's own Toplevel (toplevelSpec).
+	toplevel bool
+	New      fyneNative
+	Args     []fyneArg
+	GoType   fyneNative
 	// Add is the method a multi-child container attaches each child with;
 	// Content the field a single-child container assigns its child to. Which
 	// applies is decided by Content being set, because that is the case with
@@ -208,6 +210,9 @@ func fynePrimitive(comp *ir.Component) string {
 func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	if markupTags(tag) {
 		return markupSpec(tag, props)
+	}
+	if tag == toplevelTag {
+		return toplevelSpec(props), nil
 	}
 	raw := props[specPropName]
 	if raw == nil {

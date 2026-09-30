@@ -53,11 +53,11 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		// A row is allocated, not rendered into the Model.
 		"func newCardInstance(__model *Model, __a_name string) *CardInstance {",
 		"c := &CardInstance{}",
-		"__n1__new := newCardInstance(m, item.Name)",
+		"__n2__new := newCardInstance(m, item.Name)",
 		// The registry holds instances, and the reconcile reaches them
 		// through the record's own surface.
-		"__inst0_live []*CardInstance",
-		"__n1.SetName(item.Name)",
+		"m.__inst0_live = []*CardInstance{}",
+		"__n2.SetName(item.Name)",
 		"func (c *CardInstance) SetName(",
 		"func (c *CardInstance) Destroy() {",
 	} {

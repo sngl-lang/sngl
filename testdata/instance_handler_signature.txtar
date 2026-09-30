@@ -91,7 +91,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -277,7 +277,6 @@ type Model struct {
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*RowInstance
-	__n5         gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -427,11 +426,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n5, 6)
-	m.__renderSlot0(m.__n5)
-	gtk4rt.BoxAppend(m.__root, m.__n5)
+	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n5, 6)
+	m.__renderSlot0(__n5)
+	gtk4rt.BoxAppend(m.__root, __n5)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -443,6 +442,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:c0951107a7719451fe5064f6f006ded9
+pass sha256:1b0191c470a0e2a0e1ffc66c66f7f447
 -- run/go/gtk4 --
-pass sha256:5165820fe7b59be4068c70a926e137d5
+pass sha256:93dca6b00987eb17cbf14e8ed246a5b7

@@ -46,17 +46,21 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	visible    bool
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
+	visible        bool
+	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
 
-	__n3 *fyne.Container
+	__n0    *fynelayout.Toplevel
+	__n4    *fyne.Container
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.visible = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	return m
@@ -64,24 +68,32 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	if m.visible {
-		__n0 := widget.NewLabel("")
-		__n0.SetText("A")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-		m.__slot0 = append(m.__slot0, __n0)
 		__n1 := widget.NewLabel("")
-		__n1.SetText("B")
+		__n1.SetText("A")
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 		__n2 := widget.NewLabel("")
-		__n2.SetText("C")
+		__n2.SetText("B")
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
 		m.__slot0 = append(m.__slot0, __n2)
+		__n3 := widget.NewLabel("")
+		__n3.SetText("C")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3)
+		m.__slot0 = append(m.__slot0, __n3)
 	}
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Visible() bool {
@@ -92,22 +104,38 @@ func (m *Model) SetVisible(v bool) {
 	m.visible = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
-	m.__renderSlot0(m.__n3)
-	content := fyne.CanvasObject(m.__n3)
-	return content
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("t")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n4 = container.NewVBox()
+	m.__renderSlot0(m.__n4)
+	m.__n0.Add(m.__n4)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:0031ace3580c952683de46b8c8e60419
+pass sha256:f89e9b676aee55beed17533c7ce17426

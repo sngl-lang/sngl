@@ -42,7 +42,6 @@ var capabilityField = map[string]func(*Features) *bool{
 	"asyncPost":        func(f *Features) *bool { return &f.AsyncPost },
 	"asyncSpawn":       func(f *Features) *bool { return &f.AsyncSpawn },
 	"effects":          func(f *Features) *bool { return &f.Effects },
-	"windowLifetimes":  func(f *Features) *bool { return &f.WindowLifetimes },
 }
 
 var passField = map[string]func(*Features) *bool{

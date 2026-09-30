@@ -39,7 +39,12 @@ type ExprCtx struct {
 	// declares state the way a component does, and it nests: a `window`
 	// written inside a component sees that component's declarations too, so
 	// this is an inner scope beside Component rather than a replacement.
-	Window   *ir.Window
+	Window *ir.Window
+	// App says the scope is the package body, whose parent is the
+	// application: a target that holds it in one Model reads the package's
+	// state and consts through it, as it did through the one window that used
+	// to be the scope.
+	App      bool
 	Locals   map[string]bool   // for-loop vars, lambda params
 	Renames  map[string]string // original → unique name (component inlining)
 	EventVar string            // what the handler's event parameter maps to (e.g., "e.target")
@@ -132,6 +137,7 @@ func (ctx *ExprCtx) ForComponent(comp *ir.Component) *ExprCtx {
 	c := ctx.Clone()
 	c.Component = comp
 	c.Window = nil
+	c.App = false
 	return c
 }
 
@@ -255,6 +261,7 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Pkg:           ctx.Pkg,
 		Component:     ctx.Component,
 		Window:        ctx.Window,
+		App:           ctx.App,
 		Locals:        maps.Clone(ctx.Locals),
 		Renames:       maps.Clone(ctx.Renames),
 		EventVar:      ctx.EventVar,

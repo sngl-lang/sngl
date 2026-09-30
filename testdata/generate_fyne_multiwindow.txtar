@@ -36,173 +36,104 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	app      *snglWindow
-	settings *snglWindow
+	visible__inst0 bool
+	visible__inst1 bool
+
+	__n0    *fynelayout.Toplevel
+	__n2    *fyne.Container
+	__n3    *widget.Label
+	__n4    *widget.Hyperlink
+	__n1    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	__n6    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
+	m.visible__inst1 = true
 	return m
 }
 
-// snglWindow is one window of the program: the fyne window the host shows,
-// around a widget tree the program builds once.
-type snglWindow struct {
-	title   string
-	content fyne.CanvasObject
-	onClose func()
-	w       fyne.Window
-	mounted bool
-	open    bool
+func (m *Model) __n0_closed_handler() {
 }
 
-var (
-	snglApp     fyne.App
-	snglStarted bool
-	snglHidden  bool
-	snglWindows []*snglWindow
-	snglAnchor  fyne.Window
-)
-
-// Mount says the window exists. Before the loop starts it is created when the
-// loop does; after, it is created and put on screen at once.
-func (w *snglWindow) Mount() {
-	if w.mounted {
-		return
-	}
-	w.mounted = true
-	snglWindows = append(snglWindows, w)
-	if snglStarted {
-		w.create()
-		w.Open()
-	}
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
-// Unmount closes the fyne window. The content is kept for a later Mount.
-func (w *snglWindow) Unmount() {
-	if !w.mounted {
-		return
-	}
-	w.mounted = false
-	w.open = false
-	for i, x := range snglWindows {
-		if x == w {
-			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
-			break
-		}
-	}
-	if w.w != nil {
-		w.w.SetContent(container.NewStack())
-		w.w.Close()
-		w.w = nil
-	}
+func (m *Model) __n1_closed_handler() {
 }
 
-// Open puts a mounted window on screen.
-func (w *snglWindow) Open() {
-	w.open = true
-	if w.w != nil {
-		w.w.Show()
-	}
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n1.SetVisible(m.visible__inst1)
 }
 
-// Close takes the window off screen; Open brings it back as it was.
-func (w *snglWindow) Close() {
-	w.open = false
-	if w.w != nil {
-		w.w.Hide()
-	}
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (w *snglWindow) create() {
-	if w.w != nil {
-		return
-	}
-	w.w = snglApp.NewWindow(w.title)
-	// fyne lays SetContent's tree out against the current size, so the
-	// content goes in before the resize.
-	w.w.SetContent(w.content)
-	w.w.Resize(fyne.NewSize(480, 640))
-	w.w.SetCloseIntercept(w.closeRequested)
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-// closeRequested is the window manager's close. The handler decides what it
-// means; with none, the window hides. Either way a close that leaves nothing
-// on screen ends the program, unless it started with nothing on screen.
-func (w *snglWindow) closeRequested() {
-	if w.onClose != nil {
-		w.onClose()
-	} else {
-		w.Close()
-	}
-	if snglHidden {
-		return
-	}
-	for _, x := range snglWindows {
-		if x.open {
-			return
-		}
-	}
-	snglApp.Quit()
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-// snglRunWindows runs the loop over the windows mounted so far and those
-// mounted later. show puts the mounted ones on screen at start.
-func snglRunWindows(show bool) {
-	snglHidden = !show
-	snglAnchor = snglApp.NewWindow("")
-	snglStarted = true
-	for _, w := range append([]*snglWindow(nil), snglWindows...) {
-		w.create()
-		if show || w.open {
-			w.Open()
-		}
-	}
-	snglApp.Run()
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
-// BuildUI creates every window's widget tree. Call once.
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.app != nil {
-		return m.app.content
+	if m.__built {
+		return m.__n0.Container
 	}
-	m.app = &snglWindow{title: "App", content: m.buildWindowApp()}
-	m.app.Mount()
-	m.settings = &snglWindow{title: "Settings", content: m.buildWindowSettings()}
-	m.settings.Mount()
-	return m.app.content
-}
-
-func (m *Model) buildWindowApp() fyne.CanvasObject {
-	__n0 := container.NewVBox()
-	__n1 := widget.NewLabel("")
-	__n1.SetText("App page")
-	__n0.Add(__n1)
-	__n2 := widget.NewHyperlink("", nil)
-	__n0.Add(__n2)
-	return __n0
-}
-
-func (m *Model) buildWindowSettings() fyne.CanvasObject {
-	__n3 := container.NewVBox()
-	__n4 := widget.NewLabel("")
-	__n4.SetText("Settings page")
-	__n3.Add(__n4)
-	return __n3
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("App")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n2 = container.NewVBox()
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText("App page")
+	m.__n2.Add(m.__n3)
+	m.__n4 = widget.NewHyperlink("", nil)
+	m.__n2.Add(m.__n4)
+	m.__n0.Add(m.__n2)
+	fynelayout.AppAttach(m.__n0)
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetTitle("Settings")
+	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n5 = container.NewVBox()
+	m.__n6 = widget.NewLabel("")
+	m.__n6.SetText("Settings page")
+	m.__n5.Add(m.__n6)
+	m.__n1.Add(m.__n5)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n0.Container
 }
 
 func main() {
-	snglApp = app.New()
+	a := app.New()
 	m := New()
 	m.BuildUI()
-	snglRunWindows(true)
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:b970ce1d87b98c21cbaf574ac57cc078
+pass sha256:87db861d87684b04174245d3962bbbf2

@@ -832,7 +832,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// as much as a component's. Asking about the component alone left a
 		// package const read as a bare name against the `m.blank` field the
 		// same build declared, once a window was the scope instead.
-		if gc.Ctx.Component != nil || gc.Ctx.Window != nil {
+		if gc.Ctx.Component != nil || gc.Ctx.Window != nil || gc.Ctx.App {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name

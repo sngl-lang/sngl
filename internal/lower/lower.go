@@ -77,7 +77,7 @@ var passes = []pass{
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
 	passDirectCalls,
-	passWindowLifetimes,
+	passWindowUnderIf,
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,

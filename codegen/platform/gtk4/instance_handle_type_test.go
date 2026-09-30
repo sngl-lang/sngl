@@ -15,7 +15,7 @@ import (
 // wrapped mode, *C.<class> otherwise -- where the other three sinks go through
 // widgetFieldGoType, which is what knows that a component instance's handle
 // arrives already spelled as Go and is not a widget in either mode. The two
-// disagreed and the field lost, so `m.__n0 gtk4rt.Handle` was assigned a
+// disagreed and the field lost, so `m.__n1 gtk4rt.Handle` was assigned a
 // *Tree_viewInstance.
 func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, fixtureSource(t, "test_recursive_component.sngl"))
@@ -24,11 +24,11 @@ func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	// struct's types to its widest field name: a literal run of spaces asserts
 	// what else is in the Model rather than what this field's type is.
 	for _, want := range []string{
-		`__n0\s+\*Tree_viewInstance`,
-		`m\.__n0 = newTree_viewInstance\(`,
+		`__n1\s+\*Tree_viewInstance`,
+		`m\.__n1 = newTree_viewInstance\(`,
 		// A record does carry a Root, so this is also the positive half of
 		// what OnComponentRoot decides.
-		`m\.__n0__el = m\.__n0\.Root`,
+		`m\.__n1__el = m\.__n1\.Root`,
 	} {
 		if !regexp.MustCompile(want).MatchString(model) {
 			t.Errorf("emitted Go missing %s\n--- model.go ---\n%s", want, model)

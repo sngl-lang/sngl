@@ -158,7 +158,6 @@ func (w *walker) stmt(s Stmt) {
 		}
 		w.expr(n.Key)
 		w.expr(n.Ref)
-		w.expr(n.Presence)
 		w.stmts(n.Children)
 		w.slots(n.Slots)
 	case *CallStmt:

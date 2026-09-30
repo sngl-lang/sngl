@@ -48,6 +48,9 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
+	// appChildren are the nodes this scope attached to the application, in
+	// order.
+	appChildren []string
 	// slotRoot is the container a reactive slot in this scope's body renders
 	// into, when this scope owns one. A call to that slot's renderer holds a
 	// place in the tree exactly as a created widget does -- the subtree is
@@ -409,6 +412,9 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	if ir.IsAppParent(parent) {
+		return t.appAttach(child)
+	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
@@ -436,6 +442,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if ir.IsAppParent(parent) {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
+	// A render slot's container may be the application, which only the
+	// runtime can tell from the value it is handed.
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.Remove", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyParentExpr(parent), t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
@@ -643,6 +659,10 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
 		return nil
 	}
+	// A window that names no title is built with none.
+	if lit, ok := value.(*ir.Literal); ok && sp.toplevel && prop == "title" && lit.Value == "" {
+		return nil
+	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {
 		// The write is what a prop *is* by the time it reaches a platform:
@@ -722,6 +742,9 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if app := t.appSlotArg(n); app != nil {
+			return []ir.Stmt{app}
+		}
 		if boxed := t.boxedSlotRenderCall(n); boxed != nil {
 			return boxed
 		}

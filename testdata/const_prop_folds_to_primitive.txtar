@@ -58,22 +58,35 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	reading string
+	reading        string
+	visible__inst0 bool
 
-	__n1 *fyne.Container
-	__n0 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n2    *fyne.Container
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.reading = "42"
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Reading() string {
@@ -84,24 +97,39 @@ func (m *Model) SetReading(v string) {
 	m.reading = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n1 = container.NewVBox()
-	m.__n0 = widget.NewLabel("…")
-	m.__n0.SetText(m.reading)
-	m.__n1.Add(m.__n0)
-	content := fyne.CanvasObject(m.__n1)
-	return content
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n2 = container.NewVBox()
+	m.__n1 = widget.NewLabel("…")
+	m.__n1.SetText(m.reading)
+	m.__n2.Add(m.__n1)
+	m.__n0.Add(m.__n2)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:6bcb09537263e0d1722d755808ab0762
+pass sha256:7735f9b23f8dd122284e3074a0df52f6

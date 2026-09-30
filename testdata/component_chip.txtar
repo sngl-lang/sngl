@@ -166,46 +166,75 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *fyne.Container
-	__n1 *widget.Label
-	__n2 *widget.Label
-	__n3 *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Label
+	__n3    *widget.Label
+	__n4    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewHBox()
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("Tag")
-	m.__n0.Add(m.__n1)
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewHBox()
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText("Removable")
-	m.__n0.Add(m.__n2)
+	m.__n2.SetText("Tag")
+	m.__n1.Add(m.__n2)
 	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("Success")
-	m.__n0.Add(m.__n3)
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__n3.SetText("Removable")
+	m.__n1.Add(m.__n3)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("Success")
+	m.__n1.Add(m.__n4)
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -285,7 +314,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a102a0a3d8dea2073b487d52c0242abb
 -- run/go/fyne --
-pass sha256:42383a31b524b64bc53be4c89f1d49fa
+pass sha256:71c77a6f42a032d13eeb40325fbbacdf
 -- run/kotlin/android --
 pass sha256:2b6c706e87d1f6a5e7d2d4a44a88a5a9
 -- run/none/html --

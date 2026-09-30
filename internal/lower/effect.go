@@ -174,13 +174,7 @@ type effectFrame struct {
 }
 
 func (st *effectState) owner(o ir.Owner) error {
-	// A window that comes and goes with a condition holds its effects for as
-	// long as it exists (passWindowLifetimes).
-	var frames []effectFrame
-	if o.Win != nil && o.Win.Presence != nil {
-		frames = []effectFrame{{cond: deepCloneExpr(o.Win.Presence)}}
-	}
-	body, err := st.stmts(o.Stmts(), &o, frames)
+	body, err := st.stmts(o.Stmts(), &o, nil)
 	if err != nil {
 		return err
 	}

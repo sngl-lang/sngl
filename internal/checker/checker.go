@@ -4268,11 +4268,11 @@ func (c *checker) checkWindow(w *ir.Window) {
 	// declared prop type. A window read its three props by name instead, so
 	// `title=42` checked clean and html emitted a page with no <title>.
 	//
-	// The bindings are empty by construction: no window prop is declared
-	// bidirectional, so `:title` is reported by extractBindings rather than
-	// returned. The handlers are held back by windowPropArgs, because an
-	// @error is a boundary's handler rather than a widget's event.
-	w.Props, w.Handlers, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	// `visible` is the one prop declared bidirectional, so `:visible=shown`
+	// is the binding a window carries like any node. The handlers are held
+	// back by windowPropArgs, because an @error is a boundary's handler rather
+	// than a widget's event.
+	w.Props, w.Handlers, w.Bindings = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
 	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {

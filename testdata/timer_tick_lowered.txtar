@@ -197,6 +197,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"slices"
 	"time"
@@ -215,6 +216,7 @@ type Model struct {
 	done__inst0__inst1   chan bool
 	live__inst0__inst1   bool
 	gen__inst0__inst1    int
+	visible__inst2       bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -222,7 +224,9 @@ type Model struct {
 	__effects0_pending   bool
 	__effects0_steps     int
 
-	__n0 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -234,6 +238,7 @@ func New() *Model {
 	m.done__inst0__inst1 = nil
 	m.live__inst0__inst1 = false
 	m.gen__inst0__inst1 = 0
+	m.visible__inst2 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -267,12 +272,12 @@ func (m *Model) __effect0_mount() {
 							__lt0 = (m.level__inst1 + 0.01)
 						}
 						m.level__inst1 = __lt0
-						m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+						m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 						var __iterIdx0 int = -1
 						for x := range slices.Values([]int{0, 1, 2}) {
 							__iterIdx0 += 1
 							m.rung__inst1 = (m.rung__inst1 + (__iterIdx0 * x))
-							m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+							m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 						}
 					})
 				case <-stopped:
@@ -356,6 +361,14 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst2 = __visible
+	m.__n0.SetVisible(m.visible__inst2)
+}
+
 func (m *Model) Level__inst1() float64 {
 	return m.level__inst1
 }
@@ -404,26 +417,42 @@ func (m *Model) SetGen__inst0__inst1(v int) {
 	m.gen__inst0__inst1 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst2() bool {
+	return m.visible__inst2
+}
+
+func (m *Model) SetVisible__inst2(v bool) {
+	m.visible__inst2 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("tick")
+	m.__n0.SetVisible(m.visible__inst2)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
 	m.__effects0_settle()
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
 pass sha256:437b0c42e52e472699a65a5f9c4939ef
 -- run/go/fyne --
-pass sha256:1012bfbc07b24d23fa8b11c2ea360bd7
+pass sha256:58f297bd66b61da4ef22b3a197ebf608

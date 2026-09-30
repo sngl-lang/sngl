@@ -160,7 +160,9 @@ func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
 type windowOwner struct {
 	w   *ir.Window
 	pkg *ir.Package
-	// root is the window's own ir.WindowRootName.
+	// root is what the owner's top-level render slots are parented to when
+	// it is not `__root`: the application, ir.AppParent, for the package
+	// body.
 	root string
 }
 
@@ -210,9 +212,14 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		st.collectFromStmts(comp.Body)
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
+		st.owner = windowOwner{w: w, pkg: pkg}
 		st.collectFromStmts(w.Children)
 	}
+	// The package body is a view like the others, and its parent is the
+	// application: a reactive `if` there -- a window under `if details` --
+	// re-renders into it.
+	st.owner = windowOwner{pkg: pkg, root: ir.AppParent}
+	st.collectFromStmts(pkg.Body)
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
@@ -236,7 +243,13 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			st.synthesizeRemoteSettle()
 		}
 		for _, w := range ir.AllWindows(pkg) {
-			st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
+			st.owner = windowOwner{w: w, pkg: pkg}
+			st.synthesizeRemoteSettle()
+		}
+		// Where the package body is the whole view -- no window stands in
+		// for it -- it is the owner the settle belongs to.
+		if len(ir.AllWindows(pkg)) == 0 {
+			st.owner = windowOwner{pkg: pkg, root: ir.AppParent}
 			st.synthesizeRemoteSettle()
 		}
 	}()
@@ -260,7 +273,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		}
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg, root: ir.WindowRootName(pkg, w)}
+		st.owner = windowOwner{w: w, pkg: pkg}
 		w.Children = st.rewriteAndInject(w.Children)
 		for _, h := range ir.WindowHandlers(w) {
 			if h.Func != nil {
@@ -268,6 +281,11 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
+	// The package body, whose parent is the application. After the windows,
+	// which a root component may have left standing in it, so what those
+	// synthesize is numbered as it was before the body was a view.
+	st.owner = windowOwner{pkg: pkg, root: ir.AppParent}
+	pkg.Body = st.rewriteAndInject(pkg.Body)
 	// Package-level funcs last, because the walks above are what create most
 	// of them. A reactive `if` or `for` in a window body is lifted into a
 	// synthesized `__renderSlotN` whose Block is the *uninjected* statements,
@@ -350,6 +368,21 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	// Build one slot var + Func per unique ID. Sort for deterministic
 	// codegen output: slot vars enter comp.Vars in this order and
 	// propagate downstream (e.g. JS state object field order).
+	// The package body's owner is walked last and holds only the slots
+	// written in it: a slot of a component or a window is that owner's, and
+	// synthesized here too it declared a second `__slotN` on the package.
+	if o, ok := st.owner.(windowOwner); ok && o.root == ir.AppParent {
+		own := map[string]bool{}
+		for id := range uniqueSlots {
+			if st.buildRenderSlotForProbe(id, stmts) {
+				own[id] = true
+			}
+		}
+		uniqueSlots = own
+		if len(own) == 0 {
+			return st.injectIntoStmts(st.rewriteReactiveStructures(stmts, nil))
+		}
+	}
 	slotIDs := make([]string, 0, len(uniqueSlots))
 	for id := range uniqueSlots {
 		slotIDs = append(slotIDs, id)
@@ -398,8 +431,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar(st.rootName())
-					ref = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -411,8 +443,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar(st.rootName())
-					ref = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -424,8 +455,10 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			// A window is driven as its own owner by lowerReactivity, like a
 			// top-level one: its slot vars and render funcs belong to it, so
 			// reaching it from the body it was written in would build them
-			// against the wrong owner.
+			// against the wrong owner. It stays where it stands: the package
+			// body holds windows a root component rendered.
 			if ir.IsWindowNode(n) {
+				out = append(out, s)
 				continue
 			}
 			// If any direct child is a reactive If/For we need a stable
@@ -566,6 +599,10 @@ func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it.
 func (st *reactivityState) synthesizeRootVar() {
+	// The application is no var of the program's: every platform names it.
+	if st.rootName() == ir.AppParent {
+		return
+	}
 	if existing := st.findSlotVar(st.rootName()); existing != nil {
 		return
 	}
@@ -578,12 +615,24 @@ func (st *reactivityState) synthesizeRootVar() {
 }
 
 // rootName is the var the owner's top-level render slots are parented to: a
-// component's own `__root`, or the window's ir.WindowRootName.
+// component's own `__root`, a window's, or the application for the package
+// body.
 func (st *reactivityState) rootName() string {
 	if o, ok := st.owner.(windowOwner); ok && o.root != "" {
 		return o.root
 	}
 	return "__root"
+}
+
+// rootRef names the container the owner's top-level render slots are
+// parented to. The application is no var, so its name carries no symbol --
+// a nil *ir.Var in an ir.Symbol is not a nil symbol.
+func (st *reactivityState) rootRef() *ir.Ident {
+	ref := &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	if v := st.findSlotVar(st.rootName()); v != nil {
+		ref.Sym = v
+	}
+	return ref
 }
 
 func (st *reactivityState) findSlotVar(name string) *ir.Var {
@@ -1975,6 +2024,32 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 // buildRenderSlotFor walks stmts to find the If/For carrying slotID, then
 // constructs the corresponding __renderSlotN Func. Returns nil if no
 // matching node is present in stmts.
+// buildRenderSlotForProbe reports whether the reactive If/For carrying slotID
+// is written in stmts, where buildRenderSlotFor would find it.
+func (st *reactivityState) buildRenderSlotForProbe(slotID string, stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		switch n := s.(type) {
+		case *ir.If:
+			if n.LoweredSlotID == slotID {
+				found = true
+				return ir.SkipAll
+			}
+		case *ir.For:
+			if n.LoweredSlotID == slotID {
+				found = true
+				return ir.SkipAll
+			}
+		case *ir.NodeInst:
+			if ir.IsWindowNode(n) {
+				return ir.SkipDir
+			}
+		}
+		return nil
+	})
+	return found
+}
+
 func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *ir.Func {
 	var fn *ir.Func
 	var walk func([]ir.Stmt)

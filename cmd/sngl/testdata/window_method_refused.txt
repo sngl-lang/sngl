@@ -1,0 +1,30 @@
+# `open` and `close` are methods of `ui.window`, answered where a window is an
+# instance of the component: gtk4 and fyne, which override it with a Toplevel.
+# html, bubbletea and android render the window as the builtin it is marked,
+# so a method called through its `#id` has no instance to be the method of.
+# It is refused at the call rather than emitted as `details.open()` against
+# nothing, and gtk4 builds the same source.
+
+! sngl generate --lang none --platform html -o html app.sngl
+stderr 'app.sngl:8:9: `details.open\(\)` calls a method of the node `#details`, which this target does not splice where it is written'
+
+! sngl generate --lang go --platform bubbletea -o tea app.sngl
+stderr 'app.sngl:8:9: `details.open\(\)` calls a method of the node `#details`'
+
+sngl generate --lang go --platform gtk4 -o gtk4 app.sngl
+
+-- app.sngl --
+import ui "sngl:ui"
+
+var n = 0
+
+ui.window #main(title="Main") {
+    ui.button(text="Details", @click {
+        n += 1
+        details.open()
+    })
+}
+
+ui.window #details(title="Details") {
+    ui.text(value="{n}")
+}

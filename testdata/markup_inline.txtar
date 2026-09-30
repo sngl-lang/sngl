@@ -364,14 +364,15 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
 	"image/color"
 	"os"
 )
 
-var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 32, Bold: true}
-var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 245, G: 245, B: 245, A: 255}, Radius: 4}
+var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 245, G: 245, B: 245, A: 255}, Radius: 4}
+var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), TextSize: 32, Bold: true}
 var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Italic: true}
 var _snglTheme3 = fynetheme.Theme{Theme: theme.DefaultTheme(), Foreground: color.NRGBA{R: 102, G: 102, B: 102, A: 255}, TextSize: 13}
 
@@ -385,147 +386,176 @@ type Measurement struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0  *fyne.Container
-	__n1  *fynetext.Flow
-	__n2  *fynetext.Span
-	__n3  *fynetext.Flow
-	__n4  *fynetext.Span
-	__n5  *fynetext.Flow
-	__n6  *fynetext.Span
-	__n7  *fynetext.Span
-	__n8  *fynetext.Span
-	__n9  *fynetext.Span
-	__n10 *fynetext.Span
-	__n11 *fynetext.Span
-	__n12 *fynetext.Flow
-	__n13 *fynetext.Span
-	__n14 *fynetext.Span
-	__n15 *fynetext.Span
-	__n16 *fynetext.Span
-	__n17 *fynetext.Span
-	__n18 *fynetext.Span
-	__n19 *fynetext.Flow
-	__n20 *fynetext.Span
-	__n21 *fynetext.Span
-	__n22 *fynetext.Span
-	__n23 *fynetext.Span
-	__n24 *fynetext.Flow
-	__n25 *fynetext.Span
-	__n26 *fynetext.Span
-	__n27 *fynetext.Span
-	__n28 *fynetext.Flow
-	__n29 *fynetext.Span
-	__n30 *fynetext.Span
-	__n31 *fynetext.Flow
-	__n32 *fynetext.Span
-	__n33 *fynetext.Flow
-	__n34 *fynetext.Span
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *fynetext.Flow
+	__n3    *fynetext.Span
+	__n4    *fynetext.Flow
+	__n5    *fynetext.Span
+	__n6    *fynetext.Flow
+	__n7    *fynetext.Span
+	__n8    *fynetext.Span
+	__n9    *fynetext.Span
+	__n10   *fynetext.Span
+	__n11   *fynetext.Span
+	__n12   *fynetext.Span
+	__n13   *fynetext.Flow
+	__n14   *fynetext.Span
+	__n15   *fynetext.Span
+	__n16   *fynetext.Span
+	__n17   *fynetext.Span
+	__n18   *fynetext.Span
+	__n19   *fynetext.Span
+	__n20   *fynetext.Flow
+	__n21   *fynetext.Span
+	__n22   *fynetext.Span
+	__n23   *fynetext.Span
+	__n24   *fynetext.Span
+	__n25   *fynetext.Flow
+	__n26   *fynetext.Span
+	__n27   *fynetext.Span
+	__n28   *fynetext.Span
+	__n29   *fynetext.Flow
+	__n30   *fynetext.Span
+	__n31   *fynetext.Span
+	__n32   *fynetext.Flow
+	__n33   *fynetext.Span
+	__n34   *fynetext.Flow
+	__n35   *fynetext.Span
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
-	m.__n1 = fynetext.NewFlow()
-	m.__n2 = fynetext.NewSpan(fynetext.Style())
-	m.__n2.SetText("Title")
-	m.__n1.Add(m.__n2)
-	m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
-	m.__n3 = fynetext.NewFlow()
-	m.__n4 = fynetext.NewSpan(fynetext.Style())
-	m.__n4.SetText("a < b & \"c\"  two spaces\nand a newline")
-	m.__n3.Add(m.__n4)
-	m.__n0.Add(m.__n3)
-	m.__n5 = fynetext.NewFlow()
-	m.__n6 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n7 = fynetext.NewSpan(fynetext.Style())
-	m.__n7.SetHref("https://example.com/?a=1&b=2")
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("doc")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewVBox()
+	m.__n2 = fynetext.NewFlow()
+	m.__n3 = fynetext.NewSpan(fynetext.Style())
+	m.__n3.SetText("Title")
+	m.__n2.Add(m.__n3)
+	m.__n1.Add(container.NewThemeOverride(m.__n2, _snglTheme1))
+	m.__n4 = fynetext.NewFlow()
+	m.__n5 = fynetext.NewSpan(fynetext.Style())
+	m.__n5.SetText("a < b & \"c\"  two spaces\nand a newline")
+	m.__n4.Add(m.__n5)
+	m.__n1.Add(m.__n4)
+	m.__n6 = fynetext.NewFlow()
+	m.__n7 = fynetext.NewSpan(fynetext.Style().WithMono())
 	m.__n8 = fynetext.NewSpan(fynetext.Style())
-	m.__n8.SetText("mono link")
+	m.__n8.SetHref("https://example.com/?a=1&b=2")
+	m.__n9 = fynetext.NewSpan(fynetext.Style())
+	m.__n9.SetText("mono link")
+	m.__n8.Add(m.__n9)
 	m.__n7.Add(m.__n8)
 	m.__n6.Add(m.__n7)
-	m.__n5.Add(m.__n6)
-	m.__n9 = fynetext.NewSpan(fynetext.Style())
-	m.__n9.SetHref("https://example.com/")
-	m.__n10 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n11 = fynetext.NewSpan(fynetext.Style())
-	m.__n11.SetText("link mono")
+	m.__n10 = fynetext.NewSpan(fynetext.Style())
+	m.__n10.SetHref("https://example.com/")
+	m.__n11 = fynetext.NewSpan(fynetext.Style().WithMono())
+	m.__n12 = fynetext.NewSpan(fynetext.Style())
+	m.__n12.SetText("link mono")
+	m.__n11.Add(m.__n12)
 	m.__n10.Add(m.__n11)
-	m.__n9.Add(m.__n10)
-	m.__n5.Add(m.__n9)
-	m.__n0.Add(m.__n5)
-	m.__n12 = fynetext.NewFlow()
-	m.__n13 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n14 = fynetext.NewSpan(fynetext.Style().WithToken("keyword"))
-	m.__n15 = fynetext.NewSpan(fynetext.Style())
-	m.__n15.SetText("func")
-	m.__n14.Add(m.__n15)
-	m.__n13.Add(m.__n14)
+	m.__n6.Add(m.__n10)
+	m.__n1.Add(m.__n6)
+	m.__n13 = fynetext.NewFlow()
+	m.__n14 = fynetext.NewSpan(fynetext.Style().WithMono())
+	m.__n15 = fynetext.NewSpan(fynetext.Style().WithToken("keyword"))
 	m.__n16 = fynetext.NewSpan(fynetext.Style())
-	m.__n16.SetText(" ")
-	m.__n13.Add(m.__n16)
-	m.__n17 = fynetext.NewSpan(fynetext.Style().WithToken("function"))
-	m.__n18 = fynetext.NewSpan(fynetext.Style())
-	m.__n18.SetText("main")
-	m.__n17.Add(m.__n18)
-	m.__n13.Add(m.__n17)
-	m.__n12.Add(m.__n13)
-	m.__n0.Add(container.NewThemeOverride(m.__n12, _snglTheme1))
-	m.__n19 = fynetext.NewFlow()
-	m.__n20 = fynetext.NewSpan(fynetext.Style().WithUnderline())
-	m.__n21 = fynetext.NewSpan(fynetext.Style().WithStrike())
-	m.__n22 = fynetext.NewSpan(fynetext.Style().WithItalic())
-	m.__n23 = fynetext.NewSpan(fynetext.Style())
-	m.__n23.SetText("all three")
+	m.__n16.SetText("func")
+	m.__n15.Add(m.__n16)
+	m.__n14.Add(m.__n15)
+	m.__n17 = fynetext.NewSpan(fynetext.Style())
+	m.__n17.SetText(" ")
+	m.__n14.Add(m.__n17)
+	m.__n18 = fynetext.NewSpan(fynetext.Style().WithToken("function"))
+	m.__n19 = fynetext.NewSpan(fynetext.Style())
+	m.__n19.SetText("main")
+	m.__n18.Add(m.__n19)
+	m.__n14.Add(m.__n18)
+	m.__n13.Add(m.__n14)
+	m.__n1.Add(container.NewThemeOverride(m.__n13, _snglTheme0))
+	m.__n20 = fynetext.NewFlow()
+	m.__n21 = fynetext.NewSpan(fynetext.Style().WithUnderline())
+	m.__n22 = fynetext.NewSpan(fynetext.Style().WithStrike())
+	m.__n23 = fynetext.NewSpan(fynetext.Style().WithItalic())
+	m.__n24 = fynetext.NewSpan(fynetext.Style())
+	m.__n24.SetText("all three")
+	m.__n23.Add(m.__n24)
 	m.__n22.Add(m.__n23)
 	m.__n21.Add(m.__n22)
 	m.__n20.Add(m.__n21)
-	m.__n19.Add(m.__n20)
-	m.__n0.Add(m.__n19)
-	m.__n24 = fynetext.NewFlow()
-	m.__n25 = fynetext.NewSpan(fynetext.Style())
-	m.__n25.SetText("before ")
-	m.__n24.Add(m.__n25)
+	m.__n1.Add(m.__n20)
+	m.__n25 = fynetext.NewFlow()
 	m.__n26 = fynetext.NewSpan(fynetext.Style())
-	m.__n26.SetText("[an \"icon\" & more]")
-	m.__n24.Add(m.__n26)
+	m.__n26.SetText("before ")
+	m.__n25.Add(m.__n26)
 	m.__n27 = fynetext.NewSpan(fynetext.Style())
-	m.__n27.SetText(" after")
-	m.__n24.Add(m.__n27)
-	m.__n0.Add(m.__n24)
-	m.__n28 = fynetext.NewFlow()
-	m.__n29 = fynetext.NewSpan(fynetext.Style().WithRGBA(51, 102, 153, 255).WithSize(20).WithBold())
-	m.__n30 = fynetext.NewSpan(fynetext.Style())
-	m.__n30.SetText("a styled run")
+	m.__n27.SetText("[an \"icon\" & more]")
+	m.__n25.Add(m.__n27)
+	m.__n28 = fynetext.NewSpan(fynetext.Style())
+	m.__n28.SetText(" after")
+	m.__n25.Add(m.__n28)
+	m.__n1.Add(m.__n25)
+	m.__n29 = fynetext.NewFlow()
+	m.__n30 = fynetext.NewSpan(fynetext.Style().WithRGBA(51, 102, 153, 255).WithSize(20).WithBold())
+	m.__n31 = fynetext.NewSpan(fynetext.Style())
+	m.__n31.SetText("a styled run")
+	m.__n30.Add(m.__n31)
 	m.__n29.Add(m.__n30)
-	m.__n28.Add(m.__n29)
-	m.__n0.Add(m.__n28)
-	m.__n31 = fynetext.NewFlow()
-	m.__n32 = fynetext.NewSpan(fynetext.Style())
-	m.__n32.SetText("quoted")
-	m.__n31.Add(m.__n32)
-	m.__n0.Add(container.NewThemeOverride(m.__n31, _snglTheme2))
-	m.__n33 = fynetext.NewFlow()
-	m.__n34 = fynetext.NewSpan(fynetext.Style())
-	m.__n34.SetText("a caption")
-	m.__n33.Add(m.__n34)
-	m.__n0.Add(container.NewThemeOverride(m.__n33, _snglTheme3))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__n1.Add(m.__n29)
+	m.__n32 = fynetext.NewFlow()
+	m.__n33 = fynetext.NewSpan(fynetext.Style())
+	m.__n33.SetText("quoted")
+	m.__n32.Add(m.__n33)
+	m.__n1.Add(container.NewThemeOverride(m.__n32, _snglTheme2))
+	m.__n34 = fynetext.NewFlow()
+	m.__n35 = fynetext.NewSpan(fynetext.Style())
+	m.__n35.SetText("a caption")
+	m.__n34.Add(m.__n35)
+	m.__n1.Add(container.NewThemeOverride(m.__n34, _snglTheme3))
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -536,9 +566,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from doc.sngl; DO NOT EDIT.
@@ -559,90 +590,112 @@ type Measurement struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   gtk4rt.Handle
-	__n1   gtk4rt.Handle
-	__n3   gtk4rt.Handle
-	__n5   gtk4rt.Handle
-	__n12  gtk4rt.Handle
-	__n19  gtk4rt.Handle
-	__n24  gtk4rt.Handle
-	__n28  gtk4rt.Handle
-	__n31  gtk4rt.Handle
-	__n33  gtk4rt.Handle
-	__root gtk4rt.Handle
+	visible__inst0 bool
+	__n0           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n4           gtk4rt.Handle
+	__n6           gtk4rt.Handle
+	__n13          gtk4rt.Handle
+	__n20          gtk4rt.Handle
+	__n25          gtk4rt.Handle
+	__n29          gtk4rt.Handle
+	__n32          gtk4rt.Handle
+	__n34          gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n0, 6)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n1, true)
-	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n1, "<span size=\"32768\" weight=\"bold\">Title</span>")
-	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n3, true)
-	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n3, "a &lt; b &amp; &quot;c&quot;  two spaces\nand a newline")
-	gtk4rt.BoxAppend(m.__n0, m.__n3)
-	m.__n5 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n5, true)
-	gtk4rt.LabelSetXAlign(m.__n5, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n5, "<tt><a href=\"https://example.com/?a=1&amp;b=2\">mono link</a></tt><a href=\"https://example.com/\"><tt>link mono</tt></a>")
-	gtk4rt.BoxAppend(m.__n0, m.__n5)
-	m.__n12 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n12, true)
-	gtk4rt.LabelSetXAlign(m.__n12, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n12, "<tt><span foreground=\"#CF222E\">func</span> <span foreground=\"#8250DF\">main</span></tt>")
-	gtk4rt.BoxAppend(m.__n0, m.__n12)
-	m.__n19 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n19, true)
-	gtk4rt.LabelSetXAlign(m.__n19, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n19, "<u><s><i>all three</i></s></u>")
-	gtk4rt.BoxAppend(m.__n0, m.__n19)
-	m.__n24 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n24, true)
-	gtk4rt.LabelSetXAlign(m.__n24, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n24, "before [an &quot;icon&quot; &amp; more] after")
-	gtk4rt.BoxAppend(m.__n0, m.__n24)
-	m.__n28 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n28, true)
-	gtk4rt.LabelSetXAlign(m.__n28, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n28, "<b><span foreground=\"#336699\" size=\"20480\">a styled run</span></b>")
-	gtk4rt.BoxAppend(m.__n0, m.__n28)
-	m.__n31 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n31, true)
-	gtk4rt.LabelSetXAlign(m.__n31, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n31, "<span style=\"italic\">quoted</span>")
-	gtk4rt.BoxAppend(m.__n0, m.__n31)
-	m.__n33 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n33, true)
-	gtk4rt.LabelSetXAlign(m.__n33, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n33, "<span size=\"13312\" foreground=\"#666666\">a caption</span>")
-	gtk4rt.BoxAppend(m.__n0, m.__n33)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+func (m *Model) __n0_closed_handler() {
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.__n0, "doc")
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n2, true)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n2, "<span size=\"32768\" weight=\"bold\">Title</span>")
+	gtk4rt.BoxAppend(m.__n1, m.__n2)
+	m.__n4 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n4, true)
+	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n4, "a &lt; b &amp; &quot;c&quot;  two spaces\nand a newline")
+	gtk4rt.BoxAppend(m.__n1, m.__n4)
+	m.__n6 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n6, true)
+	gtk4rt.LabelSetXAlign(m.__n6, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n6, "<tt><a href=\"https://example.com/?a=1&amp;b=2\">mono link</a></tt><a href=\"https://example.com/\"><tt>link mono</tt></a>")
+	gtk4rt.BoxAppend(m.__n1, m.__n6)
+	m.__n13 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n13, true)
+	gtk4rt.LabelSetXAlign(m.__n13, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n13, "<tt><span foreground=\"#CF222E\">func</span> <span foreground=\"#8250DF\">main</span></tt>")
+	gtk4rt.BoxAppend(m.__n1, m.__n13)
+	m.__n20 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n20, true)
+	gtk4rt.LabelSetXAlign(m.__n20, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n20, "<u><s><i>all three</i></s></u>")
+	gtk4rt.BoxAppend(m.__n1, m.__n20)
+	m.__n25 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n25, true)
+	gtk4rt.LabelSetXAlign(m.__n25, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n25, "before [an &quot;icon&quot; &amp; more] after")
+	gtk4rt.BoxAppend(m.__n1, m.__n25)
+	m.__n29 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n29, true)
+	gtk4rt.LabelSetXAlign(m.__n29, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n29, "<b><span foreground=\"#336699\" size=\"20480\">a styled run</span></b>")
+	gtk4rt.BoxAppend(m.__n1, m.__n29)
+	m.__n32 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n32, true)
+	gtk4rt.LabelSetXAlign(m.__n32, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n32, "<span style=\"italic\">quoted</span>")
+	gtk4rt.BoxAppend(m.__n1, m.__n32)
+	m.__n34 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n34, true)
+	gtk4rt.LabelSetXAlign(m.__n34, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n34, "<span size=\"13312\" foreground=\"#666666\">a caption</span>")
+	gtk4rt.BoxAppend(m.__n1, m.__n34)
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	gtk4rt.AppAttach(m.__n0)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "doc")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- out/go/html/server.go --
 package main
@@ -824,9 +877,9 @@ and a newline</span></p>
 -- run/go/bubbletea --
 pass sha256:224677c06a3f61ab7630a91f3c219011
 -- run/go/fyne --
-pass sha256:21bb5e278377e8e3ae431adcc24043d1
+pass sha256:6748c9df0c122236fa48ae5108516bce
 -- run/go/gtk4 --
-pass sha256:ae42858608a47e832c8e6dce2fc32e3a
+pass sha256:7c7860cd978bd938081e1738fb6f6e02
 -- run/go/html --
 pass sha256:8640bb93a9e853a834254457dc7ecc1d
 -- run/kotlin/android --

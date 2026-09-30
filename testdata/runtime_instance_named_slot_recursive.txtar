@@ -275,13 +275,16 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	depth int
-	mark  string
+	depth          int
+	mark           string
+	visible__inst0 bool
 
-	__n7     *fyne.Container
-	__n8     *widget.Button
-	__n2     *Frame__slot0Instance
-	__n2__el fyne.CanvasObject
+	__n2     *fynelayout.Toplevel
+	__n8     *fyne.Container
+	__n9     *widget.Button
+	__n3     *Frame__slot0Instance
+	__n3__el fyne.CanvasObject
+	__built  bool
 }
 
 // New creates a Model with default values.
@@ -289,6 +292,7 @@ func New() *Model {
 	m := &Model{}
 	m.depth = 2
 	m.mark = "*"
+	m.visible__inst0 = true
 	return m
 }
 
@@ -296,10 +300,18 @@ func (m *Model) describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
-func (m *Model) __n8_click_handler() {
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n2.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) __n9_click_handler() {
 	m.depth = (m.depth + 1)
-	m.__n2.SetN(m.depth)
-	m.__n2.Set__p0(m.depth)
+	m.__n3.SetN(m.depth)
+	m.__n3.Set__p0(m.depth)
 }
 
 func (m *Model) Depth() int {
@@ -318,18 +330,35 @@ func (m *Model) SetMark(v string) {
 	m.mark = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n7 = container.NewVBox()
-	m.__n8 = widget.NewButton("", nil)
-	m.__n8.SetText("deeper")
-	m.__n8.OnTapped = m.__n8_click_handler
-	m.__n7.Add(m.__n8)
-	m.__n2 = newFrame__slot0Instance(m, m.depth, 0, m.depth)
-	m.__n2__el = m.__n2.Root
-	m.__n7.Add(m.__n2__el)
-	content := fyne.CanvasObject(m.__n7)
-	return content
+	if m.__built {
+		return m.__n2.Container
+	}
+	m.__built = true
+	m.__n2 = fynelayout.NewToplevel()
+	m.__n2.SetVisible(m.visible__inst0)
+	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnVisible = m.__n2_visible_handler
+	m.__n8 = container.NewVBox()
+	m.__n9 = widget.NewButton("", nil)
+	m.__n9.SetText("deeper")
+	m.__n9.OnTapped = m.__n9_click_handler
+	m.__n8.Add(m.__n9)
+	m.__n3 = newFrame__slot0Instance(m, m.depth, 0, m.depth)
+	m.__n3__el = m.__n3.Root
+	m.__n8.Add(m.__n3__el)
+	m.__n2.Add(m.__n8)
+	fynelayout.AppAttach(m.__n2)
+	return m.__n2.Container
 }
 
 // Frame__slot2Instance is one live instance of the frame__slot2 component.
@@ -345,7 +374,7 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
-	__n4           *fyne.Container
+	__n5           *fyne.Container
 	__n0           *widget.Label
 }
 
@@ -359,24 +388,24 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__slot1 = nil
-	c.__n4 = container.NewVBox()
+	c.__n5 = container.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__n4.Add(c.__n0)
-	c.__renderSlot0(c.__n4)
-	c.Root = c.__n4
+	c.__n5.Add(c.__n0)
+	c.__renderSlot0(c.__n5)
+	c.Root = c.__n5
 	return c
 }
 
 func (c *Frame__slot2Instance) SetN(__v int) {
 	c.__prop_n = __v
 	c.__n0.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot0(c.__n4)
+	c.__renderSlot0(c.__n5)
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot0(c.__n4)
+	c.__renderSlot0(c.__n5)
 }
 
 func (c *Frame__slot2Instance) Set__p0(__v int) {
@@ -389,7 +418,7 @@ func (c *Frame__slot2Instance) Set__p0(__v int) {
 
 func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range c.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot0 = nil
 	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
@@ -399,24 +428,24 @@ func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n3 *Frame__slot2Instance
+			var __n4 *Frame__slot2Instance
 			if len(c.__inst0_live) > __inst0_i {
-				__n3 = c.__inst0_live[__inst0_i]
-				__n3.SetN((c.__prop_n - 1))
-				__n3.Set__depth((c.__prop___depth + 1))
-				__n3.Set__p0(c.__prop___p0)
+				__n4 = c.__inst0_live[__inst0_i]
+				__n4.SetN((c.__prop_n - 1))
+				__n4.Set__depth((c.__prop___depth + 1))
+				__n4.Set__p0(c.__prop___p0)
 			} else {
 				if len(c.__inst0_live) > __inst0_i {
 					c.__inst0_live[__inst0_i].Destroy()
 				}
-				__n3__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-				__n3 = __n3__new
+				__n4__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+				__n4 = __n4__new
 			}
-			__inst0_next = append(__inst0_next, __n3)
+			__inst0_next = append(__inst0_next, __n4)
 			__inst0_i = (__inst0_i + 1)
-			__n3__el := __n3.Root
-			fynelayout.InsertBefore(__parent, c.__slot0_at, __n3__el)
-			c.__slot0 = append(c.__slot0, __n3__el)
+			__n4__el := __n4.Root
+			fynelayout.InsertBefore(__parent, c.__slot0_at, __n4__el)
+			c.__slot0 = append(c.__slot0, __n4__el)
 		}
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -449,7 +478,7 @@ type Frame__slot0Instance struct {
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
-	__n6           *fyne.Container
+	__n7           *fyne.Container
 	__n1           *widget.Label
 }
 
@@ -463,24 +492,24 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
-	c.__n6 = container.NewVBox()
+	c.__n7 = container.NewVBox()
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__n6.Add(c.__n1)
-	c.__renderSlot1(c.__n6)
-	c.Root = c.__n6
+	c.__n7.Add(c.__n1)
+	c.__renderSlot1(c.__n7)
+	c.Root = c.__n7
 	return c
 }
 
 func (c *Frame__slot0Instance) SetN(__v int) {
 	c.__prop_n = __v
 	c.__n1.SetText(((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot1(c.__n6)
+	c.__renderSlot1(c.__n7)
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot1(c.__n6)
+	c.__renderSlot1(c.__n7)
 }
 
 func (c *Frame__slot0Instance) Set__p0(__v int) {
@@ -493,7 +522,7 @@ func (c *Frame__slot0Instance) Set__p0(__v int) {
 
 func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range c.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot1 = nil
 	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
@@ -503,24 +532,24 @@ func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n5 *Frame__slot2Instance
+			var __n6 *Frame__slot2Instance
 			if len(c.__inst1_live) > __inst1_i {
-				__n5 = c.__inst1_live[__inst1_i]
-				__n5.SetN((c.__prop_n - 1))
-				__n5.Set__depth((c.__prop___depth + 1))
-				__n5.Set__p0(c.__prop___p0)
+				__n6 = c.__inst1_live[__inst1_i]
+				__n6.SetN((c.__prop_n - 1))
+				__n6.Set__depth((c.__prop___depth + 1))
+				__n6.Set__p0(c.__prop___p0)
 			} else {
 				if len(c.__inst1_live) > __inst1_i {
 					c.__inst1_live[__inst1_i].Destroy()
 				}
-				__n5__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-				__n5 = __n5__new
+				__n6__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+				__n6 = __n6__new
 			}
-			__inst1_next = append(__inst1_next, __n5)
+			__inst1_next = append(__inst1_next, __n6)
 			__inst1_i = (__inst1_i + 1)
-			__n5__el := __n5.Root
-			fynelayout.InsertBefore(__parent, c.__slot1_at, __n5__el)
-			c.__slot1 = append(c.__slot1, __n5__el)
+			__n6__el := __n6.Root
+			fynelayout.InsertBefore(__parent, c.__slot1_at, __n6__el)
+			c.__slot1 = append(c.__slot1, __n6__el)
 		}
 	}
 	for __inst1_i_d, _ := range c.__inst1_live {
@@ -542,11 +571,9 @@ func (c *Frame__slot0Instance) Destroy() {
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -557,9 +584,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -578,13 +606,15 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	depth    int
-	mark     string
-	__n7     gtk4rt.Handle
-	__n8     gtk4rt.Handle
-	__n2     *Frame__slot0Instance
-	__n2__el gtk4rt.Handle
-	__root   gtk4rt.Handle
+	depth          int
+	mark           string
+	visible__inst0 bool
+	__n2           gtk4rt.Handle
+	__n8           gtk4rt.Handle
+	__n9           gtk4rt.Handle
+	__n3           *Frame__slot0Instance
+	__n3__el       gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -593,6 +623,7 @@ func New() *Model {
 	m := &Model{}
 	m.depth = 2
 	m.mark = "*"
+	m.visible__inst0 = true
 	return m
 }
 
@@ -600,10 +631,18 @@ func (m *Model) describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
-func (m *Model) __n8_clicked_handler() {
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
+}
+
+func (m *Model) __n9_clicked_handler() {
 	m.depth = (m.depth + 1)
-	m.__n2.SetN(m.depth)
-	m.__n2.Set__p0(m.depth)
+	m.__n3.SetN(m.depth)
+	m.__n3.Set__p0(m.depth)
 }
 
 // Frame__slot2Instance is one live instance of the frame__slot2 component.
@@ -619,7 +658,7 @@ type Frame__slot2Instance struct {
 	__inst0_live   []*Frame__slot2Instance
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
-	__n4           gtk4rt.Handle
+	__n5           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
 
@@ -633,14 +672,14 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
 	c.__slot1 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n4, 6)
+	c.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(c.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(c.__n5, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	gtk4rt.BoxAppend(c.__n4, c.__n0)
-	c.__renderSlot0(c.__n4)
-	c.Root = c.__n4
+	gtk4rt.BoxAppend(c.__n5, c.__n0)
+	c.__renderSlot0(c.__n5)
+	c.Root = c.__n5
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -648,12 +687,12 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p
 func (c *Frame__slot2Instance) SetN(__v int) {
 	c.__prop_n = __v
 	gtk4rt.LabelSetText(c.__n0, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot0(c.__n4)
+	c.__renderSlot0(c.__n5)
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot0(c.__n4)
+	c.__renderSlot0(c.__n5)
 }
 
 func (c *Frame__slot2Instance) Set__p0(__v int) {
@@ -676,24 +715,24 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n3 *Frame__slot2Instance
+			var __n4 *Frame__slot2Instance
 			if len(c.__inst0_live) > __inst0_i {
-				__n3 = c.__inst0_live[__inst0_i]
-				__n3.SetN((c.__prop_n - 1))
-				__n3.Set__depth((c.__prop___depth + 1))
-				__n3.Set__p0(c.__prop___p0)
+				__n4 = c.__inst0_live[__inst0_i]
+				__n4.SetN((c.__prop_n - 1))
+				__n4.Set__depth((c.__prop___depth + 1))
+				__n4.Set__p0(c.__prop___p0)
 			} else {
 				if len(c.__inst0_live) > __inst0_i {
 					c.__inst0_live[__inst0_i].Destroy()
 				}
-				__n3__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-				__n3 = __n3__new
+				__n4__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+				__n4 = __n4__new
 			}
-			__inst0_next = append(__inst0_next, __n3)
+			__inst0_next = append(__inst0_next, __n4)
 			__inst0_i = (__inst0_i + 1)
-			__n3__el := __n3.Root
-			gtk4rt.InsertBefore(parent, c.__slot0_at, __n3__el)
-			c.__slot0 = append(c.__slot0, __n3__el)
+			__n4__el := __n4.Root
+			gtk4rt.InsertBefore(parent, c.__slot0_at, __n4__el)
+			c.__slot0 = append(c.__slot0, __n4__el)
 		}
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -740,7 +779,7 @@ type Frame__slot0Instance struct {
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
-	__n6           gtk4rt.Handle
+	__n7           gtk4rt.Handle
 	__n1           gtk4rt.Handle
 }
 
@@ -754,14 +793,14 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 	c.__slot0 = nil
 	c.__slot1 = nil
 	c.__inst1_live = []*Frame__slot2Instance{}
-	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(c.__n6, 6)
+	c.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(c.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(c.__n7, 6)
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	gtk4rt.BoxAppend(c.__n6, c.__n1)
-	c.__renderSlot1(c.__n6)
-	c.Root = c.__n6
+	gtk4rt.BoxAppend(c.__n7, c.__n1)
+	c.__renderSlot1(c.__n7)
+	c.Root = c.__n7
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -769,12 +808,12 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p
 func (c *Frame__slot0Instance) SetN(__v int) {
 	c.__prop_n = __v
 	gtk4rt.LabelSetText(c.__n1, ((("level " + c.__model.describe(c.__prop_n)) + " of ") + fmt.Sprint(c.__prop___p0)))
-	c.__renderSlot1(c.__n6)
+	c.__renderSlot1(c.__n7)
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
 	c.__prop___depth = __v
-	c.__renderSlot1(c.__n6)
+	c.__renderSlot1(c.__n7)
 }
 
 func (c *Frame__slot0Instance) Set__p0(__v int) {
@@ -797,24 +836,24 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n5 *Frame__slot2Instance
+			var __n6 *Frame__slot2Instance
 			if len(c.__inst1_live) > __inst1_i {
-				__n5 = c.__inst1_live[__inst1_i]
-				__n5.SetN((c.__prop_n - 1))
-				__n5.Set__depth((c.__prop___depth + 1))
-				__n5.Set__p0(c.__prop___p0)
+				__n6 = c.__inst1_live[__inst1_i]
+				__n6.SetN((c.__prop_n - 1))
+				__n6.Set__depth((c.__prop___depth + 1))
+				__n6.Set__p0(c.__prop___p0)
 			} else {
 				if len(c.__inst1_live) > __inst1_i {
 					c.__inst1_live[__inst1_i].Destroy()
 				}
-				__n5__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-				__n5 = __n5__new
+				__n6__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+				__n6 = __n6__new
 			}
-			__inst1_next = append(__inst1_next, __n5)
+			__inst1_next = append(__inst1_next, __n6)
 			__inst1_i = (__inst1_i + 1)
-			__n5__el := __n5.Root
-			gtk4rt.InsertBefore(parent, c.__slot1_at, __n5__el)
-			c.__slot1 = append(c.__slot1, __n5__el)
+			__n6__el := __n6.Root
+			gtk4rt.InsertBefore(parent, c.__slot1_at, __n6__el)
+			c.__slot1 = append(c.__slot1, __n6__el)
 		}
 	}
 	for __inst1_i_d, _ := range c.__inst1_live {
@@ -864,31 +903,42 @@ func (m *Model) SetMark(v string) {
 	m.mark = v
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n7, 6)
-	m.__n8 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n8, "deeper")
-	gtk4rt.Connect(m.__n8, "clicked", m.__n8_clicked_handler)
-	gtk4rt.BoxAppend(m.__n7, m.__n8)
-	m.__n2 = newFrame__slot0Instance(m, m.depth, 0, m.depth)
-	m.__n2__el = m.__n2.Root
-	gtk4rt.BoxAppend(m.__n7, m.__n2__el)
-	gtk4rt.BoxAppend(m.__root, m.__n7)
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n2 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
+	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	m.__n9 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n9, "deeper")
+	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
+	gtk4rt.BoxAppend(m.__n8, m.__n9)
+	m.__n3 = newFrame__slot0Instance(m, m.depth, 0, m.depth)
+	m.__n3__el = m.__n3.Root
+	gtk4rt.BoxAppend(m.__n8, m.__n3__el)
+	gtk4rt.BoxAppend(m.__n2, m.__n8)
+	gtk4rt.AppAttach(m.__n2)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -1219,9 +1269,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3c757c4d76bdf884e3b0f4bfcc118757
 -- run/go/fyne --
-pass sha256:f955e4d386617c2d8823cf11892675a2
+pass sha256:60012974c4ecd698e62a1f457812fa4d
 -- run/go/gtk4 --
-pass sha256:401c61fb0c2f92b268824eeb80be023b
+pass sha256:1871b24b0478bd82b5abda77bd38fb71
 -- run/kotlin/android --
 pass sha256:ac61f0937f1bca720d5d69ff514c9cec
 -- run/none/html --

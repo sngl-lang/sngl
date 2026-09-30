@@ -42,7 +42,7 @@ stdout ' → Effect → '
 # html's alone, on InsertBefore, because retaining those buys the placement
 # match and nothing else -- inside the pass, so the list cannot show it.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,WindowLifetimes,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
 cp stdout fyne.txt
 

@@ -112,87 +112,91 @@ type ErrorEvent struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items__inst0        []string
-	hits__inst1         int
-	__effect1_live      []bool
-	__effect1_desired   []bool
-	__effects1_settling bool
-	__effects1_pending  bool
-	__effects1_steps    int
+	visible__inst1      bool
+	hits__inst2         int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
 	__inst0_live        []*Row__slot0Instance
 
-	__n4 *fyne.Container
-	__n6 *fyne.Container
-	__n2 *widget.Label
+	__n2    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	__n7    *fyne.Container
+	__n3    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.hits__inst1 = 0
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effects1_settling = false
-	m.__effects1_pending = false
-	m.__effects1_steps = 0
+	m.visible__inst1 = true
+	m.hits__inst2 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Row__slot0Instance{}
 	return m
 }
 
-func (m *Model) shown__inst1() string {
-	return ((("top:" + fmt.Sprint(m.hits__inst1)) + ":") + "6")
+func (m *Model) shown__inst2() string {
+	return ((("top:" + fmt.Sprint(m.hits__inst2)) + ":") + "6")
 }
 
-func (m *Model) add__inst1(n int) {
-	m.hits__inst1 = (m.hits__inst1 + n)
-	m.__n2.SetText(m.shown__inst1())
+func (m *Model) add__inst2(n int) {
+	m.hits__inst2 = (m.hits__inst2 + n)
+	m.__n3.SetText(m.shown__inst2())
 }
 
-func (m *Model) bump__inst1() {
-	m.add__inst1(2)
+func (m *Model) bump__inst2() {
+	m.add__inst2(2)
 }
 
-func (m *Model) __effect1_mount() {
-	m.bump__inst1()
+func (m *Model) __effect0_mount() {
+	m.bump__inst2()
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []bool{}
-	m.__effect1_desired = append(m.__effect1_desired, true)
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []bool{}
+	m.__effect0_desired = append(m.__effect0_desired, true)
 }
 
-func (m *Model) __effect1_up() {
-	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
-			m.__effect1_mount()
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
-				m.__effect1_mount()
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_mount()
 			}
 		}
 	}
-	m.__effect1_live = m.__effect1_desired
+	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) __effects1_settle() {
-	if m.__effects1_settling {
-		m.__effects1_pending = true
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
 	} else {
-		m.__effects1_settling = true
-		m.__effects1_pending = true
-		m.__effects1_steps = 0
-		for m.__effects1_pending && (m.__effects1_steps < 512) {
-			m.__effects1_pending = false
-			m.__effects1_steps = (m.__effects1_steps + 1)
-			m.__effect1_down()
-			m.__effect1_up()
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
 		}
-		m.__effects1_settling = false
-		if m.__effects1_pending {
+		m.__effects0_settling = false
+		if m.__effects0_pending {
 			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
@@ -200,30 +204,30 @@ func (m *Model) __effects1_settle() {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*Row__slot0Instance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
-		var __n3 *Row__slot0Instance
+		var __n4 *Row__slot0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
-			__n3.Set__p0(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
+			__n4.Set__p0(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRow__slot0Instance(m, it, it)
-			__n3 = __n3__new
+			__n4__new := newRow__slot0Instance(m, it, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -234,6 +238,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n2.SetVisible(m.visible__inst1)
+}
+
 func (m *Model) Items__inst0() []string {
 	return m.items__inst0
 }
@@ -242,26 +254,43 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Hits__inst1() int {
-	return m.hits__inst1
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetHits__inst1(v int) {
-	m.hits__inst1 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Hits__inst2() int {
+	return m.hits__inst2
+}
+
+func (m *Model) SetHits__inst2(v int) {
+	m.hits__inst2 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
-	m.__n6 = container.NewVBox()
-	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(m.shown__inst1())
-	m.__n6.Add(m.__n2)
-	m.__n4.Add(m.__n6)
-	m.__renderSlot0(m.__n4)
-	m.__effects1_settle()
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	if m.__built {
+		return m.__n2.Container
+	}
+	m.__built = true
+	m.__n2 = fynelayout.NewToplevel()
+	m.__n2.SetVisible(m.visible__inst1)
+	m.__n2.OnClosed = m.__n2_closed_handler
+	m.__n2.OnVisible = m.__n2_visible_handler
+	m.__n5 = container.NewVBox()
+	m.__n7 = container.NewVBox()
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(m.shown__inst2())
+	m.__n7.Add(m.__n3)
+	m.__n5.Add(m.__n7)
+	m.__renderSlot0(m.__n5)
+	m.__n2.Add(m.__n5)
+	fynelayout.AppAttach(m.__n2)
+	m.__effects0_settle()
+	return m.__n2.Container
 }
 
 // Row__slot0Instance is one live instance of the Row__slot0 component.
@@ -271,11 +300,11 @@ type Row__slot0Instance struct {
 	__prop_label        string
 	__prop___p0         string
 	marks               int
-	__effect0_live      []bool
-	__effect0_desired   []bool
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_steps    int
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effects1_settling bool
+	__effects1_pending  bool
+	__effects1_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
 	__slot0_at          fyne.CanvasObject
@@ -289,22 +318,22 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *R
 	c.__prop_label = __a_label
 	c.__prop___p0 = __a___p0
 	c.marks = 0
-	c.__effect0_live = []bool{}
-	c.__effect0_desired = []bool{}
-	c.__effects0_settling = false
-	c.__effects0_pending = false
-	c.__effects0_steps = 0
+	c.__effect1_live = []bool{}
+	c.__effect1_desired = []bool{}
+	c.__effects1_settling = false
+	c.__effects1_pending = false
+	c.__effects1_steps = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n5 := container.NewVBox()
+	__n6 := container.NewVBox()
 	c.__n0 = widget.NewLabel("")
 	c.__n0.SetText(c.summary())
-	__n5.Add(c.__n0)
+	__n6.Add(c.__n0)
 	c.__n1 = widget.NewLabel("")
 	c.__n1.SetText(((("foot " + c.__prop___p0) + " ") + fmt.Sprint(c.marks)))
-	__n5.Add(c.__n1)
-	c.__effects0_settle()
-	c.Root = __n5
+	__n6.Add(c.__n1)
+	c.__effects1_settle()
+	c.Root = __n6
 	return c
 }
 
@@ -318,43 +347,43 @@ func (c *Row__slot0Instance) summary() string {
 	return ((c.__prop_label + "=") + fmt.Sprint(c.marks))
 }
 
-func (c *Row__slot0Instance) __effect0_mount() {
+func (c *Row__slot0Instance) __effect1_mount() {
 	c.mark(2)
 }
 
-func (c *Row__slot0Instance) __effect0_down() {
-	c.__effect0_desired = []bool{}
-	c.__effect0_desired = append(c.__effect0_desired, true)
+func (c *Row__slot0Instance) __effect1_down() {
+	c.__effect1_desired = []bool{}
+	c.__effect1_desired = append(c.__effect1_desired, true)
 }
 
-func (c *Row__slot0Instance) __effect0_up() {
-	for __effect0_i, __effect0_k := range c.__effect0_desired {
-		if __effect0_i >= len(c.__effect0_live) {
-			c.__effect0_mount()
+func (c *Row__slot0Instance) __effect1_up() {
+	for __effect1_i, __effect1_k := range c.__effect1_desired {
+		if __effect1_i >= len(c.__effect1_live) {
+			c.__effect1_mount()
 		} else {
-			if c.__effect0_live[__effect0_i] != __effect0_k {
-				c.__effect0_mount()
+			if c.__effect1_live[__effect1_i] != __effect1_k {
+				c.__effect1_mount()
 			}
 		}
 	}
-	c.__effect0_live = c.__effect0_desired
+	c.__effect1_live = c.__effect1_desired
 }
 
-func (c *Row__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
+func (c *Row__slot0Instance) __effects1_settle() {
+	if c.__effects1_settling {
+		c.__effects1_pending = true
 	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
+		c.__effects1_settling = true
+		c.__effects1_pending = true
+		c.__effects1_steps = 0
+		for c.__effects1_pending && (c.__effects1_steps < 512) {
+			c.__effects1_pending = false
+			c.__effects1_steps = (c.__effects1_steps + 1)
+			c.__effect1_down()
+			c.__effect1_up()
 		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
+		c.__effects1_settling = false
+		if c.__effects1_pending {
 			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
@@ -373,11 +402,9 @@ func (c *Row__slot0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -388,9 +415,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -410,19 +438,21 @@ type ErrorEvent struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items__inst0        []string
-	hits__inst1         int
-	__effect1_live      []bool
-	__effect1_desired   []bool
-	__effects1_settling bool
-	__effects1_pending  bool
-	__effects1_steps    int
+	visible__inst1      bool
+	hits__inst2         int
+	__effect0_live      []bool
+	__effect0_desired   []bool
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
 	__inst0_live        []*Row__slot0Instance
-	__n4                gtk4rt.Handle
-	__n6                gtk4rt.Handle
 	__n2                gtk4rt.Handle
-	__root              gtk4rt.Handle
+	__n5                gtk4rt.Handle
+	__n7                gtk4rt.Handle
+	__n3                gtk4rt.Handle
+	__built             bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -430,68 +460,69 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.hits__inst1 = 0
-	m.__effect1_live = []bool{}
-	m.__effect1_desired = []bool{}
-	m.__effects1_settling = false
-	m.__effects1_pending = false
-	m.__effects1_steps = 0
+	m.visible__inst1 = true
+	m.hits__inst2 = 0
+	m.__effect0_live = []bool{}
+	m.__effect0_desired = []bool{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*Row__slot0Instance{}
 	return m
 }
 
-func (m *Model) shown__inst1() string {
-	return ((("top:" + fmt.Sprint(m.hits__inst1)) + ":") + "6")
+func (m *Model) shown__inst2() string {
+	return ((("top:" + fmt.Sprint(m.hits__inst2)) + ":") + "6")
 }
 
-func (m *Model) add__inst1(n int) {
-	m.hits__inst1 = (m.hits__inst1 + n)
-	gtk4rt.LabelSetText(m.__n2, m.shown__inst1())
+func (m *Model) add__inst2(n int) {
+	m.hits__inst2 = (m.hits__inst2 + n)
+	gtk4rt.LabelSetText(m.__n3, m.shown__inst2())
 }
 
-func (m *Model) bump__inst1() {
-	m.add__inst1(2)
+func (m *Model) bump__inst2() {
+	m.add__inst2(2)
 }
 
-func (m *Model) __effect1_mount() {
-	m.bump__inst1()
+func (m *Model) __effect0_mount() {
+	m.bump__inst2()
 }
 
-func (m *Model) __effect1_down() {
-	m.__effect1_desired = []bool{}
-	m.__effect1_desired = append(m.__effect1_desired, true)
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []bool{}
+	m.__effect0_desired = append(m.__effect0_desired, true)
 }
 
-func (m *Model) __effect1_up() {
-	for __effect1_i, __effect1_k := range m.__effect1_desired {
-		if __effect1_i >= len(m.__effect1_live) {
-			m.__effect1_mount()
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_mount()
 		} else {
-			if m.__effect1_live[__effect1_i] != __effect1_k {
-				m.__effect1_mount()
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_mount()
 			}
 		}
 	}
-	m.__effect1_live = m.__effect1_desired
+	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) __effects1_settle() {
-	if m.__effects1_settling {
-		m.__effects1_pending = true
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
 	} else {
-		m.__effects1_settling = true
-		m.__effects1_pending = true
-		m.__effects1_steps = 0
-		for m.__effects1_pending && (m.__effects1_steps < 512) {
-			m.__effects1_pending = false
-			m.__effects1_steps = (m.__effects1_steps + 1)
-			m.__effect1_down()
-			m.__effect1_up()
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
 		}
-		m.__effects1_settling = false
-		if m.__effects1_pending {
+		m.__effects0_settling = false
+		if m.__effects0_pending {
 			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
@@ -506,23 +537,23 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*Row__slot0Instance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
-		var __n3 *Row__slot0Instance
+		var __n4 *Row__slot0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
-			__n3.Set__p0(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
+			__n4.Set__p0(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRow__slot0Instance(m, it, it)
-			__n3 = __n3__new
+			__n4__new := newRow__slot0Instance(m, it, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -533,6 +564,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
+func (m *Model) __n2_closed_handler() {
+}
+
+func (m *Model) __n2_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+}
+
 // Row__slot0Instance is one live instance of the Row__slot0 component.
 type Row__slot0Instance struct {
 	Root                gtk4rt.Handle
@@ -540,11 +579,11 @@ type Row__slot0Instance struct {
 	__prop_label        string
 	__prop___p0         string
 	marks               int
-	__effect0_live      []bool
-	__effect0_desired   []bool
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_steps    int
+	__effect1_live      []bool
+	__effect1_desired   []bool
+	__effects1_settling bool
+	__effects1_pending  bool
+	__effects1_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
 	__slot0_at          gtk4rt.Handle
@@ -558,24 +597,24 @@ func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *R
 	c.__prop_label = __a_label
 	c.__prop___p0 = __a___p0
 	c.marks = 0
-	c.__effect0_live = []bool{}
-	c.__effect0_desired = []bool{}
-	c.__effects0_settling = false
-	c.__effects0_pending = false
-	c.__effects0_steps = 0
+	c.__effect1_live = []bool{}
+	c.__effect1_desired = []bool{}
+	c.__effects1_settling = false
+	c.__effects1_pending = false
+	c.__effects1_steps = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
-	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n5, 6)
+	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n6, 6)
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, c.summary())
-	gtk4rt.BoxAppend(__n5, c.__n0)
+	gtk4rt.BoxAppend(__n6, c.__n0)
 	c.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n1, ((("foot " + c.__prop___p0) + " ") + fmt.Sprint(c.marks)))
-	gtk4rt.BoxAppend(__n5, c.__n1)
-	c.__effects0_settle()
-	c.Root = __n5
+	gtk4rt.BoxAppend(__n6, c.__n1)
+	c.__effects1_settle()
+	c.Root = __n6
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -590,43 +629,43 @@ func (c *Row__slot0Instance) summary() string {
 	return ((c.__prop_label + "=") + fmt.Sprint(c.marks))
 }
 
-func (c *Row__slot0Instance) __effect0_mount() {
+func (c *Row__slot0Instance) __effect1_mount() {
 	c.mark(2)
 }
 
-func (c *Row__slot0Instance) __effect0_down() {
-	c.__effect0_desired = []bool{}
-	c.__effect0_desired = append(c.__effect0_desired, true)
+func (c *Row__slot0Instance) __effect1_down() {
+	c.__effect1_desired = []bool{}
+	c.__effect1_desired = append(c.__effect1_desired, true)
 }
 
-func (c *Row__slot0Instance) __effect0_up() {
-	for __effect0_i, __effect0_k := range c.__effect0_desired {
-		if __effect0_i >= len(c.__effect0_live) {
-			c.__effect0_mount()
+func (c *Row__slot0Instance) __effect1_up() {
+	for __effect1_i, __effect1_k := range c.__effect1_desired {
+		if __effect1_i >= len(c.__effect1_live) {
+			c.__effect1_mount()
 		} else {
-			if c.__effect0_live[__effect0_i] != __effect0_k {
-				c.__effect0_mount()
+			if c.__effect1_live[__effect1_i] != __effect1_k {
+				c.__effect1_mount()
 			}
 		}
 	}
-	c.__effect0_live = c.__effect0_desired
+	c.__effect1_live = c.__effect1_desired
 }
 
-func (c *Row__slot0Instance) __effects0_settle() {
-	if c.__effects0_settling {
-		c.__effects0_pending = true
+func (c *Row__slot0Instance) __effects1_settle() {
+	if c.__effects1_settling {
+		c.__effects1_pending = true
 	} else {
-		c.__effects0_settling = true
-		c.__effects0_pending = true
-		c.__effects0_steps = 0
-		for c.__effects0_pending && (c.__effects0_steps < 512) {
-			c.__effects0_pending = false
-			c.__effects0_steps = (c.__effects0_steps + 1)
-			c.__effect0_down()
-			c.__effect0_up()
+		c.__effects1_settling = true
+		c.__effects1_pending = true
+		c.__effects1_steps = 0
+		for c.__effects1_pending && (c.__effects1_steps < 512) {
+			c.__effects1_pending = false
+			c.__effects1_steps = (c.__effects1_steps + 1)
+			c.__effect1_down()
+			c.__effect1_up()
 		}
-		c.__effects0_settling = false
-		if c.__effects0_pending {
+		c.__effects1_settling = false
+		if c.__effects1_pending {
 			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
 		}
 	}
@@ -659,41 +698,52 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Hits__inst1() int {
-	return m.hits__inst1
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetHits__inst1(v int) {
-	m.hits__inst1 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+func (m *Model) Hits__inst2() int {
+	return m.hits__inst2
+}
+
+func (m *Model) SetHits__inst2(v int) {
+	m.hits__inst2 = v
 }
 
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, m.shown__inst1())
-	gtk4rt.BoxAppend(m.__n6, m.__n2)
-	gtk4rt.BoxAppend(m.__n4, m.__n6)
-	m.__renderSlot0(m.__n4)
-	m.__effects1_settle()
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+	m.__built = true
+	m.__n2 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
+	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n5, 6)
+	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n7, 6)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, m.shown__inst2())
+	gtk4rt.BoxAppend(m.__n7, m.__n3)
+	gtk4rt.BoxAppend(m.__n5, m.__n7)
+	m.__renderSlot0(m.__n5)
+	gtk4rt.BoxAppend(m.__n2, m.__n5)
+	gtk4rt.AppAttach(m.__n2)
+	m.__effects0_settle()
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -921,8 +971,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:975474e4a42e1cd72d8784a1ef52741e
+pass sha256:8e678085d3118204fc669afc735c5417
 -- run/go/gtk4 --
-pass sha256:6a38e9b88e597dbc9c4fd620cee32d5c
+pass sha256:5298abdd0da9b5b7de651b4bfebe0bc6
 -- run/none/html --
 pass sha256:7e654f5bab3e903d2a2b577eb132e659

@@ -56,8 +56,8 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -66,9 +66,12 @@ import (
 type Model struct {
 	greeting__inst0 string
 	busy__inst0     bool
+	visible__inst1  bool
 
-	out  *widget.Label
-	load *widget.Button
+	__n0    *fynelayout.Toplevel
+	out     *widget.Label
+	load    *widget.Button
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -76,7 +79,16 @@ func New() *Model {
 	m := &Model{}
 	m.greeting__inst0 = "idle"
 	m.busy__inst0 = false
+	m.visible__inst1 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) load_click_handler() {
@@ -115,27 +127,41 @@ func (m *Model) SetBusy__inst0(v bool) {
 	m.busy__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
 	m.out = widget.NewLabel("")
 	m.out.SetText(m.greeting__inst0)
+	m.__n0.Add(m.out)
 	m.load = widget.NewButton("", nil)
 	m.load.SetText("load")
 	m.load.OnTapped = m.load_click_handler
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.out)
-	parts = append(parts, m.load)
-	return container.NewVBox(parts...)
+	m.__n0.Add(m.load)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:5fa834353781550eda287835befaab6b
+pass sha256:5358b11504f5fe1685146fdf74b7e908

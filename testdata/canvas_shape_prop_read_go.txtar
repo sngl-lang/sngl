@@ -178,9 +178,9 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
@@ -216,14 +216,19 @@ type CanvasStyle struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0    *canvas.Image
-	__n0Ctx *snglcanvas.Context
-	__n1    *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *canvas.Image
+	__n1Ctx *snglcanvas.Context
+	__n2    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -235,6 +240,14 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
@@ -242,31 +255,46 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0Ctx = snglcanvas.New(100, 100)
-	m._canvasDraw0(m.__n0Ctx)
-	m.__n0 = canvas.NewImageFromImage(m.__n0Ctx.Result())
-	m.__n0.FillMode = canvas.ImageFillOriginal
-	m.__n0.SetMinSize(fyne.NewSize(100, 100))
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("r is 5")
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n1)
-	return container.NewVBox(parts...)
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("shapes")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1Ctx = snglcanvas.New(100, 100)
+	m._canvasDraw0(m.__n1Ctx)
+	m.__n1 = canvas.NewImageFromImage(m.__n1Ctx.Result())
+	m.__n1.FillMode = canvas.ImageFillOriginal
+	m.__n1.SetMinSize(fyne.NewSize(100, 100))
+	m.__n0.Add(m.__n1)
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText("r is 5")
+	m.__n0.Add(m.__n2)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
 pass sha256:23ef3973083cfd33d8e9960cd9c2411d
 -- run/go/fyne --
-pass sha256:89f4217140ca4cb6096984e1f321c3e5
+pass sha256:eb061ffde9a42597e9b79d57ddc1081c

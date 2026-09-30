@@ -68,14 +68,14 @@ body { font-family: system-ui, sans-serif; }
   function __cf___checkbox_state0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let __checked = props.__checked ?? false;
+    let __start_checked = props.__start_checked ?? false;
     let label = props.label;
-    let __prop___checked = __checked;
+    let __prop___start_checked = __start_checked;
     let __prop_label = label;
-    let checked = __prop___checked;
+    let checked = __prop___start_checked;
     let __slot02 = [];
-    function __set___checked(__v) {
-      __prop___checked = __v;
+    function __set___start_checked(__v) {
+      __prop___start_checked = __v;
     }
     function __set_label(__v) {
       __prop_label = __v;
@@ -100,7 +100,7 @@ body { font-family: system-ui, sans-serif; }
       __root,
       __destroy() {
       },
-      __set___checked,
+      __set___start_checked,
       __set_label
     };
   }
@@ -117,12 +117,12 @@ body { font-family: system-ui, sans-serif; }
       if (__inst1_live.length > __inst1_i) {
         __n2 = __inst1_live[__inst1_i];
         __n2.__set_label(it);
-        __n2.__set___checked(state.on__inst0);
+        __n2.__set___start_checked(state.on__inst0);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___checkbox_state0({ label: it, __checked: state.on__inst0 });
+        let __n2__new = __cf___checkbox_state0({ label: it, __start_checked: state.on__inst0 });
         __n2 = __n2__new;
       }
       __inst1_next.push(__n2);
@@ -158,4 +158,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:fef150474a118f4f4adfcc4f71a23e24
+pass sha256:88ac2d27ce1db57be77a38039eb3f66d

@@ -24,6 +24,8 @@ component main root {
         }
     }
 }
+
+main()
 `)
 	buildGeneratedFiles(t, "gtk4-canvas-in-window-", files)
 }

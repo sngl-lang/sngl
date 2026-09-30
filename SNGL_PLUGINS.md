@@ -575,7 +575,7 @@ switched between them inside one OS window, and gtk4, android and bubbletea
 took `wins[0]` and dropped the rest without a word.
 
 So the two are split. `ui.window` is the surface -- `title`, `favicon`,
-`@close`, `open`/`close`, created and destroyed by a reactive `if` -- and
+`@closed`, `open`/`close`, created and destroyed by a reactive `if` -- and
 **`sngl:ui/nav`** holds the destinations:
 
 ```sngl
@@ -647,7 +647,7 @@ needs, each has a general answer:
 | a host object that lives a while               | the node ops: `CreateNode`, `AppendChild`, `RemoveChild` |
 | its children in a container it owns            | the platform primitive's own codegen (below)             |
 | to survive a change inside it under an `if`    | a slot body that patches in place (below)                |
-| `@close`, `visible`                            | an event and a prop of the platform's primitive          |
+| `@closed`, `visible`                           | an event and a prop of the platform's primitive          |
 | `@error` as the outermost boundary             | a `boundary` in the platform override's body             |
 | `href`, `params`, `entry`, a document per page | `nav.page` (decision 15)                                 |
 
@@ -663,10 +663,10 @@ implements it with a primitive it declares:
 ```sngl
 // codegen/platform/gtk4/gtk4.sngl
 #[intrinsic("gtk4:Toplevel")]
-component Toplevel(title string, :visible bool, @close(), content ...component ui.node) root
+component Toplevel(title string, :visible bool, @closed(), content ...component ui.node) root
 
 component ui.window[platform] {
-    Toplevel(title=title, :visible=visible, @close { close() }) { content() }
+    Toplevel(title=title, :visible=visible, @closed { closed() }) { content(params) }
 }
 ```
 
@@ -692,7 +692,8 @@ to the nodes the live render holds.
 **`visible` is a two-way prop, and `open`/`close` assign it.** A window
 manager's close is a change of visibility the host reports, the way a
 checkbox reports a click: `ui.window(:visible=shown)` writes `shown = false`
-back, and `@close` fires as well. `details.open()` and `details.close()` stay
+back, and `@closed` fires as well (built as `@closed`: `@close` clashed
+with the `close` method). `details.open()` and `details.close()` stay
 as the imperative spelling and write the same state (decision 17 says where
 that state is when nothing is bound). The program ends when a close leaves no
 window visible, unless it started with none.
@@ -799,12 +800,24 @@ Decisions 16 and 17, in order, each landing with its fixtures:
    `#id` inside a component built at run time on html, fyne and gtk4, so the
    slot script types into an unbound input in the panel and snapshots it
    after a tick: the text is there only if the panel was patched.
-3. **The package body's parent is the application**: root nodes are
-   `AppendChild(app, node)`; each platform's translator answers it. gtk4 and
-   fyne declare `Toplevel`, override `ui.window`, and implement `:visible` and
-   `@close`; `open`/`close` assign `visible`. Then delete Phase C's window
-   machinery (listed above). The i3 example and the window scripts keep
-   passing, `WAYLAND_DEBUG` counting toplevels as before.
+3. **The package body's parent is the application** -- *done.* A root node
+   is `AppendChild(__app, node)` (`ir.AppParent`), and a slot there is handed
+   the application; gtk4rt's and fynelayout's box calls answer for it. gtk4
+   and fyne declare `Toplevel` and override `ui.window` with it, which
+   `composeOverriddenBuiltins` makes an ordinary component on those two
+   targets. `visible` is a two-way prop the host reports a close through,
+   `@closed` (renamed from `@close`, which clashed with the method) fires
+   after it, and `open`/`close` are bodied methods assigning `visible`,
+   reached through the `#id` by `repointHandleCalls`. A window under
+   `if details` is a node in a render slot, destroyed with its content and
+   effects (`destroyBuiltInstances`). Phase C's machinery is gone:
+   `passWindowLifetimes` (its refusal survives as `passWindowUnderIf` for the
+   three targets that still build a builtin window), `NodeInst.Presence`,
+   `window.mount`/`unmount`, `codegen.HostWindows`, `ir.WindowRootName`,
+   gtk4rt's `Window`, fyne's `snglWindow` and the kept-alive content.
+   `testdata/window_visible.txtar` and `cmd/sngl/testdata/window_visible_runs.txt`
+   are new; the three window goldens and `window_under_if_runs.txt` are
+   rewritten, the last asserting a counter in the window starts again at zero.
 4. html, bubbletea and android answer `AppendChild(app, window)` as they do
    today: html's documents, the others' one window. The html `<dialog>` for a
    second window is Phase C2's.

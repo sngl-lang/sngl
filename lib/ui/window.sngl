@@ -28,33 +28,43 @@ import marks "sngl:internal/marks"
 // A program must declare at least one: the package body renders nothing on
 // its own, so a program with no window has nowhere to draw.
 //
-// `@close` runs when the user closes the window through the window manager,
-// on a target whose windows the user can close (gtk4 and fyne). The handler
-// says what a close means and the tree decides whether the window still
-// exists: one under `if details` whose `@close` writes `details = false` is
-// destroyed, and one whose handler writes nothing stays on screen. A window
-// with no `@close` is hidden -- `open` brings it back -- and a close that
-// leaves no window on screen ends the program, unless it started with none.
+// `visible` is whether the window is on screen, on a target whose windows the
+// program can show and hide (gtk4 and fyne). It is a two-way prop: a window
+// manager's close is the host reporting `visible = false`, the way a checkbox
+// reports a click, and `@closed` fires after it. So `:visible=shown` writes
+// `shown` back, and a window nothing binds keeps the value in a cell of its
+// own, which `open` and `close` below write. What the tree says decides what
+// exists: a window under `if details` whose `@closed` writes
+// `details = false` is destroyed, widgets and effects with it, and hiding one
+// without destroying it is `visible`. A close that leaves no window on screen
+// ends the program, unless it started with none.
 #[marks.builtin("window")]
 component window<T = struct {}>(
     title string,
     href string,
     favicon string,
     params T,
+    :visible bool = true,
     @error error,
-    @close(),
+    @closed(),
     content ...component(v T) node,
-) root {}
+) root {
+    // Puts the window on screen: `visible = true`, which is no change to a
+    // window already there, so it does not raise one. Reached
+    // through the window's `#id` -- `window #details(…)`, then
+    // `details.open()` from a handler -- which is what lets a program started
+    // with no window on screen, one whose `@run` never called `run`, bring
+    // one up in answer to something. The write lands on whatever `visible`
+    // is: the caller's var where `:visible=shown` bound one, the window's own
+    // cell where nothing did. html, bubbletea and android render a window as
+    // the builtin it is marked and refuse the call.
+    func open() {
+        visible = true
+    }
 
-// Puts the window on screen and in front, on a target that holds windows the
-// program can show and hide: gtk4 and fyne. Reached through the window's
-// `#id` -- `window #details(…)`, then `details.open()` from a handler -- which
-// is what lets a program started with no window on screen, one whose `@run`
-// never called `run`, bring one up in answer to something.
-#[marks.intrinsic("window.open")]
-func window.open()
-
-// Takes the window off screen without ending the program; `open` brings it
-// back as it was.
-#[marks.intrinsic("window.close")]
-func window.close()
+    // Takes the window off screen without ending the program:
+    // `visible = false`. `open` brings it back as it was.
+    func close() {
+        visible = false
+    }
+}

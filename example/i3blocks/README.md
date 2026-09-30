@@ -21,7 +21,7 @@ It lives under `example/` rather than `examples/` because `docsgen` loads every
   read that state and whose `@click`s write it, and a window under
   `if details`. `@run` starts the program with no window on screen; the load
   block's `@click` toggles `details`, which creates and destroys the window,
-  and the window's `@close` and its Close button write `details = false`.
+  and the window's `@closed` and its Close button write `details = false`.
 - `i3/i3.sngl` declares the family (`block`), its members (`text`, `gap`) and the
   root member that hosts them (`bar`).
 - `i3/protocol.sngl` is the i3bar protocol in SNGL: the `Entry` each block
@@ -49,9 +49,9 @@ mode. The build rewrites the `bar` into SNGL before anything else sees it:
 
 So a state write re-renders the bar because an effect's key read that state, and
 a click is a closure posted to the drawing thread with `async.post`. Neither host
-has any code for i3. The window is the same mechanism once more: under
-`if details` it is lowered to an effect whose mount and unmount create and
-destroy it.
+has any code for i3. The window is a node like any other: under `if details`
+it sits in a render slot, so it is created, widgets and effects with it, when
+`details` turns true, and destroyed when it turns false.
 
 `cmd/sngl/testdata/example_i3blocks.txt` builds this directory for both hosts
 and runs it as i3bar would, so a change that breaks it fails the suite.

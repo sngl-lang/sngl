@@ -324,7 +324,7 @@ type ErrorEvent struct {
 type Model struct {
 	n                    int
 	shown                bool
-	__root               *fyne.Container
+	visible__inst0       bool
 	__slot0              []fyne.CanvasObject
 	__slot0_at           fyne.CanvasObject
 	__inst0_live         []*TimerInstance
@@ -335,8 +335,10 @@ type Model struct {
 	__inst1_was_interval []time.Duration
 	periods              []time.Duration
 
-	__n3 *widget.Button
-	__n0 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n4    *widget.Button
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -344,7 +346,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.shown = true
-	m.__root = container.NewVBox()
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -359,7 +361,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -367,29 +369,29 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	var __inst0_i int = 0
 	__inst0_now_interval := []time.Duration{}
 	for _, p := range m.periods {
-		var __n1 *TimerInstance
+		var __n2 *TimerInstance
 		if (len(m.__inst0_live) > __inst0_i) && (m.__inst0_was_interval[__inst0_i] == p) {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.SetTick(func(_ any) {
+			__n2 = m.__inst0_live[__inst0_i]
+			__n2.SetTick(func(_ any) {
 				m.n = (m.n + 1)
-				m.__n0.SetText(fmt.Sprint(m.n))
+				m.__n1.SetText(fmt.Sprint(m.n))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := newTimerInstance(m, p, true, func(_ any) {
+			__n2__new := newTimerInstance(m, p, true, func(_ any) {
 				m.n = (m.n + 1)
-				m.__n0.SetText(fmt.Sprint(m.n))
+				m.__n1.SetText(fmt.Sprint(m.n))
 			})
-			__n1 = __n1__new
+			__n2 = __n2__new
 		}
-		__inst0_next = append(__inst0_next, __n1)
+		__inst0_next = append(__inst0_next, __n2)
 		__inst0_now_interval = append(__inst0_now_interval, p)
 		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
+		__n2__el := __n2.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -403,7 +405,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
@@ -412,29 +414,29 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	__inst1_now_interval := []time.Duration{}
 	for _, p := range m.periods {
 		if m.shown {
-			var __n2 *TimerInstance
+			var __n3 *TimerInstance
 			if (len(m.__inst1_live) > __inst1_i) && (m.__inst1_was_interval[__inst1_i] == p) {
-				__n2 = m.__inst1_live[__inst1_i]
-				__n2.SetTick(func(_ any) {
+				__n3 = m.__inst1_live[__inst1_i]
+				__n3.SetTick(func(_ any) {
 					m.n = (m.n + 1)
-					m.__n0.SetText(fmt.Sprint(m.n))
+					m.__n1.SetText(fmt.Sprint(m.n))
 				})
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n2__new := newTimerInstance(m, p, true, func(_ any) {
+				__n3__new := newTimerInstance(m, p, true, func(_ any) {
 					m.n = (m.n + 1)
-					m.__n0.SetText(fmt.Sprint(m.n))
+					m.__n1.SetText(fmt.Sprint(m.n))
 				})
-				__n2 = __n2__new
+				__n3 = __n3__new
 			}
-			__inst1_next = append(__inst1_next, __n2)
+			__inst1_next = append(__inst1_next, __n3)
 			__inst1_now_interval = append(__inst1_now_interval, p)
 			__inst1_i = (__inst1_i + 1)
-			__n2__el := __n2.Root
-			fynelayout.InsertBefore(__parent, m.__slot1_at, __n2__el)
-			m.__slot1 = append(m.__slot1, __n2__el)
+			__n3__el := __n3.Root
+			fynelayout.InsertBefore(__parent, m.__slot1_at, __n3__el)
+			m.__slot1 = append(m.__slot1, __n3__el)
 		}
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
@@ -447,9 +449,17 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__inst1_was_interval = __inst1_now_interval
 }
 
-func (m *Model) __n3_click_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) __n4_click_handler() {
 	m.shown = false
-	m.__renderSlot1(m.__root)
+	m.__renderSlot1(m.__n0.Container)
 }
 
 func (m *Model) N() int {
@@ -468,20 +478,36 @@ func (m *Model) SetShown(v bool) {
 	m.shown = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__renderSlot0(m.__root)
-	m.__renderSlot1(m.__root)
-	m.__n3 = widget.NewButton("", nil)
-	m.__n3.SetText("hide")
-	m.__n3.OnTapped = m.__n3_click_handler
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(fmt.Sprint(m.n))
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n3)
-	parts = append(parts, m.__n0)
-	m.__root.Objects = parts
-	return m.__root
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("t")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__renderSlot0(m.__n0.Container)
+	m.__renderSlot1(m.__n0.Container)
+	m.__n4 = widget.NewButton("", nil)
+	m.__n4.SetText("hide")
+	m.__n4.OnTapped = m.__n4_click_handler
+	m.__n0.Add(m.__n4)
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(fmt.Sprint(m.n))
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 // TimerInstance is one live instance of the timer component.
@@ -641,11 +667,9 @@ func (c *TimerInstance) SetTick(__v func(any)) {
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -656,9 +680,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -680,7 +705,7 @@ type ErrorEvent struct {
 type Model struct {
 	n                    int
 	shown                bool
-	__root               gtk4rt.Handle
+	visible__inst0       bool
 	__slot0              []gtk4rt.Handle
 	__slot0_at           gtk4rt.Handle
 	__inst0_live         []*TimerInstance
@@ -690,8 +715,10 @@ type Model struct {
 	__inst1_live         []*TimerInstance
 	__inst1_was_interval []time.Duration
 	periods              []time.Duration
-	__n3                 gtk4rt.Handle
 	__n0                 gtk4rt.Handle
+	__n4                 gtk4rt.Handle
+	__n1                 gtk4rt.Handle
+	__built              bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -700,7 +727,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.shown = true
-	m.__root = nil
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -723,27 +750,27 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	var __inst0_i int = 0
 	__inst0_now_interval := []time.Duration{}
 	for _, p := range m.periods {
-		var __n1 *TimerInstance
+		var __n2 *TimerInstance
 		if (len(m.__inst0_live) > __inst0_i) && (m.__inst0_was_interval[__inst0_i] == p) {
-			__n1 = m.__inst0_live[__inst0_i]
-			__n1.SetTick(func(_ any) {
+			__n2 = m.__inst0_live[__inst0_i]
+			__n2.SetTick(func(_ any) {
 				m.n = (m.n + 1)
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := newTimerInstance(m, p, true, func(_ any) {
+			__n2__new := newTimerInstance(m, p, true, func(_ any) {
 				m.n = (m.n + 1)
 			})
-			__n1 = __n1__new
+			__n2 = __n2__new
 		}
-		__inst0_next = append(__inst0_next, __n1)
+		__inst0_next = append(__inst0_next, __n2)
 		__inst0_now_interval = append(__inst0_now_interval, p)
 		__inst0_i = (__inst0_i + 1)
-		__n1__el := __n1.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
-		m.__slot0 = append(m.__slot0, __n1__el)
+		__n2__el := __n2.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -766,27 +793,27 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	__inst1_now_interval := []time.Duration{}
 	for _, p := range m.periods {
 		if m.shown {
-			var __n2 *TimerInstance
+			var __n3 *TimerInstance
 			if (len(m.__inst1_live) > __inst1_i) && (m.__inst1_was_interval[__inst1_i] == p) {
-				__n2 = m.__inst1_live[__inst1_i]
-				__n2.SetTick(func(_ any) {
+				__n3 = m.__inst1_live[__inst1_i]
+				__n3.SetTick(func(_ any) {
 					m.n = (m.n + 1)
 				})
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n2__new := newTimerInstance(m, p, true, func(_ any) {
+				__n3__new := newTimerInstance(m, p, true, func(_ any) {
 					m.n = (m.n + 1)
 				})
-				__n2 = __n2__new
+				__n3 = __n3__new
 			}
-			__inst1_next = append(__inst1_next, __n2)
+			__inst1_next = append(__inst1_next, __n3)
 			__inst1_now_interval = append(__inst1_now_interval, p)
 			__inst1_i = (__inst1_i + 1)
-			__n2__el := __n2.Root
-			gtk4rt.InsertBefore(parent, m.__slot1_at, __n2__el)
-			m.__slot1 = append(m.__slot1, __n2__el)
+			__n3__el := __n3.Root
+			gtk4rt.InsertBefore(parent, m.__slot1_at, __n3__el)
+			m.__slot1 = append(m.__slot1, __n3__el)
 		}
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
@@ -799,9 +826,17 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__inst1_was_interval = __inst1_now_interval
 }
 
-func (m *Model) __n3_clicked_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+}
+
+func (m *Model) __n4_clicked_handler() {
 	m.shown = false
-	m.__renderSlot1(m.__root)
+	m.__renderSlot1(m.__n0)
 }
 
 // TimerInstance is one live instance of the timer component.
@@ -958,30 +993,41 @@ func (m *Model) SetShown(v bool) {
 	m.shown = v
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__renderSlot0(m.__root)
-	m.__renderSlot1(m.__root)
-	m.__n3 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n3, "hide")
-	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.n))
-	gtk4rt.BoxAppend(m.__root, m.__n3)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.__n0, "t")
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__renderSlot0(m.__n0)
+	m.__renderSlot1(m.__n0)
+	m.__n4 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n4, "hide")
+	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.__n4)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.n))
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	gtk4rt.AppAttach(m.__n0)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "t")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -1249,8 +1295,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:146477a18828bf62ccb78a149d2018d5
 -- run/go/fyne --
-pass sha256:0f6fd8f7cb4d5c7a24c1caa0965772ac
+pass sha256:f69b6ee345215a40d8659be1f98f3523
 -- run/go/gtk4 --
-pass sha256:c5b87e67120c80efe0b3ef4f9ec6554f
+pass sha256:2c5293bb240918c0ed9c66e88ce401fa
 -- run/none/html --
 pass sha256:2f58632ce70d49cb5ca387cd55625313

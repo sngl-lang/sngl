@@ -415,8 +415,6 @@ func boolToInt(b bool) int {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible bool
-	__n0    *C.GtkPopover
-	__n1    *C.GtkButton
 	__root  *C.GtkBox
 }
 
@@ -447,17 +445,17 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkPopover)(unsafe.Pointer(C.gtk_popover_new()))
-	C.gtk_widget_set_visible((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(m.visible)))
-	C.gtk_popover_set_autohide((*C.GtkPopover)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
+	__n0 := (*C.GtkPopover)(unsafe.Pointer(C.gtk_popover_new()))
+	C.gtk_widget_set_visible((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(m.visible)))
+	C.gtk_popover_set_autohide((*C.GtkPopover)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_closed_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("closed"), C.int((len(snglCallbacks) - 1)))
-	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), C.CString("toggle"))
+	C.sngl_connect(unsafe.Pointer(__n0), C.CString("closed"), C.int((len(snglCallbacks) - 1)))
+	__n1 := (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), C.CString("toggle"))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_popover_set_child((*C.GtkPopover)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.sngl_connect(unsafe.Pointer(__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_popover_set_child((*C.GtkPopover)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -611,7 +609,7 @@ pass sha256:e77e9f8d86b2fc61a7fb49eac1a3c167
 -- run/go/fyne --
 pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
-pass sha256:c5b3386350263ee07d85d7fac083068d
+pass sha256:3dd6b9bb5577bac63bcd073504dd07b2
 -- run/kotlin/android --
 pass sha256:3e7713e262225b41fc18e5baf86fdcd0
 -- run/none/html --

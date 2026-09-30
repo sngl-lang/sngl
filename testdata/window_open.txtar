@@ -1,13 +1,15 @@
 A window's `#id` opens and closes it, from anywhere a handler can reach it.
 
-`window.open()` and `window.close()` are intrinsics each platform answers: on
-gtk4 and fyne every window is built, the Model keeps its record in a field
-named by its `#id`, and the two present and hide it. A program started with no
-window on screen -- `@run` never called `run` -- is the case that wants it: a
-status bar opening a window when one of its blocks is clicked. Started that
-way, the window manager's close hides the window rather than ending the
-program, which is the rule for any close with no `@close` written
-(window_several.txtar).
+`open` and `close` are methods of `ui.window` that assign its `visible`, and
+the window binds nothing to it here, so they write the cell the window keeps
+for it. A program started with no window on screen -- `@run` never called
+`run` -- is the case that wants it: a status bar opening a window when one of
+its blocks is clicked. Started that way the host reports each window hidden,
+which writes `visible = false`, so `open` is a change the Toplevel's setter
+puts on screen.
+
+deny * `gtk4rt\.Window\{|snglWindow|\.Mount\(\)|\.Unmount\(\)` -- a window is a Toplevel node, not a record kept beside the tree
+deny * `details\.open\(\)|details\.close\(\)` -- a method called through the handle is the spliced instance's
 
 -- app.sngl --
 import go "sngl:language/go"
@@ -61,8 +63,8 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"slices"
 	"time"
@@ -81,6 +83,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
+	visible__inst1      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -88,8 +91,10 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
-	details *snglWindow
-	__n0    *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__n2    *widget.Button
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -101,6 +106,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
+	m.visible__inst1 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -112,6 +118,16 @@ func New() *Model {
 
 func (m *Model) __run(args []string, run func()) {
 	m.wanted = (slices.Index(args, "--open") >= 0)
+}
+
+func (m *Model) open__inst2() {
+	m.visible__inst1 = true
+	m.__n0.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) close__inst2() {
+	m.visible__inst1 = false
+	m.__n0.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) __effect0_mount() {
@@ -132,9 +148,9 @@ func (m *Model) __effect0_mount() {
 							return
 						}
 						m.ticks += 1
-						m.__n0.SetText(fmt.Sprint(m.ticks))
+						m.__n1.SetText(fmt.Sprint(m.ticks))
 						if (m.ticks == 1) && m.wanted {
-							m.details.Open()
+							m.open__inst2()
 						}
 						if m.ticks == 2 {
 							os.Exit(0)
@@ -221,8 +237,16 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) __n1_click_handler() {
-	m.details.Close()
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) __n2_click_handler() {
+	m.close__inst2()
 }
 
 func (m *Model) Wanted() bool {
@@ -273,153 +297,48 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-// snglWindow is one window of the program: the fyne window the host shows,
-// around a widget tree the program builds once.
-type snglWindow struct {
-	title   string
-	content fyne.CanvasObject
-	onClose func()
-	w       fyne.Window
-	mounted bool
-	open    bool
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-var (
-	snglApp     fyne.App
-	snglStarted bool
-	snglHidden  bool
-	snglWindows []*snglWindow
-	snglAnchor  fyne.Window
-)
-
-// Mount says the window exists. Before the loop starts it is created when the
-// loop does; after, it is created and put on screen at once.
-func (w *snglWindow) Mount() {
-	if w.mounted {
-		return
-	}
-	w.mounted = true
-	snglWindows = append(snglWindows, w)
-	if snglStarted {
-		w.create()
-		w.Open()
-	}
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
-// Unmount closes the fyne window. The content is kept for a later Mount.
-func (w *snglWindow) Unmount() {
-	if !w.mounted {
-		return
-	}
-	w.mounted = false
-	w.open = false
-	for i, x := range snglWindows {
-		if x == w {
-			snglWindows = append(snglWindows[:i], snglWindows[i+1:]...)
-			break
-		}
-	}
-	if w.w != nil {
-		w.w.SetContent(container.NewStack())
-		w.w.Close()
-		w.w = nil
-	}
-}
-
-// Open puts a mounted window on screen.
-func (w *snglWindow) Open() {
-	w.open = true
-	if w.w != nil {
-		w.w.Show()
-	}
-}
-
-// Close takes the window off screen; Open brings it back as it was.
-func (w *snglWindow) Close() {
-	w.open = false
-	if w.w != nil {
-		w.w.Hide()
-	}
-}
-
-func (w *snglWindow) create() {
-	if w.w != nil {
-		return
-	}
-	w.w = snglApp.NewWindow(w.title)
-	// fyne lays SetContent's tree out against the current size, so the
-	// content goes in before the resize.
-	w.w.SetContent(w.content)
-	w.w.Resize(fyne.NewSize(480, 640))
-	w.w.SetCloseIntercept(w.closeRequested)
-}
-
-// closeRequested is the window manager's close. The handler decides what it
-// means; with none, the window hides. Either way a close that leaves nothing
-// on screen ends the program, unless it started with nothing on screen.
-func (w *snglWindow) closeRequested() {
-	if w.onClose != nil {
-		w.onClose()
-	} else {
-		w.Close()
-	}
-	if snglHidden {
-		return
-	}
-	for _, x := range snglWindows {
-		if x.open {
-			return
-		}
-	}
-	snglApp.Quit()
-}
-
-// snglRunWindows runs the loop over the windows mounted so far and those
-// mounted later. show puts the mounted ones on screen at start.
-func snglRunWindows(show bool) {
-	snglHidden = !show
-	snglAnchor = snglApp.NewWindow("")
-	snglStarted = true
-	for _, w := range append([]*snglWindow(nil), snglWindows...) {
-		w.create()
-		if show || w.open {
-			w.Open()
-		}
-	}
-	snglApp.Run()
-}
-
-// BuildUI creates every window's widget tree. Call once.
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.details != nil {
-		return m.details.content
+	if m.__built {
+		return m.__n0.Container
 	}
-	m.details = &snglWindow{title: "Details", content: m.buildWindowDetails()}
-	m.details.Mount()
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("Details")
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(fmt.Sprint(m.ticks))
+	m.__n0.Add(m.__n1)
+	m.__n2 = widget.NewButton("", nil)
+	m.__n2.SetText("Close")
+	m.__n2.OnTapped = m.__n2_click_handler
+	m.__n0.Add(m.__n2)
+	fynelayout.AppAttach(m.__n0)
 	m.__effects0_settle()
-	return m.details.content
-}
-
-func (m *Model) buildWindowDetails() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(fmt.Sprint(m.ticks))
-	__n1 := widget.NewButton("", nil)
-	__n1.SetText("Close")
-	__n1.OnTapped = m.__n1_click_handler
-	return container.NewVBox(m.__n0, __n1)
+	return m.__n0.Container
 }
 
 func main() {
-	snglApp = app.New()
+	a := app.New()
 	m := New()
 	m.BuildUI()
 	ran := false
 	m.__run(os.Args[1:], func() {
 		ran = true
-		snglRunWindows(true)
+		fynelayout.RunWindows(a, true)
 	})
 	if !ran {
-		snglRunWindows(false)
+		fynelayout.RunWindows(a, false)
 	}
 	m.__snglTeardown()
 	_ = os.Stderr
@@ -468,6 +387,7 @@ type Model struct {
 	wanted              bool
 	ticks               int
 	handle__inst0       *gtk4rt.Schedule
+	visible__inst1      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -476,8 +396,8 @@ type Model struct {
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n1                gtk4rt.Handle
-	__root              gtk4rt.Handle
-	details             *gtk4rt.Window
+	__n2                gtk4rt.Handle
+	__built             bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -487,6 +407,7 @@ func New() *Model {
 	m.wanted = false
 	m.ticks = 0
 	m.handle__inst0 = nil
+	m.visible__inst1 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -500,12 +421,22 @@ func (m *Model) __run(args []string, run func()) {
 	m.wanted = (slices.Index(args, "--open") >= 0)
 }
 
+func (m *Model) open__inst2() {
+	m.visible__inst1 = true
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+}
+
+func (m *Model) close__inst2() {
+	m.visible__inst1 = false
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+}
+
 func (m *Model) __effect0_mount() {
 	m.handle__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
+		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.ticks))
 		if (m.ticks == 1) && m.wanted {
-			m.details.Open()
+			m.open__inst2()
 		}
 		if m.ticks == 2 {
 			os.Exit(0)
@@ -581,8 +512,16 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) __n1_clicked_handler() {
-	m.details.Close()
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+}
+
+func (m *Model) __n2_clicked_handler() {
+	m.close__inst2()
 }
 
 func (m *Model) Wanted() bool {
@@ -609,20 +548,32 @@ func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.ticks))
-	m.__n1 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n1, "Close")
-	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n1)
-	m.details = &gtk4rt.Window{Title: "Details", Content: m.__root}
-	m.details.Mount()
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.__n0, "Details")
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.ticks))
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	m.__n2 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n2, "Close")
+	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.__n2)
+	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
 }
 
@@ -630,13 +581,9 @@ func (m *Model) buildWidgetTree() {
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "Details")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:1e7dd0d1775e12a7c942b768d9da761c
+pass sha256:d8b5664209c2682217ae95a981aab9a9
 -- run/go/gtk4 --
-pass sha256:f5456eba5e048e948e257ee4af5600be
+pass sha256:29b33e6660a88b72ca696ec91e581c83

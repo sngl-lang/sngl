@@ -13,7 +13,7 @@ import gen "sngl:x/gen"
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
 // A GLib idle callback runs on the thread that owns every widget, so a blocking
 // call can be moved off it and its answer written back.
-#[gen.can(asyncPost, instanceState, windowLifetimes)]
+#[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
 // after every mutation of a tracked var, which this platform translates to
 // `gtk_<widget>_set_<prop>(...)`; withholding declarative flattens the tree
@@ -39,6 +39,28 @@ component platform(
     // system locations and fall back to the bundled subset.
     const gir string,
 ) build.platform {}
+
+// --- Windows ---
+
+// A toplevel: the host object a `ui.window` is on this platform. A node the
+// package body holds is attached to the application, and attaching one of
+// these creates the GtkWindow and puts it on screen once the loop runs;
+// removing one, as an `if` turning false does, destroys it and everything in
+// it. `visible` shows and hides it without destroying it, and the window
+// manager's close is reported as `visible = false` followed by `@closed`.
+#[marks.intrinsic("gtk4:Toplevel")]
+component Toplevel(
+    title string,
+    :visible bool,
+    @closed(),
+    content ...component ui.node,
+) root
+
+const component ui.window[platform] {
+    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+        content(params)
+    }
+}
 
 // --- Leaf widgets ---
 

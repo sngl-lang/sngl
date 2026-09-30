@@ -110,9 +110,10 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	}
 	// The package's own body renders last, after every declaration it reads,
 	// which is the order the source is written in and the order fmt keeps.
-	for _, st := range pkg.Body {
-		stmts = append(stmts, c.convertStmt(st))
-	}
+	//
+	// Through convertBodyStmts, for the flattened canvas it prints: the
+	// package body is a view body on a target whose windows are components.
+	stmts = append(stmts, c.convertBodyStmts(pkg.Body)...)
 
 	return &ast.Document{Stmts: stmts}
 }
@@ -564,8 +565,8 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 }
 
 // convertBodyStmts is one statement list, converted. Shared with the window
-// body's own loop, which had a second copy of it and so printed a flattened
-// canvas as an empty one.
+// body's own loop and the package body's, which each had a copy of it and so
+// printed a flattened canvas as an empty one.
 func (c *converter) convertBodyStmts(stmts []Stmt) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range stmts {

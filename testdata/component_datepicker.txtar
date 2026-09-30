@@ -400,7 +400,6 @@ func boolToInt(b bool) int {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	d      time.Time
-	__n0   *C.GtkCalendar
 	__root *C.GtkBox
 }
 
@@ -428,11 +427,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
+	__n0 := (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.sngl_connect(unsafe.Pointer(__n0), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -647,7 +646,7 @@ pass sha256:2d3135c2d141e0e0dde30603b12671b6
 -- run/go/fyne --
 pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
-pass sha256:15b20b2a509d9e7c1bfa344fc1c14d3b
+pass sha256:958eccab34936d6d7c4359d89ade4ada
 -- run/kotlin/android --
 pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
 -- run/none/html --

@@ -88,11 +88,6 @@ type Features struct {
 	// InlineSlots says a reactive `if` or `for` may render into a span.
 	// Withheld, the flow holding one is the render slot instead.
 	InlineSlots bool
-	// WindowLifetimes says the platform creates and destroys a window while
-	// the program runs, and answers WindowMountIntrinsic and
-	// WindowUnmountIntrinsic. Withheld, passWindowLifetimes refuses a window
-	// under an `if` that reads state rather than emitting it always there.
-	WindowLifetimes bool
 	// AsyncPost says the platform can run a closure back on the thread it
 	// draws on, and answers lower.AsyncPostIntrinsic with the call that does
 	// it. Without it there is nowhere for a blocking call's answer to land,
@@ -216,7 +211,6 @@ func (f Features) String() string {
 		{"InstanceState", f.InstanceState},
 		{"InsertBefore", f.InsertBefore},
 		{"InlineSlots", f.InlineSlots},
-		{"WindowLifetimes", f.WindowLifetimes},
 		{"AsyncPost", f.AsyncPost},
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},

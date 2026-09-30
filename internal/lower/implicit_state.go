@@ -2,9 +2,11 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -14,8 +16,8 @@ import (
 // `checkbox #box(label="x")` becomes an instantiation of a component written
 // for it,
 //
-//	component __checkbox_state0(__checked bool = false, label string) node {
-//	    var checked = __checked
+//	component __checkbox_state0(__start_checked bool = false, label string) node {
+//	    var checked = __start_checked
 //	    checkbox #box(:checked=checked, label=label)
 //	}
 //
@@ -146,6 +148,10 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 // two-way prop unbound.
 func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	comp := n.Component
+	// A window still a builtin on this target -- html, bubbletea, android --
+	// is no component to wrap, and its `visible` is a prop they do not read.
+	// Where a platform overrides the window it is an ordinary component by
+	// now (composeOverriddenBuiltins) and gets its cell like any other.
 	if comp == nil || ir.IsWindowNode(n) {
 		return nil, nil
 	}
@@ -159,7 +165,11 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		return nil, fmt.Errorf("%s: %s binds :%s and leaves :%s unbound, which is not supported yet; bind both, or neither", nodePos(n), comp.DisplayName(), n.Bindings[0].PropName, unbound[0].Name)
 	}
 	rest := comp.RestSlot()
-	if len(n.Slots) > 0 || len(n.Children) > 0 && (rest == nil || len(rest.Params) > 0) {
+	var restPop *ir.SlotContent
+	if rest != nil && len(n.Slots) == 1 {
+		restPop = n.Slots[rest.Name]
+	}
+	if len(n.Slots) > 0 && restPop == nil || len(n.Children) > 0 && rest == nil {
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
@@ -182,7 +192,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		if start == nil {
 			start = ir.DeclaredDefault(p.Type)
 		}
-		init := &ir.Prop{Name: "__" + p.Name, Type: p.Type, Default: start}
+		init := &ir.Prop{Name: cellStartProp(p.Name), Type: p.Type, Default: start}
 		init.Sym = &ir.Param{Name: init.Name, Type: p.Type}
 		w.Props = append(w.Props, init)
 		cell := &ir.Var{
@@ -202,7 +212,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	site := make([]ir.Arg, 0, len(n.Props))
 	for _, a := range n.Props {
 		if _, isCell := cells[a.Name]; isCell {
-			site = append(site, ir.Arg{Name: "__" + a.Name, NamePos: a.NamePos, Value: a.Value})
+			site = append(site, ir.Arg{Name: cellStartProp(a.Name), NamePos: a.NamePos, Value: a.Value})
 			continue
 		}
 		decl := declaredPropOf(comp, a.Name)
@@ -240,8 +250,28 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		inner.Handlers = append(inner.Handlers, ir.EventHandler{Name: decl.Name, Func: relay})
 	}
 	// Bare children stay at the call site, written in its scope, and the
-	// wrapper's own rest slot hands them on to the node.
-	if len(n.Children) > 0 {
+	// wrapper's own rest slot hands them on to the node. It takes no
+	// arguments even where the node's rest slot is scoped -- a window's
+	// `content ...component(v T)` -- because bare children bind none.
+	//
+	// A population of that slot written by name -- a window's
+	// `component content(v)` -- is handed on the same way with its argument:
+	// the wrapper's slot takes it, and the node's own population inserts that
+	// slot with what the node hands it.
+	switch {
+	case restPop != nil:
+		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
+		slot := &ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}
+		var params []*ir.Param
+		for _, p := range restPop.Params {
+			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: p.Type})
+			fp := &ir.Param{Name: "__" + p.Name, Type: p.Type}
+			params = append(params, fp)
+			slot.Args = append(slot.Args, &ir.Ident{Name: fp.Name, Type: fp.Type, Sym: fp})
+		}
+		w.Slots = []*ir.SlotDecl{fwd}
+		inner.Slots = map[string]*ir.SlotContent{rest.Name: {Params: params, Body: []ir.Stmt{slot}}}
+	case len(n.Children) > 0:
 		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
 		w.Slots = []*ir.SlotDecl{fwd}
 		inner.Children = []ir.Stmt{&ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}}
@@ -258,10 +288,18 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		Props:     site,
 		Handlers:  n.Handlers,
 		Children:  n.Children,
+		Slots:     n.Slots,
 		Key:       n.Key,
 		Ref:       n.Ref,
 	}, nil
 }
+
+// cellStartProp is the wrapper's prop carrying where the cell for prop starts.
+// Not `__<prop>`: that is the parameter passPropBindings gives the write-back
+// handler of the binding the wrapper writes, and the splice binds a param by
+// name, so the handler's `visible = __visible` read the start instead of what
+// the host reported.
+func cellStartProp(prop string) string { return "__start_" + prop }
 
 func declaredPropOf(comp *ir.Component, name string) *ir.Prop {
 	for _, p := range comp.Props {
@@ -380,4 +418,107 @@ func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 		why = "is rendered more than once"
 	}
 	return fmt.Errorf("%s: `#%s` %s, so a read of its unbound :%s cannot say which copy it means; bind :%s to a var and read that", pos, id, why, v.Name, v.Name)
+}
+
+// repointHandleCalls points each call of a method through a node's `#id` at
+// the clone the inliner made of it where it spliced the node: `details.open()`
+// is a call of the one instance's `open`, which reads and writes that
+// instance's state. The receiver goes with the rewrite, since the clone is a
+// method of whatever the node was spliced into, as every other call of it is.
+//
+// The call names the declaration's method and a handle, and the splice renamed
+// neither: left alone it came out as `m.details.open()`, a field and a method
+// no emitted type has. A handle whose node was rendered more than once cannot
+// say which copy the call means, the rule repointCellReads holds a read to.
+func repointHandleCalls(pkg *ir.Package, methods map[*ir.Var]map[*ir.Func][]*ir.Func) error {
+	if len(methods) == 0 {
+		return refuseUnsplicedHandleCalls(pkg)
+	}
+	var bad error
+	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+		call, ok := n.(*ir.Call)
+		if !ok || call.Func == nil {
+			return n, nil
+		}
+		h, asArg := handleReceiver(call)
+		if h == nil {
+			return n, nil
+		}
+		clones := methods[h][call.Func]
+		switch {
+		case len(clones) == 1:
+			call.Func, call.Receiver = clones[0], nil
+			if asArg {
+				call.Args = slices.Delete(slices.Clone(call.Args), 0, 1)
+			}
+		case len(clones) > 1 && bad == nil:
+			bad = fmt.Errorf("%s: `#%s` is rendered more than once, so a call of its %s cannot say which copy it means; give each copy its own id", handleCallPos(call), h.Name, call.Func.Name)
+		}
+		return n, nil
+	})
+	if err != nil {
+		return err
+	}
+	if bad != nil {
+		return bad
+	}
+	return refuseUnsplicedHandleCalls(pkg)
+}
+
+// refuseUnsplicedHandleCalls reports a method called through a node's `#id`
+// that no splice answered: the node is built at run time, or the target
+// renders it as the builtin it is marked -- a window on html, bubbletea and
+// android -- and in neither case is there one instance's method to call.
+// Emitted, it was `details.open()` against nothing on html and a method the
+// Model does not have on bubbletea.
+func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
+	var bad error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.Func == nil || call.Event != "" || bad != nil {
+			return nil
+		}
+		fn := call.Func
+		if fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 {
+			return nil
+		}
+		if h, _ := handleReceiver(call); h != nil {
+			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.Name, fn.Name, h.Name)
+		}
+		return nil
+	})
+	return bad
+}
+
+// handleReceiver is the node handle a method call is made through, and
+// whether it is passed as the call's first argument -- the receiver-as-param
+// form a component method is called in -- rather than as its Receiver.
+func handleReceiver(call *ir.Call) (*ir.Var, bool) {
+	if id, ok := call.Receiver.(*ir.Ident); ok {
+		if h, ok := id.Sym.(*ir.Var); ok && h.NodeHandle {
+			return h, false
+		}
+	}
+	if len(call.Args) > 0 && len(call.Func.Params) > 0 && call.Func.Params[0].Receiver {
+		if id, ok := call.Args[0].Value.(*ir.Ident); ok {
+			if h, ok := id.Sym.(*ir.Var); ok && h.NodeHandle {
+				return h, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// handleCallPos is where the call is written: the handle it is made through,
+// which is where a reader looks for `details.open()`.
+func handleCallPos(c *ir.Call) string {
+	if c.AST == nil {
+		return "<unknown>"
+	}
+	if sel, ok := c.AST.Func.(*ast.SelectExpr); ok {
+		if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+			return id.Pos.String()
+		}
+	}
+	return c.AST.Pos.String()
 }

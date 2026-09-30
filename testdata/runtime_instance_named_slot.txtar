@@ -606,7 +606,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	for _, __entry := range m.__slot2 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot2 = nil
 	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
@@ -647,7 +647,7 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 
 func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	for _, __entry := range m.__slot3 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot3 = nil
 	m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
@@ -769,7 +769,7 @@ func (c *CardInstance) SetStart(__v int) {
 
 func (c *CardInstance) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range c.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot0 = nil
 	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
@@ -909,7 +909,7 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 
 func (c *Card__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range c.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot1 = nil
 	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
@@ -2152,7 +2152,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:04193e96fdd1d766b7a99a6dc790d48d
 -- run/go/fyne --
-pass sha256:b9f6d8f0b62e34a78de8c73f59e4a549
+pass sha256:582ec9368dc47f2424cf9d975806d9a5
 -- run/go/gtk4 --
 pass sha256:f9eb0f579c668714241c30c95bd5c52f
 -- run/kotlin/android --

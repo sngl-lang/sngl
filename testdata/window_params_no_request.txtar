@@ -134,6 +134,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -143,41 +144,59 @@ type PageParams struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	v PageParams
+	visible__inst0 bool
 
-	__n0 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.v = PageParams{}
+	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) V() PageParams {
-	return m.v
+func (m *Model) __n0_closed_handler() {
 }
 
-func (m *Model) SetV(v PageParams) {
-	m.v = v
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(("pkg is " + m.v.Pkg))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("t")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(("pkg is " + PageParams{}.Pkg))
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
@@ -227,6 +246,6 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:f29ba1db1087ebdca7d94620db815519
 -- run/go/fyne --
-pass sha256:f0a65cebdaed84b692e4e1d9a6528ffb
+pass sha256:69d30de27e2a3fa317be627e9056f691
 -- run/kotlin/android --
 pass sha256:3e2656e57468674a7f37867be35fb4db
