@@ -3039,13 +3039,24 @@ func (c *checker) checkPackageBody() {
 	}
 	c.pushScope()
 	defer c.popScope()
-	for _, st := range c.pendingPkgBody {
-		c.declareNodeIDsStmt(st, nil)
+	// Each statement in the file it was written in: the body gathers every
+	// file's root statements, and checked in whichever file scope pass1 ended
+	// on, one file's statements resolved against another's imports.
+	inFile := func(st ast.Stmt, f func()) {
+		if p := stmtPos(st); p != nil {
+			defer c.fileOf(*p)()
+		}
+		f()
 	}
 	for _, st := range c.pendingPkgBody {
-		if checked := c.checkStmt(st); checked != nil {
-			c.pkg.Body = append(c.pkg.Body, checked)
-		}
+		inFile(st, func() { c.declareNodeIDsStmt(st, nil) })
+	}
+	for _, st := range c.pendingPkgBody {
+		inFile(st, func() {
+			if checked := c.checkStmt(st); checked != nil {
+				c.pkg.Body = append(c.pkg.Body, checked)
+			}
+		})
 	}
 	// The package body is a slot like any other, and the tree it accepts is
 	// what makes a window top-level: no rule names the construct, so a

@@ -687,8 +687,9 @@ family itself with a `gen.emit` as the override's whole body --
 *host*, a component whose rest slot takes the family (`ir.EmittedFamily`), is
 then answered by the family's override in both bodyless rules. The build
 (`internal/build/emit.go`, ahead of the first optimize, which would drop a
-bodyless host it cannot render) walks each host written at the root of a file
-into data: a member with a `gen.node` override is a node, a member with a body
+bodyless host it cannot render) walks each host where a root member stands --
+at the root of a file, under an `if` there, and in a component whose family is
+`root` -- into data: a member with a `gen.node` override is a node, a member with a body
 composes -- its body read with its props bound, its rest slot inserting what it
 was written with -- and an `if` or a `for` is decided there, so every value is a
 build-time one and a read of state is refused at the read. The host is then
@@ -721,8 +722,21 @@ about. The synthesized function is given its Reads and Purity by
 its key reads. `testdata/emit_family_state.txtar` is the code and
 `cmd/sngl/testdata/emit_family_state_runs.txt` runs it on gtk4 and fyne under
 the headless compositor (the `headless` script condition). What is not here
-yet: a host anywhere but the root of a file, a composed member's handlers, and
-a member holding children in code mode -- each refused with a position.
+yet: a host under a `for`, a composed member's handlers, and a member holding
+children in code mode -- each refused with a position.
+
+**A host goes where a root member goes** (`emitFamilies`). Under an `if` a
+code-mode host is rewritten where it stands, so the family's `gen.emit` -- two
+effects -- sits under the same `if`, and passEffect mounts and unmounts it with
+the branch: `@start` runs again each time the host comes back, and a change
+while it is gone prints nothing (`cmd/sngl/testdata/emit_family_under_if_runs.txt`).
+In a root component the members function joins that component's `Funcs`, so
+the inliner renames what it reads with the rest of the component
+(`testdata/emit_family_under_if.txtar`). A template-mode host writes its file
+at build time, so the `if` above it must be decidable then, and one in a root
+component nobody renders writes nothing. A `for` is refused: each copy would
+be an emitter of its own, and the members function cannot see the loop's
+variables.
 
 **`sngl:ui`'s `node` is the widget family**, and it is a family like any
 other: naming it in a slot accepts widgets and nothing else, which is what
@@ -1019,6 +1033,12 @@ one written anywhere but the root of a file is still its own error ("output may
 only be written at the root of a file") rather than a family question. A
 component whose family is `root` could otherwise render one, and nothing would
 read it.
+
+**The package body is checked file by file.** `checkPackageBody` gathers
+every file's root statements, and enters each one's own file (`fileOf`) before
+checking it: checked in whatever file scope pass1 ended on, `time.timer` at the
+root of one file was undefined because the file sorted after it imported no
+`time` (`cmd/sngl/testdata/package_body_reads_its_own_imports.txt`).
 
 **Which windows there are is `ir.AllWindows`**, and the field is only half the
 answer. The checker registers a window written at the root of a file on

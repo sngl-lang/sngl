@@ -337,7 +337,13 @@ func runSNGL(pkg *ir.Package, h *codeHost, t Target) (ir.Stmt, error) {
 		Block:  block,
 	}
 	checker.AnalyzeSynthesizedFunc(pkg, fn)
-	pkg.Funcs = append(pkg.Funcs, fn)
+	if h.owner != nil {
+		// The component's own, so the inliner renames what it reads with
+		// the rest of what the component declares when it splices the body.
+		h.owner.Funcs = append(h.owner.Funcs, fn)
+	} else {
+		pkg.Funcs = append(pkg.Funcs, fn)
+	}
 
 	inst := ir.CloneStmtsSharingDecls([]ir.Stmt{h.emit})[0].(*ir.NodeInst)
 	inst.Props = append(slices.DeleteFunc(inst.Props, func(a ir.Arg) bool { return a.Name == "members" }), ir.Arg{
@@ -477,6 +483,11 @@ func uniqueFuncName(pkg *ir.Package, base string) string {
 	for _, f := range pkg.Funcs {
 		taken[f.Name] = true
 	}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			taken[f.Name] = true
+		}
+	}
 	name := base
 	for i := 1; taken[name]; i++ {
 		name = base + strconv.Itoa(i)
@@ -486,6 +497,10 @@ func uniqueFuncName(pkg *ir.Package, base string) string {
 
 // codeHost is one place the program renders a family generated as code.
 type codeHost struct {
+	// owner is the root component whose body the host is written in, or nil
+	// for the package body: the members function reads what the body can, so
+	// it belongs to the same declaration.
+	owner   *ir.Component
 	host    *ir.NodeInst
 	family  *ir.Component
 	emit    *ir.NodeInst
@@ -495,7 +510,7 @@ type codeHost struct {
 
 // emitCode walks a host whose family generates code and returns what stands
 // in its place.
-func emitCode(pkg *ir.Package, host *ir.NodeInst, family *ir.Component, emit *ir.NodeInst, t Target) (ir.Stmt, error) {
+func emitCode(pkg *ir.Package, owner *ir.Component, host *ir.NodeInst, family *ir.Component, emit *ir.NodeInst, t Target) (ir.Stmt, error) {
 	if len(host.Slots) > 0 {
 		return nil, posErr(nodePos(host), "%s's members are written as its children", host.Component.Name)
 	}
@@ -504,5 +519,5 @@ func emitCode(pkg *ir.Package, host *ir.NodeInst, family *ir.Component, emit *ir
 	if err != nil {
 		return nil, err
 	}
-	return runSNGL(pkg, &codeHost{host: host, family: family, emit: emit, content: content, table: w.table}, t)
+	return runSNGL(pkg, &codeHost{owner: owner, host: host, family: family, emit: emit, content: content, table: w.table}, t)
 }

@@ -43,62 +43,129 @@ type emittedHost struct {
 }
 
 // emitFamilies runs the emitters this target's overrides select, and returns
-// the files they write. Every host it answers is removed from pkg.Body.
+// the files they write. Every host it answers is removed from the body it was
+// written in, or replaced there by what generates it.
+//
+// A host is read wherever a root member may stand: at the root of a file,
+// under an `if` there, and in the body of a component whose family is `root`
+// -- which the inliner later splices into the package body like any other.
+// Under an `if` a code-mode host is rewritten in place, so the effects its
+// family's gen.emit is made of sit under the same `if` and passEffect mounts
+// and unmounts them with it. A template-mode host writes its file once, at
+// build time, so the `if` has to be decidable then.
 func emitFamilies(pkg *ir.Package, t Target) (map[string][]byte, error) {
-	var (
-		env   *interp.Env
-		files map[string][]byte
-		errs  []error
-		kept  = pkg.Body[:0:0]
-	)
-	for _, st := range pkg.Body {
-		ni, ok := st.(*ir.NodeInst)
-		family := emittedFamilyOf(ni)
-		if !ok || family == nil {
+	e := &familyEmission{pkg: pkg, t: t, reached: map[*ir.Component]bool{nil: true}}
+	pkg.Body = e.stmts(pkg.Body, nil, nil)
+	for _, comp := range reachedComponents(pkg) {
+		e.reached[comp] = true
+	}
+	for _, comp := range pkg.Components {
+		if comp != nil && ir.IsAppRootTree(comp.Tree) && !comp.IsFamily() {
+			comp.Body = e.stmts(comp.Body, comp, nil)
+		}
+	}
+	if err := refuseNestedHosts(pkg); err != nil {
+		e.errs = append(e.errs, err)
+	}
+	return e.files, errors.Join(e.errs...)
+}
+
+type familyEmission struct {
+	// reached is the root components the package body renders, and nil for
+	// the body itself: a template-mode host writes its file at build time, so
+	// one in a component nobody renders writes nothing.
+	reached map[*ir.Component]bool
+	pkg     *ir.Package
+	t       Target
+	env     *interp.Env
+	files   map[string][]byte
+	errs    []error
+}
+
+// stmts answers every host in one statement list. owner is the root
+// component the list belongs to, or nil for the package body; conds is the
+// chain of `if` conditions above it, each negated for an `else`.
+func (e *familyEmission) stmts(stmts []ir.Stmt, owner *ir.Component, conds []condFrame) []ir.Stmt {
+	kept := stmts[:0:0]
+	for _, st := range stmts {
+		switch n := st.(type) {
+		case *ir.If:
+			n.Body = e.stmts(n.Body, owner, append(conds[:len(conds):len(conds)], condFrame{cond: n.Cond}))
+			n.Else = e.stmts(n.Else, owner, append(conds[:len(conds):len(conds)], condFrame{cond: n.Cond, neg: true}))
 			kept = append(kept, st)
 			continue
-		}
-		emit, err := familyEmitter(ni, family, t)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		if codeMode(emit) {
-			inst, err := emitCode(pkg, ni, family, emit, t)
-			if err != nil {
-				errs = append(errs, err)
+		case *ir.NodeInst:
+			if family := emittedFamilyOf(n); family != nil {
+				if repl, ok := e.host(n, family, owner, conds); ok && repl != nil {
+					kept = append(kept, repl)
+				}
 				continue
 			}
-			kept = append(kept, inst)
-			continue
 		}
-		if env == nil {
-			env = interp.BuildProgramEnv(pkg)
-		}
-		h, err := walkHost(env, ni, family, emit, t)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		name, data, err := runTemplates(env, h, t)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		if _, dup := files[name]; dup {
-			errs = append(errs, posErr(nodePos(ni), "%s writes %s, which another %s in this program already writes", ni.Component.Name, name, ni.Component.Name))
-			continue
-		}
-		if files == nil {
-			files = map[string][]byte{}
-		}
-		files[name] = data
+		kept = append(kept, st)
 	}
-	pkg.Body = kept
-	if err := refuseNestedHosts(pkg); err != nil {
-		errs = append(errs, err)
+	return kept
+}
+
+// condFrame is one `if` above a host.
+type condFrame struct {
+	cond ir.Expr
+	neg  bool
+}
+
+// host answers one host: the statement standing in its place, if any, and
+// whether it was answered (an error is recorded and the host dropped).
+func (e *familyEmission) host(ni *ir.NodeInst, family *ir.Component, owner *ir.Component, conds []condFrame) (ir.Stmt, bool) {
+	emit, err := familyEmitter(ni, family, e.t)
+	if err != nil {
+		e.errs = append(e.errs, err)
+		return nil, false
 	}
-	return files, errors.Join(errs...)
+	if codeMode(emit) {
+		inst, err := emitCode(e.pkg, owner, ni, family, emit, e.t)
+		if err != nil {
+			e.errs = append(e.errs, err)
+			return nil, false
+		}
+		return inst, true
+	}
+	if !e.reached[owner] {
+		return nil, true
+	}
+	if e.env == nil {
+		e.env = interp.BuildProgramEnv(e.pkg)
+	}
+	// A file is written once, at build time, so whether it is written has to
+	// be known then.
+	for _, c := range conds {
+		v, err := buildValue(e.env, c.cond, nodePos(ni))
+		if err != nil {
+			e.errs = append(e.errs, posErr(nodePos(ni), "%s writes its file at build time, so the `if` it is written under has to be decided then, and it reads state the program changes as it runs", ni.Component.Name))
+			return nil, false
+		}
+		if b, _ := v.(bool); b == c.neg {
+			return nil, true
+		}
+	}
+	h, err := walkHost(e.env, ni, family, emit, e.t)
+	if err != nil {
+		e.errs = append(e.errs, err)
+		return nil, false
+	}
+	name, data, err := runTemplates(e.env, h, e.t)
+	if err != nil {
+		e.errs = append(e.errs, err)
+		return nil, false
+	}
+	if _, dup := e.files[name]; dup {
+		e.errs = append(e.errs, posErr(nodePos(ni), "%s writes %s, which another %s in this program already writes", ni.Component.Name, name, ni.Component.Name))
+		return nil, false
+	}
+	if e.files == nil {
+		e.files = map[string][]byte{}
+	}
+	e.files[name] = data
+	return nil, true
 }
 
 // emittedFamilyOf is the family that generates this node, when it is a host
@@ -110,15 +177,19 @@ func emittedFamilyOf(ni *ir.NodeInst) *ir.Component {
 	return ir.EmittedFamily(ni.Component)
 }
 
-// refuseNestedHosts reports a host written anywhere but the root of a file,
-// which the walk does not reach. Left in place it would reach a code generator
-// as a bodyless node it has no way to render.
+// refuseNestedHosts reports a host the walk does not reach: under a `for`, or
+// in a component that is not a root member. Left in place it would reach a
+// code generator as a bodyless node it has no way to render.
+//
+// A `for` is refused rather than read because each copy of the host would be
+// a family emitter of its own, and the members function the build writes for
+// one is a package function that cannot see the loop's variables.
 func refuseNestedHosts(pkg *ir.Package) error {
 	var errs []error
 	for _, owner := range ir.Owners(pkg) {
 		ir.Walk(owner.Stmts(), func(n ir.Node) error { //nolint:errcheck // the visit never fails
 			if ni, ok := n.(*ir.NodeInst); ok && emittedFamilyOf(ni) != nil {
-				errs = append(errs, posErr(nodePos(ni), "%s is generated by its family's emitter, which reads it only where it is written at the root of a file", ni.Component.Name))
+				errs = append(errs, posErr(nodePos(ni), "%s is generated by its family's emitter, which reads it where a root member stands -- at the root of a file, under an `if` there, or in a component whose family is root -- and not under a `for`", ni.Component.Name))
 			}
 			return nil
 		})
@@ -471,4 +542,24 @@ func posErr(at ast.Pos, format string, args ...any) error {
 		return errors.New(msg)
 	}
 	return fmt.Errorf("%s:%d:%d: %s", at.File, at.Line, at.Column, msg)
+}
+
+// reachedComponents is every component the package body renders, directly or
+// through the bodies of the components it renders.
+func reachedComponents(pkg *ir.Package) []*ir.Component {
+	var out []*ir.Component
+	seen := map[*ir.Component]bool{}
+	var scan func([]ir.Stmt)
+	scan = func(stmts []ir.Stmt) {
+		_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+			if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && !seen[n.Component] {
+				seen[n.Component] = true
+				out = append(out, n.Component)
+				scan(n.Component.Body)
+			}
+			return nil
+		})
+	}
+	scan(pkg.Body)
+	return out
 }
