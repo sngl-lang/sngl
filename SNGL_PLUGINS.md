@@ -223,7 +223,8 @@ presented.
 - **The interpreter and bubbletea.** `none` does not declare `@run`, so
   `sngl run --lang none` starts as before; bubbletea owns stdio and was left
   out.
-- Whether `output(entry=…)` keeps only its routing meaning.
+- ~~Whether `output(entry=…)` keeps only its routing meaning~~: it goes,
+  with decision 15. A desktop `run()` presents every window the tree holds.
 
 ### 7. The host API records its own inputs
 
@@ -547,6 +548,75 @@ feature: the capability polarity applied to commands. These exec processes and
 their output is not SNGL, so they are the one place a handler's result is not
 a stored producer output.
 
+### 15. A window is a surface; a navigator holds the pages
+
+*Settled, not built.* `window` has meant two things. On html a window is a
+**destination** -- a page with an `href`, `params` and a route, one showing at
+a time -- and on a desktop it is a **surface**, a toplevel the user can close.
+No target treated it as the second: html wrote a document per window, fyne
+switched between them inside one OS window, and gtk4, android and bubbletea
+took `wins[0]` and dropped the rest without a word.
+
+So the two are split. `ui.window` is the surface -- `title`, `favicon`,
+`@close`, `open`/`close`, created and destroyed by a reactive `if` -- and
+**`sngl:ui/nav`** holds the destinations:
+
+```sngl
+import nav "sngl:ui/nav"
+
+ui.window #main(title="Docs") {
+    ui.vbox {
+        nav.link(to=about) { ui.text(value="About") }
+        nav.stack #pages {
+            nav.page #home(href="/") { … }
+            nav.page #about(href="/about", title="About") { … }
+            nav.page #pkg(href=`/p/{name}`, params=P{}) {
+                component content(p) { … }
+            }
+        }
+    }
+}
+// in a handler: pages.go(about), pages.go(pkg, P{name="x"}), pages.back()
+```
+
+Which page shows is state, and where it lives is the platform's: the URL and
+the browser's history on html, the back stack the system button pops on
+android, a Model field on a desktop, nothing at all on a static site, whose
+pages are separate documents. So the navigator's state is the host's and is
+reached through its handle, as a window's visibility is.
+
+| target      | `nav.stack` is                                 | `link` / `go`                              |
+|-------------|------------------------------------------------|--------------------------------------------|
+| html static | one document per page; the window is the shell | `<a href>`                                 |
+| html route  | a route per page (`HTTPRoute`s keyed by page)  | `<a href>`                                 |
+| gtk4        | `GtkStack`                                     | `set_visible_child`                        |
+| fyne        | fyne's window switcher, moved into the content | show/hide                                  |
+| android     | Compose `NavHost`                              | `navController.navigate`; system back pops |
+| bubbletea   | a current-page field                           | set it                                     |
+
+The nav chrome is written once, in the window, rather than once per page, and
+a host that can swap a page in place (a partial page load, a native stack)
+swaps only the page.
+
+Settled:
+
+- **A stack first.** html and android are stacks natively; a switch is a stack
+  nobody pushes onto. Navigators are a family (`tabs`, `split` later) and a
+  page is its member.
+- **The current page is readable**: `pages.current == about` is a reactive
+  read through the handle, the way a bound prop's value is.
+- **`link` and `go` name a page by its `#id`**, so a misspelled destination is
+  an unresolved name, not a dead link.
+- **`window` loses `href` and `params`**, to `page` -- `checkWindowPathParams`
+  and the route cell in `NodeInst.Params` with them -- and **`output(entry=…)`
+  goes**: a stack starts at the page at `/`, or its first. Migrated in one
+  commit; a shorthand would keep the conflation alive.
+- **A second window on html is an in-page modal** -- an html5 `<dialog>` with
+  default CSS -- opened and closed as a desktop window is.
+- **The `md:` site's `layout` becomes the window and its chrome**, and `site`
+  one `nav.page` per file in a stack, where today the layout has to *be* a
+  window per page.
+
 ## Phases
 
 Each lands with fixtures written first, confirmed to fail on the tree before
@@ -581,6 +651,21 @@ Decision 5, and a window under a reactive root `if` on gtk4 and fyne -- the
 bar's click opening a window is `if details { ui.window … }`, and a window
 `@close` writing the condition back. Unverified today whether those hosts can
 create and destroy a window from a render slot.
+
+Settled for it: a window the window manager closes runs its `@close`, and
+the tree decides whether the window still exists. With no `@close` the close
+hides it -- it stays in the tree and `open` brings it back -- and the program
+ends when a close leaves no window on screen, unless it started with none. Both
+hosts can create and destroy a toplevel from their loop at any time (probed:
+gtk4 needs `g_application_hold` to live with none, fyne a window it never
+shows, since its driver quits when the last one goes).
+
+### Phase C2: navigators
+
+Decision 15: `sngl:ui/nav` with `stack`, `page` and `link`, every target's
+answer in the table there, the html `<dialog>` for a second window, and the
+migration of every `window(href=…)` in one commit. Lands after Phase C, which
+gives the desktop hosts real surfaces for the split to separate from pages.
 
 ### Phase D: groundwork for foreign code
 
