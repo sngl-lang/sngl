@@ -2109,8 +2109,14 @@ one cell per copy (`perCopyCells`): a map keyed by the loops' indices
 (`lower.CopyKey`), read as `cell.get(key, init)` and written through a
 temporary stored back. A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
-(`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
-collected by nobody and never ran. A recursion is never spliced, so state
+(`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
+collected by nobody and never ran. A timer under no loop is the same
+schedule with one copy, keyed `""`: sync runs after every Update and asks the
+gate -- the timer's `enabled` ANDed with every `if` around it -- as an
+expression. It used to be armed from Init and gated by a Model field only when
+the gate was a bare state read, so a timer under an `if` ran while the branch
+was off, and one a gate did stop was never armed again
+(`bubbletea/timer_gate_run_test.go`). A recursion is never spliced, so state
 inside one -- the recursive component's own vars or lifetime, a stateful
 component written in its body, or a canvas it renders -- has nowhere to live
 there and is refused with a position

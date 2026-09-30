@@ -48,7 +48,7 @@ func snglStrDuration(v time.Duration) string {
 
 var periods []time.Duration = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
 
-type loopTimerTickMsg0 struct {
+type timerTickMsg0 struct {
 	key string
 	gen int
 }
@@ -59,16 +59,16 @@ type Model struct {
 	visible__inst1 bool
 	periods        []time.Duration
 
-	__loopTimer0    map[string]int
-	__loopTimer0Seq map[string]int
-	width, height   int
+	__timer0      map[string]int
+	__timer0Seq   map[string]int
+	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.__loopTimer0 = map[string]int{}
-	m.__loopTimer0Seq = map[string]int{}
+	m.__timer0 = map[string]int{}
+	m.__timer0Seq = map[string]int{}
 	m.ticks__inst0 = map[string]int{}
 	m.visible__inst1 = true
 	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
@@ -113,7 +113,7 @@ func SetVisible__inst1Cmd(v bool) tea.Cmd {
 
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, m.__loopTimer0Sync()...)
+	cmds = append(cmds, m.__timer0Sync()...)
 	return tea.Batch(cmds...)
 }
 
@@ -126,9 +126,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTicks__inst0(msg.value)
 	case setVisible__inst1Msg:
 		m = m.SetVisible__inst1(msg.value)
-	case loopTimerTickMsg0:
+	case timerTickMsg0:
 		for __copy0, p := range m.periods {
-			if fmt.Sprint(__copy0) == msg.key && m.__loopTimer0[msg.key] == msg.gen {
+			if fmt.Sprint(__copy0) == msg.key && m.__timer0[msg.key] == msg.gen && true {
 				var __cell1_ticks__inst0 int = func() int {
 					if __v, __ok := m.ticks__inst0[fmt.Sprint(__copy0)]; __ok {
 						return __v
@@ -142,7 +142,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return 0
 				}() + 1)
 				m.ticks__inst0[fmt.Sprint(__copy0)] = __cell1_ticks__inst0
-				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return loopTimerTickMsg0{msg.key, msg.gen} }))
+				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -160,28 +160,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
-	cmds = append(cmds, m.__loopTimer0Sync()...)
+	cmds = append(cmds, m.__timer0Sync()...)
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) __loopTimer0Sync() []tea.Cmd {
+func (m *Model) __timer0Sync() []tea.Cmd {
 	var cmds []tea.Cmd
 	seen := map[string]bool{}
 	for __copy0, p := range m.periods {
 		key := fmt.Sprint(__copy0)
 		if true {
 			seen[key] = true
-			if _, ok := m.__loopTimer0[key]; !ok {
-				m.__loopTimer0Seq[key]++
-				gen := m.__loopTimer0Seq[key]
-				m.__loopTimer0[key] = gen
-				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return loopTimerTickMsg0{key, gen} }))
+			if _, ok := m.__timer0[key]; !ok {
+				m.__timer0Seq[key]++
+				gen := m.__timer0Seq[key]
+				m.__timer0[key] = gen
+				cmds = append(cmds, tea.Tick(p, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
 			}
 		}
 	}
-	for key := range m.__loopTimer0 {
+	for key := range m.__timer0 {
 		if !seen[key] {
-			delete(m.__loopTimer0, key)
+			delete(m.__timer0, key)
 		}
 	}
 	return cmds
@@ -928,7 +928,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:17c0bf6401f9e6b9a273020f0a7f09a7
+pass sha256:0d0f72b2dd6242a633ae8d21d1bd98b9
 -- run/go/fyne --
 pass sha256:0d89e48a9f526f33104722d57c9efec5
 -- run/go/gtk4 --

@@ -164,7 +164,7 @@ type irAnalysis struct {
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	gc        *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
-	loopTimers []codegen.LoopTimer
+	timers []codegen.LoopTimer
 	// screen is the window, the one Screen the view draws, and nil for a
 	// harness that isolated a component.
 	screen *codegen.Screen
@@ -270,15 +270,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	for _, t := range info.Timers {
-		if t.IntervalMs > 0 {
-			gc.RequireImport("time")
+	for _, o := range ir.Owners(pkg) {
+		for _, t := range codegen.CollectTimers(o.Stmts()) {
+			info.timers = append(info.timers, codegen.LoopTimer{ScheduledTimer: t})
 		}
 	}
 	for _, o := range ir.Owners(pkg) {
-		info.loopTimers = append(info.loopTimers, codegen.CollectLoopTimers(o.Stmts())...)
+		info.timers = append(info.timers, codegen.CollectLoopTimers(o.Stmts())...)
 	}
-	if len(info.loopTimers) > 0 {
+	if len(info.timers) > 0 {
 		gc.RequireImport("time")
 	}
 
@@ -417,13 +417,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 
-	for _, t := range info.Timers {
-		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
-	}
-	if len(info.Timers) > 0 {
-		b.WriteString("\n")
-	}
-	emitLoopTimerTypes(&b, info.loopTimers)
+	emitTimerTypes(&b, info.timers)
 
 	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
@@ -447,7 +441,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.widgets) > 0 {
 		b.WriteString("\n")
 	}
-	emitLoopTimerFields(&b, info.loopTimers)
+	emitTimerFields(&b, info.timers)
 	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
@@ -459,7 +453,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
 	b.WriteString("\tm := Model{}\n")
-	emitLoopTimerInits(&b, info.loopTimers)
+	emitTimerInits(&b, info.timers)
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
@@ -615,23 +609,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.Timers) > 0 || len(info.loopTimers) > 0 {
+	if len(info.timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
 		for _, wi := range widgetInits {
 			fmt.Fprintf(&b, "\tcmds = append(cmds, %s)\n", wi)
 		}
-		for _, t := range info.Timers {
-			tick := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
-			if t.ActiveVar != "" {
-				fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
-				fmt.Fprintf(&b, "\t\t%s\n", tick)
-				b.WriteString("\t}\n")
-			} else {
-				// An empty ActiveVar would emit "if m. {", which is invalid Go.
-				fmt.Fprintf(&b, "\t%s\n", tick)
-			}
-		}
-		emitLoopTimerSyncCalls(&b, info.loopTimers, "\t")
+		emitTimerSyncCalls(&b, info.timers, "\t")
 		if hasCanvas {
 			// Out of band, so the kitty image data is not dropped by the cell
 			// compositor.
@@ -668,7 +651,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
 	emitWidgetPayloadHandlers(&b, info, gc)
-	emitLoopTimerSyncs(&b, info.loopTimers, gc)
+	emitTimerSyncs(&b, info.timers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
 
@@ -928,33 +911,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	}
 
 	// Timer ticks
-	for _, t := range info.Timers {
-		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
-		rearm := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
-		if t.ActiveVar != "" {
-			// Gated timer: run the body and re-arm only while active.
-			fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
-			for _, bodyStmt := range t.Body {
-				for _, line := range gc.EvalStmt(bodyStmt) {
-					fmt.Fprintf(b, "\t\t\t%s\n", line)
-				}
-			}
-			fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
-			fmt.Fprintf(b, "\t\t\t\t%s\n", rearm)
-			b.WriteString("\t\t\t}\n")
-			b.WriteString("\t\t}\n")
-		} else {
-			// Always-on timer (no active condition): run the body and re-arm
-			// unconditionally. Emitting "if m. {" (empty ActiveVar) is invalid Go.
-			for _, bodyStmt := range t.Body {
-				for _, line := range gc.EvalStmt(bodyStmt) {
-					fmt.Fprintf(b, "\t\t%s\n", line)
-				}
-			}
-			fmt.Fprintf(b, "\t\t%s\n", rearm)
-		}
-	}
-	emitLoopTimerCases(b, info.loopTimers, gc)
+	emitTimerCases(b, info.timers, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -1098,7 +1055,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		// no flicker.
 		fmt.Fprintf(b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 	}
-	emitLoopTimerSyncCalls(b, info.loopTimers, "\t")
+	emitTimerSyncCalls(b, info.timers, "\t")
 	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
 }

@@ -51,7 +51,7 @@ component platform(
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(
     title string,
-    :visible bool,
+    :visible bool = true,
     @closed(),
     content ...component ui.node,
 ) root

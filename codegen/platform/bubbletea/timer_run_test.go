@@ -47,17 +47,28 @@ const timerRunDriver = `package ui
 
 import "testing"
 
-func TestATickReachesUpdate(t *testing.T) {
+// started is a model whose schedules Init has armed.
+func started() Model {
 	m := New()
+	m.__timer0Sync()
+	m.__timer1Sync()
+	return m
+}
+
+func tick0(m Model) timerTickMsg0 { return timerTickMsg0{key: "", gen: m.__timer0[""]} }
+func tick1(m Model) timerTickMsg1 { return timerTickMsg1{key: "", gen: m.__timer1[""]} }
+
+func TestATickReachesUpdate(t *testing.T) {
+	m := started()
 	if m.Seconds() != 0 || m.Beats__inst0() != 0 {
 		t.Fatalf("a fresh model already ticked: %d %d", m.Seconds(), m.Beats__inst0())
 	}
-	next, _ := m.Update(timerTickMsg0{})
+	next, _ := m.Update(tick0(m))
 	m = next.(Model)
 	if m.Seconds() != 1 {
 		t.Errorf("the root component's tick left seconds at %d, want 1", m.Seconds())
 	}
-	next, _ = m.Update(timerTickMsg1{})
+	next, _ = m.Update(tick1(m))
 	m = next.(Model)
 	if m.Beats__inst0() != 1 {
 		t.Errorf("the child component's tick left beats at %d, want 1", m.Beats__inst0())
@@ -66,8 +77,8 @@ func TestATickReachesUpdate(t *testing.T) {
 
 // A tick re-arms itself, or the schedule fires once and stops.
 func TestATickRearms(t *testing.T) {
-	m := New()
-	_, cmd := m.Update(timerTickMsg0{})
+	m := started()
+	_, cmd := m.Update(tick0(m))
 	if cmd == nil {
 		t.Fatal("a tick returned no command, so nothing re-armed the timer")
 	}
@@ -76,8 +87,8 @@ func TestATickRearms(t *testing.T) {
 // The gate is read on the tick: a disabled timer neither runs its body nor
 // re-arms, which is what stops it.
 func TestAGatedTickDoesNothingWhenTheGateIsFalse(t *testing.T) {
-	m := New().SetRunning(false)
-	next, _ := m.Update(timerTickMsg0{})
+	m := started().SetRunning(false)
+	next, _ := m.Update(tick0(m))
 	m = next.(Model)
 	if m.Seconds() != 0 {
 		t.Errorf("a disabled timer fired: seconds = %d", m.Seconds())

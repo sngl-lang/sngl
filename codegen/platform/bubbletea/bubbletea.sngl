@@ -139,7 +139,7 @@ component Overlay(
 // ends when no screen is drawn after it.
 #[intrinsic("bubbletea:Screen")]
 component Screen(
-    visible bool,
+    visible bool = true,
     @closed(),
     content ...component ui.node,
 ) root

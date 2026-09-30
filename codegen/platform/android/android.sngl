@@ -89,7 +89,7 @@ component platform(
 // activity finishes when no screen is drawn after it.
 #[intrinsic("android:Screen")]
 component Screen(
-    visible bool,
+    visible bool = true,
     onBack func(),
     children ...component ui.node,
 ) root

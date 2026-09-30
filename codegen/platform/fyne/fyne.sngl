@@ -47,7 +47,7 @@ component platform(
 #[intrinsic("fyne:Toplevel")]
 component Toplevel(
     title string,
-    :visible bool,
+    :visible bool = true,
     @closed(),
     content ...component ui.node,
 ) root

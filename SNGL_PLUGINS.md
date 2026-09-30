@@ -581,7 +581,7 @@ So the two are split. `ui.window` is the surface -- `title`, `favicon`,
 ```sngl
 import nav "sngl:ui/nav"
 
-ui.window #main(title="Docs") {
+ui.window #main(title="Docs - {pages.current.title}") {
     ui.vbox {
         nav.link(to=about) { ui.text(value="About") }
         nav.stack #pages {
@@ -594,6 +594,27 @@ ui.window #main(title="Docs") {
     }
 }
 // in a handler: pages.go(about), pages.go(pkg, P{name="x"}), pages.back()
+```
+
+The package, as settled:
+
+```sngl
+component navigator build.family
+
+component stack(:current page, pages ...component navigator) ui.node {
+    func go<T>(to page<T>, params T = T{})   // push: to's params, then current
+    func back()                              // pop; nothing at the bottom
+}
+
+component page<T = struct {}>(
+    href string,
+    title string,
+    :params T = T{},
+    content ...component(v T) ui.node,
+) navigator
+
+component link<T = struct {}>(to page<T>, params T = T{}, style ui.Style,
+    content ...component ui.node) ui.node
 ```
 
 Which page shows is state, and where it lives is the platform's: the URL and
@@ -633,6 +654,32 @@ Settled:
 - **The `md:` site's `layout` becomes the window and its chrome**, and `site`
   one `nav.page` per file in a stack, where today the layout has to *be* a
   window per page.
+
+Settled in C2's planning:
+
+- **`nav.navigator` is the family**, `nav.stack` the first member that holds
+  pages and `nav.page` the member of it. `ui.link(href=)` stays as the
+  hyperlink; `nav.link(to=)` names a page.
+- **A handle read as a value is its node**: a constant record of the node's
+  constant props plus its identity, which `==` compares. That is what
+  `pages.current == about` and `pages.current.title` read, and it is general
+  -- `windowStructValue` is the case of it that exists. A handle is typed by
+  its call site's specialization, so `pages.go(pkg, 3)` is refused against
+  `pkg`'s `T`.
+- **A page's params are state of the page**: `:params` is a two-way prop, so
+  unbound it is a cell starting at what the call site wrote, and `go` writes
+  it. `content` is handed its current value. `go` takes the struct, the zero
+  value when it is not passed, and `nav.link` takes `params=` for the same.
+- **A page that is not current is not mounted**, as under an `if`.
+- **A page's title contributes nothing on its own.** The stack's `current` is
+  reactive, so a window writes `title="App - {pages.current.title}"`, which
+  on html static folds per document.
+- **The first window on html is the document**: its `visible` and `@closed`
+  are accepted and do nothing. A second window is a `<dialog>` opened with
+  `show()`, non-modal as a desktop window is; `visible` is `show()`/`close()`
+  and `@closed` its `close` event.
+- **The md site is a `nav.stack`**: the package's generated component
+  renders one `nav.page` per file, and the program's window is the chrome.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -845,8 +892,35 @@ Decisions 16 and 17, in order, each landing with its fixtures:
 
 Decision 15: `sngl:ui/nav` with `stack`, `page` and `link`, every target's
 answer in the table there, the html `<dialog>` for a second window, and the
-migration of every `window(href=…)` in one commit. Lands after Phase C, which
-gives the desktop hosts real surfaces for the split to separate from pages.
+migration of every `window(href=…)` in one commit. In commits, each with its
+fixtures written first:
+
+1. **bubbletea asks a timer's gate as an expression** -- *done.* Every
+   timer is a schedule synced after each Update, keyed `""` under no loop, so
+   a timer under an `if` stops with it and starts again
+   (`bubbletea/timer_gate_run_test.go`). Predates C1, and a page is the next
+   thing a timer would be under.
+2. **`sngl:ui/nav` and the handle as a value**: the declarations, a handle
+   typed by its specialization, a handle read as a value, a prop read through
+   a constant handle folded for any node (C3 then deletes the window fold),
+   and the interpreter's answer, so `sngl test` on `none` runs a stack.
+3. **gtk4, fyne and bubbletea** override the three: a hand-written stack
+   primitive on gtk4 (the bundled GIR has no `set_visible_child`), fyne's
+   switcher from `88971356^` moved into the content, a current-page switch on
+   bubbletea. Fixes bubbletea's `visible` cell surviving `if details`.
+4. **android**: a NavHost, system back pops; the `navigation-compose`
+   dependency joins the scaffold. Fixes the lost `safeDrawingPadding` of a
+   window whose content arrives through a slot.
+5. **html answers a page** by a mark on its primitive rather than the
+   builtin: one document per marked node, the whole tree with every other
+   one pruned, so the window is the shell; one route per marked node in route
+   mode, the params cell its population's. `window` still has `href`.
+6. **The migration**: `window` loses `href` and `params`, `output(entry=…)`
+   goes, every call site, the md site, `website.sngl` and `docbrowser` move.
+   Every html golden that was a window per page is byte-identical as a stack of
+   pages.
+7. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
+   refusals become meanings.
 
 ### Phase C3: no window in the compiler
 

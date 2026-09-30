@@ -94,7 +94,10 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type timerTickMsg0 struct{}
+type timerTickMsg0 struct {
+	key string
+	gen int
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -106,12 +109,16 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
+	__timer0      map[string]int
+	__timer0Seq   map[string]int
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.__timer0 = map[string]int{}
+	m.__timer0Seq = map[string]int{}
 	m.frame = 0
 	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
@@ -233,7 +240,7 @@ func SetVisible__inst0Cmd(v bool) tea.Cmd {
 
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+	cmds = append(cmds, m.__timer0Sync()...)
 	cmds = append(cmds, m.__canvasTransmit())
 	return tea.Batch(cmds...)
 }
@@ -248,8 +255,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case timerTickMsg0:
-		m.frame = (m.frame + 1)
-		cmds = append(cmds, tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+		if m.__timer0[msg.key] == msg.gen && true {
+			m.frame = (m.frame + 1)
+			cmds = append(cmds, tea.Tick(time.Duration(100)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -266,7 +275,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
+	cmds = append(cmds, m.__timer0Sync()...)
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __timer0Sync() []tea.Cmd {
+	var cmds []tea.Cmd
+	seen := map[string]bool{}
+	key := ""
+	if true {
+		seen[key] = true
+		if _, ok := m.__timer0[key]; !ok {
+			m.__timer0Seq[key]++
+			gen := m.__timer0Seq[key]
+			m.__timer0[key] = gen
+			cmds = append(cmds, tea.Tick(time.Duration(100)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+		}
+	}
+	for key := range m.__timer0 {
+		if !seen[key] {
+			delete(m.__timer0, key)
+		}
+	}
+	return cmds
 }
 
 func (m Model) View() tea.View {
@@ -1466,7 +1497,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bd11ab998c4aa6f53226b5efe62bf722
+pass sha256:6ffa37db9881a3800575d4f05276f563
 -- run/go/fyne --
 pass sha256:405ab19eeb8f4f9499f03f18b947ff34
 -- run/go/gtk4 --

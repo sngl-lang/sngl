@@ -92,7 +92,8 @@ func TestAHiddenWindowDrawsNothing(t *testing.T) {
 	if strings.Contains(m.View().Content, "closed") {
 		t.Fatalf("a hidden window drew %q", m.View().Content)
 	}
-	next, _ = m.Update(timerTickMsg0{})
+	m.__timer0Sync()
+	next, _ = m.Update(timerTickMsg0{key: "", gen: m.__timer0[""]})
 	m = next.(Model)
 	if m.ticks != 1 {
 		t.Fatalf("a hidden window's timer did not tick: ticks=%d", m.ticks)
