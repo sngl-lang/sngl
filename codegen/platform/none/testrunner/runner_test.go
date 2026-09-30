@@ -18,7 +18,11 @@ func TestRunFixtures(t *testing.T) {
 	// Registered because a timer needs its platform: `sngl:time`'s `timer` has
 	// no body, and the schedule is sngl:platform/none's override of it.
 	langs, plats := testtargets.Targets()
-	for s := range testutil.CodegenSamples(t) {
+	// Every fixture, `SKIP(codegen)` ones included: that directive opts a
+	// fixture out of the platforms' code generators, and the interpreter is
+	// not one -- it is the reference a fixture written ahead of its lowering
+	// is run against.
+	for s := range testutil.TestdataSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
 			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {

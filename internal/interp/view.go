@@ -137,13 +137,29 @@ func Mount(env *Env) (*View, error) {
 	if env.Comp != nil {
 		root = env.Comp.Name
 	}
-	m := &mounter{view: v, root: root}
+	m := &mounter{view: v, root: root, reached: map[childKey]bool{}, visited: map[*Env]bool{}}
 	nodes, err := m.stmts(env, env.BodyStmts, "")
 	if err != nil {
 		return nil, err
 	}
+	m.evictUnreached()
 	v.Roots = nodes
 	return v, nil
+}
+
+// evictUnreached drops the state of every instance a scope this mount
+// rendered into held and this mount did not render: a component under an
+// `if` that went false, a page its stack is no longer showing. Nothing about
+// an unmounted instance survives, which is what every compiled target does
+// with it, so mounting it again starts it from its initializers.
+func (m *mounter) evictUnreached() {
+	for env := range m.visited {
+		for key := range env.childEnvs {
+			if !m.reached[key] {
+				delete(env.childEnvs, key)
+			}
+		}
+	}
 }
 
 // Find returns the element nodes carrying the given #id, in mount order.
@@ -229,7 +245,36 @@ func (n *Node) Map() map[string]any {
 	if n.CompEnv != nil {
 		m["__compEnv"] = n.CompEnv
 	}
+	m["__node"] = n
 	return m
+}
+
+// Handling is the first node the view rendered, in mount order, carrying a
+// handler for event, or nil.
+func (v *View) Handling(event string) *Node {
+	if v == nil {
+		return nil
+	}
+	root := &Node{Children: v.Roots}
+	return handlingDescendant(root, event)
+}
+
+// handlingDescendant is the first node under n, in mount order, carrying a
+// handler for event: where an event a component declares but its call site
+// did not handle comes from. A test clicking a `nav.link` clicks what the
+// link renders, as a user would.
+func handlingDescendant(n *Node, event string) *Node {
+	for _, k := range n.Children {
+		for _, h := range k.Handlers {
+			if h.Name == event {
+				return k
+			}
+		}
+		if d := handlingDescendant(k, event); d != nil {
+			return d
+		}
+	}
+	return nil
 }
 
 // mounter carries the mount-wide state: the view being filled and the root
@@ -244,6 +289,14 @@ type mounter struct {
 	// entries is the stack of insertions whose populations are being mounted,
 	// which is where an insertion of a component entry finds its content.
 	entries []entryFrame
+	// navs is the stack of navigators being mounted (nav.go), and byEnv the
+	// node each component instance mounted as, by its scope.
+	navs  []*navFrame
+	byEnv map[*Env]*Node
+	// reached is every instance this mount rendered, and visited every scope
+	// it rendered one into: what evictUnreached compares.
+	reached map[childKey]bool
+	visited map[*Env]bool
 }
 
 // slotFrame is one component expansion: the instantiation that supplied the
@@ -464,6 +517,14 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 // do -- so a component instantiation is never addressable by #id, even when it
 // carries one.
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
+	if inst.Component != nil {
+		switch inst.Component.Intrinsic {
+		case navStackIntrinsic:
+			return m.navStack(env, inst, path)
+		case navPageIntrinsic:
+			return m.navPage(env, inst, path)
+		}
+	}
 	if e, isEffect := effectOf(inst, env, m.key(path)); isEffect {
 		m.view.Effects = append(m.view.Effects, e)
 		return nil, nil
@@ -492,12 +553,23 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		node.Handlers = handlersOf(inst)
 		m.add(node)
 
+		if m.reached != nil {
+			m.reached[childKey{inst, path}] = true
+			m.visited[env] = true
+		}
 		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
 		node.CompEnv = child
+		if m.byEnv == nil {
+			m.byEnv = map[*Env]*Node{}
+		}
+		m.byEnv[child] = node
 		// An unbound two-way prop shows the instance's cell rather than the
 		// argument, which only says where the cell started.
 		for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+			if p.Sym == nil {
+				continue
+			}
 			if v, ok := child.vals[p.Sym]; ok {
 				if _, had := node.Props[p.Name]; !had {
 					node.PropOrder = append(node.PropOrder, p.Name)

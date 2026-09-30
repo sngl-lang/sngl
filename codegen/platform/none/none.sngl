@@ -5,6 +5,7 @@ import tree "sngl:tree"
 import shapes "sngl:ui/draw"
 import ui "sngl:ui"
 import markup "sngl:ui/markup"
+import nav "sngl:ui/nav"
 import gen "sngl:x/gen"
 
 // The `none` node of a build directive: the interpreter as a build target.
@@ -143,6 +144,53 @@ const component markup.link[platform] {
 
 const component markup.token[platform] {
     inline(kind=kind) {
+        content
+    }
+}
+
+// --- Navigation ---
+
+// A stack of pages, answered by the interpreter by id. It mounts every page it
+// holds, so each page's handle is bound to a value whether it is showing or
+// not, and each page registers itself with the stack as it mounts; only the
+// one `current` names renders what it holds. With nothing current yet, the
+// stack starts at the page whose href is "/", or its first.
+#[intrinsic("none:Stack")]
+component Stack(
+    :current nav.page,
+    pages ...component nav.navigator,
+) ui.node
+
+// A page as the interpreter mounts it: its content, when its stack's current
+// is this page, and nothing otherwise -- a page not showing is not mounted.
+#[intrinsic("none:Page")]
+component Page(content ...component ui.node) nav.navigator
+
+// A link: clicked, it follows `to` to the stack that holds it.
+#[intrinsic("none:Link")]
+component Link(@click ui.ClickEvent, content ...component ui.node) ui.node
+
+// Goes to `to` in the stack that holds it, as `go` does from that stack.
+#[intrinsic("none:follow")]
+func follow(to nav.page, params dyn)
+
+const component nav.stack[platform] {
+    Stack(:current=current) {
+        pages
+    }
+}
+
+const component nav.page[platform] {
+    Page {
+        content(params)
+    }
+}
+
+const component nav.link[platform] {
+    Link(@click {
+        click()
+        follow(to, params)
+    }) {
         content
     }
 }

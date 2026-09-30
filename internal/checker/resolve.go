@@ -184,12 +184,43 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyStructTypeArgs(t.Pos, typ, sd, t.TypeArgs)
 				}
 			}
+			if typ.Kind == ir.TypeComponent && len(t.TypeArgs) > 0 {
+				if comp, ok := typ.Decl.(*ir.Component); ok {
+					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
+				}
+			}
 			return typ
 		}
 	}
 
 	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
 	return TypDyn
+}
+
+// applyComponentTypeArgs is a component type carrying the type arguments it
+// was written with, `page<P>`: the instances whose call sites bound the
+// declaration's parameters that way. Written bare, a component type is any
+// instance, so an argument list stopping short fills from each parameter's
+// default and then from the parameter itself.
+func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Component, args []ast.TypeExpr) *ir.Type {
+	if len(args) > len(comp.TypeParams) {
+		c.error(pos, "%s takes %d type argument(s), got %d", comp.Name, len(comp.TypeParams), len(args))
+		return base
+	}
+	elems := make([]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		switch {
+		case i < len(args):
+			elems[i] = c.resolveType(args[i])
+		case tp.Default != nil:
+			elems[i] = tp.Default
+		default:
+			elems[i] = &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}
+		}
+	}
+	cp := *base
+	cp.Elems = elems
+	return &cp
 }
 
 // applyStructTypeArgs produces a concrete *ir.Type for a parameterized struct
@@ -268,12 +299,17 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		}
 		return typ
 	}
-	// A family is a component, and the one kind of component a type position
-	// names: a return position or a slot saying which family.
+	// A component names a type two ways: a family, in a return position or a
+	// slot saying which family, and any other component as the type of a
+	// handle to one of its instances -- `nav.page` for a page's value, as the
+	// bare `page` names it inside its own package.
 	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
-		if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
+		if f, ok := sym.(*ir.Component); ok {
 			if c.rejectUnexported(ast.Pos{}, sym) {
 				return TypDyn
+			}
+			if !f.IsFamily() && len(args) > 0 {
+				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
 			}
 			return f.SymType()
 		}

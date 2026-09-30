@@ -278,10 +278,17 @@ func (t *Type) String() string {
 		}
 		return sig
 	case TypeComponent:
-		if t.Decl != nil {
+		if t.Decl == nil {
+			return "component"
+		}
+		if len(t.Elems) == 0 {
 			return t.Decl.SymName()
 		}
-		return "component"
+		args := make([]string, len(t.Elems))
+		for i, e := range t.Elems {
+			args[i] = e.String()
+		}
+		return t.Decl.SymName() + "<" + strings.Join(args, ", ") + ">"
 	case TypeInstance:
 		if t.Decl != nil {
 			return "instance<" + t.Decl.SymName() + ">"
@@ -493,6 +500,19 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return t
 		}
 		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
+	case TypeComponent:
+		// `page<T>` in a generic signature: its type arguments are the
+		// signature's, bound at the call like any other element type.
+		if len(t.Elems) == 0 {
+			return t
+		}
+		elems := make([]*Type, len(t.Elems))
+		for i, e := range t.Elems {
+			elems[i] = e.Substitute(bindings)
+		}
+		cp := *t
+		cp.Elems = elems
+		return &cp
 	case TypeFunc:
 		if t.Sig == nil {
 			return t
@@ -575,7 +595,27 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeEnum, TypeUnit, TypeComponent, TypeInstance:
+	case TypeComponent:
+		// A component type written without type arguments -- `page` -- is
+		// any instance of the declaration; with them, `page<P>`, the instances
+		// its call site bound that way. A handle carries what its call site
+		// bound, so one side naming none accepts it.
+		if !sameDecl(t, other) {
+			return false
+		}
+		if len(t.Elems) == 0 || len(other.Elems) == 0 {
+			return true
+		}
+		if len(t.Elems) != len(other.Elems) {
+			return false
+		}
+		for i, e := range t.Elems {
+			if !e.Equal(other.Elems[i]) {
+				return false
+			}
+		}
+		return true
+	case TypeEnum, TypeUnit, TypeInstance:
 		return sameDecl(t, other)
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)

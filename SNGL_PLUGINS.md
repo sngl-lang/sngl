@@ -900,10 +900,17 @@ fixtures written first:
    a timer under an `if` stops with it and starts again
    (`bubbletea/timer_gate_run_test.go`). Predates C1, and a page is the next
    thing a timer would be under.
-2. **`sngl:ui/nav` and the handle as a value**: the declarations, a handle
-   typed by its specialization, a handle read as a value, a prop read through
-   a constant handle folded for any node (C3 then deletes the window fold),
-   and the interpreter's answer, so `sngl test` on `none` runs a stack.
+2. **`sngl:ui/nav` and the handle as a value** -- *done on the interpreter.*
+   The declarations, a handle typed by its specialization, `T{}` defaults, a
+   two-way prop that is never required, a window's props reading its body's
+   handles, and `none`'s `Stack`/`Page`/`Link` answered by the interpreter,
+   which now drops an unmounted instance's state (`testdata/nav_stack.sngl`
+   and six fixtures for the checker rules). *Open:* how `current` is typed
+   across pages of different `T`. A bare component type still matches any
+   specialization, which is what every component type did before it carried
+   arguments, and a stand-in rather than an answer: the proposals are a family
+   declaring the props its members share, an `interface` type, component
+   inheritance, or a non-generic page with params in a node of their own.
 3. **gtk4, fyne and bubbletea** override the three: a hand-written stack
    primitive on gtk4 (the bundled GIR has no `set_visible_child`), fyne's
    switcher from `88971356^` moved into the content, a current-page switch on

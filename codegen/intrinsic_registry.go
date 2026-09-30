@@ -109,12 +109,10 @@ func LookupPlatformIntrinsic(platform, id string) IntrinsicEmitter {
 // primitive added to that package is covered by every platform that declared
 // it, with nothing to update here.
 //
-// **Nothing in this repository calls it today.** Its one user was
-// `sngl:internal/draw`, whose 2D primitives four platforms translated inside
-// themselves — and that package is gone, a shape being an override on a
-// platform primitive now, painted by its own `@draw` handler. Kept because
-// `DeclareLangImplements` beside it is live and answers the same question on
-// the other axis, and because the next stateful translation will want it.
+// Its first user was `sngl:internal/draw`, whose 2D primitives four platforms
+// translated inside themselves, and that package is gone. The interpreter is
+// the one now: `sngl:ui/nav`'s `go` and `back` move a stack the `none`
+// platform's tree holds, which no expression emitter could render.
 func DeclarePlatformImplements(platform, pkg string) {
 	intrinsicMu.Lock()
 	defer intrinsicMu.Unlock()

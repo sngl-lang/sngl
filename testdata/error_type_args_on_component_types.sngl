@@ -1,0 +1,14 @@
+import . "sngl:ui"
+
+// A handle carries the type its call site bound, so a func binding T from it
+// holds the value beside it to that type.
+component box<T = int>(item T) node {
+    text(value="box")
+}
+
+func same<T>(b box<T>, v T) => v
+
+component pair node {
+    box #counts(item=1)
+    text(value=same(counts, "b")) // ERROR(check) "cannot pass string as int"
+}

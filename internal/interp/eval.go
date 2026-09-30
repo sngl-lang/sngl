@@ -328,6 +328,10 @@ type Env struct {
 	// handling counts the event handlers running, shared by every env of one
 	// program so that a nested dispatch can tell it is one.
 	handling *int
+	// nav is what a navigator's instance keeps across mounts (nav.go), and
+	// navStack the stack a page's instance registered with.
+	nav      *navState
+	navStack *Env
 }
 
 func NewEnv() *Env {
@@ -1633,6 +1637,17 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	}
 
 	if call.Func != nil {
+		// An intrinsic this interpreter implements answers a bare call too,
+		// as it does a qualified one: `follow(to, params)` in the package that
+		// declares it. The declaration's body is a placeholder.
+		if _, ok := intrinsics[call.Func.Intrinsic]; ok && call.Func.Intrinsic != "" {
+			args, err := env.evalCallArgs(call.Args)
+			if err != nil {
+				return nil, err
+			}
+			result, _, err := runIntrinsic(call.Func.Intrinsic, args)
+			return result, err
+		}
 		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
 
@@ -1812,42 +1827,19 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			explicitEvent := strings.HasPrefix(method, "@")
 			event := strings.TrimPrefix(method, "@")
 			if m, ok := recv.(map[string]any); ok {
-				h, _ := m["@"+event].(*ir.Func)
-				inst, _ := m["__inst"].(*ir.NodeInst)
-				cells, _ := m["__compEnv"].(*Env)
-				if h != nil || boundByEvent(inst, event) || cells.cellByEvent(inst, event) {
-					handlerEnv := env
-					if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
-						handlerEnv = oe
-					}
-					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
-						handlerEnv.SetReceiver(owner)
-					}
-					vals, err := env.evalCallArgs(call.Args)
-					if err != nil {
-						return nil, err
-					}
-					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
-					res, err := handlerEnv.underHandler(provided, func() (any, error) {
-						cells.writeCells(inst, event, vals)
-						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
-							return nil, err
-						}
-						if h == nil {
-							return nil, nil
-						}
-						for i, p := range h.Params {
-							if i < len(vals) {
-								handlerEnv.Set(p, vals[i])
-							}
-						}
-						return handlerEnv.execBlockForResult(h.Block)
-					})
-					handlerEnv.writeBack()
+				res, handled, err := env.InvokeElementEvent(m, event, func() ([]any, error) { return env.evalCallArgs(call.Args) })
+				if handled {
 					return res, err
 				}
 			}
 			if explicitEvent {
+				// A component instance answers for itself: what it renders
+				// may report the event.
+				if cv, ok := recv.(ComponentValue); ok {
+					if result, handled, err := cv.InvokeMethod(env, method, call.Args); handled {
+						return result, err
+					}
+				}
 				// Checker tagged this as an event but no handler is installed:
 				// the caller never bound it, so the invocation is a no-op.
 				return nil, nil
@@ -2763,6 +2755,11 @@ func equals(a, b any) bool {
 		}
 		return true
 	}
+	// A handle read as a value is its instance, and two are equal when they
+	// are one instance: the scope the interpreter keeps for it.
+	if ae, be := instanceEnv(a), instanceEnv(b); ae != nil || be != nil {
+		return ae == be
+	}
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
@@ -2967,4 +2964,58 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 		err = catchEscaped(vals, err)
 	}
 	return res, err
+}
+
+// InvokeElementEvent runs the handler a rendered node carries for event, the
+// way a host reporting it would: the binding and the cell it writes first, then
+// the handler, in the scope the node was written in. It reports false when the
+// node handles nothing of the event.
+//
+// A component whose call site handled nothing of the event still renders
+// something that reports it: the event reaches that, and the component's own
+// forwarding emit, if it has one, runs the call site's handler from there.
+func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	h, _ := m["@"+event].(*ir.Func)
+	inst, _ := m["__inst"].(*ir.NodeInst)
+	cells, _ := m["__compEnv"].(*Env)
+	if h == nil && !boundByEvent(inst, event) && !cells.cellByEvent(inst, event) {
+		n, ok := m["__node"].(*Node)
+		if !ok || !n.Expanded {
+			return nil, false, nil
+		}
+		d := handlingDescendant(n, event)
+		if d == nil {
+			return nil, false, nil
+		}
+		return env.InvokeElementEvent(d.Map(), event, args)
+	}
+	handlerEnv := env
+	if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
+		handlerEnv = oe
+	}
+	if owner, ok := m["__ownerComponent"]; ok && owner != nil {
+		handlerEnv.SetReceiver(owner)
+	}
+	vals, err := args()
+	if err != nil {
+		return nil, true, err
+	}
+	provided, _ := m["__ownerContext"].(map[*ir.Context]any)
+	res, err := handlerEnv.underHandler(provided, func() (any, error) {
+		cells.writeCells(inst, event, vals)
+		if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
+			return nil, err
+		}
+		if h == nil {
+			return nil, nil
+		}
+		for i, p := range h.Params {
+			if i < len(vals) {
+				handlerEnv.Set(p, vals[i])
+			}
+		}
+		return handlerEnv.execBlockForResult(h.Block)
+	})
+	handlerEnv.writeBack()
+	return res, true, err
 }

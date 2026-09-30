@@ -1,0 +1,61 @@
+// sngl:ui is qualified rather than dot-imported, as every lib package does:
+// a name lifted by a dot import would be indistinguishable from one declared
+// here.
+import ui "sngl:ui"
+import build "sngl:build"
+import marks "sngl:internal/marks"
+
+// The family of navigators: what `stack` holds, and what `tabs` and `split`
+// will. A page is its member.
+component navigator build.family
+
+// A destination. `href` is where it is served on a target that has addresses,
+// with `{name}` placeholders filled from the fields of `params`; `title` names
+// it, and contributes nothing on its own -- a window reads
+// `pages.current.title` for that.
+//
+// `params` is state of the page: unbound, it starts at what the call site
+// wrote and `go` replaces it. The content reads it through the population of
+// `content`, `component content(p) { … }`, the way any scoped slot is read;
+// content written bare sees none.
+component page<T = struct {}>(
+    href string,
+    title string,
+    :params T = T{},
+    content ...component(v T) ui.node,
+) navigator
+
+// Pages one on top of another, showing the top one. `current` is that page,
+// and starts at the page whose href is "/", or the first. It is a two-way
+// prop: `:current=x` binds it to state of the program, and unbound it is a
+// cell of the stack's own, read as `pages.current` -- a page's value, so
+// `pages.current == about` and `pages.current.title` read it.
+//
+// A page the stack is not showing is not mounted: leaving one destroys what it
+// rendered, as an `if` does.
+component stack(
+    :current page,
+    pages ...component navigator,
+) ui.node
+
+// Shows `to`, and pushes the page it replaces: `back` returns to it. `params`
+// is what the page's content is handed, its type's zero when not given, and it
+// travels with the entry, so `back` restores it too.
+#[marks.intrinsic("nav.go")]
+func stack.go<T>(to page<T>, params T = T{})
+
+// Returns to the page `go` last replaced, with the params it had. Nothing at
+// the bottom of the stack.
+#[marks.intrinsic("nav.back")]
+func stack.back()
+
+// Goes to `to` when activated, handing it `params`: an `<a href>` on html, and
+// the stack's `go` wherever there is no address to follow. `@click` runs
+// first, as `ui.link`'s does.
+component link<T = struct {}>(
+    to page<T>,
+    params T = T{},
+    style ui.Style,
+    @click ui.ClickEvent,
+    content ...component ui.node,
+) ui.node

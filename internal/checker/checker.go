@@ -510,6 +510,10 @@ type checker struct {
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
 	specOrigin map[*ir.Component]*ir.Component
+	// specArgs is what each call-site specialization bound its declaration's
+	// type parameters to, in declaration order: the type arguments a handle
+	// to that node carries.
+	specArgs map[*ir.Component][]*ir.Type
 	// entryOrigin is the declared entry each specialized slot entry was
 	// copied from, and entrySpec the specialization an insertion of one was
 	// checked against. An insertion carries the declared entry past the
@@ -3670,6 +3674,10 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	defer c.popScope()
 	defer c.enterFuncBody()()
 
+	// The type parameters are in scope for the whole signature, a param's
+	// default included: `v T = T{}` is the zero of what T is bound to.
+	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
+
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}
 	if fn.AST != nil {
@@ -3692,8 +3700,6 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	prevReturn := c.returnType
 	c.returnType = fn.Return
 	defer func() { c.returnType = prevReturn }()
-
-	defer pushTypeParams(c, fn.RecvTypeParams, fn.TypeParams)()
 
 	// A method on a generic receiver may carry no receiver parameter -- saying
 	// `this` instead -- so bind it for the expression bodies that delegate to
@@ -4112,8 +4118,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
 					}
 					initType := exprType(prop.Default)
+					// `T{}` is the zero of whatever T is bound to, the default
+					// T's own default makes it here included.
 					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
-						!mentionsTypeParam(want) && !initType.IsAssignableTo(want) {
+						!mentionsTypeParam(want) && !typeParamZero(prop.Default) && !initType.IsAssignableTo(want) {
 						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, want)
 					}
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
@@ -4252,6 +4260,24 @@ func (c *checker) checkWindow(w *ir.Window) {
 	}
 	defer c.fileOf(vn.Pos)()
 
+	prevWindow := c.currentWindow
+	c.currentWindow = w
+	defer func() { c.currentWindow = prevWindow }()
+	c.pushScope()
+	defer c.popScope()
+
+	// The ids first: a reference to one resolves anywhere in the body, so they
+	// are hoisted before the body is read. Which block that is depends on how
+	// the body was written, which is the one thing about a window's population
+	// that is not checkSlotPopulations' business.
+	//
+	// And before the window's own props, which see them with no count for the
+	// window: what the body renders exists exactly when the window does, so
+	// `title="App - {pages.current.title}"` reads one node rather than an
+	// option. The block is found against the declaration, whose slot names
+	// the specialization shares, because binding T reads the props.
+	c.declareNodeIDs(windowBodyBlock(vn, c.windowComp))
+
 	// The specialization is what the call site is checked against, minted once
 	// -- binding walks the argument expressions, and a second walk reports
 	// each of their diagnostics twice. The window's route parameters are a
@@ -4279,18 +4305,6 @@ func (c *checker) checkWindow(w *ir.Window) {
 			w.ErrorHandler = c.buildErrorHandler(&eh)
 		}
 	}
-
-	prevWindow := c.currentWindow
-	c.currentWindow = w
-	defer func() { c.currentWindow = prevWindow }()
-	c.pushScope()
-	defer c.popScope()
-
-	// The ids first: a reference to one resolves anywhere in the body, so they
-	// are hoisted before the body is read. Which block that is depends on how
-	// the body was written, which is the one thing about a window's population
-	// that is not checkSlotPopulations' business.
-	c.declareNodeIDs(windowBodyBlock(vn, spec))
 
 	// **A window's body is the population of its rest slot**, and the peel is
 	// the one every other node's children get. Its parameter is an ordinary

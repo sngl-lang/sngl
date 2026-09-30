@@ -393,7 +393,27 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 // other dispatch paths in that case.
 func (cv *componentValue) InvokeMethod(env *interp.Env, method string, args []ir.CallArg) (any, bool, error) {
 	if len(method) > 0 && method[0] == '@' {
-		// Event emission is a no-op in the interpreter.
+		// The event reaches what the instance renders that reports it, as a
+		// user's click reaches the widget: a `nav.link` is clicked through the
+		// primitive its override renders. An instance rendering nothing that
+		// handles it takes the event as a no-op.
+		view, err := interp.Mount(cv.Env)
+		if err != nil {
+			return nil, true, err
+		}
+		if n := view.Handling(method[1:]); n != nil {
+			return env.InvokeElementEvent(n.Map(), method[1:], func() ([]any, error) {
+				vals := make([]any, 0, len(args))
+				for _, a := range args {
+					v, err := env.Eval(a.Value)
+					if err != nil {
+						return nil, err
+					}
+					vals = append(vals, v)
+				}
+				return vals, nil
+			})
+		}
 		return nil, true, nil
 	}
 	fn := cv.funcNamed(method)
@@ -532,6 +552,10 @@ func isUserComponent(comp *ir.Component) bool {
 	}
 	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
+
+// InstanceEnv is the instance this wrapper stands for, which is what a
+// handle read as a value compares by.
+func (cv *componentValue) InstanceEnv() *interp.Env { return cv.Env }
 
 func (cv *componentValue) compEnv() *interp.Env {
 	return cv.Env.Snapshot()

@@ -67,7 +67,61 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		c.specOrigin = map[*ir.Component]*ir.Component{}
 	}
 	c.specOrigin[spec] = comp
+	if c.specArgs == nil {
+		c.specArgs = map[*ir.Component][]*ir.Type{}
+	}
+	bound := make([]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		if b, ok := bindings[tp.Name]; ok {
+			bound[i] = b
+		} else {
+			bound[i] = &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}
+		}
+	}
+	c.specArgs[spec] = bound
 	return spec
+}
+
+// specializeHandle gives the handle a node's `#id` declared the type
+// arguments its call site bound, so `box #counts(item=1)` is a `box<int>`
+// wherever it is read. The id is hoisted before any node is checked, when the
+// arguments are not known, so the var is completed here -- the count it was
+// hoisted through, an option or a list, is kept around it.
+func (c *checker) specializeHandle(id string, comp, spec *ir.Component) {
+	args := c.specArgs[spec]
+	if len(args) == 0 {
+		return
+	}
+	v := c.nodeHandleSym(id)
+	if v == nil {
+		return
+	}
+	v.Type = withComponentArgs(v.Type, comp, args)
+}
+
+// withComponentArgs is t with the component type naming comp, under any
+// options and lists, carrying args.
+func withComponentArgs(t *ir.Type, comp *ir.Component, args []*ir.Type) *ir.Type {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case ir.TypeComponent:
+		if t.Decl != ir.Symbol(comp) {
+			return t
+		}
+		cp := *t
+		cp.Elems = args
+		return &cp
+	case ir.TypeOption, ir.TypeList:
+		if len(t.Elems) != 1 {
+			return t
+		}
+		cp := *t
+		cp.Elems = []*ir.Type{withComponentArgs(t.Elems[0], comp, args)}
+		return &cp
+	}
+	return t
 }
 
 // propArgType is the type of the value a call site supplied for prop p, or nil

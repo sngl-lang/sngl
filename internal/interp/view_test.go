@@ -351,6 +351,9 @@ func nodeMaps(nodes []*Node) []map[string]any {
 		// The instance's own scope, which is where the cell of an unbound
 		// two-way prop is written: a third, and the frozen walk has no cells.
 		delete(m, "__compEnv")
+		// The node itself, which a component's event reaches through to
+		// what it renders: a fourth, and the walk had no nodes.
+		delete(m, "__node")
 		out = append(out, m)
 	}
 	return out

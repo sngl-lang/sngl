@@ -1,0 +1,18 @@
+// SKIP(codegen) "a compiled target answers sngl:ui/nav in C2's later commits"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+// `go` hands a page the params its own call site bound the page's type to, so
+// a value of any other type is refused where it is written.
+struct Pkg {
+    name string
+}
+
+component site ui.node {
+    nav.stack #pages {
+        nav.page #pkg(href=`/p/{name}`, params=Pkg{}) {
+            ui.text(value="pkg")
+        }
+    }
+    ui.button(text="Go", @click { pages.go(pkg, 3) }) // ERROR(check) "cannot pass int as Pkg"
+}

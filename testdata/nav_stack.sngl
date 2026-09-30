@@ -1,0 +1,85 @@
+// SKIP(codegen) "a compiled target answers sngl:ui/nav in C2's later commits; the interpreter answers it here"
+// A stack shows one page at a time and starts at the page whose href is "/".
+// `go` shows another and pushes the one it replaced, `back` returns to it,
+// and which page shows is the stack's own state, read through its handle: a
+// page's value, compared by identity and read for its title.
+//
+// A page's params travel with the entry, so `back` restores them, and a page
+// the stack is not showing is not mounted -- the counter on the home page
+// starts again at zero after a visit elsewhere.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+component counter ui.node {
+    var hits = 0
+    ui.text #count(value="hits {hits}")
+    ui.button #hit(text="Hit", @click { hits += 1 })
+}
+
+component site ui.node {
+    nav.stack #pages {
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+        nav.page #home(href="/", title="Home") {
+            counter #tally
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", params=Pkg{}) {
+            component content(p) {
+                ui.text #name(value=p.name)
+            }
+        }
+    }
+    ui.text #heading(value="Site - {pages.current.title}")
+    ui.button #toAbout(text="About", @click { pages.go(about) })
+    ui.button #toPkg(text="Pkg", @click { pages.go(pkg, Pkg{name="sngl"}) })
+    ui.button #toOther(text="Other", @click { pages.go(pkg, Pkg{name="other"}) })
+    ui.button #back(text="Back", @click { pages.back() })
+    nav.link #aboutLink(to=about) {
+        ui.text(value="about")
+    }
+}
+
+func testAStackStartsAtTheRootPage(t Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.heading.value == "Site - Home")
+}
+
+func testGoShowsThePageAndBackReturns(t Test, c site) {
+    c.toAbout.click()
+    t.assert(c.pages.current == c.about)
+    t.assert(c.heading.value == "Site - About")
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+}
+
+func testParamsTravelWithTheEntry(t Test, c site) {
+    c.toPkg.click()
+    t.assert(c.pkg.params.name == "sngl")
+    c.toOther.click()
+    t.assert(c.pkg.params.name == "other")
+    c.back.click()
+    t.assert(c.pages.current == c.pkg)
+    t.assert(c.pkg.params.name == "sngl")
+}
+
+func testALinkGoesToItsPage(t Test, c site) {
+    c.aboutLink.click()
+    t.assert(c.pages.current == c.about)
+}
+
+func testAPageNotShowingIsNotMounted(t Test, c site) {
+    c.tally.hit.click()
+    t.assert(c.tally.hits == 1)
+    c.toAbout.click()
+    c.back.click()
+    t.assert(c.tally.hits == 0)
+}

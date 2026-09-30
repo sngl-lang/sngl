@@ -636,6 +636,12 @@ func comparableEq(left, right *ir.Type) bool {
 		// adapted to the other operand's type before this check).
 		return left.Equal(right)
 	}
+	// A handle read as a value is its node, and two nodes compare only as
+	// instances of one declaration: an `a` is never a `b`.
+	if left.Kind == ir.TypeComponent && right.Kind == ir.TypeComponent &&
+		left.Decl != nil && right.Decl != nil && left.Decl != right.Decl {
+		return false
+	}
 	if left.Kind == right.Kind {
 		return true
 	}
@@ -1408,8 +1414,13 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// occupies param 0 and is not in call.Args, so inferring against
 			// the unshifted list matches argument 0 against the receiver's
 			// parameter and a method-level type param never binds.
+			// Only where the receiver is that parameter, though: a `sngl:`
+			// method takes its receiver through Call.Receiver, so its first
+			// parameter is an ordinary one -- the test the argument check
+			// below makes, and `stack.go(to page<T>, …)` bound nothing from
+			// `to` without it.
 			inferSig := sig
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
 				shifted := *sig
 				shifted.Params = sig.Params[1:]
 				inferSig = &shifted
@@ -2203,6 +2214,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
 			}
+			// `T{}` is the zero of whatever T is bound to, which only a call
+			// knows: it stays typed T, and the call writes the zero out.
+			if tp, ok := sym.(*ir.TypeParamSym); ok {
+				if len(x.Fields) > 0 {
+					c.error(x.Pos, "%s is a type parameter: its literal is its zero value, %s{}, and takes no fields", tp.Name, tp.Name)
+				}
+				return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}}
+			}
 		} else {
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		}
@@ -2895,6 +2914,29 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	return bound, ok
 }
 
+// typeParamZeroFor is a default as a call site binding typ writes it: the
+// zero of typ where the declaration wrote `T{}`, and the default otherwise.
+func typeParamZeroFor(def ir.Expr, typ *ir.Type) ir.Expr {
+	if typeParamZero(def) && typ != nil && !mentionsTypeParam(typ) {
+		return ir.DeclaredDefault(typ)
+	}
+	return def
+}
+
+// typeParamZero reports whether a default is `T{}` for a type parameter T --
+// the one default a parameter typed T can be written with. A call checked
+// before its callee's body still holds buildParams' placeholder, a literal of
+// the declared type, which says as much.
+func typeParamZero(def ir.Expr) bool {
+	switch d := def.(type) {
+	case *ir.StructLit:
+		return len(d.Fields) == 0 && d.Type != nil && d.Type.Kind == ir.TypeTypeParam
+	case *ir.Literal:
+		return d.Value == "" && d.Type != nil && d.Type.Kind == ir.TypeTypeParam
+	}
+	return false
+}
+
 func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
 	expr := c.checkExprExpecting(value, p.Type)
 	actual := exprType(expr)
@@ -3037,6 +3079,13 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	var result []ir.CallArg
 	for i, expr := range bound {
 		if expr == nil {
+			// A default that is its type parameter's zero, `v T = T{}`, is
+			// the zero of what this call bound T to, and only the call knows
+			// that: the declaration's default names a type no backend can
+			// spell. So it is written here, where every one of them reads it.
+			if p := sig.Params[i]; typeParamZero(p.Default) && p.Type != nil && !mentionsTypeParam(p.Type) {
+				result = append(result, ir.CallArg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
+			}
 			continue
 		}
 		result = append(result, ir.CallArg{
@@ -4125,6 +4174,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// walks the argument expressions, and a second walk reports each of their
 	// diagnostics twice.
 	spec := c.bindComponentTypeParams(comp, vn.Args)
+	if spec != comp {
+		c.specializeHandle(vn.ID, comp, spec)
+	}
 
 	// A named slot's content is written in the callsite's block beside the
 	// ordinary children, marked with `slot` so it reads as supplied rather
@@ -4732,6 +4784,11 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Wildcard != "" {
 				continue
 			}
+			// A two-way prop left unbound is a cell of the instance, which
+			// starts from its default or its type's zero: nothing is missing.
+			if p.Bidirectional {
+				continue
+			}
 			if !boundProps[p.Name] && p.Default == nil {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
@@ -4744,7 +4801,16 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Default == nil || boundProps[p.Name] {
 				continue
 			}
-			props = append(props, ir.Arg{Name: p.Name, Value: p.Default})
+			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
+		}
+	} else if comp != nil {
+		// A library's defaults are its targets' to read, except the zero of a
+		// type parameter, which names a type only this call site has bound.
+		for _, p := range comp.Props {
+			if boundProps[p.Name] || !typeParamZero(p.Default) || mentionsTypeParam(p.Type) {
+				continue
+			}
+			props = append(props, ir.Arg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
 		}
 	}
 
@@ -4890,6 +4956,11 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
 			if p.Wildcard != "" {
+				continue
+			}
+			// A two-way prop left unbound is a cell of the instance, which
+			// starts from its default or its type's zero: nothing is missing.
+			if p.Bidirectional {
 				continue
 			}
 			if !boundProps[p.Name] && p.Default == nil {

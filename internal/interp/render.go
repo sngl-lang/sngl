@@ -56,14 +56,14 @@ func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst, first 
 	cells := map[string]bool{}
 	for _, p := range ir.UnboundProps(comp, inst.Bindings) {
 		cells[p.Name] = true
-		if first && p.Default == nil {
+		if first && p.Default == nil && p.Sym != nil {
 			if z := ir.DeclaredDefault(p.Type); z != nil {
 				child.Set(p.Sym, evalInit(child, z))
 			}
 		}
 	}
 	for _, p := range comp.Props {
-		if p.Default == nil || !first && cells[p.Name] {
+		if p.Default == nil || p.Sym == nil || !first && cells[p.Name] {
 			continue
 		}
 		child.Set(p.Sym, evalInit(child, p.Default))
@@ -72,9 +72,16 @@ func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst, first 
 		if arg.Name == "" || !first && cells[arg.Name] {
 			continue
 		}
+		// A declaration whose body was never checked -- a bodyless library
+		// component no override answered here -- has props with no symbol,
+		// and every one of them would bind the same nil key.
+		sym := propSym(comp, arg.Name)
+		if sym == nil {
+			continue
+		}
 		v, err := caller.Eval(arg.Value)
 		if err == nil {
-			child.Set(propSym(comp, arg.Name), v)
+			child.Set(sym, v)
 		}
 	}
 }

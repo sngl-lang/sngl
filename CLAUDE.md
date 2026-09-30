@@ -545,6 +545,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
+- **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: the `navigator` family, `stack` (pages one on top of another, `go`/`back` as `#[intrinsic]` methods each target answers) and its member `page`, and `link`. See **Navigation** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
@@ -1095,7 +1096,7 @@ answers. It binds the same handle now, `Handle` points at it, and
 window as a symbol. That is what found the three consumers rather than leaving
 them to a grep: `output(entry = home)` matches by handle and falls back to the
 name for a window a component renders, folding `home.title` reaches the window
-through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
+through `ir.WindowHandles` (the optimizer's `windowForHandle`), and `hoistedWindow`/`bindWindow` are deleted —
 the handle is the stable thing a reference resolves to, so `buildWindow` builds
 a fresh window every call. `ir.Window.Typ` went with them, having only ever
 answered `SymType`. The window's `Name` is the target the program wrote
@@ -1208,10 +1209,10 @@ Model through two owners, so `CodegenCtx.ModelState` dedupes by the `*ir.Var`
 not compile. And **reading it needs a scope**: `EntryWindow` declines to say
 which window a multi-window program's single Model is scoped to, rightly, since
 two windows' `count` are two names — but a declaration owned by *all* of them
-is one var reachable from each, so `sharedWindowScope` scopes to those without
-choosing between windows. Without it every such read rendered as a bare
-identifier the emitted Go never declared, beside the Model field it should have
-projected onto.
+is one var reachable from each, and was scoped to them without choosing between
+windows -- by `sharedWindowScope`, until a window stopped owning state and no
+declaration was owned by every window any more (31e63e21). Without that every
+such read rendered as a bare identifier the emitted Go never declared.
 
 `testdata/root_component_state_two_windows.txtar` is the fixture, and it is
 where the per-platform table is written down.
@@ -1335,8 +1336,9 @@ name: a placeholder and a node `#id` shared one namespace with nothing
 declaring either, so which one a body's `pkg` reached fell out of scope-push
 order; nothing could say a parameter was anything but a string; and a
 misspelled placeholder declared a var rather than being reported.
-`checkWindowPathParams` asks the last two now, holding every `{name}` to a
-field of the struct and that field to a type a route can parse text into.
+html's `checkRouteParams` (`codegen/platform/html/routes.go`) asks the last two
+now, holding every `{name}` to a field of the struct and that field to a type a
+route can parse text into.
 
 `NodeInst.Params` is the cell it lands in, and it is the `*ir.Param` the
 population declares — an ordinary slot binding, because there is no
@@ -2564,6 +2566,57 @@ live fence does not also show its source. Imports are hoisted as written and
 collapsed only when identical, since rewriting an alias would be checking. A
 mistake inside one reports the markdown file and line, because the position the
 checker has is the `import` that read the document.
+
+### Navigation
+
+`sngl:ui/nav` is decision 15 of `SNGL_PLUGINS.md`, landing over Phase C2: a
+window is a surface and a page a destination. A stack shows one page, named by
+its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
+`nav.link(to=about)` -- and `pages.current` is the page showing, read through
+the stack's handle. A page's `params` travel with the history entry, so `back`
+restores them, and a page not showing is not mounted. The interpreter is the
+one target that answers it so far (`internal/interp/nav.go`, `none`'s `Stack`,
+`Page` and `Link` primitives); how `current` is typed across pages of
+different `T` is still open, and the compiled targets follow.
+
+What it needed from the checker is general:
+
+- **A component type keeps its type arguments** (`page<T>`, resolved like a
+  struct's), and a node's `#id` is typed by what its call site bound
+  (`specializeHandle`), so a func binding `T` from a handle holds the value
+  beside it to that type. Written bare, a component type still matches any
+  specialization, which is what it did before it carried arguments at all.
+  A qualified component name (`nav.page`) is a type too, not only a family.
+- **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
+  and written out by each call that omits it (`typeParamZeroFor`), for a func
+  and for a component prop, the library's included, since no backend can
+  spell a type parameter's zero. A generic signature's defaults see its type
+  parameters.
+- **A two-way prop is never required**: unbound, it starts from its default
+  or its type's zero.
+- **A window's own props see its body's handles uncounted**, so
+  `title="App - {pages.current.title}"` reads one node rather than an option.
+- **`==` on two handles needs one declaration.**
+- **A method whose receiver is not its first parameter** (every `sngl:`
+  method, a component's) infers its type parameters from all of its
+  arguments; the shift for the receiver-as-param form dropped `to`.
+
+And from the interpreter, each a rule for every component:
+
+- **An instance the mount no longer reaches loses its state**
+  (`evictUnreached`), as every compiled target already does: a component under
+  an `if` that went false starts again from its initializers.
+- **A handle compares by instance**, the scope the interpreter keeps for it,
+  through the test runner's wrapper as well (`InstanceValue`).
+- **An event on a component whose call site handled none of it reaches what
+  it renders** (`InvokeElementEvent`), the way a user's click reaches the
+  widget: `c.link.click()` clicks what the link's override draws.
+- **A bare call of an intrinsic the interpreter implements runs it**, as a
+  qualified one always did.
+
+`TestRunFixtures` runs `SKIP(codegen)` fixtures too: the directive opts a
+fixture out of code generation, and the interpreter is the reference such a
+fixture is held to.
 
 ### Runtime packages for generated code
 

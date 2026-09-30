@@ -1,0 +1,19 @@
+// Navigation: the pages of an application and the navigators that hold them.
+//
+// A window is a surface -- something on screen the user can close -- and a
+// page is a destination: an `href`, a title, and the parameters a route hands
+// it. `stack` holds pages one on top of another, `go` pushes and `back` pops,
+// and which page is showing is state the stack keeps, read through its handle:
+//
+//	ui.window(title="Docs - {pages.current.title}") {
+//	    nav.link(to=about) { ui.text(value="About") }
+//	    nav.stack #pages {
+//	        nav.page #home(href="/") { … }
+//	        nav.page #about(href="/about", title="About") { … }
+//	    }
+//	}
+//
+// Where that state lives is each target's: the URL on html, the back stack the
+// system button pops on android, a field of the Model on a desktop or a
+// terminal. A page is named by its `#id`, so a misspelled destination is an
+// unresolved name rather than a dead link.

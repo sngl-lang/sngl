@@ -8,7 +8,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func init() { codegen.RegisterPlatform(&Generator{}) }
+func init() {
+	codegen.RegisterPlatform(&Generator{})
+	// The interpreter answers navigation itself (internal/interp/nav.go):
+	// `go` and `back` on a stack, and the `follow` this package's link
+	// override calls. Each is a statement about a tree the interpreter holds,
+	// not an expression an emitter could render, which is what declaring the
+	// package rather than an emitter per id is for.
+	codegen.DeclarePlatformImplements("none", "sngl:ui/nav")
+	codegen.DeclarePlatformImplements("none", "sngl:platform/none")
+}
 
 type Generator struct{}
 
