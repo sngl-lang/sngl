@@ -13,8 +13,10 @@ import gen "sngl:x/gen"
 // Compose brackets a keyed lifetime itself: DisposableEffect is the same
 // construct an `effect` declares, so the node arrives intact rather than as the
 // calls passEffect would build. No reactiveCanvas -- the draw lambda reads
-// Compose state directly, so a recomposition already redraws.
-#[gen.can(effects, instanceState)]
+// Compose state directly, so a recomposition already redraws. `navigation`
+// because sngl:ui/nav is a NavHost here (nav.go): each page a destination with
+// a typed route, the back stack Compose's.
+#[gen.can(effects, instanceState, navigation)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 #[gen.name("android")]

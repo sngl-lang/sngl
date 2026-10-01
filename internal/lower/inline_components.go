@@ -953,6 +953,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		if ir.IsWindowNode(n) {
 			childRC = reactiveCtx{}
 		}
+		// A page a target answers itself is mounted and unmounted as its
+		// stack moves, which is what a reactive `if` does: what it renders is
+		// built per showing, so a component with state there starts again.
+		// Lowered by passNavigation, it already is an `if`.
+		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
+			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+		}
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {
 			return nil, false, err

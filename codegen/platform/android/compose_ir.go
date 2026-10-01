@@ -32,6 +32,9 @@ type irComposeContext struct {
 	// there is no such divergence between the current combos, so nothing
 	// branches on it yet — it's the wired hook, not dead weight.
 	combo androidtc.Combo
+	// nav is the stacks the program renders, answered here rather than
+	// lowered (nav.go).
+	nav *androidNav
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -124,6 +127,16 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
+	if n.Component != nil {
+		switch n.Component.Builtin {
+		case ir.BuiltinNavStack:
+			cc.renderNavStack(n)
+			return
+		case ir.BuiltinNavLink:
+			cc.renderNavLink(n)
+			return
+		}
+	}
 	if isEffectNode(n) {
 		cc.renderEffect(n)
 		return

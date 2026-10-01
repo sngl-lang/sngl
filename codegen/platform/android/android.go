@@ -125,6 +125,9 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	if c.lang == "go" {
 		c.cfg.GoLib = true
 	}
+	if nav, _ := collectAndroidNav(c.ctx); nav != nil && len(nav.stacks) > 0 {
+		c.cfg.Nav = true
+	}
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
 		stmts = main.Body
@@ -295,6 +298,7 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 		StateFields:  codegen.StateFieldNames(req.Pkg),
 		Pkg:          req.Pkg,
 		Members:      members,
+		Platform:     "android",
 	}
 	if len(testFns) == 0 {
 		return nil

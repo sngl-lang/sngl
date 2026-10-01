@@ -1,6 +1,8 @@
 package android
 
 import (
+	"slices"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -28,8 +30,29 @@ func screenPos(n *ir.NodeInst) string {
 
 // renderContent draws a window's content: its one node, or its nodes in a
 // Column.
+//
+// Content that arrives through a slot -- a window that is an instance of its
+// own, under a reactive `if`, handed its body by the caller -- is rendered in
+// the caller's lambda, where nothing is the window's root, so the inset is
+// put on a Column around the insertion here instead. It is also what lays out
+// a body of several nodes there: the lambda hands them to the Screen with no
+// layout of their own.
 func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 	if len(stmts) == 0 {
+		return
+	}
+	if slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.SlotInst); return ok }) {
+		cc.kc.RequireImport("androidx.compose.foundation.layout.safeDrawingPadding")
+		cc.line("Column(modifier = Modifier.safeDrawingPadding()) {")
+		cc.indent++
+		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
+		cc.parentAxis, cc.atRoot = "Column", false
+		for _, s := range stmts {
+			cc.renderStmt(s)
+		}
+		cc.parentAxis, cc.atRoot = outerAxis, outerRoot
+		cc.indent--
+		cc.line("}")
 		return
 	}
 	if len(stmts) == 1 {

@@ -29,6 +29,8 @@ type Combo struct {
 	CompileSdk      int    // compileSdk / default targetSdk (Android API level)
 	ActivityCompose string // androidx.activity:activity-compose version
 	Coil            string // io.coil-kt:coil-compose version
+	Navigation      string // androidx.navigation:navigation-compose version
+	Serialization   string // org.jetbrains.kotlinx:kotlinx-serialization-json version
 
 	// JDKMin/JDKMax bound the JDK major version this combo's Gradle can launch
 	// on and compile against. The lower bound is the compile target; the upper
@@ -55,6 +57,8 @@ var combos = []Combo{
 		CompileSdk:      35,
 		ActivityCompose: "1.9.3",
 		Coil:            "2.7.0",
+		Navigation:      "2.8.9",
+		Serialization:   "1.7.3",
 		JDKMin:          17,
 		JDKMax:          23,
 	},
@@ -78,6 +82,8 @@ var combos = []Combo{
 		CompileSdk:      36,
 		ActivityCompose: "1.10.1",
 		Coil:            "2.7.0",
+		Navigation:      "2.8.9",
+		Serialization:   "1.7.3",
 		JDKMin:          17,
 		JDKMax:          25,
 	},

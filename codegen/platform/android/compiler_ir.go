@@ -45,6 +45,9 @@ type Config struct {
 
 	// Internal — set by Generate(), not from source.
 	GoLib bool // true when user funcs live in a Go module (gomobile bind)
+	// Nav is set when the program renders a sngl:ui/nav stack, which is a
+	// NavHost and wants navigation-compose and kotlinx.serialization.
+	Nav bool
 }
 
 func (c Config) withDefaults() Config {
@@ -378,6 +381,15 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) ([]byte, map[string]string) {
 	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
+	nav, err := collectAndroidNav(ctx)
+	if err != nil {
+		ctx.Fail(err)
+	}
+	// The package body is the view, and the Screen in it is the window: a
+	// harness that isolated a component has none, and draws that component's
+	// body in its place.
+	view := viewStmts(ctx)
+	mainStacks := nav.stacksIn(view)
 
 	// Collect the non-computed, non-GoLib user funcs we'll emit as
 	// MainScreenState members in test mode. Need this list in two
@@ -553,6 +565,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			continue
 		}
 		declaredStructs[exportName(sd.Name)] = struct{}{}
+		// A struct a page's params reach travels in its route.
+		if nav.serializable[sd] {
+			body.WriteString("@Serializable\n")
+		}
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)
@@ -661,6 +677,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		fmt.Fprintf(&body, "val %s: %s = %s\n\n", c.Name, kotlin.IRTypeToKt(c.Type), kc.EvalExpr(c.Init))
 	}
 
+	nav.emitNavDecls(&body, kc)
+
 	// State hoisting (test mode): emit a MainScreenState class
 	// with the binds as `var x by mutableStateOf(...)`. The
 	// composable takes one as a parameter so tests can hold a
@@ -701,6 +719,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				emitIRKtMemberFunc(&body, fn, memberKC)
 			}
 		}
+		emitNavStateMembers(&body, mainStacks, classKC)
 		body.WriteString("}\n\n")
 	}
 
@@ -821,8 +840,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("    }\n\n")
 	}
 
+	emitNavState(&body, mainStacks, kc, testMode)
+
 	// Visual tree
 	cc := &irComposeContext{
+		nav:    nav,
 		kc:     kc,
 		ctx:    ctx,
 		buf:    &body,
@@ -833,10 +855,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		atRoot: true,
 	}
 
-	// The package body is the view, and the Screen in it is the window: a
-	// harness that isolated a component has none, and draws that component's
-	// body in its place.
-	view := viewStmts(ctx)
 	screen, err := codegen.SoleScreen(view, intrinsicNS+"Screen", "android", screenPos)
 	if err != nil {
 		ctx.Fail(err)
@@ -858,7 +876,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonRootComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen)
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo(), screen, nav)
 	}
 
 	// User functions (non-GoLib). In test mode the state class holds them,
@@ -917,7 +935,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String()), testRewrites
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav) {
 	b.WriteString("\n@Composable\n")
 	var params []string
 	for _, p := range cc.Props {
@@ -988,8 +1006,10 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	if decls > 0 {
 		b.WriteString("\n")
 	}
+	emitNavState(b, nav.stacksIn(cc.Body), compKC, false)
 
 	vc := &irComposeContext{
+		nav:    nav,
 		kc:     compKC,
 		ctx:    ctx,
 		buf:    b,

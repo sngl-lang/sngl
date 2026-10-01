@@ -1018,6 +1018,13 @@ fixtures written first:
 4. **android** declares `navigation`: a `NavHost`, system back pops; the
    `navigation-compose` dependency joins the scaffold. Fixes the lost
    `safeDrawingPadding` of a window whose content arrives through a slot.
+   *Done.* Typed routes (decision 15's last bullet): a `@Serializable` class
+   per page, its params carried by a JSON NavType; `current` read off the
+   back stack; a page's content a reactive position, so its state starts
+   over. `testdata/nav_stack_android.txtar`, `nav_stack_runs.txt` under
+   Robolectric, `nav_android_refused.txt` (an unserializable params type,
+   `--lang go`), and `android_window_slot_inset.txtar` for the inset, which
+   now wraps a slot-delivered body in a padded Column.
 5. **html declares `navigation` and answers a page** by a mark on its primitive rather than the
    builtin: one document per marked node, the whole tree with every other
    one pruned, so the window is the shell; one route per marked node in route

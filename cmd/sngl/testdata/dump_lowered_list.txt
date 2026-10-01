@@ -65,10 +65,13 @@ cmp stdout htmlgo.txt
 # android is the one target with no Effect pass: Compose brackets a keyed
 # lifetime itself, so it holds Effects and gets the node rather than the
 # calls the pass would lower it to. The other four match ' → Effect → ' above,
-# so the pattern is one that does match when the pass is there.
+# so the pattern is one that does match when the pass is there. It answers
+# sngl:ui/nav with a NavHost too, so it holds Navigation and keeps only the
+# value half, NavigationValues, that every target runs.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,StructComponents,StdlibContextParam,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,StructComponents,StdlibContextParam,Canvas$'
 ! stdout ' → Effect → '
+! stdout ' → Navigation → '
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

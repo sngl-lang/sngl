@@ -502,7 +502,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
-- **android** — generates Android app code; supports `kotlin` and `golang`.
+- **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`).
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
   The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what `PackageFS` serves, directive included, and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
@@ -2629,8 +2629,10 @@ overrides, and `passNavigation` finds them by the kind. Three answers:
   the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
   from what it holds, and `Page` is `#[tree.none]`.
 - **A target declaring `#[gen.can(navigation)]`** renders them in its own
-  codegen -- html's documents and routes, android's `NavHost` (Phase C2's
-  steps 4 and 5).
+  codegen -- html's documents and routes (Phase C2's step 5), and android's
+  `NavHost` (`codegen/platform/android/nav.go`). There a page's content is a
+  reactive position for the inliner, since the target mounts and unmounts it
+  as the stack moves, so a component with state in it is built at run time.
 - **Every target gets `passNavigationValues`**, the value half
   (`internal/lower/navigation.go`): each page's record (`_page__value`, the
   family's props at the stack's meta type plus an `id` numbered across the
@@ -2659,6 +2661,29 @@ overrides, and `passNavigation` finds them by the kind. Three answers:
   the code on gtk4, fyne and bubbletea, and
   `cmd/sngl/testdata/nav_stack_runs.txt` runs the program on each and on the
   interpreter.
+
+**android is a NavHost.** Each page is a destination with a typed route of
+its own, a `@Serializable` class named for the page's record and id
+(`_page__valueRoute2`), holding the params where the page has any with the
+params its call site wrote as the default; the struct a params type reaches is
+`@Serializable` too, and the params travel as their JSON through one
+`snglNavType<T>()` per type, declared once at top level -- a NavType made
+afresh each composition is a different graph each time, and Compose never got
+idle. A route is a class even with nothing to hold, so a `go`, which names its
+page by the record alone, is `pages__nav.navigate(Route(params = …))` whatever
+the page. `back` pops, and does nothing at the bottom, where the system back
+is the window's. `pages.current` is read off the back stack:
+`currentBackStackEntryAsState()`, mapped to the family's record by one
+`<Record>Of(entry)` per record type, and in test mode the state class holds the
+controller so a test reads the same thing. A page's title, href, meta and
+params are written in declarations rather than where the page is, so each is a
+constant; a params type with no serializer (a datetime) and `--lang go`, whose
+funcs live in golib with no NavController, are refused with a position
+(`cmd/sngl/testdata/nav_android_refused.txt`). navigation-compose and
+kotlinx-serialization-json join the scaffold, with the serialization plugin,
+only for a program that renders a stack; the direct build adds the same
+artifacts and plugin. `testdata/nav_stack_android.txtar` is the code, and
+`nav_stack_runs.txt` runs the program under Robolectric.
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --

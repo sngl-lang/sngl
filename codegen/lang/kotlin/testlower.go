@@ -617,6 +617,10 @@ type TestSurface struct {
 	// through the instance the test holds.
 	Pkg     *ir.Package
 	Members map[string]string
+	// Platform is the build's, which a platform's intrinsic emitters are
+	// keyed by: android answers sngl:ui/nav's `current` that way, read
+	// through the instance as MainScreen reads it.
+	Platform string
 
 	kt *KtIRContext
 }
@@ -651,7 +655,9 @@ func (surf TestSurface) forInstance(recv string, fn *ir.Func) TestSurface {
 		}
 		rewrites[name] = recv + strings.TrimPrefix(spelled, "state")
 	}
-	kc := NewIRContext(codegen.NewExprCtx(surf.Pkg))
+	ec := codegen.NewExprCtx(surf.Pkg)
+	ec.Platform = surf.Platform
+	kc := NewIRContext(ec)
 	kc.IdentRewrites = rewrites
 	surf.kt = kc
 	return surf

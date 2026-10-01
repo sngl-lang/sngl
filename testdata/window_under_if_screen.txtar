@@ -232,6 +232,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
+import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -280,10 +281,12 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
                 __activity?.finish()
             }
         }
-        slotContent?.invoke()
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            slotContent?.invoke()
+        }
     }
 }
 -- run/go/bubbletea --
 pass sha256:08f33390b6dbf5936356a8dad805db48
 -- run/kotlin/android --
-pass sha256:442759dbacc69830af8914b0eb476b31
+pass sha256:ea4dc7e415e371623407923b8c68b858

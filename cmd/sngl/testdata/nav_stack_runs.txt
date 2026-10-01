@@ -1,5 +1,6 @@
 # testdata/nav_stack.sngl's program, run on each target passNavigation lowers
-# sngl:ui/nav for, and on the interpreter, which answers it from the checked
+# sngl:ui/nav for, on android, which answers it with a NavHost
+# (testdata/nav_stack_android.txtar), and on the interpreter, which answers it from the checked
 # IR and is the reference the others are held to. A stack starts at the page
 # at "/", `go` and a link show another and push, `back` restores the page and
 # its params, and a page not showing is not mounted: the effect on the home
@@ -23,6 +24,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '5 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout '5 tests, 0 failures'
 
 -- app.sngl --
@@ -116,6 +120,32 @@ func testAPageNotShowingIsNotMounted(t Test, c site) {
     t.assert(c.mounts == 1)
     c.back.click()
     t.assert(c.mounts == 2)
+}
+-- testrun/android/kotlin/app.sngl/site/1 --
+sha256:b402e648e1739ca034c11502bd7aa319
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
 }
 -- testrun/bubbletea/go/app.sngl/site/1 --
 sha256:b721184d17d1b431f7312b18e106497b
