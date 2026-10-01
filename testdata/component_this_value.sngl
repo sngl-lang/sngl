@@ -1,0 +1,37 @@
+// SKIP(codegen) "a handle value reaches a compiled target in C2's later commits"
+// `this` in a component body is the instance's handle value, wherever in the
+// body it is written: a prop's value, a var's initializer, a handler, a
+// method. It is the value a `#id` naming the instance reads as from outside,
+// so the two compare equal, and two instances of one declaration do not.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+func labelOf(t tile) => t.label
+
+component tile(label string) node {
+    var self = this
+    var clicked = ""
+    text #echo(value=labelOf(this))
+    button #hit(text="Hit", @click { clicked = labelOf(this) })
+    func me() tile {
+        return this
+    }
+}
+
+component board node {
+    tile #a(label="A")
+    tile #b(label="B")
+}
+
+func testThisReadsTheInstancesProps(t Test, c board) {
+    t.assert(c.a.echo.value == "A")
+    c.b.hit.click()
+    t.assert(c.b.clicked == "B")
+}
+
+func testThisIsTheInstance(t Test, c board) {
+    t.assert(c.a.self == c.a)
+    t.assert(c.a.self != c.b)
+    t.assert(c.b.me() == c.b)
+}

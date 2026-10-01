@@ -651,6 +651,11 @@ type Var struct {
 	// getter counterpart to the platform hook the write side uses -- so the
 	// only read that works on those is a native call's receiver.
 	NodeHandle bool `json:"NodeHandle,omitempty"`
+	// SelfOf is the component whose body this var is `this` in: the
+	// instance's handle value, which every target answers from the instance
+	// the body is running in rather than from a stored cell. Nil on every
+	// other var.
+	SelfOf *Component `json:"-"`
 
 	// Cell marks the state lowering gives a two-way prop the call site left
 	// unbound (UnboundProps): a var of the component passImplicitState wraps
@@ -705,6 +710,10 @@ type Component struct {
 	// a component that belongs to no family: it may be placed in any of them
 	// and may contain none of their members.
 	Tree *Component `json:"-"`
+	// Self is `this` in the component's body: the instance's handle value,
+	// typed by the component under its own type parameters. Minted by the
+	// checker the first time the body is read; nil until then.
+	Self *Var `json:"-"`
 	// Treeless is the #[tree.none] mark: the declaration belongs to no family
 	// and says so. Nil Tree without it is a declaration that forgot to name
 	// one, which is an error, so the two states are told apart here rather

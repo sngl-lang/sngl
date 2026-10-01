@@ -2231,6 +2231,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 					if s, ok := tsym.(*ir.StructDef); ok {
 						sd = s
 					}
+					if f, ok := tsym.(*ir.Component); ok && f.IsFamily() {
+						return c.familyZero(x, f)
+					}
 				}
 			}
 		}
@@ -2249,6 +2252,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if sym, ok := c.scope.Lookup(x.Name); ok {
 			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
+			}
+			if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
+				return c.familyZero(x, f)
 			}
 			// `T{}` is the zero of whatever T is bound to, which only a call
 			// knows: it stays typed T, and the call writes the zero out.
@@ -5876,4 +5882,14 @@ func (c *checker) refuseNodePropAssign(target ir.Expr, pos ast.Pos, verb string)
 	}
 	c.error(pos, "cannot %s %s.%s: a node's prop is what the tree says it is, not a cell to write; change the state it reads instead",
 		verb, id.Name, sel.Field)
+}
+
+// familyZero is `navigator{}`: the family's zero, which names no member. It
+// is unequal to every member, and its props read as their types' zeros, so
+// there is nothing for a field to set.
+func (c *checker) familyZero(x *ast.StructExpr, f *ir.Component) ir.Expr {
+	if len(x.Fields) > 0 {
+		c.error(x.Pos, "%s{} is a family's zero, which names no member and takes no fields", f.Name)
+	}
+	return &ir.StructLit{AST: x, Type: f.SymType()}
 }

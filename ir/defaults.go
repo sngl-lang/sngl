@@ -1,7 +1,8 @@
 package ir
 
 // ZeroExpr returns a zero-value IR expression for t. Returns nil when t has no
-// well-defined zero (dyn, invalid, unresolved type parameters, component types).
+// well-defined zero (dyn, invalid, unresolved type parameters, a component
+// type other than a family).
 func ZeroExpr(t *Type) Expr {
 	if t == nil {
 		return nil
@@ -72,6 +73,12 @@ func ZeroExpr(t *Type) Expr {
 		return &Literal{Type: t, Value: "0", Suffix: suffix}
 	case TypeFunc:
 		return zeroFuncExpr(t)
+	case TypeComponent:
+		// A family's zero names no member: `navigator{}`. A member's handle
+		// has none, since a value of it is always an instance.
+		if f, ok := t.Decl.(*Component); ok && f.IsFamily() {
+			return &StructLit{Type: t}
+		}
 	}
 	return nil
 }

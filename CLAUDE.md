@@ -689,6 +689,26 @@ family as an expression is still an error: it is a type, not one of its
 values. `testdata/family_props.sngl`, `error_family_member_props.sngl`,
 `error_family_value.sngl` and `error_family_decl.sngl`.
 
+**A family's zero is its literal with no fields**, `navigator{}`
+(`familyZero`, and `ir.ZeroExpr` for a family type, so an unbound
+family-typed two-way prop starts there). It names no member: it is unequal to
+every member and equal to another zero of its family, and its props read as
+their types' zeros -- which is why `suit{name="x"}` is an error, there being
+no member to hold the field. On the interpreter it is a handle map with no
+instance scope, which `equals` already tells apart from every instance.
+`testdata/family_zero.sngl` and `error_family_zero.sngl`.
+
+**`this` in a component body is the instance's handle value**, the one a
+`#id` naming the instance reads as from outside, typed by the component under
+its own type parameters (`box<T>` in `box`'s body, whatever a caller binds).
+It is one `ir.Var` per declaration, `Component.Self` with `SelfOf` pointing
+back, declared at the top of `checkComponentBody` -- so a method's own
+receiver parameter, which is the same instance, shadows it there. Every target
+answers it from the instance the body is running in rather than from a stored
+cell: the interpreter walks its scopes to the one whose `Comp` is the
+declaration (`Env.selfValue`). `testdata/component_this_value.sngl` and
+`error_component_this_value.sngl`.
+
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name
 nothing. `familiesFirst` orders pass1's component registration by the

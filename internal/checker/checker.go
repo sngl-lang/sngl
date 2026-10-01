@@ -4089,6 +4089,10 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// declarations, and its props, vars and funcs (#202).
 	c.declareEnclosingBody(comp)
 
+	// `this` is the instance's handle value anywhere in the body. A method's
+	// own receiver parameter is the same instance and shadows it there.
+	c.declare(compDeclPos(comp), selfVar(comp))
+
 	// The body may name the component's type parameters, and a prop default is
 	// checked against what they stand for here. A call site binds them from the
 	// props it supplies; a declaration has only the parameters' own defaults,
@@ -5114,4 +5118,23 @@ func familiesFirst[T any](pending []T, decl func(T) *ast.ComponentDecl) []int {
 		visit(i)
 	}
 	return order
+}
+
+// selfVar is comp's `this`: the instance's handle value, typed by the
+// component under its own type parameters, minted once since a body is read
+// more than once.
+func selfVar(comp *ir.Component) *ir.Var {
+	if comp.Self == nil {
+		t := comp.SymType()
+		if len(comp.TypeParams) > 0 {
+			cp := *t
+			cp.Elems = make([]*ir.Type, len(comp.TypeParams))
+			for i, tp := range comp.TypeParams {
+				cp.Elems[i] = &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}
+			}
+			t = &cp
+		}
+		comp.Self = &ir.Var{Name: ir.ReceiverParam, Type: t, IsConst: true, SelfOf: comp}
+	}
+	return comp.Self
 }

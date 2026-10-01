@@ -1,0 +1,12 @@
+import . "sngl:ui"
+
+// `this` is typed by the component under its own type parameters, so inside
+// a generic body it is a `box<T>` and not a box of whatever a caller binds.
+// Outside a component body there is no instance for it to be.
+component box<T = int>(item T) node {
+    text(value=takesInts(this)) // ERROR(check) "cannot pass box<T> as box<int>"
+}
+
+func takesInts(b box<int>) => "ints"
+
+func loose() => this // ERROR(check) "undefined: this"
