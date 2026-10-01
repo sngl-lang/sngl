@@ -2045,7 +2045,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// them is reachable through it.
 				for _, p := range comp.Props {
 					if p.Name == x.Field {
-						return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
+						typ := p.Type
+						if len(operand.Elems) > 0 && typ != nil {
+							typ = typ.Substitute(familyBindings(comp, operand.Elems))
+						}
+						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
@@ -2079,7 +2083,16 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				// arguments, referenced bare, is a method value (func type with
 				// the synthetic receiver stripped); `c.foo(...)` calls resolve
 				// via inferMethodCall.
-				if fn, ok := c.lookupMethod(comp.Name, x.Field); ok {
+				fn, ok := c.lookupMethod(comp.Name, x.Field)
+				if !ok {
+					// A component another package declares is not in scope by
+					// its bare name: `pages.current` off a sngl:ui/nav stack.
+					// Its own table holds its methods.
+					if fn, ok = comp.Methods[x.Field]; ok {
+						c.ensureReturnType(fn)
+					}
+				}
+				if ok {
 					params := fn.Params
 					if len(params) > 0 && params[0].Receiver {
 						params = params[1:]
@@ -2090,7 +2103,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						// ensureReturnType runs first so an expression body whose
 						// return is not inferred yet does not read as void.
 						c.ensureReturnType(fn)
-						return &ir.Select{AST: x, Type: callRetType(fn.FuncSig()), Operand: operandExpr, Field: x.Field}
+						typ := callRetType(fn.FuncSig())
+						if b := componentArgBindings(operand, comp); b != nil && typ != nil {
+							typ = typ.Substitute(b)
+						}
+						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
 					}
 					funcType := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{
 						Params:     params,
@@ -4221,6 +4238,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 	children := c.checkBlockIR(&childBlock)
 	c.outputDepth = outerOutputDepth
+	if bound := c.bindFromChildren(comp, spec, children); bound != spec {
+		spec = bound
+		c.specializeHandle(vn.ID, comp, spec)
+	}
 	if spec != nil && spec.AST != nil {
 		ct := spec.ChildrenType
 		n := len(children)
@@ -4263,6 +4284,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		ID:        vn.ID,
 		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
+	}
+	if args := c.specArgs[spec]; len(args) > 0 {
+		if c.nodeArgs == nil {
+			c.nodeArgs = map[*ir.NodeInst][]*ir.Type{}
+		}
+		c.nodeArgs[node] = args
 	}
 	c.deferConstSlots(node)
 	return node

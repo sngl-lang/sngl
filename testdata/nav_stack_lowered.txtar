@@ -1,17 +1,19 @@
 A target that does not declare `navigation` gets sngl:ui/nav as plain UI
-(passNavigation). The stack's `current` is a var of the navigator family's
-record, its props plus an `id`, starting at the page whose href is "/". The
-pkg page's params are the program's own `picked`, which the page binds. The
-history is a list of entries, each holding the page it replaced and the
-params. The pages are an if-chain on `current.id`, so the counter on the home
-page is not mounted while another page shows. On gtk4 and fyne it is an
-instance built with the branch and starts again at zero; bubbletea splices
-its `hits` into the Model, where it survives -- the divergence a window
-under an `if` has there too, and still open.
+(passNavigation). The stack's current page is a var of the page family's
+record, its props plus an `id`, starting at the page whose href is "/"; the
+family's `meta` is the program's `Meta`, which every page of the stack
+carries. The pkg page's params var starts at the params its call site wrote,
+which is also what a `go` naming none shows it with. The history is a list of
+entries, each holding the page it replaced and the params. The pages are an
+if-chain on `current.id`, so the counter on the home page is not mounted
+while another page shows. On gtk4 and fyne it is an instance built with the
+branch and starts again at zero; bubbletea splices its `hits` into the
+Model, where it survives -- the divergence a window under an `if` has there
+too, and still open.
 
-The links call `go`, which pushes an entry and writes the params and
-`current`; the button calls `back`, which pops one and restores both. A read
-of `pages.current` -- the window's title, the func taking a navigator, the
+The links call `go`, which pushes an entry and writes the params and the
+current page; the button calls `back`, which pops one and restores both. A
+read of `pages.current` -- the window's title, the meta's label, the
 comparison with `about` -- reads the var, and the comparison compares ids.
 
 deny * `nav\.|Stack|navGo` -- nothing of sngl:ui/nav reaches a backend
@@ -32,10 +34,12 @@ struct Pkg {
     name string
 }
 
-var picked = Pkg{name="first"}
+struct Meta {
+    label string
+}
 
-func label(n nav.navigator) string {
-    return "at {n.title}"
+func label(title string) string {
+    return "at {title}"
 }
 
 component counter ui.node {
@@ -48,19 +52,21 @@ component counter ui.node {
 ui.window #main(title="Docs - {pages.current.title}") {
     ui.vbox {
         nav.stack #pages {
-            nav.page #home(href="/", title="Home") {
+            nav.page #home(href="/", title="Home", meta=Meta{label="home"}) {
                 counter()
             }
-            nav.page #about(href="/about", title="About") {
-                ui.text(value=label(pages.current))
+            nav.page #about(href="/about", title="About", meta=Meta{label="about"}) {
+                ui.text(value=label(pages.current.title))
             }
-            nav.page #pkg(href=`/p/{name}`, title="Package", :params=picked) {
+            nav.page #pkg(href=`/p/{name}`, title="Package", meta=Meta{label="pkg"}, params=Pkg{name="first"}) {
                 component content(p) {
                     ui.text(value=p.name)
                 }
             }
         }
+        ui.text(value=pages.current.meta.label)
         nav.link(to=about, text="About")
+        nav.link(to=pkg, text="first")
         nav.link(to=pkg, params=Pkg{name="sngl"}, text="sngl")
         ui.button(text="Back", @click {
             pages.back()
@@ -86,21 +92,26 @@ type Pkg struct {
 	Name string
 }
 
-type Navigator__value struct {
+type Meta struct {
+	Label string
+}
+
+type _page__value struct {
 	Id    int
 	Href  string
 	Title string
+	Meta  Meta
 }
 
 type Pages__entry struct {
-	Page Navigator__value
+	Page _page__value
 	Pkg  Pkg
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	picked         Pkg
-	pages__current Navigator__value
+	pkg__params    Pkg
+	pages__current _page__value
 	pages__history []Pages__entry
 	hits__inst0    int
 	visible__inst1 bool
@@ -112,8 +123,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.picked = Pkg{Name: "first"}
-	m.pages__current = Navigator__value{Id: 0, Href: "/", Title: "Home"}
+	m.pkg__params = Pkg{Name: "first"}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: Meta{Label: "home"}}
 	m.pages__history = []Pages__entry{}
 	m.hits__inst0 = 0
 	m.visible__inst1 = true
@@ -138,7 +149,11 @@ func (m *Model) __focusNext() {
 				m.__focusID = 3
 			} else {
 				if m.__focusID == 3 {
-					m.__focusID = 0
+					m.__focusID = 4
+				} else {
+					if m.__focusID == 4 {
+						m.__focusID = 0
+					}
 				}
 			}
 		}
@@ -147,7 +162,7 @@ func (m *Model) __focusNext() {
 
 func (m *Model) __focusPrev() {
 	if m.__focusID == 0 {
-		m.__focusID = 3
+		m.__focusID = 4
 	} else {
 		if m.__focusID == 1 {
 			m.__focusID = 0
@@ -157,39 +172,43 @@ func (m *Model) __focusPrev() {
 			} else {
 				if m.__focusID == 3 {
 					m.__focusID = 2
+				} else {
+					if m.__focusID == 4 {
+						m.__focusID = 3
+					}
 				}
 			}
 		}
 	}
 }
 
-func (m Model) Picked() Pkg {
-	return m.picked
+func (m Model) Pkg__params() Pkg {
+	return m.pkg__params
 }
 
-func (m Model) SetPicked(v Pkg) Model {
-	m.picked = v
+func (m Model) SetPkg__params(v Pkg) Model {
+	m.pkg__params = v
 	return m
 }
 
-type setPickedMsg struct{ value Pkg }
+type setPkg__paramsMsg struct{ value Pkg }
 
-func SetPickedCmd(v Pkg) tea.Cmd {
-	return func() tea.Msg { return setPickedMsg{value: v} }
+func SetPkg__paramsCmd(v Pkg) tea.Cmd {
+	return func() tea.Msg { return setPkg__paramsMsg{value: v} }
 }
 
-func (m Model) Pages__current() Navigator__value {
+func (m Model) Pages__current() _page__value {
 	return m.pages__current
 }
 
-func (m Model) SetPages__current(v Navigator__value) Model {
+func (m Model) SetPages__current(v _page__value) Model {
 	m.pages__current = v
 	return m
 }
 
-type setPages__currentMsg struct{ value Navigator__value }
+type setPages__currentMsg struct{ value _page__value }
 
-func SetPages__currentCmd(v Navigator__value) tea.Cmd {
+func SetPages__currentCmd(v _page__value) tea.Cmd {
 	return func() tea.Msg { return setPages__currentMsg{value: v} }
 }
 
@@ -247,8 +266,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setPickedMsg:
-		m = m.SetPicked(msg.value)
+	case setPkg__paramsMsg:
+		m = m.SetPkg__params(msg.value)
 	case setPages__currentMsg:
 		m = m.SetPages__current(msg.value)
 	case setPages__historyMsg:
@@ -277,15 +296,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.hits__inst0 += 1
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-			m.pages__current = Navigator__value{Id: 1, Href: "/about", Title: "About"}
+			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+			m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-			m.picked = Pkg{Name: "sngl"}
-			m.pages__current = Navigator__value{Id: 2, Href: "/p/{name}", Title: "Package"}
+			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+			m.pkg__params = Pkg{Name: "first"}
+			m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+			m.pkg__params = Pkg{Name: "sngl"}
+			m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
+		case msg.Code == tea.KeyEnter && m.__focusID == 4:
 			if len(m.pages__history) > 0 {
-				m.picked = m.pages__history[(len(m.pages__history) - 1)].Pkg
+				m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 				m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
 				if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
 					m.pages__history = append(m.pages__history[:__i], m.pages__history[__i+1:]...)
@@ -313,7 +336,7 @@ func (m Model) View() tea.View {
 				content_0 = lipgloss.NewStyle().Render(fmt.Sprint(("at " + m.pages__current.Title)))
 			} else {
 				if m.pages__current.Id == 2 {
-					content_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.picked.Name))
+					content_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.pkg__params.Name))
 				}
 			}
 		}
@@ -321,35 +344,46 @@ func (m Model) View() tea.View {
 			contentChildren = append(contentChildren, content_0)
 		}
 		var content_1 string
-		content_1Focused := (m.__focusID == 1)
-		content_1Prefix := " "
-		if content_1Focused {
-			content_1Prefix = ">"
-		}
-		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("About"))
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.pages__current.Meta.Label))
 		contentChildren = append(contentChildren, content_1)
 		var content_2 string
-		content_2Focused := (m.__focusID == 2)
+		content_2Focused := (m.__focusID == 1)
 		content_2Prefix := " "
 		if content_2Focused {
 			content_2Prefix = ">"
 		}
-		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("sngl"))
+		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("About"))
 		contentChildren = append(contentChildren, content_2)
 		var content_3 string
-		content_3Focused := (m.__focusID == 3)
+		content_3Focused := (m.__focusID == 2)
 		content_3Prefix := " "
 		if content_3Focused {
 			content_3Prefix = ">"
 		}
-		content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("Back"))
+		content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("first"))
 		contentChildren = append(contentChildren, content_3)
 		var content_4 string
-		if m.pages__current.Id == 1 {
-			content_4 = lipgloss.NewStyle().Render(fmt.Sprint("on about"))
+		content_4Focused := (m.__focusID == 3)
+		content_4Prefix := " "
+		if content_4Focused {
+			content_4Prefix = ">"
 		}
-		if content_4 != "" {
-			contentChildren = append(contentChildren, content_4)
+		content_4 = lipgloss.NewStyle().Render(content_4Prefix + " " + fmt.Sprint("sngl"))
+		contentChildren = append(contentChildren, content_4)
+		var content_5 string
+		content_5Focused := (m.__focusID == 4)
+		content_5Prefix := " "
+		if content_5Focused {
+			content_5Prefix = ">"
+		}
+		content_5 = lipgloss.NewStyle().Render(content_5Prefix + " " + fmt.Sprint("Back"))
+		contentChildren = append(contentChildren, content_5)
+		var content_6 string
+		if m.pages__current.Id == 1 {
+			content_6 = lipgloss.NewStyle().Render(fmt.Sprint("on about"))
+		}
+		if content_6 != "" {
+			contentChildren = append(contentChildren, content_6)
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
@@ -385,21 +419,26 @@ type Pkg struct {
 	Name string
 }
 
-type Navigator__value struct {
+type Meta struct {
+	Label string
+}
+
+type _page__value struct {
 	Id    int
 	Href  string
 	Title string
+	Meta  Meta
 }
 
 type Pages__entry struct {
-	Page Navigator__value
+	Page _page__value
 	Pkg  Pkg
 }
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	picked         Pkg
-	pages__current Navigator__value
+	pkg__params    Pkg
+	pages__current _page__value
 	pages__history []Pages__entry
 	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
@@ -411,18 +450,20 @@ type Model struct {
 	__slot1_at     fyne.CanvasObject
 
 	__n3    *fynelayout.Toplevel
-	__n8    *fyne.Container
-	__n9    *widget.Button
+	__n9    *fyne.Container
+	__n4    *widget.Label
 	__n10   *widget.Button
 	__n11   *widget.Button
+	__n12   *widget.Button
+	__n13   *widget.Button
 	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.picked = Pkg{Name: "first"}
-	m.pages__current = Navigator__value{Id: 0, Href: "/", Title: "Home"}
+	m.pkg__params = Pkg{Name: "first"}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: Meta{Label: "home"}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -448,57 +489,57 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst2_next := []*__child1Instance{}
 	var __inst2_i int = 0
 	if m.pages__current.Id == 0 {
-		var __n4 *CounterInstance
+		var __n5 *CounterInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
+			__n5 = m.__inst0_live[__inst0_i]
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := newCounterInstance(m)
-			__n4 = __n4__new
+			__n5__new := newCounterInstance(m)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	} else {
 		if m.pages__current.Id == 1 {
-			var __n5 *__child0Instance
+			var __n6 *__child0Instance
 			if len(m.__inst1_live) > __inst1_i {
-				__n5 = m.__inst1_live[__inst1_i]
-				__n5.Set__p0(m.pages__current)
+				__n6 = m.__inst1_live[__inst1_i]
+				__n6.Set__p0(m.pages__current)
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n5__new := new__child0Instance(m, m.pages__current)
-				__n5 = __n5__new
+				__n6__new := new__child0Instance(m, m.pages__current)
+				__n6 = __n6__new
 			}
-			__inst1_next = append(__inst1_next, __n5)
+			__inst1_next = append(__inst1_next, __n6)
 			__inst1_i = (__inst1_i + 1)
-			__n5__el := __n5.Root
-			fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-			m.__slot0 = append(m.__slot0, __n5__el)
+			__n6__el := __n6.Root
+			fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
+			m.__slot0 = append(m.__slot0, __n6__el)
 		} else {
 			if m.pages__current.Id == 2 {
-				var __n6 *__child1Instance
+				var __n7 *__child1Instance
 				if len(m.__inst2_live) > __inst2_i {
-					__n6 = m.__inst2_live[__inst2_i]
-					__n6.Set__p0(m.picked)
+					__n7 = m.__inst2_live[__inst2_i]
+					__n7.Set__p0(m.pkg__params)
 				} else {
 					if len(m.__inst2_live) > __inst2_i {
 						m.__inst2_live[__inst2_i].Destroy()
 					}
-					__n6__new := new__child1Instance(m, m.picked)
-					__n6 = __n6__new
+					__n7__new := new__child1Instance(m, m.pkg__params)
+					__n7 = __n7__new
 				}
-				__inst2_next = append(__inst2_next, __n6)
+				__inst2_next = append(__inst2_next, __n7)
 				__inst2_i = (__inst2_i + 1)
-				__n6__el := __n6.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
-				m.__slot0 = append(m.__slot0, __n6__el)
+				__n7__el := __n7.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n7__el)
+				m.__slot0 = append(m.__slot0, __n7__el)
 			}
 		}
 	}
@@ -532,10 +573,10 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	if m.pages__current.Id == 1 {
-		__n7 := widget.NewLabel("")
-		__n7.SetText("on about")
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n7)
-		m.__slot1 = append(m.__slot1, __n7)
+		__n8 := widget.NewLabel("")
+		__n8.SetText("on about")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n8)
+		m.__slot1 = append(m.__slot1, __n8)
 	}
 }
 
@@ -547,55 +588,71 @@ func (m *Model) __n3_visible_handler(__visible bool) {
 	m.__n3.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n9_click_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-	m.pages__current = Navigator__value{Id: 1, Href: "/about", Title: "About"}
-	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
-}
-
 func (m *Model) __n10_click_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-	m.picked = Pkg{Name: "sngl"}
-	for __inst2_live_ui, _ := range m.__inst2_live {
-		m.__inst2_live[__inst2_live_ui].Set__p0(m.picked)
-	}
-	m.pages__current = Navigator__value{Id: 2, Href: "/p/{name}", Title: "Package"}
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
 	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
+	m.__n4.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
 }
 
 func (m *Model) __n11_click_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pkg__params = Pkg{Name: "first"}
+	for __inst2_live_ui, _ := range m.__inst2_live {
+		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
+	}
+	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
+	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
+	m.__n4.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
+}
+
+func (m *Model) __n12_click_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pkg__params = Pkg{Name: "sngl"}
+	for __inst2_live_ui, _ := range m.__inst2_live {
+		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
+	}
+	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
+	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
+	m.__n4.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
+}
+
+func (m *Model) __n13_click_handler() {
 	if len(m.pages__history) > 0 {
-		m.picked = m.pages__history[(len(m.pages__history) - 1)].Pkg
+		m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 		for __inst2_live_ui, _ := range m.__inst2_live {
-			m.__inst2_live[__inst2_live_ui].Set__p0(m.picked)
+			m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 		}
 		m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
 		m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-		m.__renderSlot0(m.__n8)
-		m.__renderSlot1(m.__n8)
+		m.__n4.SetText(m.pages__current.Meta.Label)
+		m.__renderSlot0(m.__n9)
+		m.__renderSlot1(m.__n9)
 		if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
 			m.pages__history = append(m.pages__history[:__i], m.pages__history[__i+1:]...)
 		}
 	}
 }
 
-func (m *Model) Picked() Pkg {
-	return m.picked
+func (m *Model) Pkg__params() Pkg {
+	return m.pkg__params
 }
 
-func (m *Model) SetPicked(v Pkg) {
-	m.picked = v
+func (m *Model) SetPkg__params(v Pkg) {
+	m.pkg__params = v
 }
 
-func (m *Model) Pages__current() Navigator__value {
+func (m *Model) Pages__current() _page__value {
 	return m.pages__current
 }
 
-func (m *Model) SetPages__current(v Navigator__value) {
+func (m *Model) SetPages__current(v _page__value) {
 	m.pages__current = v
 }
 
@@ -626,22 +683,29 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetVisible(m.visible__inst0)
 	m.__n3.OnClosed = m.__n3_closed_handler
 	m.__n3.OnVisible = m.__n3_visible_handler
-	m.__n8 = container.NewVBox()
-	m.__renderSlot0(m.__n8)
-	m.__n9 = widget.NewButton("", nil)
-	m.__n9.SetText("About")
-	m.__n9.OnTapped = m.__n9_click_handler
-	m.__n8.Add(m.__n9)
+	m.__n9 = container.NewVBox()
+	m.__renderSlot0(m.__n9)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText(m.pages__current.Meta.Label)
+	m.__n9.Add(m.__n4)
 	m.__n10 = widget.NewButton("", nil)
-	m.__n10.SetText("sngl")
+	m.__n10.SetText("About")
 	m.__n10.OnTapped = m.__n10_click_handler
-	m.__n8.Add(m.__n10)
+	m.__n9.Add(m.__n10)
 	m.__n11 = widget.NewButton("", nil)
-	m.__n11.SetText("Back")
+	m.__n11.SetText("first")
 	m.__n11.OnTapped = m.__n11_click_handler
-	m.__n8.Add(m.__n11)
-	m.__renderSlot1(m.__n8)
-	m.__n3.Add(m.__n8)
+	m.__n9.Add(m.__n11)
+	m.__n12 = widget.NewButton("", nil)
+	m.__n12.SetText("sngl")
+	m.__n12.OnTapped = m.__n12_click_handler
+	m.__n9.Add(m.__n12)
+	m.__n13 = widget.NewButton("", nil)
+	m.__n13.SetText("Back")
+	m.__n13.OnTapped = m.__n13_click_handler
+	m.__n9.Add(m.__n13)
+	m.__renderSlot1(m.__n9)
+	m.__n3.Add(m.__n9)
 	fynelayout.AppAttach(m.__n3)
 	return m.__n3.Container
 }
@@ -682,7 +746,7 @@ func (c *CounterInstance) Destroy() {}
 type __child0Instance struct {
 	Root        fyne.CanvasObject
 	__model     *Model
-	__prop___p0 Navigator__value
+	__prop___p0 _page__value
 	__root      *fyne.Container
 	__slot0     []fyne.CanvasObject
 	__slot0_at  fyne.CanvasObject
@@ -691,7 +755,7 @@ type __child0Instance struct {
 	__n1        *widget.Label
 }
 
-func new__child0Instance(__model *Model, __a___p0 Navigator__value) *__child0Instance {
+func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -704,7 +768,7 @@ func new__child0Instance(__model *Model, __a___p0 Navigator__value) *__child0Ins
 	return c
 }
 
-func (c *__child0Instance) Set__p0(__v Navigator__value) {
+func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
 	c.__n1.SetText(("at " + c.__prop___p0.Title))
 }
@@ -778,21 +842,26 @@ type Pkg struct {
 	Name string
 }
 
-type Navigator__value struct {
+type Meta struct {
+	Label string
+}
+
+type _page__value struct {
 	Id    int
 	Href  string
 	Title string
+	Meta  Meta
 }
 
 type Pages__entry struct {
-	Page Navigator__value
+	Page _page__value
 	Pkg  Pkg
 }
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	picked         Pkg
-	pages__current Navigator__value
+	pkg__params    Pkg
+	pages__current _page__value
 	pages__history []Pages__entry
 	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
@@ -803,10 +872,12 @@ type Model struct {
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__n3           gtk4rt.Handle
-	__n8           gtk4rt.Handle
 	__n9           gtk4rt.Handle
+	__n4           gtk4rt.Handle
 	__n10          gtk4rt.Handle
 	__n11          gtk4rt.Handle
+	__n12          gtk4rt.Handle
+	__n13          gtk4rt.Handle
 	__built        bool
 }
 
@@ -814,8 +885,8 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.picked = Pkg{Name: "first"}
-	m.pages__current = Navigator__value{Id: 0, Href: "/", Title: "Home"}
+	m.pkg__params = Pkg{Name: "first"}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Home", Meta: Meta{Label: "home"}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -841,57 +912,57 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst2_next := []*__child1Instance{}
 	var __inst2_i int = 0
 	if m.pages__current.Id == 0 {
-		var __n4 *CounterInstance
+		var __n5 *CounterInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
+			__n5 = m.__inst0_live[__inst0_i]
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := newCounterInstance(m)
-			__n4 = __n4__new
+			__n5__new := newCounterInstance(m)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		__n5__el := __n5.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	} else {
 		if m.pages__current.Id == 1 {
-			var __n5 *__child0Instance
+			var __n6 *__child0Instance
 			if len(m.__inst1_live) > __inst1_i {
-				__n5 = m.__inst1_live[__inst1_i]
-				__n5.Set__p0(m.pages__current)
+				__n6 = m.__inst1_live[__inst1_i]
+				__n6.Set__p0(m.pages__current)
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n5__new := new__child0Instance(m, m.pages__current)
-				__n5 = __n5__new
+				__n6__new := new__child0Instance(m, m.pages__current)
+				__n6 = __n6__new
 			}
-			__inst1_next = append(__inst1_next, __n5)
+			__inst1_next = append(__inst1_next, __n6)
 			__inst1_i = (__inst1_i + 1)
-			__n5__el := __n5.Root
-			gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
-			m.__slot0 = append(m.__slot0, __n5__el)
+			__n6__el := __n6.Root
+			gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
+			m.__slot0 = append(m.__slot0, __n6__el)
 		} else {
 			if m.pages__current.Id == 2 {
-				var __n6 *__child1Instance
+				var __n7 *__child1Instance
 				if len(m.__inst2_live) > __inst2_i {
-					__n6 = m.__inst2_live[__inst2_i]
-					__n6.Set__p0(m.picked)
+					__n7 = m.__inst2_live[__inst2_i]
+					__n7.Set__p0(m.pkg__params)
 				} else {
 					if len(m.__inst2_live) > __inst2_i {
 						m.__inst2_live[__inst2_i].Destroy()
 					}
-					__n6__new := new__child1Instance(m, m.picked)
-					__n6 = __n6__new
+					__n7__new := new__child1Instance(m, m.pkg__params)
+					__n7 = __n7__new
 				}
-				__inst2_next = append(__inst2_next, __n6)
+				__inst2_next = append(__inst2_next, __n7)
 				__inst2_i = (__inst2_i + 1)
-				__n6__el := __n6.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
-				m.__slot0 = append(m.__slot0, __n6__el)
+				__n7__el := __n7.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n7__el)
+				m.__slot0 = append(m.__slot0, __n7__el)
 			}
 		}
 	}
@@ -925,10 +996,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if m.pages__current.Id == 1 {
-		__n7 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n7, "on about")
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
-		m.__slot1 = append(m.__slot1, __n7)
+		__n8 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n8, "on about")
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n8)
+		m.__slot1 = append(m.__slot1, __n8)
 	}
 }
 
@@ -940,36 +1011,52 @@ func (m *Model) __n3_visible_handler(__visible bool) {
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 }
 
-func (m *Model) __n9_clicked_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-	m.pages__current = Navigator__value{Id: 1, Href: "/about", Title: "About"}
-	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
-}
-
 func (m *Model) __n10_clicked_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.picked})
-	m.picked = Pkg{Name: "sngl"}
-	for __inst2_live_ui, _ := range m.__inst2_live {
-		m.__inst2_live[__inst2_live_ui].Set__p0(m.picked)
-	}
-	m.pages__current = Navigator__value{Id: 2, Href: "/p/{name}", Title: "Package"}
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
 	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	m.__renderSlot0(m.__n8)
-	m.__renderSlot1(m.__n8)
+	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
 }
 
 func (m *Model) __n11_clicked_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pkg__params = Pkg{Name: "first"}
+	for __inst2_live_ui, _ := range m.__inst2_live {
+		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
+	}
+	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
+	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
+	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
+}
+
+func (m *Model) __n12_clicked_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pkg__params = Pkg{Name: "sngl"}
+	for __inst2_live_ui, _ := range m.__inst2_live {
+		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
+	}
+	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
+	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
+	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n9)
+	m.__renderSlot1(m.__n9)
+}
+
+func (m *Model) __n13_clicked_handler() {
 	if len(m.pages__history) > 0 {
-		m.picked = m.pages__history[(len(m.pages__history) - 1)].Pkg
+		m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 		for __inst2_live_ui, _ := range m.__inst2_live {
-			m.__inst2_live[__inst2_live_ui].Set__p0(m.picked)
+			m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 		}
 		m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
 		gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-		m.__renderSlot0(m.__n8)
-		m.__renderSlot1(m.__n8)
+		gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
+		m.__renderSlot0(m.__n9)
+		m.__renderSlot1(m.__n9)
 		if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
 			m.pages__history = append(m.pages__history[:__i], m.pages__history[__i+1:]...)
 		}
@@ -1024,7 +1111,7 @@ func (c *CounterInstance) Destroy() {
 type __child0Instance struct {
 	Root        gtk4rt.Handle
 	__model     *Model
-	__prop___p0 Navigator__value
+	__prop___p0 _page__value
 	__root      gtk4rt.Handle
 	__slot0     []gtk4rt.Handle
 	__slot0_at  gtk4rt.Handle
@@ -1033,7 +1120,7 @@ type __child0Instance struct {
 	__n1        gtk4rt.Handle
 }
 
-func new__child0Instance(__model *Model, __a___p0 Navigator__value) *__child0Instance {
+func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -1047,7 +1134,7 @@ func new__child0Instance(__model *Model, __a___p0 Navigator__value) *__child0Ins
 	return c
 }
 
-func (c *__child0Instance) Set__p0(__v Navigator__value) {
+func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n1, ("at " + c.__prop___p0.Title))
 }
@@ -1110,19 +1197,19 @@ func (c *__child1Instance) Destroy() {
 	}
 }
 
-func (m *Model) Picked() Pkg {
-	return m.picked
+func (m *Model) Pkg__params() Pkg {
+	return m.pkg__params
 }
 
-func (m *Model) SetPicked(v Pkg) {
-	m.picked = v
+func (m *Model) SetPkg__params(v Pkg) {
+	m.pkg__params = v
 }
 
-func (m *Model) Pages__current() Navigator__value {
+func (m *Model) Pages__current() _page__value {
 	return m.pages__current
 }
 
-func (m *Model) SetPages__current(v Navigator__value) {
+func (m *Model) SetPages__current(v _page__value) {
 	m.pages__current = v
 }
 
@@ -1152,24 +1239,31 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
-	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n8, 6)
-	m.__renderSlot0(m.__n8)
-	m.__n9 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n9, "About")
-	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
-	gtk4rt.BoxAppend(m.__n8, m.__n9)
+	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n9, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n9, 6)
+	m.__renderSlot0(m.__n9)
+	m.__n4 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
+	gtk4rt.BoxAppend(m.__n9, m.__n4)
 	m.__n10 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n10, "sngl")
+	gtk4rt.ButtonSetLabel(m.__n10, "About")
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
-	gtk4rt.BoxAppend(m.__n8, m.__n10)
+	gtk4rt.BoxAppend(m.__n9, m.__n10)
 	m.__n11 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n11, "Back")
+	gtk4rt.ButtonSetLabel(m.__n11, "first")
 	gtk4rt.Connect(m.__n11, "clicked", m.__n11_clicked_handler)
-	gtk4rt.BoxAppend(m.__n8, m.__n11)
-	m.__renderSlot1(m.__n8)
-	gtk4rt.BoxAppend(m.__n3, m.__n8)
+	gtk4rt.BoxAppend(m.__n9, m.__n11)
+	m.__n12 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n12, "sngl")
+	gtk4rt.Connect(m.__n12, "clicked", m.__n12_clicked_handler)
+	gtk4rt.BoxAppend(m.__n9, m.__n12)
+	m.__n13 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n13, "Back")
+	gtk4rt.Connect(m.__n13, "clicked", m.__n13_clicked_handler)
+	gtk4rt.BoxAppend(m.__n9, m.__n13)
+	m.__renderSlot1(m.__n9)
+	gtk4rt.BoxAppend(m.__n3, m.__n9)
 	gtk4rt.AppAttach(m.__n3)
 }
 
@@ -1180,8 +1274,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n3)
 }
 -- run/go/bubbletea --
-pass sha256:9b449c63868df857a1f85728479cb9c3
+pass sha256:9b231840d5bfd16efb9e173a2f12d5cb
 -- run/go/fyne --
-pass sha256:cd85205722684e24f129f118aa033dd0
+pass sha256:1cfd9d14a8621e7d4dbcb9e1f05f6736
 -- run/go/gtk4 --
-pass sha256:a8646804cf3ef0d9a88dbe11243a049b
+pass sha256:1d79029de1a9cdb0d5b7d607484218d8

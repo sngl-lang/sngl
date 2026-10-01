@@ -348,6 +348,29 @@ func IsAppRootTree(f *Component) bool { return isTreeRole(f, BuiltinTreeRoot) }
 func IsSegmentedTree(f *Component) bool { return f.IsFamily() && !IsUITree(f) }
 
 // TypeFamily is the family t names in a return position or a slot, or nil.
+// FamilyArgs is what a member's type, at the type arguments it carries, hands
+// its family's type parameters: `page<Pkg, Meta>` is a `_page<Meta>`. A
+// member written bare is its defaults, as a struct type is.
+func FamilyArgs(m *Component, args []*Type) []*Type {
+	if m == nil || len(m.TreeArgs) == 0 {
+		return nil
+	}
+	bindings := map[string]*Type{}
+	for i, tp := range m.TypeParams {
+		switch {
+		case i < len(args):
+			bindings[tp.Name] = args[i]
+		case tp.Default != nil:
+			bindings[tp.Name] = tp.Default
+		}
+	}
+	out := make([]*Type, len(m.TreeArgs))
+	for i, a := range m.TreeArgs {
+		out[i] = a.Substitute(bindings)
+	}
+	return out
+}
+
 func TypeFamily(t *Type) *Component {
 	if t == nil || t.Kind != TypeComponent {
 		return nil
@@ -705,6 +728,10 @@ type Component struct {
 	// a component that belongs to no family: it may be placed in any of them
 	// and may contain none of their members.
 	Tree *Component `json:"-"`
+	// TreeArgs are the type arguments the return position hands a generic
+	// family, in terms of the member's own type parameters: `page<T, M>`
+	// returning `_page<M>` holds M here. Nil for a family that takes none.
+	TreeArgs []*Type `json:"-"`
 	// Treeless is the #[tree.none] mark: the declaration belongs to no family
 	// and says so. Nil Tree without it is a declaration that forgot to name
 	// one, which is an error, so the two states are told apart here rather

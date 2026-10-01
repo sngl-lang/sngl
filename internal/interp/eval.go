@@ -328,10 +328,12 @@ type Env struct {
 	// handling counts the event handlers running, shared by every env of one
 	// program so that a nested dispatch can tell it is one.
 	handling *int
-	// nav is what a navigator's instance keeps across mounts (nav.go), and
-	// navStack the stack a page's instance registered with.
-	nav      *navState
-	navStack *Env
+	// nav is what a stack's instance keeps across mounts (nav.go), navStack
+	// the stack a page's instance registered with, and navParams the params
+	// that page is showing with, nil for its own.
+	nav       *navState
+	navStack  *Env
+	navParams *navParams
 }
 
 func NewEnv() *Env {
@@ -1240,6 +1242,11 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return v, nil
 	}
 	if m, ok := obj.(map[string]any); ok {
+		// A computed the handle's declaration answers natively, selected
+		// bare: `pages.current` off a stack.
+		if fn := intrinsicMethod(e.Operand.ExprType(), e.Field); fn != nil {
+			return fn([]any{obj})
+		}
 		return m[e.Field], nil
 	}
 	if u, ok := obj.(unitValue); ok {
@@ -1255,6 +1262,23 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+// intrinsicMethod is the intrinsic behind a component type's method named
+// field, or nil.
+func intrinsicMethod(t *ir.Type, field string) func([]any) (any, error) {
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := t.Decl.(*ir.Component)
+	if !ok {
+		return nil
+	}
+	fn := comp.Methods[field]
+	if fn == nil || fn.Intrinsic == "" {
+		return nil
+	}
+	return intrinsics[fn.Intrinsic]
 }
 
 // namespaceMember evaluates `alias.member` where alias names an imported

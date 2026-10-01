@@ -698,7 +698,22 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeComponent && target.Kind == TypeComponent {
 		if f, ok := target.Decl.(*Component); ok && f.IsFamily() {
 			m, ok := t.Decl.(*Component)
-			return ok && !m.IsFamily() && m.Tree == f
+			if !ok || m.IsFamily() || m.Tree != f {
+				return false
+			}
+			if len(target.Elems) == 0 {
+				return true
+			}
+			got := FamilyArgs(m, t.Elems)
+			if len(got) != len(target.Elems) {
+				return false
+			}
+			for i, e := range got {
+				if !e.Equal(target.Elems[i]) {
+					return false
+				}
+			}
+			return true
 		}
 	}
 	if t.Kind == TypeRemote && target.Kind == TypeRemote {

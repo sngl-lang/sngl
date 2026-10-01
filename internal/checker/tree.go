@@ -81,6 +81,9 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 
 	if f := ir.TypeFamily(named); f != nil {
 		comp.Tree = f
+		if !comp.IsFamily() {
+			comp.TreeArgs = familyArgsWritten(f, named.Elems)
+		}
 		pkg.NoteTreeKind(f)
 		if comp.IsFamily() {
 			c.checkFamilyDecl(decl, comp)
@@ -123,16 +126,15 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 // share. A value of a family is a record of those props, read off whichever
 // member it holds and never bound, so each is a name, a type and perhaps a
 // default for the members that omit it: a two-way or const prop, an event, a
-// slot and a type parameter would each be read by nobody. A body is where how a family is generated will
-// be written, and nothing reads one yet -- refused rather than dropped, so
+// slot would each be read by nobody. A type parameter is the members' to
+// bind, each in its return position: `page<T, M>` is a `_page<M>`, and a
+// value of the family is read at the type it was bound to. A body is where
+// how a family is generated will be written, and nothing reads one yet -- refused rather than dropped, so
 // that the first program to write one is not one whose body silently did
 // nothing.
 func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
 	refuse := func(what string) {
 		c.error(decl.Pos, "component %s is a family, which declares the props its members share and nothing else: %s", comp.Name, what)
-	}
-	if len(decl.TypeParams) > 0 {
-		refuse("it takes type parameters")
 	}
 	for _, p := range decl.Props.Props {
 		switch pd := p.(type) {
@@ -179,7 +181,7 @@ func (c *checker) checkFamilyMember(comp *ir.Component) {
 		}
 		switch {
 		case mp == nil && familyPropDefaulted(f, fp):
-			inherited := &ir.Prop{Name: fp.Name, Type: fp.Type, Default: fp.Default}
+			inherited := &ir.Prop{Name: fp.Name, Type: familyPropType(f, comp, fp), Default: fp.Default}
 			comp.Props = append(comp.Props, inherited)
 			if c.inheritedProps == nil {
 				c.inheritedProps = map[*ir.Prop]*ir.Prop{}
@@ -188,11 +190,62 @@ func (c *checker) checkFamilyMember(comp *ir.Component) {
 		case mp == nil:
 			c.error(comp.AST.Pos, "component %s is a member of %s, which declares prop %q: declare %s %s",
 				comp.Name, f.Name, fp.Name, fp.Name, fp.Type)
-		case mp.Type == nil || fp.Type == nil || !mp.Type.Equal(fp.Type):
+		case mp.Type == nil || fp.Type == nil || !mp.Type.Equal(familyPropType(f, comp, fp)):
 			c.error(comp.AST.Pos, "component %s declares prop %q as %s, and its family %s declares it %s",
-				comp.Name, fp.Name, mp.Type, f.Name, fp.Type)
+				comp.Name, fp.Name, mp.Type, familyName(f, comp), familyPropType(f, comp, fp))
 		}
 	}
+}
+
+// familyArgsWritten is the type arguments a return position hands a generic
+// family, its defaults filling those it leaves off. Nil for a family that
+// takes none.
+func familyArgsWritten(f *ir.Component, written []*ir.Type) []*ir.Type {
+	if len(f.TypeParams) == 0 {
+		return nil
+	}
+	out := make([]*ir.Type, len(f.TypeParams))
+	for i, tp := range f.TypeParams {
+		switch {
+		case i < len(written):
+			out[i] = written[i]
+		case tp.Default != nil:
+			out[i] = tp.Default
+		default:
+			out[i] = ir.TypDyn
+		}
+	}
+	return out
+}
+
+// familyPropType is the type a member must declare a family prop at: the
+// family's, with its type parameters bound as the member's return position
+// binds them.
+func familyPropType(f, member *ir.Component, fp *ir.Prop) *ir.Type {
+	if fp.Type == nil || len(member.TreeArgs) == 0 {
+		return fp.Type
+	}
+	return fp.Type.Substitute(familyBindings(f, member.TreeArgs))
+}
+
+// familyBindings binds a generic family's type parameters to args.
+func familyBindings(f *ir.Component, args []*ir.Type) map[string]*ir.Type {
+	b := map[string]*ir.Type{}
+	for i, tp := range f.TypeParams {
+		if i < len(args) {
+			b[tp.Name] = args[i]
+		}
+	}
+	return b
+}
+
+// familyName spells the family a member's return position names, with the
+// type arguments it hands it.
+func familyName(f, member *ir.Component) string {
+	if len(member.TreeArgs) == 0 {
+		return f.Name
+	}
+	return (&ir.Type{Kind: ir.TypeComponent, Decl: f, Elems: member.TreeArgs}).String()
 }
 
 // treeOptional reports the declarations an omitted return position is still

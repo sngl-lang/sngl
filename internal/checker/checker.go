@@ -520,6 +520,12 @@ type checker struct {
 	// type parameters to, in declaration order: the type arguments a handle
 	// to that node carries.
 	specArgs map[*ir.Component][]*ir.Type
+	// specPinned is what a specialization's props pinned, before defaults:
+	// what bindFromChildren leaves as it is. nodeArgs is the type arguments
+	// each node's call site bound, which a generic family's slot reads off
+	// the children written in it.
+	specPinned map[*ir.Component]map[string]*ir.Type
+	nodeArgs   map[*ir.NodeInst][]*ir.Type
 	// handleArgs is the type arguments each handle a component body declares
 	// was bound, for a select reaching it from outside: `c.pkg` is the
 	// `page<Pkg>` its call site made it.

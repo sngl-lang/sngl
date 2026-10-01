@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -22,31 +23,27 @@ import (
 //
 // becomes, on the stack's owner,
 //
-//	var pages__current navigator__value = navigator__value{id=0, href="/", title="Home"}
+//	var pages__current _page__value = _page__value{id=0, href="/", title="Home", meta=…}
 //	var pkg__params Pkg = Pkg{}
 //	var pages__history list<pages__entry> = []
 //	if pages__current.id == 0 { … } else if pages__current.id == 1 { …p is pkg__params… }
 //
-// The record is the navigator family's: one struct per family, its props plus
-// an `id`, so a value of the family is the same record whichever stack it came
-// from, and ids are numbered across every page of the family in the package.
+// The record is the page family's: one struct per instantiation of it -- the
+// family's props at the meta type its stack's pages carry -- plus an `id`, so
+// a value of the family is the same record whichever stack it came from, and
+// ids are numbered across every page of the family in the package.
 // A page whose params are the empty struct has no var. An entry holds the page
 // it replaced and every params var of its stack, which is what `back`
 // restores.
 //
 // `pages.go(pkg, P{…})` pushes an entry and writes the params and the current
-// page; `pages.back()` pops one and restores both, and does nothing at the
-// bottom. `nav.link` becomes a `ui.button` showing its text whose click runs
+// page, and `pages.go(pkg)` writes the params the page's call site wrote;
+// `pages.back()` pops one and restores both, and does nothing at the bottom. `nav.link` becomes a `ui.button` showing its text whose click runs
 // the link's own `@click` and then the same `go`. A read of `pages.current`
 // is a read of the var, a page's handle read as a value is its record, `==`
-// against a navigator compares ids, and every navigator or page type the
-// program names is the record's.
-//
-// A two-way prop the call site bound is the cell: `:params=picked` makes
-// `picked` the page's params. A one-way value is where the var starts.
-//
-// Before ImplicitState: `current` and `params` are unbound two-way props, and
-// a cell that pass gave them would be one nothing here writes.
+// against a page's value compares ids, and every page type the program names
+// is the record's. `pkg.params` reads what the page's call site wrote, which
+// is where the page starts; the params it is showing reach its content alone.
 var passNavigation = pass{
 	name:    "Navigation",
 	enabled: func(f Features) bool { return !f.Navigation },
@@ -77,6 +74,7 @@ type navPage struct {
 
 type navFamily struct {
 	comp   *ir.Component
+	props  []*ir.Prop // the family's props at this instantiation's types
 	record *ir.StructDef
 	typ    *ir.Type
 	next   int
@@ -88,9 +86,10 @@ type navigation struct {
 	byNode   map[*ir.NodeInst]any // *navStack or *navPage
 	byHandle map[*ir.Var]any
 	byField  map[navKey]any // a handle reached by select through a component
-	families map[*ir.Component]*navFamily
+	families map[string]*navFamily
 	button   *ir.Component
 	names    map[string]bool
+	err      error // the first a view lowering refused
 }
 
 type navKey struct {
@@ -107,7 +106,7 @@ func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
 		byNode:   map[*ir.NodeInst]any{},
 		byHandle: map[*ir.Var]any{},
 		byField:  map[navKey]any{},
-		families: map[*ir.Component]*navFamily{},
+		families: map[string]*navFamily{},
 		names:    map[string]bool{},
 	}
 	for _, o := range ir.Owners(pkg) {
@@ -137,6 +136,9 @@ func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	for _, o := range ir.Owners(pkg) {
 		*o.Body = nv.lowerView(*o.Body)
+	}
+	if nv.err != nil {
+		return nv.err
 	}
 	if err := ir.Rewrite(pkg, nv.rewriteExpr); err != nil {
 		return err
@@ -215,8 +217,10 @@ func (nv *navigation) addStack(o ir.Owner, n *ir.NodeInst) {
 		if !ok || !isNavNode(p, ir.BuiltinNavPage) {
 			continue
 		}
-		fam := nv.family(p.Component.Tree)
-		st.fam = fam
+		if st.fam == nil {
+			st.fam = nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+		}
+		fam := st.fam
 		pg := &navPage{node: p, stack: st, id: fam.next}
 		fam.next++
 		st.pages = append(st.pages, pg)
@@ -234,21 +238,78 @@ func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
 	}
 }
 
-// family is the record a navigator family's values lower to, made the first
-// time one of its pages is met.
-func (nv *navigation) family(f *ir.Component) *navFamily {
-	if fam := nv.families[f]; fam != nil {
+// family is the record a page family's values lower to at args, made the
+// first time one of its pages is met.
+func (nv *navigation) family(f *ir.Component, args []*ir.Type) *navFamily {
+	args = familyArgs(f, args)
+	key := familyKey(f, args)
+	if fam := nv.families[key]; fam != nil {
 		return fam
 	}
 	def := &ir.StructDef{Name: nv.fresh(f.Name + "__value")}
 	def.Fields = append(def.Fields, &ir.StructField{Name: "id", Type: ir.TypInt})
-	for _, p := range f.Props {
-		def.Fields = append(def.Fields, &ir.StructField{Name: p.Name, Type: p.Type})
+	bindings := map[string]*ir.Type{}
+	for i, tp := range f.TypeParams {
+		bindings[tp.Name] = args[i]
+	}
+	props := make([]*ir.Prop, len(f.Props))
+	for i, p := range f.Props {
+		cp := *p
+		if cp.Type != nil {
+			cp.Type = cp.Type.Substitute(bindings)
+		}
+		props[i] = &cp
+		def.Fields = append(def.Fields, &ir.StructField{Name: p.Name, Type: cp.Type})
 	}
 	nv.pkg.Structs = append(nv.pkg.Structs, def)
-	fam := &navFamily{comp: f, record: def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: def}}
-	nv.families[f] = fam
+	fam := &navFamily{comp: f, props: props, record: def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: def}}
+	nv.families[key] = fam
 	return fam
+}
+
+// familyArgs is args with the family's defaults filling what it leaves off.
+func familyArgs(f *ir.Component, args []*ir.Type) []*ir.Type {
+	out := make([]*ir.Type, len(f.TypeParams))
+	for i, tp := range f.TypeParams {
+		switch {
+		case i < len(args) && args[i] != nil:
+			out[i] = args[i]
+		case tp.Default != nil:
+			out[i] = tp.Default
+		default:
+			out[i] = ir.TypDyn
+		}
+	}
+	return out
+}
+
+func familyKey(f *ir.Component, args []*ir.Type) string {
+	var key strings.Builder
+	key.WriteString(fmt.Sprintf("%p", f))
+	for _, a := range args {
+		key.WriteString("," + a.String())
+	}
+	return key.String()
+}
+
+// pageArgs is what a page's call site bound its type parameters to, read off
+// the props each is the type of -- `params` is T and `meta` is M -- and its
+// defaults where nothing was written.
+func pageArgs(n *ir.NodeInst) []*ir.Type {
+	comp := n.Component
+	out := make([]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		out[i] = tp.Default
+		for _, p := range comp.Props {
+			if p.Type == nil || p.Type.Kind != ir.TypeTypeParam || p.Type.ParamName != tp.Name {
+				continue
+			}
+			if t := typeOf(n.Prop(p.Name)); t != nil && t.Kind != ir.TypeDyn {
+				out[i] = t
+			}
+		}
+	}
+	return out
 }
 
 // fresh is name, or name with a counter on it where the package already
@@ -291,35 +352,18 @@ func (nv *navigation) declare(st *navStack) {
 			pg.pparam = sc.Params[0]
 		}
 		if isEmptyStruct(pg.ptype) {
-			pg.empty = pg.node.Prop("params")
-			if pg.empty == nil {
-				pg.empty = ir.ZeroExpr(pg.ptype)
-			}
+			pg.empty = pg.start()
 			continue
 		}
 		pg.field = pageName(pg)
 		st.entry.Fields = append(st.entry.Fields, &ir.StructField{Name: pg.field, Type: pg.ptype})
-		if t := boundTarget(pg.node, "params"); t != nil {
-			pg.params = t
-			continue
-		}
-		init := pg.node.Prop("params")
-		if init == nil {
-			init = ir.ZeroExpr(pg.ptype)
-		}
-		v := &ir.Var{Name: nv.fresh(pageName(pg) + "__params"), Type: pg.ptype, Init: init}
+		v := &ir.Var{Name: nv.fresh(pageName(pg) + "__params"), Type: pg.ptype, Init: pg.start()}
 		vars = append(vars, v)
 		pg.params = varIdent(v)
 	}
 	nv.pkg.Structs = append(nv.pkg.Structs, st.entry)
-	if t := boundTarget(st.node, "current"); t != nil {
-		st.current = t
-	} else if st.fam != nil {
-		init := st.node.Prop("current")
-		if init == nil {
-			init = nv.record(st.start())
-		}
-		v := &ir.Var{Name: nv.fresh(st.name + "__current"), Type: st.fam.typ, Init: init}
+	if st.fam != nil {
+		v := &ir.Var{Name: nv.fresh(st.name + "__current"), Type: st.fam.typ, Init: nv.record(st.start())}
 		vars = append(vars, v)
 		st.current = varIdent(v)
 	}
@@ -349,14 +393,42 @@ func pageName(pg *navPage) string {
 	return "__page" + strconv.Itoa(pg.id)
 }
 
+// start is the params a page starts at, and is shown with by a `go` or a
+// link that hands it none: what its call site wrote, or the type's zero.
+func (pg *navPage) start() ir.Expr {
+	if e := pg.node.Prop("params"); e != nil {
+		return ir.CloneExprSharingDecls(e)
+	}
+	return ir.ZeroExpr(pg.ptype)
+}
+
+// handed is the params a `go` or a link passed, nil where it passed none:
+// the argument is an option, the absent one `null` and a written one the
+// promotion of a value into it.
+func handed(e ir.Expr) (ir.Expr, error) {
+	if e == nil {
+		return nil, nil
+	}
+	if t := typeOf(e); t != nil && t.Kind == ir.TypeNull {
+		return nil, nil
+	}
+	if conv, ok := e.(*ir.Conversion); ok && conv.Type != nil && conv.Type.Kind == ir.TypeOption {
+		if t := typeOf(conv.Operand); t != nil && t.Kind == ir.TypeNull {
+			return nil, nil
+		}
+		if t := typeOf(conv.Operand); t != nil && t.Kind != ir.TypeOption {
+			return conv.Operand, nil
+		}
+	}
+	if t := typeOf(e); t != nil && t.Kind == ir.TypeOption {
+		return nil, fmt.Errorf("params handed as an option value, which may be absent when the program runs, is not supported yet; pass the value or nothing")
+	}
+	return e, nil
+}
+
 // pageParamsType is what a page's params are, read off what the call site
 // wrote, or the empty struct.
 func pageParamsType(n *ir.NodeInst) *ir.Type {
-	if t := boundTarget(n, "params"); t != nil {
-		if tt := typeOf(t); tt != nil {
-			return tt
-		}
-	}
 	if e := n.Prop("params"); e != nil {
 		if tt := typeOf(e); tt != nil {
 			return tt
@@ -374,15 +446,6 @@ func isEmptyStruct(t *ir.Type) bool {
 	}
 	f, ok := t.Decl.(ir.Fielded)
 	return ok && len(f.FieldList()) == 0
-}
-
-func boundTarget(n *ir.NodeInst, prop string) ir.Expr {
-	for _, b := range n.Bindings {
-		if b.PropName == prop {
-			return b.Target
-		}
-	}
-	return nil
 }
 
 func typeOf(e ir.Expr) *ir.Type {
@@ -424,7 +487,7 @@ func (nv *navigation) record(pg *navPage) ir.Expr {
 	fam := pg.stack.fam
 	lit := &ir.StructLit{Type: fam.typ, Def: fam.record}
 	lit.Fields = append(lit.Fields, ir.FieldInit{Name: "id", Value: navInt(pg.id)})
-	for _, p := range fam.comp.Props {
+	for _, p := range fam.props {
 		v := pg.node.Prop(p.Name)
 		if v == nil {
 			v = p.Default
@@ -636,7 +699,11 @@ func (nv *navigation) lowerGo(n *ir.CallStmt) ([]ir.Stmt, error) {
 	if pg.stack != st {
 		return nil, fmt.Errorf("%s: %s.go names %s, which is a page of %s", ir.StmtPos(n), st.name, pageName(pg), pg.stack.name)
 	}
-	return nv.goStmts(pg, callArg(n.Call, "params", 2)), nil
+	params, err := handed(callArg(n.Call, "params", 2))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ir.StmtPos(n), err)
+	}
+	return nv.goStmts(pg, params), nil
 }
 
 // goStmts shows pg, handed params: push the entry, then write the params and
@@ -654,7 +721,7 @@ func (nv *navigation) goStmts(pg *navPage, params ir.Expr) []ir.Stmt {
 	out := []ir.Stmt{callListPush(ir.CloneExprSharingDecls(varIdent(st.history)), entry, entryT)}
 	if pg.params != nil {
 		if params == nil {
-			params = ir.ZeroExpr(pg.ptype)
+			params = pg.start()
 		}
 		out = append(out, &ir.Assign{Target: ir.CloneExprSharingDecls(pg.params), Op: ast.AssignSet, Value: params})
 	}
@@ -730,7 +797,13 @@ func (nv *navigation) lowerView(stmts []ir.Stmt) []ir.Stmt {
 				continue
 			}
 			if isNavNode(n, ir.BuiltinNavLink) {
-				out = append(out, nv.link(n))
+				btn, err := nv.link(n)
+				if err != nil && nv.err == nil {
+					nv.err = err
+				}
+				if btn != nil {
+					out = append(out, btn)
+				}
 				continue
 			}
 			n.Children = nv.lowerView(n.Children)
@@ -802,7 +875,7 @@ func (nv *navigation) content(pg *navPage) []ir.Stmt {
 
 // link is a nav.link as a button showing its text, whose click runs the
 // link's own `@click` and then goes to its page.
-func (nv *navigation) link(n *ir.NodeInst) ir.Stmt {
+func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	btn := &ir.NodeInst{
 		AST:       n.AST,
 		Site:      n.Site,
@@ -828,13 +901,17 @@ func (nv *navigation) link(n *ir.NodeInst) ir.Stmt {
 		click = &ir.EventHandler{Name: "click", Func: &ir.Func{Return: ir.TypVoid}}
 	}
 	if pg, ok := nv.resolve(n.Prop("to")).(*navPage); ok {
-		click.Func.Block = append(click.Func.Block, nv.goStmts(pg, n.Prop("params"))...)
+		params, err := handed(n.Prop("params"))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", ir.NodePos(n), err)
+		}
+		click.Func.Block = append(click.Func.Block, nv.goStmts(pg, params)...)
 	}
 	btn.Handlers = append(btn.Handlers, *click)
 	if n.Handle != nil {
 		n.Handle.Type = nv.button.SymType()
 	}
-	return btn
+	return btn, nil
 }
 
 // rewriteExpr reads every handle and every `current` as the lowering's cells
@@ -849,6 +926,13 @@ func (nv *navigation) rewriteExpr(n ir.Node) (ir.Node, error) {
 			return n, nil
 		}
 		return &ir.Binary{AST: x.AST, Type: x.Type, Op: x.Op, Left: nv.idOf(x.Left), Right: nv.idOf(x.Right)}, ir.SkipDir
+	case *ir.Call:
+		// `pages.current()`, the computed called with its parentheses.
+		if x.Func != nil && x.Func.Intrinsic == "nav.current" && len(x.Args) > 0 {
+			if st, ok := nv.resolve(x.Args[0].Value).(*navStack); ok {
+				return rebase(st.current, x.Args[0].Value), ir.SkipDir
+			}
+		}
 	case *ir.Select:
 		switch x.Field {
 		case "current":
@@ -856,11 +940,9 @@ func (nv *navigation) rewriteExpr(n ir.Node) (ir.Node, error) {
 				return rebase(st.current, x.Operand), ir.SkipDir
 			}
 		case "params":
+			// What the page's call site wrote: where it starts.
 			if pg, ok := nv.resolve(x.Operand).(*navPage); ok {
-				if pg.params != nil {
-					return rebase(pg.params, x.Operand), ir.SkipDir
-				}
-				return ir.CloneExprSharingDecls(pg.empty), ir.SkipDir
+				return pg.start(), ir.SkipDir
 			}
 		}
 		if pg, ok := nv.resolve(x).(*navPage); ok {
@@ -908,11 +990,11 @@ func (nv *navigation) navFamilyOf(t *ir.Type) *navFamily {
 	if c == nil {
 		return nil
 	}
-	if fam := nv.families[c]; fam != nil {
-		return fam
+	if c.IsFamily() {
+		return nv.families[familyKey(c, familyArgs(c, t.Elems))]
 	}
-	if c.Tree != nil {
-		return nv.families[c.Tree]
+	if c.Tree != nil && c.Builtin == ir.BuiltinNavPage {
+		return nv.families[familyKey(c.Tree, familyArgs(c.Tree, ir.FamilyArgs(c, t.Elems)))]
 	}
 	return nil
 }

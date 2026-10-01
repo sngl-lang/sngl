@@ -1,0 +1,31 @@
+// SKIP(codegen) "a generic family's value reaches a compiled target with sngl:ui/nav, in C2's later commits"
+// A family may take type parameters, and a member names the family with its
+// own: `labelled<M>` is a `tagged<M>`, so a handle to one is a value of
+// `tagged` at whatever its call site bound M to. A func taking the family
+// reads the shared props at that type.
+
+import . "sngl:test"
+import build "sngl:build"
+
+component tagged<M = struct {}>(name string, meta M) build.family
+
+component labelled<M = struct {}>(name string, meta M = M{}) tagged<M> {}
+
+struct Note {
+    text string
+}
+
+component board(name string, meta Note) tagged<Note> {
+    labelled #first(name="first", meta=Note{text="one"})
+    labelled #second(name="second", meta=Note{text="two"})
+}
+
+func noteOf(t tagged<Note>) string {
+    return t.meta.text
+}
+
+func testAMemberIsAValueOfTheFamilyAtItsTypeArgument(t Test, c board) {
+    t.assert(noteOf(c.first) == "one")
+    t.assert(c.second.meta.text == "two")
+    t.assert(c.first != c.second)
+}

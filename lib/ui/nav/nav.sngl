@@ -5,66 +5,68 @@ import ui "sngl:ui"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 
-// The family of navigators: what `stack` holds, and what `tabs` and `split`
-// will. A page is its member.
+// What a page is, read off one: a stack's `current` is a value of it. It is
+// the family `page` belongs to and the only member it has, and unexported, so
+// a program names a page and never this: `pages.current.title` reads one,
+// `pages.current == about` compares by identity, and what a page declares
+// beyond these -- its params -- is not reachable through it.
 //
-// It declares the props every member shares, and a value of it -- a stack's
-// `current` -- is a record of those and the identity of the member it holds:
-// `pages.current.title` reads one, and `pages.current == about` compares by
-// identity. What a member declares beyond them is not reachable through it,
-// so a page's `params` are read off the page's own handle, typed by what its
-// call site bound.
-component navigator(href string, title string) build.family
+// `meta` is what a program says about every page of a stack beside its href
+// and title, one type for all of them -- a menu's label, an icon.
+component _page<M = struct {}>(href string, title string, meta M) build.family
 
 // A destination. `href` is where it is served on a target that has addresses,
 // with `{name}` placeholders filled from the fields of `params`; `title` names
 // it, and contributes nothing on its own -- a window reads
 // `pages.current.title` for that.
 //
-// `params` is state of the page: unbound, it starts at what the call site
-// wrote and `go` replaces it. The content reads it through the population of
-// `content`, `component content(p) { … }`, the way any scoped slot is read;
-// content written bare sees none.
+// `params` is what the page is shown with when nothing hands it any: at the
+// start, and by a `go` or a `link` that passes none. The params it is showing
+// reach its content through the population of `content`,
+// `component content(p) { … }`, the way any scoped slot is read, and nothing
+// else; content written bare sees none.
 #[marks.builtin("navPage")]
-component page<T = struct {}>(
+component page<T = struct {}, M = struct {}>(
     href string,
     title string,
-    :params T = T{},
+    meta M = M{},
+    params T = T{},
     content ...component(v T) ui.node,
-) navigator
+) _page<M>
 
-// Pages one on top of another, showing the top one. `current` is that page,
-// and starts at the page whose href is "/", or the first. It is a two-way
-// prop: `:current=x` binds it to state of the program, and unbound it is a
-// cell of the stack's own, read as `pages.current` -- a navigator's value, so
-// `pages.current == about` and `pages.current.title` read it.
+// Pages one on top of another, showing the top one, which starts as the page
+// whose href is "/", or the first. Every page carries one meta type, which is
+// the stack's M.
 //
 // A page the stack is not showing is not mounted: leaving one destroys what it
 // rendered, as an `if` does.
 #[marks.builtin("navStack")]
-component stack(
-    :current navigator,
-    pages ...component navigator,
-) ui.node
+component stack<M = struct {}>(pages ...component _page<M>) ui.node
+
+// The page showing. It is the stack's own state, read and never set:
+// `go` and `back` are what change it.
+#[marks.intrinsic("nav.current")]
+func stack<M>.current() _page<M>
 
 // Shows `to`, and pushes the page it replaces: `back` returns to it. `params`
-// is what the page's content is handed, its type's zero when not given, and it
-// travels with the entry, so `back` restores it too.
+// is what the page's content is handed, the page's own `params` when not
+// given, and it travels with the entry, so `back` restores it too.
 #[marks.intrinsic("nav.go")]
-func stack.go<T>(to page<T>, params T = T{})
+func stack<M>.go<T>(to page<T, M>, params option<T> = null)
 
 // Returns to the page `go` last replaced, with the params it had. Nothing at
 // the bottom of the stack.
 #[marks.intrinsic("nav.back")]
-func stack.back()
+func stack<M>.back()
 
-// Goes to `to` when activated, handing it `params`: an `<a href>` on html, and
-// the stack's `go` wherever there is no address to follow. `text` is what it
-// shows, as `ui.link`'s is. `@click` runs first, as `ui.link`'s does.
+// Goes to `to` when activated, handing it `params`, or the page's own when not
+// given: an `<a href>` on html, and the stack's `go` wherever there is no
+// address to follow. `text` is what it shows, as `ui.link`'s is. `@click` runs
+// first, as `ui.link`'s does.
 #[marks.builtin("navLink")]
-component link<T = struct {}>(
-    to page<T>,
-    params T = T{},
+component link<T = struct {}, M = struct {}>(
+    to page<T, M>,
+    params option<T> = null,
     text string,
     style ui.Style,
     @click ui.ClickEvent,

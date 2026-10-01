@@ -175,7 +175,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	}
 
 	if sym, ok := c.scope.Lookup(t.Name); ok {
-		if c.rejectUnexported(t.Pos, sym) {
+		// The export rule is the one between packages: a bare name declared
+		// in this one -- a library's own `_page` -- is its own to name.
+		if !c.inLibSource() && !c.resolvedInPackage(t.Name) && c.rejectUnexported(t.Pos, sym) {
 			return TypDyn
 		}
 		if typ := sym.SymType(); typ != nil {
@@ -271,7 +273,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		return dynFallback("type %s.%s comes from a native import with no package", pkg, name)
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
-		if c.rejectUnexported(ast.Pos{}, tsym) {
+		if c.rejectUnexported(t.Pos, tsym) {
 			return TypDyn
 		}
 		typ := tsym.SymType()
@@ -306,7 +308,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 	// bare `page` names it inside its own package.
 	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
 		if f, ok := sym.(*ir.Component); ok {
-			if c.rejectUnexported(ast.Pos{}, sym) {
+			if c.rejectUnexported(t.Pos, sym) {
 				return TypDyn
 			}
 			if len(f.TypeParams) > 0 {

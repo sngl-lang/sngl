@@ -3,7 +3,6 @@ package interp
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -14,33 +13,43 @@ import (
 //
 // A stack mounts every page it holds, so each page's `#id` is bound to its
 // value whether it is showing or not -- `pages.go(about)` names a page that is
-// not mounted, and the value is what `current` holds. Each page registers with
-// the stack as it mounts, and only the one `current` names mounts its content:
-// a page not showing is not mounted, so what it rendered is gone, state
+// not mounted, and the value is what `current` answers. Each page registers
+// with the stack as it mounts, and only the one showing mounts its content: a
+// page not showing is not mounted, so what it rendered is gone, state
 // included, when it is left.
+//
+// Which page shows is the stack's state and the params a page shows with are
+// the page's, both kept here rather than in a prop: a stack declares no
+// `current` and a page's `params` is only where it starts.
 const (
 	navStackIntrinsic = "none:Stack"
 	navPageIntrinsic  = "none:Page"
 )
 
-// navFrame is one stack being mounted: its own scope, which page is current,
-// and the pages it holds in the order they mounted.
+// navFrame is one stack being mounted: its own scope and the pages it holds
+// in the order they mounted.
 type navFrame struct {
-	env     *Env
-	current any
-	pages   []*Node
+	env   *Env
+	pages []*Node
 }
 
 // navState is what a stack keeps across mounts, on its instance's scope: the
-// entries `go` pushed. An entry is the page and the params it was showing
-// with, which is why `back` restores both.
+// page showing, and the entries `go` pushed. An entry is the page and the
+// params it was showing with, which is why `back` restores both.
 type navState struct {
+	current any
 	history []navEntry
 }
 
 type navEntry struct {
 	page   any
-	params any
+	params *navParams
+}
+
+// navParams is the params a page is showing with, when something handed it
+// some; a page with none shows its own `params` prop.
+type navParams struct {
+	v any
 }
 
 // navStack mounts a stack. With nothing current yet it mounts once to learn
@@ -60,7 +69,10 @@ func (m *mounter) navStack(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	m.add(node)
 	m.bindHandle(env, inst, node)
 
-	frame := &navFrame{env: env, current: readProp(env, "current")}
+	if env.nav == nil {
+		env.nav = &navState{}
+	}
+	frame := &navFrame{env: env}
 	m.navs = append(m.navs, frame)
 	defer func() { m.navs = m.navs[:len(m.navs)-1] }()
 
@@ -68,7 +80,7 @@ func (m *mounter) navStack(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	if err != nil {
 		return nil, err
 	}
-	if frame.current == nil && len(frame.pages) > 0 {
+	if env.nav.current == nil && len(frame.pages) > 0 {
 		start := frame.pages[0]
 		for _, p := range frame.pages {
 			if href, _ := p.Props["href"].(string); href == "/" {
@@ -79,11 +91,8 @@ func (m *mounter) navStack(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		for _, k := range kids {
 			m.dropTree(k)
 		}
-		frame.current = start.Map()
+		env.nav.current = start.Map()
 		frame.pages = nil
-		if err := writeProp(env, "current", frame.current); err != nil {
-			return nil, err
-		}
 		if kids, err = m.stmts(env, inst.Children, path); err != nil {
 			return nil, err
 		}
@@ -114,8 +123,22 @@ func (m *mounter) navPage(env *Env, inst *ir.NodeInst, path string) ([]*Node, er
 		frame.pages = append(frame.pages, page)
 	}
 	env.navStack = frame.env
-	if instanceEnv(frame.current) != env {
+	if instanceEnv(frame.env.nav.current) != env {
 		return []*Node{node}, nil
+	}
+	// The params it was handed, over the prop the call site wrote, for as long
+	// as the content mounts: the population reads them there, and the prop
+	// itself stays what the call site wrote, which `pkg.params` reads.
+	if sym := propSym(env.Comp, "params"); sym != nil && env.navParams != nil {
+		written, had := env.vals[sym]
+		env.Set(sym, env.navParams.v)
+		defer func() {
+			if had {
+				env.vals[sym] = written
+			} else {
+				delete(env.vals, sym)
+			}
+		}()
 	}
 	kids, err := m.stmts(env, inst.Children, path)
 	if err != nil {
@@ -158,50 +181,8 @@ type InstanceValue interface {
 	InstanceEnv() *Env
 }
 
-// readProp is an instance's prop as it stands: its cell where the call site
-// left a two-way prop unbound, and the call site's value otherwise.
-func readProp(env *Env, name string) any {
-	if env == nil || env.Comp == nil {
-		return nil
-	}
-	sym := propSym(env.Comp, name)
-	if sym == nil {
-		return nil
-	}
-	v, _ := env.Value(sym)
-	return v
-}
-
-// writeProp writes an instance's two-way prop the way the host reporting a
-// change does: through the call site's binding where it wrote one, and into
-// the instance's own cell where it did not.
-func writeProp(env *Env, name string, v any) error {
-	if env == nil || env.Comp == nil {
-		return fmt.Errorf("no instance to write %s on", name)
-	}
-	sym := propSym(env.Comp, name)
-	if sym == nil {
-		return fmt.Errorf("%s declares no prop %q", env.Comp.Name, name)
-	}
-	env.Set(sym, v)
-	if env.inst == nil || env.parent == nil {
-		return nil
-	}
-	for _, b := range env.inst.Bindings {
-		if b.PropName != name {
-			continue
-		}
-		tmp := &ir.Param{Name: "__bound"}
-		env.parent.Set(tmp, v)
-		err := env.parent.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
-		delete(env.parent.vals, tmp)
-		return err
-	}
-	return nil
-}
-
 // navGo shows `to` in stack, pushing the page it replaces with the params that
-// page was showing.
+// page was showing. Params of nil are none handed, and the page shows its own.
 func navGo(stack *Env, to any, params any) error {
 	target := instanceEnv(to)
 	if stack == nil || target == nil {
@@ -210,13 +191,15 @@ func navGo(stack *Env, to any, params any) error {
 	if stack.nav == nil {
 		stack.nav = &navState{}
 	}
-	if cur := readProp(stack, "current"); instanceEnv(cur) != nil {
-		stack.nav.history = append(stack.nav.history, navEntry{page: cur, params: readProp(instanceEnv(cur), "params")})
+	if cur := instanceEnv(stack.nav.current); cur != nil {
+		stack.nav.history = append(stack.nav.history, navEntry{page: stack.nav.current, params: cur.navParams})
 	}
-	if err := writeProp(target, "params", params); err != nil {
-		return err
+	target.navParams = nil
+	if params != nil {
+		target.navParams = &navParams{v: params}
 	}
-	return writeProp(stack, "current", to)
+	stack.nav.current = to
+	return nil
 }
 
 // navBack returns stack to the entry `go` last pushed, params and all.
@@ -226,10 +209,11 @@ func navBack(stack *Env) error {
 	}
 	last := stack.nav.history[len(stack.nav.history)-1]
 	stack.nav.history = stack.nav.history[:len(stack.nav.history)-1]
-	if err := writeProp(instanceEnv(last.page), "params", last.params); err != nil {
-		return err
+	if page := instanceEnv(last.page); page != nil {
+		page.navParams = last.params
 	}
-	return writeProp(stack, "current", last.page)
+	stack.nav.current = last.page
+	return nil
 }
 
 func init() {
@@ -242,6 +226,16 @@ func init() {
 			params = args[2]
 		}
 		return nil, navGo(instanceEnv(args[0]), args[1], params)
+	}
+	intrinsics["nav.current"] = func(args []any) (any, error) {
+		if len(args) < 1 {
+			return nil, fmt.Errorf("current: want the stack")
+		}
+		stack := instanceEnv(args[0])
+		if stack == nil || stack.nav == nil {
+			return nil, nil
+		}
+		return stack.nav.current, nil
 	}
 	intrinsics["nav.back"] = func(args []any) (any, error) {
 		if len(args) < 1 {

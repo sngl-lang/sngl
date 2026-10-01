@@ -8,7 +8,8 @@
 # The tests read what a compiled test can reach -- the component's state, its
 # own handles, a page's record -- rather than nav_stack.sngl's reads of a
 # label's value and of a counter nested in a page, which no Go target's test
-# emitter compiles yet.
+# emitter compiles yet. So the params a page shows are what an effect keyed
+# on them in its content saw.
 #
 # testdata/nav_stack_lowered.txtar is the code.
 
@@ -33,21 +34,29 @@ struct Pkg {
     name string
 }
 
+struct Meta {
+    label string
+}
+
 component site ui.node {
     var mounts = 0
+    var seen = ""
     nav.stack #pages {
-        nav.page #about(href="/about", title="About") {
+        nav.page #about(href="/about", title="About", meta=Meta{label="about"}) {
             ui.text(value="about")
         }
-        nav.page #home(href="/", title="Home") {
+        nav.page #home(href="/", title="Home", meta=Meta{label="home"}) {
             ui.text(value="home")
             effect(@mount {
                 mounts += 1
             })
         }
-        nav.page #pkg(href=`/p/{name}`, title="Package", params=Pkg{}) {
+        nav.page #pkg(href=`/p/{name}`, title="Package", meta=Meta{label="pkg"}, params=Pkg{name="first"}) {
             component content(p) {
                 ui.text(value=p.name)
+                effect(on=p.name, @mount {
+                    seen = p.name
+                })
             }
         }
     }
@@ -56,7 +65,7 @@ component site ui.node {
         pages.go(about)
     })
     ui.button #toPkg(text="Pkg", @click {
-        pages.go(pkg, Pkg{name="sngl"})
+        pages.go(pkg)
     })
     ui.button #toOther(text="Other", @click {
         pages.go(pkg, Pkg{name="other"})
@@ -65,11 +74,13 @@ component site ui.node {
         pages.back()
     })
     nav.link #aboutLink(to=about, text="about")
+    nav.link #linked(to=pkg, params=Pkg{name="linked"}, text="linked")
 }
 
 func testAStackStartsAtTheRootPage(t Test, c site) {
     t.assert(c.pages.current == c.home)
     t.assert(c.pages.current.title == "Home")
+    t.assert(c.pages.current.meta.label == "home")
 }
 
 func testGoShowsThePageAndBackReturns(t Test, c site) {
@@ -84,17 +95,19 @@ func testGoShowsThePageAndBackReturns(t Test, c site) {
 
 func testParamsTravelWithTheEntry(t Test, c site) {
     c.toPkg.click()
-    t.assert(c.pkg.params.name == "sngl")
+    t.assert(c.seen == "first")
     c.toOther.click()
-    t.assert(c.pkg.params.name == "other")
+    t.assert(c.seen == "other")
     c.back.click()
     t.assert(c.pages.current == c.pkg)
-    t.assert(c.pkg.params.name == "sngl")
+    t.assert(c.seen == "first")
 }
 
 func testALinkGoesToItsPage(t Test, c site) {
     c.aboutLink.click()
     t.assert(c.pages.current == c.about)
+    c.linked.click()
+    t.assert(c.seen == "linked")
 }
 
 func testAPageNotShowingIsNotMounted(t Test, c site) {
@@ -105,7 +118,7 @@ func testAPageNotShowingIsNotMounted(t Test, c site) {
     t.assert(c.mounts == 2)
 }
 -- testrun/bubbletea/go/app.sngl/site/1 --
-sha256:d3c0e9596631acbcb51ba54055c61f06
+sha256:b721184d17d1b431f7312b18e106497b
 {
   "results": [
     {
@@ -131,7 +144,7 @@ sha256:d3c0e9596631acbcb51ba54055c61f06
   ]
 }
 -- testrun/fyne/go/app.sngl/site/1 --
-sha256:b9bc9333958c28a85a4b2263521a07cd
+sha256:dec6356b82bd460f2bef31c80e127f23
 {
   "results": [
     {
@@ -157,7 +170,7 @@ sha256:b9bc9333958c28a85a4b2263521a07cd
   ]
 }
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:8b9b95dfdb7f17310b73c6655455ac16
+sha256:c955855443cd430081024356650decd9
 {
   "results": [
     {

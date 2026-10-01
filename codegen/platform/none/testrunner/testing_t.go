@@ -338,6 +338,13 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	}
 	// A parameterless func or method on the component reads as a value.
 	if fn := cv.funcNamed(field); fn != nil && effectiveArity(fn) == 0 {
+		// One the interpreter answers natively -- a stack's `current` --
+		// has no body to run, and is handed the instance.
+		if fn.Intrinsic != "" {
+			if v, ok, err := interp.RunIntrinsic(fn.Intrinsic, []any{cv}); ok {
+				return v, err
+			}
+		}
 		compEnv := cv.compEnv()
 		var synth []ir.Expr
 		if len(fn.Params) > 0 && fn.Params[0].Receiver {

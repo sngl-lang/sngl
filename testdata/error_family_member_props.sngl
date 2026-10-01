@@ -24,3 +24,9 @@ component plain(name string, rank int) suit {}
 component table(name string, rank int) suit {
     plain(name="a", rank=1, color="red") // ERROR(check) "component plain takes \"color\" from its family suit, which gives it a default and no call site a say"
 }
+
+component boxed<M = struct {}>(name string, meta M) build.family
+
+component held<M = struct {}>(name string, meta M) boxed<M> {}
+
+component pinned(name string, meta int) boxed<string> {} // ERROR(check) "component pinned declares prop \"meta\" as int, and its family boxed<string> declares it string"

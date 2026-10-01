@@ -1,8 +1,8 @@
 // What a family declaration refuses. A family declares the props its members
 // share, with a default for the members that omit one, and nothing else: a
 // value of the family is a record of those, read and never bound, so a
-// two-way or const prop, an event, a slot and a type parameter would each be
-// read by nobody. Nothing renders it, so it is
+// two-way or const prop, an event and a slot would each be read by nobody. A
+// type parameter is the members' to bind, so it is allowed. Nothing renders it, so it is
 // never placed in a tree; and a body is where how it is generated will be
 // written, which nothing reads yet.
 
@@ -21,7 +21,7 @@ component evented(@tick ui.ClickEvent) build.family // ERROR(check) "component e
 
 component slotted(content ...component) build.family // ERROR(check) "component slotted is a family, which declares the props its members share and nothing else: content is a slot"
 
-component generic<T>(v T) build.family // ERROR(check) "component generic is a family, which declares the props its members share and nothing else: it takes type parameters"
+component generic<T = int>(v T) build.family
 
 component bodied build.family { // ERROR(check) "component bodied is a family, and a family has no body yet"
 }

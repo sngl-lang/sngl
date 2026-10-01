@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -41,6 +42,18 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		}
 		bindTypeParams(p.Type, argType, bindings)
 	}
+	return c.specializeWith(comp, bindings)
+}
+
+// specializeWith is the specialization of comp at bindings, its defaults
+// filling what they leave unbound. What the props pinned is recorded, so the
+// children may bind the rest once they are checked (bindFromChildren) without
+// the props' expressions being walked a second time.
+func (c *checker) specializeWith(comp *ir.Component, pinned map[string]*ir.Type) *ir.Component {
+	bindings := maps.Clone(pinned)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
 	// A parameter no prop pinned falls back to its default, the way a struct's
 	// does when the type-argument list stops short. One with neither stays a
 	// parameter, and a prop typed by it accepts anything -- the same latitude a
@@ -79,7 +92,71 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		}
 	}
 	c.specArgs[spec] = bound
+	if c.specPinned == nil {
+		c.specPinned = map[*ir.Component]map[string]*ir.Type{}
+	}
+	c.specPinned[spec] = pinned
 	return spec
+}
+
+// bindFromChildren binds the type parameters a generic family names in the
+// rest slot's type from the children written there, where no prop pinned
+// them: `stack<M>(pages ...component _page<M>)` holds pages each of which is
+// a `_page<Meta>`, so the stack is a `stack<Meta>`. The first child that is a
+// member says what they are, and every other is held to it, since one slot
+// holds one type. Returns spec, or the specialization the children bound.
+func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt) *ir.Component {
+	if comp == nil || len(comp.TypeParams) == 0 {
+		return spec
+	}
+	rest := comp.RestSlot()
+	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !mentionsTypeParam(rest.Content) {
+		return spec
+	}
+	fam := ir.TypeFamily(rest.Content)
+	if fam == nil {
+		return spec
+	}
+	pinned := c.specPinned[spec]
+	bindings := maps.Clone(pinned)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
+	var first *ir.Type
+	var walk func([]ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, st := range stmts {
+			if _, binds, ok := treeTransparent(st); ok {
+				for _, b := range binds {
+					walk(b)
+				}
+				continue
+			}
+			n, ok := st.(*ir.NodeInst)
+			if !ok || n.Component == nil || n.Component.Tree != fam {
+				continue
+			}
+			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, c.nodeArgs[n])}
+			if first == nil {
+				first = got
+				bindTypeParams(rest.Content, got, bindings)
+				continue
+			}
+			if !got.Equal(first) {
+				at := stmtPos(n.AST)
+				if at == nil {
+					continue
+				}
+				c.error(*at, "this %s is a %s, and %s holds %s: every member one %s holds is the same type",
+					n.Component.DisplayName(), got, comp.DisplayName(), first, comp.DisplayName())
+			}
+		}
+	}
+	walk(children)
+	if first == nil {
+		return spec
+	}
+	return c.specializeWith(comp, bindings)
 }
 
 // specializeHandle gives the handle a node's `#id` declared the type

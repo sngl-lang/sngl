@@ -545,7 +545,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
-- **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: the `navigator` family, `stack` (pages one on top of another, `go`/`back` as `#[intrinsic]` methods each target answers) and its member `page`, and `link`. See **Navigation** below.
+- **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: `stack` (pages one on top of another, `current`/`go`/`back` as `#[intrinsic]` methods each target answers), `page` and the unexported family `_page` it is the one member of, and `link`. See **Navigation** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
@@ -671,7 +671,7 @@ than dropped — and writing one in a tree is an error rather than a membership
 mismatch. It is exempt from the bodyless-component rule for the same reason.
 
 **A family declares the props its members share**, and is a type with values.
-`component navigator(href string, title string) build.family`: every member
+`component suit(name string, rank int) build.family`: every member
 declares each prop by name and type (`checkFamilyMember`, run once the
 package's components are registered and again for a member whose family was
 inferred), and a handle to a member is assignable to the family's type, one way
@@ -682,12 +682,14 @@ the family's props and `==` against a member compares identity
 may carry a default, which must be constant: a member that omits the prop then
 holds it with that default, and a call site may not set it
 (`refuseInheritedProps`), since the member never said it takes one. Anything
-else on a family -- a two-way or const prop, an event, a slot, a type
-parameter -- would be read by nobody and is refused (`checkFamilyDecl`). Every
+else on a family -- a two-way or const prop, an event, a slot -- would be
+read by nobody and is refused (`checkFamilyDecl`); a type parameter is the
+members' to bind (see *Navigation*). Every
 family has values, the propless ones included (identity alone), but naming a
 family as an expression is still an error: it is a type, not one of its
-values. `testdata/family_props.sngl`, `error_family_member_props.sngl`,
-`error_family_value.sngl` and `error_family_decl.sngl`.
+values. `testdata/family_props.sngl`, `family_generic.sngl`,
+`error_family_member_props.sngl`, `error_nav_surface.sngl` and
+`error_family_decl.sngl`.
 
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name
@@ -2591,10 +2593,28 @@ checker has is the `import` that read the document.
 window is a surface and a page a destination. A stack shows one page, named by
 its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
 `nav.link(to=about, text="About")` -- and `pages.current` is the page
-showing, read through the stack's handle. A page's `params` travel with the
-history entry, so `back` restores them, and a page not showing is not
-mounted. A link shows `text`, as `ui.link` does, and takes no content: no Go
-target's button renders any.
+showing, read through the stack's handle. A page not showing is not mounted. A
+link shows `text`, as `ui.link` does, and takes no content: no Go target's
+button renders any.
+
+**The stack's page and a page's params are state of the navigation, never
+props.** `current` is a computed of the stack (`#[intrinsic("nav.current")] func stack<M>.current()`), read with its parentheses elided as any zero-arg
+method selected through a handle is, so nothing sets or binds it. A page's
+`params` is a one-way prop: where the page starts, and what a `go` or a
+`link` naming no params shows it with (`params option<T> = null`). The params
+it is showing reach its content's population, `component content(p)`, and
+nothing else; `pkg.params` reads what the call site wrote. They travel with
+the history entry, so `back` restores them.
+
+**The family is `_page<M>`, unexported, and `page` is its only member.** It
+exists so `pages.current` has a type: `pages.current.title`,
+`pages.current.meta.label` and `pages.current == about` read it, and a program
+names a page and never the family -- so a func cannot take one as a
+parameter, and `pages.go(pages.current)` is refused, since `go` takes a
+`page<T, M>`. `meta M` is what a program says about every page of a stack
+beside its href and title, one type for all of them; `stack<M>` binds M from
+the pages written in it (`bindFromChildren`, every page held to the first),
+which is what will let a menu iterate the pages.
 
 **The compiler answers the three nodes, never a body.** `stack`, `page` and
 `link` carry `#[marks.builtin("navStack")]`, `navPage` and `navLink`, as
@@ -2604,30 +2624,34 @@ overrides, and `passNavigation` finds them by the kind. Three answers:
 
 - **The interpreter** is the reference. It runs the checked IR, so
   `sngl:platform/none` overrides the three with its `Stack`, `Page` and
-  `Link` primitives and `internal/interp/nav.go` answers them.
+  `Link` primitives and `internal/interp/nav.go` answers them, keeping the
+  page showing on the stack's instance and the params a page is showing on
+  the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
+  from what it holds, and `Page` is `#[tree.none]`.
 - **A target declaring `#[gen.can(navigation)]`** renders them in its own
   codegen -- html's documents and routes, android's `NavHost` (Phase C2's
   steps 4 and 5).
 - **Every other target gets `passNavigation`** (`internal/lower/navigation.go`),
   which lowers them to plain UI before ImplicitState: a var holding the
-  current page as the family's record (`navigator__value`, its props plus an
-  `id` numbered across the family's pages in the package), a var per page
-  whose params are not the empty struct, a history list of entries holding
-  the page replaced and every params var, and the pages as an `if`/`else if`
+  current page as the family's record (`_page__value`, the family's props at
+  the stack's meta type plus an `id` numbered across the family's pages in
+  the package), a var per page whose params are not the empty struct,
+  starting at what its call site wrote, a history list of entries holding the
+  page replaced and every params var, and the pages as an `if`/`else if`
   chain on `current.id`, so a page not showing is not mounted. `go` pushes,
-  writes the params and `current`; `back` pops and restores both, and does
-  nothing at the bottom; `nav.link` is a `ui.button` whose click runs the
-  link's `@click` and then the same `go`. A read of `current` or `params` is
-  the cell -- rebased through `c` when a test reads `c.pages.current` -- a
-  page's handle read as a value is its record, `==` against a navigator
-  compares ids, and every navigator or page type the program names is the
-  record's. A bound `:params=picked` makes `picked` the cell. Two shapes are
+  writes the params and the current page; `back` pops and restores both, and
+  does nothing at the bottom; `nav.link` is a `ui.button` whose click runs
+  the link's `@click` and then the same `go`. A read of `current` is the cell
+  -- rebased through `c` when a test reads `c.pages.current` -- a page's
+  handle read as a value is its record, `==` against one compares ids, and
+  every page type the program names is the record's. Three shapes are
   refused with a position (`cmd/sngl/testdata/nav_lowering_refused.txt`): a
-  stack directly under a `for`, whose cells would be one for every copy, and
-  a `go` naming its page through a value rather than a page's own `#id`.
-  `testdata/nav_stack_lowered.txtar` is the code on gtk4, fyne and
-  bubbletea, and `cmd/sngl/testdata/nav_stack_runs.txt` runs the program on
-  each and on the interpreter.
+  stack directly under a `for`, whose cells would be one for every copy, a
+  `go` naming its page through a value rather than a page's own `#id`, and
+  params handed as an option value. `testdata/nav_stack_lowered.txtar` is
+  the code on gtk4, fyne and bubbletea, and
+  `cmd/sngl/testdata/nav_stack_runs.txt` runs the program on each and on the
+  interpreter.
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --
@@ -2639,14 +2663,6 @@ emitter compiles a read of a node's prop (`c.heading.value`) or of a component
 nested in the one under test (`c.tally.hits`), which is why `nav_stack_runs`
 tests a narrower surface than `testdata/nav_stack.sngl`.
 
-`current` is typed by the family, `:current navigator`, so no page's `T`
-escapes into it: `pages.current.title` reads the family's prop,
-`pages.current == about` compares identity, and `pages.current.params` is an
-error -- a page's params are read off the page's own handle, `pkg.params`,
-which is a `Pkg`. `pages.go(pages.current)` is refused for the same reason,
-since `go` takes a `page<T>` and a family value is never turned back into a
-member.
-
 What it needed from the checker is general:
 
 - **A component type keeps its type arguments** (`page<T>`, resolved like a
@@ -2655,9 +2671,21 @@ What it needed from the checker is general:
   beside it to that type. Written bare, a generic component type is its
   defaults, as a struct type is (`page` is `page<struct {}>`), and a
   parameter with no default has to be written. A select through one reads
-  its props under those arguments, and a handle reached from outside its body
-  (`c.pkg`) carries what its call site bound (`handleArgs`). A qualified
-  component name (`nav.page`) is a type too, not only a family.
+  its props, and its computeds' results, under those arguments, and a handle
+  reached from outside its body (`c.pkg`) carries what its call site bound
+  (`handleArgs`). A qualified component name (`nav.page`) is a type too, not
+  only a family.
+- **A family may take type parameters**, and a member binds them in its
+  return position: `page<T, M>` is a `_page<M>` (`Component.TreeArgs`,
+  `ir.FamilyArgs`). A member declares each family prop at the family's type
+  under that binding, a member's handle is assignable to the family at the
+  arguments it binds, and a select through a family value reads its props at
+  the value's. A generic slot's family arguments are bound by the children
+  written in it where no prop pinned them (`bindFromChildren`, recorded per
+  node in `nodeArgs`). `testdata/family_generic.sngl`.
+- **A package names its own unexported declarations**: the export rule is the
+  one between packages, and a bare type name resolving in this package (or in
+  the library source being loaded) is not held to it.
 - **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
   and written out by each call that omits it (`typeParamZeroFor`), for a func
   and for a component prop, the library's included, since no backend can
@@ -2670,7 +2698,9 @@ What it needed from the checker is general:
 - **`==` on two handles needs one declaration.**
 - **A method whose receiver is not its first parameter** (every `sngl:`
   method, a component's) infers its type parameters from all of its
-  arguments; the shift for the receiver-as-param form dropped `to`.
+  arguments; the shift for the receiver-as-param form dropped `to`. And a
+  component another package declares finds its methods in its own table
+  when its bare name is not in scope (`pages.current` off `nav.stack`).
 
 And from the interpreter, each a rule for every component:
 
@@ -2683,7 +2713,8 @@ And from the interpreter, each a rule for every component:
   it renders** (`InvokeElementEvent`), the way a user's click reaches the
   widget: `c.link.click()` clicks what the link's override draws.
 - **A bare call of an intrinsic the interpreter implements runs it**, as a
-  qualified one always did.
+  qualified one always did, and so does an intrinsic computed selected
+  through a handle (`intrinsicMethod`, and the test runner's `GetField`).
 
 `TestRunFixtures` runs `SKIP(codegen)` fixtures too: the directive opts a
 fixture out of code generation, and the interpreter is the reference such a

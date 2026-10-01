@@ -599,22 +599,23 @@ ui.window #main(title="Docs - {pages.current.title}") {
 The package, as settled:
 
 ```sngl
-component navigator build.family
+component _page<M = struct {}>(href string, title string, meta M) build.family
 
-component stack(:current page, pages ...component navigator) ui.node {
-    func go<T>(to page<T>, params T = T{})   // push: to's params, then current
-    func back()                              // pop; nothing at the bottom
-}
+component stack<M = struct {}>(pages ...component _page<M>) ui.node
+func stack<M>.current() _page<M>                          // read as pages.current
+func stack<M>.go<T>(to page<T, M>, params option<T> = null)  // none: the page's own
+func stack<M>.back()                                      // pop; nothing at the bottom
 
-component page<T = struct {}>(
+component page<T = struct {}, M = struct {}>(
     href string,
     title string,
-    :params T = T{},
-    content ...component(v T) ui.node,
-) navigator
+    meta M = M{},
+    params T = T{},                     // where it starts
+    content ...component(v T) ui.node,  // handed the params it is showing
+) _page<M>
 
-component link<T = struct {}>(to page<T>, params T = T{}, text string,
-    style ui.Style) ui.node
+component link<T = struct {}, M = struct {}>(to page<T, M>,
+    params option<T> = null, text string, style ui.Style) ui.node
 ```
 
 Which page shows is state, and where it lives is the platform's: the URL and
@@ -657,7 +658,8 @@ Settled:
 
 Settled in C2's planning:
 
-- **`nav.navigator` is the family**, `nav.stack` the first member that holds
+- **`nav.navigator` is the family** (withdrawn for `_page<M>`, last
+  bullet), `nav.stack` the first member that holds
   pages and `nav.page` the member of it. `ui.link(href=)` stays as the
   hyperlink; `nav.link(to=)` names a page.
 - **A handle read as a value is its node**: a constant record of the node's
@@ -666,7 +668,8 @@ Settled in C2's planning:
   -- `windowStructValue` is the case of it that exists. A handle is typed by
   its call site's specialization, so `pages.go(pkg, 3)` is refused against
   `pkg`'s `T`.
-- **A page's params are state of the page**: `:params` is a two-way prop, so
+- **A page's params are state of the page** (withdrawn for a one-way
+  prop and the content's population, last bullet): `:params` is a two-way prop, so
   unbound it is a cell starting at what the call site wrote, and `go` writes
   it. `content` is handed its current value. `go` takes the struct, the zero
   value when it is not passed, and `nav.link` takes `params=` for the same.
@@ -681,7 +684,8 @@ Settled in C2's planning:
 - **The md site is a `nav.stack`**: the package's generated component
   renders one `nav.page` per file, and the program's window is the chrome.
 - **`current` is typed by the family, which declares the props its members
-  share.** A family may declare props; every member declares each of them,
+  share** (the family is now `_page<M>` and `current` a computed, last
+  bullet). A family may declare props; every member declares each of them,
   by name and type. A handle to a member is assignable to its family's type,
   one way only, and a select through a family-typed value reaches only the
   family's props. So no type parameter escapes and no value is polymorphic:
@@ -741,6 +745,28 @@ Settled in C2's planning:
   A bound `:params=x` makes `x` the cell; a bound `:current` is routed the
   same way but cannot be written yet, since there is no family zero to start
   a `navigator` var at.
+- **Settled before android: navigation's state is navigation's.** Which page
+  a stack shows is internal to it, and `current` is a computed of the stack
+  (`stack<M>.current()`, read with the parentheses elided), so nothing sets
+  or binds it. A page's `params` is a one-way prop: where the page starts,
+  and what a `go` or a `link` naming none shows it with -- the argument is
+  `params option<T> = null`, since a default cannot name `to`'s. The params
+  a page is showing reach its content's population and nothing else, and
+  `pkg.params` reads what the call site wrote. That withdraws `:current` and
+  `:params` and their bindings.
+
+  The family is `_page<M>`, unexported, and `page` is its only member: no
+  custom page types, and no `tabs` or `split` in it, which withdraws
+  "navigators are a family" above. It exists so `pages.current` has a type,
+  so a program cannot name it and a func cannot take one. `meta M` is what a
+  program says about every page of a stack -- a menu's label -- with one
+  type per stack, bound from the pages written in it; it is what iterating
+  the pages (`stack.all()`, later, for the markup conversion) will read.
+  That needed families to take type parameters, a member binding them in
+  its return position (`page<T, M>` is a `_page<M>`), and a generic slot's
+  family arguments bound from its children. `go` and `link` take a
+  `page<T, M>` and convert it internally, so `pages.go(pages.current)` stays
+  refused.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -969,8 +995,11 @@ fixtures written first:
    and six fixtures for the checker rules). `current` is typed by the family,
    which declares the props its members share (decision 15); the bare-type
    leniency it replaced is gone from `ir.Type.Equal`
-   (`testdata/family_props.sngl`, `error_family_member_props.sngl`,
-   `error_family_value.sngl`).
+   (`testdata/family_props.sngl`, `error_family_member_props.sngl`). The
+   surface was revised before step 4 (decision 15's last bullet:
+   `pages.current` a computed, `params` one-way, the family `_page<M>`):
+   `testdata/nav_stack.sngl`, `family_generic.sngl`,
+   `error_nav_surface.sngl`.
 3. **`passNavigation`** and the `navigation` capability in `sngl:x/gen` --
    *done.* `testdata/nav_stack_lowered.txtar` on gtk4, fyne and bubbletea,
    `cmd/sngl/testdata/nav_stack_runs.txt` running nav_stack's program there

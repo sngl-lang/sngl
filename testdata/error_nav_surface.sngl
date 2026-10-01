@@ -1,0 +1,38 @@
+// SKIP(codegen) "a compiled target answers sngl:ui/nav in C2's later commits"
+// What sngl:ui/nav refuses. A stack's current page is its own state, read and
+// never set, and a page's params are where it starts, never bound: the params
+// it is showing reach its content's population. The family a page belongs to
+// is unexported, so a program names a page and never the family, and a value
+// of it is never turned back into a page -- `go` takes a page. Every page of a
+// stack carries one meta type.
+
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+struct Meta {
+    label string
+}
+
+func titleOf(n nav._page) string { // ERROR(check) "cannot refer to unexported identifier \"_page\""
+    return n.title
+}
+
+var picked = Pkg{name="x"}
+
+component site ui.node {
+    nav.stack #pages(current=pkg) {                                                              // ERROR(check) "unknown prop \"current\" on component stack"
+        nav.page #pkg(href=`/p/{name}`, title="Package", meta=Meta{label="p"}, :params=picked) { // ERROR(check) "cannot bind :params: page declares params as a one-way prop; write it as `:params` in the declaration to let a caller bind it"
+            ui.text(value="pkg")
+        }
+        nav.page #other(href="/o", title="Other", meta=3) { // ERROR(check) "this page is a _page<int>, and stack holds _page<Meta>: every member one stack holds is the same type"
+            ui.text(value="other")
+        }
+    }
+    ui.text(value=pages.current.params.name)                    // ERROR(check) "_page is a family, and a value of one reaches only the props its members share: it declares no \"params\""
+    ui.button(text="Again", @click { pages.go(pages.current) }) // ERROR(check) "cannot pass _page<Meta> as page<T, Meta>"
+    ui.button(text="Pkg", @click { pages.go(pkg, 3) })          // ERROR(check) "cannot pass int as option<Pkg>"
+}
