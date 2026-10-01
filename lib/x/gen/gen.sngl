@@ -18,7 +18,7 @@ import tree "sngl:tree"
 // hold a render slot, the platform can reach its drawing thread, the language
 // can spawn -- and a pass reads each to choose what to emit rather than whether
 // to run.
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component

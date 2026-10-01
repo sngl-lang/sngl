@@ -1,0 +1,184 @@
+# testdata/nav_stack.sngl's program, run on each target passNavigation lowers
+# sngl:ui/nav for, and on the interpreter, which answers it from the checked
+# IR and is the reference the others are held to. A stack starts at the page
+# at "/", `go` and a link show another and push, `back` restores the page and
+# its params, and a page not showing is not mounted: the effect on the home
+# page mounts again each time it comes back.
+#
+# The tests read what a compiled test can reach -- the component's state, its
+# own handles, a page's record -- rather than nav_stack.sngl's reads of a
+# label's value and of a counter nested in a page, which no Go target's test
+# emitter compiles yet.
+#
+# testdata/nav_stack_lowered.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+component site ui.node {
+    var mounts = 0
+    nav.stack #pages {
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+            effect(@mount {
+                mounts += 1
+            })
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", params=Pkg{}) {
+            component content(p) {
+                ui.text(value=p.name)
+            }
+        }
+    }
+    ui.text(value="Site - {pages.current.title}")
+    ui.button #toAbout(text="About", @click {
+        pages.go(about)
+    })
+    ui.button #toPkg(text="Pkg", @click {
+        pages.go(pkg, Pkg{name="sngl"})
+    })
+    ui.button #toOther(text="Other", @click {
+        pages.go(pkg, Pkg{name="other"})
+    })
+    ui.button #back(text="Back", @click {
+        pages.back()
+    })
+    nav.link #aboutLink(to=about, text="about")
+}
+
+func testAStackStartsAtTheRootPage(t Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.pages.current.title == "Home")
+}
+
+func testGoShowsThePageAndBackReturns(t Test, c site) {
+    c.toAbout.click()
+    t.assert(c.pages.current == c.about)
+    t.assert(c.pages.current.title == "About")
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+}
+
+func testParamsTravelWithTheEntry(t Test, c site) {
+    c.toPkg.click()
+    t.assert(c.pkg.params.name == "sngl")
+    c.toOther.click()
+    t.assert(c.pkg.params.name == "other")
+    c.back.click()
+    t.assert(c.pages.current == c.pkg)
+    t.assert(c.pkg.params.name == "sngl")
+}
+
+func testALinkGoesToItsPage(t Test, c site) {
+    c.aboutLink.click()
+    t.assert(c.pages.current == c.about)
+}
+
+func testAPageNotShowingIsNotMounted(t Test, c site) {
+    t.assert(c.mounts == 1)
+    c.toAbout.click()
+    t.assert(c.mounts == 1)
+    c.back.click()
+    t.assert(c.mounts == 2)
+}
+-- testrun/bubbletea/go/app.sngl/site/1 --
+sha256:d3c0e9596631acbcb51ba54055c61f06
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/site/1 --
+sha256:b9bc9333958c28a85a4b2263521a07cd
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/site/1 --
+sha256:8b9b95dfdb7f17310b73c6655455ac16
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}

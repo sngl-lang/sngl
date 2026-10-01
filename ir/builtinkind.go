@@ -86,6 +86,15 @@ const (
 	// @unmount when it leaves. `on` makes the bracket a keyed identity, so a
 	// changed value ends one lifetime and begins the next. See sngl:builtin.
 	BuiltinEffect BuiltinKind = "effect"
+	// NavStack, NavPage and NavLink are sngl:ui/nav's stack, page and link,
+	// which the compiler answers rather than a body: passNavigation lowers them
+	// to plain UI on a target that does not declare `navigation`, and a target
+	// that does renders them in its own codegen. A platform package may still
+	// override one, which is how sngl:platform/none hands them to the
+	// interpreter.
+	BuiltinNavStack BuiltinKind = "navStack"
+	BuiltinNavPage  BuiltinKind = "navPage"
+	BuiltinNavLink  BuiltinKind = "navLink"
 
 	BuiltinOutput BuiltinKind = "output"
 	// GenInputs is `sngl:x/gen/cache`'s `inputs`: what a generated file was
@@ -187,7 +196,8 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect:
+	case BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink:
 		return true
 	}
 	return false
@@ -226,6 +236,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenEmit, BuiltinGenNode,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,

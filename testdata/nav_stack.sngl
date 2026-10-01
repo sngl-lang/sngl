@@ -1,4 +1,3 @@
-// SKIP(codegen) "a compiled target answers sngl:ui/nav in C2's later commits; the interpreter answers it here"
 // A stack shows one page at a time and starts at the page whose href is "/".
 // `go` shows another and pushes the one it replaced, `back` returns to it,
 // and which page shows is the stack's own state, read through its handle: a
@@ -41,9 +40,7 @@ component site ui.node {
     ui.button #toPkg(text="Pkg", @click { pages.go(pkg, Pkg{name="sngl"}) })
     ui.button #toOther(text="Other", @click { pages.go(pkg, Pkg{name="other"}) })
     ui.button #back(text="Back", @click { pages.back() })
-    nav.link #aboutLink(to=about) {
-        ui.text(value="about")
-    }
+    nav.link #aboutLink(to=about, text="about")
 }
 
 func testAStackStartsAtTheRootPage(t Test, c site) {

@@ -583,7 +583,7 @@ import nav "sngl:ui/nav"
 
 ui.window #main(title="Docs - {pages.current.title}") {
     ui.vbox {
-        nav.link(to=about) { ui.text(value="About") }
+        nav.link(to=about, text="About")
         nav.stack #pages {
             nav.page #home(href="/") { … }
             nav.page #about(href="/about", title="About") { … }
@@ -613,8 +613,8 @@ component page<T = struct {}>(
     content ...component(v T) ui.node,
 ) navigator
 
-component link<T = struct {}>(to page<T>, params T = T{}, style ui.Style,
-    content ...component ui.node) ui.node
+component link<T = struct {}>(to page<T>, params T = T{}, text string,
+    style ui.Style) ui.node
 ```
 
 Which page shows is state, and where it lives is the platform's: the URL and
@@ -732,6 +732,15 @@ Settled in C2's planning:
   statement of what a component is, beside its return position), and a
   non-generic page with its params in a node of their own (which undoes the
   params being the page's).
+- **Settled while building the lowering.** `nav.link` shows `text`, as
+  `ui.link` does, and takes no content: no Go target's button renders any,
+  so "the target's clickable around its content" had nothing to be.
+  `stack`, `page` and `link` are builtin node kinds (`navStack`, `navPage`,
+  `navLink`), as `window` is, which exempts them from the bodyless-library
+  rule and is how the pass finds them. The pass runs before ImplicitState.
+  A bound `:params=x` makes `x` the cell; a bound `:current` is routed the
+  same way but cannot be written yet, since there is no family zero to start
+  a `navigator` var at.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -962,11 +971,17 @@ fixtures written first:
    leniency it replaced is gone from `ir.Type.Equal`
    (`testdata/family_props.sngl`, `error_family_member_props.sngl`,
    `error_family_value.sngl`).
-3. **`passNavigation`** and the `navigation` capability in `sngl:x/gen`:
-   the lowering above, with a golden per lowered target (gtk4, fyne,
-   bubbletea) and a `cmd/sngl` script running `testdata/nav_stack.sngl`'s
-   program on each. Still open from the plan this replaced: bubbletea's
-   `visible` cell surviving `if details`.
+3. **`passNavigation`** and the `navigation` capability in `sngl:x/gen` --
+   *done.* `testdata/nav_stack_lowered.txtar` on gtk4, fyne and bubbletea,
+   `cmd/sngl/testdata/nav_stack_runs.txt` running nav_stack's program there
+   and on the interpreter, and `nav_lowering_refused.txt` for a stack under a
+   `for` and a `go` through a value. Still open: bubbletea splices a
+   stateful component in a page into the Model, so its state survives the
+   page being left, as the `visible` cell survives `if details`; a page
+   handle read above its `nav.page` does not check, `specializeHandle`
+   running only when the node is; and no Go test emitter reaches a node's
+   prop or a nested component, so the script tests a narrower surface than
+   `nav_stack.sngl`.
 4. **android** declares `navigation`: a `NavHost`, system back pops; the
    `navigation-compose` dependency joins the scaffold. Fixes the lost
    `safeDrawingPadding` of a window whose content arrives through a slot.

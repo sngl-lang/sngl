@@ -25,6 +25,7 @@ component navigator(href string, title string) build.family
 // wrote and `go` replaces it. The content reads it through the population of
 // `content`, `component content(p) { … }`, the way any scoped slot is read;
 // content written bare sees none.
+#[marks.builtin("navPage")]
 component page<T = struct {}>(
     href string,
     title string,
@@ -40,6 +41,7 @@ component page<T = struct {}>(
 //
 // A page the stack is not showing is not mounted: leaving one destroys what it
 // rendered, as an `if` does.
+#[marks.builtin("navStack")]
 component stack(
     :current navigator,
     pages ...component navigator,
@@ -57,12 +59,13 @@ func stack.go<T>(to page<T>, params T = T{})
 func stack.back()
 
 // Goes to `to` when activated, handing it `params`: an `<a href>` on html, and
-// the stack's `go` wherever there is no address to follow. `@click` runs
-// first, as `ui.link`'s does.
+// the stack's `go` wherever there is no address to follow. `text` is what it
+// shows, as `ui.link`'s is. `@click` runs first, as `ui.link`'s does.
+#[marks.builtin("navLink")]
 component link<T = struct {}>(
     to page<T>,
     params T = T{},
+    text string,
     style ui.Style,
     @click ui.ClickEvent,
-    content ...component ui.node,
 ) ui.node

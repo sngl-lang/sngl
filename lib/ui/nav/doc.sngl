@@ -6,7 +6,7 @@
 // and which page is showing is state the stack keeps, read through its handle:
 //
 //	ui.window(title="Docs - {pages.current.title}") {
-//	    nav.link(to=about) { ui.text(value="About") }
+//	    nav.link(to=about, text="About")
 //	    nav.stack #pages {
 //	        nav.page #home(href="/") { … }
 //	        nav.page #about(href="/about", title="About") { … }

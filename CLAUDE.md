@@ -556,7 +556,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A package documents itself with a **package comment**: a run of line comments
@@ -601,8 +601,8 @@ refuses a mark on one that does not.
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
-node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`) mark a
-component, and the checker dispatches a visual node to the matching IR construct
+node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`, and
+`sngl:ui/nav`'s `navStack`, `navPage`, `navLink`) mark a component, and the checker dispatches a visual node to the matching IR construct
 off the mark. Four tree kinds mark a *family* — itself a component, but one
 that is never rendered: `treeFamily` (the family of families), `treeRoot` (the
 family a package body accepts), `treeNode` (the widget family) and `treeShape`
@@ -2590,11 +2590,54 @@ checker has is the `import` that read the document.
 `sngl:ui/nav` is decision 15 of `SNGL_PLUGINS.md`, landing over Phase C2: a
 window is a surface and a page a destination. A stack shows one page, named by
 its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
-`nav.link(to=about)` -- and `pages.current` is the page showing, read through
-the stack's handle. A page's `params` travel with the history entry, so `back`
-restores them, and a page not showing is not mounted. The interpreter is the
-one target that answers it so far (`internal/interp/nav.go`, `none`'s `Stack`,
-`Page` and `Link` primitives), and the compiled targets follow.
+`nav.link(to=about, text="About")` -- and `pages.current` is the page
+showing, read through the stack's handle. A page's `params` travel with the
+history entry, so `back` restores them, and a page not showing is not
+mounted. A link shows `text`, as `ui.link` does, and takes no content: no Go
+target's button renders any.
+
+**The compiler answers the three nodes, never a body.** `stack`, `page` and
+`link` carry `#[marks.builtin("navStack")]`, `navPage` and `navLink`, as
+`window` carries its kind: a builtin node is exempt from the bodyless-library
+rule and from inlining, `composeOverriddenBuiltins` composes one a platform
+overrides, and `passNavigation` finds them by the kind. Three answers:
+
+- **The interpreter** is the reference. It runs the checked IR, so
+  `sngl:platform/none` overrides the three with its `Stack`, `Page` and
+  `Link` primitives and `internal/interp/nav.go` answers them.
+- **A target declaring `#[gen.can(navigation)]`** renders them in its own
+  codegen -- html's documents and routes, android's `NavHost` (Phase C2's
+  steps 4 and 5).
+- **Every other target gets `passNavigation`** (`internal/lower/navigation.go`),
+  which lowers them to plain UI before ImplicitState: a var holding the
+  current page as the family's record (`navigator__value`, its props plus an
+  `id` numbered across the family's pages in the package), a var per page
+  whose params are not the empty struct, a history list of entries holding
+  the page replaced and every params var, and the pages as an `if`/`else if`
+  chain on `current.id`, so a page not showing is not mounted. `go` pushes,
+  writes the params and `current`; `back` pops and restores both, and does
+  nothing at the bottom; `nav.link` is a `ui.button` whose click runs the
+  link's `@click` and then the same `go`. A read of `current` or `params` is
+  the cell -- rebased through `c` when a test reads `c.pages.current` -- a
+  page's handle read as a value is its record, `==` against a navigator
+  compares ids, and every navigator or page type the program names is the
+  record's. A bound `:params=picked` makes `picked` the cell. Two shapes are
+  refused with a position (`cmd/sngl/testdata/nav_lowering_refused.txt`): a
+  stack directly under a `for`, whose cells would be one for every copy, and
+  a `go` naming its page through a value rather than a page's own `#id`.
+  `testdata/nav_stack_lowered.txtar` is the code on gtk4, fyne and
+  bubbletea, and `cmd/sngl/testdata/nav_stack_runs.txt` runs the program on
+  each and on the interpreter.
+
+Three limits that are not navigation's. On bubbletea a stateful component in a
+page is spliced into the Model, so its state survives the page being left --
+the divergence a window under an `if` has there. A `nav.link` above its
+`nav.page` in source does not check (`cannot use page as page<struct {}>`):
+`specializeHandle` completes a handle's type only when its node is checked, so
+a read above the node sees the bare declaration. And no Go target's test
+emitter compiles a read of a node's prop (`c.heading.value`) or of a component
+nested in the one under test (`c.tally.hits`), which is why `nav_stack_runs`
+tests a narrower surface than `testdata/nav_stack.sngl`.
 
 `current` is typed by the family, `:current navigator`, so no page's `T`
 escapes into it: `pages.current.title` reads the family's prop,

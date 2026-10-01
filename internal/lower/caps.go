@@ -109,6 +109,12 @@ type Features struct {
 	// construct better than the calls passEffect lowers it to, and gets the
 	// node instead: its two handlers and its key are all the declaration says.
 	Effects bool
+	// Navigation says the platform answers sngl:ui/nav's stack, page and link
+	// in its own codegen -- a document or a route per page, a Compose NavHost
+	// -- so passNavigation leaves them standing. Withheld, they are lowered to
+	// a var holding the current page, a history list and an if-chain over the
+	// pages, which every target can render.
+	Navigation bool
 
 	// The five below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -162,6 +168,7 @@ func NoLowering() Features {
 		ViewStatements:   true,
 		InstanceState:    true,
 		Effects:          true,
+		Navigation:       true,
 	}
 }
 
@@ -214,6 +221,7 @@ func (f Features) String() string {
 		{"AsyncPost", f.AsyncPost},
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},
+		{"Navigation", f.Navigation},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

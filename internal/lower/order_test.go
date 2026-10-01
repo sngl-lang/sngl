@@ -185,6 +185,7 @@ var soleGate = map[string][]string{
 	// it is what asks for the pass.
 	"ReactiveCanvas": {"CanvasReactivity"},
 	"Effects":        {"Effect"},
+	"Navigation":     {"Navigation"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance
