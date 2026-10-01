@@ -102,6 +102,10 @@ type NodeInst struct {
 	// when it is a render scope of its own, which today means a window. See
 	// internal/lower/node_escape.go and Component.LocalRefs.
 	LocalRefs map[string]bool `json:"-"`
+	// Record is the node's value as a lowering spelled it, for a node whose
+	// handle reads as a value: a nav.page's record of its family's props and
+	// its id (lower's passNavigationValues). Nil on every other node.
+	Record Expr `json:"-"`
 }
 
 // Prop is the value written for name, or nil if the call site did not write

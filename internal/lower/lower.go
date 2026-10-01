@@ -40,6 +40,7 @@ var passes = []pass{
 	passForeignPrimitive,
 	passPlatformExtensionBody,
 	passWindowSurface,
+	passNavigationValues,
 	passNavigation,
 	passImplicitState,
 	// After it, because which primitive a declaration renders is the override

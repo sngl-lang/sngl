@@ -126,8 +126,9 @@ func markedPackage() *Package {
 					Children: []Stmt{},
 				},
 				&NodeInst{
-					Key: mark("NodeInst.Key"),
-					Ref: mark("NodeInst.Ref"),
+					Key:    mark("NodeInst.Key"),
+					Ref:    mark("NodeInst.Ref"),
+					Record: mark("NodeInst.Record"),
 					Slots: map[string]*SlotContent{
 						"s": {Body: []Stmt{&Return{Value: mark("SlotContent.Body")}}},
 					},

@@ -1011,6 +1011,10 @@ fixtures written first:
    running only when the node is; and no Go test emitter reaches a node's
    prop or a nested component, so the script tests a narrower surface than
    `nav_stack.sngl`.
+   Split before step 4: `passNavigationValues`, run on every target, reads
+   a page as its record (hung on the node as `NodeInst.Record`), `==` as ids
+   and `pages.current` as one call; `passNavigation` is the structure half
+   alone, and goldens are byte-identical across the split.
 4. **android** declares `navigation`: a `NavHost`, system back pops; the
    `navigation-compose` dependency joins the scaffold. Fixes the lost
    `safeDrawingPadding` of a window whose content arrives through a slot.

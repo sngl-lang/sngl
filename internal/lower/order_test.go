@@ -86,6 +86,9 @@ var alwaysOn = []string{
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
 	"MutatedVars",
+	// What a page is read as a value is the same on every target; only what
+	// shows it differs (passNavigation, or the target's own codegen).
+	"NavigationValues",
 	// A prop read off a `#id` is answered by what the *tree* says the node's
 	// primitive keeps, so every target runs the pass and the declaration
 	// decides what it does.

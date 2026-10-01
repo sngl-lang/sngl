@@ -50,6 +50,23 @@ var passNavigation = pass{
 	apply:   lowerNavigation,
 }
 
+// passNavigationValues is the half of the lowering every target gets, the one
+// that declares the navigation's own nodes included: what a page *is*, read as
+// a value. Each page's record -- its family's props at the stack's meta type,
+// plus its id -- is made once and hung on the node (NodeInst.Record), a
+// page's handle read anywhere is that record, `pkg.params` is what the page's
+// call site wrote, `==` against a page compares ids, `pages.current` is the
+// one call `stack.current(pages)` whichever way it was spelled, and every page
+// type the program names is the record's. What stays is the nodes and the
+// `go`, `back` and `current` calls, which name the stack by its handle and the
+// page by its record: passNavigation answers them where the target does not,
+// and android answers them with a NavHost.
+var passNavigationValues = pass{
+	name:    "NavigationValues",
+	enabled: func(Features) bool { return true },
+	apply:   lowerNavigationValues,
+}
+
 type navStack struct {
 	node    *ir.NodeInst
 	name    string
@@ -86,10 +103,18 @@ type navigation struct {
 	byNode   map[*ir.NodeInst]any // *navStack or *navPage
 	byHandle map[*ir.Var]any
 	byField  map[navKey]any // a handle reached by select through a component
+	byRecord map[navRecordKey]*navPage
 	families map[string]*navFamily
 	button   *ir.Component
 	names    map[string]bool
 	err      error // the first a view lowering refused
+}
+
+// navRecordKey names a page by its record, which is how a `go` and a link
+// name one once passNavigationValues has read the handle as its value.
+type navRecordKey struct {
+	def *ir.StructDef
+	id  int
 }
 
 type navKey struct {
@@ -97,28 +122,56 @@ type navKey struct {
 	id   string
 }
 
-func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
+// collectNavigation finds every stack the package renders and the pages it
+// holds, numbered as passNavigationValues numbered them. Nil when the package
+// renders none and links to none.
+func collectNavigation(pkg *ir.Package) (*navigation, error) {
 	if pkg == nil {
-		return nil
+		return nil, nil
 	}
 	nv := &navigation{
 		pkg:      pkg,
 		byNode:   map[*ir.NodeInst]any{},
 		byHandle: map[*ir.Var]any{},
 		byField:  map[navKey]any{},
+		byRecord: map[navRecordKey]*navPage{},
 		families: map[string]*navFamily{},
 		names:    map[string]bool{},
 	}
 	for _, o := range ir.Owners(pkg) {
 		if err := nv.collect(o, o.Stmts(), 0); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	links := nv.hasLinks()
-	if len(nv.stacks) == 0 && !links {
-		return nil
+	if len(nv.stacks) == 0 && !nv.hasLinks() {
+		return nil, nil
 	}
-	if links {
+	return nv, nil
+}
+
+func lowerNavigationValues(pkg *ir.Package, _ Features, _ Options) error {
+	nv, err := collectNavigation(pkg)
+	if nv == nil || err != nil {
+		return err
+	}
+	for _, st := range nv.stacks {
+		for _, pg := range st.pages {
+			pg.node.Record = nv.record(pg)
+		}
+	}
+	if err := ir.Rewrite(pkg, nv.valueExpr); err != nil {
+		return err
+	}
+	nv.retype()
+	return nil
+}
+
+func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
+	nv, err := collectNavigation(pkg)
+	if nv == nil || err != nil {
+		return err
+	}
+	if nv.hasLinks() {
 		nv.button = findLibComponent(pkg, "sngl:ui", "button")
 		if nv.button == nil {
 			return fmt.Errorf("nav.link is lowered to sngl:ui's button, which this build does not load")
@@ -140,11 +193,7 @@ func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
 	if nv.err != nil {
 		return nv.err
 	}
-	if err := ir.Rewrite(pkg, nv.rewriteExpr); err != nil {
-		return err
-	}
-	nv.retype()
-	return nil
+	return ir.Rewrite(pkg, nv.structureExpr)
 }
 
 // collect finds every stack an owner's body renders, and the pages each
@@ -218,11 +267,15 @@ func (nv *navigation) addStack(o ir.Owner, n *ir.NodeInst) {
 			continue
 		}
 		if st.fam == nil {
-			st.fam = nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+			st.fam = nv.familyOf(p)
 		}
 		fam := st.fam
 		pg := &navPage{node: p, stack: st, id: fam.next}
+		if id, ok := recordID(p.Record); ok {
+			pg.id = id
+		}
 		fam.next++
+		nv.byRecord[navRecordKey{fam.record, pg.id}] = pg
 		st.pages = append(st.pages, pg)
 		nv.index(pg, p, o)
 	}
@@ -236,6 +289,40 @@ func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
 	if n.ID != "" && o.Comp != nil {
 		nv.byField[navKey{o.Comp, n.ID}] = v
 	}
+}
+
+// familyOf is the family a page's record is: the one passNavigationValues
+// made, when it has run, and otherwise made here.
+func (nv *navigation) familyOf(p *ir.NodeInst) *navFamily {
+	lit, ok := p.Record.(*ir.StructLit)
+	if !ok || lit.Def == nil {
+		return nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+	}
+	key := fmt.Sprintf("record:%p", lit.Def)
+	if fam := nv.families[key]; fam != nil {
+		return fam
+	}
+	fam := &navFamily{comp: p.Component.Tree, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}}
+	nv.families[key] = fam
+	return fam
+}
+
+// recordID is the id a page's record literal holds.
+func recordID(e ir.Expr) (int, bool) {
+	lit, ok := e.(*ir.StructLit)
+	if !ok {
+		return 0, false
+	}
+	for _, f := range lit.Fields {
+		if f.Name != "id" {
+			continue
+		}
+		if l, ok := f.Value.(*ir.Literal); ok {
+			n, err := strconv.Atoi(l.Value)
+			return n, err == nil
+		}
+	}
+	return 0, false
 }
 
 // family is the record a page family's values lower to at args, made the
@@ -484,6 +571,9 @@ func (nv *navigation) record(pg *navPage) ir.Expr {
 	if pg == nil {
 		return nil
 	}
+	if pg.node.Record != nil {
+		return ir.CloneExprSharingDecls(pg.node.Record)
+	}
 	fam := pg.stack.fam
 	lit := &ir.StructLit{Type: fam.typ, Def: fam.record}
 	lit.Fields = append(lit.Fields, ir.FieldInit{Name: "id", Value: navInt(pg.id)})
@@ -649,6 +739,12 @@ func (nv *navigation) lowerCalls(stmts []ir.Stmt) ([]ir.Stmt, error) {
 // declaring it (`c.pages` in a test).
 func (nv *navigation) resolve(e ir.Expr) any {
 	switch x := e.(type) {
+	case *ir.StructLit:
+		if id, ok := recordID(x); ok && x.Def != nil {
+			if pg := nv.byRecord[navRecordKey{x.Def, id}]; pg != nil {
+				return pg
+			}
+		}
 	case *ir.Ident:
 		if v, ok := x.Sym.(*ir.Var); ok {
 			return nv.byHandle[v]
@@ -914,9 +1010,10 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	return btn, nil
 }
 
-// rewriteExpr reads every handle and every `current` as the lowering's cells
-// and records.
-func (nv *navigation) rewriteExpr(n ir.Node) (ir.Node, error) {
+// valueExpr reads every page handle as its record, `pkg.params` as what the
+// page's call site wrote, `==` against a page as a comparison of ids, and
+// `pages.current` as the one call `stack.current(pages)`.
+func (nv *navigation) valueExpr(n ir.Node) (ir.Node, error) {
 	switch x := n.(type) {
 	case *ir.Binary:
 		if x.Op != ast.BinEq && x.Op != ast.BinNeq {
@@ -926,18 +1023,13 @@ func (nv *navigation) rewriteExpr(n ir.Node) (ir.Node, error) {
 			return n, nil
 		}
 		return &ir.Binary{AST: x.AST, Type: x.Type, Op: x.Op, Left: nv.idOf(x.Left), Right: nv.idOf(x.Right)}, ir.SkipDir
-	case *ir.Call:
-		// `pages.current()`, the computed called with its parentheses.
-		if x.Func != nil && x.Func.Intrinsic == "nav.current" && len(x.Args) > 0 {
-			if st, ok := nv.resolve(x.Args[0].Value).(*navStack); ok {
-				return rebase(st.current, x.Args[0].Value), ir.SkipDir
-			}
-		}
 	case *ir.Select:
 		switch x.Field {
 		case "current":
 			if st, ok := nv.resolve(x.Operand).(*navStack); ok {
-				return rebase(st.current, x.Operand), ir.SkipDir
+				if fn := st.node.Component.Methods["current"]; fn != nil {
+					return &ir.Call{Type: x.Type, Func: fn, Args: []ir.CallArg{{Value: x.Operand}}}, nil
+				}
 			}
 		case "params":
 			// What the page's call site wrote: where it starts.
@@ -951,6 +1043,16 @@ func (nv *navigation) rewriteExpr(n ir.Node) (ir.Node, error) {
 	case *ir.Ident:
 		if pg, ok := nv.resolve(x).(*navPage); ok {
 			return nv.record(pg), ir.SkipDir
+		}
+	}
+	return n, nil
+}
+
+// structureExpr reads `pages.current` as the cell that holds it.
+func (nv *navigation) structureExpr(n ir.Node) (ir.Node, error) {
+	if x, ok := n.(*ir.Call); ok && x.Func != nil && x.Func.Intrinsic == "nav.current" && len(x.Args) > 0 {
+		if st, ok := nv.resolve(x.Args[0].Value).(*navStack); ok {
+			return rebase(st.current, x.Args[0].Value), ir.SkipDir
 		}
 	}
 	return n, nil
@@ -971,9 +1073,12 @@ func (nv *navigation) idOf(e ir.Expr) ir.Expr {
 	if pg, ok := nv.resolve(e).(*navPage); ok {
 		return navInt(pg.id)
 	}
-	_ = ir.Rewrite(e, nv.rewriteExpr)
+	if id, ok := recordID(e); ok {
+		return navInt(id)
+	}
+	_ = ir.Rewrite(e, nv.valueExpr)
 	var out ir.Expr = e
-	if n, _ := nv.rewriteExpr(e); n != nil {
+	if n, _ := nv.valueExpr(e); n != nil {
 		if x, ok := n.(ir.Expr); ok {
 			out = x
 		}
