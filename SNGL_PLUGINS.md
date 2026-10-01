@@ -680,6 +680,28 @@ Settled in C2's planning:
   and `@closed` its `close` event.
 - **The md site is a `nav.stack`**: the package's generated component
   renders one `nav.page` per file, and the program's window is the chrome.
+- **`current` is typed by the family, which declares the props its members
+  share.** A family may declare props; every member declares each of them,
+  by name and type. A handle to a member is assignable to its family's type,
+  one way only, and a select through a family-typed value reaches only the
+  family's props. So no type parameter escapes and no value is polymorphic:
+  a family value is one record on every target, identity plus those props.
+
+  ```sngl
+  component navigator(href string, title string) build.family
+  component page<T = struct {}>(href string, title string, :params T = T{},
+      content ...component(v T) ui.node) navigator
+  component stack(:current navigator, pages ...component navigator) ui.node
+  ```
+
+  `pages.current.title` and `pages.current == about` read it;
+  `pages.current.params` is an error, `pkg.params` is `Pkg`, and
+  `pages.go(pages.current)` is refused, since `go` takes a `page<T>`.
+  Chosen over an `interface` type (more language than the problem needs, and
+  real polymorphism with it), inheritance from a non-generic base (a second
+  statement of what a component is, beside its return position), and a
+  non-generic page with its params in a node of their own (which undoes the
+  params being the page's).
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -905,12 +927,10 @@ fixtures written first:
    two-way prop that is never required, a window's props reading its body's
    handles, and `none`'s `Stack`/`Page`/`Link` answered by the interpreter,
    which now drops an unmounted instance's state (`testdata/nav_stack.sngl`
-   and six fixtures for the checker rules). *Open:* how `current` is typed
-   across pages of different `T`. A bare component type still matches any
-   specialization, which is what every component type did before it carried
-   arguments, and a stand-in rather than an answer: the proposals are a family
-   declaring the props its members share, an `interface` type, component
-   inheritance, or a non-generic page with params in a node of their own.
+   and six fixtures for the checker rules). *Left:* `current` is still typed by a
+   stand-in -- a bare component type matches any specialization -- until a
+   family declares the props its members share (decision 15), which is the
+   next step.
 3. **gtk4, fyne and bubbletea** override the three: a hand-written stack
    primitive on gtk4 (the bundled GIR has no `set_visible_child`), fyne's
    switcher from `88971356^` moved into the content, a current-page switch on
