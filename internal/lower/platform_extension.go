@@ -70,9 +70,14 @@ func composeOverriddenBuiltins(pkg *ir.Package, opts Options) {
 	repoint = func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok {
 			if cp := composed(inst.Component); cp != nil {
+				// A page's params cell is the page's to keep: the target
+				// answers it per document or per route (passNavigationHrefs).
+				window := inst.Component.Builtin == ir.BuiltinWindow
 				inst.Component = cp
 				catchInBody(inst)
-				populateRestSlot(inst)
+				if window {
+					populateRestSlot(inst)
+				}
 			}
 		}
 		return nil

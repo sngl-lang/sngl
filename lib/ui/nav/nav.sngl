@@ -59,6 +59,14 @@ func stack<M>.go<T>(to page<T, M>, params option<T> = null)
 #[marks.intrinsic("nav.back")]
 func stack<M>.back()
 
+// Where `to` is reached with `params`: its href with each `{name}` filled
+// from the field of that name, escaped as a path segment. Nothing names it: a
+// target whose pages are addresses asks for it (`#[gen.wants(navigationHrefs)]`),
+// and the lowering writes it where a link or a `go` needs the address it
+// cannot fold.
+#[marks.intrinsic("nav.href")]
+const func _href<T, M>(to page<T, M>, params T) string
+
 // Goes to `to` when activated, handing it `params`, or the page's own when not
 // given: an `<a href>` on html, and the stack's `go` wherever there is no
 // address to follow. `text` is what it shows, as `ui.link`'s is. `@click` runs

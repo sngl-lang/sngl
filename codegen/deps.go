@@ -69,6 +69,14 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			model[w.Params] = struct{}{}
 		}
 	}
+	// A page's params cell is the same thing one level down: the node a
+	// target renders a nav.page as carries it, and a route fills it in.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Params != nil && inst.Record != nil {
+			model[inst.Params] = struct{}{}
+		}
+		return nil
+	})
 	return &DepTracker{
 		ModelVars:     model,
 		ComputedFuncs: computed,

@@ -137,6 +137,9 @@ type evalCtx struct {
 	// one gets its loops unrolled one document at a time, after lowering. For
 	// spliced see addSplicedNativeImports.
 	unroll, spliced bool
+	// navCurrent is the record of the page a document is written for, which
+	// `pages.current` is there (Documents). Nil everywhere else.
+	navCurrent any
 }
 
 // child returns a context for folding a nested scope — a for-loop iteration,

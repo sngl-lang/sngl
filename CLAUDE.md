@@ -494,9 +494,9 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 ### Platform Details
 
 - **html** — two modes selected by `--lang`:
-  - `--lang none` (default): static site — one `index.html` per window with inline JS.
+  - `--lang none` (default): static site — one `index.html` per window with inline JS, or per page of the `nav.stack` a window holds (see *Navigation*).
     Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows -- or the pages of the stack one holds -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
@@ -1369,8 +1369,10 @@ reason — not everything stored is a declaration a body made. `OwnedVar`
 answers the five questions the four Model emitters ask, of which a parameter
 answers `Name` and `Type` and is neither const nor synthesized, and whose
 `Init` is its type's zero because nothing in the program writes one. A Go
-route handler binds it from the request (`writeRouteParamBindings`); a target
-with no request renders that zero.
+route handler binds it from the request (`writeRouteParamBindings`), a
+client-only route's script reads it from the path the browser asked for
+(`routeParamsJS`, since one baked document answers every request), and a
+target with no request renders that zero.
 
 Two things follow from the zero being codegen's. The shake roots the window
 *node* rather than its children, so `Params.Type` and the `@error` are
@@ -2629,8 +2631,8 @@ overrides, and `passNavigation` finds them by the kind. Three answers:
   the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
   from what it holds, and `Page` is `#[tree.none]`.
 - **A target declaring `#[gen.can(navigation)]`** renders them in its own
-  codegen -- html's documents and routes (Phase C2's step 5), and android's
-  `NavHost` (`codegen/platform/android/nav.go`). There a page's content is a
+  codegen -- html's documents and routes, and android's `NavHost`
+  (`codegen/platform/android/nav.go`). On android a page's content is a
   reactive position for the inliner, since the target mounts and unmounts it
   as the stack moves, so a component with state in it is built at run time.
 - **Every target gets `passNavigationValues`**, the value half
@@ -2684,6 +2686,49 @@ kotlinx-serialization-json join the scaffold, with the serialization plugin,
 only for a program that renders a stack; the direct build adds the same
 artifacts and plugin. `testdata/nav_stack_android.txtar` is the code, and
 `nav_stack_runs.txt` runs the program under Robolectric.
+
+**html is a document per page.** It declares `navigation` and asks for
+`#[gen.wants(navigationHrefs)]`: a page is an address, so what is left of
+navigation once a script is written is a browser following one.
+`passNavigationHrefs` (`internal/lower/navigation_hrefs.go`), run after the
+value half and before `composeOverriddenBuiltins` -- which is why
+NavigationValues now runs ahead of it too: composition clears the kind they
+find a page by -- makes a `nav.link` the `ui.link` to its page's href, each
+`{name}` filled from the params it passes (escaped, at build time where they
+are literals, through the unexported `nav._href` the html emitter answers
+where they are not), makes a `ui.button` whose click only goes to a page with
+build-time params one too, and writes the page's own params into a `go` that
+passes none. It moves each page's content into its children under
+`if pages.current.id == <id>` with the population's parameter on the node
+(`NodeInst.Params`, the window's cell one level down). It refuses what an
+address cannot carry: a params field the href names no placeholder for (so a
+page's params all travel in its path), a page whose href is a pattern on a
+static site (so a page there has no params at all), and a stack under an `if`
+that reads state.
+
+html then overrides `nav.stack` and `nav.page` with its own `Stack` and
+`Page` primitives (`#[intrinsic("html:stack")]`, `"html:page"`), and the
+inliner carries the page's `Record` and `Params` onto the `Page` node with its
+site (`ir.AttachNodeSite`). `optimize.Documents` writes one document per node
+carrying a page record: the whole window with the stack standing for that page
+alone, so the window and what sits beside the stack are the shell. In each
+document `pages.current` folds to the page's record (`evalCtx.navCurrent`), so
+`title="Docs - {pages.current.title}"` is that page's title and the page's
+`if` folds true; on a static site the params cell folds to the page's own, and
+in route mode it is the document's `Params`, which the route binds from the
+request on the server and `routeParamsJS` reads from the path on the client.
+A static document is written at the page's href (`/about` is
+about/index.html), and route mode serves a route per page named for it, with
+`routesConflict` asking the pages. What no document's fold reaches -- a
+function, a test body, the step an effect in a page settles by -- reads
+`globalThis.__sngl_page`, which a document publishes only when its script
+names it. A `go` is `location.assign` and `back` is `history.back()`: the
+browser's history, so at its bottom it leaves the site. A window holds one
+stack and no href of its own beside it. Refused with a position:
+`cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and
+`nav_stack_html_route.txtar` are the code, and `nav_stack_runs.txt` runs what
+a document answers without leaving itself -- a test runs inside the document
+it was loaded in, and a navigation ends it.
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --

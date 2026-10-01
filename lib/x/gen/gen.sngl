@@ -47,7 +47,12 @@ enum Rendered {
 // prose and could not spell: these request a rewrite the target *wants*
 // rather than confessing to something it cannot do. A platform asking for
 // `canvas` is not admitting a limitation.
-enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCanvas }
+//
+// `navigationHrefs` is for a target whose pages are addresses, one that
+// declares `navigation` and serves a page at its href: a `nav.link` becomes a
+// `ui.link` to the page's address, a clickable whose handler only goes to a
+// page becomes one too, and a `go` passing no params passes the page's own.
+enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCanvas, navigationHrefs }
 
 // Says the target emits each named construct natively, so the pass that would
 // lower it does not run.

@@ -767,6 +767,18 @@ Settled in C2's planning:
   family arguments bound from its children. `go` and `link` take a
   `page<T, M>` and convert it internally, so `pages.go(pages.current)` stays
   refused.
+- **Settled for html (step 5).** A `go` is a navigation to the other document
+  (`location.assign`) and `back` the browser's history (`history.back()`),
+  in both modes, so at its bottom it leaves the site; a `nav.link` is an
+  `<a href>`, and so is a clickable whose handler does nothing but go to a
+  page with params known at build time, so it needs no script. A page's
+  params reach its href as placeholders, each `{name}` filled from the field
+  of that name and escaped, and a field the href names no placeholder for is
+  refused, so nothing is dropped: a query string can come later. A static
+  site serves no pattern, so a page there has no params. `pages.current` is
+  folded per document and per route, each rendering one page. The mark is
+  html's own `#[intrinsic]` primitive and no new kind of mark: Documents
+  finds a page by the record the primitive carries.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -1029,6 +1041,15 @@ fixtures written first:
    builtin: one document per marked node, the whole tree with every other
    one pruned, so the window is the shell; one route per marked node in route
    mode, the params cell its population's. `window` still has `href`.
+   *Done* (decision 15's step 5 bullet): html overrides `nav.stack` and
+   `nav.page` with its `#[intrinsic("html:stack")]` and `"html:page"`
+   primitives, and a page is found by the record the primitive carries;
+   `passNavigationHrefs`, which html asks for, makes links `ui.link`s and
+   holds a page's href to its params. `testdata/nav_stack_html.txtar` and
+   `nav_stack_html_route.txtar`, `nav_html_refused.txt`, and html in
+   `nav_stack_runs.txt` for what a document answers in place. A route's
+   params cell is also read from the path on the client now, for a window as
+   for a page: a client-only route ships one document for every request.
 6. **The migration**: `window` loses `href` and `params`, `output(entry=…)`
    goes, every call site, the md site, `website.sngl` and `docbrowser` move.
    Every html golden that was a window per page is byte-identical as a stack of

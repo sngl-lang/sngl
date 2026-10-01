@@ -183,8 +183,11 @@ type compilation struct {
 	frontendNatives map[nativeFuncKey]bool
 
 	// routeWindows are the documents route mode rendered, in the order of
-	// c.windows, for generateRoutes to take its routes from.
+	// c.windows, for generateRoutes to take its routes from, and routePages
+	// the page of a nav.stack each was written for, nil for a window that
+	// holds none.
 	routeWindows []*codegen.WindowCtx
+	routePages   []*ir.NodeInst
 }
 
 // documents is the build's documents, or this package's for a caller that
@@ -513,6 +516,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	shareConsts := staticMode && !opts.Preview && more
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
+	seenPages := map[string]string{}
 	seenAssets := map[string]bool{}
 	for _, fa := range c.assetFiles {
 		seenAssets[fa.name] = true
@@ -530,12 +534,16 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		}
 		var name string
 		href := win.Window.Prop(ir.WindowHref)
+		if doc.Page != nil {
+			href = pageHref(doc.Page)
+		}
 		switch {
 		case !staticMode:
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
 			c.routeWindows = append(c.routeWindows, win)
+			c.routePages = append(c.routePages, doc.Page)
 		case href == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or one a component renders. It is the document the site
@@ -548,7 +556,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			h, _ := codegen.IRLiteralString(href)
 			name = pathFromHref(h)
 		}
-		if staticMode {
+		if staticMode && doc.Page != nil {
+			if prev, dup := seenPages[name]; dup {
+				return nil, fmt.Errorf("html: page %q is written to %s, as page %q is", doc.Page.ID, name, prev)
+			}
+			seenPages[name] = doc.Page.ID
+		} else if staticMode {
 			if prev, dup := seenPaths[name]; dup {
 				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, ir.StmtPos(win.Window))
 			}
@@ -565,6 +578,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
 		gen.irWindow = win.Window
+		gen.page = doc.Page
+		if !staticMode && href != nil {
+			gen.routePath, _ = codegen.IRLiteralString(href)
+		}
 		gen.ctx = gen.ctx.ForWindow(win.Window)
 		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
 			gen.title = s
@@ -708,6 +725,12 @@ type htmlGen struct {
 	// state is declared, beside the package and a harness root, and it is
 	// per-document: static mode emits one file per window.
 	irWindow *ir.Window
+	// page is the page of a nav.stack this document is written for, nil for a
+	// window that holds none.
+	page *ir.NodeInst
+	// routePath is the pattern route mode serves this document at, which the
+	// window's params cell is read from on the client; empty on a static site.
+	routePath string
 
 	// snglIDByElem maps a JS element variable ($1) to the id a program wrote
 	// on that node (#inc). Only ids a test could name are in it.
@@ -1189,6 +1212,14 @@ func (g *htmlGen) generate() (string, error) {
 	// class's rule as it is translated.
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
+	if script := scriptBuf.String(); strings.Contains(script, navPageMarker) {
+		decl := ""
+		if strings.Contains(script, "globalThis."+navPageGlobal) {
+			decl = fmt.Sprintf("globalThis.%s = %s;\n", navPageGlobal, g.literalToJS(g.page.Record))
+		}
+		scriptBuf.Reset()
+		scriptBuf.WriteString(strings.Replace(script, navPageMarker, decl, 1))
+	}
 
 	if len(g.Styles) > 0 {
 		var cssBuf strings.Builder
@@ -1495,10 +1526,10 @@ func (g *htmlGen) stateVars() []codegen.OwnedVar {
 	var out []codegen.OwnedVar
 	// The route's per-request input, which is this window's and no owner's:
 	// the page reads it as state because that is what it is to a document --
-	// a cell filled in before anything renders. A client-only route has
-	// nothing to fill it with and renders against the struct's zero. It is
-	// the slot population's own *ir.Param, which is why this list is symbols:
-	// nothing in the program declares it, so there is no Var to be had.
+	// a cell filled in before anything renders, from the path the browser
+	// asked for (routeParamsJS). It is the slot population's own *ir.Param,
+	// or a page's, which is why this list is symbols: nothing in the program
+	// declares it, so there is no Var to be had.
 	if g.irWindow != nil && g.irWindow.Params != nil {
 		out = append(out, codegen.OwnedVar{Sym: g.irWindow.Params, Win: g.irWindow})
 	}
@@ -1984,6 +2015,15 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// The page this document is written for, which is what a stack shows
+	// here: `pages.current` read where no document's fold reaches -- a
+	// function's body, a test's -- is this (emitNavCurrent).
+	// Written in place once the rest of the script is, and only if the rest
+	// reads it.
+	if g.page != nil && g.page.Record != nil {
+		b.WriteString(navPageMarker)
+	}
+
 	// Ahead of the state, whose initializers may read one.
 	consts := g.pkgConsts()
 	for _, c := range consts {
@@ -2005,6 +2045,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	stateVars := g.stateVars()
 	for _, dv := range stateVars {
 		val := g.literalToJS(dv.Init())
+		if g.irWindow != nil && dv.Sym == ir.Symbol(g.irWindow.Params) {
+			if read := routeParamsJS(g.routePath, g.irWindow.Params.Type, val); read != "" {
+				stateFields = append(stateFields, dv.Name()+": null")
+				deferredInits = append(deferredInits, struct{ name, value string }{dv.Name(), read})
+				continue
+			}
+		}
 		if codegen.IRIsLiteral(dv.Init()) {
 			stateFields = append(stateFields, dv.Name()+": "+val)
 		} else {

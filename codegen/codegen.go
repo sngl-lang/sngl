@@ -686,6 +686,11 @@ type Document struct {
 	// a window, and Body is then that component's.
 	Window *ir.Window
 	Body   []ir.Stmt
+	// Page is the page of a nav.stack this document is written for, the
+	// node standing for it carrying the page's record (ir.NodeInst.Record);
+	// nil for a window that holds no stack. The stack stands for it alone in
+	// Body.
+	Page *ir.NodeInst
 	// FileAssets are the file: assets only this document's fold resolved.
 	FileAssets []FileAsset
 }

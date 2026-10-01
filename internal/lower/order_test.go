@@ -186,9 +186,10 @@ var soleGate = map[string][]string{
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding
 	// it is what asks for the pass.
-	"ReactiveCanvas": {"CanvasReactivity"},
-	"Effects":        {"Effect"},
-	"Navigation":     {"Navigation"},
+	"ReactiveCanvas":  {"CanvasReactivity"},
+	"Effects":         {"Effect"},
+	"Navigation":      {"Navigation"},
+	"NavigationHrefs": {"NavigationHrefs"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance

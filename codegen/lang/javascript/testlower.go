@@ -49,9 +49,10 @@ const testInstanceVar = "__snglTestComponent"
 //
 // `pkg` is accepted for symmetry with the Go/Kotlin LowerTestFile
 // signatures but is unused in JS — ES modules have no package
-// declaration.
+// declaration. `platform` is the build's, which a platform's intrinsic
+// emitters are keyed by: html answers sngl:ui/nav's `current` that way.
 func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string,
-	methodFields map[string]bool, mode TestEmitMode) string {
+	methodFields map[string]bool, mode TestEmitMode, platform string) string {
 
 	if mode == TestEmitNative {
 		return "// native-mode html test emission is not supported.\n" +
@@ -77,7 +78,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 		if recv := codegen.TestComponentParam(fn); recv != "" {
 			fmt.Fprintf(&b, "\tconst %s = %s;\n", recv, testInstanceVar)
 		}
-		for _, line := range lowerTestBody(irPkg, fn, methodFields) {
+		for _, line := range lowerTestBody(irPkg, fn, methodFields, platform) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
 		b.WriteString("}\n\n")
@@ -97,7 +98,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 // tests address widgets via DOM tags, not via the model field gate
 // the Kotlin/Go lowerers consult — but accepted in the signature for
 // symmetry and future use.
-func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) []string {
+func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool, platform string) []string {
 	// The test module is bundled with the emitted program, so it has to name
 	// things the way the emitter named them: a method on a user type as the
 	// free `Calc_digit(…)`. Over an empty package it knew none of them and
@@ -106,6 +107,7 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	ctx.Platform = platform
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields

@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -33,31 +34,43 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	var served []servedRoute
 	for i, win := range windows {
+		// A window holding a nav.stack is a route per page, named for the
+		// page and served at its href.
+		page := c.routePages[i]
+		routeName, label := windowRouteName(win), routeWindowLabel(win.Name, i)
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
 			hrefExpr = win.Window.Prop(ir.WindowHref)
 			titleExpr = win.Window.Prop(ir.WindowTitle)
 		}
+		if page != nil {
+			hrefExpr = pageHref(page)
+			routeName, label = page.ID, fmt.Sprintf("page %q", page.ID)
+		}
 		path, err := hrefToRoutePath(hrefExpr)
 		if err != nil {
-			return fmt.Errorf("html: window %q href: %v", win.Name, err)
+			return fmt.Errorf("html: %s href: %v", label, err)
 		}
 		if path == "" {
-			path = defaultRoutePath(windowRouteName(win), i)
+			path = defaultRoutePath(routeName, i)
 		}
-		if err := checkRouteParams(path, win.Window); err != nil {
-			return fmt.Errorf("html: window %q: %w", win.Name, err)
+		// A page's href was held to its params where it was written
+		// (passNavigationHrefs), cell or no cell.
+		if page == nil {
+			if err := checkRouteParams(path, win.Window); err != nil {
+				return fmt.Errorf("html: %s: %w", label, err)
+			}
 		}
 		for _, prev := range served {
 			if !routesConflict(prev.path, path) {
 				continue
 			}
 			if routeSegsEqual(prev.path, path) {
-				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, routeWindowLabel(win.Name, i), path)
+				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, label, path)
 			}
-			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, routeWindowLabel(win.Name, i), path)
+			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, label, path)
 		}
-		served = append(served, servedRoute{path, routeWindowLabel(win.Name, i)})
+		served = append(served, servedRoute{path, label})
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -79,7 +92,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
 		routes = append(routes, codegen.HTTPRoute{
-			Name:      routeHandlerName(windowRouteName(win), path),
+			Name:      routeHandlerName(routeName, path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
@@ -592,4 +605,51 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			panic(fmt.Sprintf("html.walkInstances: unhandled ir.Stmt %T", n))
 		}
 	}
+}
+
+// routeParamsJS is the script that reads a route's params out of the path the
+// browser asked for: the struct's zero, with each field a `{name}` segment of
+// path names parsed from that segment. Empty for a path that names none, which
+// leaves the cell its zero.
+//
+// The server binds the same fields from the same path when it renders the
+// route, but a client-only route ships one document for every request, so the
+// script has to read the request again for itself.
+func routeParamsJS(path string, t *ir.Type, zero string) string {
+	holes := extractRouteParams(path)
+	if len(holes) == 0 || t == nil {
+		return ""
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	var re strings.Builder
+	re.WriteString("^")
+	group := map[string]int{}
+	for seg := range strings.SplitSeq(strings.TrimPrefix(path, "/"), "/") {
+		re.WriteString("\\/")
+		if len(seg) > 2 && strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			group[seg[1:len(seg)-1]] = len(group) + 1
+			re.WriteString("([^/]*)")
+			continue
+		}
+		re.WriteString(regexp.QuoteMeta(seg))
+	}
+	re.WriteString("$")
+	var fields []string
+	for _, name := range holes {
+		f := routeParamField(sd, name)
+		if f == nil {
+			continue
+		}
+		seg := fmt.Sprintf("decodeURIComponent(__m[%d])", group[name])
+		switch f.Type.Kind {
+		case ir.TypeInt:
+			seg = "parseInt(" + seg + ", 10)"
+		case ir.TypeFloat:
+			seg = "parseFloat(" + seg + ")"
+		case ir.TypeBool:
+			seg = "(" + seg + " === \"true\")"
+		}
+		fields = append(fields, name+": "+seg)
+	}
+	return fmt.Sprintf("((__m) => __m ? { ...%s, %s } : %s)(location.pathname.match(/%s/))", zero, strings.Join(fields, ", "), zero, re.String())
 }

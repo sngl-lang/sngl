@@ -87,16 +87,27 @@ func AttachNodeID(body []Stmt, id string, handle *Var) bool {
 }
 
 // AttachNodeSite records on the node AttachNodeID picks that it stands for
-// callsite, keeping the outermost site through nested substitutions.
+// callsite, keeping the outermost site through nested substitutions. The
+// callsite's Record goes with it, being what the node a program wrote is as a
+// value: a target that overrides nav.page with a primitive of its own finds
+// which page the primitive is by it, and the params cell the page's content
+// reads (Params) beside it.
 func AttachNodeSite(body []Stmt, callsite *NodeInst) bool {
 	site := callsite.Site
 	if site == nil {
 		site = callsite.AST
 	}
-	if site == nil {
+	if site == nil && callsite.Record == nil {
 		return false
 	}
-	return attachNode(body, func(ni *NodeInst) { ni.Site = site })
+	return attachNode(body, func(ni *NodeInst) {
+		if site != nil {
+			ni.Site = site
+		}
+		if callsite.Record != nil && ni.Record == nil {
+			ni.Record, ni.Params = callsite.Record, callsite.Params
+		}
+	})
 }
 
 func attachNode(body []Stmt, set func(*NodeInst)) bool {

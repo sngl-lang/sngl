@@ -60,6 +60,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
 	case *ir.Call:
+		if x.Func != nil && x.Func.Intrinsic == "nav.current" && ctx.navCurrent != nil {
+			return true // the page the document is written for
+		}
 		for _, a := range x.Args {
 			if !isConstExpr(a.Value, ctx) {
 				return false
@@ -358,6 +361,11 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 }
 
 func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
+	// A document written for one page of a stack: what the stack shows there
+	// is that page, whatever handle names the stack.
+	if call.Func != nil && call.Func.Intrinsic == "nav.current" && ctx.navCurrent != nil {
+		return ctx.navCurrent, true
+	}
 	// Collect argument values.
 	args := make([]any, 0, len(call.Args))
 	for _, a := range call.Args {

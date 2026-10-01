@@ -8,6 +8,8 @@ import shapes "sngl:ui/draw"
 import markup "sngl:ui/markup"
 import math "sngl:math"
 import gen "sngl:x/gen"
+import nav "sngl:ui/nav"
+import tree "sngl:tree"
 
 // The `html` node of a build directive: `output { none { html() } }`. Its props
 // are the build options this platform accepts.
@@ -22,7 +24,7 @@ import gen "sngl:x/gen"
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,
@@ -32,7 +34,7 @@ import gen "sngl:x/gen"
     reactivity,
     structSpread,
 )]
-#[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
+#[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas, navigationHrefs)]
 #[gen.name("html")]
 component platform(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
@@ -896,4 +898,38 @@ const component shapes.canvasText[platform] {
         }
         e.ctx.restore()
     })
+}
+
+// --- Navigation ---
+
+// A page of a stack, as this platform serves one: a document of its own on a
+// static site and a route in route mode, written as the whole window with
+// every other page pruned. What its content is handed is the page's params
+// cell, which a static site binds to the page's own params and a route to the
+// request's.
+//
+// It belongs to no family because the one its override stands in for is not
+// nameable here; the override's return position is what says it is a page.
+#[tree.none]
+#[intrinsic("html:page")]
+component Page(content ...component ui.node)
+
+// A stack of pages, which a document never shows whole: each page is written
+// out as the window with the stack standing for that page alone.
+//
+// The pages' family is sngl:ui/nav's and unexported, so the slot takes it as a
+// type parameter, bound by the pages written there.
+#[intrinsic("html:stack")]
+component Stack<F>(pages ...component F) ui.node
+
+const component nav.stack[platform] {
+    Stack {
+        pages
+    }
+}
+
+const component nav.page[platform] {
+    Page {
+        content(params)
+    }
 }

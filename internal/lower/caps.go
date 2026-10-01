@@ -116,7 +116,7 @@ type Features struct {
 	// pages, which every target can render.
 	Navigation bool
 
-	// The five below are requests rather than capabilities, which is the split
+	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
 	// wants run, so a platform asking for Canvas is not confessing to
 	// anything. They read the other way round from every field above -- true
@@ -141,6 +141,11 @@ type Features struct {
 	// ReactiveCanvas requests passCanvasReactivity: it injects CanvasRedrawStmt
 	// into handler and timer bodies that mutate vars a canvas draw func reads.
 	ReactiveCanvas bool
+	// NavigationHrefs requests passNavigationHrefs, for a target that answers
+	// sngl:ui/nav with an address per page: a link becomes a ui.link to the
+	// page's href, a clickable whose handler only goes to a page becomes one
+	// too, and a go passing no params passes the page's own.
+	NavigationHrefs bool
 }
 
 // NoLowering is the Features under which no capability-gated pass runs: every
@@ -227,6 +232,7 @@ func (f Features) String() string {
 		{"FocusOrder", f.FocusOrder},
 		{"Canvas", f.Canvas},
 		{"ReactiveCanvas", f.ReactiveCanvas},
+		{"NavigationHrefs", f.NavigationHrefs},
 	} {
 		if c.held {
 			parts = append(parts, c.name)
