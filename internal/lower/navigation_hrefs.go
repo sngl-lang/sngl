@@ -14,13 +14,12 @@ import (
 // by following a href rather than by moving a stack it holds.
 //
 //	nav.link(to=pkg, params=Pkg{name="x"}, text="x")   →  ui.link(href="/p/x", text="x")
-//	ui.button(text="Home", @click { pages.go(home) })  →  ui.link(href="/", text="Home")
 //	pages.go(pkg)                                       →  pages.go(pkg, Pkg{name="first"})
 //
 // A link is sngl:ui's link to the page's href, with each `{name}` filled from
-// the field of that name; a clickable whose handler does nothing but go to a
-// page with params known at build time is one too, so following it needs no
-// script. A link whose params are not known until it runs is handed the
+// the field of that name. Only a link: a clickable whose handler goes to a
+// page keeps its look and navigates when it runs, since `<a>` around a
+// `<button>` is not HTML a browser agrees on. A link whose params are not known until it runs is handed the
 // address `nav._href` builds, which the target answers. A `go` passing no
 // params passes the page's own, which is what it shows them with.
 //
@@ -42,7 +41,6 @@ type navHrefs struct {
 	nv     *navigation
 	static bool
 	link   *ir.Component
-	button *ir.Component
 	href   *ir.Func
 	// hrefs is each page's, as written.
 	hrefs map[*navPage]string
@@ -55,7 +53,6 @@ func lowerNavigationHrefs(pkg *ir.Package, _ Features, opts Options) error {
 	}
 	h := &navHrefs{nv: nv, static: opts.Language == "none", hrefs: map[*navPage]string{}}
 	h.link = findLibComponent(pkg, "sngl:ui", "link")
-	h.button = findLibComponent(pkg, "sngl:ui", "button")
 	h.href = findLibFunc(pkg, "sngl:ui/nav", "_href")
 	if err := refuseStacksUnderReactiveIf(pkg); err != nil {
 		return err
@@ -82,8 +79,6 @@ func lowerNavigationHrefs(pkg *ir.Package, _ Features, opts Options) error {
 		switch {
 		case isNavNode(inst, ir.BuiltinNavLink):
 			werr = h.navLink(inst)
-		case inst.Component != nil && inst.Component == h.button:
-			werr = h.navButton(inst)
 		}
 		return nil
 	})
@@ -289,42 +284,6 @@ func (h *navHrefs) navLink(n *ir.NodeInst) error {
 		return fmt.Errorf("%s: %w", ir.NodePos(n), err)
 	}
 	h.becomeLink(n, href)
-	return nil
-}
-
-// navButton makes a ui.button whose click does nothing but go to a page, with
-// params known at build time, the ui.link to that page: a crawler and a
-// middle click follow it, and no script is written for it. A disabled one
-// stays a button, since a link cannot be.
-func (h *navHrefs) navButton(n *ir.NodeInst) error {
-	if h.link == nil || len(n.Handlers) != 1 || n.Handlers[0].Name != "click" || n.Prop("disabled") != nil || len(n.Bindings) > 0 {
-		return nil
-	}
-	fn := n.Handlers[0].Func
-	if fn == nil || len(fn.Block) != 1 {
-		return nil
-	}
-	cs, ok := fn.Block[0].(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != "nav.go" {
-		return nil
-	}
-	pg, _ := h.nv.resolve(callArg(cs.Call, "to", 1)).(*navPage)
-	if pg == nil {
-		return nil
-	}
-	params, err := handed(callArg(cs.Call, "params", 2))
-	if err != nil {
-		return nil
-	}
-	if params == nil {
-		params = pg.start()
-	}
-	href, ok := h.constAddress(pg, params)
-	if !ok {
-		return nil
-	}
-	n.Handlers = nil
-	h.becomeLink(n, &ir.Literal{Type: ir.TypString, Value: href})
 	return nil
 }
 

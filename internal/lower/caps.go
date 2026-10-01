@@ -143,8 +143,7 @@ type Features struct {
 	ReactiveCanvas bool
 	// NavigationHrefs requests passNavigationHrefs, for a target that answers
 	// sngl:ui/nav with an address per page: a link becomes a ui.link to the
-	// page's href, a clickable whose handler only goes to a page becomes one
-	// too, and a go passing no params passes the page's own.
+	// page's href, and a go passing no params passes the page's own.
 	NavigationHrefs bool
 }
 

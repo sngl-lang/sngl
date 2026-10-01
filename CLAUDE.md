@@ -2696,8 +2696,9 @@ NavigationValues now runs ahead of it too: composition clears the kind they
 find a page by -- makes a `nav.link` the `ui.link` to its page's href, each
 `{name}` filled from the params it passes (escaped, at build time where they
 are literals, through the unexported `nav._href` the html emitter answers
-where they are not), makes a `ui.button` whose click only goes to a page with
-build-time params one too, and writes the page's own params into a `go` that
+where they are not) -- only a link: a button that goes to a page keeps its
+look and navigates when clicked, since `<a>` around a `<button>` is not HTML
+a browser agrees on -- and writes the page's own params into a `go` that
 passes none. It moves each page's content into its children under
 `if pages.current.id == <id>` with the population's parameter on the node
 (`NodeInst.Params`, the window's cell one level down). It refuses what an

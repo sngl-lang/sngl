@@ -770,8 +770,8 @@ Settled in C2's planning:
 - **Settled for html (step 5).** A `go` is a navigation to the other document
   (`location.assign`) and `back` the browser's history (`history.back()`),
   in both modes, so at its bottom it leaves the site; a `nav.link` is an
-  `<a href>`, and so is a clickable whose handler does nothing but go to a
-  page with params known at build time, so it needs no script. A page's
+  `<a href>`, and a button whose handler goes to a page stays a button and
+  navigates when clicked: `<a>` around a `<button>` is not valid HTML. A page's
   params reach its href as placeholders, each `{name}` filled from the field
   of that name and escaped, and a field the href names no placeholder for is
   refused, so nothing is dropped: a query string can come later. A static

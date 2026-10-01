@@ -9,11 +9,11 @@ written at the page's href: `/` is index.html, `/about` about/index.html,
 beside the stack are each document's own constant, and `pages.current == home`
 is decided per document as well.
 
-A `nav.link` is an `<a href>`. A clickable whose handler does nothing but go
-to a page is one too -- the Home button -- so it needs no script and a
-crawler can follow it. A handler that does more navigates with
-`location.assign` after the rest of its body, and `back` is the browser's
-history.
+A `nav.link` is an `<a href>`, which a crawler and a middle click follow. A
+button stays a button, even the Home one whose handler does nothing but go:
+an `<a>` around a `<button>` is not HTML a browser agrees on. Its handler
+navigates with `location.assign`, after the rest of its body where it has one,
+and `back` is the browser's history.
 
 A page's content is under `if pages.current.id == <id>`, which is what a page
 not showing is not mounted means: each document folds it for its own page,
@@ -103,9 +103,9 @@ body { font-family: system-ui, sans-serif; }
   <a href="/about">
     <span>About</span>
   </a>
-  <a href="/">
+  <button id="$4">
     <span>Home</span>
-  </a>
+  </button>
   <button id="$5">
     <span>Settings</span>
   </button>
@@ -170,9 +170,13 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
+  var $4 = document.getElementById("$4");
   var $5 = document.getElementById("$5");
   var $6 = document.getElementById("$6");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $4.addEventListener("click", function() {
+    location.assign("/");
+  });
   $5.addEventListener("click", function() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -210,9 +214,9 @@ body { font-family: system-ui, sans-serif; }
   <a href="/about">
     <span>About</span>
   </a>
-  <a href="/">
+  <button id="$9">
     <span>Home</span>
-  </a>
+  </button>
   <button id="$10">
     <span>Settings</span>
   </button>
@@ -279,7 +283,11 @@ body { font-family: system-ui, sans-serif; }
   }
   var $10 = document.getElementById("$10");
   var $11 = document.getElementById("$11");
+  var $9 = document.getElementById("$9");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $9.addEventListener("click", function() {
+    location.assign("/");
+  });
   $10.addEventListener("click", function() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -316,9 +324,9 @@ body { font-family: system-ui, sans-serif; }
   <a href="/about">
     <span>About</span>
   </a>
-  <a href="/">
+  <button id="$4">
     <span>Home</span>
-  </a>
+  </button>
   <button id="$5">
     <span>Settings</span>
   </button>
@@ -383,9 +391,13 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
+  var $4 = document.getElementById("$4");
   var $5 = document.getElementById("$5");
   var $6 = document.getElementById("$6");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  $4.addEventListener("click", function() {
+    location.assign("/");
+  });
   $5.addEventListener("click", function() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -403,4 +415,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4849d794bff5ca8846f487ca8c7dc41d
+pass sha256:8c9004699772cd26535e3bb59c08d5b2
