@@ -1057,9 +1057,6 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if env.hasRecv && readsReceiver(e) {
 		return env.recv, nil
 	}
-	if v, ok := e.Sym.(*ir.Var); ok && v.SelfOf != nil {
-		return env.selfValue(v.SelfOf)
-	}
 	if e.Sym != nil {
 		return env.lookup(e.Sym)
 	}
@@ -1411,9 +1408,6 @@ func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
 }
 
 func (env *Env) evalStructLit(e *ir.StructLit) (any, error) {
-	if e.Type != nil && e.Type.Kind == ir.TypeComponent {
-		return env.familyZero(e.Type)
-	}
 	s := NewStruct(e.Def, e.Type)
 	for _, f := range e.Fields {
 		v, err := env.Eval(f.Value)

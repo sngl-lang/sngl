@@ -703,32 +703,32 @@ Settled in C2's planning:
   the prop holds and no call site sets; a two-way or const prop, an event, a
   slot or a type parameter on a family is refused; and a bare generic
   component type is its defaults, as a struct type is.
-- **`sngl:ui/nav` is written in SNGL**, as `lib/` bodies every target gets,
-  and a target that needs something else overrides them. Four features of
-  the language make that possible, each general:
-  - **`this` in a component body is the instance's handle value**, typed by
-    the component under its own type parameters (`page<T>`), wherever in the
-    body it is written.
-  - **A slot read as an expression is its members' handle values**, in the
-    order they render, as a `list<F>` for a slot of family `F` -- what a
-    stack starts from.
-  - **A method call through a handle value reaches the instance it names**
-    when the program runs, and **a family declares methods its members
-    share**: a bodyless `func navigator.follow()` beside the family, which
-    every member implements with a method of the same name and signature,
-    so a call through a family value has a shape to be checked against.
-  - **A family's zero is `navigator{}`**, naming no member: unequal to every
-    member, its props their types' zeros. An unbound `:current navigator`
-    starts there.
-- **`effect` gains `@create` and `@destroy`**: `@create` runs before each
-  mount and `@destroy` after each unmount, so a write in `@create` is what
-  the mount renders -- how a stack starts at its first page without a frame
-  of nothing.
-- **`nav.link` wraps its content in each target's existing clickable**; a
-  target whose link takes only text (or whose native link is better, html's
-  `<a>`) overrides it.
-  Chosen over an `interface` type (more language than the problem needs, and
-  real polymorphism with it), inheritance from a non-generic base (a second
+- **Navigation is a lowering, not SNGL bodies.** `passNavigation` turns a
+  stack into plain UI, gated by `#[gen.can(navigation)]`: html and android
+  declare it and answer the nodes in their own codegen (a document or route
+  per page; a Compose `NavHost`), and every other target gets the lowering,
+  since a capability not written is not held. The lowering, per stack:
+  `current` is a var of a synthesized record of the navigator's props plus
+  an `id` (the `/` page, or the first); each page with params gets a var
+  holding them; the history is a list of a synthesized entry struct holding
+  the page replaced and one field per page's params; the pages become an
+  `if`/`else if` chain on `current.id`, so a page not showing is not
+  mounted; `go` pushes, writes the params and `current`; `back` pops and
+  restores both; `nav.link` becomes the target's clickable around its
+  content firing the same `go`. A read of `current` is a read of the var,
+  and `== about` compares ids. The interpreter stays the reference
+  (`internal/interp/nav.go`, `none`'s primitives), running the checked IR.
+
+  Writing the package in SNGL was planned first and dropped. It needed
+  `this` as a value, a slot read as its members, family methods, a family's
+  zero and `effect`'s `@create`/`@destroy` -- and then ran into membership:
+  `stack` is a `ui.node` whose body inserts navigator members, and `page` a
+  navigator whose body renders widgets. What that wants is a contract on
+  members (an interface) rather than a family, which is a language design
+  of its own and is not needed for navigation. `this` and the family zero
+  were built on the interpreter (19823435) and reverted.
+  The family-typed `current` was chosen over an `interface` type (more
+  language than the problem needed then), inheritance from a non-generic base (a second
   statement of what a component is, beside its return position), and a
   non-generic page with its params in a node of their own (which undoes the
   params being the page's).
@@ -962,31 +962,23 @@ fixtures written first:
    leniency it replaced is gone from `ir.Type.Equal`
    (`testdata/family_props.sngl`, `error_family_member_props.sngl`,
    `error_family_value.sngl`).
-3. **The four features, on the interpreter**, each with its fixtures: `this`
-   as a value and a family's zero (*done*: `component_this_value.sngl`,
-   `family_zero.sngl` and their error fixtures); a slot read as its members;
-   family methods and a call through a handle value; `effect`'s
-   `@create`/`@destroy`.
-4. **`sngl:ui/nav` in SNGL**: `stack`, `page` and `link` get `lib/` bodies,
-   and `none`'s overrides and `internal/interp/nav.go` go if the interpreter
-   runs the bodies (`testdata/nav_stack.sngl` unchanged).
-5. **gtk4, fyne and bubbletea** compile the four features -- a handle value
-   as one record of identity and props, a dispatch over a declaration's
-   instances, `@create`/`@destroy` -- and so the nav bodies, with no nav
-   code of their own. Fixes bubbletea's `visible` cell surviving
-   `if details`.
-6. **android**: a NavHost, system back pops; the `navigation-compose`
-   dependency joins the scaffold. Fixes the lost `safeDrawingPadding` of a
-   window whose content arrives through a slot.
-7. **html answers a page** by a mark on its primitive rather than the
+3. **`passNavigation`** and the `navigation` capability in `sngl:x/gen`:
+   the lowering above, with a golden per lowered target (gtk4, fyne,
+   bubbletea) and a `cmd/sngl` script running `testdata/nav_stack.sngl`'s
+   program on each. Still open from the plan this replaced: bubbletea's
+   `visible` cell surviving `if details`.
+4. **android** declares `navigation`: a `NavHost`, system back pops; the
+   `navigation-compose` dependency joins the scaffold. Fixes the lost
+   `safeDrawingPadding` of a window whose content arrives through a slot.
+5. **html declares `navigation` and answers a page** by a mark on its primitive rather than the
    builtin: one document per marked node, the whole tree with every other
    one pruned, so the window is the shell; one route per marked node in route
    mode, the params cell its population's. `window` still has `href`.
-8. **The migration**: `window` loses `href` and `params`, `output(entry=…)`
+6. **The migration**: `window` loses `href` and `params`, `output(entry=…)`
    goes, every call site, the md site, `website.sngl` and `docbrowser` move.
    Every html golden that was a window per page is byte-identical as a stack of
    pages.
-9. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
+7. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
    refusals become meanings.
 
 ### Phase C3: no window in the compiler

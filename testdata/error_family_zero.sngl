@@ -1,7 +1,0 @@
-import build "sngl:build"
-
-// A family's zero names no member, so it has no fields to set: the props it
-// reads are its members'.
-component suit(name string) build.family
-
-func named() => suit{name="x"} // ERROR(check) "suit{} is a family's zero, which names no member and takes no fields"
