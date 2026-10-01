@@ -12,9 +12,10 @@ component para(children ...component inline) block {}
 component bold(weight int) inline {}
 
 component main node {
-    // A family holds nothing and no value of it exists, which is what makes
-    // it usable as a slot's type and not as a var's.
-    var bad block = 0 // ERROR(check) "names a family, which has no values"
+    // A family is a type, whose values are handles to its members, and not
+    // a value itself.
+    var bad block = 0 // ERROR(check) "cannot initialize block with int"
+    var named = block // ERROR(check) "block names a family, which is not a value"
 
     document() {
         bold(weight=700) // ERROR(check) "expected block component in document, got bold"

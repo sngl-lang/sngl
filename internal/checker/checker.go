@@ -506,6 +506,12 @@ type checker struct {
 	// none passes in silence.
 	inferTrees []*ir.Component
 	treeChecks []func()
+	// familyMembers are the members of a family that declares props, held to
+	// declaring each once the package's components are registered.
+	familyMembers []*ir.Component
+	// inheritedProps are the props a member took from its family's default
+	// rather than declaring, each mapped to the family's prop.
+	inheritedProps map[*ir.Prop]*ir.Prop
 	// specOrigin is the declaration each call-site specialization was copied
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
@@ -514,6 +520,10 @@ type checker struct {
 	// type parameters to, in declaration order: the type arguments a handle
 	// to that node carries.
 	specArgs map[*ir.Component][]*ir.Type
+	// handleArgs is the type arguments each handle a component body declares
+	// was bound, for a select reaching it from outside: `c.pkg` is the
+	// `page<Pkg>` its call site made it.
+	handleArgs map[handleKey][]*ir.Type
 	// entryOrigin is the declared entry each specialized slot entry was
 	// copied from, and entrySpec the specialization an insertion of one was
 	// checked against. An insertion carries the declared entry past the
@@ -1334,11 +1344,13 @@ func (c *checker) pass1() {
 	}
 	c.runShellMarks()
 
+	membersMark := len(c.familyMembers)
 	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
 		p := pendingComponents[i]
 		c.resumeFile(p.doc)
 		c.registerComponent(p.decl)
 	}
+	c.checkFamilyMembersFrom(membersMark)
 	for _, p := range structShells {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
@@ -2954,10 +2966,6 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 	case *ast.VarDecl:
 		for _, spec := range s.Specs {
 			typ := c.resolveType(spec.Type)
-			if f := ir.TypeFamily(typ); f != nil {
-				c.error(s.Pos, "%s names a family, which has no values", f.Name)
-				typ = TypDyn
-			}
 			for _, name := range spec.Names {
 				v := &ir.Var{AST: s, Name: name, Type: typ}
 				// A mark means the same thing wherever the declaration sits.
@@ -4116,6 +4124,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					prop.Default = c.checkExprExpecting(pd.Default, want)
 					if prop.Const {
 						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
+					}
+					// A family's default is what every member omitting the
+					// prop holds, and no call site sets it.
+					if comp.IsFamily() {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, fmt.Sprintf("the default of %s's prop %q", comp.Name, prop.Name))
+						c.inheritDefault(prop)
 					}
 					initType := exprType(prop.Default)
 					// `T{}` is the zero of whatever T is bound to, the default

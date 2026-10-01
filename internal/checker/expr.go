@@ -36,10 +36,6 @@ func (c *checker) requireValueType(t *ir.Type, pos ast.Pos) bool {
 		c.error(pos, "expression yields no value")
 		return true
 	}
-	if f := ir.TypeFamily(t); f != nil {
-		c.error(pos, "%s names a family, which has no values", f.Name)
-		return true
-	}
 	return false
 }
 
@@ -492,6 +488,12 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		c.rejectUnexported(x.Pos, sym)
 	}
 	c.reportUnusable(x.Pos, x.Name, sym)
+	// A family is a type with values -- each a handle to one of its members
+	// -- and is not one of them itself.
+	if f, ok := sym.(*ir.Component); ok && f.IsFamily() {
+		c.error(x.Pos, "%s names a family, which is not a value: a value of it is a handle to one of its members", f.Name)
+		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
+	}
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
@@ -637,15 +639,26 @@ func comparableEq(left, right *ir.Type) bool {
 		return left.Equal(right)
 	}
 	// A handle read as a value is its node, and two nodes compare only as
-	// instances of one declaration: an `a` is never a `b`.
+	// instances of one declaration -- an `a` is never a `b` -- or as a family
+	// value and a member of that family, which compare by identity:
+	// `pages.current == about`.
 	if left.Kind == ir.TypeComponent && right.Kind == ir.TypeComponent &&
 		left.Decl != nil && right.Decl != nil && left.Decl != right.Decl {
-		return false
+		return left.IsAssignableTo(right) || right.IsAssignableTo(left)
 	}
 	if left.Kind == right.Kind {
 		return true
 	}
 	return false
+}
+
+// receivesOperand reports whether a method's first parameter is the operand
+// it was called on: one the declaration marked as its receiver, or one the
+// operand's type fits. A component method's synthesized `this` names the
+// declaration bare, which a handle carrying its call site's type arguments
+// does not equal, and is the receiver all the same.
+func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
+	return p.Receiver || receiver.IsAssignableTo(p.Type)
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
@@ -1420,7 +1433,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// below makes, and `stack.go(to page<T>, …)` bound nothing from
 			// `to` without it.
 			inferSig := sig
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && receivesOperand(receiver, sig.Params[0]) {
 				shifted := *sig
 				shifted.Params = sig.Params[1:]
 				inferSig = &shifted
@@ -1440,7 +1453,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// Static call: Type.method(args...) — all args explicit.
 			// Type ident is only a namespace marker; drop it.
 			args = c.checkCallArgs(call.Args, sig)
-		} else if recvParamStyle && len(sig.Params) > 0 && receiver.IsAssignableTo(sig.Params[0].Type) {
+		} else if recvParamStyle && len(sig.Params) > 0 && receivesOperand(receiver, sig.Params[0]) {
 			// Old-style instance call: receiver is the implicit first arg.
 			// Validate remaining args against the shifted sig, then prepend the
 			// receiver so the IR matches the static call shape.
@@ -2026,7 +2039,22 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 		// the feature is orthogonal to context. A name matching none of these is
 		// a hard error, not a silent `dyn`.
 		if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+			if comp, ok := operand.Decl.(*ir.Component); ok && comp.IsFamily() {
+				// A value of a family is a record of the props it declares,
+				// whichever member it holds: nothing a member declares beyond
+				// them is reachable through it.
+				for _, p := range comp.Props {
+					if p.Name == x.Field {
+						return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
+					}
+				}
+				c.error(x.Pos, "%s is a family, and a value of one reaches only the props its members share: it declares no %q", comp.Name, x.Field)
+				return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+			}
 			if comp, ok := operand.Decl.(*ir.Component); ok {
+				// What the operand's type arguments bound: `pkg.params` off a
+				// `page<Pkg>` is a Pkg.
+				bindings := componentArgBindings(operand, comp)
 				for _, v := range comp.Vars {
 					if v.Name == x.Field {
 						return &ir.Select{AST: x, Type: v.Type, Operand: operandExpr, Field: x.Field}
@@ -2034,7 +2062,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				}
 				for _, p := range comp.Props {
 					if p.Name == x.Field {
-						return &ir.Select{AST: x, Type: p.Type, Operand: operandExpr, Field: x.Field}
+						typ := p.Type
+						if bindings != nil {
+							typ = typ.Substitute(bindings)
+						}
+						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
 					}
 				}
 				// Nested component methods live in the symtab method table keyed
@@ -2090,7 +2122,11 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 					restore()
 					if host != nil {
-						return &ir.Select{AST: x, Type: host.SymType(), Operand: operandExpr, Field: x.Field}
+						typ := host.SymType()
+						if args, ok := c.handleArgs[handleKey{comp, x.Field}]; ok {
+							typ = withComponentArgs(typ, host, args)
+						}
+						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
 					}
 					if descendant != nil {
 						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
@@ -3175,10 +3211,6 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 	var out []ir.Stmt
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
-		if f := ir.TypeFamily(typ); f != nil {
-			c.error(decl.Pos, "%s names a family, which has no values", f.Name)
-			typ = TypDyn
-		}
 		var initExpr ir.Expr
 		if spec.Default != nil {
 			initExpr = c.checkExprExpecting(spec.Default, typ)
@@ -4775,6 +4807,7 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		}
 	}
 
+	c.refuseInheritedProps(args.Pos, comp, boundProps)
 	// Arity: all required props must be bound (user-defined components only;
 	// stdlib component props without defaults are optional by platform convention).
 	if comp != nil && !comp.Stdlib {
@@ -4949,6 +4982,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 		}
 	}
 
+	c.refuseInheritedProps(call.Args.Pos, comp, boundProps)
 	// Arity: required props must be bound (user-defined components only;
 	// stdlib component props without defaults are optional by platform convention).
 	if !comp.Stdlib {

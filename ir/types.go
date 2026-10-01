@@ -596,15 +596,11 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeComponent:
-		// A component type written without type arguments -- `page` -- is
-		// any instance of the declaration; with them, `page<P>`, the instances
-		// its call site bound that way. A handle carries what its call site
-		// bound, so one side naming none accepts it.
+		// `page<P>` is the instances whose call site bound the declaration's
+		// type parameters that way, and a handle carries what its call site
+		// bound. A bare `component` names no declaration and carries none.
 		if !sameDecl(t, other) {
 			return false
-		}
-		if len(t.Elems) == 0 || len(other.Elems) == 0 {
-			return true
 		}
 		if len(t.Elems) != len(other.Elems) {
 			return false
@@ -694,6 +690,16 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	}
 	if target.Kind == TypeOption {
 		return t.IsAssignableTo(target.Elems[0])
+	}
+	// A handle to a member of a family is a value of the family: one record
+	// of the props the family declares, which every member declares too. One
+	// way only -- nothing turns a family value back into a member, since
+	// which member it holds is known only when the program runs.
+	if t.Kind == TypeComponent && target.Kind == TypeComponent {
+		if f, ok := target.Decl.(*Component); ok && f.IsFamily() {
+			m, ok := t.Decl.(*Component)
+			return ok && !m.IsFamily() && m.Tree == f
+		}
 	}
 	if t.Kind == TypeRemote && target.Kind == TypeRemote {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])

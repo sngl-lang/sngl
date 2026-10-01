@@ -76,6 +76,7 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 	case 1:
 		comp.Tree = found[0]
 		c.declPkg().NoteTreeKind(found[0])
+		c.checkFamilyMember(comp)
 		return true
 	}
 	c.error(compDeclPos(comp),

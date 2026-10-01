@@ -697,6 +697,12 @@ Settled in C2's planning:
   `pages.current.title` and `pages.current == about` read it;
   `pages.current.params` is an error, `pkg.params` is `Pkg`, and
   `pages.go(pages.current)` is refused, since `go` takes a `page<T>`.
+  Settled while building it: every family has values, a propless one's being
+  identity alone, and naming the family itself as an expression stays an
+  error; a family prop may carry a constant default, which a member omitting
+  the prop holds and no call site sets; a two-way or const prop, an event, a
+  slot or a type parameter on a family is refused; and a bare generic
+  component type is its defaults, as a struct type is.
   Chosen over an `interface` type (more language than the problem needs, and
   real polymorphism with it), inheritance from a non-generic base (a second
   statement of what a component is, beside its return position), and a
@@ -927,10 +933,11 @@ fixtures written first:
    two-way prop that is never required, a window's props reading its body's
    handles, and `none`'s `Stack`/`Page`/`Link` answered by the interpreter,
    which now drops an unmounted instance's state (`testdata/nav_stack.sngl`
-   and six fixtures for the checker rules). *Left:* `current` is still typed by a
-   stand-in -- a bare component type matches any specialization -- until a
-   family declares the props its members share (decision 15), which is the
-   next step.
+   and six fixtures for the checker rules). `current` is typed by the family,
+   which declares the props its members share (decision 15); the bare-type
+   leniency it replaced is gone from `ir.Type.Equal`
+   (`testdata/family_props.sngl`, `error_family_member_props.sngl`,
+   `error_family_value.sngl`).
 3. **gtk4, fyne and bubbletea** override the three: a hand-written stack
    primitive on gtk4 (the bundled GIR has no `set_visible_child`), fyne's
    switcher from `88971356^` moved into the content, a current-page switch on

@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -85,6 +86,12 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 			c.checkFamilyDecl(decl, comp)
 			return
 		}
+		// What a family declares a member has to, and the family is
+		// registered ahead of it (familiesFirst) but the member's siblings
+		// are not all registered yet, so the check waits for the package.
+		if len(f.Props) > 0 {
+			c.familyMembers = append(c.familyMembers, comp)
+		}
 		// A build-target node is the target's identity as well as its option
 		// schema, and #[gen.name] is the half the world outside SNGL reads.
 		if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
@@ -112,18 +119,79 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		comp.Name, named)
 }
 
-// checkFamilyDecl holds a family's declaration to naming a family and nothing
-// else. A family holds nothing and is never rendered, so a prop, a slot or an
-// event would be read by nobody. A body is where how a family is generated
-// will be written, and nothing reads one yet -- refused rather than dropped,
-// so that the first program to write one is not one whose body silently did
+// checkFamilyDecl holds a family's declaration to the props its members
+// share. A value of a family is a record of those props, read off whichever
+// member it holds and never bound, so each is a name, a type and perhaps a
+// default for the members that omit it: a two-way or const prop, an event, a
+// slot and a type parameter would each be read by nobody. A body is where how a family is generated will
+// be written, and nothing reads one yet -- refused rather than dropped, so
+// that the first program to write one is not one whose body silently did
 // nothing.
 func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
-	if len(decl.Props.Props) > 0 || len(decl.TypeParams) > 0 || decl.HasParens {
-		c.error(decl.Pos, "component %s is a family, which holds nothing: declare it with no parameter list", comp.Name)
+	refuse := func(what string) {
+		c.error(decl.Pos, "component %s is a family, which declares the props its members share and nothing else: %s", comp.Name, what)
+	}
+	if len(decl.TypeParams) > 0 {
+		refuse("it takes type parameters")
+	}
+	for _, p := range decl.Props.Props {
+		switch pd := p.(type) {
+		case ast.Param:
+			switch {
+			case func() bool { _, _, isSlot := ast.SlotType(pd.Type); return isSlot }():
+				refuse(pd.Name + " is a slot")
+			case pd.Bidirectional:
+				refuse(fmt.Sprintf("%q is two-way", pd.Name))
+			case pd.Const:
+				refuse(fmt.Sprintf("%q is const", pd.Name))
+			}
+		case ast.EventDecl:
+			refuse("@" + pd.Name + " is an event")
+		}
 	}
 	if !comp.Bodyless {
 		c.error(decl.Pos, "component %s is a family, and a family has no body yet: remove the block", comp.Name)
+	}
+}
+
+// checkFamilyMember holds a member to declaring every prop its family
+// declares, by name and type. Those props are the whole of what a value of
+// the family reads, off whichever member it holds, so a member missing one
+// would hand the reader nothing. What the member does with the prop -- a
+// default, a two-way binding -- is its own business; a family value reads
+// what the prop holds.
+//
+// A family prop with a default may be omitted, and the member then has it
+// with that default and nothing else: a call site cannot set it
+// (refuseInheritedProps), since the member never said it takes one.
+func (c *checker) checkFamilyMember(comp *ir.Component) {
+	f := comp.Tree
+	if comp.AST == nil || f == nil || comp.IsFamily() {
+		return
+	}
+	for _, fp := range f.Props {
+		var mp *ir.Prop
+		for _, p := range comp.Props {
+			if p.Name == fp.Name {
+				mp = p
+				break
+			}
+		}
+		switch {
+		case mp == nil && familyPropDefaulted(f, fp):
+			inherited := &ir.Prop{Name: fp.Name, Type: fp.Type, Default: fp.Default}
+			comp.Props = append(comp.Props, inherited)
+			if c.inheritedProps == nil {
+				c.inheritedProps = map[*ir.Prop]*ir.Prop{}
+			}
+			c.inheritedProps[inherited] = fp
+		case mp == nil:
+			c.error(comp.AST.Pos, "component %s is a member of %s, which declares prop %q: declare %s %s",
+				comp.Name, f.Name, fp.Name, fp.Name, fp.Type)
+		case mp.Type == nil || fp.Type == nil || !mp.Type.Equal(fp.Type):
+			c.error(comp.AST.Pos, "component %s declares prop %q as %s, and its family %s declares it %s",
+				comp.Name, fp.Name, mp.Type, f.Name, fp.Type)
+		}
 	}
 }
 
@@ -211,4 +279,56 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 		}
 	}
 	walk(body)
+}
+
+// refuseInheritedProps reports a call site setting a prop its component took
+// from its family's default rather than declaring.
+func (c *checker) refuseInheritedProps(pos ast.Pos, comp *ir.Component, bound map[string]bool) {
+	if comp == nil || len(c.inheritedProps) == 0 {
+		return
+	}
+	for _, p := range comp.Props {
+		if fp, ok := c.inheritedProps[p]; ok && bound[p.Name] {
+			c.error(pos, "component %s takes %q from its family %s, which gives it a default and no call site a say: declare %s %s on %s to set it",
+				comp.Name, p.Name, comp.Tree.Name, fp.Name, fp.Type, comp.Name)
+		}
+	}
+}
+
+// inheritDefault hands a family prop's checked default to every member that
+// omitted the prop, which until now held what pass1 had.
+func (c *checker) inheritDefault(fp *ir.Prop) {
+	for inherited, from := range c.inheritedProps {
+		if from == fp {
+			inherited.Default = fp.Default
+		}
+	}
+}
+
+// checkFamilyMembersFrom checks the members this package's registration
+// recorded, from mark on. A lib package loads from inside a program's pass1
+// and registers its own, so each run drains only what it added.
+func (c *checker) checkFamilyMembersFrom(mark int) {
+	for _, comp := range c.familyMembers[mark:] {
+		c.checkFamilyMember(comp)
+	}
+	c.familyMembers = c.familyMembers[:mark]
+}
+
+// familyPropDefaulted reports whether a family's prop was written with a
+// default. A program's default is checked in pass2, after members register,
+// so the declaration is what is asked.
+func familyPropDefaulted(f *ir.Component, fp *ir.Prop) bool {
+	if fp.Default != nil {
+		return true
+	}
+	if f.AST == nil {
+		return false
+	}
+	for _, p := range f.AST.Props.Props {
+		if pd, ok := p.(ast.Param); ok && pd.Name == fp.Name {
+			return pd.Default != nil
+		}
+	}
+	return false
 }

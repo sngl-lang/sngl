@@ -97,6 +97,33 @@ func (c *checker) specializeHandle(id string, comp, spec *ir.Component) {
 		return
 	}
 	v.Type = withComponentArgs(v.Type, comp, args)
+	if owner := c.currentComponent; owner != nil {
+		if c.handleArgs == nil {
+			c.handleArgs = map[handleKey][]*ir.Type{}
+		}
+		c.handleArgs[handleKey{owner, id}] = args
+	}
+}
+
+// handleKey names a handle from outside the body declaring it, the way a
+// select `c.box` reaches one: the component and the id.
+type handleKey struct {
+	owner *ir.Component
+	id    string
+}
+
+// componentArgBindings is what a component type's arguments bind its
+// declaration's type parameters to: `page<Pkg>` binds T to Pkg, so a select
+// through it reads `params` as a Pkg.
+func componentArgBindings(t *ir.Type, comp *ir.Component) map[string]*ir.Type {
+	if t == nil || len(t.Elems) != len(comp.TypeParams) || len(comp.TypeParams) == 0 {
+		return nil
+	}
+	b := make(map[string]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		b[tp.Name] = t.Elems[i]
+	}
+	return b
 }
 
 // withComponentArgs is t with the component type naming comp, under any

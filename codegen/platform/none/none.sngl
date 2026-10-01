@@ -157,14 +157,14 @@ const component markup.token[platform] {
 // stack starts at the page whose href is "/", or its first.
 #[intrinsic("none:Stack")]
 component Stack(
-    :current nav.page,
+    :current nav.navigator,
     pages ...component nav.navigator,
 ) ui.node
 
 // A page as the interpreter mounts it: its content, when its stack's current
 // is this page, and nothing otherwise -- a page not showing is not mounted.
 #[intrinsic("none:Page")]
-component Page(content ...component ui.node) nav.navigator
+component Page(href string, title string, content ...component ui.node) nav.navigator
 
 // A link: clicked, it follows `to` to the stack that holds it.
 #[intrinsic("none:Link")]
@@ -172,7 +172,7 @@ component Link(@click ui.ClickEvent, content ...component ui.node) ui.node
 
 // Goes to `to` in the stack that holds it, as `go` does from that stack.
 #[intrinsic("none:follow")]
-func follow(to nav.page, params dyn)
+func follow(to nav.navigator, params dyn)
 
 const component nav.stack[platform] {
     Stack(:current=current) {
@@ -181,7 +181,7 @@ const component nav.stack[platform] {
 }
 
 const component nav.page[platform] {
-    Page {
+    Page(href=href, title=title) {
         content(params)
     }
 }

@@ -184,8 +184,8 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyStructTypeArgs(t.Pos, typ, sd, t.TypeArgs)
 				}
 			}
-			if typ.Kind == ir.TypeComponent && len(t.TypeArgs) > 0 {
-				if comp, ok := typ.Decl.(*ir.Component); ok {
+			if typ.Kind == ir.TypeComponent {
+				if comp, ok := typ.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
 					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
 				}
 			}
@@ -199,9 +199,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 
 // applyComponentTypeArgs is a component type carrying the type arguments it
 // was written with, `page<P>`: the instances whose call sites bound the
-// declaration's parameters that way. Written bare, a component type is any
-// instance, so an argument list stopping short fills from each parameter's
-// default and then from the parameter itself.
+// declaration's parameters that way. An argument list stopping short fills
+// from each parameter's default, as a struct type's does, so a bare `page` is
+// `page<struct {}>` -- and one with no default has to be written.
 func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Component, args []ast.TypeExpr) *ir.Type {
 	if len(args) > len(comp.TypeParams) {
 		c.error(pos, "%s takes %d type argument(s), got %d", comp.Name, len(comp.TypeParams), len(args))
@@ -215,7 +215,8 @@ func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Co
 		case tp.Default != nil:
 			elems[i] = tp.Default
 		default:
-			elems[i] = &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}
+			c.error(pos, "component type %s requires a type argument for %s, which has no default", comp.Name, tp.Name)
+			return base
 		}
 	}
 	cp := *base
@@ -308,7 +309,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			if c.rejectUnexported(ast.Pos{}, sym) {
 				return TypDyn
 			}
-			if !f.IsFamily() && len(args) > 0 {
+			if len(f.TypeParams) > 0 {
 				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
 			}
 			return f.SymType()

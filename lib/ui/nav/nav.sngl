@@ -7,7 +7,14 @@ import marks "sngl:internal/marks"
 
 // The family of navigators: what `stack` holds, and what `tabs` and `split`
 // will. A page is its member.
-component navigator build.family
+//
+// It declares the props every member shares, and a value of it -- a stack's
+// `current` -- is a record of those and the identity of the member it holds:
+// `pages.current.title` reads one, and `pages.current == about` compares by
+// identity. What a member declares beyond them is not reachable through it,
+// so a page's `params` are read off the page's own handle, typed by what its
+// call site bound.
+component navigator(href string, title string) build.family
 
 // A destination. `href` is where it is served on a target that has addresses,
 // with `{name}` placeholders filled from the fields of `params`; `title` names
@@ -28,13 +35,13 @@ component page<T = struct {}>(
 // Pages one on top of another, showing the top one. `current` is that page,
 // and starts at the page whose href is "/", or the first. It is a two-way
 // prop: `:current=x` binds it to state of the program, and unbound it is a
-// cell of the stack's own, read as `pages.current` -- a page's value, so
+// cell of the stack's own, read as `pages.current` -- a navigator's value, so
 // `pages.current == about` and `pages.current.title` read it.
 //
 // A page the stack is not showing is not mounted: leaving one destroys what it
 // rendered, as an `if` does.
 component stack(
-    :current page,
+    :current navigator,
     pages ...component navigator,
 ) ui.node
 

@@ -665,11 +665,29 @@ unresolved name where it is written, and two packages each declaring a `shape`
 family declare two. `ir.Component.Tree` points at it, and `Component.IsFamily`
 is "a member of the family of families", which is the one declaration that is a
 member of itself (`#[marks.builtin("treeFamily")]` on `build.family`, where the
-regress stops). A family takes no parameters and has no body — a body is where
-how a family is generated will be written, and nothing reads one yet, so it is
-refused rather than dropped — and writing one in a tree is an error rather than
-a membership mismatch. It is exempt from the bodyless-component rule for the
-same reason.
+regress stops). A family has no body — a body is where how a family is
+generated will be written, and nothing reads one yet, so it is refused rather
+than dropped — and writing one in a tree is an error rather than a membership
+mismatch. It is exempt from the bodyless-component rule for the same reason.
+
+**A family declares the props its members share**, and is a type with values.
+`component navigator(href string, title string) build.family`: every member
+declares each prop by name and type (`checkFamilyMember`, run once the
+package's components are registered and again for a member whose family was
+inferred), and a handle to a member is assignable to the family's type, one way
+only (`Type.IsAssignableTo`). A value of a family is a record of those props
+and the identity of the member it holds, so a select through one reaches only
+the family's props and `==` against a member compares identity
+(`comparableEq`); two *different* members still do not compare. A family prop
+may carry a default, which must be constant: a member that omits the prop then
+holds it with that default, and a call site may not set it
+(`refuseInheritedProps`), since the member never said it takes one. Anything
+else on a family -- a two-way or const prop, an event, a slot, a type
+parameter -- would be read by nobody and is refused (`checkFamilyDecl`). Every
+family has values, the propless ones included (identity alone), but naming a
+family as an expression is still an error: it is a type, not one of its
+values. `testdata/family_props.sngl`, `error_family_member_props.sngl`,
+`error_family_value.sngl` and `error_family_decl.sngl`.
 
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name
@@ -2576,17 +2594,27 @@ its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
 the stack's handle. A page's `params` travel with the history entry, so `back`
 restores them, and a page not showing is not mounted. The interpreter is the
 one target that answers it so far (`internal/interp/nav.go`, `none`'s `Stack`,
-`Page` and `Link` primitives); how `current` is typed across pages of
-different `T` is still open, and the compiled targets follow.
+`Page` and `Link` primitives), and the compiled targets follow.
+
+`current` is typed by the family, `:current navigator`, so no page's `T`
+escapes into it: `pages.current.title` reads the family's prop,
+`pages.current == about` compares identity, and `pages.current.params` is an
+error -- a page's params are read off the page's own handle, `pkg.params`,
+which is a `Pkg`. `pages.go(pages.current)` is refused for the same reason,
+since `go` takes a `page<T>` and a family value is never turned back into a
+member.
 
 What it needed from the checker is general:
 
 - **A component type keeps its type arguments** (`page<T>`, resolved like a
   struct's), and a node's `#id` is typed by what its call site bound
   (`specializeHandle`), so a func binding `T` from a handle holds the value
-  beside it to that type. Written bare, a component type still matches any
-  specialization, which is what it did before it carried arguments at all.
-  A qualified component name (`nav.page`) is a type too, not only a family.
+  beside it to that type. Written bare, a generic component type is its
+  defaults, as a struct type is (`page` is `page<struct {}>`), and a
+  parameter with no default has to be written. A select through one reads
+  its props under those arguments, and a handle reached from outside its body
+  (`c.pkg`) carries what its call site bound (`handleArgs`). A qualified
+  component name (`nav.page`) is a type too, not only a family.
 - **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
   and written out by each call that omits it (`typeParamZeroFor`), for a func
   and for a component prop, the library's included, since no backend can
