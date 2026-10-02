@@ -8,6 +8,9 @@ the copy's own title, the `if`'s page is about/, the group's page is faq/, and
 contact/ is the page the button goes to. A loop of pages is no render slot there, since each document holds
 one copy and the loop is gone before anything renders.
 
+android declares a destination per page, a copy's route holding which copy it
+is and the destination binding the loop's variables back from it.
+
 gtk4, fyne and bubbletea keep the loop: each copy of the page is the `if` on
 the record's `id` and its `copy`, the iteration the record holds, so going to
 one copy shows it and not its sibling. Where a copy may be the start, the
@@ -32,6 +35,9 @@ output {
         gtk4
         fyne
         bubbletea
+    }
+    kotlin {
+        android
     }
 }
 
@@ -102,7 +108,7 @@ type _page__value struct {
 	Href  string
 	Title string
 	Meta  __anon_e3b0c4
-	Copy  int
+	Copy  []int
 }
 
 type Pages__entry struct {
@@ -125,7 +131,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: 1}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: []int{1}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -238,7 +244,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-			m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: 0}
+			m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			if len(m.pages__history) > 0 {
 				m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
@@ -261,13 +267,13 @@ func (m Model) View() tea.View {
 			_ = __copy
 			_ = it
 			var content_0Item string
-			if (m.pages__current.Id == 0) && (m.pages__current.Copy == __copy) {
+			if (m.pages__current.Id == 0) && ((len(m.pages__current.Copy) == 1) && (m.pages__current.Copy[0] == __copy)) {
 				var content_0ItemParts []string
 				var content_0ItemPart_0 string
 				content_0ItemPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(it.Title))
 				content_0ItemParts = append(content_0ItemParts, content_0ItemPart_0)
 				var __lt0 string
-				if (m.pages__current.Id == 0) && (m.pages__current.Copy == __copy) {
+				if (m.pages__current.Id == 0) && ((len(m.pages__current.Copy) == 1) && (m.pages__current.Copy[0] == __copy)) {
 					__lt0 = "showing"
 				} else {
 					__lt0 = "hidden"
@@ -362,7 +368,7 @@ type _page__value struct {
 	Href  string
 	Title string
 	Meta  __anon_e3b0c4
-	Copy  int
+	Copy  []int
 }
 
 type Pages__entry struct {
@@ -395,7 +401,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: 1}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: []int{1}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -420,7 +426,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
 	for __copy, it := range m.items {
-		if (m.pages__current.Id == 0) && (m.pages__current.Copy == __copy) {
+		if (m.pages__current.Id == 0) && ((len(m.pages__current.Copy) == 1) && (m.pages__current.Copy[0] == __copy)) {
 			__n2 := widget.NewLabel("")
 			__n2.SetText(it.Title)
 			fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
@@ -505,7 +511,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) __n8_click_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-	m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: 0}
+	m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
 	m.__n1.SetTitle(("Site - " + m.pages__current.Title))
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
@@ -609,7 +615,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	var __lt2 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt2 = "showing"
 	} else {
 		__lt2 = "hidden"
@@ -623,7 +629,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
 	var __lt0 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt0 = "showing"
 	} else {
 		__lt0 = "hidden"
@@ -634,7 +640,7 @@ func (c *__child0Instance) Set__p0(__v _page__value) {
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
 	var __lt1 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt1 = "showing"
 	} else {
 		__lt1 = "hidden"
@@ -686,7 +692,7 @@ type _page__value struct {
 	Href  string
 	Title string
 	Meta  __anon_e3b0c4
-	Copy  int
+	Copy  []int
 }
 
 type Pages__entry struct {
@@ -719,7 +725,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: 1}
+	m.pages__current = _page__value{Id: 0, Href: "/", Title: "Two", Meta: __anon_e3b0c4{}, Copy: []int{1}}
 	m.pages__history = []Pages__entry{}
 	m.visible__inst0 = true
 	m.__slot0 = nil
@@ -744,7 +750,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*__child0Instance{}
 	var __inst0_i int = 0
 	for __copy, it := range m.items {
-		if (m.pages__current.Id == 0) && (m.pages__current.Copy == __copy) {
+		if (m.pages__current.Id == 0) && ((len(m.pages__current.Copy) == 1) && (m.pages__current.Copy[0] == __copy)) {
 			__n2 := gtk4rt.LabelNew("")
 			gtk4rt.LabelSetText(__n2, it.Title)
 			gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
@@ -829,7 +835,7 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 
 func (m *Model) __n8_clicked_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current})
-	m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: 0}
+	m.pages__current = _page__value{Id: 3, Href: "/contact", Title: "Contact", Meta: __anon_e3b0c4{}, Copy: []int{}}
 	gtk4rt.ToplevelSetTitle(m.__n1, ("Site - " + m.pages__current.Title))
 	m.__renderSlot0(m.__n7)
 	m.__renderSlot1(m.__n7)
@@ -880,7 +886,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 	c.__slot2 = nil
 	c.__slot3 = nil
 	var __lt2 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt2 = "showing"
 	} else {
 		__lt2 = "hidden"
@@ -895,7 +901,7 @@ func new__child0Instance(__model *Model, __a___p0 _page__value, __a___p1 int) *_
 func (c *__child0Instance) Set__p0(__v _page__value) {
 	c.__prop___p0 = __v
 	var __lt0 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt0 = "showing"
 	} else {
 		__lt0 = "hidden"
@@ -906,7 +912,7 @@ func (c *__child0Instance) Set__p0(__v _page__value) {
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
 	var __lt1 string
-	if (c.__prop___p0.Id == 0) && (c.__prop___p0.Copy == c.__prop___p1) {
+	if (c.__prop___p0.Id == 0) && ((len(c.__prop___p0.Copy) == 1) && (c.__prop___p0.Copy[0] == c.__prop___p1)) {
 		__lt1 = "showing"
 	} else {
 		__lt1 = "hidden"
@@ -991,6 +997,152 @@ func (m *Model) buildWidgetTree() {
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
 	return gtk4rt.ToplevelWindow(app, m.__n1)
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
+// Code generated by sngl (android) from app.sngl; DO NOT EDIT.
+
+package test.sngl.app
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import kotlinx.serialization.Serializable
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import androidx.compose.foundation.layout.safeDrawingPadding
+
+data class Item(
+    var slug: String = "",
+    var title: String = ""
+)
+
+class __anon_e3b0c4 {
+    override fun equals(other: Any?) = other is __anon_e3b0c4
+    override fun hashCode() = 0
+    override fun toString() = "__anon_e3b0c4()"
+}
+
+data class _page__value(
+    var id: Int,
+    var href: String,
+    var title: String,
+    var meta: __anon_e3b0c4,
+    var copy: List<Int>
+)
+
+fun _snglFloatStr(v: Double): String =
+    if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+
+fun _snglSplit(s: String, sep: String): List<String> =
+    if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
+
+val items: List<Item> = listOf(Item(slug = "one", title = "One"), Item(slug = "", title = "Two"))
+
+@Serializable
+data class _page__valueRoute0(val copy: String = "")
+
+@Serializable
+class _page__valueRoute1
+
+@Serializable
+class _page__valueRoute2
+
+@Serializable
+class _page__valueRoute3
+
+fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
+    val destination = entry?.destination ?: return null
+    return when {
+        destination.hasRoute<_page__valueRoute0>() -> run {
+            val __r = entry.toRoute<_page__valueRoute0>()
+            val __c = __r.copy.split(".").map { it.toInt() }
+            val __copy = __c[0]
+            val it = (items).elementAt(__copy)
+            _page__value(id = 0, href = ("/" + it.slug), title = it.title, meta = __anon_e3b0c4(), copy = listOf(__copy))
+        }
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute2>() -> _page__value(id = 2, href = "/faq", title = "FAQ", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute3>() -> _page__value(id = 3, href = "/contact", title = "Contact", meta = __anon_e3b0c4(), copy = listOf())
+        else -> null
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen() {
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    val pages__nav = rememberNavController()
+    val pages__entry by pages__nav.currentBackStackEntryAsState()
+    val pages__current = _page__valueOf(pages__entry) ?: _page__value(id = 0, href = "/", title = "Two", meta = __anon_e3b0c4(), copy = listOf(1))
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            NavHost(navController = pages__nav, startDestination = _page__valueRoute0(copy = "1"), modifier = Modifier.testTag("pages")) {
+                composable<_page__valueRoute0> { __entry ->
+                    val __r = __entry.toRoute<_page__valueRoute0>()
+                    val __c = __r.copy.split(".").map { it.toInt() }
+                    val __copy = __c[0]
+                    val it = (items).elementAt(__copy)
+                    Column {
+                        Text(text = it.title, modifier = Modifier)
+                        Text(text = (if (((pages__current.id == 0) && ((pages__current.copy.size == 1) && (pages__current.copy[0] == __copy)))) "showing" else "hidden"), modifier = Modifier)
+                    }
+                }
+                composable<_page__valueRoute1> {
+                    Text(text = "about", modifier = Modifier)
+                }
+                composable<_page__valueRoute2> {
+                    Text(text = "FAQ only", modifier = Modifier)
+                }
+                composable<_page__valueRoute3> {
+                    Text(text = "contact", modifier = Modifier)
+                }
+            }
+            Button(onClick = {
+                pages__nav.navigate(_page__valueRoute3())
+            }, modifier = Modifier) {
+                Text(text = "Contact", modifier = Modifier)
+            }
+            Button(onClick = {
+                run { if (pages__nav.previousBackStackEntry != null) pages__nav.popBackStack() }
+            }, modifier = Modifier) {
+                Text(text = "Back", modifier = Modifier)
+            }
+        }
+    }
 }
 -- out/none/html/about/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -1125,7 +1277,8 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <span>Two</span>
-  <span>showing</span>
+  <span id="$2">
+  </span>
   <button id="$3">
     <span>Contact</span>
   </button>
@@ -1138,6 +1291,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
+  var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
   $3.addEventListener("click", function() {
@@ -1146,6 +1300,10 @@ body { font-family: system-ui, sans-serif; }
   $4.addEventListener("click", function() {
     history.back();
   });
+  function __sngl_init() {
+    $2.textContent = [1].length === 1 && true ? "showing" : "hidden";
+  }
+  __sngl_init();
 })();
 </script>
 </body></html>
@@ -1165,7 +1323,8 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <span>One</span>
-  <span>showing</span>
+  <span id="$2">
+  </span>
   <button id="$3">
     <span>Contact</span>
   </button>
@@ -1178,6 +1337,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
+  var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
   $3.addEventListener("click", function() {
@@ -1186,14 +1346,20 @@ body { font-family: system-ui, sans-serif; }
   $4.addEventListener("click", function() {
     history.back();
   });
+  function __sngl_init() {
+    $2.textContent = [0].length === 1 && true ? "showing" : "hidden";
+  }
+  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a29532cbdcb17a563167d89ab3d1703d
+pass sha256:5f67645ebc544a93ff27cc3186b44cdb
 -- run/go/fyne --
-pass sha256:dd1f6cde2ada37072c4bdfee6159f0e6
+pass sha256:55c5fcc598e78077bb5736477b9913ef
 -- run/go/gtk4 --
-pass sha256:24584d6a24f8d51e623f8533b51223fc
+pass sha256:619e417380b839cd436b537cce345c11
+-- run/kotlin/android --
+pass sha256:5adc42be901eac9d98f62dd3b735a99c
 -- run/none/html --
-pass sha256:c2770a520a4106cf7e571019aee07689
+pass sha256:f673a6f1ec571f84e85bf69dcb7716e1

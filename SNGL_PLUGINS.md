@@ -1089,11 +1089,12 @@ fixtures written first:
    window holding no stack being refused there with a `OneWindowError` the
    harnesses skip. The docs site writes the same file set and the same page
    bodies, its documents' scripts without the seven dead carousel effects
-   each used to carry. Still open: android writes no route per copy; a loop inside a loop of pages;
-   and `sngl dump` prints a qualified node by its local name, so a dump of a
-   program writing `nav.page` does not check again. Since closed: a `var` in a
-   page's body, as in any block of a view, is state of the block
-   (`passHoistState`, `view_block_state.sngl`).
+   each used to carry. Still open: `sngl dump` prints a qualified node by its local name, so a dump
+   of a program writing `nav.page` does not check again. Since closed: a `var`
+   in a page's body, as in any block of a view, is state of the block
+   (`passHoistState`, `view_block_state.sngl`); a declaration reading itself is
+   a checker error (`reportDeclarativeCycles`); and pages under nested loops,
+   with params, and on android (`nav_stack_pages_nested`).
 7. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
    refusals become meanings.
 

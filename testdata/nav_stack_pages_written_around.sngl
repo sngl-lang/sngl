@@ -1,4 +1,3 @@
-// SKIP(codegen) "android writes no route per copy of a page yet; gtk4, fyne, bubbletea and html are nav_stack_pages_written_around.txtar"
 // A stack's pages need not be written one by one. A `for` over a constant
 // writes a page per element, an `if` the build decides writes one or none, and
 // a component whose body renders pages adds its pages to the stack it is

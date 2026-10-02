@@ -1,0 +1,67 @@
+// A page under loops inside loops is one page per iteration of the nest, and
+// a copy names the iteration it is by one index per loop, outermost first --
+// so two copies differ wherever one of their loops does, whatever length the
+// inner loop has.
+//
+// A page under a `for` takes params like any other. Only one copy shows at a
+// time, so the page holds one cell: the params of the copy showing, which a
+// `go` writes and `back` restores with the copy.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Row {
+    name string
+    cols list<string>
+}
+
+struct Sel {
+    pick string
+}
+
+const rows list<Row> = [
+    {name="a", cols=["1", "2"]},
+    {name="b", cols=["3"]},
+]
+
+component grid ui.node {
+    nav.stack #pages {
+        for var r = rows {
+            for var c = r.cols {
+                nav.page #cell(href=c == "3" ? "/" : "/" + r.name + "/" + c, title=r.name + c, params=Sel{pick=c}) {
+                    component content(s) {
+                        ui.text #line(value="{r.name} {c} picked {s.pick}")
+                        ui.text(value=pages.current == cell ? "showing" : "hidden")
+                        ui.button #pick(text="pick", @click { pages.go(cell, Sel{pick="x"}) })
+                    }
+                }
+            }
+        }
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toAbout(text="About", @click { pages.go(about) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testTheStartIsTheNestedCopyAtTheRoot(t Test, c grid) {
+    t.assert(c.heading.value == "b3")
+}
+
+func testACopyIsShownWithItsOwnParams(t Test, c grid) {
+    t.assert(c.line.value == "b 3 picked 3")
+    c.pick.click()
+    t.assert(c.line.value == "b 3 picked x")
+}
+
+func testBackRestoresTheCopyAndItsParams(t Test, c grid) {
+    c.pick.click()
+    c.toAbout.click()
+    t.assert(c.heading.value == "About")
+    c.back.click()
+    t.assert(c.heading.value == "b3")
+    t.assert(c.line.value == "b 3 picked x")
+}

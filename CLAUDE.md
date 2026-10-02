@@ -2788,30 +2788,44 @@ optimizer splices one wherever it is written (`inlineComponentCall`, whatever
 its props), which is what folds an `if` over what the call site handed it --
 md's `site` and its layout -- and `spliceGroups` splices whatever the optimizer
 did not before passNavigationValues numbers the pages, since the inliner runs
-long after. A copy of a page under a `for` shares the page's id, and its
-record holds the iteration beside it, `copy` -- present on a family's record
-only where some page of it is under a loop -- so `==` compares both, the
-loop's index is made explicit (`ensureLoopIndex`), and the page's `#id` names
-that copy inside the loop and is nothing outside it (the checker's "rendered
-inside a for" diagnostic). html writes a document per copy: `optimize.Documents`
-enumerates the copies (`documentCopies`), folds an `if` and walks a loop with
-its variables bound, and clones the window holding only the statement the copy
-is in, so a site of a thousand pages holds one page's tree at a time; a loop of
-pages is no render slot (`loopsOverPages`, asked by passReactivity and
+long after. A copy of a page under loops -- nested to any depth -- shares the page's id,
+and its record holds which copy it is, `copy`, a `list<int>` of one index per
+enclosing loop, outermost first (`ensureLoopIndex` makes each loop's index
+explicit, `__copy`, `__copy1`, …), present on a family's record only where some
+page of it is under a loop. `==` compares the ids and the copies, element by
+element against whichever side's indices are known where it is written
+(`copyMatch`) and through a synthesized `__nav_copy_eq` where neither is, since
+Go's slices have no `==` and JavaScript's arrays compare by reference. The
+page's `#id` names that copy inside its loops and is nothing outside them (the
+checker's "rendered inside a for" diagnostic). A looped page may take params,
+held in one cell for the page -- only one copy shows -- which starts at the
+starting copy's params, read back by index into each loop's iterable
+(`loopedStartParams`, a pure function the fold answers), and a `go` or link
+naming a copy and passing none hands it its own (`handLoopedParams`). html
+writes a document per copy: `optimize.Documents` enumerates the copies
+(`documentCopies`), folds an `if` and walks each loop with its variables
+bound, and clones the window holding only the statement the copy is in, so a
+site of a thousand pages holds one page's tree at a time; a loop of pages is no
+render slot (`loopsOverPages`, asked by passReactivity and
 passSlotChildInstances) and the page primitive under one is a rendering root
-for the inliner, as a window is. passNavigation keeps the loop: each copy is
+for the inliner, as a window is. passNavigation keeps the loops: each copy is
 the `if` on `id` and `copy`, and where a copy may be the start the stack's
 first page is `<stack>__start()`, which looks for the page at "/" among the
 copies and falls back to the first written -- folded at build time where the
-iterable is a constant. Refused with a position
+iterables are constants. android declares a destination per page: a looped
+page's route class holds the copy as a dotted string (`copy = "1.0"`, since
+typed routes carry plain types) and its params as an optional the copy's own
+fill in, and the destination and the record mapping bind each loop's
+variables back from it by index. The start is `NodeInst.Start`, the search
+passNavigationValues hands a target that declares stacks itself, which the
+fold makes the record (and android runs at composition where it did not). A
+group nothing instantiates after its splice is dropped. Refused with a position
 (`cmd/sngl/testdata/nav_pages_written_around_refused.txt`): a `for` over state
-or an `if` reading it, a loop inside a loop of pages, params on a page under a
-`for` (each copy reads its element), a group with state of its own, and any of
-it on android, whose NavHost declares a route per page and not yet one per
-copy. `testdata/nav_stack_pages_written_around.sngl` runs it on the
-interpreter, which needed nothing new -- each copy is an instance of its own --
-and `nav_stack_pages_written_around.txtar` is the code on html, gtk4, fyne and
-bubbletea.
+or an `if` reading it, and a group with state of its own.
+`testdata/nav_stack_pages_written_around.sngl` and `nav_stack_pages_nested.sngl`
+run it on the interpreter, which needed nothing new -- each copy is an
+instance of its own -- and the two `.txtar`s are the code on html, gtk4, fyne,
+bubbletea and android.
 
 **A window lost `href` and `params`, and `output(entry=…)` went** (Phase C2,
 step 6): a destination is a page, and a stack starts at the page at "/", or

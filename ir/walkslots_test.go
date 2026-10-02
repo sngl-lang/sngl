@@ -129,6 +129,7 @@ func markedPackage() *Package {
 					Key:    mark("NodeInst.Key"),
 					Ref:    mark("NodeInst.Ref"),
 					Record: mark("NodeInst.Record"),
+					Start:  mark("NodeInst.Start"),
 					Slots: map[string]*SlotContent{
 						"s": {Body: []Stmt{&Return{Value: mark("SlotContent.Body")}}},
 					},

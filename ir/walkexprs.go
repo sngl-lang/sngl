@@ -222,6 +222,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Record = w.expr(n.Record)
+		n.Start = w.expr(n.Start)
 		n.Children = w.stmts(n.Children)
 		w.slots(n.Slots)
 	case *CallStmt:

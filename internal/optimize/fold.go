@@ -387,6 +387,11 @@ func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 }
 
 func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
+	// A stack's start is a search over constants (passNavigationValues), and
+	// a target declaring the stack in its own code reads it as the record.
+	if n.Start != nil {
+		n.Start = foldExpr(n.Start, ctx)
+	}
 	for i := range n.Props {
 		// A func-typed prop's lambda is a handler written as an argument, so
 		// its body folds the way a handler's does. foldExpr leaves a lambda

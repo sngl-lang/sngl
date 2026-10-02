@@ -76,6 +76,8 @@ type navStack struct {
 	entry   *ir.StructDef
 	pages   []*navPage
 	fam     *navFamily
+	// startExpr is the record the stack starts at, made once.
+	startExpr ir.Expr
 }
 
 type navPage struct {
@@ -87,10 +89,11 @@ type navPage struct {
 	empty  ir.Expr   // the params a page with no cell is handed
 	field  string    // the entry's field holding the params
 	pparam *ir.Param // the content population's parameter, nil if bare
-	// loop is the `for` the page is written under, one page per element; nil
-	// for a page written once. Its key is the index (ensureLoopIndex), which
-	// is the copy a record of the page holds.
-	loop *ir.For
+	// loops are the `for`s the page is written under, outermost first, one
+	// page per iteration of the nest; none for a page written once. Each
+	// loop's key is its index (ensureLoopIndex), and the indices are the copy
+	// a record of the page holds.
+	loops []*ir.For
 	// conds are what the `if`s around the page say, outermost first, an else
 	// branch's negated: the page is one of the stack's where all hold.
 	conds []ir.Expr
@@ -160,7 +163,7 @@ func collectNavigation(pkg *ir.Package) (*navigation, error) {
 	return nv, nil
 }
 
-func lowerNavigationValues(pkg *ir.Package, _ Features, _ Options) error {
+func lowerNavigationValues(pkg *ir.Package, feats Features, _ Options) error {
 	if err := spliceGroups(pkg); err != nil {
 		return err
 	}
@@ -170,15 +173,15 @@ func lowerNavigationValues(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	for _, st := range nv.stacks {
 		for _, pg := range st.pages {
-			if pg.loop != nil {
-				ensureLoopIndex(pg.loop)
+			for depth, fs := range pg.loops {
+				ensureLoopIndex(fs, depth)
 				st.fam.copied = true
 			}
 		}
 	}
 	for _, fam := range nv.families {
 		if fam.copied && !hasField(fam.record, "copy") {
-			fam.record.Fields = append(fam.record.Fields, &ir.StructField{Name: "copy", Type: ir.TypInt})
+			fam.record.Fields = append(fam.record.Fields, &ir.StructField{Name: "copy", Type: ir.ListOf(ir.TypInt)})
 		}
 	}
 	for _, st := range nv.stacks {
@@ -190,7 +193,64 @@ func lowerNavigationValues(pkg *ir.Package, _ Features, _ Options) error {
 		return err
 	}
 	nv.retype()
+	// A copy's params are what its page is written with, read where the copy
+	// is: a `go` or a link naming a page under a loop and passing none passes
+	// those, so a target answering the navigation itself is handed them where
+	// the loop's variables are bound rather than at the page's declaration.
+	nv.handLoopedParams()
+	// A target that declares the stack in its own code is handed the page it
+	// starts at, which for a copy is found by a search the fold after
+	// lowering answers.
+	if feats.Navigation && !feats.NavigationHrefs {
+		for _, st := range nv.stacks {
+			if st.fam != nil && st.wrapped() {
+				st.node.Start = nv.startRecord(st)
+			}
+		}
+	}
 	return nil
+}
+
+// handLoopedParams writes a looped page's own params into every `go` and
+// nav.link naming it that passes none.
+func (nv *navigation) handLoopedParams() {
+	looped := func(e ir.Expr) *navPage {
+		if pg, ok := nv.resolve(e).(*navPage); ok && pg.looped() && !isEmptyStruct(pageParamsType(pg.node)) {
+			return pg
+		}
+		return nil
+	}
+	_ = ir.Walk(nv.pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.CallStmt:
+			if x.Call == nil || x.Call.Func == nil || x.Call.Func.Intrinsic != "nav.go" {
+				return nil
+			}
+			if pg := looped(callArg(x.Call, "to", 1)); pg != nil {
+				if p, err := handed(callArg(x.Call, "params", 2)); err == nil && p == nil {
+					setCallArg(x.Call, "params", 2, pg.start())
+				}
+			}
+		case *ir.NodeInst:
+			if !isNavNode(x, ir.BuiltinNavLink) {
+				return nil
+			}
+			if pg := looped(x.Prop("to")); pg != nil {
+				if p, err := handed(x.Prop("params")); err == nil && p == nil {
+					set := false
+					for i := range x.Props {
+						if x.Props[i].Name == "params" {
+							x.Props[i].Value, set = pg.start(), true
+						}
+					}
+					if !set {
+						x.Props = append(x.Props, ir.Arg{Name: "params", Value: pg.start()})
+					}
+				}
+			}
+		}
+		return nil
+	})
 }
 
 func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
@@ -296,8 +356,9 @@ func (nv *navigation) addStack(o ir.Owner, n *ir.NodeInst) error {
 // addPages numbers the pages a stack holds, in the order written: directly,
 // under an `if` the build decides, and under a `for` over a constant, which
 // is one page per element -- every copy shares the page's id, and its record
-// holds the iteration beside it. Groups were spliced in before (spliceGroups).
-func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loop *ir.For, conds ...ir.Expr) error {
+// holds the iterations beside it, one per loop. Groups were spliced in before
+// (spliceGroups).
+func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loops []*ir.For, conds ...ir.Expr) error {
 	for _, s := range stmts {
 		switch p := s.(type) {
 		case *ir.NodeInst:
@@ -308,12 +369,9 @@ func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loop *
 				st.fam = nv.familyOf(p)
 			}
 			fam := st.fam
-			pg := &navPage{node: p, stack: st, id: fam.next, loop: loop, conds: conds}
+			pg := &navPage{node: p, stack: st, id: fam.next, loops: loops, conds: conds}
 			if id, ok := recordID(p.Record); ok {
 				pg.id = id
-			}
-			if loop != nil && !isEmptyStruct(pageParamsType(p)) {
-				return fmt.Errorf("%s: page %q is written under a `for`, one page per element, and takes no params: each copy reads its element instead", ir.NodePos(p), pageName(pg))
 			}
 			fam.next++
 			if _, taken := nv.byRecord[navRecordKey{fam.record, pg.id}]; !taken {
@@ -325,24 +383,21 @@ func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loop *
 			if !ir.IsConst(p.Cond) {
 				return fmt.Errorf("%s: a stack's pages are fixed when it is built, and this `if` reads state; decide it from constants, or write it inside a page", ir.StmtPos(p))
 			}
-			if err := nv.addPages(st, o, p.Body, loop, append(slices.Clip(conds), p.Cond)...); err != nil {
+			if err := nv.addPages(st, o, p.Body, loops, append(slices.Clip(conds), p.Cond)...); err != nil {
 				return err
 			}
 			not := &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: p.Cond}
-			if err := nv.addPages(st, o, p.Else, loop, append(slices.Clip(conds), not)...); err != nil {
+			if err := nv.addPages(st, o, p.Else, loops, append(slices.Clip(conds), not)...); err != nil {
 				return err
 			}
 		case *ir.For:
-			if loop != nil {
-				return fmt.Errorf("%s: pages under a `for` inside another are not supported yet: a page's copy is one iteration", ir.StmtPos(p))
-			}
-			if !ir.IsConst(p.Iter) {
+			if !constInLoops(p.Iter, loops) {
 				return fmt.Errorf("%s: a stack's pages are fixed when it is built, and this `for` iterates state; iterate a constant", ir.StmtPos(p))
 			}
 			if len(p.Else) > 0 && holdsNavPage(p.Else) {
 				return fmt.Errorf("%s: a page under a `for`'s else is not supported: write it beside the loop", ir.StmtPos(p))
 			}
-			if err := nv.addPages(st, o, p.Body, p, conds...); err != nil {
+			if err := nv.addPages(st, o, p.Body, append(slices.Clip(loops), p), conds...); err != nil {
 				return err
 			}
 		}
@@ -363,13 +418,17 @@ func holdsNavPage(stmts []ir.Stmt) bool {
 }
 
 // ensureLoopIndex gives a loop of pages an index, which is the copy each
-// page's record holds: `for var it = xs` becomes `for var __copy, it = xs`.
-func ensureLoopIndex(fs *ir.For) {
+// page's record holds: `for var it = xs` becomes `for var __copy, it = xs`,
+// `__copy1` one loop in, and so on.
+func ensureLoopIndex(fs *ir.For, depth int) {
 	if fs.Value != "" {
 		return
 	}
 	fs.Value, fs.ValueSym = fs.Key, fs.KeySym
 	fs.Key = "__copy"
+	if depth > 0 {
+		fs.Key += strconv.Itoa(depth)
+	}
 	fs.KeySym = &ir.LoopVar{Name: fs.Key, Type: ir.TypInt}
 }
 
@@ -377,13 +436,48 @@ func hasField(sd *ir.StructDef, name string) bool {
 	return sd != nil && slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool { return f.Name == name })
 }
 
-// copyOf is the iteration a page's record holds: the index of the loop it is
-// written under, 0 for a page written once.
+// copyOf is the iterations a page's record holds: the index of each loop it
+// is written under, outermost first, and none for a page written once.
 func (pg *navPage) copyOf() ir.Expr {
-	if pg.loop == nil || pg.loop.KeySym == nil {
-		return navInt(0)
+	lit := &ir.ListLit{Type: ir.ListOf(ir.TypInt)}
+	for _, e := range pg.copyIndices() {
+		lit.Elems = append(lit.Elems, e)
 	}
-	return &ir.Ident{Name: pg.loop.KeySym.Name, Type: ir.TypInt, Sym: pg.loop.KeySym}
+	return lit
+}
+
+// copyIndices is each loop's index, as the expressions a copy is read by.
+func (pg *navPage) copyIndices() []ir.Expr {
+	var out []ir.Expr
+	for _, fs := range pg.loops {
+		if fs.KeySym != nil {
+			out = append(out, &ir.Ident{Name: fs.KeySym.Name, Type: ir.TypInt, Sym: fs.KeySym})
+		}
+	}
+	return out
+}
+
+func (pg *navPage) looped() bool { return len(pg.loops) > 0 }
+
+// copyMatch is the test that the copy list c names the copy whose indices
+// are want: as long, and equal element by element. Go's slices have no ==,
+// and JavaScript's arrays compare by reference, so it is spelled out.
+func copyMatch(c ir.Expr, want []ir.Expr) ir.Expr {
+	var out ir.Expr = &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: listLength(ir.CloneExprSharingDecls(c)), Right: navInt(len(want))}
+	for i, w := range want {
+		at := &ir.Index{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(c), Idx: navInt(i)}
+		out = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: out, Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: at, Right: ir.CloneExprSharingDecls(w)}}
+	}
+	return out
+}
+
+// constInLoops reports whether e is a constant once the variables of the
+// loops around it are bound -- each a loop over a constant.
+func constInLoops(e ir.Expr, loops []*ir.For) bool {
+	if len(loops) == 0 {
+		return ir.IsConst(e)
+	}
+	return constInLoop(e, loops...)
 }
 
 func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
@@ -550,7 +644,19 @@ func (nv *navigation) declare(st *navStack) {
 		}
 		pg.field = pageName(pg)
 		st.entry.Fields = append(st.entry.Fields, &ir.StructField{Name: pg.field, Type: pg.ptype})
-		v := &ir.Var{Name: nv.fresh(pageName(pg) + "__params"), Type: pg.ptype, Init: pg.start()}
+		init := pg.start()
+		if pg.looped() {
+			// One cell for every copy, holding the showing copy's params: it
+			// starts at the starting copy's, where that is a copy of this page.
+			var err error
+			if init, err = nv.loopedStartParams(st, pg); err != nil {
+				if nv.err == nil {
+					nv.err = err
+				}
+				init = ir.ZeroExpr(pg.ptype)
+			}
+		}
+		v := &ir.Var{Name: nv.fresh(pageName(pg) + "__params"), Type: pg.ptype, Init: init}
 		vars = append(vars, v)
 		pg.params = varIdent(v)
 	}
@@ -588,8 +694,12 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 	if pg == nil {
 		return nil
 	}
-	if lit, ok := pg.node.Prop("href").(*ir.Literal); (ok && lit.Value == "/" && pg.loop == nil && len(pg.conds) == 0) || !st.wrapped() {
-		return nv.record(pg)
+	if st.startExpr != nil {
+		return ir.CloneExprSharingDecls(st.startExpr)
+	}
+	if lit, ok := pg.node.Prop("href").(*ir.Literal); (ok && lit.Value == "/" && !pg.looped() && len(pg.conds) == 0) || !st.wrapped() {
+		st.startExpr = nv.record(pg)
+		return ir.CloneExprSharingDecls(st.startExpr)
 	}
 	fn := &ir.Func{Name: nv.fresh(st.name + "__start"), Return: st.fam.typ, Purity: ir.PurityPure}
 	at := func(pg *navPage, test ir.Expr) ir.Stmt {
@@ -606,11 +716,12 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 		if cond != nil {
 			s = &ir.If{Cond: cond, Body: []ir.Stmt{s}}
 		}
-		if pg.loop == nil {
-			return s
+		for _, fs := range slices.Backward(pg.loops) {
+
+			s = &ir.For{AST: fs.AST, Key: fs.Key, Value: fs.Value, KeySym: fs.KeySym, ValueSym: fs.ValueSym,
+				Iter: ir.CloneExprSharingDecls(fs.Iter), ElemType: fs.ElemType, Body: []ir.Stmt{s}}
 		}
-		return &ir.For{AST: pg.loop.AST, Key: pg.loop.Key, Value: pg.loop.Value, KeySym: pg.loop.KeySym, ValueSym: pg.loop.ValueSym,
-			Iter: ir.CloneExprSharingDecls(pg.loop.Iter), ElemType: pg.loop.ElemType, Body: []ir.Stmt{s}}
+		return s
 	}
 	for _, pg := range st.pages {
 		root := &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: ir.CloneExprSharingDecls(pg.node.Prop("href")), Right: &ir.Literal{Type: ir.TypString, Value: "/"}}
@@ -618,22 +729,24 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 	}
 	for _, pg := range st.pages {
 		fn.Block = append(fn.Block, at(pg, nil))
-		if pg.loop == nil && len(pg.conds) == 0 {
+		if !pg.looped() && len(pg.conds) == 0 {
 			// The first page written once is the start where none is at "/".
 			nv.pkg.Funcs = append(nv.pkg.Funcs, fn)
-			return &ir.Call{Type: st.fam.typ, Func: fn}
+			st.startExpr = &ir.Call{Type: st.fam.typ, Func: fn}
+			return ir.CloneExprSharingDecls(st.startExpr)
 		}
 	}
 	none := &ir.StructLit{Type: st.fam.typ, Def: st.fam.record, Fields: []ir.FieldInit{{Name: "id", Value: navInt(-1)}}}
 	fn.Block = append(fn.Block, &ir.Return{Value: none})
 	nv.pkg.Funcs = append(nv.pkg.Funcs, fn)
-	return &ir.Call{Type: st.fam.typ, Func: fn}
+	st.startExpr = &ir.Call{Type: st.fam.typ, Func: fn}
+	return ir.CloneExprSharingDecls(st.startExpr)
 }
 
 // wrapped reports whether a stack's pages are written under a `for` or an
 // `if`, rather than one after another.
 func (st *navStack) wrapped() bool {
-	return slices.ContainsFunc(st.pages, func(pg *navPage) bool { return pg.loop != nil || len(pg.conds) > 0 })
+	return slices.ContainsFunc(st.pages, func(pg *navPage) bool { return pg.looped() || len(pg.conds) > 0 })
 }
 
 func pageName(pg *navPage) string {
@@ -1118,10 +1231,9 @@ func (nv *navigation) showing(pg *navPage) ir.Expr {
 	var cond ir.Expr = &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
 		Left:  &ir.Select{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(st.current), Field: "id"},
 		Right: navInt(pg.id)}
-	if pg.loop != nil {
-		cond = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: cond, Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
-			Left:  &ir.Select{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(st.current), Field: "copy"},
-			Right: pg.copyOf()}}
+	if pg.looped() {
+		cond = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: cond,
+			Right: copyMatch(&ir.Select{Type: ir.ListOf(ir.TypInt), Operand: ir.CloneExprSharingDecls(st.current), Field: "copy"}, pg.copyIndices())}
 	}
 	return cond
 }
@@ -1227,12 +1339,12 @@ func (nv *navigation) valueExpr(n ir.Node) (ir.Node, error) {
 		}
 		// Two copies of one page share its id, so the iteration is compared
 		// too: equal when both are, different when either is.
-		copies := &ir.Binary{Type: x.Type, Op: x.Op, Left: nv.copyOfExpr(x.Left), Right: nv.copyOfExpr(x.Right)}
-		join := ast.BinAnd
+		ids.Op = ast.BinEq
+		var same ir.Expr = &ir.Binary{Type: x.Type, Op: ast.BinAnd, Left: ids, Right: nv.copiesEqual(x.Left, x.Right)}
 		if x.Op == ast.BinNeq {
-			join = ast.BinOr
+			same = &ir.Unary{Type: x.Type, Op: ast.UnaryNot, Operand: same}
 		}
-		return &ir.Binary{AST: x.AST, Type: x.Type, Op: join, Left: ids, Right: copies}, ir.SkipDir
+		return same, ir.SkipDir
 	case *ir.Select:
 		switch x.Field {
 		case "current":
@@ -1461,6 +1573,9 @@ func (nv *navigation) recordType(t *ir.Type) *ir.Type {
 // What a group's call site writes -- its props and slot populations -- is
 // bound the way the inliner binds it.
 func spliceGroups(pkg *ir.Package) error {
+	if pkg == nil {
+		return nil
+	}
 	var err error
 	var stacks func(stmts []ir.Stmt)
 	var pages func(stmts []ir.Stmt, depth int) []ir.Stmt
@@ -1521,7 +1636,22 @@ func spliceGroups(pkg *ir.Package) error {
 	for _, o := range ir.Owners(pkg) {
 		stacks(o.Stmts())
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	// A group nothing instantiates any more is gone with its splice: its body
+	// renders pages outside a stack, which no target answers.
+	used := map[*ir.Component]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil && inst.Component.Group {
+			used[inst.Component] = true
+		}
+		return nil
+	})
+	pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
+		return c != nil && c.Group && !used[c]
+	})
+	return nil
 }
 
 // maxInlineGroupDepth bounds a group that renders a group, which only a group
@@ -1559,4 +1689,113 @@ func (nv *navigation) adoptAnon(t *ir.Type) {
 	for _, e := range t.Elems {
 		nv.adoptAnon(e)
 	}
+}
+
+// knownCopy is the indices a navigator value's copy is spelled with where
+// they are known where it is written: a page's handle, its loop's indices,
+// and a record literal, its copy's elements.
+func (nv *navigation) knownCopy(e ir.Expr) ([]ir.Expr, bool) {
+	if pg, ok := nv.resolve(e).(*navPage); ok {
+		return pg.copyIndices(), true
+	}
+	if lit, ok := e.(*ir.StructLit); ok {
+		for _, f := range lit.Fields {
+			if f.Name == "copy" {
+				if l, ok := f.Value.(*ir.ListLit); ok {
+					return l.Elems, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+// copiesEqual is the test that two navigator values name one copy: element
+// by element against whichever side's indices are known, and through
+// `__nav_copy_eq` where neither is.
+func (nv *navigation) copiesEqual(a, b ir.Expr) ir.Expr {
+	if want, ok := nv.knownCopy(a); ok {
+		return copyMatch(nv.copyOfExpr(b), want)
+	}
+	if want, ok := nv.knownCopy(b); ok {
+		return copyMatch(nv.copyOfExpr(a), want)
+	}
+	return &ir.Call{Type: ir.TypBool, Func: nv.copyEq(), Args: []ir.CallArg{{Value: nv.copyOfExpr(a)}, {Value: nv.copyOfExpr(b)}}}
+}
+
+// copyEq is the package's `__nav_copy_eq(a, b list<int>) bool`, made the
+// first time two copies neither of which is known are compared.
+func (nv *navigation) copyEq() *ir.Func {
+	for _, f := range nv.pkg.Funcs {
+		if f.Name == "__nav_copy_eq" {
+			return f
+		}
+	}
+	lt := ir.ListOf(ir.TypInt)
+	a := &ir.Param{Name: "a", Type: lt}
+	b := &ir.Param{Name: "b", Type: lt}
+	ref := func(p *ir.Param) ir.Expr { return &ir.Ident{Name: p.Name, Type: p.Type, Sym: p} }
+	i := &ir.LoopVar{Name: "i", Type: ir.TypInt}
+	x := &ir.LoopVar{Name: "x", Type: ir.TypInt}
+	no := func() ir.Stmt { return &ir.Return{Value: &ir.Literal{Type: ir.TypBool, Value: "false"}} }
+	fn := &ir.Func{Name: "__nav_copy_eq", Params: []*ir.Param{a, b}, Return: ir.TypBool, Purity: ir.PurityPure, Block: []ir.Stmt{
+		&ir.If{Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: listLength(ref(a)), Right: listLength(ref(b))}, Body: []ir.Stmt{no()}},
+		&ir.For{Key: "i", Value: "x", KeySym: i, ValueSym: x, Iter: ref(a), ElemType: ir.TypInt, Body: []ir.Stmt{
+			&ir.If{Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq,
+				Left:  &ir.Ident{Name: "x", Type: ir.TypInt, Sym: x},
+				Right: &ir.Index{Type: ir.TypInt, Operand: ref(b), Idx: &ir.Ident{Name: "i", Type: ir.TypInt, Sym: i}}}, Body: []ir.Stmt{no()}},
+		}},
+		&ir.Return{Value: &ir.Literal{Type: ir.TypBool, Value: "true"}},
+	}}
+	nv.pkg.Funcs = append(nv.pkg.Funcs, fn)
+	return fn
+}
+
+// loopedStartParams is where a page under loops starts its params cell: the
+// params the starting copy is written with, where the stack starts at one of
+// this page's copies, and the type's zero otherwise. Each loop's variables
+// are read back from the starting record's copy, by index into the loop's
+// iterable, so the iterable has to be a list.
+func (nv *navigation) loopedStartParams(st *navStack, pg *navPage) (ir.Expr, error) {
+	start := nv.startRecord(st)
+	copyOf := &ir.Select{Type: ir.ListOf(ir.TypInt), Operand: start, Field: "copy"}
+	bound := map[ir.Symbol]ir.Expr{}
+	subst := func(e ir.Expr) ir.Expr {
+		holder := &ir.Return{Value: ir.CloneExprSharingDecls(e)}
+		_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
+			if id, ok := x.(*ir.Ident); ok {
+				if v, ok := bound[id.Sym]; ok {
+					return ir.CloneExprSharingDecls(v), ir.SkipDir
+				}
+			}
+			return x, nil
+		})
+		return holder.Value
+	}
+	for k, fs := range pg.loops {
+		iter := subst(fs.Iter)
+		if conv, ok := iter.(*ir.Conversion); ok {
+			iter = conv.Operand
+		}
+		if t := typeOf(iter); t == nil || t.Kind != ir.TypeList {
+			return nil, fmt.Errorf("%s: page %q is written under a `for` over a sequence and takes params, and its params cell starts from the copy the stack starts at, read back by index; iterate a list", ir.StmtPos(fs), pageName(pg))
+		}
+		idx := &ir.Index{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(copyOf), Idx: navInt(k)}
+		if fs.KeySym != nil {
+			bound[fs.KeySym] = idx
+		}
+		if fs.ValueSym != nil {
+			bound[fs.ValueSym] = &ir.Index{Type: fs.ValueSym.Type, Operand: iter, Idx: ir.CloneExprSharingDecls(idx)}
+		}
+	}
+	isThis := &ir.Binary{Type: ir.TypBool, Op: ast.BinEq,
+		Left: &ir.Select{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(start), Field: "id"}, Right: navInt(pg.id)}
+	// A function rather than a ternary, so the fold after lowering answers
+	// the call as it answers the start's, and neither reaches a target.
+	fn := &ir.Func{Name: nv.fresh(pageName(pg) + "__start_params"), Return: pg.ptype, Purity: ir.PurityPure, Block: []ir.Stmt{
+		&ir.If{Cond: isThis, Body: []ir.Stmt{&ir.Return{Value: subst(pg.start())}}},
+		&ir.Return{Value: ir.ZeroExpr(pg.ptype)},
+	}}
+	nv.pkg.Funcs = append(nv.pkg.Funcs, fn)
+	return &ir.Call{Type: pg.ptype, Func: fn}, nil
 }

@@ -110,6 +110,11 @@ type NodeInst struct {
 	// handle reads as a value: a nav.page's record of its family's props and
 	// its id (lower's passNavigationValues). Nil on every other node.
 	Record Expr `json:"-"`
+	// Start is a nav.stack's: the record of the page it starts at, where that
+	// is a copy of a page under a `for` or an `if` and so is not written
+	// anywhere one could point at, for a target that declares the stack in
+	// its own code (android) rather than lowering it. Nil on every other node.
+	Start Expr `json:"-"`
 }
 
 // Prop is the value written for name, or nil if the call site did not write
