@@ -29,6 +29,11 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	// The component under test is the state a read names: a cell the
+	// lowering repointed a test's `c.box.checked` at is one of its vars.
+	if root := irPkg.RootDecl(); root != nil {
+		ctx = ctx.ForComponent(root)
+	}
 	ctx.FreeFuncs = ModelFreeFuncs(irPkg)
 	ctx.RawFieldAccess = map[string]bool{}
 	ctx.MethodFields = methodFields

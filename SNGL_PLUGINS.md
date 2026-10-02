@@ -800,6 +800,23 @@ Settled in C2's planning:
   where the docs site's tutorial source went (`learn/_tour.md`), since a
   group cannot leave one of its pages out. No `output(entry=…)` caller chose
   a window but the first or the one at `/`, so none moved.
+- **Settled for the dialog (step 7).** The document is the first window in
+  source order that no `if` over state and no `for` can take away, and a
+  program whose every window may be absent is refused at its first; every
+  other window is a `<dialog>` in it, sitting where it is written, and every
+  document carries every dialog -- each page's, in static and route mode --
+  with a `state` per document as each page has. A dialog's header shows its
+  title and a close button, which is the window manager's close: `visible = false`, then `@closed`, which fires on nothing else, as on gtk4; a close the
+  program makes runs nothing. `visible` is the dialog's `open` attribute, the
+  one `show()` sets, and the dialog is written in SNGL, html's `ui.window`
+  override, rather than answered by an emitter. The document's `open` and
+  `close` through its `#id` and its `:visible` write the cell, and the
+  document stays on screen. A `nav.stack` in a dialog navigates in place, as
+  a desktop's does, touching neither the address nor the browser's history.
+  The document stays the builtin it is marked because html says
+  `#[gen.can(documentWindow)]`; every other window is composed through the
+  override. A test may take a root component and reach its windows through
+  it.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -1006,7 +1023,7 @@ Decisions 16 and 17, in order, each landing with its fixtures:
    `window_visible_refused.txt`. Left: on bubbletea, which keeps no state of an
    instance's own, the `visible` cell of a window under `if details` survives
    the condition turning false. The html `<dialog>` for a second window is
-   Phase C2's.
+   Phase C2's, where both refusals became meanings (step 7).
 
 ### Phase C2: navigators
 
@@ -1096,7 +1113,31 @@ fixtures written first:
    a checker error (`reportDeclarativeCycles`); and pages under nested loops,
    with params, and on android (`nav_stack_pages_nested`).
 7. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
-   refusals become meanings.
+   refusals become meanings. *Done* (decision 15's step 7 bullet): html
+   declares `documentWindow` and overrides `ui.window` with a `surface` around
+   an `html.dialog`, so the window after the document is composed like
+   gtk4's Toplevel; `keepDocumentSurface` answers the document's `visible`;
+   `optimize.Documents` writes the package body around the document window
+   into every document; a dialog's stack is passNavigation's. Deleted:
+   `passWindowSurface`, `passWindowUnderIf`, `NewOneWindowError` and html's
+   harness skips. `testdata/window_several.txtar`, `window_visible.txtar` and
+   `window_under_if.txtar` gain html; `window_dialog_pages.txtar`,
+   `window_dialog_nav.txtar`, `cmd/sngl/testdata/window_dialog_refused.txt`
+   and `window_dialog_runs.txt` (Chromium, fyne, gtk4, the interpreter) are
+   new, and `window_method_refused`, `window_visible_refused` and
+   `window_under_if_refused` went with what they refused.
+   `root_component_mutating_func` and `root_component_state_two_windows` have
+   their html leg back, and neither is byte-identical to what it was before
+   step 6: there were two documents, `index.html` and `b.html`, and now B is
+   a `<dialog>` in `index.html`, with its chrome, its `visible` cell and its
+   close handler. The old `index.html` patched B's label, `__n1`, in a
+   document that did not hold it, so A's click threw on a null element; one
+   document holds both now. `route_window_named_main` is one route where it
+   was two. Still open: the tree-less rule does not look through a slot
+   insertion, which is how `surface` lets a `root` member render an element;
+   a dialog visible at load is shown by the script rather than written with
+   `open` in the markup; and bubbletea and android still refuse a second
+   window, a test of one included.
 
 ### Phase C3: no window in the compiler
 

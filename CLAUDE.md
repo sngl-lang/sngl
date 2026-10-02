@@ -494,7 +494,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 ### Platform Details
 
 - **html** — two modes selected by `--lang`:
-  - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). A second window holding no stack is refused with a `codegen.OneWindowError` until it is a `<dialog>` in the first one's document (Phase C2, step 7).
+  - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). Every window after the first one that is always there is a `<dialog>` in its document, in every page's (see *html shows a second window as a `<dialog>`*).
     Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
@@ -1254,10 +1254,10 @@ route mode skips anything that still carries a receiver
 **Several windows each get it, and the platform says what that means.** One
 root component rendering two windows is spliced once, so both read the one
 cell: a target whose windows are one process shares it — bubbletea, fyne and
-gtk4 each put it in one Model — and a target whose pages are separate
-documents copies it, html writing its own `state` into each page of a stack.
-html shows one window per document until a second is a `<dialog>` (Phase C2,
-step 7), so the fixture below builds the desktop targets alone. That divergence is the point
+gtk4 each put it in one Model, and html too, the second window being a
+`<dialog>` in the first one's document -- and a target whose pages are
+separate documents copies it, html writing its own `state` into each page of
+a stack. That divergence is the point
 rather than a gap: two pages *are* two states and one process *is* one, and
 forcing either way round in the lowering would be the language overriding the
 platform it compiled to. The author picks a target knowing it. Shared top-level
@@ -2383,13 +2383,58 @@ declaration the target overrides is composed like any component
 repoints each node at a per-build copy of the declaration with the mark off,
 since library IR is shared between builds), and the windows `pkg.Windows`
 held join the package body ahead of it -- the one window-specific step, and
-C3's to delete. html alone renders `window` as the builtin it is marked, a
-document or a route, until C2 moves its pages to `nav.page`:
-`passWindowUnderIf` refuses a window there under an `if` that reads state
-(`cmd/sngl/testdata/window_under_if_refused.txt`), `passWindowSurface` a
-`:visible`, a `visible` other than the literal default and an `@closed`, none
-of which a page can answer (`window_visible_refused.txt`), and its translator
-treats a node attached to `__app` as the unparented root it was.
+C3's to delete. html keeps one window the builtin it is marked, below.
+
+**html shows a second window as a `<dialog>`** (Phase C2, step 7). It holds
+`#[gen.can(documentWindow)]`: the first window in source order that no `if`
+over state and no `for` can take away is the document, and stays the builtin
+(`documentWindow`, `internal/lower/document_window.go`); every other is
+composed through html's override, `surface { html.dialog(open=visible, …) { header; content } }`, so `visible`, `open`/`close` through the `#id`,
+`@closed` and a window under an `if` over state are the generic machinery
+gtk4 and fyne already use -- an implicit cell, a spliced method, a render slot
+building a runtime instance. `surface` is a `#[tree.none]` bodied component
+inserting a `ui.node` slot, which is how a `root` member's body renders an
+element: the tree-less rule reads what a body renders and not what a slot
+inserts, so that is a hole the override goes through rather than a rule it
+satisfies. The header holds the title and a close button, which is a window
+manager's close -- `visible = false`, then `@closed` -- and the only thing
+that fires `@closed`: a close the program makes runs nothing, as on gtk4. A
+page's reset strips the dialog's margin and padding, so a page holding one
+gives them back. The document's own `visible` and `@closed` do nothing
+(`keepDocumentSurface`): its `open` and `close` through its `#id` are inlined
+as writes of the var `:visible` bound, or of a cell beside the window, which a
+read of `w.visible` names. A program whose every window may be absent has no
+document and is refused at its first (`window_dialog_refused.txt`).
+
+The composed windows join the package body where they were written, and the
+document with them when there are any (`packageRoots`, by position, since
+the checker kept `pkg.Windows` apart from the body). `optimize.Documents`
+then writes what the body renders around the document window
+(`bodyAround`: nodes and render-slot calls) into every document the window
+is written as -- each page's, in static and route mode, and a harness's,
+whose root component holds them -- so a dialog is the application's and not
+a page's, with a `state` per document as each page has. Two reactivity gaps
+it reached: `buildRenderSlotFor` *returned* at a window node, abandoning
+every sibling after it, and the document's handlers were injected before the
+body's slots existed, so a write there re-rendered no dialog under an `if`;
+the body's slots are built first now when a window stands in it. A
+`nav.stack` in a dialog navigates in place: passNavigationHrefs leaves it
+alone, the composition leaves its nav nodes the builtins they are, and
+`DocumentWindow` turns passNavigation back on beside `Navigation` to lower
+exactly those, leaving a `go` naming a stack it did not collect for html.
+`testdata/window_several.txtar`, `window_visible.txtar`,
+`window_under_if.txtar`, `window_dialog_pages.txtar` (static and route) and
+`window_dialog_nav.txtar` are the code, and
+`cmd/sngl/testdata/window_dialog_runs.txt` runs it in Chromium, on fyne, gtk4
+and the interpreter.
+
+A test may now take a root component and reach its windows. The interpreter
+mounts a window as a node of its component, so its `#id` holds the cell
+behind `visible`, and a method called through a node's handle runs in the
+instance's scope. A test's `c.box.checked` -- a select of the handle through
+the instance -- is repointed at the cell as `box.checked` is
+(`handleThrough`), and the JS and Go test emitters spell the root
+component's vars as the instance's state.
 
 **bubbletea and android show one window, and a `Screen` is it.** Each
 overrides `ui.window` with `Screen(visible=visible, …) { content(params) }`: a

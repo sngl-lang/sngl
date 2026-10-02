@@ -107,6 +107,11 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	// The component under test is the state a read names: a cell the
+	// lowering repointed a test's `c.box.checked` at is one of its vars.
+	if root := irPkg.RootDecl(); root != nil {
+		ctx = ctx.ForComponent(root)
+	}
 	ctx.Platform = platform
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.

@@ -542,11 +542,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				label = fmt.Sprintf("page %q", doc.Page.ID)
 			}
 			if prev, dup := seenPaths[name]; dup {
-				// Two windows holding no stack: a page is a nav.page, and a
-				// second window is a surface html does not show yet.
-				if doc.Page == nil {
-					return nil, codegen.NewOneWindowError("html: %s is written to %s, as %s is: html shows one window per document; write the pages as a nav.stack's", label, name, prev)
-				}
 				return nil, fmt.Errorf("html: %s is written to %s, as %s is", label, name, prev)
 			}
 			seenPaths[name] = label
@@ -1181,6 +1176,12 @@ func (g *htmlGen) generate() (string, error) {
 			defaultCSS += "html, body { height: 100%; }\n" +
 				"body { display: flex; flex-direction: column; }\n"
 		}
+		// A window shown inside the document is a `<dialog>` with the
+		// browser's own look, which the reset above takes the margin that
+		// centres it and the padding of: given them back.
+		if g.showsDialog() {
+			defaultCSS += "dialog { margin: auto; padding: 1em; }\n"
+		}
 		css, err := maybeMinifyCSS(defaultCSS, g.minify)
 		if err != nil {
 			return "", err
@@ -1625,6 +1626,37 @@ func (g *htmlGen) rootFlexes() bool {
 		}
 	}
 	return false
+}
+
+// showsDialog reports whether the page holds a `<dialog>`, written in its
+// markup or built by its script.
+func (g *htmlGen) showsDialog() bool {
+	found := false
+	visit := func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.NodeInst:
+				if isElement(x.Component) && (x.Name == "dialog" || strings.HasSuffix(x.Name, ".dialog")) {
+					found = true
+				}
+			case *ir.Call:
+				if x.Func != nil && x.Func.Name == ir.NodeOpCreateNode && len(x.Args) > 0 {
+					if tag, ok := codegen.IRLiteralString(x.Args[0].Value); ok && tag == "dialog" {
+						found = true
+					}
+				}
+			}
+			if found {
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	visit(g.irBodyStmts)
+	if !found && g.pkg != nil {
+		visit(g.pkg)
+	}
+	return found
 }
 
 func (g *htmlGen) pkgStructs() []*ir.StructDef {

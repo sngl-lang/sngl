@@ -50,8 +50,9 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &implicitState{pkg: pkg, reads: map[*ir.Var]map[string]*ir.Var{}}
+	st := &implicitState{pkg: pkg, reads: map[*ir.Var]map[string]*ir.Var{}, through: map[*ir.Component]map[string]*ir.Var{}}
 	for _, o := range ir.Owners(pkg) {
+		st.owner = o.Comp
 		if err := st.stmts(*o.Body); err != nil {
 			return err
 		}
@@ -65,12 +66,8 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 		if !ok {
 			return n, nil
 		}
-		id, ok := sel.Operand.(*ir.Ident)
-		if !ok {
-			return n, nil
-		}
-		h, ok := id.Sym.(*ir.Var)
-		if !ok {
+		h := handleThrough(sel.Operand, st.through)
+		if h == nil {
 			return n, nil
 		}
 		cell := st.reads[h][sel.Field]
@@ -81,9 +78,32 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	})
 }
 
+// handleThrough is the node handle e names: the handle itself, or a select of
+// it through an instance of the component that declares it -- a test's
+// `c.box` -- whose read of `c.box.checked` is the same cell's.
+func handleThrough(e ir.Expr, through map[*ir.Component]map[string]*ir.Var) *ir.Var {
+	switch x := e.(type) {
+	case *ir.Ident:
+		if h, ok := x.Sym.(*ir.Var); ok {
+			return h
+		}
+	case *ir.Select:
+		if t := typeOf(x.Operand); t != nil {
+			if c, ok := t.Decl.(*ir.Component); ok {
+				return through[c][x.Field]
+			}
+		}
+	}
+	return nil
+}
+
 type implicitState struct {
 	pkg  *ir.Package
 	made []*ir.Component
+	// owner is the component whose body is being walked, nil for any other
+	// owner, and through each such component's wrapped handles by name.
+	owner   *ir.Component
+	through map[*ir.Component]map[string]*ir.Var
 	// reads is each wrapped node's handle, and the cell behind each prop a
 	// read of the handle names.
 	reads map[*ir.Var]map[string]*ir.Var
@@ -148,9 +168,9 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 // two-way prop unbound.
 func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	comp := n.Component
-	// A window still a builtin on this target -- html -- is no component to
-	// wrap, and passWindowSurface has refused anything but the default for its
-	// `visible`.
+	// A window still a builtin on this target -- html's document -- is no
+	// component to wrap: keepDocumentSurface gave its `visible` a cell of its
+	// own and took the prop and the binding off it.
 	// Where a platform overrides the window it is an ordinary component by
 	// now (composeOverriddenBuiltins) and gets its cell like any other.
 	if comp == nil || ir.IsWindowNode(n) {
@@ -281,6 +301,12 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 
 	if n.Handle != nil {
 		st.reads[n.Handle] = cells
+		if st.owner != nil {
+			if st.through[st.owner] == nil {
+				st.through[st.owner] = map[string]*ir.Var{}
+			}
+			st.through[st.owner][n.Handle.Name] = n.Handle
+		}
 	}
 	return &ir.NodeInst{
 		AST:       n.AST,

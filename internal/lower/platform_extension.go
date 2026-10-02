@@ -21,9 +21,21 @@ var passPlatformExtensionBody = pass{
 	apply:   lowerPlatformExtensionBody,
 }
 
-func lowerPlatformExtensionBody(pkg *ir.Package, _ Features, opts Options) error {
+func lowerPlatformExtensionBody(pkg *ir.Package, feats Features, opts Options) error {
 	ir.SpecializeForTarget(pkg, opts.Platform, opts.Language)
-	composeOverriddenBuiltins(pkg, opts)
+	var doc *ir.Window
+	if feats.DocumentWindow && opts.Platform != "" {
+		var err error
+		if doc, err = documentWindow(pkg); err != nil {
+			return err
+		}
+		if doc != nil {
+			if err := keepDocumentSurface(pkg, doc); err != nil {
+				return err
+			}
+		}
+	}
+	composeOverriddenBuiltins(pkg, opts, doc)
 	return nil
 }
 
@@ -45,7 +57,14 @@ func lowerPlatformExtensionBody(pkg *ir.Package, _ Features, opts Options) error
 // root node is attached to the application (ir.NodeAppendChild with
 // ir.AppParent), which is each platform's to answer. Phase C3 deletes
 // pkg.Windows and this with it.
-func composeOverriddenBuiltins(pkg *ir.Package, opts Options) {
+//
+// A target holding DocumentWindow keeps doc, its document, the builtin it is
+// marked, and the stacks of every window it composes are left for
+// passNavigation rather than handed to the target's own nav primitives: the
+// target's navigation is the document's. The windows it composes join the
+// body where they were written, since where a dialog sits in the document is
+// where it was written.
+func composeOverriddenBuiltins(pkg *ir.Package, opts Options, doc *ir.Window) {
 	if pkg == nil || opts.Platform == "" {
 		return
 	}
@@ -66,13 +85,29 @@ func composeOverriddenBuiltins(pkg *ir.Package, opts Options) {
 		copies[c] = cp
 		return cp
 	}
+	dialogs := false
+	inDialog := map[*ir.NodeInst]bool{}
+	if doc != nil {
+		for _, w := range ir.AllWindows(pkg) {
+			if w == doc {
+				continue
+			}
+			_ = ir.WalkStmts(w.Children, func(s ir.Stmt) error {
+				if n, ok := s.(*ir.NodeInst); ok && isAnyNavNode(n) {
+					inDialog[n] = true
+				}
+				return nil
+			})
+		}
+	}
 	var repoint func(n ir.Node) error
 	repoint = func(n ir.Node) error {
-		if inst, ok := n.(*ir.NodeInst); ok {
+		if inst, ok := n.(*ir.NodeInst); ok && inst != doc && !inDialog[inst] {
 			if cp := composed(inst.Component); cp != nil {
 				// A page's params cell is the page's to keep: the target
 				// answers it per document or per route (passNavigationHrefs).
 				window := inst.Component.Builtin == ir.BuiltinWindow
+				dialogs = dialogs || window
 				inst.Component = cp
 				catchInBody(inst)
 				if window {
@@ -85,7 +120,7 @@ func composeOverriddenBuiltins(pkg *ir.Package, opts Options) {
 	var windows []ir.Stmt
 	var kept []*ir.Window
 	for _, w := range pkg.Windows {
-		if composed(w.Component) != nil {
+		if w != doc && composed(w.Component) != nil {
 			windows = append(windows, w)
 			continue
 		}
@@ -97,11 +132,38 @@ func composeOverriddenBuiltins(pkg *ir.Package, opts Options) {
 		}
 		_ = ir.WalkStmts(o.Stmts(), func(s ir.Stmt) error { return repoint(s) })
 	}
-	if len(windows) == 0 {
+	if len(windows) == 0 && !dialogs {
 		return
 	}
 	pkg.Windows = kept
+	if doc == nil || !dialogs {
+		pkg.Body = append(windows, pkg.Body...)
+		return
+	}
+	// The document joins the body too, so that the windows shown inside it
+	// keep their places on either side of it.
 	pkg.Body = append(windows, pkg.Body...)
+	pkg.Windows = nil
+	for _, w := range kept {
+		if w == doc {
+			pkg.Body = append(pkg.Body, w)
+		} else {
+			pkg.Windows = append(pkg.Windows, w)
+		}
+	}
+	pkg.Body = packageRoots(pkg)
+}
+
+// isAnyNavNode reports whether n is one of sngl:ui/nav's builtin nodes.
+func isAnyNavNode(n *ir.NodeInst) bool {
+	if n.Component == nil {
+		return false
+	}
+	switch n.Component.Builtin {
+	case ir.BuiltinNavStack, ir.BuiltinNavPage, ir.BuiltinNavLink:
+		return true
+	}
+	return false
 }
 
 // populateRestSlot puts a window's body where a component's population goes.

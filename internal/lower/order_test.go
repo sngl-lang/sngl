@@ -105,11 +105,6 @@ var alwaysOn = []string{
 	"UnprovidedContext",
 	"ViewForElse",
 	"WindowNesting",
-	// A window still a builtin on its target is refused under an `if` that
-	// reads state, and its `visible` and `@closed` are, which it cannot
-	// answer; where it is a node it has composed away, on every target.
-	"WindowSurface",
-	"WindowUnderIf",
 }
 
 func TestAlwaysOnPasses(t *testing.T) {
@@ -190,6 +185,12 @@ var soleGate = map[string][]string{
 	"Effects":         {"Effect"},
 	"Navigation":      {"Navigation"},
 	"NavigationHrefs": {"NavigationHrefs"},
+
+	// A grant that turns passNavigation back on beside Navigation: what the
+	// target answers is its document's stack, and a stack in a window it
+	// shows inside the document is lowered. The composition reads it too, to
+	// keep the document the builtin it is marked.
+	"DocumentWindow": {"Navigation"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance

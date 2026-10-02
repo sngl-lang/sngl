@@ -1,0 +1,50 @@
+# html writes its document from the first window that is always there -- one
+# no `if` over state and no `for` can take away -- and shows every other window
+# as a `<dialog>` in it. A program whose every window may be absent has no
+# document to put a dialog in, and is refused at its first window. A window
+# under an `if` over state beside an unconditional one is a dialog, and
+# builds.
+
+! sngl generate --lang none --platform html -o html cond.sngl
+stderr 'cond.sngl:6:14: html writes its document from a window that is always there, and every window here is under an `if` or a `for`'
+
+! sngl generate --lang none --platform html -o html2 loop.sngl
+stderr 'loop.sngl:6:14: html writes its document from a window that is always there, and every window here is under an `if` or a `for`'
+
+sngl generate --lang none --platform html -o html3 beside.sngl
+exists html3/index.html
+
+-- cond.sngl --
+import ui "sngl:ui"
+
+var shown = true
+
+if shown {
+    ui.window(title="Only") {
+        ui.text(value="only")
+    }
+}
+-- loop.sngl --
+import ui "sngl:ui"
+
+var names = ["a", "b"]
+
+for var name = names {
+    ui.window(title=name) {
+        ui.text(value=name)
+    }
+}
+-- beside.sngl --
+import ui "sngl:ui"
+
+var shown = true
+
+if shown {
+    ui.window(title="Maybe") {
+        ui.text(value="maybe")
+    }
+}
+
+ui.window(title="Always") {
+    ui.text(value="always")
+}

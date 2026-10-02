@@ -43,6 +43,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"asyncSpawn":       func(f *Features) *bool { return &f.AsyncSpawn },
 	"effects":          func(f *Features) *bool { return &f.Effects },
 	"navigation":       func(f *Features) *bool { return &f.Navigation },
+	"documentWindow":   func(f *Features) *bool { return &f.DocumentWindow },
 }
 
 var passField = map[string]func(*Features) *bool{

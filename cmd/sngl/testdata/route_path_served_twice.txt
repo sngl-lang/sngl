@@ -2,16 +2,12 @@
 # a `GET <path>` per route on one mux, and net/http panics on the second at
 # startup -- so the program built and then could not start.
 #
-# Three ways to get there: a second window whose id is `index`, which still
-# takes `/` beside the first window's default; two windows with no id, both of
-# which default to `/`; and two pages whose paths differ only in a parameter's
-# name, which a mux matches as one pattern.
+# Two pages whose paths differ only in a parameter's name are one pattern to a
+# mux. Two windows are no longer a way to get there: the second is a
+# `<dialog>` in the first one's document, served at no path of its own.
 
-! sngl generate --lang go --platform html -o out-index index.sngl
-stderr 'window "home" and window "index" both serve /; give one of them an href'
-
-! sngl generate --lang go --platform html -o out-unnamed unnamed.sngl
-stderr 'window 1 and window 2 both serve /'
+sngl generate --lang go --platform html -o out-index index.sngl
+! grep 'GET /index' out-index/server.go
 
 ! sngl generate --lang go --platform html -o out-params params.sngl
 stderr 'page "byName" and page "byID" both serve /p/\{id\}'
@@ -33,16 +29,6 @@ ui.window #home(title="Home") {
 
 ui.window #index(title="Index") {
     ui.text(value="index")
-}
--- unnamed.sngl --
-import ui "sngl:ui"
-
-ui.window(title="A") {
-    ui.text(value="a")
-}
-
-ui.window(title="B") {
-    ui.text(value="b")
 }
 -- params.sngl --
 import ui "sngl:ui"

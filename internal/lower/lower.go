@@ -41,7 +41,6 @@ var passes = []pass{
 	passNavigationValues,
 	passNavigationHrefs,
 	passPlatformExtensionBody,
-	passWindowSurface,
 	passNavigation,
 	passImplicitState,
 	// After it, because which primitive a declaration renders is the override
@@ -81,7 +80,6 @@ var passes = []pass{
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
 	passDirectCalls,
-	passWindowUnderIf,
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,

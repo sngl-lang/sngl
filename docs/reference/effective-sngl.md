@@ -65,7 +65,7 @@ output {
 }
 ```
 
-A second window is a second surface, which a desktop target opens beside the first.
+A second window is a second surface, which a desktop target opens beside the first and html shows as a `<dialog>` in the first one's page.
 
 ### Imports
 

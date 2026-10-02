@@ -115,6 +115,15 @@ type Features struct {
 	// a var holding the current page, a history list and an if-chain over the
 	// pages, which every target can render.
 	Navigation bool
+	// DocumentWindow says the platform renders its first window that is always
+	// there -- under no `if` over state and no `for` -- as the document
+	// everything else is drawn in, html's page. That window stays the builtin
+	// it is marked, and every other is composed through the platform's
+	// override of `ui.window`, as on a platform without it. Navigation then
+	// covers the document's stack alone: a stack in a composed window is
+	// lowered by passNavigation. A grant, read by the composition and the two
+	// navigation passes rather than gating one.
+	DocumentWindow bool
 
 	// The six below are requests rather than capabilities, which is the split
 	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
@@ -226,6 +235,7 @@ func (f Features) String() string {
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
+		{"DocumentWindow", f.DocumentWindow},
 		{"StructComponents", f.StructComponents},
 		{"StdlibContextParam", f.StdlibContextParam},
 		{"FocusOrder", f.FocusOrder},

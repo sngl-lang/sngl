@@ -40,6 +40,11 @@ type reactiveProp struct {
 
 // reactivityState carries the analysis built up before mutation injection.
 type reactivityState struct {
+	// prebuilding is set while the package body's slots are built ahead of
+	// the windows (lowerReactivity), and prebuilt names each so the body's own
+	// walk does not build it again.
+	prebuilding  bool
+	prebuilt     map[string]bool
 	pkg          *ir.Package
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
@@ -272,6 +277,20 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
+	// A window standing in the package body beside what the body renders --
+	// html's document beside the windows it shows inside it -- writes in its
+	// handlers what the body's slots read, so those slots are built before the
+	// window is walked: a re-fire is spliced only where its render already
+	// exists.
+	if slices.ContainsFunc(pkg.Body, func(s ir.Stmt) bool {
+		n, ok := s.(*ir.NodeInst)
+		return ok && ir.IsWindowNode(n)
+	}) {
+		st.owner = windowOwner{pkg: pkg, root: ir.AppParent}
+		st.prebuilding, st.prebuilt = true, map[string]bool{}
+		st.rewriteAndInject(pkg.Body)
+		st.prebuilding = false
+	}
 	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
 		w.Children = st.rewriteAndInject(w.Children)
@@ -380,6 +399,9 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 		}
 		uniqueSlots = own
 		if len(own) == 0 {
+			if st.prebuilding {
+				return stmts
+			}
 			return st.injectIntoStmts(st.rewriteReactiveStructures(stmts, nil))
 		}
 	}
@@ -390,6 +412,9 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	slices.Sort(slotIDs)
 	built := map[string]*ir.Func{}
 	for _, slotID := range slotIDs {
+		if st.prebuilt[slotID] {
+			continue
+		}
 		st.synthesizeSlotVar(slotID)
 		fn := st.buildRenderSlotFor(slotID, stmts)
 		if fn != nil {
@@ -413,6 +438,12 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 			}
 		}
 		st.reverseSlots[v] = slots
+	}
+	if st.prebuilding {
+		for id := range built {
+			st.prebuilt[id] = true
+		}
+		return stmts
 	}
 	// Replace reactive If/For at source position with renderSlot CallStmt.
 	stmts = st.rewriteReactiveStructures(stmts, nil)
@@ -2081,9 +2112,11 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Else)
 			case *ir.NodeInst:
 				// A window is its own block; lowerReactivity builds that
-				// slot's Func with the window as the owner.
+				// slot's Func with the window as the owner. Its siblings are
+				// not: a window html keeps as its document stands in the
+				// package body beside the ones it shows inside it.
 				if ir.IsWindowNode(n) {
-					return
+					continue
 				}
 				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {

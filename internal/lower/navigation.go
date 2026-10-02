@@ -46,7 +46,7 @@ import (
 // is where the page starts; the params it is showing reach its content alone.
 var passNavigation = pass{
 	name:    "Navigation",
-	enabled: func(f Features) bool { return !f.Navigation },
+	enabled: func(f Features) bool { return !f.Navigation || f.DocumentWindow },
 	apply:   lowerNavigation,
 }
 
@@ -122,6 +122,9 @@ type navigation struct {
 	button   *ir.Component
 	names    map[string]bool
 	err      error // the first a view lowering refused
+	// lenient leaves a call naming no stack of these for the target, which
+	// answers the stacks it composed (lowerNavigation).
+	lenient bool
 }
 
 // navRecordKey names a page by its record, which is how a `go` and a link
@@ -253,11 +256,17 @@ func (nv *navigation) handLoopedParams() {
 	})
 }
 
-func lowerNavigation(pkg *ir.Package, _ Features, _ Options) error {
+// On a target holding both Navigation and DocumentWindow it lowers what the
+// composition left a builtin: the stacks in a window shown inside the
+// document, which navigate in place. The document's own were composed into
+// the target's primitives, so a call naming one resolves to no stack here and
+// is left for the target.
+func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
 	nv, err := collectNavigation(pkg)
 	if nv == nil || err != nil {
 		return err
 	}
+	nv.lenient = feats.Navigation && feats.DocumentWindow
 	if nv.hasLinks() {
 		nv.button = findLibComponent(pkg, "sngl:ui", "button")
 		if nv.button == nil {
@@ -974,6 +983,11 @@ func (nv *navigation) lowerCalls(stmts []ir.Stmt) ([]ir.Stmt, error) {
 		switch n := s.(type) {
 		case *ir.CallStmt:
 			if n.Call != nil && n.Call.Func != nil {
+				if nv.lenient {
+					if _, ok := nv.resolve(callArg(n.Call, "", 0)).(*navStack); !ok {
+						break
+					}
+				}
 				switch n.Call.Func.Intrinsic {
 				case "nav.go":
 					repl, err := nv.lowerGo(n)

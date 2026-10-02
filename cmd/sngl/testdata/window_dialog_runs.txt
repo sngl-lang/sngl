@@ -1,0 +1,150 @@
+# A window after html's document is a `<dialog>` in it, run in Chromium and on
+# the interpreter, which holds it to the same answers, and on fyne and gtk4,
+# where it is a toplevel of its own. A test's component may be a root
+# component, and its windows' handles are reached through it like any other
+# node's: a read of `c.log.visible` is the cell the window keeps for it.
+#
+# `log` starts hidden and `open`/`close` through its `#id` show and hide it,
+# writing the cell it keeps for its `visible`; a close the program makes is no
+# close the user made, so `@closed` does not run. `main` is the document, and
+# `main.close()` writes its cell while the document stays where it is. A
+# window under an `if` over state is created with the condition and destroyed
+# with it, the effect in it included, and starts again from nothing.
+#
+# testdata/window_several.txtar, window_visible.txtar and window_under_if.txtar
+# are the code.
+
+sngl test --platform=none app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+# bubbletea and android show one window, and refuse the second.
+! sngl test --platform=bubbletea --language=go app.sngl
+stderr 'bubbletea shows one window, and this is a second'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component app root {
+    var closes = 0
+    var details = false
+    var mounts = 0
+
+    ui.window #main(title="Main") {
+        ui.text(value="closed {closes}")
+        ui.button #show(text="Log", @click {
+            log.open()
+        })
+        ui.button #hideMain(text="Hide main", @click {
+            main.close()
+        })
+        ui.button #toggle(text="Details", @click {
+            details = !details
+        })
+    }
+
+    ui.window #log(title="Log", visible=false, @closed {
+        closes += 1
+    }) {
+        ui.button #hide(text="Hide", @click {
+            log.close()
+        })
+    }
+
+    if details {
+        ui.window(title="Details") {
+            ui.text(value="details")
+            effect(@mount {
+                mounts += 1
+            })
+        }
+    }
+}
+
+
+func testOpenAndCloseADialog(t Test, c app) {
+    t.assert(!c.log.visible)
+    c.show.click()
+    t.assert(c.log.visible)
+    c.hide.click()
+    t.assert(!c.log.visible)
+    t.assert(c.closes == 0)
+}
+
+func testTheDocumentWindowKeepsItsCell(t Test, c app) {
+    t.assert(c.main.visible)
+    c.hideMain.click()
+    t.assert(!c.main.visible)
+}
+
+func testADialogUnderAnIfComesAndGoes(t Test, c app) {
+    t.assert(c.mounts == 0)
+    c.toggle.click()
+    t.assert(c.mounts == 1)
+    c.toggle.click()
+    c.toggle.click()
+    t.assert(c.mounts == 2)
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:6729c9a72210346027c1465237300d8c
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:7e4baa66a797e1b17f6c9a467414e830
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:fd67e2ddc0ac7dc2cd7695626fbd9a88
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}

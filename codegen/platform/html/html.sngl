@@ -24,7 +24,7 @@ import tree "sngl:tree"
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, documentWindow)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,
@@ -311,6 +311,36 @@ const component ui.divider[platform] {
 }
 
 // --- Tier 3: Overlays & Layout ---
+
+// A window after the document is a `<dialog>` in it, shown without a backdrop
+// as a desktop window is: `visible` is its `open` attribute, which is what
+// `show()` sets. The document itself -- the first window that is always there
+// -- is the page, and is no instance of this: the composition leaves it the
+// builtin it is marked (`#[gen.can(documentWindow)]`). The header carries the
+// title and a close the user makes, which is a window manager's close: the
+// window is reported hidden and then `@closed` runs. A close the program makes
+// runs nothing.
+const component ui.window[platform] {
+    surface {
+        html.dialog(open=visible, attrs={"aria-label"=title}) {
+            html.header {
+                html.span(textContent=title) {}
+                html.button(attrs={"aria-label"="Close"}, @click {
+                    visible = false
+                    closed()
+                }) {
+                    html.span(textContent="×") {}
+                }
+            }
+            content
+        }
+    }
+}
+
+#[tree.none]
+const component surface(content ...component ui.node) {
+    content
+}
 
 const component ui.modal[platform] {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position="fixed", top=0, left=0, width="100%", height="100%", background="rgba(0,0,0,0.5)", display="flex", alignItems="center", justifyContent="center", zIndex=1000}) {

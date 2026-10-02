@@ -340,6 +340,11 @@ func splitSupplied(nodes []*Node) (visible []*Node, fromSlot int) {
 func nodeMaps(nodes []*Node) []map[string]any {
 	out := make([]map[string]any, 0, len(nodes))
 	for _, n := range nodes {
+		// A window is a node of its component, so its `#id` finds it: a
+		// fifth, and the walk had no window to find.
+		if n.Inst != nil && ir.IsWindowNode(n.Inst) {
+			continue
+		}
 		m := n.Map()
 		// The boundaries a node is mounted under ride with its contexts, and
 		// the frozen walk predates them: a second intentional divergence.

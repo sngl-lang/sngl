@@ -61,7 +61,11 @@ func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error]
 		yielded := false
 		emit := func(w *ir.Window, wctx *evalCtx, _ []*ir.For) bool {
 			yielded = true
+			before, after := bodyAround(pkg, w)
 			ok, err := windowDocuments(w, wctx, cfg.Language == "none", func(doc *codegen.Document, dctx *evalCtx) bool {
+				if len(before)+len(after) > 0 {
+					doc.Body = slices.Concat(foldStmts(cloneStmts(before), dctx), doc.Body, foldStmts(cloneStmts(after), dctx))
+				}
 				return yieldDocument(yield, doc, dctx)
 			})
 			if err != nil {
@@ -391,6 +395,41 @@ func holdsNativeCall(w *ir.Window, ctx *evalCtx) bool {
 // loop around it, the iteration it is. The window is cloned holding that one
 // page, the loops' variables bound for the iteration, so a site of a thousand
 // pages holds one page's tree at a time.
+
+// bodyAround is what the package body renders on either side of w, a window
+// standing in it: the windows a target shows inside its document, which the
+// composition made ordinary nodes and placed where they were written, and the
+// render slots of those under an `if`. Every document w is written as carries
+// them, a page's included.
+func bodyAround(pkg *ir.Package, w *ir.Window) (before, after []ir.Stmt) {
+	body := pkg.Body
+	i := slices.IndexFunc(body, func(s ir.Stmt) bool { return s == ir.Stmt(w) })
+	// A harness renders its root component in place of the package body.
+	if root := pkg.RootDecl(); i < 0 && root != nil {
+		body = root.Body
+		i = slices.IndexFunc(body, func(s ir.Stmt) bool { return s == ir.Stmt(w) })
+	}
+	if i < 0 {
+		return nil, nil
+	}
+	keep := func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if !ir.IsWindowNode(n) {
+					out = append(out, n)
+				}
+			case *ir.CallStmt:
+				if n.Call != nil && n.Call.Func != nil && n.Call.Func.SlotRender {
+					out = append(out, n)
+				}
+			}
+		}
+		return out
+	}
+	return keep(body[:i]), keep(body[i+1:])
+}
 
 // windowDocuments hands each document w is written as to yield: w itself when
 // it holds no stack, and one per page copy when it holds one. False when

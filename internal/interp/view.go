@@ -398,14 +398,17 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window renders no node of its own -- see the key walk, which
-			// has to agree with this one path for path.
+			// A window is a node of its component, so its `#id` is a handle
+			// holding the cell its `visible` keeps and its methods are the
+			// instance's. Its path is a scope rather than a widget's -- see the
+			// key walk, which has to agree with this one path for path -- and
+			// its children are mounted under it.
 			if ir.IsWindowNode(n) {
 				restore := func() {}
 				if n.ErrorHandler != nil {
 					restore = env.pushRaiseScope(n.ErrorHandler)
 				}
-				nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("window@%d", next("window"))))
+				nodes, err := m.nodeInst(env, n, join(fmt.Sprintf("window@%d", next("window"))))
 				restore()
 				if err != nil {
 					return nil, err

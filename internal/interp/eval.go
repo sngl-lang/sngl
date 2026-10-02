@@ -1773,6 +1773,15 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		// A method called through a node's `#id` runs in the instance the
+		// handle names, where its props and the cells of its unbound two-way
+		// props are: `details.open()` writes the window's own `visible`.
+		if m, ok := recv.(map[string]any); ok {
+			inst, _ := m["__inst"].(*ir.NodeInst)
+			if ce, ok := m["__compEnv"].(*Env); ok && ce != nil && inst != nil && inst.Component != nil && slices.Contains(inst.Component.Funcs, call.Func) {
+				return ce.callUserFuncArgValues(call.Func, call.Args[1:], rest)
+			}
+		}
 		evalArgs = append([]any{recv}, rest...)
 	}
 
