@@ -7,8 +7,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passHandleParams inlines a call that hands a node's `#id` to a function
-// writing one of the node's two-way props through the parameter:
+// passHandleParams lands a program's write of a node's two-way prop where the
+// host's report of it lands. Written through the handle, `bound.checked =
+// false` under `:checked=shown` is `shown = false`; and a call that hands a
+// node's `#id` to a function writing one of the node's two-way props through
+// the parameter is inlined, so its writes are such writes:
 // `details.open()`, where sngl:ui declares
 //
 //	func window.open(w window) {
@@ -50,6 +53,14 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}}
 	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
 		switch x := n.(type) {
+		case *ir.Assign:
+			if t := st.boundTarget(x.Target); t != nil {
+				x.Target = t
+			}
+		case *ir.Toggle:
+			if t := st.boundTarget(x.Target); t != nil {
+				x.Target = t
+			}
 		case *ir.CallStmt:
 			body, ok, err := st.inline(x.Call)
 			if err != nil || !ok {
@@ -67,6 +78,27 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 		return err
 	}
 	return st.err
+}
+
+// boundTarget is what a write of target lands on when target is a two-way
+// prop read through a node's handle and the node binds it: `bound.checked`
+// under `:checked=shown` is `shown`. Unbound, it is nil and the write is left
+// standing for passImplicitState, which names the instance's cell.
+func (st *handleParams) boundTarget(target ir.Expr) ir.Expr {
+	sel, ok := target.(*ir.Select)
+	if !ok {
+		return nil
+	}
+	n := st.handleOf(sel.Operand)
+	if n == nil {
+		return nil
+	}
+	for _, b := range n.Bindings {
+		if b.PropName == sel.Field {
+			return ir.CloneExprSharingDecls(b.Target)
+		}
+	}
+	return nil
 }
 
 type handleParams struct {

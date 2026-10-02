@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
@@ -431,6 +432,19 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		}
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.Toggle(target.Field)
+		}
+		// A two-way prop through a node's handle: what it holds now, written
+		// back negated the way an assignment through the handle is.
+		if _, ok := obj.(map[string]any); ok {
+			cur, err := env.Eval(target)
+			if err != nil {
+				return err
+			}
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool %s", target.Field)
+			}
+			return env.execAssign(&ir.Assign{Target: target, Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(!b)}})
 		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)

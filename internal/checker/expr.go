@@ -5811,7 +5811,8 @@ func errorEventName(t *ir.Type) string {
 	return t.String()
 }
 
-// refuseNodePropAssign reports an imperative write to a node's prop.
+// refuseNodePropAssign reports an imperative write to a node's one-way prop,
+// through its handle or through a parameter the handle was passed to.
 //
 // A prop is declarative: `ui.text(value=greeting)` says what the node shows
 // for as long as it is rendered, and reactivity re-evaluates it when
@@ -5840,22 +5841,67 @@ func (c *checker) refuseNodePropAssign(target ir.Expr, pos ast.Pos, verb string)
 	if !ok {
 		return
 	}
-	v, ok := id.Sym.(*ir.Var)
-	if !ok || !v.NodeHandle {
+	var typ *ir.Type
+	switch sym := id.Sym.(type) {
+	case *ir.Var:
+		if !sym.NodeHandle {
+			return
+		}
+		// A handle a lowering pass made is exempt, because the rule is about
+		// what a *program* may write: passReactivity and passDeclarative emit
+		// `__n0.value = expr` by the hundred, and that is how a prop reaches
+		// the host at all.
+		//
+		// Config.Lowered is the same exemption for a document *printed* from
+		// that IR and checked again. The flag is lost in the text -- `text
+		// #__n0(…)` re-parses as an ordinary node with an ordinary id -- so the
+		// caller that lowered it says so instead.
+		if sym.Synthesized || c.cfg.Lowered {
+			return
+		}
+		typ = sym.Type
+	case *ir.Param:
+		// A handle passed on: `func window.open(w window)` writes the
+		// instance's prop through the receiver it is handed. A test's own
+		// instance is the exception: the test is its call site, and setting
+		// a prop is how it says what the call site wrote.
+		if f := c.currentFunc; f != nil && f.IsTest {
+			return
+		}
+		typ = sym.Type
+	default:
 		return
 	}
-	// A handle a lowering pass made is exempt, because the rule is about what a
-	// *program* may write: passReactivity and passDeclarative emit
-	// `__n0.value = expr` by the hundred, and that is how a prop reaches the
-	// host at all.
+	comp := handleComponent(typ)
+	if comp == nil {
+		return
+	}
+	// A two-way prop is already a cell the host writes -- a checkbox reports
+	// its clicks through it -- so a write from the program is one more writer
+	// of that cell and lands where the host's report does: the var the call
+	// site bound, or the instance's own (passHandleParams, passImplicitState).
 	//
-	// Config.Lowered is the same exemption for a document *printed* from that
-	// IR and checked again. The flag is lost in the text -- `text #__n0(…)`
-	// re-parses as an ordinary node with an ordinary id -- so the caller that
-	// lowered it says so instead.
-	if v.Synthesized || c.cfg.Lowered {
+	// What is not a prop -- a test's `c.count = 1` writes the component's
+	// own var -- is not this rule's.
+	oneWay := false
+	for _, p := range comp.Props {
+		if p.Name == sel.Field {
+			oneWay = !p.Bidirectional
+		}
+	}
+	if !oneWay {
 		return
 	}
-	c.error(pos, "cannot %s %s.%s: a node's prop is what the tree says it is, not a cell to write; change the state it reads instead",
+	c.error(pos, "cannot %s %s.%s: a node's one-way prop is what the tree says it is, not a cell to write; change the state it reads instead",
 		verb, id.Name, sel.Field)
+}
+
+// handleComponent is the component a handle's type names, nil for any other
+// type.
+func handleComponent(t *ir.Type) *ir.Component {
+	if t == nil || (t.Kind != ir.TypeComponent && t.Kind != ir.TypeInstance) {
+		return nil
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	return comp
 }

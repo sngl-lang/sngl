@@ -1163,7 +1163,10 @@ and `LocalRefs`, `ir.WindowHandles`/`WindowHandlers`/`WindowTitle`,
 and the checker's window id hoist. Added: `passHandleParams` (a call handing a
 node's handle to a function writing one of its two-way props through the
 parameter is inlined, the write landing on the bound var or the cell, and the
-interpreter writes through a handle the same way), `passBoundaryPassthrough`
+interpreter writes through a handle the same way; since then a program may
+write a two-way prop through the `#id` directly, which the pass lands the same
+way, and a one-way one is refused through a parameter as through the handle,
+`node_prop_write_two_way.sngl`), `passBoundaryPassthrough`
 (on every target, late, a boundary with no fallback is spliced into what it
 holds, its handlers lifted where a slot body is -- a boundary a program writes
 now builds on fyne and gtk4, `errorboundary_flattened.txt`, and android's

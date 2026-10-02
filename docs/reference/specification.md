@@ -1569,7 +1569,12 @@ A component parameter is one of four kinds:
   written `const name Type` (see [the const prefix](#the-const-prefix));
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
-  to `name` is written back to that lvalue, so parent and child stay in sync;
+  to `name` is written back to that lvalue, so parent and child stay in sync.
+  Left unbound, it is a cell of the instance. Unlike a regular parameter it may
+  also be written from outside, through the node's `#id` or a parameter holding
+  that handle (`box.checked = true`): the write lands where the component's own
+  does, on the bound lvalue or the instance's cell. Writing a regular parameter
+  that way is an error, since what it shows is the expression the caller wrote;
 - an **event parameter** — `@name(a A, b B)` — an outgoing event the
   component fires by calling its name (`name(x, y)`) and the caller handles
   with `@name(a, b) { … }`. The list is a func type's, names optional;
