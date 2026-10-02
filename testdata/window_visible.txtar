@@ -75,15 +75,15 @@ import (
 type Model struct {
 	shown          bool
 	closes         int
-	visible__inst1 bool
+	visible__inst0 bool
 
-	__n0    *fynelayout.Toplevel
+	details *fynelayout.Toplevel
+	__n0    *widget.Label
+	__n2    *widget.Button
+	__n3    *widget.Button
+	other   *fynelayout.Toplevel
 	__n1    *widget.Label
 	__n4    *widget.Button
-	__n5    *widget.Button
-	__n2    *fynelayout.Toplevel
-	__n3    *widget.Label
-	__n6    *widget.Button
 	__built bool
 }
 
@@ -92,65 +92,81 @@ func New() *Model {
 	m := &Model{}
 	m.shown = true
 	m.closes = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) open__inst0() {
-	m.shown = true
-	m.__n0.SetVisible(m.shown)
-	m.__n3.SetText(("shown " + fmt.Sprint(m.shown)))
-}
-
-func (m *Model) close__inst0() {
-	m.shown = false
-	m.__n0.SetVisible(m.shown)
-	m.__n3.SetText(("shown " + fmt.Sprint(m.shown)))
-}
-
-func (m *Model) open__inst2() {
-	m.visible__inst1 = true
-	m.__n2.SetVisible(m.visible__inst1)
-}
-
-func (m *Model) close__inst2() {
-	m.visible__inst1 = false
-	m.__n2.SetVisible(m.visible__inst1)
-}
-
-func (m *Model) __n0_closed_handler() {
+func (m *Model) details_closed_handler() {
 	m.closes += 1
-	m.__n1.SetText((("closed " + fmt.Sprint(m.closes)) + " times"))
+	m.__n0.SetText((("closed " + fmt.Sprint(m.closes)) + " times"))
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) details_visible_handler(__visible bool) {
 	m.shown = __visible
-	m.__n0.SetVisible(m.shown)
-	m.__n3.SetText(("shown " + fmt.Sprint(m.shown)))
+	m.details.SetVisible(m.shown)
+	m.__n1.SetText(("shown " + fmt.Sprint(m.shown)))
 }
 
-func (m *Model) __n4_click_handler() {
-	m.close__inst0()
+func (m *Model) __n2_click_handler() {
+	m.shown = false
+	m.details.SetVisible(m.shown)
+	m.__n1.SetText(("shown " + fmt.Sprint(m.shown)))
 }
 
-func (m *Model) __n5_click_handler() {
-	if m.visible__inst1 {
-		m.close__inst2()
+func (m *Model) __n3_click_handler() {
+	if m.visible__inst0 {
+		m.visible__inst0 = false
+		m.other.SetVisible(m.visible__inst0)
 	} else {
-		m.open__inst2()
+		m.visible__inst0 = true
+		m.other.SetVisible(m.visible__inst0)
 	}
 }
 
-func (m *Model) __n2_closed_handler() {
+func (m *Model) other_closed_handler() {
 }
 
-func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n2.SetVisible(m.visible__inst1)
+func (m *Model) other_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.other.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n6_click_handler() {
-	m.open__inst0()
+func (m *Model) __n4_click_handler() {
+	m.shown = true
+	m.details.SetVisible(m.shown)
+	m.__n1.SetText(("shown " + fmt.Sprint(m.shown)))
+}
+
+// detailsClosed invokes the OnClosed callback on the #details widget; for tests.
+func (m *Model) detailsClosed() {
+	if m.details.OnClosed != nil {
+		m.details.OnClosed()
+	}
+}
+
+// detailsVisible invokes the OnVisible callback on the #details widget; for tests.
+func (m *Model) detailsVisible(__visible bool) {
+	if cb := m.details.OnVisible; cb != nil {
+		m.details.OnVisible = nil
+		cb(__visible)
+		m.details.OnVisible = cb
+	}
+}
+
+// otherClosed invokes the OnClosed callback on the #other widget; for tests.
+func (m *Model) otherClosed() {
+	if m.other.OnClosed != nil {
+		m.other.OnClosed()
+	}
+}
+
+// otherVisible invokes the OnVisible callback on the #other widget; for tests.
+func (m *Model) otherVisible(__visible bool) {
+	if cb := m.other.OnVisible; cb != nil {
+		m.other.OnVisible = nil
+		cb(__visible)
+		m.other.OnVisible = cb
+	}
 }
 
 func (m *Model) Shown() bool {
@@ -169,51 +185,51 @@ func (m *Model) SetCloses(v int) {
 	m.closes = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.details.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("Details")
-	m.__n0.SetVisible(m.shown)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
+	m.details = fynelayout.NewToplevel()
+	m.details.SetTitle("Details")
+	m.details.SetVisible(m.shown)
+	m.details.OnClosed = m.details_closed_handler
+	m.details.OnVisible = m.details_visible_handler
+	m.__n0 = widget.NewLabel("")
+	m.__n0.SetText((("closed " + fmt.Sprint(m.closes)) + " times"))
+	m.details.Add(m.__n0)
+	m.__n2 = widget.NewButton("", nil)
+	m.__n2.SetText("Hide")
+	m.__n2.OnTapped = m.__n2_click_handler
+	m.details.Add(m.__n2)
+	m.__n3 = widget.NewButton("", nil)
+	m.__n3.SetText("Other")
+	m.__n3.OnTapped = m.__n3_click_handler
+	m.details.Add(m.__n3)
+	fynelayout.AppAttach(m.details)
+	m.other = fynelayout.NewToplevel()
+	m.other.SetTitle("Other")
+	m.other.SetVisible(m.visible__inst0)
+	m.other.OnClosed = m.other_closed_handler
+	m.other.OnVisible = m.other_visible_handler
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText((("closed " + fmt.Sprint(m.closes)) + " times"))
-	m.__n0.Add(m.__n1)
+	m.__n1.SetText(("shown " + fmt.Sprint(m.shown)))
+	m.other.Add(m.__n1)
 	m.__n4 = widget.NewButton("", nil)
-	m.__n4.SetText("Hide")
+	m.__n4.SetText("Details")
 	m.__n4.OnTapped = m.__n4_click_handler
-	m.__n0.Add(m.__n4)
-	m.__n5 = widget.NewButton("", nil)
-	m.__n5.SetText("Other")
-	m.__n5.OnTapped = m.__n5_click_handler
-	m.__n0.Add(m.__n5)
-	fynelayout.AppAttach(m.__n0)
-	m.__n2 = fynelayout.NewToplevel()
-	m.__n2.SetTitle("Other")
-	m.__n2.SetVisible(m.visible__inst1)
-	m.__n2.OnClosed = m.__n2_closed_handler
-	m.__n2.OnVisible = m.__n2_visible_handler
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(("shown " + fmt.Sprint(m.shown)))
-	m.__n2.Add(m.__n3)
-	m.__n6 = widget.NewButton("", nil)
-	m.__n6.SetText("Details")
-	m.__n6.OnTapped = m.__n6_click_handler
-	m.__n2.Add(m.__n6)
-	fynelayout.AppAttach(m.__n2)
-	return m.__n0.Container
+	m.other.Add(m.__n4)
+	fynelayout.AppAttach(m.other)
+	return m.details.Container
 }
 
 func main() {
@@ -250,14 +266,14 @@ import (
 type Model struct {
 	shown          bool
 	closes         int
-	visible__inst1 bool
+	visible__inst0 bool
+	details        gtk4rt.Handle
 	__n0           gtk4rt.Handle
-	__n1           gtk4rt.Handle
-	__n4           gtk4rt.Handle
-	__n5           gtk4rt.Handle
 	__n2           gtk4rt.Handle
 	__n3           gtk4rt.Handle
-	__n6           gtk4rt.Handle
+	other          gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n4           gtk4rt.Handle
 	__built        bool
 }
 
@@ -267,64 +283,48 @@ func New() *Model {
 	m := &Model{}
 	m.shown = true
 	m.closes = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) open__inst0() {
-	m.shown = true
-	gtk4rt.ToplevelSetVisible(m.__n0, m.shown)
-	gtk4rt.LabelSetText(m.__n3, ("shown " + fmt.Sprint(m.shown)))
-}
-
-func (m *Model) close__inst0() {
-	m.shown = false
-	gtk4rt.ToplevelSetVisible(m.__n0, m.shown)
-	gtk4rt.LabelSetText(m.__n3, ("shown " + fmt.Sprint(m.shown)))
-}
-
-func (m *Model) open__inst2() {
-	m.visible__inst1 = true
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
-}
-
-func (m *Model) close__inst2() {
-	m.visible__inst1 = false
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
-}
-
-func (m *Model) __n0_closed_handler() {
+func (m *Model) details_closed_handler() {
 	m.closes += 1
-	gtk4rt.LabelSetText(m.__n1, (("closed " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.LabelSetText(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) details_visible_handler(__visible bool) {
 	m.shown = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.shown)
+	gtk4rt.ToplevelSetVisible(m.details, m.shown)
 }
 
-func (m *Model) __n4_clicked_handler() {
-	m.close__inst0()
+func (m *Model) __n2_clicked_handler() {
+	m.shown = false
+	gtk4rt.ToplevelSetVisible(m.details, m.shown)
+	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 }
 
-func (m *Model) __n5_clicked_handler() {
-	if m.visible__inst1 {
-		m.close__inst2()
+func (m *Model) __n3_clicked_handler() {
+	if m.visible__inst0 {
+		m.visible__inst0 = false
+		gtk4rt.ToplevelSetVisible(m.other, m.visible__inst0)
 	} else {
-		m.open__inst2()
+		m.visible__inst0 = true
+		gtk4rt.ToplevelSetVisible(m.other, m.visible__inst0)
 	}
 }
 
-func (m *Model) __n2_closed_handler() {
+func (m *Model) other_closed_handler() {
 }
 
-func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+func (m *Model) other_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.other, m.visible__inst0)
 }
 
-func (m *Model) __n6_clicked_handler() {
-	m.open__inst0()
+func (m *Model) __n4_clicked_handler() {
+	m.shown = true
+	gtk4rt.ToplevelSetVisible(m.details, m.shown)
+	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
 }
 
 func (m *Model) Shown() bool {
@@ -343,12 +343,12 @@ func (m *Model) SetCloses(v int) {
 	m.closes = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -356,43 +356,43 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "Details")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.shown)
-	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.details = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.details, "Details")
+	gtk4rt.ToplevelSetVisible(m.details, m.shown)
+	gtk4rt.ToplevelOnClosed(m.details, m.details_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.details, m.details_visible_handler)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n0, (("closed " + fmt.Sprint(m.closes)) + " times"))
+	gtk4rt.BoxAppend(m.details, m.__n0)
+	m.__n2 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n2, "Hide")
+	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
+	gtk4rt.BoxAppend(m.details, m.__n2)
+	m.__n3 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n3, "Other")
+	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
+	gtk4rt.BoxAppend(m.details, m.__n3)
+	gtk4rt.AppAttach(m.details)
+	m.other = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.other, "Other")
+	gtk4rt.ToplevelSetVisible(m.other, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.other, m.other_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.other, m.other_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, (("closed " + fmt.Sprint(m.closes)) + " times"))
-	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	gtk4rt.LabelSetText(m.__n1, ("shown " + fmt.Sprint(m.shown)))
+	gtk4rt.BoxAppend(m.other, m.__n1)
 	m.__n4 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n4, "Hide")
+	gtk4rt.ButtonSetLabel(m.__n4, "Details")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
-	gtk4rt.BoxAppend(m.__n0, m.__n4)
-	m.__n5 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n5, "Other")
-	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
-	gtk4rt.BoxAppend(m.__n0, m.__n5)
-	gtk4rt.AppAttach(m.__n0)
-	m.__n2 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n2, "Other")
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
-	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, ("shown " + fmt.Sprint(m.shown)))
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
-	m.__n6 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n6, "Details")
-	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n6)
-	gtk4rt.AppAttach(m.__n2)
+	gtk4rt.BoxAppend(m.other, m.__n4)
+	gtk4rt.AppAttach(m.other)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n0)
+	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -411,22 +411,22 @@ dialog { margin: auto; padding: 1em; }
 
 <span id="__n0" data-sngl-id="__n0">
 </span>
-<button id="$0">
+<button id="$1">
   <span>Hide</span>
 </button>
-<button id="$1">
+<button id="$2">
   <span>Other</span>
 </button>
-<dialog id="__n1" data-sngl-id="__n1" aria-label="Other">
+<dialog id="$0" aria-label="Other">
   <header>
     <span>Other</span>
-    <button id="$2" aria-label="Close">
+    <button id="$3" aria-label="Close">
       <span>×</span>
     </button>
   </header>
-  <span id="__n2" data-sngl-id="__n2">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
-  <button id="$3">
+  <button id="$4">
     <span>Details</span>
   </button>
 </dialog>
@@ -435,14 +435,6 @@ dialog { margin: auto; padding: 1em; }
 (() => {
   // sngl-entry.js
   var state = { shown: true, closes: 0, visible__inst0: true };
-  function open__inst1() {
-    state.visible__inst0 = true;
-    __n1.open = state.visible__inst0;
-  }
-  function close__inst1() {
-    state.visible__inst0 = false;
-    __n1.open = state.visible__inst0;
-  }
   function String(v) {
     return "" + v;
   }
@@ -450,43 +442,45 @@ dialog { margin: auto; padding: 1em; }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
+  var $4 = document.getElementById("$4");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
-  $0.addEventListener("click", function() {
-    state.shown = false;
-    __n2.textContent = "shown " + String(state.shown);
-  });
   $1.addEventListener("click", function() {
+    state.shown = false;
+    __n1.textContent = "shown " + String(state.shown);
+  });
+  $2.addEventListener("click", function() {
     if (state.visible__inst0) {
       ;
-      close__inst1();
+      state.visible__inst0 = false;
+      $0.open = state.visible__inst0;
     } else {
       ;
-      open__inst1();
+      state.visible__inst0 = true;
+      $0.open = state.visible__inst0;
     }
     ;
   });
-  $2.addEventListener("click", function() {
-    state.visible__inst0 = false;
-    __n1.open = state.visible__inst0;
+  $4.addEventListener("click", function() {
+    state.shown = true;
+    __n1.textContent = "shown " + String(state.shown);
   });
   $3.addEventListener("click", function() {
-    state.shown = true;
-    __n2.textContent = "shown " + String(state.shown);
+    state.visible__inst0 = false;
+    $0.open = state.visible__inst0;
   });
   function __sngl_init() {
     __n0.textContent = "closed " + String(state.closes) + " times";
-    __n2.textContent = "shown " + String(state.shown);
-    __n1.open = state.visible__inst0;
+    __n1.textContent = "shown " + String(state.shown);
+    $0.open = state.visible__inst0;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:09b45212f772211e3d2d8192bca1a987
+pass sha256:3f6e9dffcc7d6ccd62cebd6393869427
 -- run/go/gtk4 --
-pass sha256:35ee3c0195737cf2c0ddc23040cc6590
+pass sha256:5fe1fc07b980ce819f66330753cd1a63
 -- run/none/html --
-pass sha256:202c8ba05bad9e93e47525c5c1f8389d
+pass sha256:7a27a764f1c5ac5efcbc6cb8423ca902

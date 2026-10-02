@@ -12,8 +12,8 @@ import (
 //
 // The mark only stamps a kind; what a kind then requires is checked here,
 // where the reference is stored, because that is where the requirement comes
-// from — `window` has to be a component precisely because the checker asks it
-// for the type it gives every ir.Window.
+// from — `context` has to be a component precisely because the checker
+// resolves `context #name(default)` against its declaration.
 //
 // The predeclared constants are the other half: PLATFORM and LANGUAGE are
 // declared with a placeholder value because the real one is not known until a
@@ -21,8 +21,6 @@ import (
 func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 	bound := false
 	switch kind {
-	case ir.BuiltinWindow:
-		bound = bindBuiltin(c, &c.windowComp, kind, sym) != nil
 	case ir.BuiltinContext:
 		bound = bindBuiltin(c, &c.contextComp, kind, sym) != nil
 	case ir.BuiltinErrorBoundary:

@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -63,20 +64,16 @@ func htmlEscape(s string) string {
 }
 
 // renderDocAsHTML compiles pkg through the html platform and returns the
-// HTML for the named window. Returns an error if the window doesn't exist
-// or codegen fails.
+// HTML for the named window: a node the package body renders with that `#id`.
+// Returns an error if there is none or codegen fails.
 func renderDocAsHTML(pkg *ir.Package, windowName string) ([]byte, error) {
 	if pkg == nil {
 		return nil, fmt.Errorf("nil package")
 	}
-	var found *ir.Window
-	for _, w := range pkg.Windows {
-		if w.ID == windowName {
-			found = w
-			break
-		}
-	}
-	if found == nil {
+	if !slices.ContainsFunc(pkg.Body, func(s ir.Stmt) bool {
+		n, ok := s.(*ir.NodeInst)
+		return ok && n.ID == windowName
+	}) {
 		return nil, fmt.Errorf("window %q not found in package", windowName)
 	}
 

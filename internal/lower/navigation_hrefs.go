@@ -44,9 +44,9 @@ type navHrefs struct {
 	href   *ir.Func
 	// hrefs is each page's, as written.
 	hrefs map[*navPage]string
-	// dialog is every node in a window the composition shows inside the
-	// document, whose stacks navigate in place.
-	dialog map[*ir.NodeInst]bool
+	// surfaces says which nodes are in a surface other than the document --
+	// a window html shows inside it -- whose stacks navigate in place.
+	surfaces *surfaceSet
 }
 
 func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
@@ -57,31 +57,15 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 	h := &navHrefs{nv: nv, static: opts.Language == "none", hrefs: map[*navPage]string{}}
 	h.link = findLibComponent(pkg, "sngl:ui", "link")
 	h.href = findLibFunc(pkg, "sngl:ui/nav", "_href")
-	// A stack in a window other than a document target's document is no
-	// address: it navigates in place, and passNavigation lowers it. Which
-	// window is the document is the composition's to refuse.
-	dialog := map[*ir.NodeInst]bool{}
-	inDialog := func(ir.Owner) bool { return false }
-	if feats.DocumentWindow {
-		if doc, _ := documentWindow(pkg); doc != nil {
-			inDialog = func(o ir.Owner) bool { return o.Win != nil && o.Win != doc }
-			for _, w := range ir.AllWindows(pkg) {
-				if w != doc {
-					_ = ir.WalkStmts(w.Children, func(s ir.Stmt) error {
-						if n, ok := s.(*ir.NodeInst); ok {
-							dialog[n] = true
-						}
-						return nil
-					})
-				}
-			}
-		}
-	}
-	if err := refuseStacksUnderReactiveIf(pkg, inDialog); err != nil {
+	// A stack in a surface other than the document is no address: it
+	// navigates in place, and passNavigation lowers it. Which surface is the
+	// document is the composition's to refuse.
+	surfaces, _ := findSurfaces(pkg)
+	if err := refuseStacksUnderReactiveIf(pkg, surfaces.inSurface); err != nil {
 		return err
 	}
 	for _, st := range nv.stacks {
-		if inDialog(st.owner) {
+		if surfaces.inSurface(st.node) {
 			continue
 		}
 		for _, pg := range st.pages {
@@ -91,7 +75,7 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 			h.pageCell(pg)
 		}
 	}
-	h.dialog = dialog
+	h.surfaces = surfaces
 	for _, fn := range navFuncs(pkg) {
 		if err := h.calls(fn.Block); err != nil {
 			return err
@@ -104,7 +88,7 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 			return nil
 		}
 		switch {
-		case isNavNode(inst, ir.BuiltinNavLink) && !dialog[inst]:
+		case isNavNode(inst, ir.BuiltinNavLink) && !surfaces.inSurface(inst):
 			werr = h.navLink(inst)
 		}
 		return nil
@@ -160,7 +144,7 @@ func (h *navHrefs) checkPage(pg *navPage) error {
 // in every body that renders one: a document holds its pages or does not.
 //
 // A stack navigating in place is not a document's, and is left out (skip).
-func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(ir.Owner) bool) error {
+func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(*ir.NodeInst) bool) error {
 	fx := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg)}
 	var walk func(stmts []ir.Stmt, reactive bool) error
 	walk = func(stmts []ir.Stmt, reactive bool) error {
@@ -175,6 +159,9 @@ func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(ir.Owner) bool) erro
 					return err
 				}
 			case *ir.NodeInst:
+				if skip(n) {
+					continue
+				}
 				if isNavNode(n, ir.BuiltinNavStack) && reactive {
 					return fmt.Errorf("%s: a nav.stack under an `if` that reads state cannot be decided per document; write the `if` inside a page", ir.NodePos(n))
 				}
@@ -203,9 +190,6 @@ func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(ir.Owner) bool) erro
 		return nil
 	}
 	for _, o := range ir.Owners(pkg) {
-		if skip(o) {
-			continue
-		}
 		if err := walk(o.Stmts(), false); err != nil {
 			return err
 		}
@@ -267,7 +251,7 @@ func (h *navHrefs) calls(stmts []ir.Stmt) error {
 			if n.Call == nil || n.Call.Func == nil || n.Call.Func.Intrinsic != "nav.go" {
 				continue
 			}
-			if st, _ := h.nv.resolve(callArg(n.Call, "", 0)).(*navStack); st != nil && h.dialog[st.node] {
+			if st, _ := h.nv.resolve(callArg(n.Call, "", 0)).(*navStack); st != nil && h.surfaces.inSurface(st.node) {
 				continue
 			}
 			pg, _ := h.nv.resolve(callArg(n.Call, "to", 1)).(*navPage)

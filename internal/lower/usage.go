@@ -74,20 +74,11 @@ func scanUsage(pkg *ir.Package) usage {
 }
 
 // pkgUsesErrorHandling reports whether the package contains any error-handling
-// construct: a window/boundary @error handler, a fallible-call handler, a
-// raise, or a func that can error.
+// construct: a boundary's @error handler, a fallible-call handler, a raise, a
+// catch block, or a func that can error.
 func pkgUsesErrorHandling(pkg *ir.Package) bool {
 	if stmtsUseErrorHandling(pkg.Body) {
 		return true
-	}
-	for _, w := range pkg.Windows {
-		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Children) {
-			return true
-		}
-		// A window owns funcs the way a component does, and the ones this
-		// lowering synthesized are where the raises are: an effect group's
-		// settle raises when it does not converge. Reading the body alone left
-		// the error payload undeclared in a program whose only raise was there.
 	}
 	for _, comp := range pkg.Components {
 		if stmtsUseErrorHandling(comp.Body) {
@@ -104,14 +95,35 @@ func pkgUsesErrorHandling(pkg *ir.Package) bool {
 			return true
 		}
 	}
-	return false
+	// A catch block anywhere -- a lambda's included, which is where an
+	// offloaded handler's goes -- recovers a raise by its payload. A window's
+	// boundary catches whether or not a handler was written for it, so a
+	// block with nothing to run still names the type.
+	caught := false
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if x, ok := n.(*ir.If); ok && x.Catch != nil {
+			caught = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return caught
 }
 
 func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch x := s.(type) {
 		case *ir.ErrorBoundary:
-			return true
+			// A boundary whose handler does something hands it the payload. One
+			// that does nothing -- a window's, whose call site handled no
+			// @error -- names the payload only if something under it raises,
+			// which the walk below and the catch blocks answer.
+			if x.Handler != nil && x.Handler.Func != nil && len(x.Handler.Func.Block) > 0 {
+				return true
+			}
+			if stmtsUseErrorHandling(x.Children) || stmtsUseErrorHandling(x.Failed) {
+				return true
+			}
 		case *ir.NodeInst:
 			for i := range x.Handlers {
 				if x.Handlers[i].CanError {

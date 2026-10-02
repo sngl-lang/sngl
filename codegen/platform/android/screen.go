@@ -11,8 +11,8 @@ import (
 // application's view and holds the Screen a window is on this platform -- or,
 // for a harness that isolated a component, that component's body.
 func viewStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
-	if wins := ctx.Windows(); len(wins) > 0 {
-		return wins[0].Body
+	if h := ctx.Harness(); h != nil {
+		return h.Body
 	}
 	if ctx.Pkg == nil {
 		return nil
@@ -37,7 +37,12 @@ func screenPos(n *ir.NodeInst) string {
 // put on a Column around the insertion here instead. It is also what lays out
 // a body of several nodes there: the lambda hands them to the Screen with no
 // layout of their own.
+//
+// The boundary a window's `@error` is, which every override wraps the content
+// in, is looked through: every raise under it is resolved to its handler by
+// now, so what the window lays out is what it holds.
 func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
+	stmts = throughBoundaries(stmts)
 	if len(stmts) == 0 {
 		return
 	}
@@ -108,4 +113,21 @@ func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 		cc.indent--
 		cc.line("}")
 	}
+}
+
+// throughBoundaries is stmts with each boundary that holds no fallback replaced
+// by what it holds.
+func throughBoundaries(stmts []ir.Stmt) []ir.Stmt {
+	if !slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.ErrorBoundary); return ok }) {
+		return stmts
+	}
+	var out []ir.Stmt
+	for _, s := range stmts {
+		if b, ok := s.(*ir.ErrorBoundary); ok && len(b.Failed) == 0 {
+			out = append(out, throughBoundaries(b.Children)...)
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }

@@ -24,7 +24,7 @@ import tree "sngl:tree"
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation, documentWindow)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, inlineSlots, instanceState, navigation)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,
@@ -312,30 +312,33 @@ const component ui.divider[platform] {
 
 // --- Tier 3: Overlays & Layout ---
 
-// A window after the document is a `<dialog>` in it, shown without a backdrop
-// as a desktop window is: `visible` is its `open` attribute, which is what
-// `show()` sets. The document itself -- the first window that is always there
-// -- is the page, and is no instance of this: the composition leaves it the
-// builtin it is marked (`#[gen.can(documentWindow)]`). The header carries the
-// title and a close the user makes, which is a window manager's close: the
-// window is reported hidden and then `@closed` runs. A close the program makes
-// runs nothing.
-//
-// A window is a member of `root` and a dialog an element, so the dialog
-// crosses into the window's family where it is placed.
+// A window is a surface: html writes its document from the first that no `if`
+// over state and no `for` can take away, which is the page, and shows every
+// other as a `<dialog>` in it, without a backdrop as a desktop window is.
+// Which is which is optimize.Documents' to find, once everything is inlined,
+// so every window is one of these and the codegen answers each: the document's
+// `visible` and `@closed` do nothing, since a page cannot leave the screen and
+// is told of no close; a dialog's `visible` is its `open` attribute, the one
+// `show()` sets, and its header carries the title and a close the user makes,
+// which is a window manager's close -- `visible = false`, then `@closed`. A
+// close the program makes runs nothing.
+#[gen.renders(surface)]
+#[intrinsic("html:window")]
+component Window(
+    title string,
+    favicon string,
+    :visible bool = true,
+    @closed(),
+    content ...component ui.node,
+) root
+
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
 const component ui.window[platform] {
-    #[tree.crosses]
-    html.dialog(open=visible, attrs={"aria-label"=title}) {
-        html.header {
-            html.span(textContent=title) {}
-            html.button(attrs={"aria-label"="Close"}, @click {
-                visible = false
-                closed()
-            }) {
-                html.span(textContent="×") {}
-            }
+    Window(title=title, favicon=favicon, :visible=visible, @closed { closed() }) {
+        boundary(@error(e) { error(e) }) {
+            content
         }
-        content
     }
 }
 

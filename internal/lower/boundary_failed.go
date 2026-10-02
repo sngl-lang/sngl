@@ -69,12 +69,6 @@ func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window written inside a component body owns its own state, and
-			// ir.Owners hands it to us separately -- descending here would
-			// hang the flag on the wrong declaration.
-			if ir.IsWindowNode(n) {
-				continue
-			}
 			st.stmts(n.Children)
 			for _, sc := range n.Slots {
 				if sc != nil {

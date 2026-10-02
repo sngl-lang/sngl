@@ -58,21 +58,16 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			computedDeps[f] = deps
 		}
 	}
-	// A document's route parameters are not a declaration any owner made -- the
-	// window's slot binds them and the request fills them in -- so Owners has
-	// nothing to yield. They are tracked for the same reason state is: an
-	// expression reading one has a dependency, and an updater with no
-	// dependencies is pruned, which left a bound href with nothing to write
-	// it and an element whose id was then stripped as unreferenced.
-	for _, w := range ir.AllWindows(pkg) {
-		if w != nil && w.Params != nil {
-			model[w.Params] = struct{}{}
-		}
-	}
-	// A page's params cell is the same thing one level down: the node a
-	// target renders a nav.page as carries it, and a route fills it in.
+	// A page's params cell is not a declaration any owner made -- the page's
+	// population binds it and the request fills it in -- so Owners has nothing
+	// to yield. It is tracked for the same reason state is: an expression
+	// reading one has a dependency, and an updater with no dependencies is
+	// pruned, which left a bound href with nothing to write it and an element
+	// whose id was then stripped as unreferenced. The node a target renders a
+	// nav.page as carries it, and so does the surface a document is written
+	// from (optimize.Documents moves it there).
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if inst, ok := n.(*ir.NodeInst); ok && inst.Params != nil && inst.Record != nil {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Params != nil {
 			model[inst.Params] = struct{}{}
 		}
 		return nil

@@ -325,17 +325,16 @@ tree it was written in, so a tick is the `@tick` handler of an ordinary node and
 is reached wherever a node's handlers are.
 
 Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
-and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
-its `@error` reach them because the enumeration says a window owns those and
-not because each remembered to — each had a *second*, thinner copy of the
-window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
-and skipped the `@error` outright. Neither was reachable, since
-`passWindowNesting` rejects the only shape that leaves a window a statement by
-then; the point is that nothing had to notice.
+and `offloadableFuncs` both iterate `ir.Owners(pkg)` -- the package and each
+component, since a window is an ordinary node of whatever renders it -- so
+what an owner holds reaches them because the enumeration says so and not
+because each remembered to. Each used to have a *second*, thinner copy of a
+window arm beside the owners loop, and `blocks.go`'s passed nil timers and
+skipped the window's `@error` outright.
 
 What *was* reachable is the case neither copy had: **the handlers on a package
 var.** Both files named the package's funcs and its body and stopped, while a
-component's and a window's vars were walked in both — so a `for … else` in the
+component's vars were walked in both — so a `for … else` in the
 `@change` of a top-level `var` reached `passForElse` not at all and every
 backend dropped the else in silence. Nothing moves a package's vars off the
 package, so the shape survives the whole pipeline;
@@ -344,13 +343,10 @@ package, so the shape survives the whole pipeline;
 Both orders are load-bearing and neither is this file's any more.
 `passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
 order, and `passAsyncOffload` names `__async_offN` off `offloadableFuncs`', so
-each keeps the order it had: a window's `@error` after its view body, and the
-declared funcs across every owner before any handler.
-`codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
-windows rather than the owners — reads the same list.
-`walk.go`'s `walkPackage` is the one left: it walks the package's funcs, its
-components, `pkg.Windows` and `pkg.Body` by hand, where the owners would give
-it all four.
+each keeps the order it had: the declared funcs across every owner before any
+handler. `walk.go`'s `walkPackage` is the one left: it walks the package's
+funcs, its components and `pkg.Body` by hand, where the owners would give it
+all three.
 
 **A lambda body is the fourth kind of block**, and it is the one none of these
 reaches by walking declarations: it hangs off an *expression*. `blocks.go`
@@ -526,7 +522,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Thirteen run always and are not capability-gated because they answer for every target: `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary or window becomes, so the raise ends the handler) and `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Fifteen run always and are not capability-gated because they answer for every target: `HandleParams` (a call handing a node's `#id` to a function that writes one of its two-way props through the parameter, `details.open()`, is inlined so the write lands on the bound var or the cell), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). One more is gated with `NoDeclarative` and runs last: `BoundaryPassthrough`, which on fyne and gtk4 splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- spliced earlier, a handler survived only as a catch block's alias, which no walk follows. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -576,7 +572,7 @@ follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
-A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `window` in `ui`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
 `internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements by the package's own build-target node, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the node reaches it.
 
@@ -601,7 +597,7 @@ refuses a mark on one that does not.
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
-node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`, and
+node kinds (`errorBoundary`, `effect`, `context`, `output`, and
 `sngl:ui/nav`'s `navStack`, `navPage`, `navLink`) mark a component, and the checker dispatches a visual node to the matching IR construct
 off the mark. Four tree kinds mark a *family* — itself a component, but one
 that is never rendered: `treeFamily` (the family of families), `treeRoot` (the
@@ -1080,72 +1076,43 @@ checking it: checked in whatever file scope pass1 ended on, `time.timer` at the
 root of one file was undefined because the file sorted after it imported no
 `time` (`cmd/sngl/testdata/package_body_reads_its_own_imports.txt`).
 
-**Which windows there are is `ir.AllWindows`**, and the field is only half the
-answer. The checker registers a window written at the root of a file on
-`pkg.Windows`; one under an `if` or a `for` there stays a statement in
-`pkg.Body`, and one a component renders stays a statement in that component's
-body. `ir.AllWindows` reads `ir.Owners`, which reports all three deduped by
-pointer, and the lowering, every platform and the checker's own entry-window
-lookup ask it rather than the field. A lowering pass used to lift the second
-and third onto the field before anything else ran, on the argument that two
-dozen passes and five platforms already walked it -- and paid for it by
-clearing the bodies it emptied, which dropped every statement in them that was
-not a window (`testdata/timer_at_package_root.txtar`).
+**A window is an ordinary component** (Phase C3). `lib/ui/window.sngl`
+declares `ui.window` with no body and no mark, a member of `root`, and every
+platform overrides it with a primitive of its own: a Toplevel on gtk4 and
+fyne, a `Screen` on bubbletea and android, html's `Window` and `none`'s.
+Nothing in the compiler names a window -- there is no `ir.Window`,
+`pkg.Windows`, `ir.AllWindows` or `IsWindowNode`, no `#[builtin("window")]`,
+and no window arm in the checker, the lowering, the optimizer, the
+interpreter or a platform. What a window needed, each had a general answer
+(decision 16's table): the `root` family to stand at the root of a file, the
+node ops to be created and destroyed with the tree, the primitive's own
+codegen for its children, a `boundary` for `@error`, a two-way prop and an
+event for `visible` and `@closed`, and `nav.page` for everything html once
+needed a window to be a destination for.
 
-**A window is an `ir.NodeInst`**, and `ir.Window` is an alias for it rather
-than a type. The name is kept because "which of these nodes is a window" is a
-question nineteen consumers ask and `*ir.Window` is what they have always
-spelled the answer as — but it buys no type safety, a plain vbox satisfies it,
-and `ir.IsWindowNode` is the actual test. That predicate reads the
-`#[builtin("window")]` mark off the declaration, never the name, for the reason
-every other builtin lookup gives.
+What used to need the separate construct is said generally instead. A window
+written at the root of a file is a statement of `pkg.Body`, in the order
+written, so a gtk4 or fyne window is attached to the application where it
+stands rather than ahead of every root statement. A window inside a window is
+an ordinary membership error, the window's rest slot taking `ui.node`.
+A window's `open` and `close` are written outside the declaration's block,
+`func window.open(w window) { w.visible = true }`, since a bodyless
+declaration has no block to hold them; such a method reads the component only
+through the receiver it is passed, and `passHandleParams` inlines a call handing
+it a node's handle, so the write lands on the var `:visible` bound or on the
+instance's cell (`internal/lower/handle_params.go`). A window's `@error` is a
+`boundary(@error(e) { error(e) })` around the content in each override, so it
+always catches: a window whose call site handles no `@error` catches a raise
+and drops it (`testdata/window_error_unhandled.sngl`).
 
-What the separate struct cost was **72 `case *ir.Window:` arms** across the
-lowering, the optimizer, the interpreter and four platforms, each a second
-answer to a question the `*ir.NodeInst` arm beside it had already answered.
-Forty-eight were a strict subset of that arm; the rest are `ir.IsWindowNode`
-guards at the head of it now, next to the code they except — a window is its
-own reactivity owner, is not flattened into `CreateNode`, allocates no element
-var for its id, and may not appear in a view tree, which is what the `panic`s
-android, bubbletea, html and the interpreter keep.
-
-Three fields ride on `NodeInst` and are nil on every other node —
-`ErrorHandler`, `Params`, `LocalRefs` — which is the price, and it is three nil
-fields against 72 arms. None is a *body owner*: `Vars` and `Funcs` stay off
-`NodeInst`. `Checked` did not come along at all, being the checker's
-bookkeeping about its own progress and so a set there.
-
-**And a window's props are the declaration's, not the compiler's.**
-`lib/ui/window.sngl` declares `title` and `favicon` like any other component
-declares a prop, so they are the `Props []Arg` any node carries and `Component`
-is the declaration they were measured against. Naming them as Go fields cost 22
-files a hardcoded list, and two of them — `buildWindow` and the window's own
-convert path — a hand-maintained list that had to agree; another prop would
-have needed every one of them edited before it reached a backend. What a Go
-consumer still spells is `ir.WindowTitle` and its sibling, which name the *prop
-it reads* rather than redeclaring one: html asks for the favicon, gtk4 for the
-title, and neither is a list of what a window has. A window has no `href` or
-`params` and is no destination: those are a `nav.page`'s (see *Navigation*).
-
-**A window's `#id` binds a node handle**, and it is `NodeInst.ID` like every
-other node's. `declareNodeID` had the split written out: every node id bound an
-`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the window itself
-— so a window was an `ir.Symbol` and "what does a node id name" had two
-answers. It binds the same handle now, `Handle` points at it, and
-`SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
-window as a symbol. That is what found the three consumers rather than leaving
-them to a grep: folding `home.title` reaches the window
-through `ir.WindowHandles` (the optimizer's `windowForHandle`), and `hoistedWindow`/`bindWindow` are deleted —
-the handle is the stable thing a reference resolves to, so `buildWindow` builds
-a fresh window every call. `ir.Window.Typ` went with them, having only ever
-answered `SymType`. The window's `Name` is the target the program wrote
-(`ui.window`) and its `ID` is the `#id`, which is the one rename the type merge
-could not have the compiler check: both fields existed, and reading the wrong
-one compiles.
-
-**A read off a window's id folds to the window's own prop expression**, and it
-is folded again against the context the *read* sits in rather than the one the
-prop was written in. That is not a detail: `window #page(title=it.title)`
+**A one-way prop read off a component instance's `#id` folds to the
+expression its call site gave**, which is what the prop says for as long as the
+node is rendered -- `home.title` off a window is the case that needed it, a
+Select left standing being a dangling reference once the inliner has spliced
+the instance away. `evalCtx.nodeForHandle` finds the node; a primitive's props
+are `passNodePropReads`' and a two-way prop is a cell, so neither folds here.
+It is folded again against the context the *read* sits in rather than the one
+the prop was written in. That is not a detail: `window #page(title=it.title)`
 inside a `for` puts the loop variable in the prop, and a read of `page.title`
 from the window's body sits where the unroll has already passed -- returned as
 written it stayed `it.title`, named nothing, and the page rendered an empty
@@ -1153,8 +1120,8 @@ span with no diagnostic. Which makes a prop that reads itself,
 `window #h(title = h.title)`, a fold that re-enters on the same prop forever,
 so `evalCtx.foldingProp` holds the pairs in flight and leaves the select
 standing on re-entry -- the state a prop with no answer already reached codegen
-in. Keyed by window *and* prop, so two windows naming each other terminate on
-the second key rather than looping on the first.
+in. Keyed by node *and* prop, so two nodes naming each other terminate on the
+second key rather than looping on the first.
 
 **A node may not read its own `#id` in its own arguments**, and that is now a
 positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
@@ -1189,13 +1156,12 @@ an empty `<title>` on html, a name nothing declared on fyne. Those guards
 (`evalCtx.foldingProp`, the const fold's, `passNodePropReads`') remain for IR
 the checker did not see.
 
-**A window owns no state**, which is why `Vars`, `Funcs` and `Timers` did not
-come along either. A window is a rendering root and not a storage level, so
-what its body declares belongs to its container — the package, or the
-component that renders it: the checker leaves a window's `var` as an
-`*ir.LocalVar` statement in the body and `passHoistState` moves it there, as it
-does a `var` in any block of a view (below), and a `func` at the root of a
-window body is registered on the container directly.
+**A window owns no state**: it is a node, so what its body declares belongs
+to its container — the package, or the component that renders it: the checker
+leaves a window's `var` as an `*ir.LocalVar` statement in the body and
+`passHoistState` moves it there, as it does a `var` in any block of a view
+(below), and a `func` in a window body is registered on the container
+directly.
 
 **A `var` written in a block of a view is state of that block**, as a
 component's `var` is state of the component, and nothing about a window
@@ -1231,7 +1197,7 @@ on gtk4, fyne and html alike. Such an event's func prop is `__on_<prop>`
 (`testdata/two_way_prop_runtime_instance.txtar`). And a struct with no fields
 -- the empty `meta` a nav record carries, `struct Empty {}` -- is a Kotlin
 class with value equality rather than a data class, which needs a field.
-`ir.Owners` reports a window with neither. `Timers` is **gone**, and with it
+`Timers` is **gone**, and with it
 `ir.Timer`: the record held an interval, a gate and a tick body, and every one
 of those is readable off the timer-primitive node -- the `interval` and
 `enabled` props and the `@tick` handler -- so it carried nothing the tree did
@@ -1254,14 +1220,13 @@ instantiation. `component main root { var hits = 0; window … }` with
 **So a root component nobody instantiates renders nothing**, and that is a rule
 rather than an oversight — the last remnant of the `main`-by-convention harness,
 now gone. A program made of nothing but one is refused by
-`internal/build.Emit`, which asks `ir.Package.IsProgram`: reachability from the
-package body through the components it instantiates, not membership in any
-body. Asked the other way, a file carrying a spare root component built, and
-fyne and bubbletea then met an `*ir.Window` in the middle of a component method
-and panicked.
+`internal/build.Emit`, which asks `ir.Package.IsProgram`: whether the package
+body renders a node, not whether any body does. Asked the other way, a file
+carrying a spare root component built, and fyne and bubbletea then met a
+window in the middle of a component method and panicked.
 
 The alternative was a lowering pass that scanned `pkg.Components` for the root
-family, lifted the windows onto `pkg.Windows` and hoisted the vars and funcs
+family, lifted the windows out of it and hoisted the vars and funcs
 somewhere they would be emitted — the package, after #215 found that leaving
 them on the emptied shell reached no backend at all. It had to strip the
 receiver as it went, a component-body `func` being a method and a package-level
@@ -1287,23 +1252,25 @@ a reason it does not.
 Two things that follow. **One Model, one cell:** the shared pointer reaches a
 Model through two owners, so `CodegenCtx.ModelState` dedupes by the `*ir.Var`
 — emitted per owner instead, the Go targets declared `hits int` twice and did
-not compile. And **reading it needs a scope**: `EntryWindow` declines to say
-which window a multi-window program's single Model is scoped to, rightly, since
-two windows' `count` are two names — but a declaration owned by *all* of them
-is one var reachable from each, and was scoped to them without choosing between
-windows -- by `sharedWindowScope`, until a window stopped owning state and no
-declaration was owned by every window any more (31e63e21). Without that every
-such read rendered as a bare identifier the emitted Go never declared.
+not compile. And **reading it needs a scope**, which is the package body's:
+`CodegenCtx.ScopedExprCtx` scopes a single Model to the harness root where a
+harness isolated one, and to the package body (`ExprCtx.App`) otherwise.
+Without a scope every such read rendered as a bare identifier the emitted Go
+never declared.
 
 `testdata/root_component_state_two_windows.txtar` is the fixture, and it is
 where the per-platform table is written down.
 
-**A program declares at least one window**, checked by `internal/build.Emit`
-rather than by the checker: `component c { … }` on its own is a perfectly good
-thing to type-check, and it is only as something to *run* that it has nowhere
-to draw. Which is why **`component main` has lost its harness convention** —
+**A program renders something at the root of a file**, checked by
+`internal/build.Emit` rather than by the checker: `component c { … }` on its own
+is a perfectly good thing to type-check, and it is only as something to *run*
+that it has nothing to show. The package body is the application's view and
+every node in it is a member of `root`, so a window counts, and so do a root
+component's instance and a generated family's host -- a status bar with no
+window builds (`cmd/sngl/testdata/program_without_window.txt`). Which is why
+**`component main` has lost its harness convention** —
 `CodegenCtx.RootDecl()` now answers only for a harness that has cleared the
-windows on purpose (the test launcher isolating a component), and a `main` in
+package body on purpose (the test launcher isolating a component), and a `main` in
 an ordinary program is an ordinary component. Nothing else asks for the name
 either, and each place that did was a behaviour: `sngl run --lang none` mounted
 a `main` instead of the windows (`BuildProgramEnv` mounts the program now), a
@@ -1311,10 +1278,10 @@ directory of files each declaring one was read as a corpus of programs rather
 than a package, a library declaring one could not be imported, and route mode
 gave a `window #main` the index's `/` beside the first window's
 (`route_window_named_main.txtar`). Route mode and html ask
-`ir.Package.RootDecl()` for a harness root. One window is scoped implicitly and
-two or more get no scoping at all (`CodegenCtx.EntryWindow`): `output(entry = home)` used to choose, and went with a window's `href` (Phase C2, step 6),
-since which destination a build opens at is a stack's question -- the page at
-`/`, or its first.
+`ir.Package.RootDecl()` for a harness root. `output(entry = home)` used to
+choose a window, and went with a window's `href` (Phase C2, step 6), since
+which destination a build opens at is a stack's question -- the page at `/`,
+or its first.
 
 The facts land on `ir.Component.Tree` at registration and on
 `ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
@@ -1444,28 +1411,24 @@ never constructed, and went. And a page that writes no population carries no
 cell at all, so nothing downstream binds a route parameter for a page that does
 not read one.
 
-**A window's body reaches `checkSlotPopulations` like every other node's**.
-It used to read its own
-population out of the block: sixty-five lines restating "no such slot",
-"already populated" and "populated by name and bare", and missing the ones it
-did not think to restate — slot arity, and a population naming an override
-target, which `testdata/error_window_population.sngl` pins. What is left of
-that peel is `windowBodyBlock`, which answers only *which lines* the body is,
-and exists because a window hoists its own node ids before the body is read.
+**A window's body is a node's block**, read by `checkSlotPopulations` and
+checked in pass2 like every other node's (`testdata/error_window_population.sngl`
+for the population rules, `cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`
+for a prop reading a declaration further down the file). A window used to be
+registered in pass1 and checked by a construct of its own, which restated the
+population rules and missed two.
 
-**And a window is built in pass2**, like every other node. `windowShell` is
-what pass1 reserves — the target name, the `#id`, the handle — because a
-sibling window needs something to resolve against before any body is read; `checkWindow` reads the props, the `@error` and the
-body. Building the whole thing in pass1 checked its arguments against a scope
-pass1 had not finished filling, so `window #home(title = greeting())` above
-`func greeting()` was `undefined: greeting` while the same window one level
-into a component body checked clean
-(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`).
-
-What is still the checker's alone is the **id scope**: a window pushes one and
-hoists its own `#id`s into it, which `declareNodeIDsStmt` says by not
-descending into a window, and which `isWindowNode`'s own doc calls the reason
-it exists.
+**A node's `#id` at the root of a file is the package's** (`hoistPackageBodyIDs`):
+hoisted into the package scope at the start of pass2, at the count an `if` or
+a `for` around it confers, so every root statement, package func and component
+body reaches it, as a window's handle always was. What a window's body
+declares hoists like any node's block, plainly, so a sibling window reads
+another's nodes as one node -- every target holds every window in one process
+or document (`testdata/window_reads_sibling_window.sngl`). A plain id is a
+declaration of the package, held to its one-name rule: one naming what the
+package declares is "already declared in this scope", and two nodes writing one
+are a duplicate (`error_window_id_takes_a_declared_name.sngl`,
+`error_window_id_collision.sngl`). A component body already refused both.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
@@ -2327,7 +2290,7 @@ Two consequences of a built-in being identified by its mark: a kind classifies
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).
 And `output` is a *directive* kind rather than a node one: it parses as a
-visual node and is marked on a component declaration like `window` is, but the
+visual node and is marked on a component declaration like `context` is, but the
 compiler reads the tree into `ir.Output` instead of rendering it. The mark is
 what recognises it — a package declaring its own `component output` gets that
 component and no build directive — and what the mark permits is the root of a
@@ -2396,48 +2359,50 @@ window are ordinary box operations. BuildUI -- what a test and a snapshot take
 -- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
 the tree, its first settle included, and runs `RunWindows(show)`.
 
-What makes that reach the two platforms is generic: a builtin node whose
-declaration the target overrides is composed like any component
+What makes that reach the two platforms is generic: `ui.window` is an ordinary
+component, composed through its override like any other, and a builtin node
+whose declaration the target overrides is composed the same way
 (`composeOverriddenBuiltins` in `internal/lower/platform_extension.go`, which
 repoints each node at a per-build copy of the declaration with the mark off,
-since library IR is shared between builds), and the windows `pkg.Windows`
-held join the package body ahead of it -- the one window-specific step, and
-C3's to delete. html keeps one window the builtin it is marked, below.
+since library IR is shared between builds) -- sngl:ui/nav's stack and page on
+html.
 
-**html shows a second window as a `<dialog>`** (Phase C2, step 7). It holds
-`#[gen.can(documentWindow)]`: the first window in source order that no `if`
-over state and no `for` can take away is the document, and stays the builtin
-(`documentWindow`, `internal/lower/document_window.go`); every other is
-composed through html's override, `#[tree.crosses] html.dialog(open=visible, …) { header; content }`, so `visible`, `open`/`close` through the `#id`,
-`@closed` and a window under an `if` over state are the generic machinery
-gtk4 and fyne already use -- an implicit cell, a spliced method, a render slot
-building a runtime instance. The dialog is an element placed in a `root`
-member's body, which the mark on that placement permits. The header holds the title and a close button, which is a window
-manager's close -- `visible = false`, then `@closed` -- and the only thing
-that fires `@closed`: a close the program makes runs nothing, as on gtk4. A
-page's reset strips the dialog's margin and padding, so a page holding one
-gives them back. The document's own `visible` and `@closed` do nothing
-(`keepDocumentSurface`): its `open` and `close` through its `#id` are inlined
-as writes of the var `:visible` bound, or of a cell beside the window, which a
-read of `w.visible` names. A program whose every window may be absent has no
-document and is refused at its first (`window_dialog_refused.txt`).
+**html writes its document from a Window and shows every other as a
+`<dialog>`** (Phase C2, step 7; Phase C3). html overrides `ui.window` once,
+with `Window(title, favicon, :visible=visible, @closed { closed() }) { boundary(@error(e) { error(e) }) { content } }`, around its
+`#[gen.renders(surface)] #[intrinsic("html:window")] component Window(…) root`.
+The mark is what says the primitive's nodes are surfaces (`ir.IsSurface`,
+`ir.RenderedSurface`), and it is read twice. After inlining,
+`optimize.Documents` writes its documents from the first Window that no `if`
+over state and no `for` can take away (`documentSurface`), and writes what the
+package body renders around it (`bodyAround`: nodes and render-slot calls)
+into every document -- each page's, in static and route mode, and a
+harness's -- so a dialog is the application's and not a page's, with a `state`
+per document as each page has. Before inlining, `findSurfaces`
+(`internal/lower/surfaces.go`) finds which `ui.window` will be that document,
+a node being a surface when the primitive its component renders is one
+(`ir.RenderedPrimitive`): a `nav.stack` in any other surface navigates in
+place, so passNavigationHrefs leaves it alone, the composition leaves its nav
+nodes the builtins they are, and passNavigation -- which runs on every target,
+and on one holding `navigation` lowers nothing unless the package has
+surfaces -- lowers exactly those. A program whose every window may be absent
+has no document and is refused at its first (`window_dialog_refused.txt`).
 
-The composed windows join the package body where they were written, and the
-document with them when there are any (`packageRoots`, by position, since
-the checker kept `pkg.Windows` apart from the body). `optimize.Documents`
-then writes what the body renders around the document window
-(`bodyAround`: nodes and render-slot calls) into every document the window
-is written as -- each page's, in static and route mode, and a harness's,
-whose root component holds them -- so a dialog is the application's and not
-a page's, with a `state` per document as each page has. Two reactivity gaps
-it reached: `buildRenderSlotFor` *returned* at a window node, abandoning
-every sibling after it, and the document's handlers were injected before the
-body's slots existed, so a write there re-rendered no dialog under an `if`;
-the body's slots are built first now when a window stands in it. A
-`nav.stack` in a dialog navigates in place: passNavigationHrefs leaves it
-alone, the composition leaves its nav nodes the builtins they are, and
-`DocumentWindow` turns passNavigation back on beside `Navigation` to lower
-exactly those, leaving a `go` naming a stack it did not collect for html.
+The emitter answers a Window that is not the document, as gtk4's codegen
+answers a Toplevel (`renderDialog`): a `<dialog>` with the title in its
+`aria-label` and a header holding the title and a close button, which is a
+window manager's close -- the `visible` write-back with false, then `@closed`
+-- and the only thing that fires `@closed`: a close the program makes runs
+nothing, as on gtk4. `visible` is the dialog's `open` property
+(`domPropForProp`), written by the init and by the patches reactivity put in
+every handler that writes it. One built at run time -- a window under an `if`
+over state -- is `_snglDialog()`, whose close button runs the `__onVisible`
+and `__onClosed` the attach ops assign, in that order whichever was attached
+first. The document's own `visible` and `@closed` do nothing, since a page
+cannot leave the screen and is told of no close, and its writes through its
+`#id` are dropped (`respellWindowWrites`); its `open` and `close` write the
+var `:visible` bound or its cell as on every target. A page's reset strips a
+dialog's margin and padding, so a page holding one gives them back.
 `testdata/window_several.txtar`, `window_visible.txtar`,
 `window_under_if.txtar`, `window_dialog_pages.txtar` (static and route) and
 `window_dialog_nav.txtar` are the code, and
@@ -2533,6 +2498,12 @@ mode builds one window with no `@closed` and no state-driven `visible`, and
 refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a script tells a window
 reached the screen (`cmd/sngl/testdata/window_open_runs.txt`,
 `window_several_runs.txt`, `window_visible_runs.txt`).
+
+**A selected platform that cannot be used here is refused before the check**
+(`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
+no introspection data serves no package, so every component it would
+implement would otherwise be reported as one it has no implementation for
+(`cmd/sngl/testdata/gtk4_unavailable.txt`).
 
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it
@@ -2727,7 +2698,7 @@ which is what will let a menu iterate the pages.
 
 **The compiler answers the three nodes, never a body.** `stack`, `page` and
 `link` carry `#[marks.builtin("navStack")]`, `navPage` and `navLink`, as
-`window` carries its kind: a builtin node is exempt from the bodyless-library
+`effect` carries its kind: a builtin node is exempt from the bodyless-library
 rule and from inlining, `composeOverriddenBuiltins` composes one a platform
 overrides, and `passNavigation` finds them by the kind. Three answers:
 

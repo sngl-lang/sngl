@@ -19,13 +19,7 @@ import tree "sngl:tree"
 // can spawn -- and a pass reads each to choose what to emit rather than whether
 // to run.
 //
-// `documentWindow` is the composition's: a target holding it renders its first
-// window that is always there as the document everything else is drawn in --
-// html's page -- and every other window is composed through the target's
-// override of `ui.window`, as on a target without it. Its `navigation` then
-// answers the document's stack alone, and a stack in any other window is
-// lowered as a desktop's is.
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, documentWindow }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component
@@ -46,6 +40,14 @@ enum Rendered {
     // leaves nothing for `dot.r` to read, and 5.0 is not an approximation of
     // the answer -- with no object to mutate, it *is* the answer.
     identity
+    // Each node this primitive renders is a surface of its own: a toplevel the
+    // target draws a render tree in, standing at the root of a file as a
+    // member of `root`. A target whose view is markup writes its document
+    // from the first one that no `if` over state and no `for` can take away,
+    // and shows every other inside it -- html's Window, the `<dialog>`s of
+    // its page. Navigation reads it too: a stack in the document is the
+    // target's to answer, and one in any other surface navigates in place.
+    surface
 }
 
 // A lowering pass a target asks for.

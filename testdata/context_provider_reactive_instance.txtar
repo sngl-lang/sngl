@@ -246,9 +246,9 @@ type Model struct {
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*ShowInstance
 
-	__n1    *fynelayout.Toplevel
-	__n3    *fyne.Container
-	__n4    *widget.Button
+	home    *fynelayout.Toplevel
+	__n2    *fyne.Container
+	__n3    *widget.Button
 	__built bool
 }
 
@@ -273,23 +273,23 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst0_next := []*ShowInstance{}
 	var __inst0_i int = 0
 	for _, x := range m.xs {
-		var __n2 *ShowInstance
+		var __n1 *ShowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetN(x)
-			__n2.Set__ctx_label(m.txt)
+			__n1 = m.__inst0_live[__inst0_i]
+			__n1.SetN(x)
+			__n1.Set__ctx_label(m.txt)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newShowInstance(m, x, m.txt)
-			__n2 = __n2__new
+			__n1__new := newShowInstance(m, x, m.txt)
+			__n1 = __n1__new
 		}
-		__inst0_next = append(__inst0_next, __n2)
+		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		__n1__el := __n1.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
+		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -300,18 +300,34 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n1_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n1_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n1.SetVisible(m.visible__inst0)
+	m.home.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n4_click_handler() {
+func (m *Model) __n3_click_handler() {
 	m.txt = "c"
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__ctx_label(m.txt)
+	}
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
 	}
 }
 
@@ -342,23 +358,23 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n1.Container
+		return m.home.Container
 	}
 	m.__built = true
-	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetTitle("t")
-	m.__n1.SetVisible(m.visible__inst0)
-	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n3 = container.NewVBox()
-	m.__n4 = widget.NewButton("", nil)
-	m.__n4.SetText("flip")
-	m.__n4.OnTapped = m.__n4_click_handler
-	m.__n3.Add(m.__n4)
-	m.__renderSlot0(m.__n3)
-	m.__n1.Add(m.__n3)
-	fynelayout.AppAttach(m.__n1)
-	return m.__n1.Container
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
+	m.__n2 = container.NewVBox()
+	m.__n3 = widget.NewButton("", nil)
+	m.__n3.SetText("flip")
+	m.__n3.OnTapped = m.__n3_click_handler
+	m.__n2.Add(m.__n3)
+	m.__renderSlot0(m.__n2)
+	m.home.Add(m.__n2)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 // ShowInstance is one live instance of the show component.
@@ -436,9 +452,9 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*ShowInstance
-	__n1           gtk4rt.Handle
+	home           gtk4rt.Handle
+	__n2           gtk4rt.Handle
 	__n3           gtk4rt.Handle
-	__n4           gtk4rt.Handle
 	__built        bool
 }
 
@@ -464,23 +480,23 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*ShowInstance{}
 	var __inst0_i int = 0
 	for _, x := range m.xs {
-		var __n2 *ShowInstance
+		var __n1 *ShowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetN(x)
-			__n2.Set__ctx_label(m.txt)
+			__n1 = m.__inst0_live[__inst0_i]
+			__n1.SetN(x)
+			__n1.Set__ctx_label(m.txt)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newShowInstance(m, x, m.txt)
-			__n2 = __n2__new
+			__n1__new := newShowInstance(m, x, m.txt)
+			__n1 = __n1__new
 		}
-		__inst0_next = append(__inst0_next, __n2)
+		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		__n1__el := __n1.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -491,15 +507,15 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n1_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n1_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
-func (m *Model) __n4_clicked_handler() {
+func (m *Model) __n3_clicked_handler() {
 	m.txt = "c"
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__ctx_label(m.txt)
@@ -581,28 +597,28 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n1 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n1, "t")
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.__n4 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n4, "flip")
-	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
-	gtk4rt.BoxAppend(m.__n3, m.__n4)
-	m.__renderSlot0(m.__n3)
-	gtk4rt.BoxAppend(m.__n1, m.__n3)
-	gtk4rt.AppAttach(m.__n1)
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "t")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
+	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n2, 6)
+	m.__n3 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n3, "flip")
+	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
+	gtk4rt.BoxAppend(m.__n2, m.__n3)
+	m.__renderSlot0(m.__n2)
+	gtk4rt.BoxAppend(m.home, m.__n2)
+	gtk4rt.AppAttach(m.home)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n1)
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from main.sngl; DO NOT EDIT.
@@ -792,9 +808,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a2fa734f7cc07f13b93243cab2f78cd4
 -- run/go/fyne --
-pass sha256:4c72052b5ff579b3ff06cb1016547188
+pass sha256:37a96d13d332e1f6886fa17b46636da0
 -- run/go/gtk4 --
-pass sha256:b65e13cba7a9af3f632f05890729afd5
+pass sha256:b7fb78b50e1c81bf7afe65f99eaaa283
 -- run/kotlin/android --
 pass sha256:2bd10715e56de4c5015b0e04eeea1a0c
 -- run/none/html --

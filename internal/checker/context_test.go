@@ -161,10 +161,7 @@ func TestContextProviderBasic(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("expected 1 window, got %d", len(pkg.Windows))
-	}
-	win := pkg.Windows[0]
+	win := firstRootNode(t, pkg)
 	var prov *ir.ContextProvider
 	for _, s := range win.Children {
 		if p, ok := s.(*ir.ContextProvider); ok {

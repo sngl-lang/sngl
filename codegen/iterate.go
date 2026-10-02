@@ -7,13 +7,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// WindowCtx provides all the data a platform needs to generate one window.
-type WindowCtx struct {
-	Window *ir.Window
-	Vars   []*ir.Var
-	Funcs  []*ir.Func
-	Body   []ir.Stmt
-	Name   string
+// ViewCtx is one view a platform generates: a document html writes, or the
+// body a harness isolated. Surface is the node a document is written from --
+// a primitive marked #[gen.renders(surface)], html's Window -- and nil for a
+// harness's root component, whose body is the view.
+type ViewCtx struct {
+	Surface *ir.NodeInst
+	Vars    []*ir.Var
+	Funcs   []*ir.Func
+	Body    []ir.Stmt
+	Name    string
 }
 
 // ComponentCtx provides all the data a platform needs to generate one component.
@@ -28,52 +31,17 @@ type ComponentCtx struct {
 	Handlers  []*ir.EventHandler // var-level event handlers
 }
 
-// Windows returns a WindowCtx for each window ir.Owners reports: those at the
-// root of a file, and those a body renders (including the ones a for-loop
-// expanded).
-//
-// ir.Owners reports a window nested inside another as an owner of its own, and
-// this does not filter it out -- passWindowNesting has failed the build long
-// before any generator asks, so the pair cannot reach here. That is a
-// dependency on a lowering pass having run, which the deleted local walk did
-// not have.
-//
-// A program declares at least one, which the checker holds it to. The
-// synthesis below is for the one caller that deliberately removes them: a
-// test harness isolating a component, which clears the body and the windows
-// so the component under test is the whole program.
-func (ctx *CodegenCtx) Windows() []*WindowCtx {
-	var out []*WindowCtx
-
-	// ir.Owners is what says which declarations own state, and a window is one
-	// of the three -- so which bodies a window may be written in is its answer
-	// rather than a second walk here.
-	for _, o := range ir.Owners(ctx.Pkg) {
-		if o.Win == nil {
-			continue
-		}
-		out = append(out, &WindowCtx{
-			Window: o.Win,
-			Vars:   o.Vars,
-			Funcs:  o.Funcs,
-			Body:   o.Stmts(),
-			Name:   o.Name(),
-		})
-	}
-
+// Harness is the view a test harness isolated, nil for an ordinary build: the
+// harness clears the package body so the component under test is the whole
+// program, and that component's body is then what a platform draws.
+func (ctx *CodegenCtx) Harness() *ViewCtx {
 	root := ctx.RootDecl()
-	if len(out) > 0 || root == nil {
-		return out
+	if root == nil {
+		return nil
 	}
-
 	vars := append(append([]*ir.Var{}, ctx.Pkg.Vars...), root.Vars...)
 	funcs := append(append([]*ir.Func{}, ctx.Pkg.Funcs...), root.Funcs...)
-	return []*WindowCtx{{
-		Body:  root.Body,
-		Vars:  vars,
-		Funcs: funcs,
-		Name:  root.Name,
-	}}
+	return &ViewCtx{Body: root.Body, Vars: vars, Funcs: funcs, Name: root.Name}
 }
 
 // Components returns a ComponentCtx for each component in the package.
@@ -177,14 +145,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window is the surface its children are drawn on rather than a
-			// node drawn on one, so it is walked through: the callers count
-			// depth to indent markup and to decide what a node's parent is,
-			// and neither wants a page in the middle of that.
-			if ir.IsWindowNode(n) {
-				walkVisual(n.Children, fn, depth)
-				continue
-			}
 			if !fn(n, depth) {
 				walkVisual(n.Children, fn, depth+1)
 			}

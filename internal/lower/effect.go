@@ -89,7 +89,6 @@ type effectState struct {
 // held two of it for the length of that window.
 type effectGroup struct {
 	comp *ir.Component
-	win  *ir.Window
 	fxs  []*loweredEffect
 	// settling, pending and steps are the re-entrancy guard: a settle reached
 	// from inside a running one records that another pass is owed instead of
@@ -121,12 +120,10 @@ const maxEffectSettleSteps = 512
 // lifetimes are running, the two handler bodies, and the functions that move
 // the one to match what the program now describes.
 type loweredEffect struct {
-	// comp and win name the scope the effect was written in; both nil is the
-	// package. Held rather than the *ir.Owner it came from, because Owners
+	// comp names the scope the effect was written in; nil is the package. Held rather than the *ir.Owner it came from, because Owners
 	// hands out a fresh value per call and two of them for one component must
 	// compare equal.
 	comp *ir.Component
-	win  *ir.Window
 	// live is `list<T>`: the key each running lifetime is keyed on, in mount
 	// order. Its length is how many brackets this position currently holds.
 	live *ir.Var
@@ -265,7 +262,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	st.counter++
 
 	key := effectKeyExpr(n)
-	fx := &loweredEffect{comp: o.Comp, win: o.Win, elem: ir.TypBool}
+	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool}
 	if key != nil {
 		fx.elem = key.ExprType()
 		fx.keyVar = &ir.Var{
@@ -838,7 +835,6 @@ func (st *effectState) reactiveVarsIn(e ir.Expr) []*ir.Var {
 func (st *effectState) finishTeardown() error {
 	type owner struct {
 		comp *ir.Component
-		win  *ir.Window
 	}
 	var order []owner
 	tears := map[owner][]*loweredEffect{}
@@ -846,7 +842,7 @@ func (st *effectState) finishTeardown() error {
 		if fx.tear == nil {
 			continue
 		}
-		o := owner{fx.comp, fx.win}
+		o := owner{fx.comp}
 		if _, ok := tears[o]; !ok {
 			order = append(order, o)
 		}
@@ -897,7 +893,7 @@ func (st *effectState) finishTeardown() error {
 			Purity: ir.PurityMutates,
 			Block:  page,
 		}
-		st.addFunc(&ir.Owner{Comp: pageOwner.comp, Win: pageOwner.win}, fn)
+		st.addFunc(&ir.Owner{Comp: pageOwner.comp}, fn)
 		st.pkg.Teardown = fn
 	}
 	return nil
@@ -908,13 +904,13 @@ func (st *effectState) finishTeardown() error {
 // as a mount.
 func (st *effectState) buildGroups() {
 	for _, fx := range st.effects {
-		g := st.groupFor(fx.comp, fx.win)
+		g := st.groupFor(fx.comp)
 		g.fxs = append(g.fxs, fx)
 		fx.group = g
 	}
 	for i, g := range st.groups {
 		prefix := "__effects" + strconv.Itoa(i)
-		o := &ir.Owner{Comp: g.comp, Win: g.win}
+		o := &ir.Owner{Comp: g.comp}
 		g.settling = st.flagVar(o, prefix+"_settling")
 		g.pending = st.flagVar(o, prefix+"_pending")
 		g.steps = &ir.Var{
@@ -1001,8 +997,6 @@ func (st *effectState) buildGroups() {
 		switch {
 		case g.comp != nil:
 			g.comp.Body = append(g.comp.Body, callOf(g.settle))
-		case g.win != nil:
-			g.win.Children = append(g.win.Children, callOf(g.settle))
 		default:
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}
@@ -1028,13 +1022,13 @@ func (st *effectState) setFlag(v *ir.Var, to bool) ir.Stmt {
 	}
 }
 
-func (st *effectState) groupFor(comp *ir.Component, win *ir.Window) *effectGroup {
+func (st *effectState) groupFor(comp *ir.Component) *effectGroup {
 	for _, g := range st.groups {
-		if g.comp == comp && g.win == win {
+		if g.comp == comp {
 			return g
 		}
 	}
-	g := &effectGroup{comp: comp, win: win}
+	g := &effectGroup{comp: comp}
 	st.groups = append(st.groups, g)
 	return g
 }

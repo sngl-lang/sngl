@@ -163,10 +163,9 @@ func bodiedPackage() *Package {
 				&ContextProvider{Children: body("ContextProvider.Children")},
 				&SlotInst{Children: body("SlotInst.Children")},
 				&NodeInst{
-					Children:     body("NodeInst.Children"),
-					Handlers:     []EventHandler{*h("NodeInst.Handlers")},
-					ErrorHandler: h("NodeInst.ErrorHandler"),
-					Slots:        map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
+					Children: body("NodeInst.Children"),
+					Handlers: []EventHandler{*h("NodeInst.Handlers")},
+					Slots:    map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
 				},
 				&Return{Value: &Call{ErrorHandler: h("Call.ErrorHandler")}},
 				&Return{Value: &Lambda{Func: fn("Lambda.Func")}},
@@ -177,11 +176,6 @@ func bodiedPackage() *Package {
 			Funcs: []*Func{fn("Component.Funcs")},
 			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		}},
-		// A window is a NodeInst, so its own slots are the ones marked above.
-		// It is here so that the walk has one to reach through pkg.Windows,
-		// which bodySlots does not list -- the field holds nodes rather than
-		// bodies.
-		Windows: []*Window{{Children: body("Package.Windows")}},
 	}
 }
 

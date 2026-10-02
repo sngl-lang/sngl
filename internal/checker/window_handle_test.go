@@ -7,20 +7,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A window's `#id` binds the same *ir.Var every other node id binds.
-//
-// It used to bind the *ir.Window itself, which made ir.Window an ir.Symbol and
-// left "what does a node id name" with two answers. One of them has to go
-// before a window can be an ir.NodeInst, because a NodeInst is not a symbol --
-// its id binds through NodeInst.Handle, which is what this now mirrors.
+// A window's `#id` binds the same *ir.Var every other node id binds, and the
+// window is an ordinary node of the package body: what its id names is its
+// handle and nothing else.
 func TestWindowIDBindsANodeHandle(t *testing.T) {
 	src := `
-output {
-    none {
-        html
-    }
-}
-
 window #home(title="Home") {
     text(value="{home.title}")
 }
@@ -35,10 +26,13 @@ window #home(title="Home") {
 			t.Fatalf("unexpected diag: %s", d.Msg)
 		}
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("got %d windows; want 1", len(pkg.Windows))
+	if len(pkg.Body) != 1 {
+		t.Fatalf("got %d root statements; want the window", len(pkg.Body))
 	}
-	w := pkg.Windows[0]
+	w, ok := pkg.Body[0].(*ir.NodeInst)
+	if !ok {
+		t.Fatalf("root statement is %T; want the window node", pkg.Body[0])
+	}
 
 	if w.Handle == nil {
 		t.Fatal("window #home declared no handle")
@@ -48,9 +42,6 @@ window #home(title="Home") {
 	}
 	if w.Handle.Name != "home" {
 		t.Errorf("handle name = %q; want home", w.Handle.Name)
-	}
-	if got := ir.WindowHandles(pkg)[w.Handle]; got != w {
-		t.Errorf("WindowHandles did not map the handle back to its window")
 	}
 
 	// The read in the body resolves to the handle and to nothing else: a
@@ -76,12 +67,6 @@ window #home(title="Home") {
 // body's `page.title` reads that window's handle.
 func TestLoopWindowIDNamesItsIteration(t *testing.T) {
 	src := `
-output {
-    none {
-        html
-    }
-}
-
 const items list<string> = ["a", "b"]
 
 for var it = items {

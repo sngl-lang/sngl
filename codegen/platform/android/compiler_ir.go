@@ -869,7 +869,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 	cc.screen = screen
 	switch {
-	case screen == nil && len(ctx.Windows()) > 0:
+	case screen == nil && ctx.Harness() != nil:
 		cc.renderContent(view)
 	case screen == nil:
 		// No window, which only a package that is not a program has: nothing

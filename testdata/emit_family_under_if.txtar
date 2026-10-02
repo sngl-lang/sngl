@@ -126,9 +126,9 @@ type Entry struct {
 type Model struct {
 	shown               bool
 	n                   int
-	visible__inst0      bool
-	ticks__inst2        int
-	visible__inst5      bool
+	ticks__inst1        int
+	visible__inst2      bool
+	visible__inst4      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -145,8 +145,8 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n2    *widget.Button
-	__n3    *widget.Button
 	__n1    *fynelayout.Toplevel
+	__n3    *widget.Button
 	__n4    *widget.Button
 	__built bool
 }
@@ -156,9 +156,9 @@ func New() *Model {
 	m := &Model{}
 	m.shown = true
 	m.n = 0
-	m.visible__inst0 = true
-	m.ticks__inst2 = 0
-	m.visible__inst5 = true
+	m.ticks__inst1 = 0
+	m.visible__inst2 = true
+	m.visible__inst4 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -189,9 +189,9 @@ func (m *Model) __bar_members() []Entry {
 	return __members
 }
 
-func (m *Model) __bar_members1__inst2() []Entry {
+func (m *Model) __bar_members1__inst1() []Entry {
 	__members := []Entry{}
-	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst2))})
+	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst1))})
 	return __members
 }
 
@@ -273,7 +273,7 @@ func (m *Model) __effect3_mount() {
 
 func (m *Model) __effect3_down() {
 	m.__effect3_desired = []string{}
-	m.__effect3_desired = append(m.__effect3_desired, Encode(m.__bar_members1__inst2()))
+	m.__effect3_desired = append(m.__effect3_desired, Encode(m.__bar_members1__inst1()))
 }
 
 func (m *Model) __effect3_up() {
@@ -321,30 +321,30 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.visible__inst4 = __visible
+	m.__n0.SetVisible(m.visible__inst4)
 }
 
 func (m *Model) __n2_click_handler() {
-	m.shown = !m.shown
-	m.__effects0_settle()
-}
-
-func (m *Model) __n3_click_handler() {
-	m.n += 1
-	m.__effects0_settle()
+	m.ticks__inst1 += 1
 }
 
 func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst5 = __visible
-	m.__n1.SetVisible(m.visible__inst5)
+	m.visible__inst2 = __visible
+	m.__n1.SetVisible(m.visible__inst2)
+}
+
+func (m *Model) __n3_click_handler() {
+	m.shown = !m.shown
+	m.__effects0_settle()
 }
 
 func (m *Model) __n4_click_handler() {
-	m.ticks__inst2 += 1
+	m.n += 1
+	m.__effects0_settle()
 }
 
 func (m *Model) Shown() bool {
@@ -363,28 +363,28 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
-func (m *Model) Visible__inst0() bool {
-	return m.visible__inst0
+func (m *Model) Ticks__inst1() int {
+	return m.ticks__inst1
 }
 
-func (m *Model) SetVisible__inst0(v bool) {
-	m.visible__inst0 = v
+func (m *Model) SetTicks__inst1(v int) {
+	m.ticks__inst1 = v
 }
 
-func (m *Model) Ticks__inst2() int {
-	return m.ticks__inst2
+func (m *Model) Visible__inst2() bool {
+	return m.visible__inst2
 }
 
-func (m *Model) SetTicks__inst2(v int) {
-	m.ticks__inst2 = v
+func (m *Model) SetVisible__inst2(v bool) {
+	m.visible__inst2 = v
 }
 
-func (m *Model) Visible__inst5() bool {
-	return m.visible__inst5
+func (m *Model) Visible__inst4() bool {
+	return m.visible__inst4
 }
 
-func (m *Model) SetVisible__inst5(v bool) {
-	m.visible__inst5 = v
+func (m *Model) SetVisible__inst4(v bool) {
+	m.visible__inst4 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -394,26 +394,26 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("Main")
-	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.SetTitle("Status")
+	m.__n0.SetVisible(m.visible__inst4)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = widget.NewButton("", nil)
-	m.__n2.SetText("toggle")
+	m.__n2.SetText("tick")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n0.Add(m.__n2)
-	m.__n3 = widget.NewButton("", nil)
-	m.__n3.SetText("+")
-	m.__n3.OnTapped = m.__n3_click_handler
-	m.__n0.Add(m.__n3)
 	fynelayout.AppAttach(m.__n0)
 	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetTitle("Status")
-	m.__n1.SetVisible(m.visible__inst5)
+	m.__n1.SetTitle("Main")
+	m.__n1.SetVisible(m.visible__inst2)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n3 = widget.NewButton("", nil)
+	m.__n3.SetText("toggle")
+	m.__n3.OnTapped = m.__n3_click_handler
+	m.__n1.Add(m.__n3)
 	m.__n4 = widget.NewButton("", nil)
-	m.__n4.SetText("tick")
+	m.__n4.SetText("+")
 	m.__n4.OnTapped = m.__n4_click_handler
 	m.__n1.Add(m.__n4)
 	fynelayout.AppAttach(m.__n1)
@@ -465,9 +465,9 @@ type Entry struct {
 type Model struct {
 	shown               bool
 	n                   int
-	visible__inst0      bool
-	ticks__inst2        int
-	visible__inst5      bool
+	ticks__inst1        int
+	visible__inst2      bool
+	visible__inst4      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -483,8 +483,8 @@ type Model struct {
 	__effects0_steps    int
 	__n0                gtk4rt.Handle
 	__n2                gtk4rt.Handle
-	__n3                gtk4rt.Handle
 	__n1                gtk4rt.Handle
+	__n3                gtk4rt.Handle
 	__n4                gtk4rt.Handle
 	__built             bool
 }
@@ -495,9 +495,9 @@ func New() *Model {
 	m := &Model{}
 	m.shown = true
 	m.n = 0
-	m.visible__inst0 = true
-	m.ticks__inst2 = 0
-	m.visible__inst5 = true
+	m.ticks__inst1 = 0
+	m.visible__inst2 = true
+	m.visible__inst4 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -528,9 +528,9 @@ func (m *Model) __bar_members() []Entry {
 	return __members
 }
 
-func (m *Model) __bar_members1__inst2() []Entry {
+func (m *Model) __bar_members1__inst1() []Entry {
 	__members := []Entry{}
-	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst2))})
+	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst1))})
 	return __members
 }
 
@@ -612,7 +612,7 @@ func (m *Model) __effect3_mount() {
 
 func (m *Model) __effect3_down() {
 	m.__effect3_desired = []string{}
-	m.__effect3_desired = append(m.__effect3_desired, Encode(m.__bar_members1__inst2()))
+	m.__effect3_desired = append(m.__effect3_desired, Encode(m.__bar_members1__inst1()))
 }
 
 func (m *Model) __effect3_up() {
@@ -660,30 +660,30 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	m.visible__inst4 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst4)
 }
 
 func (m *Model) __n2_clicked_handler() {
-	m.shown = !m.shown
-	m.__effects0_settle()
-}
-
-func (m *Model) __n3_clicked_handler() {
-	m.n += 1
-	m.__effects0_settle()
+	m.ticks__inst1 += 1
 }
 
 func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst5 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst5)
+	m.visible__inst2 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst2)
+}
+
+func (m *Model) __n3_clicked_handler() {
+	m.shown = !m.shown
+	m.__effects0_settle()
 }
 
 func (m *Model) __n4_clicked_handler() {
-	m.ticks__inst2 += 1
+	m.n += 1
+	m.__effects0_settle()
 }
 
 func (m *Model) Shown() bool {
@@ -702,28 +702,28 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
-func (m *Model) Visible__inst0() bool {
-	return m.visible__inst0
+func (m *Model) Ticks__inst1() int {
+	return m.ticks__inst1
 }
 
-func (m *Model) SetVisible__inst0(v bool) {
-	m.visible__inst0 = v
+func (m *Model) SetTicks__inst1(v int) {
+	m.ticks__inst1 = v
 }
 
-func (m *Model) Ticks__inst2() int {
-	return m.ticks__inst2
+func (m *Model) Visible__inst2() bool {
+	return m.visible__inst2
 }
 
-func (m *Model) SetTicks__inst2(v int) {
-	m.ticks__inst2 = v
+func (m *Model) SetVisible__inst2(v bool) {
+	m.visible__inst2 = v
 }
 
-func (m *Model) Visible__inst5() bool {
-	return m.visible__inst5
+func (m *Model) Visible__inst4() bool {
+	return m.visible__inst4
 }
 
-func (m *Model) SetVisible__inst5(v bool) {
-	m.visible__inst5 = v
+func (m *Model) SetVisible__inst4(v bool) {
+	m.visible__inst4 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -732,26 +732,26 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "Main")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelSetTitle(m.__n0, "Status")
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst4)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n2 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n2, "toggle")
+	gtk4rt.ButtonSetLabel(m.__n2, "tick")
 	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	m.__n3 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n3, "+")
-	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
-	gtk4rt.BoxAppend(m.__n0, m.__n3)
 	gtk4rt.AppAttach(m.__n0)
 	m.__n1 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n1, "Status")
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst5)
+	gtk4rt.ToplevelSetTitle(m.__n1, "Main")
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst2)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
+	m.__n3 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n3, "toggle")
+	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	m.__n4 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n4, "tick")
+	gtk4rt.ButtonSetLabel(m.__n4, "+")
 	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n4)
 	gtk4rt.AppAttach(m.__n1)
@@ -765,6 +765,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:76a0c8303caec376152457167bff559e
+pass sha256:a7ab467173ca863bbacd48308565681f
 -- run/go/gtk4 --
-pass sha256:a63b8c033376e559834e4bbca362c663
+pass sha256:499887d710d4d513891e3a9dc75a50a2

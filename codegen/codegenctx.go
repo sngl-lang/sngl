@@ -17,7 +17,7 @@ type CodegenCtx struct {
 	Namer    *Namer
 	Platform string
 	// RootComponent names the component a harness isolated as the whole
-	// program; empty for every ordinary build, where a window is the root.
+	// program; empty for every ordinary build, where the package body is.
 	// The test launcher sets it per-group so each test binary builds its
 	// Model from the component under test.
 	RootComponent string
@@ -58,43 +58,15 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 
 // ScopedExprCtx returns the ExprCtx scoped to the declaration whose body a
 // single-model platform emits: the harness root (RootDecl) when there is one,
-// and otherwise the window, when there is exactly one to be unambiguous about.
-//
-// A window declares state the way a component does, so a read of it has to
-// resolve against the window or it falls out of scope resolution entirely and
-// renders as a bare identifier the target never declared. Every platform that
-// builds one Model wrote the component half of this itself; none wrote the
-// window half, so a window's own state was a name none of them could resolve.
+// and otherwise the package body, which is the application's view and whose
+// state the Model holds.
 func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	c := ctx.ExprCtx
 	if root := ctx.RootDecl(); root != nil {
-		c = c.ForComponent(root)
+		return c.ForComponent(root)
 	}
-	if w := ctx.EntryWindow(); w != nil {
-		c = c.ForWindow(w)
-	}
-	// A package body holding no window is the application's view, and the
-	// Model is its scope.
-	if ctx.RootDecl() == nil && len(ir.AllWindows(ctx.Pkg)) == 0 {
-		c.App = true
-	}
+	c.App = true
 	return c
-}
-
-// EntryWindow is the window a single-model target scopes to, or nil where
-// there is not exactly one to be unambiguous about. Past one the answer is
-// nothing at all: scoping to a guess is worse than scoping to none, and a
-// program's destinations are nav.pages in one window rather than windows.
-func (ctx *CodegenCtx) EntryWindow() *ir.Window {
-	if ctx.Pkg == nil {
-		return nil
-	}
-	// A window written inside a component is already in that component's
-	// scope, so only the root-level ones are counted here.
-	if len(ctx.Pkg.Windows) == 1 {
-		return ctx.Pkg.Windows[0]
-	}
-	return nil
 }
 
 // OwnedVar is one binding a target puts in its Model, paired with the
@@ -112,7 +84,6 @@ func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 type OwnedVar struct {
 	Sym  ir.Symbol
 	Comp *ir.Component // the component declaring it, if one does
-	Win  *ir.Window    // the window declaring it, if one does
 }
 
 // Name and Type are the two questions every binding answers.
@@ -145,14 +116,13 @@ func (o OwnedVar) IsConst() bool     { v := o.Var(); return v != nil && v.IsCons
 func (o OwnedVar) Synthesized() bool { v := o.Var(); return v != nil && v.Synthesized }
 
 // ModelState returns every var a single-Model target puts in its Model, in
-// emission order: the package's vars and consts, then the harness root's,
-// then each window's.
+// emission order: the package's vars and consts, then the harness root's.
 //
 // This is one answer to "which declarations own state", and it used to be four
 // -- one per target, each spelling the same literal `pkg.Vars` plus
 // `RootDecl().Vars`. Nothing made them agree, and #133 is what that cost:
-// a window is an owner none of them named, so a window-level `var` reached no
-// target at all. A target that does not want consts in its Model filters them
+// a window was an owner none of them named, so a window-level `var` reached
+// no target at all. A target that does not want consts in its Model filters them
 // out; what it must not do is decide for itself who owns state.
 func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	if ctx.Pkg == nil {
@@ -160,19 +130,19 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	}
 	root := ctx.RootDecl()
 	var out []OwnedVar
-	// Keyed by the declaration, because one may be owned by several windows:
-	// a root component that renders two of them is spliced into the package
-	// body as one copy, so both read the same cell -- which is what "the
-	// reference is shared" means on a target whose windows are one process.
-	// Emitted per owner instead, the Model declared `hits int` twice and did
-	// not compile.
+	// Keyed by the declaration, because one may be reached through several
+	// owners: a root component that renders two windows is spliced into the
+	// package body as one copy, so both read the same cell -- which is what
+	// "the reference is shared" means on a target whose windows are one
+	// process. Emitted per owner instead, the Model declared `hits int` twice
+	// and did not compile.
 	seen := map[ir.Symbol]bool{}
 	add := func(v ir.Symbol, o ir.Owner) {
 		if v == nil || seen[v] {
 			return
 		}
 		seen[v] = true
-		out = append(out, OwnedVar{Sym: v, Comp: o.Comp, Win: o.Win})
+		out = append(out, OwnedVar{Sym: v, Comp: o.Comp})
 	}
 	for _, o := range ir.Owners(ctx.Pkg) {
 		// One Model holds one component's state: the root's. The others are
@@ -186,15 +156,6 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 		}
 		for _, c := range o.Consts {
 			add(c, o)
-		}
-	}
-	// A document's route parameters are the one cell no owner declares: the
-	// page its document is written for binds them (optimize.Documents puts
-	// the page's cell on the document's window) and whatever serves the page
-	// fills them in.
-	for _, w := range ctx.Windows() {
-		if w.Window != nil && w.Window.Params != nil {
-			add(w.Window.Params, ir.Owner{Win: w.Window})
 		}
 	}
 	return out

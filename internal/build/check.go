@@ -54,6 +54,18 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	if resolver == nil {
 		resolver = &Resolver{FS: fsys}
 	}
+	// A selected platform that cannot be used here -- gtk4 with no
+	// introspection data -- is refused before anything is checked against it:
+	// it serves no package, so every component it would implement reads as
+	// one it has no implementation for, and that is not the error to see.
+	for _, t := range cfg.Targets {
+		if t.Platform == "" {
+			continue
+		}
+		if err := codegen.PlatformUnavailable(t.Platform); err != nil {
+			return nil, fmt.Errorf("platform %s is unavailable here: %w", t.Platform, err)
+		}
+	}
 	langs, plats := RegisteredTargets()
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS:        fsys,

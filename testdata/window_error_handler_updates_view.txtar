@@ -646,27 +646,29 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Button(onClick = {
-            try {
-            	risky(5)
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	caught = e.message
+        Column {
+            Button(onClick = {
+                try {
+                	risky(5)
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	caught = e.message
+                }
+            }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
+                Text(text = "Call", modifier = Modifier)
             }
-        }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
-            Text(text = "Call", modifier = Modifier)
-        }
-        Button(onClick = {
-            try {
-            	throw SnglRaise(ErrorEvent("direct", ""))
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	caught = e.message
+            Button(onClick = {
+                try {
+                	throw SnglRaise(ErrorEvent("direct", ""))
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	caught = e.message
+                }
+            }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
+                Text(text = "Raise", modifier = Modifier)
             }
-        }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
-            Text(text = "Raise", modifier = Modifier)
+            Text(text = caught, modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = caught, modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -759,6 +761,6 @@ pass sha256:3a3ac41f720029a3ef49cf9bd3f23d8a
 -- run/go/html --
 pass sha256:559e2ed49f91957d76ce31e67dff04c4
 -- run/kotlin/android --
-pass sha256:6901500691808a98bd49cc64d876a3dd
+pass sha256:bf603d1a75c1c8e82d17151e7f841782
 -- run/none/html --
 pass sha256:2a778a6359fadf96b7b825f0807f5d07

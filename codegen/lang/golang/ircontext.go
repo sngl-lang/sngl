@@ -828,11 +828,11 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameConst:
 		// A const is a file-scope name in a free function and a field of the
-		// receiver inside a method the Model dispatches through -- a window's
-		// as much as a component's. Asking about the component alone left a
-		// package const read as a bare name against the `m.blank` field the
-		// same build declared, once a window was the scope instead.
-		if gc.Ctx.Component != nil || gc.Ctx.Window != nil || gc.Ctx.App {
+		// receiver inside a method the Model dispatches through -- the
+		// package body's as much as a component's. Asking about the component
+		// alone left a package const read as a bare name against the `m.blank`
+		// field the same build declared, once the package body was the scope.
+		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name

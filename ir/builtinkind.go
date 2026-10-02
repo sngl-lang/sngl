@@ -76,10 +76,9 @@ const (
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
-	// matching compiler construct (ir.Window, ir.ErrorBoundary) when
+	// matching compiler construct (ir.ErrorBoundary, ir.ContextProvider) when
 	// its target resolves to the marked component,
 	// rather than matching a literal name.
-	BuiltinWindow        BuiltinKind = "window"
 	BuiltinContext       BuiltinKind = "context"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 	// Effect brackets a lifetime: @mount when the node enters the tree,
@@ -196,7 +195,7 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+	case BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink:
 		return true
 	}
@@ -235,7 +234,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenEmit, BuiltinGenNode,
 		BuiltinPlatform, BuiltinLanguage,

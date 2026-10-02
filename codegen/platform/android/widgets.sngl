@@ -9,12 +9,16 @@ import time "sngl:time"
 import . "sngl:internal/marks"
 // --- The window ---
 
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
 const component ui.window[platform] {
     Screen(visible=visible, onBack=func() {
         visible = false
         closed()
     }) {
-        content
+        boundary(@error(e) { error(e) }) {
+            content
+        }
     }
 }
 

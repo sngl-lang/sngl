@@ -45,14 +45,14 @@ type Model struct {
 	visible__inst0 bool
 	visible__inst1 bool
 
-	__n0    *fynelayout.Toplevel
-	__n2    *fyne.Container
-	__n3    *widget.Label
-	__n4    *widget.Hyperlink
-	__n1    *fynelayout.Toplevel
-	__n5    *fyne.Container
-	__n6    *widget.Label
-	__built bool
+	app      *fynelayout.Toplevel
+	__n0     *fyne.Container
+	__n1     *widget.Label
+	__n2     *widget.Hyperlink
+	settings *fynelayout.Toplevel
+	__n3     *fyne.Container
+	__n4     *widget.Label
+	__built  bool
 }
 
 // New creates a Model with default values.
@@ -63,20 +63,52 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) app_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) app_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.app.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n1_closed_handler() {
+func (m *Model) settings_closed_handler() {
 }
 
-func (m *Model) __n1_visible_handler(__visible bool) {
+func (m *Model) settings_visible_handler(__visible bool) {
 	m.visible__inst1 = __visible
-	m.__n1.SetVisible(m.visible__inst1)
+	m.settings.SetVisible(m.visible__inst1)
+}
+
+// appClosed invokes the OnClosed callback on the #app widget; for tests.
+func (m *Model) appClosed() {
+	if m.app.OnClosed != nil {
+		m.app.OnClosed()
+	}
+}
+
+// appVisible invokes the OnVisible callback on the #app widget; for tests.
+func (m *Model) appVisible(__visible bool) {
+	if cb := m.app.OnVisible; cb != nil {
+		m.app.OnVisible = nil
+		cb(__visible)
+		m.app.OnVisible = cb
+	}
+}
+
+// settingsClosed invokes the OnClosed callback on the #settings widget; for tests.
+func (m *Model) settingsClosed() {
+	if m.settings.OnClosed != nil {
+		m.settings.OnClosed()
+	}
+}
+
+// settingsVisible invokes the OnVisible callback on the #settings widget; for tests.
+func (m *Model) settingsVisible(__visible bool) {
+	if cb := m.settings.OnVisible; cb != nil {
+		m.settings.OnVisible = nil
+		cb(__visible)
+		m.settings.OnVisible = cb
+	}
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -98,34 +130,34 @@ func (m *Model) SetVisible__inst1(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.app.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("App")
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("App page")
-	m.__n2.Add(m.__n3)
-	m.__n4 = widget.NewHyperlink("", nil)
-	m.__n2.Add(m.__n4)
+	m.app = fynelayout.NewToplevel()
+	m.app.SetTitle("App")
+	m.app.SetVisible(m.visible__inst0)
+	m.app.OnClosed = m.app_closed_handler
+	m.app.OnVisible = m.app_visible_handler
+	m.__n0 = container.NewVBox()
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText("App page")
+	m.__n0.Add(m.__n1)
+	m.__n2 = widget.NewHyperlink("", nil)
 	m.__n0.Add(m.__n2)
-	fynelayout.AppAttach(m.__n0)
-	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetTitle("Settings")
-	m.__n1.SetVisible(m.visible__inst1)
-	m.__n1.OnClosed = m.__n1_closed_handler
-	m.__n1.OnVisible = m.__n1_visible_handler
-	m.__n5 = container.NewVBox()
-	m.__n6 = widget.NewLabel("")
-	m.__n6.SetText("Settings page")
-	m.__n5.Add(m.__n6)
-	m.__n1.Add(m.__n5)
-	fynelayout.AppAttach(m.__n1)
-	return m.__n0.Container
+	m.app.Add(m.__n0)
+	fynelayout.AppAttach(m.app)
+	m.settings = fynelayout.NewToplevel()
+	m.settings.SetTitle("Settings")
+	m.settings.SetVisible(m.visible__inst1)
+	m.settings.OnClosed = m.settings_closed_handler
+	m.settings.OnVisible = m.settings_visible_handler
+	m.__n3 = container.NewVBox()
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("Settings page")
+	m.__n3.Add(m.__n4)
+	m.settings.Add(m.__n3)
+	fynelayout.AppAttach(m.settings)
+	return m.app.Container
 }
 
 func main() {
@@ -136,4 +168,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:87db861d87684b04174245d3962bbbf2
+pass sha256:a477f693c7ae3f87d065bc8e20460305

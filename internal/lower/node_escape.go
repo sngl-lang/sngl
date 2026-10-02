@@ -89,14 +89,6 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 			addVarHandlerScopes(v, &scopes)
 		}
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		addScope(w.Children, &w.LocalRefs)
-		for _, h := range ir.WindowHandlers(w) {
-			if h.Func != nil {
-				addScope(h.Func.Block, &h.Func.LocalRefs)
-			}
-		}
-	}
 	for _, v := range pkg.Vars {
 		addVarHandlerScopes(v, &scopes)
 	}
@@ -219,11 +211,6 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefs(n.Body, info)
 		collectScopeRefs(n.Else, info)
 	case *ir.NodeInst:
-		// A nested window is its own scope; its body's refs are not part of
-		// the enclosing one, and its own set is filled from ir.AllWindows.
-		if ir.IsWindowNode(n) {
-			return
-		}
 		// A surviving NodeInst — its props/children may reference refs.
 		// Children are still tree-shaped here only in pre-declarative passes;
 		// after passDeclarative they are flattened. Walk defensively.

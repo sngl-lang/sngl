@@ -174,7 +174,7 @@ type Entry struct {
 type Model struct {
 	n                   int
 	names               []string
-	visible__inst0      bool
+	visible__inst1      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -194,7 +194,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.names = []string{"a", "b"}
-	m.visible__inst0 = true
+	m.visible__inst1 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -336,8 +336,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) N() int {
@@ -356,12 +356,12 @@ func (m *Model) SetNames(v []string) {
 	m.names = v
 }
 
-func (m *Model) Visible__inst0() bool {
-	return m.visible__inst0
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetVisible__inst0(v bool) {
-	m.visible__inst0 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -371,7 +371,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.SetVisible(m.visible__inst1)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
@@ -431,7 +431,7 @@ type Entry struct {
 type Model struct {
 	n                   int
 	names               []string
-	visible__inst0      bool
+	visible__inst1      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       string
@@ -451,7 +451,7 @@ func New() *Model {
 	m := &Model{}
 	m.n = 0
 	m.names = []string{"a", "b"}
-	m.visible__inst0 = true
+	m.visible__inst1 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = ""
@@ -593,8 +593,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
 }
 
 func (m *Model) N() int {
@@ -613,12 +613,12 @@ func (m *Model) SetNames(v []string) {
 	m.names = v
 }
 
-func (m *Model) Visible__inst0() bool {
-	return m.visible__inst0
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m *Model) SetVisible__inst0(v bool) {
-	m.visible__inst0 = v
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -627,7 +627,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
@@ -644,6 +644,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:d5416d8bbde172d5f9e6030bbf0231b4
+pass sha256:95b4505fb889f1d9a4a3fd2c61301648
 -- run/go/gtk4 --
-pass sha256:90a63a8ef7c3d19580aaf80081bdccd2
+pass sha256:d796a4db0ca6950ebaddea864680ffe9

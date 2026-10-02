@@ -95,15 +95,16 @@ type evalCtx struct {
 	// nativeErr is Config.nativeErr: the batch failure this build already hit,
 	// per scheme.
 	nativeErr map[string]error
-	// windowHandles maps a window's `#id` binding to the window, built once
-	// per package rather than walked per select. Nil until the first fold asks.
-	windowHandles    map[*ir.Var]*ir.Window
-	windowHandlesSet bool
-	// foldingProp is the window props currently being folded, so a prop that
+	// nodeHandles maps a component instance's `#id` binding to the node, built
+	// once per package rather than walked per select. Nil until the first fold
+	// asks.
+	nodeHandles    map[*ir.Var]*ir.NodeInst
+	nodeHandlesSet bool
+	// foldingProp is the node props currently being folded, so a prop that
 	// reads itself stops rather than recursing. Built in foldPkg so that every
 	// child ctx shares the one map: created on first use instead, a child
 	// taken before that gets nil and makes its own.
-	foldingProp map[windowProp]bool
+	foldingProp map[nodeProp]bool
 	// evaluatingConst is the consts whose initializer is being evaluated, so
 	// one that reads itself stops rather than recursing. Same shape and same
 	// place as foldingProp, for the same reason.
@@ -168,7 +169,7 @@ func (ctx *evalCtx) childInPkg(pkg *ir.Package) *evalCtx {
 	c := ctx.child()
 	c.pkg = pkg
 	c.nativeImports, c.nativeSchemes = nil, nil
-	c.windowHandles, c.windowHandlesSet = nil, false
+	c.nodeHandles, c.nodeHandlesSet = nil, false
 	return c
 }
 
@@ -374,8 +375,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		}
 		// Skip native-scheme shells: they hold no SNGL bodies that the
 		// optimizer can act on.
-		if imp.Native != nil && len(imp.Pkg.Components) == 0 &&
-			len(imp.Pkg.Windows) == 0 {
+		if imp.Native != nil && len(imp.Pkg.Components) == 0 {
 			continue
 		}
 		if subCtx := r.foldPkg(imp.Pkg); subCtx != nil {
@@ -437,9 +437,6 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	for _, comp := range pkg.Components {
 		foldComponent(comp, ctx)
 	}
-	for _, w := range pkg.Windows {
-		foldWindow(w, ctx)
-	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
 	if ctx.err != nil && r.err == nil {
@@ -460,7 +457,7 @@ func (r *optimizerRun) newCtx(pkg *ir.Package) *evalCtx {
 		pkg:             pkg,
 		values:          make(map[ir.Symbol]any),
 		inliningFuncs:   make(map[*ir.Func]bool),
-		foldingProp:     make(map[windowProp]bool),
+		foldingProp:     make(map[nodeProp]bool),
 		evaluatingConst: make(map[*ir.Var]bool),
 		inlineCapped:    new(bool),
 		writes:          r.writes,
@@ -498,25 +495,6 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 		f.Block = foldStmts(f.Block, ctx)
 	}
 	comp.Body = foldStmts(comp.Body, ctx)
-}
-
-// foldWindow folds everything a window owns. It must stay in step with the
-// *ir.Window arm of foldStmt, which handles a window nested in a for-loop
-// body: the two used to disagree about the props, so a top-level window's
-// props were never folded. ir.Rewrite has one window walk for both positions; this driver
-// folds rather than rewrites, so it keeps its own.
-func foldWindow(w *ir.Window, ctx *evalCtx) {
-	for i := range w.Props {
-		if w.Props[i].Value != nil {
-			w.Props[i].Value = foldExpr(w.Props[i].Value, ctx)
-		}
-	}
-	for _, h := range ir.WindowHandlers(w) {
-		if h.Func != nil {
-			h.Func.Block = foldStmts(h.Func.Block, ctx)
-		}
-	}
-	w.Children = foldStmts(w.Children, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.
@@ -586,19 +564,51 @@ func (ctx *evalCtx) addSplicedNativeImports() {
 	}
 }
 
-// windowForHandle is the window v's `#id` declared, or nil. The map is built
-// on the first ask and reused: fold asks for every node handle a program
-// selects off, and nil is the answer for all the ordinary ones.
-func (ctx *evalCtx) windowForHandle(v *ir.Var) *ir.Window {
-	if !ctx.windowHandlesSet {
-		ctx.windowHandles = ir.WindowHandles(ctx.pkg)
-		ctx.windowHandlesSet = true
+// nodeForHandle is the instance of a `root` member -- a window -- that v's
+// `#id` declared, or nil. The map is built on the first ask and reused: fold
+// asks for every node handle a program selects off, and nil is the answer for
+// every widget, whose props passNodePropReads answers by what the primitive it
+// renders keeps.
+func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
+	if !ctx.nodeHandlesSet {
+		ctx.nodeHandlesSet = true
+		_ = ir.Walk(ctx.pkg, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Tree == nil || !ir.IsAppRootTree(inst.Component.Tree) {
+				return nil
+			}
+			if ctx.nodeHandles == nil {
+				ctx.nodeHandles = map[*ir.Var]*ir.NodeInst{}
+			}
+			if _, dup := ctx.nodeHandles[inst.Handle]; !dup {
+				ctx.nodeHandles[inst.Handle] = inst
+			}
+			return nil
+		})
 	}
-	return ctx.windowHandles[v]
+	return ctx.nodeHandles[v]
 }
 
-// windowProp names one prop of one window, for the self-reference guard.
-type windowProp struct {
-	win   *ir.Window
+// isPrimitiveDecl reports whether c is rendered by a target rather than
+// composed: an #[intrinsic] primitive, a wildcard element or a builtin node.
+func isPrimitiveDecl(c *ir.Component) bool {
+	return c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != ""
+}
+
+// oneWayProp reports whether c declares field as a one-way prop: a two-way
+// one is a cell the host writes, which the expression its call site gave
+// only starts.
+func oneWayProp(c *ir.Component, field string) bool {
+	for _, p := range c.Props {
+		if p.Name == field {
+			return !p.Bidirectional
+		}
+	}
+	return false
+}
+
+// nodeProp names one prop of one node, for the self-reference guard.
+type nodeProp struct {
+	node  *ir.NodeInst
 	field string
 }

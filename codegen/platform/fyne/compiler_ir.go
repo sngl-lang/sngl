@@ -209,12 +209,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	singleRoot := true
 	var endLabel, endContainer int
 
-	wins := ctx.Windows()
-	windowNames := make(map[string]bool)
-	for _, w := range wins {
-		windowNames[w.Name] = true
-	}
-
 	// Package-wide because a promoted handler references nodes created in a
 	// sibling slot Func, which per-Func discovery would not see.
 	// AllFuncs already covers every window's funcs, component-declared ones
@@ -302,7 +296,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
-			cc, ctx, gc, info, windowNames, endLabel, endContainer, nodeSpecs, addWidgetImport, failProp,
+			cc, ctx, gc, info, endLabel, endContainer, nodeSpecs, addWidgetImport, failProp,
 		)
 		componentCodes = append(componentCodes, code)
 		widgetFields = append(widgetFields, compFields...)
@@ -759,7 +753,6 @@ func renderIRComponentMethod(
 	ctx *codegen.CodegenCtx,
 	gc *golang.GoIRContext,
 	info *irAnalysis,
-	windowNames map[string]bool,
 	startLabel, startContainer int,
 	specs map[string]*fyneSpec,
 	importSink func(string),
@@ -918,7 +911,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 
 // mainScopeLocalRefs returns the non-escaping widget-ref set passNodeEscape
 // recorded for the scope the BuildUI emission walks: a harness-isolated root
-// component's body, and nothing for a window's.
+// component's body with nothing in it, and nothing otherwise.
 //
 // Nil for the entry scope, and deliberately: locals are for a *recursive*
 // render method, where a frame must not clobber the temp of the frame that
@@ -926,7 +919,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 // a ref it created -- only some of those sites go through a qualifier that
 // knows about locals.
 func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
+	if h := ctx.Harness(); h != nil && len(h.Body) > 0 {
 		return nil
 	}
 	if main := ctx.RootDecl(); main != nil {
@@ -1126,9 +1119,6 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 					walk(fn.Block)
 				}
 			}
-		}
-		for _, w := range ir.AllWindows(pkg) {
-			walk(w.Children)
 		}
 		walk(pkg.Body)
 	}

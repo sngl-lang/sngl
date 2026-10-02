@@ -55,18 +55,18 @@ dialog { margin: auto; padding: 1em; }
   </style>
 </head><body>
 
-<button id="$0">
+<button id="$1">
   <span>Settings</span>
 </button>
-<dialog id="__n0" data-sngl-id="__n0" aria-label="Settings">
+<dialog id="$0" aria-label="Settings">
   <header>
     <span>Settings</span>
-    <button id="$1" aria-label="Close">
+    <button id="$2" aria-label="Close">
       <span>×</span>
     </button>
   </header>
   <span data-sngl-slot="0" style="display:contents"></span>
-  <button id="$2">
+  <button id="$3">
     <span>Advanced</span>
   </button>
 </dialog>
@@ -76,92 +76,87 @@ dialog { margin: auto; padding: 1em; }
   // sngl-entry.js
   var state = { tabs__current: null, tabs__history: [], visible__inst0: false };
   state.tabs__current = { id: 0, href: "/", title: "General", meta: {} };
-  function open__inst1() {
-    state.visible__inst0 = true;
-    __n0.open = state.visible__inst0;
-  }
   var __slot0 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
     if (state.tabs__current.id === 0) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "general";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
+      if (state.tabs__current.id === 0) {
+        let __n0 = document.createElement("span");
+        __n0.textContent = "general";
+        let __place0_i_ref0 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref0 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref0 === __n0) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n0, __place0_i_ref0);
+        }
+        __slot0.push(__n0);
       }
-      if (__place0_i_ref0 === __n1) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
-      }
-      __slot0.push(__n1);
     } else {
       if (state.tabs__current.id === 1) {
-        let __n2 = document.createElement("span");
-        __n2.textContent = "advanced";
-        let __place0_i_ref1 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref1 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref1 === __n2) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n2, __place0_i_ref1);
-        }
-        __slot0.push(__n2);
-        let __n3 = document.createElement("button");
-        __n3.disabled = false;
-        __n3.addEventListener("click", () => {
-          state.tabs__history.push({ page: state.tabs__current });
-          state.tabs__current = { id: 0, href: "/", title: "General", meta: {} };
-          __renderSlot0(__slotAnchor_0);
-        });
-        __n3.addEventListener("contextmenu", () => {
-        });
-        let __n4 = document.createElement("span");
-        __n4.textContent = "General";
-        __n3.appendChild(__n4);
-        let __place0_i_ref2 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref2 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref2 === __n3) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n3, __place0_i_ref2);
-        }
-        __slot0.push(__n3);
-        let __n5 = document.createElement("button");
-        __n5.disabled = false;
-        __n5.addEventListener("click", () => {
-          if (state.tabs__history.length > 0) {
-            ;
-            state.tabs__current = state.tabs__history[state.tabs__history.length - 1].page;
-            __renderSlot0(__slotAnchor_0);
-            ((__l, __i) => {
-              if (__i >= 0 && __i < __l.length) __l.splice(__i, 1);
-            })(state.tabs__history, state.tabs__history.length - 1);
+        if (state.tabs__current.id === 1) {
+          let __n1 = document.createElement("span");
+          __n1.textContent = "advanced";
+          let __place0_i_ref1 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref1 = __place0_prev[__place0_i];
           }
-          ;
-        });
-        __n5.addEventListener("contextmenu", () => {
-        });
-        let __n6 = document.createElement("span");
-        __n6.textContent = "Back";
-        __n5.appendChild(__n6);
-        let __place0_i_ref3 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref3 = __place0_prev[__place0_i];
+          if (__place0_i_ref1 === __n1) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n1, __place0_i_ref1);
+          }
+          __slot0.push(__n1);
+          let __n2 = document.createElement("a");
+          __n2.setAttribute("href", "/");
+          __n2.addEventListener("click", () => {
+          });
+          let __n3 = document.createElement("span");
+          __n3.textContent = "General";
+          __n2.appendChild(__n3);
+          let __place0_i_ref2 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref2 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref2 === __n2) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n2, __place0_i_ref2);
+          }
+          __slot0.push(__n2);
+          let __n4 = document.createElement("button");
+          __n4.disabled = false;
+          __n4.addEventListener("click", () => {
+            if (state.tabs__history.length > 0) {
+              ;
+              state.tabs__current = state.tabs__history[state.tabs__history.length - 1].page;
+              __renderSlot0(__slotAnchor_0);
+              ((__l, __i) => {
+                if (__i >= 0 && __i < __l.length) __l.splice(__i, 1);
+              })(state.tabs__history, state.tabs__history.length - 1);
+            }
+            ;
+          });
+          __n4.addEventListener("contextmenu", () => {
+          });
+          let __n5 = document.createElement("span");
+          __n5.textContent = "Back";
+          __n4.appendChild(__n5);
+          let __place0_i_ref3 = null;
+          if (__place0_i < __place0_prev.length) {
+            __place0_i_ref3 = __place0_prev[__place0_i];
+          }
+          if (__place0_i_ref3 === __n4) {
+            __place0_i = __place0_i + 1;
+          } else {
+            parent.insertBefore(__n4, __place0_i_ref3);
+          }
+          __slot0.push(__n4);
         }
-        if (__place0_i_ref3 === __n5) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n5, __place0_i_ref3);
-        }
-        __slot0.push(__n5);
       }
     }
     for (const __place0_prev_e of __place0_prev) {
@@ -173,27 +168,28 @@ dialog { margin: auto; padding: 1em; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var $3 = document.getElementById("$3");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  $0.addEventListener("click", function() {
-    open__inst1();
-  });
   $1.addEventListener("click", function() {
-    state.visible__inst0 = false;
-    __n0.open = state.visible__inst0;
+    state.visible__inst0 = true;
+    $0.open = state.visible__inst0;
   });
-  $2.addEventListener("click", function() {
+  $3.addEventListener("click", function() {
     state.tabs__history.push({ page: state.tabs__current });
     state.tabs__current = { id: 1, href: "/advanced", title: "Advanced", meta: {} };
     __renderSlot0(__slotAnchor_0);
   });
+  $2.addEventListener("click", function() {
+    state.visible__inst0 = false;
+    $0.open = state.visible__inst0;
+  });
   function __sngl_init() {
-    __n0.open = state.visible__inst0;
+    $0.open = state.visible__inst0;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:55a7523d46d285288d81ac267cff8e9c
+pass sha256:4527332c087af973e17b06c99c193a07

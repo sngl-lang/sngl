@@ -76,16 +76,6 @@ type NodeInst struct {
 	Key    Expr // key expression for list diffing (nil → implicit index)
 	Ref    Expr // ref binding (nil if none)
 
-	// The three below are a window's and nil on every other node, which is the
-	// price of a window being a NodeInst rather than a type of its own. It is
-	// three nil fields against the 79 `case *ir.Window:` arms the separate type
-	// cost, and none of them is a *body owner* -- Vars, Funcs and Timers stay
-	// off NodeInst, which is the distinction PLAN.md's first fork turns on.
-
-	// ErrorHandler is the @error this node declared: the outermost error
-	// boundary for the tree it renders. Separate from Handlers because those
-	// are the events a platform wires to a widget and nothing wires this one.
-	ErrorHandler *EventHandler `json:",omitempty"`
 	// Params is the params cell of a nav.page: the parameter its content's
 	// population binds, one struct value holding what the page is shown with,
 	// typed by the `params` prop the call site wrote. passNavigationHrefs puts
@@ -105,12 +95,6 @@ type NodeInst struct {
 	// (CodegenCtx.ModelState); the checker makes no distinction, having none
 	// to make.
 	Params *Param `json:"-"`
-	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
-	// only): the set of synthesized widget ref ids (__nN) created in this
-	// node's children that do NOT escape to any other scope. A node has one
-	// when it is a render scope of its own, which today means a window. See
-	// internal/lower/node_escape.go and Component.LocalRefs.
-	LocalRefs map[string]bool `json:"-"`
 	// Record is the node's value as a lowering spelled it, for a node whose
 	// handle reads as a value: a nav.page's record of its family's props and
 	// its id (lower's passNavigationValues). Nil on every other node.

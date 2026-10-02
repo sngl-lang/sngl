@@ -1,0 +1,48 @@
+// A window's `@error` is a boundary in each platform's override, and it
+// always catches: a window whose call site handles no `@error` catches a raise
+// and drops it, and the handler that raised ends there as under any boundary.
+// It used to be no boundary at all unless one was written, so the raise left
+// the click uncaught. A window that handles one is handed the error.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+component app root {
+    var after = false
+
+    ui.window {
+        ui.button #go(text="go", @click {
+            error.raise("boom", "")
+            after = true
+        })
+    }
+}
+
+component handled root {
+    var caught = ""
+    var after = false
+
+    ui.window(@error(e) {
+        caught = e.message
+    }) {
+        ui.button #go(text="go", @click {
+            error.raise("boom", "")
+            after = true
+        })
+    }
+}
+
+app()
+
+handled()
+
+func testRaiseInWindowIsCaught(t Test, c app) {
+    c.go.click()
+    t.assert(c.after == false)
+}
+
+func testRaiseInWindowReachesItsHandler(t Test, c handled) {
+    c.go.click()
+    t.assert(c.caught == "boom")
+    t.assert(c.after == false)
+}

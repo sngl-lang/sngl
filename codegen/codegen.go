@@ -431,19 +431,16 @@ type HTTPRequest struct {
 	RenderHTML func(routeIdx int) string
 }
 
-// HTTPRoute maps a window to an HTTP route.
+// HTTPRoute maps a document to an HTTP route.
 type HTTPRoute struct {
-	Name      string   // handler function name (e.g., "handleHome")
-	Path      string   // URL path template: "/", "/about", "/users/{name}"
-	Title     string   // page title
-	Params    []string // route parameter names extracted from Path (e.g., ["name"])
-	WindowIdx int      // index into CodegenCtx.Windows()
-	// Window is the window this route renders, carried rather than looked up
-	// by WindowIdx: a language needs it to scope a route's expressions to the
-	// window's own state, which is where a root component's declarations are
-	// hoisted (#215), and an index into a list the language does not hold is
-	// two things that can disagree.
-	Window  *ir.Window
+	Name   string   // handler function name (e.g., "handleHome")
+	Path   string   // URL path template: "/", "/about", "/users/{name}"
+	Title  string   // page title
+	Params []string // route parameter names extracted from Path (e.g., ["name"])
+	DocIdx int      // index of the route's document, which RenderHTML is handed
+	// Surface is the node the route's document is written from, html's
+	// Window: a language reads the params cell the route binds off it.
+	Surface *ir.NodeInst
 	Actions []HTTPAction // server-state form actions (POST handlers)
 
 	// Render is a static HTML skeleton interleaved with IR-expr holes, which
@@ -673,22 +670,24 @@ type Request struct {
 	// OutDir is where the generated files will be written. Only source-map
 	// emission reads it; see FileOptions.OutDir.
 	OutDir string
-	// Documents yields each window Pkg renders as a target that writes markup
-	// writes it: one at a time, loop variables bound and constant loops
+	// Documents yields each document Pkg renders as a target that writes
+	// markup writes it: one at a time, loop variables bound and constant loops
 	// unrolled (optimize.Documents). Nil for a caller that did not run the build
 	// pipeline; a platform that needs it builds its own.
 	Documents func() iter.Seq2[*Document, error]
 }
 
-// Document is one window as a static target writes it.
+// Document is one document as a static target writes it.
 type Document struct {
-	// Window is nil for a harness that renders its root component in place of
-	// a window, and Body is then that component's.
-	Window *ir.Window
-	Body   []ir.Stmt
+	// Surface is the node the document is written from -- the first primitive
+	// marked #[gen.renders(surface)] no `if` over state and no `for` can take
+	// away, html's Window -- and nil for a harness that renders its root
+	// component in its place, whose body Body then is.
+	Surface *ir.NodeInst
+	Body    []ir.Stmt
 	// Page is the page of a nav.stack this document is written for, the
 	// node standing for it carrying the page's record (ir.NodeInst.Record);
-	// nil for a window that holds no stack. The stack stands for it alone in
+	// nil for a document that holds no stack. The stack stands for it alone in
 	// Body.
 	Page *ir.NodeInst
 	// FileAssets are the file: assets only this document's fold resolved.

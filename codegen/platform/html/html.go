@@ -80,7 +80,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if req.Lang.LanguageIdentifier() == "none" {
 		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: placement.frontend}
 		// Static mode has no server to host the route's POST handler.
-		if win, ok := backendHandlerWindow(req.Pkg, c.ctx.Windows()); ok {
+		if win, ok := backendHandlerWindow(req.Pkg); ok {
 			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
 		}
 		m, err := c.BuildMutationModel(req, c.ctx.Analysis)
@@ -166,7 +166,7 @@ type compilation struct {
 	// c.windows, for generateRoutes to take its routes from, and routePages
 	// the page of a nav.stack each was written for, nil for a window that
 	// holds none.
-	routeWindows []*codegen.WindowCtx
+	routeWindows []*codegen.ViewCtx
 	routePages   []*ir.NodeInst
 }
 
@@ -461,10 +461,16 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	ctx := c.codegenCtx(req)
 
-	// A package with no harness root and no windows still emits an empty
-	// index.html, so callers can verify codegen succeeded.
-	irWindows := ctx.Windows()
-	if len(irWindows) == 0 {
+	staticMode := req.Lang.LanguageIdentifier() == "none"
+	// One document ahead, so that whether there is a second is known before the
+	// first is written.
+	next, stop := iter.Pull2(c.documents(req))
+	defer stop()
+	doc, docErr, ok := next()
+	// A package that writes no document -- no surface and no harness root --
+	// still emits an empty index.html, so callers can verify codegen
+	// succeeded.
+	if !ok {
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
@@ -484,12 +490,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		c.windows = append(c.windows, htmlWindowOutput{name: "index.html", bytes: []byte(src)})
 		return ctx.BuildMutation(nil), nil
 	}
-	staticMode := req.Lang.LanguageIdentifier() == "none"
-	// One document ahead, so that whether there is a second is known before the
-	// first is written.
-	next, stop := iter.Pull2(c.documents(req))
-	defer stop()
-	doc, docErr, ok := next()
 	following, followingErr, more := next()
 	// One page gains nothing from a second file, and a preview is shown as one
 	// document with nowhere to fetch a second from.
@@ -504,7 +504,12 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if docErr != nil {
 			return nil, docErr
 		}
-		win := documentWindow(doc, irWindows)
+		win := documentView(doc, ctx.Harness())
+		// What the lowering wrote to a Window's props, spelled the way the page
+		// holds them: in the package's funcs, which every document shares and
+		// a second pass finds already spelled, and in this document's body,
+		// which is a clone of its own.
+		respellWindowWrites(req.Pkg, doc.Surface, doc.Body)
 		for _, fa := range doc.FileAssets {
 			if !seenAssets[fa.OutPath] {
 				seenAssets[fa.OutPath] = true
@@ -537,7 +542,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			name = pathFromHref(h)
 		}
 		if staticMode {
-			label := "window " + ir.StmtPos(win.Window).String()
+			label := "window " + ir.StmtPos(win.Surface).String()
 			if doc.Page != nil {
 				label = fmt.Sprintf("page %q", doc.Page.ID)
 			}
@@ -556,16 +561,16 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
-		gen.irWindow = win.Window
+		gen.irWindow = win.Surface
 		gen.page = doc.Page
 		if !staticMode && href != nil {
 			gen.routePath, _ = codegen.IRLiteralString(href)
 		}
-		gen.ctx = gen.ctx.ForWindow(win.Window)
-		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
+		gen.ctx = gen.ctx.ForSurface(win.Surface)
+		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowTitle)); ok {
 			gen.title = s
 		}
-		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
+		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowFavicon)); ok {
 			gen.favicon = s
 		}
 		body, err := gen.generate()
@@ -593,16 +598,32 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return ctx.BuildMutation(mainStmts), nil
 }
 
-// documentWindow is what a page is generated from. A harness rendering its root
-// component has no window, and takes the vars and funcs of the one
-// CodegenCtx.Windows synthesizes for it.
-func documentWindow(doc *codegen.Document, windows []*codegen.WindowCtx) *codegen.WindowCtx {
-	if doc.Window != nil {
-		return &codegen.WindowCtx{Window: doc.Window, Body: doc.Body, Name: doc.Window.ID}
+// The props of html's Window a document reads: what its <title> and its icon
+// are. They are the primitive's own, declared in html.sngl.
+const (
+	windowTitle   = "title"
+	windowFavicon = "favicon"
+)
+
+// documentView is what a page is generated from: the Window it is written
+// from. A harness rendering its root component has none, and takes the vars
+// and funcs of the view CodegenCtx.Harness makes of it.
+func documentView(doc *codegen.Document, harness *codegen.ViewCtx) *codegen.ViewCtx {
+	if doc.Surface != nil || harness == nil {
+		return &codegen.ViewCtx{Surface: doc.Surface, Body: doc.Body, Name: surfaceName(doc.Surface)}
 	}
-	w := *windows[0]
+	w := *harness
 	w.Body = doc.Body
 	return &w
+}
+
+// surfaceName is what a document's Window is called: its `#id`, which a route
+// is named after.
+func surfaceName(n *ir.NodeInst) string {
+	if n == nil {
+		return ""
+	}
+	return n.ID
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
@@ -699,11 +720,12 @@ type htmlGen struct {
 	// package body owns every window's, so a page boots only its own.
 	pageSlots map[string]bool
 
-	// irWindow is the window this generator emits a document for, or nil when
-	// it is emitting a harness root's body. A window is the third place
-	// state is declared, beside the package and a harness root, and it is
-	// per-document: static mode emits one file per window.
-	irWindow *ir.Window
+	// irWindow is the Window this generator emits a document from, or nil
+	// when it is emitting a harness root's body. It carries the route's params
+	// cell, which is per document.
+	irWindow *ir.NodeInst
+	// windowNames is windowIDs' answer, made once.
+	windowNames map[string]bool
 	// page is the page of a nav.stack this document is written for, nil for a
 	// window that holds none.
 	page *ir.NodeInst
@@ -932,14 +954,7 @@ func (g *htmlGen) prewalkNodes() {
 			if n == nil {
 				return
 			}
-			// A window holds the page rather than an element on it: its id
-			// names no DOM node, so allocating a var for one would declare a
-			// binding against a `document.querySelector` that finds nothing.
-			if ir.IsWindowNode(n) {
-				visitStmts(n.Children)
-				return
-			}
-			// Nor does a stack or a page: a document stands the page's content
+			// A stack or a page is no element: a document stands the page's content
 			// where the stack was, so neither is an element of any page.
 			if n.Record != nil || (n.Component != nil && n.Component.Intrinsic == "html:stack") {
 				visitStmts(n.Children)
@@ -998,12 +1013,9 @@ func (g *htmlGen) prewalkNodes() {
 			}
 		}
 	}
-	for _, w := range ir.AllWindows(g.pkg) {
-		if w == nil {
-			continue
-		}
-		visitStmts(w.Children)
-	}
+	// The document's own body, which is a clone of the package's and so
+	// reached from nothing above.
+	visitStmts(g.irBodyStmts)
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visitStmts(fn.Block)
@@ -1065,13 +1077,10 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 }
 
 // rewriteDocumentSlotCalls retargets the calls in the page's own document,
-// which is cloned from its window and so is none of what the package-wide
+// which is cloned from its Window and so is none of what the package-wide
 // rewrite reached.
 func (g *htmlGen) rewriteDocumentSlotCalls() {
 	retargetSlotCalls(g.irBodyStmts)
-	if w := g.irWindow; w != nil && w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-		retargetSlotCalls(w.ErrorHandler.Func.Block)
-	}
 }
 
 // retargetSlotCalls points every `__renderSlotN(parentRef)` under root at
@@ -1361,9 +1370,6 @@ func isAllocatedID(digits string, nextID int) bool {
 func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(n) {
-			panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
-		}
 		g.renderIRNode(b, n, depth)
 	case *ir.SlotInst:
 		panic(fmt.Sprintf("html.renderIRStmt: slot %q reached the emitter unsubstituted", n.Name))
@@ -1472,7 +1478,8 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		}
 		panic(fmt.Sprintf("html.renderIRNode: component %s reached the emitter neither inlined nor an instance", n.Component.Name))
 	}
-	if ir.IsWindowNode(n) {
+	if isWindowPrimitive(n) {
+		g.renderDialog(b, n, depth)
 		return
 	}
 	g.renderRawElementIR(b, n, depth)
@@ -1515,25 +1522,22 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []codegen.OwnedVar {
 	var out []codegen.OwnedVar
-	// The route's per-request input, which is this window's and no owner's:
+	// The route's per-request input, which is this document's and no owner's:
 	// the page reads it as state because that is what it is to a document --
 	// a cell filled in before anything renders, from the path the browser
 	// asked for (routeParamsJS). It is the slot population's own *ir.Param,
 	// or a page's, which is why this list is symbols: nothing in the program
 	// declares it, so there is no Var to be had.
 	if g.irWindow != nil && g.irWindow.Params != nil {
-		out = append(out, codegen.OwnedVar{Sym: g.irWindow.Params, Win: g.irWindow})
+		out = append(out, codegen.OwnedVar{Sym: g.irWindow.Params})
 	}
 	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
 			continue
 		}
-		if o.Win != nil && o.Win != g.irWindow {
-			continue
-		}
 		for _, v := range o.Vars {
 			if !v.Synthesized {
-				out = append(out, codegen.OwnedVar{Sym: v, Comp: o.Comp, Win: o.Win})
+				out = append(out, codegen.OwnedVar{Sym: v, Comp: o.Comp})
 			}
 		}
 	}
@@ -1604,7 +1608,7 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 // its parent. Only the roots: a flex inside the tree is answered by the box
 // around it, and only the outermost one needs the viewport handed to it.
 func (g *htmlGen) rootFlexes() bool {
-	for _, st := range g.irBodyStmts {
+	for _, st := range throughBoundaries(g.irBodyStmts) {
 		n, ok := st.(*ir.NodeInst)
 		if !ok {
 			continue
@@ -1632,16 +1636,20 @@ func (g *htmlGen) rootFlexes() bool {
 // markup or built by its script.
 func (g *htmlGen) showsDialog() bool {
 	found := false
+	// A Window in the document's body is a dialog; one in the package is
+	// either that dialog's original or the document's own, so it is the
+	// body's alone that counts.
+	inBody := true
 	visit := func(root any) {
 		_ = ir.Walk(root, func(n ir.Node) error {
 			switch x := n.(type) {
 			case *ir.NodeInst:
-				if isElement(x.Component) && (x.Name == "dialog" || strings.HasSuffix(x.Name, ".dialog")) {
+				if isElement(x.Component) && (x.Name == "dialog" || strings.HasSuffix(x.Name, ".dialog")) || inBody && isWindowPrimitive(x) {
 					found = true
 				}
 			case *ir.Call:
 				if x.Func != nil && x.Func.Name == ir.NodeOpCreateNode && len(x.Args) > 0 {
-					if tag, ok := codegen.IRLiteralString(x.Args[0].Value); ok && tag == "dialog" {
+					if tag, ok := codegen.IRLiteralString(x.Args[0].Value); ok && (tag == "dialog" || tag == windowElement) {
 						found = true
 					}
 				}
@@ -1654,6 +1662,7 @@ func (g *htmlGen) showsDialog() bool {
 	}
 	visit(g.irBodyStmts)
 	if !found && g.pkg != nil {
+		inBody = false
 		visit(g.pkg)
 	}
 	return found
@@ -2245,6 +2254,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
+	}
+	if g.ctx.Helpers[dialogHelper] {
+		b.WriteString(dialogHelperJS + "\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -3559,9 +3571,6 @@ func (g *htmlGen) bodyCalls() []string {
 	for _, c := range g.pageComponents() {
 		collect(c.Body)
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		collect(w.Children)
-	}
 	collect(pkg.Body)
 	return out
 }
@@ -3578,4 +3587,187 @@ func callsUnfoldable(expr ir.Expr) bool {
 		return nil
 	})
 	return found
+}
+
+// isWindowPrimitive reports whether n is html's Window: a document, or a
+// `<dialog>` in one.
+func isWindowPrimitive(n *ir.NodeInst) bool {
+	return n != nil && n.Component != nil && n.Component.Intrinsic == windowIntrinsic
+}
+
+// windowIntrinsic is the id html.sngl gives its Window primitive.
+const windowIntrinsic = "html:window"
+
+// renderDialog writes a Window that is not the document: a `<dialog>` in it,
+// shown without a backdrop as a desktop window is. `visible` is its `open`,
+// the attribute `show()` sets, written by the init and by the patches the
+// lowering put in every handler that writes it (respellWindowWrites). Its
+// header carries the title and a close the user makes, which is a window
+// manager's close: the window reports itself hidden through its `visible`
+// write-back, and then `@closed` runs. A close the program makes runs
+// nothing.
+func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
+	indent := strings.Repeat("  ", depth)
+	id := g.nodeID(n)
+	title, _ := codegen.IRLiteralString(n.Prop(windowTitle))
+	fmt.Fprintf(b, "%s<dialog id=%q", indent, id)
+	if strings.HasPrefix(id, "__n") {
+		fmt.Fprintf(b, " data-sngl-id=%q", id)
+	}
+	fmt.Fprintf(b, " aria-label=\"%s\">\n", html.EscapeString(title))
+	close := g.nodeID(&ir.NodeInst{Name: "html.button"})
+	fmt.Fprintf(b, "%s  <header>\n%s    <span>%s</span>\n", indent, indent, escapeTextContent(title))
+	fmt.Fprintf(b, "%s    <button id=%q aria-label=\"Close\">\n%s      <span>×</span>\n%s    </button>\n%s  </header>\n", indent, close, indent, indent, indent)
+	for _, s := range ir.WidgetChildren(n) {
+		g.renderIRStmt(b, s, depth+1)
+	}
+	fmt.Fprintf(b, "%s</dialog>\n", indent)
+
+	if v := n.Prop("visible"); v != nil {
+		jsVal, requires := g.exprToJSReactiveCollect(v)
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_open", strings.TrimPrefix(id, "$")),
+			body:     fmt.Sprintf("%s.open = %s;", id, jsVal),
+			deps:     g.exprDeps(v),
+			initOnly: true,
+			requires: requires,
+		})
+	}
+	var visible, closed *ir.EventHandler
+	for i := range n.Handlers {
+		h := &n.Handlers[i]
+		switch {
+		case h.Name == "visible" && visible == nil:
+			visible = h
+		case h.Name == "closed" && closed == nil:
+			closed = h
+		}
+	}
+	var block []ir.Stmt
+	if visible != nil && visible.Func != nil {
+		hidden := ir.CloneStmtsSharingDecls(visible.Func.Block)
+		if len(visible.Func.Params) > 0 {
+			p := visible.Func.Params[0]
+			_ = ir.RewriteExprs(hidden, func(e ir.Expr) (ir.Expr, error) {
+				if id, ok := e.(*ir.Ident); ok && id.Sym == ir.Symbol(p) {
+					return &ir.Literal{Type: ir.TypBool, Value: "false"}, nil
+				}
+				return e, nil
+			})
+		}
+		block = append(block, hidden...)
+	}
+	if closed != nil && closed.Func != nil {
+		block = append(block, closed.Func.Block...)
+	}
+	g.addEventHandler(nil, close, "click", &ir.Func{Block: block})
+}
+
+// respellWindowWrites drops what the lowering wrote to the document's props
+// through its handle: the document cannot leave the screen, and its title is
+// the page's, written once. A dialog's are written as its element's, a
+// `visible` as its `open` (domPropForProp).
+func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
+	if doc == nil || doc.ID == "" {
+		return
+	}
+	writesDoc := func(a *ir.Assign) bool {
+		sel, ok := a.Target.(*ir.Select)
+		if !ok {
+			return false
+		}
+		id, ok := sel.Operand.(*ir.Ident)
+		return ok && id.Name == doc.ID
+	}
+	var filter func(stmts []ir.Stmt) []ir.Stmt
+	filter = func(stmts []ir.Stmt) []ir.Stmt {
+		out := stmts[:0:0]
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.Assign:
+				if writesDoc(x) {
+					continue
+				}
+			case *ir.If:
+				x.Body, x.Else = filter(x.Body), filter(x.Else)
+			case *ir.For:
+				x.Body, x.Else = filter(x.Body), filter(x.Else)
+			}
+			out = append(out, s)
+		}
+		return out
+	}
+	funcs := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f != nil {
+			funcs[f] = true
+		}
+	}
+	for _, f := range pkg.Funcs {
+		add(f)
+	}
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			add(f)
+		}
+	}
+	for _, root := range []any{pkg, body} {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.NodeInst:
+				for i := range x.Handlers {
+					add(x.Handlers[i].Func)
+				}
+			case *ir.Lambda:
+				add(x.Func)
+			}
+			return nil
+		})
+	}
+	for _, v := range pkg.Vars {
+		for _, h := range v.Handlers {
+			add(h.Func)
+		}
+	}
+	for f := range funcs {
+		f.Block = filter(f.Block)
+	}
+}
+
+// windowIDs is the names a lowering creates a Window under in a script --
+// a slot renderer, a component factory -- so the ops naming one are written
+// for the `<dialog>` it is, whichever of them is translated first.
+func (g *htmlGen) windowIDs() map[string]bool {
+	if g.windowNames != nil {
+		return g.windowNames
+	}
+	g.windowNames = map[string]bool{}
+	_ = ir.Walk(g.pkg, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok {
+			return nil
+		}
+		if call, ok := lv.Init.(*ir.Call); ok && call.Func != nil && call.Func.Name == ir.NodeOpCreateNode && len(call.Args) > 0 {
+			if tag, ok := codegen.IRLiteralString(call.Args[0].Value); ok && tag == windowElement {
+				g.windowNames[lv.Name] = true
+			}
+		}
+		return nil
+	})
+	return g.windowNames
+}
+
+// throughBoundaries is stmts with each boundary that holds no fallback replaced
+// by what it holds: the boundary a window's @error is, around everything the
+// window renders, puts nothing on the page.
+func throughBoundaries(stmts []ir.Stmt) []ir.Stmt {
+	var out []ir.Stmt
+	for _, s := range stmts {
+		if b, ok := s.(*ir.ErrorBoundary); ok && len(b.Failed) == 0 {
+			out = append(out, throughBoundaries(b.Children)...)
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }

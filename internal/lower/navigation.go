@@ -46,7 +46,7 @@ import (
 // is where the page starts; the params it is showing reach its content alone.
 var passNavigation = pass{
 	name:    "Navigation",
-	enabled: func(f Features) bool { return !f.Navigation || f.DocumentWindow },
+	enabled: func(Features) bool { return true },
 	apply:   lowerNavigation,
 }
 
@@ -256,17 +256,23 @@ func (nv *navigation) handLoopedParams() {
 	})
 }
 
-// On a target holding both Navigation and DocumentWindow it lowers what the
-// composition left a builtin: the stacks in a window shown inside the
-// document, which navigate in place. The document's own were composed into
-// the target's primitives, so a call naming one resolves to no stack here and
-// is left for the target.
+// On a target holding Navigation it lowers only what the composition left a
+// builtin there: the stacks in a surface other than the document (a window
+// html shows inside it, #[gen.renders(surface)]), which navigate in place. The
+// document's own were composed into the target's primitives, so a call naming
+// one resolves to no stack here and is left for the target; and a target that
+// renders no surface -- android -- answers every stack itself.
 func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
+	if feats.Navigation {
+		if surfaces, err := findSurfaces(pkg); surfaces == nil || err != nil {
+			return err
+		}
+	}
 	nv, err := collectNavigation(pkg)
 	if nv == nil || err != nil {
 		return err
 	}
-	nv.lenient = feats.Navigation && feats.DocumentWindow
+	nv.lenient = feats.Navigation
 	if nv.hasLinks() {
 		nv.button = findLibComponent(pkg, "sngl:ui", "button")
 		if nv.button == nil {
@@ -293,14 +299,11 @@ func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
 }
 
 // collect finds every stack an owner's body renders, and the pages each
-// holds. A window is an owner of its own, so it is not entered here.
+// holds.
 func (nv *navigation) collect(o ir.Owner, stmts []ir.Stmt, loops int) error {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if n != o.Win && ir.IsWindowNode(n) {
-				continue
-			}
 			if isNavNode(n, ir.BuiltinNavStack) {
 				if loops > 0 {
 					return fmt.Errorf("%s: a nav.stack under a `for` would be one stack for every copy; write it in a component the loop renders", ir.NodePos(n))
@@ -959,9 +962,6 @@ func navFuncs(pkg *ir.Package) []*ir.Func {
 		case *ir.NodeInst:
 			for _, h := range x.Handlers {
 				add(h.Func)
-			}
-			if x.ErrorHandler != nil {
-				add(x.ErrorHandler.Func)
 			}
 		case *ir.Lambda:
 			add(x.Func)

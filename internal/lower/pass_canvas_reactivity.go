@@ -28,9 +28,6 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Features, _ Options) error {
 		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
 	}
 	injectCanvasRedraws(pkg.Body, nil, pkgVars, &pkg.Funcs)
-	for _, w := range pkg.Windows {
-		injectCanvasRedraws(w.Children, nil, pkgVars, &pkg.Funcs)
-	}
 	return nil
 }
 
@@ -123,6 +120,13 @@ func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasE
 		case *ir.For:
 			collectCanvases(n.Body, stateVars, out)
 			collectCanvases(n.Else, stateVars, out)
+		// And under a wrapper, which every window's content is: each
+		// override puts it in the boundary its @error is.
+		case *ir.ErrorBoundary:
+			collectCanvases(n.Children, stateVars, out)
+			collectCanvases(n.Failed, stateVars, out)
+		case *ir.ContextProvider:
+			collectCanvases(n.Children, stateVars, out)
 		}
 	}
 }
@@ -321,6 +325,11 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 		case *ir.For:
 			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 			injectIntoNodeHandlers(n.Else, stateVars, canvases)
+		case *ir.ErrorBoundary:
+			injectIntoNodeHandlers(n.Children, stateVars, canvases)
+			injectIntoNodeHandlers(n.Failed, stateVars, canvases)
+		case *ir.ContextProvider:
+			injectIntoNodeHandlers(n.Children, stateVars, canvases)
 		}
 	}
 }

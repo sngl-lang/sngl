@@ -81,11 +81,6 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 		}
 	}
 	st.liftSlotBodies(pkg.Body)
-	for _, w := range pkg.Windows {
-		if w != nil {
-			st.liftSlotBodies(w.Children)
-		}
-	}
 	if !caps.InsertBefore {
 		return nil
 	}
@@ -101,11 +96,6 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 		}
 	}
 	st.walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		if w != nil {
-			st.walk(w.Children)
-		}
-	}
 	return nil
 }
 

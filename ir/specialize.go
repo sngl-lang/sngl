@@ -180,11 +180,6 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 			walk(comp.Body)
 		}
 	}
-	for _, win := range pkg.Windows {
-		if win != nil {
-			walk(win.Children)
-		}
-	}
 	walk(pkg.Body)
 }
 

@@ -44,9 +44,6 @@ func (c *checker) analyzeErrors() {
 	}
 
 	// Phase 2: walk visual trees with a scope stack of error handlers.
-	for _, w := range pkg.Windows {
-		walkVisualErrors([]ir.Stmt{w}, nil)
-	}
 	walkVisualErrors(pkg.Body, nil)
 	for _, comp := range pkg.Components {
 		walkVisualErrors(comp.Body, nil)
@@ -213,15 +210,10 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 			for i := range x.Handlers {
 				resolveHandlerBody(&x.Handlers[i], scope)
 			}
-			children := scope
-			if ir.IsWindowNode(x) && x.ErrorHandler != nil {
-				resolveHandlerBody(x.ErrorHandler, scope)
-				children = append([]*ir.EventHandler{x.ErrorHandler}, scope...)
-			}
-			walkVisualErrors(x.Children, children)
+			walkVisualErrors(x.Children, scope)
 			for _, name := range ir.SlotNames(x.Slots) {
 				if sc := x.Slots[name]; sc != nil {
-					walkVisualErrors(sc.Body, children)
+					walkVisualErrors(sc.Body, scope)
 				}
 			}
 		case *ir.SlotInst:

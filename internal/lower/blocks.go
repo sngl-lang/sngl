@@ -124,14 +124,6 @@ func (c *blockCollector) owner(o ir.Owner) {
 		}
 	}
 	c.viewIn(o.Body)
-	// After the view body, not before: passCSE and passForElse number their
-	// temps off this order, and a window's @error came last when this file
-	// enumerated the owners itself.
-	for _, h := range o.Handlers {
-		if h.Func != nil {
-			c.addImperative(&h.Func.Block)
-		}
-	}
 }
 
 // viewIn walks a view body for the handler bodies it hosts, and for the body's

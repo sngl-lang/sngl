@@ -31,20 +31,24 @@ component shell node {
 
 var caught = "none"
 
-window #home(title="t", @error(e) {
-    caught = "window: " + e.message
-}) {
-    vbox {
-        shell()
-        text #windowShown(value=caught)
+window #home(title="t") {
+    boundary(@error(e) {
+        caught = "window: " + e.message
+    }) {
+        vbox {
+            shell()
+            text #windowShown(value=caught)
+        }
     }
 }
 `
 
 // TestRaiseInComponentReachesTheWindowRenderingIt: one declaration rendered
-// under a boundary and beside it, in a window with an @error. Each instance's
-// raise is caught by what is around that instance, and the handler that raised
-// goes no further.
+// under a boundary and beside it, under the boundary a window's @error is.
+// Each instance's raise is caught by what is around that instance, and the
+// handler that raised goes no further. These tests register no platform, so
+// the window's own boundary -- each override's -- is written out; with one,
+// testdata/window_error_unhandled.sngl is the window's.
 func TestRaiseInComponentReachesTheWindowRenderingIt(t *testing.T) {
 	s := sessionFor(t, raiseScopeSrc, "")
 	buttons := s.View().Find("go")

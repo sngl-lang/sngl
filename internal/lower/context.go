@@ -181,9 +181,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		seedFromStmts(fn.Block)
 	}
 	seedFromStmts(pkg.Body)
-	for _, w := range pkg.Windows {
-		seedFromStmts(w.Children)
-	}
 	for _, v := range pkg.Vars {
 		seedFromVar(v)
 	}
@@ -750,18 +747,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	pkgBodyActive := copyExprMap(defaults)
 	pkg.Body = lowerInStmts(pkg.Body, pkgBodyActive, pc)
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
-	// Seed window roots with defaults.
-	for _, w := range pkg.Windows {
-		windowActive := copyExprMap(defaults)
-		w.Children = lowerInStmts(w.Children, windowActive, pc)
-		for _, h := range ir.WindowHandlers(w) {
-			lowerInHandler(h, windowActive, pc)
-		}
-		// The provider unwrap splices a provider's children up to window-body
-		// level, which can put a fresh LocalVar there after passHoistState
-		// already ran. Promote those too, into the same slice.
-		w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
-	}
 	// Top-level pkg.Vars: also rooted, seed with defaults.
 	for _, v := range pkg.Vars {
 		pkgActive := copyExprMap(defaults)
@@ -911,7 +896,6 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			for i := range n.Handlers {
 				lowerInHandler(&n.Handlers[i], active, pc)
 			}
-			lowerInHandler(n.ErrorHandler, active, pc)
 			// A slot population is rendered where the callee's body inserts
 			// it, so a provider the callee wrapped that insertion in covers
 			// it -- even though the population is written here.

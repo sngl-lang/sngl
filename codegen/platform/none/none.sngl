@@ -159,6 +159,21 @@ const component markup.token[platform] {
 //
 // The pages' family is sngl:ui/nav's and unexported, so the slot takes it as
 // a type parameter, bound by the pages written there.
+// A window, as the interpreter mounts one: what it renders, under the boundary
+// its `@error` is, which catches whether or not the call site handles one.
+// Nothing draws it, so its title and its `visible` are state a test reads and
+// nothing shows.
+#[intrinsic("none:Window")]
+component Window(content ...component ui.node) root
+
+const component ui.window[platform] {
+    Window {
+        boundary(@error(e) { error(e) }) {
+            content
+        }
+    }
+}
+
 #[intrinsic("none:Stack")]
 component Stack<F>(pages ...component F) ui.node
 

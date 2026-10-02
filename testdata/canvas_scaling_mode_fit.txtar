@@ -104,9 +104,9 @@ type CanvasStyle struct {
 type Model struct {
 	visible__inst0 bool
 
-	__n0        *fynelayout.Toplevel
-	__n1        *canvas.Raster
-	__n1Surface snglcanvas.Surface
+	w           *fynelayout.Toplevel
+	__n0        *canvas.Raster
+	__n0Surface snglcanvas.Surface
 	__built     bool
 }
 
@@ -125,12 +125,12 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) w_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) w_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.w.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
@@ -138,6 +138,22 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 200.0, 100.0)
 	ctx.Restore()
+}
+
+// wClosed invokes the OnClosed callback on the #w widget; for tests.
+func (m *Model) wClosed() {
+	if m.w.OnClosed != nil {
+		m.w.OnClosed()
+	}
+}
+
+// wVisible invokes the OnVisible callback on the #w widget; for tests.
+func (m *Model) wVisible(__visible bool) {
+	if cb := m.w.OnVisible; cb != nil {
+		m.w.OnVisible = nil
+		cb(__visible)
+		m.w.OnVisible = cb
+	}
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -151,22 +167,22 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.w.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = canvas.NewRaster(func(pw, ph int) image.Image {
-		ctx := m.__n1Surface.Begin(pw, ph, 200, 100, "fit")
+	m.w = fynelayout.NewToplevel()
+	m.w.SetVisible(m.visible__inst0)
+	m.w.OnClosed = m.w_closed_handler
+	m.w.OnVisible = m.w_visible_handler
+	m.__n0 = canvas.NewRaster(func(pw, ph int) image.Image {
+		ctx := m.__n0Surface.Begin(pw, ph, 200, 100, "fit")
 		m._canvasDraw0(ctx)
 		return ctx.Result()
 	})
-	m.__n1.SetMinSize(fyne.NewSize(200, 100))
-	m.__n0.Add(m.__n1)
-	fynelayout.AppAttach(m.__n0)
-	return m.__n0.Container
+	m.__n0.SetMinSize(fyne.NewSize(200, 100))
+	m.w.Add(m.__n0)
+	fynelayout.AppAttach(m.w)
+	return m.w.Container
 }
 
 func main() {
@@ -438,8 +454,8 @@ type Color struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
-	__n0           *C.GtkBox
-	__n1           *C.GtkDrawingArea
+	w              *C.GtkBox
+	__n0           *C.GtkDrawingArea
 	__root         *C.GtkBox
 }
 
@@ -493,10 +509,10 @@ func LineJoin(name string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) w_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) w_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 }
 
@@ -520,16 +536,16 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
-	C.gtk_drawing_area_set_content_width(m.__n1, C.int(200))
-	C.gtk_drawing_area_set_content_height(m.__n1, C.int(100))
-	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n1)), 1)
-	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n1)), 1)
+	m.w = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n0 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
+	C.gtk_drawing_area_set_content_width(m.__n0, C.int(200))
+	C.gtk_drawing_area_set_content_height(m.__n0, C.int(100))
+	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
+	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n0)), 1)
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 200, 100, "fit"); m._canvasDraw0(cr) })
-	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -744,9 +760,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e4683d36089d89661438f0698064fffa
+pass sha256:f1b097ee300773666b6014f72b10a516
 -- run/go/gtk4 --
-pass sha256:68f2d4c7a50cdff6b0ad3aa7dbf286a3
+pass sha256:5b3ee5051edf204a3b22d29b154db696
 -- run/kotlin/android --
 pass sha256:6cc4a37796a7d0d3b92aa752511f5986
 -- run/none/html --

@@ -6,10 +6,10 @@
 # builds.
 
 ! sngl generate --lang none --platform html -o html cond.sngl
-stderr 'cond.sngl:6:14: html writes its document from a window that is always there, and every window here is under an `if` or a `for`'
+stderr 'cond.sngl:6:14: this target writes its document from the first window that no `if` over state and no `for` can take away, and every one here is under one'
 
 ! sngl generate --lang none --platform html -o html2 loop.sngl
-stderr 'loop.sngl:6:14: html writes its document from a window that is always there, and every window here is under an `if` or a `for`'
+stderr 'loop.sngl:6:14: this target writes its document from the first window that no `if` over state and no `for` can take away, and every one here is under one'
 
 sngl generate --lang none --platform html -o html3 beside.sngl
 exists html3/index.html

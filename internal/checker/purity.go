@@ -163,13 +163,50 @@ func AnalyzeSynthesizedFunc(pkg *ir.Package, fn *ir.Func) {
 	for _, v := range pkg.Vars {
 		vars[v] = struct{}{}
 	}
-	for _, w := range pkg.Windows {
-		for _, v := range windowStateVars(w) {
-			vars[v] = struct{}{}
-		}
+	for _, v := range viewStateVars(pkg.Body) {
+		vars[v] = struct{}{}
 	}
 	analyzeEffects(fn, vars)
 	if p := highestCalledPurity(fn); p > fn.Purity {
 		fn.Purity = p
 	}
+}
+
+// viewStateVars is the state the blocks of a view declare: a `var` written in
+// a node's block -- a window's body, say -- which the checker leaves an
+// ir.LocalVar where it stands and passHoistState later moves onto the view's
+// owner. Only the view's own blocks: a handler's local is a handler's.
+func viewStateVars(stmts []ir.Stmt) []*ir.Var {
+	var out []*ir.Var
+	var walk func(stmts []ir.Stmt, inNode bool)
+	walk = func(stmts []ir.Stmt, inNode bool) {
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.LocalVar:
+				if inNode && x.Sym != nil {
+					out = append(out, x.Sym)
+				}
+			case *ir.NodeInst:
+				walk(x.Children, true)
+				for _, sc := range x.Slots {
+					if sc != nil {
+						walk(sc.Body, true)
+					}
+				}
+			case *ir.If:
+				walk(x.Body, inNode)
+				walk(x.Else, inNode)
+			case *ir.For:
+				walk(x.Body, inNode)
+				walk(x.Else, inNode)
+			case *ir.ErrorBoundary:
+				walk(x.Children, inNode)
+				walk(x.Failed, inNode)
+			case *ir.ContextProvider:
+				walk(x.Children, inNode)
+			}
+		}
+	}
+	walk(stmts, false)
+	return out
 }

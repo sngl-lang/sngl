@@ -52,12 +52,6 @@ func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	po := st.packageOwner()
 	pkg.Body = st.walk(po, pkg.Body, false, true)
-	// A window at the root of a file is in no body; its owner is the package.
-	for _, w := range pkg.Windows {
-		if w != nil {
-			w.Children = st.walk(po, w.Children, false, false)
-		}
-	}
 	for _, comp := range pkg.Components {
 		if comp != nil {
 			comp.Body = st.walk(st.componentOwner(comp), comp.Body, false, true)

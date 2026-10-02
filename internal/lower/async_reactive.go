@@ -108,10 +108,6 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 func hoistInlineAsyncReactive(pkg *ir.Package) error {
 	h := &hoister{pkg: pkg}
 	hoistInStmts(h, pkg.Body)
-	// Walk windows.
-	for _, w := range pkg.Windows {
-		hoistInStmts(h, w.Children)
-	}
 	// Walk components.
 	for _, comp := range pkg.Components {
 		hoistInStmts(h, comp.Body)

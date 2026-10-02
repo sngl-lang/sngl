@@ -4,8 +4,8 @@
 // `home` afterwards can only mean one of them.
 //
 // Distinct from error_window_id_collision.sngl, which is two windows sharing
-// an id: that is reported by checkDuplicateWindowID against the window list,
-// this by the scope the handle binds into.
+// an id: both are the package's one-name rule, and this is the half a
+// declaration of another kind supplies.
 import . "sngl:ui"
 
 const home int = 1

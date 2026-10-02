@@ -85,10 +85,10 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
 	// perfectly good thing to type-check, and it is only as something to
-	// *run* that it has nowhere to draw. The package body is a slot for the
-	// root tree, and a window is that tree's one renderable member.
+	// *run* that it has nothing to show. The package body is the
+	// application's view, and every node in it is a member of the root tree.
 	if !o.Library && !pkg.IsProgram() {
-		return nil, fmt.Errorf("%s: a program declares at least one window: the package body renders only what a window holds", o.Dir)
+		return nil, fmt.Errorf("%s: a program renders something at the root of a file: the package body is its view, and one that renders nothing has nothing to show", o.Dir)
 	}
 	if err := ValidateOutputs(pkg); err != nil {
 		return nil, err
@@ -278,8 +278,7 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 		return
 	}
 	pkg.Body = nil
-	pkg.Windows = nil
-	// Recorded rather than left implicit: with the windows gone, this is the
+	// Recorded rather than left implicit: with the body gone, this is the
 	// only thing left that says which declaration the program renders, and
 	// AnalyzeCommon runs from the package alone.
 	pkg.RootComponent = comp

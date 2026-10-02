@@ -423,11 +423,6 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
-	// The window itself and not only its body: a window carries its route
-	// parameters and its @error, and neither is reachable from the children.
-	for _, w := range pkg.Windows {
-		view([]ir.Stmt{w})
-	}
 	// Test functions are roots, and so is every synthesized func, which
 	// filterFuncs keeps whether or not anything names it: kept and not
 	// walked, a focus helper outlived the __focusID it reads.
@@ -702,9 +697,6 @@ func walkNode(n *ir.NodeInst, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	}
 	for _, h := range n.Handlers {
 		walkFunc(h.Func, used, walk)
-	}
-	if n.ErrorHandler != nil {
-		walkFunc(n.ErrorHandler.Func, used, walk)
 	}
 	// A window's route parameters name a struct the program may declare
 	// and never construct: the request fills the cell, and a target with

@@ -71,6 +71,9 @@ var alwaysOn = []string{
 	"ErrorScope",
 	"ForElse",
 	"ForeignPrimitive",
+	// A function writing a prop through the handle it is handed is inlined
+	// on every target: no target writes a prop through a handle.
+	"HandleParams",
 	"HoistBodyTypes",
 	"HoistState",
 	// An unbound two-way prop is state of the instance on every target.
@@ -86,6 +89,11 @@ var alwaysOn = []string{
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
 	"MutatedVars",
+	// A stack the target does not answer is plain UI on every target: all of
+	// them on one without Navigation, and on one with it the stacks in a
+	// surface other than the document (html's dialogs), which the pass finds
+	// by the package rather than by a capability.
+	"Navigation",
 	// What a page is read as a value is the same on every target; only what
 	// shows it differs (passNavigation, or the target's own codegen).
 	"NavigationValues",
@@ -104,7 +112,6 @@ var alwaysOn = []string{
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
 	"ViewForElse",
-	"WindowNesting",
 }
 
 func TestAlwaysOnPasses(t *testing.T) {
@@ -160,7 +167,9 @@ var soleGate = map[string][]string{
 
 	// NodeEscape has no flag of its own: the escape analysis only has
 	// something to analyse once the tree is flat.
-	"Declarative": {"NoDeclarative", "NodeEscape"},
+	// BoundaryPassthrough is the flat tree's too: a boundary is a passthrough
+	// only once what it holds is statements.
+	"Declarative": {"BoundaryPassthrough", "NoDeclarative", "NodeEscape"},
 
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},
@@ -181,16 +190,13 @@ var soleGate = map[string][]string{
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding
 	// it is what asks for the pass.
-	"ReactiveCanvas":  {"CanvasReactivity"},
-	"Effects":         {"Effect"},
-	"Navigation":      {"Navigation"},
+	"ReactiveCanvas": {"CanvasReactivity"},
+	"Effects":        {"Effect"},
+	// Read by passNavigation and the composition rather than gating either:
+	// with it, only the stacks in a surface other than the document are
+	// lowered.
+	"Navigation":      nil,
 	"NavigationHrefs": {"NavigationHrefs"},
-
-	// A grant that turns passNavigation back on beside Navigation: what the
-	// target answers is its document's stack, and a stack in a window it
-	// shows inside the document is lowered. The composition reads it too, to
-	// keep the document the builtin it is marked.
-	"DocumentWindow": {"Navigation"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance

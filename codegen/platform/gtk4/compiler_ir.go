@@ -886,9 +886,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 			}
 		}
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Children)
-	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
 			walk(fn.Block)

@@ -77,14 +77,6 @@ fun MainScreen() {
 fun __window_state0(__start_visible: Boolean = true, title: String, slotContent: (@Composable () -> Unit)? = null) {
     var visible by remember { mutableStateOf(__start_visible) }
 
-    fun open__inst0() {
-        visible = true
-    }
-
-    fun close__inst0() {
-        visible = false
-    }
-
     if (visible) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
@@ -99,4 +91,4 @@ fun __window_state0(__start_visible: Boolean = true, title: String, slotContent:
     }
 }
 -- run/kotlin/android --
-pass sha256:841c9552c5332d70a1a5d1347d946b9c
+pass sha256:950ceb6ff9e2f2d97e3df80dba106e7e

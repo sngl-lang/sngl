@@ -780,7 +780,7 @@ body { font-family: system-ui, sans-serif; }
   function bump__inst1() {
     add__inst1(2);
   }
-  function __effect1_mount() {
+  function __effect0_mount() {
     bump__inst1();
   }
   function __cf_Row__slot0(props) {
@@ -791,11 +791,11 @@ body { font-family: system-ui, sans-serif; }
     let __prop_label = label;
     let __prop___p0 = __p0;
     let marks = 0;
-    let __effect0_live = [];
-    let __effect0_desired = [];
-    let __effects0_settling = false;
-    let __effects0_pending = false;
-    let __effects0_steps = 0;
+    let __effect1_live = [];
+    let __effect1_desired = [];
+    let __effects1_settling = false;
+    let __effects1_pending = false;
+    let __effects1_steps = 0;
     let __slot02 = [];
     function mark(n) {
       marks = marks + n;
@@ -805,40 +805,40 @@ body { font-family: system-ui, sans-serif; }
     function summary() {
       return __prop_label + "=" + String(marks);
     }
-    function __effect0_mount() {
+    function __effect1_mount() {
       mark(2);
     }
-    function __effect0_down() {
-      __effect0_desired = [];
-      __effect0_desired.push(true);
+    function __effect1_down() {
+      __effect1_desired = [];
+      __effect1_desired.push(true);
     }
-    function __effect0_up() {
-      for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
-        if (__effect0_i >= __effect0_live.length) {
-          __effect0_mount();
+    function __effect1_up() {
+      for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
+        if (__effect1_i >= __effect1_live.length) {
+          __effect1_mount();
         } else {
-          if (__effect0_live[__effect0_i] !== __effect0_k) {
-            __effect0_mount();
+          if (__effect1_live[__effect1_i] !== __effect1_k) {
+            __effect1_mount();
           }
         }
       }
-      __effect0_live = __effect0_desired;
+      __effect1_live = __effect1_desired;
     }
-    function __effects0_settle() {
-      if (__effects0_settling) {
-        __effects0_pending = true;
+    function __effects1_settle() {
+      if (__effects1_settling) {
+        __effects1_pending = true;
       } else {
-        __effects0_settling = true;
-        __effects0_pending = true;
-        __effects0_steps = 0;
-        while (__effects0_pending && __effects0_steps < 512) {
-          __effects0_pending = false;
-          __effects0_steps = __effects0_steps + 1;
-          __effect0_down();
-          __effect0_up();
+        __effects1_settling = true;
+        __effects1_pending = true;
+        __effects1_steps = 0;
+        while (__effects1_pending && __effects1_steps < 512) {
+          __effects1_pending = false;
+          __effects1_steps = __effects1_steps + 1;
+          __effect1_down();
+          __effect1_up();
         }
-        __effects0_settling = false;
-        if (__effects0_pending) {
+        __effects1_settling = false;
+        if (__effects1_pending) {
           throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
         }
       }
@@ -858,7 +858,7 @@ body { font-family: system-ui, sans-serif; }
     let __n1 = document.createElement("span");
     __n1.textContent = "foot " + __prop___p0 + " " + String(marks);
     __n5.appendChild(__n1);
-    __effects0_settle();
+    __effects1_settle();
     __root.appendChild(__n5);
     return {
       __root,
@@ -868,44 +868,44 @@ body { font-family: system-ui, sans-serif; }
       __set___p0
     };
   }
-  var __effect1_live = [];
-  var __effect1_desired = [];
-  var __effects1_settling = false;
-  var __effects1_pending = false;
-  var __effects1_steps = 0;
+  var __effect0_live = [];
+  var __effect0_desired = [];
+  var __effects0_settling = false;
+  var __effects0_pending = false;
+  var __effects0_steps = 0;
   var __slot0 = [];
   var __inst1_live = [];
-  function __effect1_down() {
-    __effect1_desired = [];
-    __effect1_desired.push(true);
+  function __effect0_down() {
+    __effect0_desired = [];
+    __effect0_desired.push(true);
   }
-  function __effect1_up() {
-    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
-      if (__effect1_i >= __effect1_live.length) {
-        __effect1_mount();
+  function __effect0_up() {
+    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
+      if (__effect0_i >= __effect0_live.length) {
+        __effect0_mount();
       } else {
-        if (__effect1_live[__effect1_i] !== __effect1_k) {
-          __effect1_mount();
+        if (__effect0_live[__effect0_i] !== __effect0_k) {
+          __effect0_mount();
         }
       }
     }
-    __effect1_live = __effect1_desired;
+    __effect0_live = __effect0_desired;
   }
-  function __effects1_settle() {
-    if (__effects1_settling) {
-      __effects1_pending = true;
+  function __effects0_settle() {
+    if (__effects0_settling) {
+      __effects0_pending = true;
     } else {
-      __effects1_settling = true;
-      __effects1_pending = true;
-      __effects1_steps = 0;
-      while (__effects1_pending && __effects1_steps < 512) {
-        __effects1_pending = false;
-        __effects1_steps = __effects1_steps + 1;
-        __effect1_down();
-        __effect1_up();
+      __effects0_settling = true;
+      __effects0_pending = true;
+      __effects0_steps = 0;
+      while (__effects0_pending && __effects0_steps < 512) {
+        __effects0_pending = false;
+        __effects0_steps = __effects0_steps + 1;
+        __effect0_down();
+        __effect0_up();
       }
-      __effects1_settling = false;
-      if (__effects1_pending) {
+      __effects0_settling = false;
+      if (__effects0_pending) {
         throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
       }
     }
@@ -966,7 +966,7 @@ body { font-family: system-ui, sans-serif; }
     __n2.textContent = shown__inst1();
   }
   __sngl_init();
-  __effects1_settle();
+  __effects0_settle();
 })();
 </script>
 </body></html>
@@ -975,4 +975,4 @@ pass sha256:8e678085d3118204fc669afc735c5417
 -- run/go/gtk4 --
 pass sha256:5298abdd0da9b5b7de651b4bfebe0bc6
 -- run/none/html --
-pass sha256:7e654f5bab3e903d2a2b577eb132e659
+pass sha256:2eda2b730449308145ac56025d91393f

@@ -93,11 +93,6 @@ type PathCmd struct {
 	R   float64
 }
 
-type ErrorEvent struct {
-	Message string
-	Kind    string
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -331,10 +326,6 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
     )
 }
 
-data class ErrorEvent(val message: String = "", val kind: String = "")
-
-class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -449,8 +440,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:35162808e2e4a55bd1963a9b61ded269
+pass sha256:2bc83fa81758cfa2fe89a53dc884823a
 -- run/kotlin/android --
-pass sha256:cdb35145d66ca77247b84251c4dcd9df
+pass sha256:db9c521792de0d90812ffe8256f5ed10
 -- run/none/html --
 pass sha256:7b2068c12c555c65a4834e8532298193

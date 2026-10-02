@@ -28,9 +28,9 @@ type nestedFunc struct {
 //   - the hoist is not a closure, so the enclosing params and locals must not
 //     resolve from inside one. The scope swap below is that half.
 //
-// A func at the root of a window body reaches here too and is neither: it
-// belongs to the window's container, the way a component-body func belongs to
-// the component, and it keeps the name it was written under.
+// A func in a node's block -- a window's body, say -- reaches here too and is
+// neither: it belongs to the node's container, the way a component-body func
+// belongs to the component, and it keeps the name it was written under.
 func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	fn, built := c.nestedFuncs[x]
 	if !built {
@@ -47,12 +47,6 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 		switch {
 		case c.currentComponent != nil:
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
-		case c.currentWindow != nil:
-			// A window is a rendering root, not a storage level, so a func
-			// written in one belongs to the window's container the way any
-			// other visual node's declaration would. window being root-only,
-			// that is the package.
-			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		case c.pkg != nil:
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}

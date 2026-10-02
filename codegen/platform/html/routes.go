@@ -40,8 +40,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		page := c.routePages[i]
 		routeName, label := windowRouteName(win), routeWindowLabel(win.Name, i)
 		var hrefExpr, titleExpr ir.Expr
-		if win.Window != nil {
-			titleExpr = win.Window.Prop(ir.WindowTitle)
+		if win.Surface != nil {
+			titleExpr = win.Surface.Prop(windowTitle)
 		}
 		if page != nil {
 			hrefExpr = pageHref(page)
@@ -89,8 +89,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
-			WindowIdx: i,
-			Window:    win.Window,
+			DocIdx:    i,
+			Surface:   win.Surface,
 			Actions:   actions,
 			Render:    render,
 			StateVars: stateVars,
@@ -177,47 +177,73 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 	return nil
 }
 
-// backendHandlerWindow scans every window's event handlers (node handlers and
-// var handlers) for a Backend placement. It returns the name of the first
-// window carrying a server-side handler, or false if all handlers are
-// client-side. Used by the static-mode (non-HTTPCompiler) guard: a build with
-// no server cannot run a backend handler.
-func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string, bool) {
+// backendHandlerWindow scans the package's event handlers (node handlers and
+// var handlers) for a Backend placement, and names the window holding the
+// first: its Window's `#id`, "" for one written outside any. False if every
+// handler is client-side. Used by the static-mode (non-HTTPCompiler) guard: a
+// build with no server cannot run a backend handler.
+func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 	if pkg == nil {
 		return "", false
 	}
-	for _, win := range windows {
-		backend := false
-		check := func(h *ir.EventHandler) {
-			if h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend {
-				backend = true
-			}
-		}
-		for _, v := range routeVars(pkg, win) {
-			for _, h := range v.Handlers {
-				check(h)
-			}
-		}
-		walkInstances(win.Body, func(n *ir.NodeInst) {
-			for i := range n.Handlers {
-				check(&n.Handlers[i])
-			}
-		})
-		if backend {
-			return win.Name, true
+	backend := func(h *ir.EventHandler) bool {
+		return h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend
+	}
+	for _, v := range pkg.Vars {
+		if slices.ContainsFunc(v.Handlers, backend) {
+			return "", true
 		}
 	}
-	return "", false
+	name, found := "", false
+	var walk func(stmts []ir.Stmt, win string)
+	walk = func(stmts []ir.Stmt, win string) {
+		for _, s := range stmts {
+			if found {
+				return
+			}
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				in := win
+				if n.Component != nil && ir.IsSurface(n.Component) {
+					in = n.ID
+				}
+				for i := range n.Handlers {
+					if backend(&n.Handlers[i]) {
+						name, found = in, true
+						return
+					}
+				}
+				walk(n.Children, in)
+				for _, sc := range n.Slots {
+					if sc != nil {
+						walk(sc.Body, in)
+					}
+				}
+			case *ir.If:
+				walk(n.Body, win)
+				walk(n.Else, win)
+			case *ir.For:
+				walk(n.Body, win)
+				walk(n.Else, win)
+			case *ir.ErrorBoundary:
+				walk(n.Children, win)
+			case *ir.ContextProvider:
+				walk(n.Children, win)
+			}
+		}
+	}
+	walk(pkg.Body, "")
+	for _, c := range pkg.Components {
+		walk(c.Body, "")
+	}
+	return name, found
 }
 
-// windowRouteName is the `#id` a route is named for. A harness root has no
-// window and so none: the component it isolated is not a window's name, and
-// using it made a handler's name depend on whether a harness ran.
-func windowRouteName(win *codegen.WindowCtx) string {
-	if win.Window == nil {
-		return ""
-	}
-	return win.Window.ID
+// windowRouteName is the `#id` a route is named for: its document's Window's.
+// A harness root has none: the component it isolated is not a window's name,
+// and using it made a handler's name depend on whether a harness ran.
+func windowRouteName(win *codegen.ViewCtx) string {
+	return surfaceName(win.Surface)
 }
 
 type servedRoute struct{ path, label string }
@@ -494,7 +520,7 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 // _action value — so a form and the switch case that handles it can never
 // disagree (even with multiple backend handlers per node, or backend var
 // handlers that emit no form).
-func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Func]bool) ([]codegen.HTTPAction, map[*ir.EventHandler]int) {
+func collectActions(pkg *ir.Package, win *codegen.ViewCtx, targets map[*ir.Func]bool) ([]codegen.HTTPAction, map[*ir.EventHandler]int) {
 	if len(targets) == 0 {
 		return nil, nil
 	}

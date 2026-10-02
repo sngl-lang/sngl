@@ -196,9 +196,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			time.Sleep(1)
-			m.name__inst0 = func() string { v, _ := os.Hostname(); return v }()
-			m.v__inst0 = C.abs(C.int((m.v__inst0 - 5)))
+			func() {
+				defer func() {
+					__r := recover()
+					if __r == nil {
+						return
+					}
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
+					}
+					_ = e
+				}()
+				time.Sleep(1)
+				m.name__inst0 = func() string { v, _ := os.Hostname(); return v }()
+				m.v__inst0 = C.abs(C.int((m.v__inst0 - 5)))
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -235,4 +248,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:862485a56e093c97df83f8825c9a523d
+broken sha256:7863f03d0ab70d541e4e9cbf0cc6d5db

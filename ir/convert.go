@@ -94,9 +94,6 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	for _, comp := range pkg.Components {
 		stmts = append(stmts, c.convertComponent(comp))
 	}
-	for _, w := range pkg.Windows {
-		stmts = append(stmts, c.convertNodeInst(w))
-	}
 	for _, ctx := range pkg.Contexts {
 		// Standard-library contexts arrive with the import, not from this
 		// package's source; emitting them would redeclare the name.
@@ -332,11 +329,11 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-// windowContentSlot is what the window declaration calls the slot its body
-// populates. Read off the declaration rather than spelled here, for the
-// reason ErrorBoundary.FailedSlot gives: the library is free to rename it.
-func windowContentSlot(w *Window) string {
-	if rest := w.Component.RestSlot(); rest != nil {
+// restSlotName is what n's declaration calls the slot its body populates.
+// Read off the declaration rather than spelled here, for the reason
+// ErrorBoundary.FailedSlot gives: the library is free to rename it.
+func restSlotName(n *NodeInst) string {
+	if rest := n.Component.RestSlot(); rest != nil {
 		return rest.Name
 	}
 	return "content"
@@ -621,9 +618,6 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	for _, h := range n.Handlers {
 		args = append(args, c.convertEventHandler(&h))
 	}
-	if n.ErrorHandler != nil {
-		args = append(args, c.convertEventHandler(n.ErrorHandler))
-	}
 	if len(args) > 0 {
 		vn.Args = ast.ArgList{
 			IsMultiline: len(args) > 3,
@@ -636,13 +630,13 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		vn.Block.Stmts = append(c.convertSlotContents(n.Slots), vn.Block.Stmts...)
 		vn.Block.IsMultiline = true
 	}
-	// A window that reads its route parameters wrote the population its
-	// binding was named in, and the body belongs inside that rather than
+	// A node that reads its params -- a page, or the document written for one
+	// -- wrote the population its binding was named in, and the body belongs inside that rather than
 	// bare: printed bare, the name the body reads is declared nowhere and the
 	// dump does not check back in.
 	if n.Params != nil && len(vn.Block.Stmts) > 0 {
 		vn.Block.Stmts = []ast.Stmt{&ast.ComponentDecl{
-			Name:      windowContentSlot(n),
+			Name:      restSlotName(n),
 			HasParens: true,
 			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: n.Params.Name}}},
 			Body:      ast.StmtBlock{IsMultiline: true, Stmts: vn.Block.Stmts, Pos: ast.Pos{Line: 1}},

@@ -78,14 +78,6 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) open__inst0() {
-	m.shown = true
-}
-
-func (m *Model) close__inst0() {
-	m.shown = false
-}
-
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 0
@@ -151,7 +143,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.shown = false
 				m.closes += 1
 				if m.closes < 3 {
-					m.open__inst0()
+					m.shown = true
 				}
 			}
 			if !(m.shown) {
@@ -163,7 +155,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.close__inst0()
+			m.shown = false
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -241,23 +233,13 @@ fun MainScreen() {
     var shown by remember { mutableStateOf(true) }
     var closes by remember { mutableStateOf(0) }
 
-
-    fun open__inst0() {
-        shown = true
-    }
-
-
-    fun close__inst0() {
-        shown = false
-    }
-
     if (shown) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
             shown = false
             closes += 1
             if ((closes < 3)) {
-            	open__inst0()
+            	shown = true
             }
             if (!(shown)) {
                 __activity?.finish()
@@ -266,7 +248,7 @@ fun MainScreen() {
         Column {
             Text(text = (("closed " + closes.toString()) + " times"), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
-                close__inst0()
+                shown = false
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "Hide", modifier = Modifier)
             }
@@ -274,6 +256,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:32ae42e99b7506fe3750724e2cdf5b39
+pass sha256:7061bfc7808192621f38fc331e0d84f3
 -- run/kotlin/android --
-pass sha256:5e0d2382bda3b8a5d673dbd4a0c80fff
+pass sha256:d2b536326b788560f7d16eda36b94225

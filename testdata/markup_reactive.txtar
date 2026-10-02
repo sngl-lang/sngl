@@ -246,13 +246,13 @@ type Model struct {
 	n              int
 	visible__inst0 bool
 
-	__n0    *fynelayout.Toplevel
-	__n2    *fyne.Container
-	__n3    *fynetext.Flow
+	home    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *fynetext.Flow
+	__n3    *fynetext.Span
 	__n4    *fynetext.Span
-	__n5    *fynetext.Span
-	__n1    *fynetext.Span
-	__n6    *widget.Button
+	__n0    *fynetext.Span
+	__n5    *widget.Button
 	__built bool
 }
 
@@ -264,17 +264,33 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.home.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n6_click_handler() {
+func (m *Model) __n5_click_handler() {
 	m.n += 1
-	m.__n1.SetText(fmt.Sprint(m.n))
+	m.__n0.SetText(fmt.Sprint(m.n))
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
 }
 
 func (m *Model) N() int {
@@ -296,32 +312,32 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.home.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("doc")
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
-	m.__n3 = fynetext.NewFlow()
-	m.__n4 = fynetext.NewSpan(fynetext.Style())
-	m.__n4.SetText("count: ")
-	m.__n3.Add(m.__n4)
-	m.__n5 = fynetext.NewSpan(fynetext.Style().WithBold())
-	m.__n1 = fynetext.NewSpan(fynetext.Style())
-	m.__n1.SetText(fmt.Sprint(m.n))
-	m.__n5.Add(m.__n1)
-	m.__n3.Add(m.__n5)
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("doc")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
+	m.__n1 = container.NewVBox()
+	m.__n2 = fynetext.NewFlow()
+	m.__n3 = fynetext.NewSpan(fynetext.Style())
+	m.__n3.SetText("count: ")
 	m.__n2.Add(m.__n3)
-	m.__n6 = widget.NewButton("", nil)
-	m.__n6.SetText("+")
-	m.__n6.OnTapped = m.__n6_click_handler
-	m.__n2.Add(m.__n6)
-	m.__n0.Add(m.__n2)
-	fynelayout.AppAttach(m.__n0)
-	return m.__n0.Container
+	m.__n4 = fynetext.NewSpan(fynetext.Style().WithBold())
+	m.__n0 = fynetext.NewSpan(fynetext.Style())
+	m.__n0.SetText(fmt.Sprint(m.n))
+	m.__n4.Add(m.__n0)
+	m.__n2.Add(m.__n4)
+	m.__n1.Add(m.__n2)
+	m.__n5 = widget.NewButton("", nil)
+	m.__n5.SetText("+")
+	m.__n5.OnTapped = m.__n5_click_handler
+	m.__n1.Add(m.__n5)
+	m.home.Add(m.__n1)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
@@ -366,10 +382,10 @@ type Measurement struct {
 type Model struct {
 	n              int
 	visible__inst0 bool
-	__n0           gtk4rt.Handle
+	home           gtk4rt.Handle
+	__n1           gtk4rt.Handle
 	__n2           gtk4rt.Handle
-	__n3           gtk4rt.Handle
-	__n6           gtk4rt.Handle
+	__n5           gtk4rt.Handle
 	__built        bool
 }
 
@@ -382,17 +398,17 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
-func (m *Model) __n6_clicked_handler() {
+func (m *Model) __n5_clicked_handler() {
 	m.n += 1
-	gtk4rt.LabelSetMarkup(m.__n3, (("count: <b>" + gtk4rt.Escape(fmt.Sprint(m.n))) + "</b>"))
+	gtk4rt.LabelSetMarkup(m.__n2, (("count: <b>" + gtk4rt.Escape(fmt.Sprint(m.n))) + "</b>"))
 }
 
 func (m *Model) N() int {
@@ -416,32 +432,32 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "doc")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n3, true)
-	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n3, (("count: <b>" + gtk4rt.Escape(fmt.Sprint(m.n))) + "</b>"))
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
-	m.__n6 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n6, "+")
-	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n6)
-	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	gtk4rt.AppAttach(m.__n0)
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "doc")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n2, true)
+	gtk4rt.LabelSetXAlign(m.__n2, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n2, (("count: <b>" + gtk4rt.Escape(fmt.Sprint(m.n))) + "</b>"))
+	gtk4rt.BoxAppend(m.__n1, m.__n2)
+	m.__n5 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n5, "+")
+	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n5)
+	gtk4rt.BoxAppend(m.home, m.__n1)
+	gtk4rt.AppAttach(m.home)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n0)
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/go/html/server.go --
 package main
@@ -585,9 +601,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a7704983e4c58c01711e96591b4cd34c
 -- run/go/fyne --
-pass sha256:2bdbe2dc9cad83f47f50d27891c20c0c
+pass sha256:30da641f406ea3091809017ec25bd0e3
 -- run/go/gtk4 --
-pass sha256:ed3905f42a111a70a2ed14fc436c005b
+pass sha256:af2bd282afaa2c166b9b2082a6e27bec
 -- run/go/html --
 pass sha256:92599d4cbe3d40792e558cf6909fa9c8
 -- run/kotlin/android --

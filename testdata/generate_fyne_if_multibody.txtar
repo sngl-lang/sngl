@@ -51,8 +51,8 @@ type Model struct {
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 
-	__n0    *fynelayout.Toplevel
-	__n4    *fyne.Container
+	app     *fynelayout.Toplevel
+	__n3    *fyne.Container
 	__built bool
 }
 
@@ -73,27 +73,43 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	if m.visible {
+		__n0 := widget.NewLabel("")
+		__n0.SetText("A")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
+		m.__slot0 = append(m.__slot0, __n0)
 		__n1 := widget.NewLabel("")
-		__n1.SetText("A")
+		__n1.SetText("B")
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 		__n2 := widget.NewLabel("")
-		__n2.SetText("B")
+		__n2.SetText("C")
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
 		m.__slot0 = append(m.__slot0, __n2)
-		__n3 := widget.NewLabel("")
-		__n3.SetText("C")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3)
-		m.__slot0 = append(m.__slot0, __n3)
 	}
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) app_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) app_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.app.SetVisible(m.visible__inst0)
+}
+
+// appClosed invokes the OnClosed callback on the #app widget; for tests.
+func (m *Model) appClosed() {
+	if m.app.OnClosed != nil {
+		m.app.OnClosed()
+	}
+}
+
+// appVisible invokes the OnVisible callback on the #app widget; for tests.
+func (m *Model) appVisible(__visible bool) {
+	if cb := m.app.OnVisible; cb != nil {
+		m.app.OnVisible = nil
+		cb(__visible)
+		m.app.OnVisible = cb
+	}
 }
 
 func (m *Model) Visible() bool {
@@ -115,19 +131,19 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.app.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("t")
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n4 = container.NewVBox()
-	m.__renderSlot0(m.__n4)
-	m.__n0.Add(m.__n4)
-	fynelayout.AppAttach(m.__n0)
-	return m.__n0.Container
+	m.app = fynelayout.NewToplevel()
+	m.app.SetTitle("t")
+	m.app.SetVisible(m.visible__inst0)
+	m.app.OnClosed = m.app_closed_handler
+	m.app.OnVisible = m.app_visible_handler
+	m.__n3 = container.NewVBox()
+	m.__renderSlot0(m.__n3)
+	m.app.Add(m.__n3)
+	fynelayout.AppAttach(m.app)
+	return m.app.Container
 }
 
 func main() {
@@ -138,4 +154,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:f89e9b676aee55beed17533c7ce17426
+pass sha256:3e4a9ec433f1e72e702f0c9647ad2062

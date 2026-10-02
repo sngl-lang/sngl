@@ -1107,9 +1107,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
-			if ir.IsWindowNode(n) {
-				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
-			}
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
 			// handler for that event name was transferred onto the node during

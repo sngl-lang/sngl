@@ -47,9 +47,6 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
-		}
 		// A schedule is not a composable. The timer primitive stays in the
 		// tree so the branch around it is answered there; AnalyzeCommon reads
 		// it and the LaunchedEffect it becomes is emitted with the model,

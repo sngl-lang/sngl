@@ -305,13 +305,13 @@ type Model struct {
 	pal            Palette
 	visible__inst0 bool
 
-	__n0    *fynelayout.Toplevel
-	__n2    *fyne.Container
-	__n3    *widget.Button
-	__n4    *fynetext.Flow
+	home    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Button
+	__n3    *fynetext.Flow
+	__n4    *fynetext.Span
+	__n0    *fynetext.Span
 	__n5    *fynetext.Span
-	__n1    *fynetext.Span
-	__n6    *fynetext.Span
 	__built bool
 }
 
@@ -357,17 +357,33 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 	return p.Plain
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.home.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n3_click_handler() {
+func (m *Model) __n2_click_handler() {
 	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
-	m.__n1.SetColor(TokenColor(m.pal, "keyword"))
+	m.__n0.SetColor(TokenColor(m.pal, "keyword"))
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
 }
 
 func (m *Model) Pal() Palette {
@@ -389,32 +405,32 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.home.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("t")
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n2 = container.NewVBox()
-	m.__n3 = widget.NewButton("", nil)
-	m.__n3.SetText("theme")
-	m.__n3.OnTapped = m.__n3_click_handler
-	m.__n2.Add(m.__n3)
-	m.__n4 = fynetext.NewFlow()
-	m.__n5 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n1 = fynetext.NewSpan(fynetext.Style().WithToken("keyword"))
-	m.__n1.SetColor(TokenColor(m.pal, "keyword"))
-	m.__n6 = fynetext.NewSpan(fynetext.Style())
-	m.__n6.SetText("func")
-	m.__n1.Add(m.__n6)
-	m.__n5.Add(m.__n1)
-	m.__n4.Add(m.__n5)
-	m.__n2.Add(m.__n4)
-	m.__n0.Add(m.__n2)
-	fynelayout.AppAttach(m.__n0)
-	return m.__n0.Container
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
+	m.__n1 = container.NewVBox()
+	m.__n2 = widget.NewButton("", nil)
+	m.__n2.SetText("theme")
+	m.__n2.OnTapped = m.__n2_click_handler
+	m.__n1.Add(m.__n2)
+	m.__n3 = fynetext.NewFlow()
+	m.__n4 = fynetext.NewSpan(fynetext.Style().WithMono())
+	m.__n0 = fynetext.NewSpan(fynetext.Style().WithToken("keyword"))
+	m.__n0.SetColor(TokenColor(m.pal, "keyword"))
+	m.__n5 = fynetext.NewSpan(fynetext.Style())
+	m.__n5.SetText("func")
+	m.__n0.Add(m.__n5)
+	m.__n4.Add(m.__n0)
+	m.__n3.Add(m.__n4)
+	m.__n1.Add(m.__n3)
+	m.home.Add(m.__n1)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
@@ -480,10 +496,10 @@ type Color struct {
 type Model struct {
 	pal            Palette
 	visible__inst0 bool
-	__n0           gtk4rt.Handle
+	home           gtk4rt.Handle
+	__n1           gtk4rt.Handle
 	__n2           gtk4rt.Handle
 	__n3           gtk4rt.Handle
-	__n4           gtk4rt.Handle
 	__built        bool
 }
 
@@ -538,17 +554,17 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 	return p.Plain
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
-func (m *Model) __n3_clicked_handler() {
+func (m *Model) __n2_clicked_handler() {
 	m.pal = Palette{Keyword: snglcolor.Color{R: 255, G: 123, B: 114, A: 255}, Type: snglcolor.Color{R: 255, G: 166, B: 87, A: 255}, Function: snglcolor.Color{R: 210, G: 168, B: 255, A: 255}, Constant: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, String: snglcolor.Color{R: 165, G: 214, B: 255, A: 255}, Number: snglcolor.Color{R: 121, G: 192, B: 255, A: 255}, Comment: snglcolor.Color{R: 139, G: 148, B: 158, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}
-	gtk4rt.LabelSetMarkup(m.__n4, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
 }
 
 func (m *Model) Pal() Palette {
@@ -572,32 +588,32 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "t")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__n3 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n3, "theme")
-	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
-	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n4, true)
-	gtk4rt.LabelSetXAlign(m.__n4, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n4, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
-	gtk4rt.BoxAppend(m.__n2, m.__n4)
-	gtk4rt.BoxAppend(m.__n0, m.__n2)
-	gtk4rt.AppAttach(m.__n0)
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "t")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
+	m.__n2 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n2, "theme")
+	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n2)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n3, true)
+	gtk4rt.LabelSetXAlign(m.__n3, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n3, (("<tt>" + (("<span" + gtk4rt.Foreground(ColorOf(m.pal, Palette{Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, B: 0, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Plain: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Variable: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Operator: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Punctuation: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}}, "keyword"))) + ">")) + "func</span></tt>"))
+	gtk4rt.BoxAppend(m.__n1, m.__n3)
+	gtk4rt.BoxAppend(m.home, m.__n1)
+	gtk4rt.AppAttach(m.home)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n0)
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from main.sngl; DO NOT EDIT.
@@ -855,9 +871,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0c6497ba9629ac2da7a950be1db7ddba
 -- run/go/fyne --
-pass sha256:6b9cb38f8fc14f4ca39e6620c10eb823
+pass sha256:c06d2134d634202e1926dce7e4273ed5
 -- run/go/gtk4 --
-pass sha256:23e312072c2bd7e3f2939a9e86adc873
+pass sha256:4b9a37946f9b206457a5cfad7c9b49f3
 -- run/kotlin/android --
 pass sha256:0dc53e949ccffdac37a5bd388c404d86
 -- run/none/html --

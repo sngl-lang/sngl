@@ -70,14 +70,6 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		return err
 	}
 	pkg.Body = body
-	for _, w := range pkg.Windows {
-		st.hoist = &pkg.Vars
-		wbody, err := st.inlineStmts(w.Children)
-		if err != nil {
-			return err
-		}
-		w.Children = wbody
-	}
 	return nil
 }
 
@@ -281,17 +273,6 @@ func (st *inlinePureState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, error) {
 func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		// A window instantiates a primitive nothing inlines, and the pass has
-		// no prop or handler of its own to substitute into one: what it holds
-		// is all there is to do.
-		if ir.IsWindowNode(n) {
-			body, err := st.inlineStmts(n.Children)
-			if err != nil {
-				return nil, err
-			}
-			n.Children = body
-			return []ir.Stmt{n}, nil
-		}
 		return st.inlineNodeInst(n)
 	case *ir.If:
 		body, err := st.inlineStmts(n.Body)
@@ -657,6 +638,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
+	body = dropConstantWrites(body)
 
 	// Apply event-invocation substitution: replace any *ir.Emit whose
 	// Name matches a user-provided event handler with the handler body.
@@ -751,6 +733,12 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				visit(n.Children)
 			case *ir.ErrorBoundary:
 				visit(n.Children)
+				visit(n.Failed)
+				// A window's `boundary(@error(e) { error(e) })` emits from
+				// the boundary's own handler.
+				if n.Handler != nil && n.Handler.Func != nil {
+					visit(n.Handler.Func.Block)
+				}
 			case *ir.ContextProvider:
 				visit(n.Children)
 			}
@@ -872,6 +860,14 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+			n.Failed = substituteEventsUnder(n.Failed, handlers, enclosing, under)
+			// The boundary's own handler is the override's code as much as its
+			// children are: a window's `boundary(@error(e) { error(e) })`
+			// forwards to the window's @error, and the caller's handler for it
+			// is what runs -- or nothing, where the caller wrote none.
+			if h := n.Handler; h != nil && h.Func != nil {
+				h.Func.Block = substituteEventsUnder(h.Func.Block, handlers, h.Func, under)
+			}
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
@@ -1379,6 +1375,44 @@ func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent
 			Params: slices.Clone(sc.Params),
 			Body:   deepCloneStmts(sc.Body),
 		}
+	}
+	return out
+}
+
+// dropConstantWrites removes a write whose target the substitution made a
+// constant: a two-way prop nothing holds, which a call site's value can only
+// have started. Every such prop is a cell by now (passImplicitState) but one --
+// the document a surface target writes its page from, which cannot leave the
+// screen and keeps no `visible` where nothing reads it -- so this is where the
+// write its host would report goes nowhere, rather than `true = __visible`.
+func dropConstantWrites(stmts []ir.Stmt) []ir.Stmt {
+	constant := func(e ir.Expr) bool { _, ok := e.(*ir.Literal); return ok }
+	out := stmts[:0:0]
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.Assign:
+			if constant(n.Target) {
+				continue
+			}
+		case *ir.Toggle:
+			if constant(n.Target) {
+				continue
+			}
+		case *ir.If:
+			n.Body, n.Else = dropConstantWrites(n.Body), dropConstantWrites(n.Else)
+		case *ir.For:
+			n.Body, n.Else = dropConstantWrites(n.Body), dropConstantWrites(n.Else)
+		case *ir.NodeInst:
+			n.Children = dropConstantWrites(n.Children)
+			for i := range n.Handlers {
+				if f := n.Handlers[i].Func; f != nil {
+					f.Block = dropConstantWrites(f.Block)
+				}
+			}
+		case *ir.ErrorBoundary:
+			n.Children = dropConstantWrites(n.Children)
+		}
+		out = append(out, s)
 	}
 	return out
 }

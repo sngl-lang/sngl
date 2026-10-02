@@ -52,9 +52,13 @@ component Toplevel(
     content ...component ui.node,
 ) root
 
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
 const component ui.window[platform] {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
-        content
+        boundary(@error(e) { error(e) }) {
+            content
+        }
     }
 }
 

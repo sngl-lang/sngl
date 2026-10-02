@@ -45,7 +45,6 @@ type Package struct {
 	// a macro exists, what arguments it takes and what it does; the compiler
 	// adds only an implementation for the ones it implements.
 	Macros  []*Func
-	Windows []*Window
 	Outputs []*Output
 	// BuildConsts are the consts only a build reads: on a target that unrolls
 	// its views one document at a time, a const a view loop walks is a value
@@ -69,16 +68,6 @@ type Package struct {
 	// "which declarations own state" has to be able to name the package
 	// without a special case (#135).
 	Body []Stmt `json:",omitempty"`
-
-	// WindowsFlat says no window's body holds another window, which
-	// Owners reads to skip the search that would prove it again. Only
-	// passWindowNesting sets it, and only by refusing the program that would
-	// make it false -- so it is a proof carried forward rather than a claim,
-	// and the passes after that one are where every expensive Owners call is.
-	//
-	// False means unproven, not disproven: everything before that pass, and
-	// every consumer that never lowers at all, searches as it always did.
-	WindowsFlat bool `json:"-"`
 
 	// TreeKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
@@ -248,43 +237,23 @@ func (p *Package) RootDecl() *Component {
 }
 
 // IsProgram reports whether the package is something to build rather than a
-// library to import. A window is what says so: it is the only renderable
-// member of the root tree, so a package without one has nothing to open.
+// library to import: whether its body renders a node. The package body is the
+// application's view, and every node written there is a member of `root` -- a
+// window, a root component's instance, a generated family's host -- so a
+// package whose body renders nothing has nothing to show, and one whose only
+// root component nobody instantiates renders nothing either.
 func (p *Package) IsProgram() bool {
 	if p == nil {
 		return false
 	}
-	if len(p.Windows) > 0 {
-		return true
-	}
-	// Reachability from the package body, not membership in any body: a
-	// root-family component is an ordinary declaration, so nothing lifts its
-	// windows and one nobody instantiates renders nothing. Asked of every
-	// component regardless, a file holding a spare root component and no way
-	// to reach it built -- and each backend then met an *ir.Window in the
-	// middle of a component method, which fyne and bubbletea panic on.
 	found := false
-	seen := map[*Component]bool{}
-	var scan func(stmts []Stmt)
-	scan = func(stmts []Stmt) {
-		_ = WalkStmts(stmts, func(s Stmt) error {
-			if found {
-				return SkipDir
-			}
-			if n, ok := s.(*NodeInst); ok {
-				if IsWindowNode(n) {
-					found = true
-					return SkipDir
-				}
-				if n.Component != nil && !seen[n.Component] {
-					seen[n.Component] = true
-					scan(n.Component.Body)
-				}
-			}
-			return nil
-		})
-	}
-	scan(p.Body)
+	_ = WalkStmts(p.Body, func(s Stmt) error {
+		if _, ok := s.(*NodeInst); ok {
+			found = true
+			return SkipAll
+		}
+		return nil
+	})
 	return found
 }
 
@@ -976,41 +945,6 @@ type EventHandler struct {
 	// whether to emit error-propagation scaffolding for this handler.
 	CanError bool
 }
-
-// Window is a node that instantiates the #[builtin("window")] declaration.
-//
-// It is an alias and not a type: a window is a NodeInst like every other node,
-// and the name is kept because "which of these nodes is a window" is a
-// question nineteen consumers ask and `*ir.Window` is what they have always
-// spelled the answer as. It buys no type safety -- a plain vbox satisfies it
-// -- so a function taking one is documenting its expectation rather than
-// enforcing it; IsWindowNode is the test.
-//
-// What the separate struct cost was 79 `case *ir.Window:` arms across the
-// lowering, the optimizer, the interpreter and four platforms, each of them a
-// second answer to a question the NodeInst arm beside it had already answered,
-// and each a place a walk could forget a window and say nothing.
-type Window = NodeInst
-
-// IsWindowNode reports whether n instantiates the #[builtin("window")]
-// declaration.
-//
-// The mark and never the name, for the reason every other builtin lookup gives:
-// a program may declare its own `window` and it is not this one. It is also the
-// whole of what separates a window from any other node now that the two share a
-// type, so a walk asking "is this a window" asks here.
-func IsWindowNode(n *NodeInst) bool {
-	return n != nil && n.Component != nil && n.Component.Builtin == BuiltinWindow
-}
-
-// The window props the compiler itself reads. Each is declared in
-// lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
-// matches, not a second declaration of them, and nothing enumerates the set --
-// html asks for the favicon, gtk4 for the title.
-const (
-	WindowTitle   = "title"
-	WindowFavicon = "favicon"
-)
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.

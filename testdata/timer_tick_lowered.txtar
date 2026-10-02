@@ -282,8 +282,8 @@ type Model struct {
 	__effects0_pending   bool
 	__effects0_steps     int
 
-	__n0    *fynelayout.Toplevel
-	__n1    *widget.Label
+	main    *fynelayout.Toplevel
+	__n0    *widget.Label
 	__built bool
 }
 
@@ -330,12 +330,12 @@ func (m *Model) __effect0_mount() {
 							__lt0 = (m.level__inst1 + 0.01)
 						}
 						m.level__inst1 = __lt0
-						m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+						m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 						var __iterIdx0 int = -1
 						for x := range slices.Values([]int{0, 1, 2}) {
 							__iterIdx0 += 1
 							m.rung__inst1 = (m.rung__inst1 + (__iterIdx0 * x))
-							m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+							m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 						}
 					})
 				case <-stopped:
@@ -419,12 +419,28 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst2 = __visible
-	m.__n0.SetVisible(m.visible__inst2)
+	m.main.SetVisible(m.visible__inst2)
+}
+
+// mainClosed invokes the OnClosed callback on the #main widget; for tests.
+func (m *Model) mainClosed() {
+	if m.main.OnClosed != nil {
+		m.main.OnClosed()
+	}
+}
+
+// mainVisible invokes the OnVisible callback on the #main widget; for tests.
+func (m *Model) mainVisible(__visible bool) {
+	if cb := m.main.OnVisible; cb != nil {
+		m.main.OnVisible = nil
+		cb(__visible)
+		m.main.OnVisible = cb
+	}
 }
 
 func (m *Model) Level__inst1() float64 {
@@ -486,20 +502,20 @@ func (m *Model) SetVisible__inst2(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.main.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("tick")
-	m.__n0.SetVisible(m.visible__inst2)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
-	m.__n0.Add(m.__n1)
-	fynelayout.AppAttach(m.__n0)
+	m.main = fynelayout.NewToplevel()
+	m.main.SetTitle("tick")
+	m.main.SetVisible(m.visible__inst2)
+	m.main.OnClosed = m.main_closed_handler
+	m.main.OnVisible = m.main_visible_handler
+	m.__n0 = widget.NewLabel("")
+	m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+	m.main.Add(m.__n0)
+	fynelayout.AppAttach(m.main)
 	m.__effects0_settle()
-	return m.__n0.Container
+	return m.main.Container
 }
 
 func main() {
@@ -513,4 +529,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:66d8a0592cd37672823cc57c94903232
 -- run/go/fyne --
-pass sha256:58f297bd66b61da4ef22b3a197ebf608
+pass sha256:03e54e1fd1ed999f9cdb0917f9407b35

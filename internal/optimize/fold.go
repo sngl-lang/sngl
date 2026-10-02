@@ -109,13 +109,14 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if id, ok := x.Operand.(*ir.Ident); ok {
-			// A window's `#id` binds a handle var like every other node's, so
-			// the window is reached through it rather than off the symbol.
+			// A one-way prop read off a window's `#id` -- an instance of a
+			// `root` member -- is the expression its call site gave it: that is
+			// what the prop says for as long as the node is rendered, and a
+			// Select left standing reaches codegen as a dangling reference once
+			// the inliner has spliced the instance away. A widget's is
+			// passNodePropReads', which asks what its primitive keeps.
 			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
-				// Every prop of the #[builtin("window")] component is
-				// readable off the id, so each must fold here -- a Select left
-				// standing reaches codegen as a dangling reference.
-				if win := ctx.windowForHandle(v); win != nil {
+				if win := ctx.nodeForHandle(v); win != nil && oneWayProp(win.Component, x.Field) {
 					if val := win.Prop(x.Field); val != nil {
 						// Folded again, and against *this* context: the read
 						// may sit in an unrolled loop body where the loop
@@ -140,14 +141,14 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 						// Guarded because `window #h(title = h.title)` reads
 						// the prop it is. Left standing there, which is what a
 						// prop with no answer already reached codegen as.
-						key := windowProp{win: win, field: x.Field}
+						key := nodeProp{node: win, field: x.Field}
 						if !ctx.foldingProp[key] {
 							// foldPkg builds the map so that every child ctx
 							// shares one; this is for the contexts assembled
 							// by hand, which today fold nothing (nativescan)
 							// but would write into a nil map if one ever did.
 							if ctx.foldingProp == nil {
-								ctx.foldingProp = map[windowProp]bool{}
+								ctx.foldingProp = map[nodeProp]bool{}
 							}
 							ctx.foldingProp[key] = true
 							out := foldExpr(cloneExpr(val), ctx)
@@ -354,6 +355,12 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		n.Target = foldExpr(n.Target, ctx)
 	case *ir.ErrorBoundary:
 		n.Children = foldStmts(n.Children, ctx)
+		n.Failed = foldStmts(n.Failed, ctx)
+		// The handler is a body like the node handlers beside it: a window's
+		// @error is this one, by its override.
+		if h := n.Handler; h != nil && h.Func != nil {
+			h.Func.Block = foldStmts(h.Func.Block, ctx)
+		}
 	case *ir.CanvasRedrawStmt:
 		// Canvas redraw stmts carry only NodeInst/Func pointers; no expressions to fold.
 	case *ir.Break, *ir.Continue:
@@ -406,12 +413,6 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	}
 	for i := range n.Handlers {
 		n.Handlers[i].Func.Block = foldStmts(n.Handlers[i].Func.Block, ctx)
-	}
-	// A window's @error is a handler like the rest, and reached from nowhere
-	// else: it hung off ir.Window, whose own fold arm walked the props and the
-	// body and not this.
-	if n.ErrorHandler != nil && n.ErrorHandler.Func != nil {
-		n.ErrorHandler.Func.Block = foldStmts(n.ErrorHandler.Func.Block, ctx)
 	}
 	// A named slot's population is a body like the children are. Visited by
 	// name because Slots is a map: folding itself does not care, but a pass

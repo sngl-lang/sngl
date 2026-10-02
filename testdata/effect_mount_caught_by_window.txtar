@@ -638,17 +638,19 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        DisposableEffect(Unit) {
-            try {
-            	risky(3)
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	caught = e.message
+        Column {
+            DisposableEffect(Unit) {
+                try {
+                	risky(3)
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	caught = e.message
+                }
+                onDispose {
+                }
             }
-            onDispose {
-            }
+            Text(text = caught, modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = caught, modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -759,6 +761,6 @@ pass sha256:e5cfc47606dc437b3eeea139547e0e6f
 -- run/go/html --
 pass sha256:ca8eb25be796f1f6995c935307a8b950
 -- run/kotlin/android --
-pass sha256:cc9c8ca2e388cd841d2d51087a96df2e
+pass sha256:8e70ecb29e77c1fb02a5bea6c18b7cd5
 -- run/none/html --
 pass sha256:32dc75e46e446bb40fb319047eeb41bc

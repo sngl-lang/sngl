@@ -110,8 +110,8 @@ type Model struct {
 	__effects0_pending   bool
 	__effects0_steps     int
 
-	__n0    *fynelayout.Toplevel
-	__n1    *widget.Label
+	main    *fynelayout.Toplevel
+	__n0    *widget.Label
 	__built bool
 }
 
@@ -151,11 +151,26 @@ func (m *Model) __effect0_mount() {
 							return
 						}
 						go func() {
-							__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-							fyne.Do(func() {
-								m.name__inst1 = __async_off0
-								m.__n1.SetText(m.name__inst1)
-							})
+							func() {
+								defer func() {
+									__r := recover()
+									if __r == nil {
+										return
+									}
+									e, __ok := __r.(ErrorEvent)
+									if !__ok {
+										panic(__r)
+									}
+									_ = e
+									fyne.Do(func() {
+									})
+								}()
+								__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+								fyne.Do(func() {
+									m.name__inst1 = __async_off0
+									m.__n0.SetText(m.name__inst1)
+								})
+							}()
 						}()
 					})
 				case <-stopped:
@@ -239,12 +254,28 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst2 = __visible
-	m.__n0.SetVisible(m.visible__inst2)
+	m.main.SetVisible(m.visible__inst2)
+}
+
+// mainClosed invokes the OnClosed callback on the #main widget; for tests.
+func (m *Model) mainClosed() {
+	if m.main.OnClosed != nil {
+		m.main.OnClosed()
+	}
+}
+
+// mainVisible invokes the OnVisible callback on the #main widget; for tests.
+func (m *Model) mainVisible(__visible bool) {
+	if cb := m.main.OnVisible; cb != nil {
+		m.main.OnVisible = nil
+		cb(__visible)
+		m.main.OnVisible = cb
+	}
 }
 
 func (m *Model) Name__inst1() string {
@@ -298,20 +329,20 @@ func (m *Model) SetVisible__inst2(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.main.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("poll")
-	m.__n0.SetVisible(m.visible__inst2)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(m.name__inst1)
-	m.__n0.Add(m.__n1)
-	fynelayout.AppAttach(m.__n0)
+	m.main = fynelayout.NewToplevel()
+	m.main.SetTitle("poll")
+	m.main.SetVisible(m.visible__inst2)
+	m.main.OnClosed = m.main_closed_handler
+	m.main.OnVisible = m.main_visible_handler
+	m.__n0 = widget.NewLabel("")
+	m.__n0.SetText(m.name__inst1)
+	m.main.Add(m.__n0)
+	fynelayout.AppAttach(m.main)
 	m.__effects0_settle()
-	return m.__n0.Container
+	return m.main.Container
 }
 
 func main() {
@@ -363,8 +394,8 @@ type Model struct {
 	__effects0_settling  bool
 	__effects0_pending   bool
 	__effects0_steps     int
+	main                 gtk4rt.Handle
 	__n0                 gtk4rt.Handle
-	__n1                 gtk4rt.Handle
 	__built              bool
 }
 
@@ -387,11 +418,26 @@ func New() *Model {
 func (m *Model) __effect0_mount() {
 	m.handle__inst0__inst1 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		go func() {
-			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-			gtk4rt.Post(func() {
-				m.name__inst1 = __async_off0
-				gtk4rt.LabelSetText(m.__n1, m.name__inst1)
-			})
+			func() {
+				defer func() {
+					__r := recover()
+					if __r == nil {
+						return
+					}
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
+					}
+					_ = e
+					gtk4rt.Post(func() {
+					})
+				}()
+				__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+				gtk4rt.Post(func() {
+					m.name__inst1 = __async_off0
+					gtk4rt.LabelSetText(m.__n0, m.name__inst1)
+				})
+			}()
 		}()
 	})
 }
@@ -464,12 +510,12 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst2 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst2)
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst2)
 }
 
 func (m *Model) Name__inst1() string {
@@ -501,15 +547,15 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "poll")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst2)
-	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.name__inst1)
-	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	gtk4rt.AppAttach(m.__n0)
+	m.main = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.main, "poll")
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst2)
+	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n0, m.name__inst1)
+	gtk4rt.BoxAppend(m.main, m.__n0)
+	gtk4rt.AppAttach(m.main)
 	m.__effects0_settle()
 }
 
@@ -517,9 +563,9 @@ func (m *Model) buildWidgetTree() {
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n0)
+	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:28123e02bfc445d4f5710322b8b4822a
+pass sha256:5c90fe8430484cc52bf43010e3eb027f
 -- run/go/gtk4 --
-pass sha256:aefaca7c4c78c1281e1b53a810977824
+pass sha256:cba1648ef55204686b3a79ebdef80cb3

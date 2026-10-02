@@ -1301,10 +1301,14 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 			t.Fatalf("unexpected diagnostic: %s", d.Error())
 		}
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("got %d windows, want 1", len(pkg.Windows))
+	if len(pkg.Body) != 1 {
+		t.Fatalf("got %d root statements, want the window", len(pkg.Body))
 	}
-	if got := pkg.Windows[0].ID; got != "" {
+	w, ok := pkg.Body[0].(*ir.NodeInst)
+	if !ok {
+		t.Fatalf("root statement is %T, want the window", pkg.Body[0])
+	}
+	if got := w.ID; got != "" {
 		t.Fatalf("want empty id, got %q", got)
 	}
 }

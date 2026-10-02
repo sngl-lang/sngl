@@ -216,9 +216,6 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 				w.fn(h.Func)
 			}
 		}
-		if n.ErrorHandler != nil {
-			w.fn(n.ErrorHandler.Func)
-		}
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Record = w.expr(n.Record)
@@ -392,9 +389,6 @@ func (w *rewriter) pkg(pkg *Package) {
 	}
 	for _, c := range pkg.Components {
 		w.component(c)
-	}
-	for _, win := range pkg.Windows {
-		w.stmt(win)
 	}
 	// The package's own body, last, so a walk sees declarations before what
 	// renders them -- the same order this walk visits a component in.

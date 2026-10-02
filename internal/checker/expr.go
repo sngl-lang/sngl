@@ -4085,10 +4085,6 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		return nil
 	}
 	switch kind {
-	case ir.BuiltinWindow:
-		w := c.windowShell(vn)
-		c.checkWindow(w)
-		return w
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)
 	case ir.BuiltinEffect:

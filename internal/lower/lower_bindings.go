@@ -117,7 +117,13 @@ func lowerPropBindings(inst *ir.NodeInst) {
 				Name:   b.PropName,
 				Params: []*ir.Param{{Type: prop.Type}},
 			})
-			// 2. Rewrite prop assignments/toggles → emit in component.
+			// 2. Rewrite prop assignments/toggles → emit in component. A body
+			// handing the prop on to what it renders -- an override's
+			// `Toplevel(:visible=visible)` -- writes it through that binding,
+			// which is lowered first so the write it becomes is one of these:
+			// left for later, it was a second report of the prop beside the
+			// emit, and the node carried the handler twice.
+			comp.Body = rewritePropBindingStmts(comp.Body)
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
 
 			// 2a. If the component body has no @propName emits after the

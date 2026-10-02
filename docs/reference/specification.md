@@ -1878,8 +1878,10 @@ ui.window {
 
 `boundary` is generic over the family of what it wraps: its content binds the
 family, and `failed` must belong to the same one, since it stands where the
-content stood. A window's `@error` is its outermost boundary. An error no
-boundary catches goes to the platform's default handler.
+content stood. A window's `@error` is its outermost boundary, and it catches
+whether or not the program handles it: a raise under a window whose call site
+wrote no `@error` is caught and dropped. An error no boundary catches goes to
+the platform's default handler.
 
 ## Trees and families
 
@@ -1941,13 +1943,16 @@ family goes — `component boundary<T>(…, content ...component T, failed compo
 
 ## Programs
 
-A package is a **program** when it declares at least one window; a package that
-declares none is a library, which may be type-checked but has nothing to run.
+A package is a **program** when its body renders something; a package whose
+body renders nothing is a library, which may be type-checked but has nothing to
+run.
 
 The package body — the statements at the root of its files — is a slot that
-accepts the `root` family, whose members are `ui.window` and the `output`
-directive. A `ui.node` written at the root of a file is therefore a family
-error, while an `if` or `for` there is not a node and may hold windows. There is
+accepts the `root` family, whose members are `ui.window`, a component whose
+return position is `root`, and the `output` directive. A `ui.node` written at
+the root of a file is therefore a family error, while an `if` or `for` there is
+not a node and may hold windows. A window is an ordinary component of
+`sngl:ui`, which each target implements. There is
 no entry-point function or component: a component named `main` is an ordinary
 component. A component whose return position is `root` renders windows, and
 they reach the program when something at the root instantiates it.
@@ -1985,7 +1990,10 @@ has `{name}` placeholders is handed their values as one struct value in its
 one of the href's placeholders.
 
 A window's body is its content; state it declares belongs to what holds the
-window (see [State and derivation](#state-and-derivation)). Where several
+window (see [State and derivation](#state-and-derivation)). A node's `#id` at
+the root of a file is the package's: every root statement, function and
+component body reaches it, a window's body hoists its ids as any node's does,
+and a second declaration of the name in the package is an error. Where several
 windows read one package-level variable, whether they share one value or each
 get a copy is the target's: windows that are one process share it, windows
 that are separate documents copy it.
@@ -2004,10 +2012,6 @@ node they belong to — `output(name = …)` for options every target shares,
 every value in the tree must be constant, since the directive is read before
 the program runs. A build that names its targets on the command line ignores
 the directive.
-
-`entry` names the window a build opens at, by its element reference. A program
-with one window needs it only for emphasis; past one, it says which window is
-the program's start.
 
 ## Modules
 

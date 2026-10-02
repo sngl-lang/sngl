@@ -184,14 +184,14 @@ type Measurement struct {
 type Model struct {
 	visible__inst0 bool
 
-	__n0    *fynelayout.Toplevel
-	__n1    *fynetext.Flow
+	home    *fynelayout.Toplevel
+	__n0    *fynetext.Flow
+	__n1    *fynetext.Span
 	__n2    *fynetext.Span
 	__n3    *fynetext.Span
 	__n4    *fynetext.Span
 	__n5    *fynetext.Span
 	__n6    *fynetext.Span
-	__n7    *fynetext.Span
 	__built bool
 }
 
@@ -202,12 +202,28 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n0.SetVisible(m.visible__inst0)
+	m.home.SetVisible(m.visible__inst0)
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -221,33 +237,33 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n0.Container
+		return m.home.Container
 	}
 	m.__built = true
-	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetTitle("t")
-	m.__n0.SetVisible(m.visible__inst0)
-	m.__n0.OnClosed = m.__n0_closed_handler
-	m.__n0.OnVisible = m.__n0_visible_handler
-	m.__n1 = fynetext.NewFlow()
-	m.__n2 = fynetext.NewSpan(fynetext.Style().WithMono())
-	m.__n3 = fynetext.NewSpan(fynetext.Style().WithToken("keyword").WithRGBA(255, 123, 114, 255))
-	m.__n4 = fynetext.NewSpan(fynetext.Style())
-	m.__n4.SetText("func")
-	m.__n3.Add(m.__n4)
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
+	m.__n0 = fynetext.NewFlow()
+	m.__n1 = fynetext.NewSpan(fynetext.Style().WithMono())
+	m.__n2 = fynetext.NewSpan(fynetext.Style().WithToken("keyword").WithRGBA(255, 123, 114, 255))
+	m.__n3 = fynetext.NewSpan(fynetext.Style())
+	m.__n3.SetText("func")
 	m.__n2.Add(m.__n3)
-	m.__n5 = fynetext.NewSpan(fynetext.Style())
-	m.__n5.SetText(" ")
-	m.__n2.Add(m.__n5)
-	m.__n6 = fynetext.NewSpan(fynetext.Style().WithToken("function").WithRGBA(210, 168, 255, 255))
-	m.__n7 = fynetext.NewSpan(fynetext.Style())
-	m.__n7.SetText("main")
-	m.__n6.Add(m.__n7)
-	m.__n2.Add(m.__n6)
 	m.__n1.Add(m.__n2)
+	m.__n4 = fynetext.NewSpan(fynetext.Style())
+	m.__n4.SetText(" ")
+	m.__n1.Add(m.__n4)
+	m.__n5 = fynetext.NewSpan(fynetext.Style().WithToken("function").WithRGBA(210, 168, 255, 255))
+	m.__n6 = fynetext.NewSpan(fynetext.Style())
+	m.__n6.SetText("main")
+	m.__n5.Add(m.__n6)
+	m.__n1.Add(m.__n5)
 	m.__n0.Add(m.__n1)
-	fynelayout.AppAttach(m.__n0)
-	return m.__n0.Container
+	m.home.Add(m.__n0)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
@@ -290,8 +306,8 @@ type Measurement struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
+	home           gtk4rt.Handle
 	__n0           gtk4rt.Handle
-	__n1           gtk4rt.Handle
 	__built        bool
 }
 
@@ -303,12 +319,12 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_closed_handler() {
+func (m *Model) home_closed_handler() {
 }
 
-func (m *Model) __n0_visible_handler(__visible bool) {
+func (m *Model) home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -324,24 +340,24 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n0, "t")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetWrap(m.__n1, true)
-	gtk4rt.LabelSetXAlign(m.__n1, 0.0)
-	gtk4rt.LabelSetMarkup(m.__n1, "<tt><span foreground=\"#FF7B72\">func</span> <span foreground=\"#D2A8FF\">main</span></tt>")
-	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	gtk4rt.AppAttach(m.__n0)
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "t")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetWrap(m.__n0, true)
+	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
+	gtk4rt.LabelSetMarkup(m.__n0, "<tt><span foreground=\"#FF7B72\">func</span> <span foreground=\"#D2A8FF\">main</span></tt>")
+	gtk4rt.BoxAppend(m.home, m.__n0)
+	gtk4rt.AppAttach(m.home)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n0)
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from main.sngl; DO NOT EDIT.
@@ -449,9 +465,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:896e570511349d45099ebdfb42b9dfb3
 -- run/go/fyne --
-pass sha256:68f41eaed32f39a7de4c40effde842d3
+pass sha256:3327934823e96472f7329a464c943118
 -- run/go/gtk4 --
-pass sha256:2df7e1f4ae3b9f5b2b889bbb3c2e2442
+pass sha256:8eed8b92483e61b0203250ce9a8d77c6
 -- run/kotlin/android --
 pass sha256:7a661edd4bfc45ca0814565dfa5ce4a6
 -- run/none/html --

@@ -37,11 +37,11 @@ func backendHandlerPkg() *ir.Package {
 		},
 	}})
 	btn := &ir.NodeInst{Name: "button", Handlers: []ir.EventHandler{handler}}
-	win := &ir.Window{
-		Name:      "window",
+	win := &ir.NodeInst{
+		Name:      "Window",
 		ID:        "app",
-		Component: &ir.Component{Name: "window", Builtin: ir.BuiltinWindow},
-		Props:     []ir.Arg{{Name: ir.WindowTitle, Value: &ir.Literal{Value: `"App"`, Type: ir.TypString}}},
+		Component: &ir.Component{Name: "Window", Intrinsic: windowIntrinsic, Gen: &ir.GenCaps{Renders: []string{ir.RenderedSurface}}},
+		Props:     []ir.Arg{{Name: windowTitle, Value: &ir.Literal{Value: `"App"`, Type: ir.TypString}}},
 		Children:  []ir.Stmt{btn},
 	}
 	return &ir.Package{

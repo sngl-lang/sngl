@@ -39,9 +39,6 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	// The package body's parent is the application: each node there is
 	// attached to it (ir.AppParent), and what that means is the platform's.
 	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, ir.AppParent)
-	for _, w := range pkg.Windows {
-		w.Children = st.processStmts(w.Children, &pkg.Funcs)
-	}
 	return nil
 }
 
@@ -210,14 +207,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window is a rendering root, not a widget to flatten: what it
-			// holds is lowered, and the window itself stays where it was
-			// written for codegen to read as the page it is.
-			if ir.IsWindowNode(n) {
-				n.Children = st.processStmts(n.Children, funcs)
-				out = append(out, n)
-				continue
-			}
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 			if parentID != "" {
 				out = append(out, &ir.CallStmt{
@@ -245,15 +234,9 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			out = append(out, n)
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
-			// The boundary a composed window's @error became (catchInBody)
-			// has done its work by now: every raise under it is resolved to
-			// its handler through Call.ResolvedHandler, and the handler has
-			// had its updaters injected. What is left is a passthrough, which
-			// gtk4 and fyne have no emitter for.
-			if n.AST == nil && n.Handler != nil && len(n.Failed) == 0 {
-				out = append(out, n.Children...)
-				continue
-			}
+			// Kept: what a boundary holds is flat now, and the boundary itself
+			// stays until passBoundaryPassthrough, because its handler is
+			// reached through it by every pass that still reads one.
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
@@ -626,7 +609,21 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 		return
 	}
 	var destroys []ir.Stmt
-	for _, s := range comp.Body {
+	// Through a boundary, which is no level of its own: a window's content
+	// is under the one its @error is.
+	var top func(stmts []ir.Stmt) []ir.Stmt
+	top = func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			if b, ok := s.(*ir.ErrorBoundary); ok {
+				out = append(out, top(b.Children)...)
+				continue
+			}
+			out = append(out, s)
+		}
+		return out
+	}
+	for _, s := range top(comp.Body) {
 		lv, ok := s.(*ir.LocalVar)
 		if !ok {
 			continue

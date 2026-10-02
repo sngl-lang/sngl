@@ -51,6 +51,13 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 		return nil
 	}
 	st := &implicitState{pkg: pkg, reads: map[*ir.Var]map[string]*ir.Var{}, through: map[*ir.Component]map[string]*ir.Var{}}
+	// The document a surface target writes its page from cannot leave the
+	// screen and is told of no close, so its `visible` is a cell only where
+	// the program reaches it through the `#id` -- a read of `home.visible`, a
+	// `home.open()` -- and nowhere else.
+	if surfaces, err := findSurfaces(pkg); err == nil && surfaces != nil && !handleReferenced(pkg, surfaces.doc.Handle) {
+		st.skip = surfaces.doc
+	}
 	for _, o := range ir.Owners(pkg) {
 		st.owner = o.Comp
 		if err := st.stmts(*o.Body); err != nil {
@@ -107,6 +114,9 @@ type implicitState struct {
 	// reads is each wrapped node's handle, and the cell behind each prop a
 	// read of the handle names.
 	reads map[*ir.Var]map[string]*ir.Var
+	// skip is a node that keeps no cell: the document of a surface target
+	// whose handle nothing reaches.
+	skip *ir.NodeInst
 }
 
 func (st *implicitState) stmts(stmts []ir.Stmt) error {
@@ -168,12 +178,7 @@ func (st *implicitState) stmts(stmts []ir.Stmt) error {
 // two-way prop unbound.
 func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	comp := n.Component
-	// A window still a builtin on this target -- html's document -- is no
-	// component to wrap: keepDocumentSurface gave its `visible` a cell of its
-	// own and took the prop and the binding off it.
-	// Where a platform overrides the window it is an ordinary component by
-	// now (composeOverriddenBuiltins) and gets its cell like any other.
-	if comp == nil || ir.IsWindowNode(n) {
+	if comp == nil || n == st.skip {
 		return nil, nil
 	}
 	unbound := ir.UnboundProps(comp, n.Bindings)
@@ -547,4 +552,20 @@ func handleCallPos(c *ir.Call) string {
 		}
 	}
 	return c.AST.Pos.String()
+}
+
+// handleReferenced reports whether anything in pkg names h.
+func handleReferenced(pkg *ir.Package, h *ir.Var) bool {
+	if h == nil {
+		return false
+	}
+	found := false
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym == ir.Symbol(h) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

@@ -80,23 +80,30 @@ func (st *slotChildSynth) liftArm(stmts []ir.Stmt) {
 // boundary without taking something with it that the rest of the program
 // names.
 //
-//   - A component with a body is an instance already, and a window renders a
-//     document of its own.
+//   - A component with a body is an instance already.
 //   - A slot insertion inserts the slot of the component it is written in,
-//     which the lifted component does not declare; a boundary's handler and a
-//     canvas's drawing are bodies the lift has no route for.
+//     which the lifted component does not declare; a boundary's handler, where
+//     it does something, and a canvas's drawing are bodies the lift has no
+//     route for.
 //   - A handle something reads would name a node that lives in the instance.
 func (st *slotChildSynth) liftable(n *ir.NodeInst) bool {
-	if n == nil || isInstanceNode(n) || ir.IsWindowNode(n) || !st.armReadsCells([]ir.Stmt{n}) {
+	if n == nil || isInstanceNode(n) || !st.armReadsCells([]ir.Stmt{n}) {
 		return false
 	}
 	ok := true
 	_ = ir.Walk(n, func(node ir.Node) error {
 		switch x := node.(type) {
-		case *ir.SlotInst, *ir.ErrorBoundary, *ir.ContextProvider:
+		case *ir.SlotInst, *ir.ContextProvider:
 			ok = false
+		case *ir.ErrorBoundary:
+			// One whose handler does nothing takes no body with it: a window's,
+			// whose call site handled no @error, which every window's content
+			// is under. A raise under it is caught where it is raised.
+			if len(x.Failed) > 0 || x.Handler == nil || x.Handler.Func == nil || len(x.Handler.Func.Block) > 0 {
+				ok = false
+			}
 		case *ir.NodeInst:
-			if ir.IsWindowNode(x) || ir.IsShapeContainer(x) || isDrawShape(x) ||
+			if ir.IsShapeContainer(x) || isDrawShape(x) ||
 				(x.Handle != nil && st.readHandles[x.Handle]) {
 				ok = false
 			}

@@ -82,10 +82,10 @@ type Model struct {
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*__window_state1__slot0Instance
 
-	__n2    *fynelayout.Toplevel
+	main    *fynelayout.Toplevel
+	__n4    *widget.Button
 	__n5    *widget.Button
-	__n6    *widget.Button
-	__n3    *widget.Label
+	__n2    *widget.Label
 	__built bool
 }
 
@@ -111,37 +111,37 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst0_next := []*__window_state1__slot0Instance{}
 	var __inst0_i int = 0
 	if m.details {
-		var __n4 *__window_state1__slot0Instance
+		var __n3 *__window_state1__slot0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetTitle("Load")
-			__n4.Set__p0(m.n)
-			__n4.SetClosed(func() {
+			__n3 = m.__inst0_live[__inst0_i]
+			__n3.SetTitle("Load")
+			__n3.Set__p0(m.n)
+			__n3.SetClosed(func() {
 				m.details = false
 				m.__renderSlot0(fynelayout.App)
 			})
-			__n4.Set__on0(func() {
+			__n3.Set__on0(func() {
 				m.shown += 1
-				m.__n3.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
+				m.__n2.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := new__window_state1__slot0Instance(m, true, "Load", m.n, func() {
+			__n3__new := new__window_state1__slot0Instance(m, true, "Load", m.n, func() {
 				m.details = false
 				m.__renderSlot0(fynelayout.App)
 			}, func() {
 				m.shown += 1
-				m.__n3.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
+				m.__n2.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
 			})
-			__n4 = __n4__new
+			__n3 = __n3__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		__n3__el := __n3.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
+		m.__slot0 = append(m.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -152,23 +152,39 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n2_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n2_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n2.SetVisible(m.visible__inst0)
+	m.main.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n5_click_handler() {
+func (m *Model) __n4_click_handler() {
 	m.details = !m.details
 	m.__renderSlot0(fynelayout.App)
 }
 
-func (m *Model) __n6_click_handler() {
+func (m *Model) __n5_click_handler() {
 	m.n += 1
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p0(m.n)
+	}
+}
+
+// mainClosed invokes the OnClosed callback on the #main widget; for tests.
+func (m *Model) mainClosed() {
+	if m.main.OnClosed != nil {
+		m.main.OnClosed()
+	}
+}
+
+// mainVisible invokes the OnVisible callback on the #main widget; for tests.
+func (m *Model) mainVisible(__visible bool) {
+	if cb := m.main.OnVisible; cb != nil {
+		m.main.OnVisible = nil
+		cb(__visible)
+		m.main.OnVisible = cb
 	}
 }
 
@@ -207,28 +223,28 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n2.Container
+		return m.main.Container
 	}
 	m.__built = true
-	m.__n2 = fynelayout.NewToplevel()
-	m.__n2.SetTitle("Main")
-	m.__n2.SetVisible(m.visible__inst0)
-	m.__n2.OnClosed = m.__n2_closed_handler
-	m.__n2.OnVisible = m.__n2_visible_handler
+	m.main = fynelayout.NewToplevel()
+	m.main.SetTitle("Main")
+	m.main.SetVisible(m.visible__inst0)
+	m.main.OnClosed = m.main_closed_handler
+	m.main.OnVisible = m.main_visible_handler
+	m.__n4 = widget.NewButton("", nil)
+	m.__n4.SetText("Details")
+	m.__n4.OnTapped = m.__n4_click_handler
+	m.main.Add(m.__n4)
 	m.__n5 = widget.NewButton("", nil)
-	m.__n5.SetText("Details")
+	m.__n5.SetText("+")
 	m.__n5.OnTapped = m.__n5_click_handler
-	m.__n2.Add(m.__n5)
-	m.__n6 = widget.NewButton("", nil)
-	m.__n6.SetText("+")
-	m.__n6.OnTapped = m.__n6_click_handler
-	m.__n2.Add(m.__n6)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
-	m.__n2.Add(m.__n3)
-	fynelayout.AppAttach(m.__n2)
+	m.main.Add(m.__n5)
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText((("shown " + fmt.Sprint(m.shown)) + " times"))
+	m.main.Add(m.__n2)
+	fynelayout.AppAttach(m.main)
 	m.__renderSlot0(fynelayout.App)
-	return m.__n2.Container
+	return m.main.Container
 }
 
 // __window_state1__slot0Instance is one live instance of the __window_state1__slot0 component.
@@ -285,16 +301,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.__effects0_settle()
 	c.Root = c.__n0
 	return c
-}
-
-func (c *__window_state1__slot0Instance) open__inst1() {
-	c.visible = true
-	c.__n0.SetVisible(c.visible)
-}
-
-func (c *__window_state1__slot0Instance) close__inst1() {
-	c.visible = false
-	c.__n0.SetVisible(c.visible)
 }
 
 func (c *__window_state1__slot0Instance) __effect0_mount() {
@@ -408,10 +414,10 @@ type Model struct {
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*__window_state1__slot0Instance
-	__n2           gtk4rt.Handle
+	main           gtk4rt.Handle
+	__n4           gtk4rt.Handle
 	__n5           gtk4rt.Handle
-	__n6           gtk4rt.Handle
-	__n3           gtk4rt.Handle
+	__n2           gtk4rt.Handle
 	__built        bool
 }
 
@@ -438,35 +444,35 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*__window_state1__slot0Instance{}
 	var __inst0_i int = 0
 	if m.details {
-		var __n4 *__window_state1__slot0Instance
+		var __n3 *__window_state1__slot0Instance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetTitle("Load")
-			__n4.Set__p0(m.n)
-			__n4.SetClosed(func() {
+			__n3 = m.__inst0_live[__inst0_i]
+			__n3.SetTitle("Load")
+			__n3.Set__p0(m.n)
+			__n3.SetClosed(func() {
 				m.details = false
 				m.__renderSlot0(gtk4rt.App)
 			})
-			__n4.Set__on0(func() {
+			__n3.Set__on0(func() {
 				m.shown += 1
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := new__window_state1__slot0Instance(m, true, "Load", m.n, func() {
+			__n3__new := new__window_state1__slot0Instance(m, true, "Load", m.n, func() {
 				m.details = false
 				m.__renderSlot0(gtk4rt.App)
 			}, func() {
 				m.shown += 1
 			})
-			__n4 = __n4__new
+			__n3 = __n3__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		__n3__el := __n3.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
+		m.__slot0 = append(m.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -477,20 +483,20 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n2_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n2_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
 }
 
-func (m *Model) __n5_clicked_handler() {
+func (m *Model) __n4_clicked_handler() {
 	m.details = !m.details
 	m.__renderSlot0(gtk4rt.App)
 }
 
-func (m *Model) __n6_clicked_handler() {
+func (m *Model) __n5_clicked_handler() {
 	m.n += 1
 	for __inst0_live_ui, _ := range m.__inst0_live {
 		m.__inst0_live[__inst0_live_ui].Set__p0(m.n)
@@ -552,16 +558,6 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 	c.Root = c.__n0
 	gtk4rt.Retain(c.Root)
 	return c
-}
-
-func (c *__window_state1__slot0Instance) open__inst1() {
-	c.visible = true
-	gtk4rt.ToplevelSetVisible(c.__n0, c.visible)
-}
-
-func (c *__window_state1__slot0Instance) close__inst1() {
-	c.visible = false
-	gtk4rt.ToplevelSetVisible(c.__n0, c.visible)
 }
 
 func (c *__window_state1__slot0Instance) __effect0_mount() {
@@ -676,23 +672,23 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n2 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n2, "Main")
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
+	m.main = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.main, "Main")
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
+	m.__n4 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n4, "Details")
+	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
+	gtk4rt.BoxAppend(m.main, m.__n4)
 	m.__n5 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n5, "Details")
+	gtk4rt.ButtonSetLabel(m.__n5, "+")
 	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n5)
-	m.__n6 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n6, "+")
-	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n6)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, (("shown " + fmt.Sprint(m.shown)) + " times"))
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
-	gtk4rt.AppAttach(m.__n2)
+	gtk4rt.BoxAppend(m.main, m.__n5)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
+	gtk4rt.BoxAppend(m.main, m.__n2)
+	gtk4rt.AppAttach(m.main)
 	m.__renderSlot0(gtk4rt.App)
 }
 
@@ -700,7 +696,7 @@ func (m *Model) buildWidgetTree() {
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n2)
+	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -723,7 +719,7 @@ dialog { margin: auto; padding: 1em; }
 <button id="$1">
   <span>+</span>
 </button>
-<span id="__n3" data-sngl-id="__n3">
+<span id="__n2" data-sngl-id="__n2">
 </span>
 <span data-sngl-slot="0" style="display:contents"></span>
 
@@ -753,14 +749,6 @@ dialog { margin: auto; padding: 1em; }
     let __effects0_pending = false;
     let __effects0_steps = 0;
     let __slot02 = [];
-    function open__inst0() {
-      visible = true;
-      __n0.open = visible;
-    }
-    function close__inst0() {
-      visible = false;
-      __n0.open = visible;
-    }
     function __effect0_mount() {
       __prop___on0();
     }
@@ -805,11 +793,11 @@ dialog { margin: auto; padding: 1em; }
     function __set_title(__v) {
       __prop_title = __v;
       __n0.setAttribute("aria-label", __prop_title);
-      __n1.textContent = __prop_title;
+      __n0.querySelector("header > span").textContent = __prop_title;
     }
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n2.textContent = String(__prop___p0);
+      __n1.textContent = String(__prop___p0);
     }
     function __set_closed(__v) {
       __prop_closed = __v;
@@ -818,28 +806,21 @@ dialog { margin: auto; padding: 1em; }
       __prop___on0 = __v;
       __effects0_settle();
     }
-    let __n0 = document.createElement("dialog");
-    __n0.open = visible;
+    let __n0 = _snglDialog();
     __n0.setAttribute("aria-label", __prop_title);
-    let __n5 = document.createElement("header");
-    let __n1 = document.createElement("span");
-    __n1.textContent = __prop_title;
-    __n5.appendChild(__n1);
-    let __n6 = document.createElement("button");
-    __n6.setAttribute("aria-label", "Close");
-    __n6.addEventListener("click", () => {
-      visible = false;
-      __n0.open = visible;
+    __n0.querySelector("header > span").textContent = __prop_title;
+    __n0.open = visible;
+    __n0.__onClosed = () => {
       __prop_closed();
-    });
-    let __n7 = document.createElement("span");
-    __n7.textContent = "\xD7";
-    __n6.appendChild(__n7);
-    __n5.appendChild(__n6);
-    __n0.appendChild(__n5);
-    let __n2 = document.createElement("span");
-    __n2.textContent = String(__prop___p0);
-    __n0.appendChild(__n2);
+    };
+    __n0.__onVisible = () => {
+      let __visible = false;
+      visible = __visible;
+      __n0.open = visible;
+    };
+    let __n1 = document.createElement("span");
+    __n1.textContent = String(__prop___p0);
+    __n0.appendChild(__n1);
     __effects0_settle();
     __root.appendChild(__n0);
     return {
@@ -862,45 +843,45 @@ dialog { margin: auto; padding: 1em; }
     let __inst1_next = [];
     let __inst1_i = 0;
     if (state.details) {
-      let __n4 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n4 = __inst1_live[__inst1_i];
-        __n4.__set_title("Load");
-        __n4.__set___p0(state.n);
-        __n4.__set_closed(() => {
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set_title("Load");
+        __n3.__set___p0(state.n);
+        __n3.__set_closed(() => {
           state.details = false;
           __renderSlot0(__slotAnchor_0);
         });
-        __n4.__set___on0(() => {
+        __n3.__set___on0(() => {
           state.shown += 1;
-          __n3.textContent = "shown " + String(state.shown) + " times";
+          __n2.textContent = "shown " + String(state.shown) + " times";
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n4__new = __cf___window_state0__slot0({ title: "Load", __p0: state.n, closed: () => {
+        let __n3__new = __cf___window_state0__slot0({ title: "Load", __p0: state.n, closed: () => {
           state.details = false;
           __renderSlot0(__slotAnchor_0);
         }, __on0: () => {
           state.shown += 1;
-          __n3.textContent = "shown " + String(state.shown) + " times";
+          __n2.textContent = "shown " + String(state.shown) + " times";
         } });
-        __n4 = __n4__new;
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n4);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n4__el = __n4.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n4__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n4__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n4__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -918,9 +899,26 @@ dialog { margin: auto; padding: 1em; }
   function String(v) {
     return "" + v;
   }
+  function _snglDialog() {
+    const d = document.createElement("dialog");
+    const h = document.createElement("header");
+    const c = document.createElement("button");
+    const x = document.createElement("span");
+    c.setAttribute("aria-label", "Close");
+    x.textContent = "\xD7";
+    c.appendChild(x);
+    h.appendChild(document.createElement("span"));
+    h.appendChild(c);
+    d.appendChild(h);
+    c.addEventListener("click", () => {
+      if (d.__onVisible) d.__onVisible();
+      if (d.__onClosed) d.__onClosed();
+    });
+    return d;
+  }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
@@ -936,15 +934,15 @@ dialog { margin: auto; padding: 1em; }
     ;
   });
   function __sngl_init() {
-    __n3.textContent = "shown " + String(state.shown) + " times";
+    __n2.textContent = "shown " + String(state.shown) + " times";
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7a9c07269bf43c1ae7b4495985209a97
+pass sha256:927e1d228c5f3461949c43eb070ec5f0
 -- run/go/gtk4 --
-pass sha256:ab4e1583ea9212cae950d06239674fe2
+pass sha256:8709252be85984764652443cbb75d093
 -- run/none/html --
-pass sha256:009a6c09c80ef63d351345f0678d0cbb
+pass sha256:08014bf6ef8e8130678e9857842eb16e

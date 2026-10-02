@@ -449,13 +449,13 @@ type Model struct {
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 
-	__n3    *fynelayout.Toplevel
-	__n9    *fyne.Container
-	__n4    *widget.Label
+	main    *fynelayout.Toplevel
+	__n8    *fyne.Container
+	__n3    *widget.Label
+	__n9    *widget.Button
 	__n10   *widget.Button
 	__n11   *widget.Button
 	__n12   *widget.Button
-	__n13   *widget.Button
 	__built bool
 }
 
@@ -489,57 +489,57 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst2_next := []*__child1Instance{}
 	var __inst2_i int = 0
 	if m.pages__current.Id == 0 {
-		var __n5 *CounterInstance
+		var __n4 *CounterInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
+			__n4 = m.__inst0_live[__inst0_i]
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n5__new := newCounterInstance(m)
-			__n5 = __n5__new
+			__n4__new := newCounterInstance(m)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n5)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		__n4__el := __n4.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	} else {
 		if m.pages__current.Id == 1 {
-			var __n6 *__child0Instance
+			var __n5 *__child0Instance
 			if len(m.__inst1_live) > __inst1_i {
-				__n6 = m.__inst1_live[__inst1_i]
-				__n6.Set__p0(m.pages__current)
+				__n5 = m.__inst1_live[__inst1_i]
+				__n5.Set__p0(m.pages__current)
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n6__new := new__child0Instance(m, m.pages__current)
-				__n6 = __n6__new
+				__n5__new := new__child0Instance(m, m.pages__current)
+				__n5 = __n5__new
 			}
-			__inst1_next = append(__inst1_next, __n6)
+			__inst1_next = append(__inst1_next, __n5)
 			__inst1_i = (__inst1_i + 1)
-			__n6__el := __n6.Root
-			fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
-			m.__slot0 = append(m.__slot0, __n6__el)
+			__n5__el := __n5.Root
+			fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+			m.__slot0 = append(m.__slot0, __n5__el)
 		} else {
 			if m.pages__current.Id == 2 {
-				var __n7 *__child1Instance
+				var __n6 *__child1Instance
 				if len(m.__inst2_live) > __inst2_i {
-					__n7 = m.__inst2_live[__inst2_i]
-					__n7.Set__p0(m.pkg__params)
+					__n6 = m.__inst2_live[__inst2_i]
+					__n6.Set__p0(m.pkg__params)
 				} else {
 					if len(m.__inst2_live) > __inst2_i {
 						m.__inst2_live[__inst2_i].Destroy()
 					}
-					__n7__new := new__child1Instance(m, m.pkg__params)
-					__n7 = __n7__new
+					__n6__new := new__child1Instance(m, m.pkg__params)
+					__n6 = __n6__new
 				}
-				__inst2_next = append(__inst2_next, __n7)
+				__inst2_next = append(__inst2_next, __n6)
 				__inst2_i = (__inst2_i + 1)
-				__n7__el := __n7.Root
-				fynelayout.InsertBefore(__parent, m.__slot0_at, __n7__el)
-				m.__slot0 = append(m.__slot0, __n7__el)
+				__n6__el := __n6.Root
+				fynelayout.InsertBefore(__parent, m.__slot0_at, __n6__el)
+				m.__slot0 = append(m.__slot0, __n6__el)
 			}
 		}
 	}
@@ -573,70 +573,86 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	if m.pages__current.Id == 1 {
-		__n8 := widget.NewLabel("")
-		__n8.SetText("on about")
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n8)
-		m.__slot1 = append(m.__slot1, __n8)
+		__n7 := widget.NewLabel("")
+		__n7.SetText("on about")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n7)
+		m.__slot1 = append(m.__slot1, __n7)
 	}
 }
 
-func (m *Model) __n3_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n3_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.__n3.SetVisible(m.visible__inst0)
+	m.main.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) __n9_click_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
+	m.main.SetTitle(("Docs - " + m.pages__current.Title))
+	m.__n3.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
 func (m *Model) __n10_click_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
-	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
-	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__n4.SetText(m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
-}
-
-func (m *Model) __n11_click_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 	m.pkg__params = Pkg{Name: "first"}
 	for __inst2_live_ui, _ := range m.__inst2_live {
 		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
-	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__n4.SetText(m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
+	m.main.SetTitle(("Docs - " + m.pages__current.Title))
+	m.__n3.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
-func (m *Model) __n12_click_handler() {
+func (m *Model) __n11_click_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 	m.pkg__params = Pkg{Name: "sngl"}
 	for __inst2_live_ui, _ := range m.__inst2_live {
 		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
-	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__n4.SetText(m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
+	m.main.SetTitle(("Docs - " + m.pages__current.Title))
+	m.__n3.SetText(m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
-func (m *Model) __n13_click_handler() {
+func (m *Model) __n12_click_handler() {
 	if len(m.pages__history) > 0 {
 		m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 		for __inst2_live_ui, _ := range m.__inst2_live {
 			m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 		}
 		m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
-		m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-		m.__n4.SetText(m.pages__current.Meta.Label)
-		m.__renderSlot0(m.__n9)
-		m.__renderSlot1(m.__n9)
+		m.main.SetTitle(("Docs - " + m.pages__current.Title))
+		m.__n3.SetText(m.pages__current.Meta.Label)
+		m.__renderSlot0(m.__n8)
+		m.__renderSlot1(m.__n8)
 		if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
 			m.pages__history = append(m.pages__history[:__i], m.pages__history[__i+1:]...)
 		}
+	}
+}
+
+// mainClosed invokes the OnClosed callback on the #main widget; for tests.
+func (m *Model) mainClosed() {
+	if m.main.OnClosed != nil {
+		m.main.OnClosed()
+	}
+}
+
+// mainVisible invokes the OnVisible callback on the #main widget; for tests.
+func (m *Model) mainVisible(__visible bool) {
+	if cb := m.main.OnVisible; cb != nil {
+		m.main.OnVisible = nil
+		cb(__visible)
+		m.main.OnVisible = cb
 	}
 }
 
@@ -675,39 +691,39 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.__n3.Container
+		return m.main.Container
 	}
 	m.__built = true
-	m.__n3 = fynelayout.NewToplevel()
-	m.__n3.SetTitle(("Docs - " + m.pages__current.Title))
-	m.__n3.SetVisible(m.visible__inst0)
-	m.__n3.OnClosed = m.__n3_closed_handler
-	m.__n3.OnVisible = m.__n3_visible_handler
-	m.__n9 = container.NewVBox()
-	m.__renderSlot0(m.__n9)
-	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText(m.pages__current.Meta.Label)
-	m.__n9.Add(m.__n4)
+	m.main = fynelayout.NewToplevel()
+	m.main.SetTitle(("Docs - " + m.pages__current.Title))
+	m.main.SetVisible(m.visible__inst0)
+	m.main.OnClosed = m.main_closed_handler
+	m.main.OnVisible = m.main_visible_handler
+	m.__n8 = container.NewVBox()
+	m.__renderSlot0(m.__n8)
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(m.pages__current.Meta.Label)
+	m.__n8.Add(m.__n3)
+	m.__n9 = widget.NewButton("", nil)
+	m.__n9.SetText("About")
+	m.__n9.OnTapped = m.__n9_click_handler
+	m.__n8.Add(m.__n9)
 	m.__n10 = widget.NewButton("", nil)
-	m.__n10.SetText("About")
+	m.__n10.SetText("first")
 	m.__n10.OnTapped = m.__n10_click_handler
-	m.__n9.Add(m.__n10)
+	m.__n8.Add(m.__n10)
 	m.__n11 = widget.NewButton("", nil)
-	m.__n11.SetText("first")
+	m.__n11.SetText("sngl")
 	m.__n11.OnTapped = m.__n11_click_handler
-	m.__n9.Add(m.__n11)
+	m.__n8.Add(m.__n11)
 	m.__n12 = widget.NewButton("", nil)
-	m.__n12.SetText("sngl")
+	m.__n12.SetText("Back")
 	m.__n12.OnTapped = m.__n12_click_handler
-	m.__n9.Add(m.__n12)
-	m.__n13 = widget.NewButton("", nil)
-	m.__n13.SetText("Back")
-	m.__n13.OnTapped = m.__n13_click_handler
-	m.__n9.Add(m.__n13)
-	m.__renderSlot1(m.__n9)
-	m.__n3.Add(m.__n9)
-	fynelayout.AppAttach(m.__n3)
-	return m.__n3.Container
+	m.__n8.Add(m.__n12)
+	m.__renderSlot1(m.__n8)
+	m.main.Add(m.__n8)
+	fynelayout.AppAttach(m.main)
+	return m.main.Container
 }
 
 // CounterInstance is one live instance of the counter component.
@@ -871,13 +887,13 @@ type Model struct {
 	__inst2_live   []*__child1Instance
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
+	main           gtk4rt.Handle
+	__n8           gtk4rt.Handle
 	__n3           gtk4rt.Handle
 	__n9           gtk4rt.Handle
-	__n4           gtk4rt.Handle
 	__n10          gtk4rt.Handle
 	__n11          gtk4rt.Handle
 	__n12          gtk4rt.Handle
-	__n13          gtk4rt.Handle
 	__built        bool
 }
 
@@ -912,57 +928,57 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst2_next := []*__child1Instance{}
 	var __inst2_i int = 0
 	if m.pages__current.Id == 0 {
-		var __n5 *CounterInstance
+		var __n4 *CounterInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n5 = m.__inst0_live[__inst0_i]
+			__n4 = m.__inst0_live[__inst0_i]
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n5__new := newCounterInstance(m)
-			__n5 = __n5__new
+			__n4__new := newCounterInstance(m)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n5)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n5__el := __n5.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
-		m.__slot0 = append(m.__slot0, __n5__el)
+		__n4__el := __n4.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	} else {
 		if m.pages__current.Id == 1 {
-			var __n6 *__child0Instance
+			var __n5 *__child0Instance
 			if len(m.__inst1_live) > __inst1_i {
-				__n6 = m.__inst1_live[__inst1_i]
-				__n6.Set__p0(m.pages__current)
+				__n5 = m.__inst1_live[__inst1_i]
+				__n5.Set__p0(m.pages__current)
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n6__new := new__child0Instance(m, m.pages__current)
-				__n6 = __n6__new
+				__n5__new := new__child0Instance(m, m.pages__current)
+				__n5 = __n5__new
 			}
-			__inst1_next = append(__inst1_next, __n6)
+			__inst1_next = append(__inst1_next, __n5)
 			__inst1_i = (__inst1_i + 1)
-			__n6__el := __n6.Root
-			gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
-			m.__slot0 = append(m.__slot0, __n6__el)
+			__n5__el := __n5.Root
+			gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+			m.__slot0 = append(m.__slot0, __n5__el)
 		} else {
 			if m.pages__current.Id == 2 {
-				var __n7 *__child1Instance
+				var __n6 *__child1Instance
 				if len(m.__inst2_live) > __inst2_i {
-					__n7 = m.__inst2_live[__inst2_i]
-					__n7.Set__p0(m.pkg__params)
+					__n6 = m.__inst2_live[__inst2_i]
+					__n6.Set__p0(m.pkg__params)
 				} else {
 					if len(m.__inst2_live) > __inst2_i {
 						m.__inst2_live[__inst2_i].Destroy()
 					}
-					__n7__new := new__child1Instance(m, m.pkg__params)
-					__n7 = __n7__new
+					__n6__new := new__child1Instance(m, m.pkg__params)
+					__n6 = __n6__new
 				}
-				__inst2_next = append(__inst2_next, __n7)
+				__inst2_next = append(__inst2_next, __n6)
 				__inst2_i = (__inst2_i + 1)
-				__n7__el := __n7.Root
-				gtk4rt.InsertBefore(parent, m.__slot0_at, __n7__el)
-				m.__slot0 = append(m.__slot0, __n7__el)
+				__n6__el := __n6.Root
+				gtk4rt.InsertBefore(parent, m.__slot0_at, __n6__el)
+				m.__slot0 = append(m.__slot0, __n6__el)
 			}
 		}
 	}
@@ -996,67 +1012,67 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if m.pages__current.Id == 1 {
-		__n8 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n8, "on about")
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n8)
-		m.__slot1 = append(m.__slot1, __n8)
+		__n7 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n7, "on about")
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n7)
+		m.__slot1 = append(m.__slot1, __n7)
 	}
 }
 
-func (m *Model) __n3_closed_handler() {
+func (m *Model) main_closed_handler() {
 }
 
-func (m *Model) __n3_visible_handler(__visible bool) {
+func (m *Model) main_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
+}
+
+func (m *Model) __n9_clicked_handler() {
+	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
+	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
+	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
+	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
 func (m *Model) __n10_clicked_handler() {
-	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
-	m.pages__current = _page__value{Id: 1, Href: "/about", Title: "About", Meta: Meta{Label: "about"}}
-	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
-}
-
-func (m *Model) __n11_clicked_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 	m.pkg__params = Pkg{Name: "first"}
 	for __inst2_live_ui, _ := range m.__inst2_live {
 		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
-	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
+	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
+	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
-func (m *Model) __n12_clicked_handler() {
+func (m *Model) __n11_clicked_handler() {
 	m.pages__history = append(m.pages__history, Pages__entry{Page: m.pages__current, Pkg: m.pkg__params})
 	m.pkg__params = Pkg{Name: "sngl"}
 	for __inst2_live_ui, _ := range m.__inst2_live {
 		m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 	}
 	m.pages__current = _page__value{Id: 2, Href: "/p/{name}", Title: "Package", Meta: Meta{Label: "pkg"}}
-	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
-	m.__renderSlot0(m.__n9)
-	m.__renderSlot1(m.__n9)
+	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
+	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	m.__renderSlot0(m.__n8)
+	m.__renderSlot1(m.__n8)
 }
 
-func (m *Model) __n13_clicked_handler() {
+func (m *Model) __n12_clicked_handler() {
 	if len(m.pages__history) > 0 {
 		m.pkg__params = m.pages__history[(len(m.pages__history) - 1)].Pkg
 		for __inst2_live_ui, _ := range m.__inst2_live {
 			m.__inst2_live[__inst2_live_ui].Set__p0(m.pkg__params)
 		}
 		m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
-		gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-		gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
-		m.__renderSlot0(m.__n9)
-		m.__renderSlot1(m.__n9)
+		gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
+		gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+		m.__renderSlot0(m.__n8)
+		m.__renderSlot1(m.__n8)
 		if __i := (len(m.pages__history) - 1); __i >= 0 && __i < len(m.pages__history) {
 			m.pages__history = append(m.pages__history[:__i], m.pages__history[__i+1:]...)
 		}
@@ -1234,48 +1250,48 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__built = true
-	m.__n3 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetTitle(m.__n3, ("Docs - " + m.pages__current.Title))
-	gtk4rt.ToplevelSetVisible(m.__n3, m.visible__inst0)
-	gtk4rt.ToplevelOnClosed(m.__n3, m.__n3_closed_handler)
-	gtk4rt.ToplevelOnVisible(m.__n3, m.__n3_visible_handler)
-	m.__n9 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n9, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n9, 6)
-	m.__renderSlot0(m.__n9)
-	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, m.pages__current.Meta.Label)
-	gtk4rt.BoxAppend(m.__n9, m.__n4)
+	m.main = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.main, ("Docs - " + m.pages__current.Title))
+	gtk4rt.ToplevelSetVisible(m.main, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.main, m.main_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.main, m.main_visible_handler)
+	m.__n8 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n8, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n8, 6)
+	m.__renderSlot0(m.__n8)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, m.pages__current.Meta.Label)
+	gtk4rt.BoxAppend(m.__n8, m.__n3)
+	m.__n9 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n9, "About")
+	gtk4rt.Connect(m.__n9, "clicked", m.__n9_clicked_handler)
+	gtk4rt.BoxAppend(m.__n8, m.__n9)
 	m.__n10 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n10, "About")
+	gtk4rt.ButtonSetLabel(m.__n10, "first")
 	gtk4rt.Connect(m.__n10, "clicked", m.__n10_clicked_handler)
-	gtk4rt.BoxAppend(m.__n9, m.__n10)
+	gtk4rt.BoxAppend(m.__n8, m.__n10)
 	m.__n11 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n11, "first")
+	gtk4rt.ButtonSetLabel(m.__n11, "sngl")
 	gtk4rt.Connect(m.__n11, "clicked", m.__n11_clicked_handler)
-	gtk4rt.BoxAppend(m.__n9, m.__n11)
+	gtk4rt.BoxAppend(m.__n8, m.__n11)
 	m.__n12 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n12, "sngl")
+	gtk4rt.ButtonSetLabel(m.__n12, "Back")
 	gtk4rt.Connect(m.__n12, "clicked", m.__n12_clicked_handler)
-	gtk4rt.BoxAppend(m.__n9, m.__n12)
-	m.__n13 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n13, "Back")
-	gtk4rt.Connect(m.__n13, "clicked", m.__n13_clicked_handler)
-	gtk4rt.BoxAppend(m.__n9, m.__n13)
-	m.__renderSlot1(m.__n9)
-	gtk4rt.BoxAppend(m.__n3, m.__n9)
-	gtk4rt.AppAttach(m.__n3)
+	gtk4rt.BoxAppend(m.__n8, m.__n12)
+	m.__renderSlot1(m.__n8)
+	gtk4rt.BoxAppend(m.main, m.__n8)
+	gtk4rt.AppAttach(m.main)
 }
 
 // BuildUI constructs the widget tree and returns a window showing the first
 // window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	return gtk4rt.ToplevelWindow(app, m.__n3)
+	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/bubbletea --
 pass sha256:9b231840d5bfd16efb9e173a2f12d5cb
 -- run/go/fyne --
-pass sha256:1cfd9d14a8621e7d4dbcb9e1f05f6736
+pass sha256:a384ed522ce1c7f7634e0a58388eb11c
 -- run/go/gtk4 --
-pass sha256:1d79029de1a9cdb0d5b7d607484218d8
+pass sha256:612d46f75ae05551c0ffc3173d0e3ee7

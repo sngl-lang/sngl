@@ -78,7 +78,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	bodyStmts := viewStmts(ctx)
 	// No window, which only a package that is not a program has, draws
 	// nothing; a harness's isolated component is drawn as the window.
-	if len(bodyStmts) == 0 || info.screen == nil && len(ctx.Windows()) == 0 {
+	if len(bodyStmts) == 0 || info.screen == nil && ctx.Harness() == nil {
 		b.WriteString("\treturn tea.NewView(\"\")\n")
 		b.WriteString("}\n\n")
 		return
@@ -282,10 +282,6 @@ func draws(s ir.Stmt) bool {
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			// A window only appears at top level; one in a view tree is unexpected.
-			panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
-		}
 		if ir.IsTimerPrimitive(s.Component) {
 			return // see rendersPart
 		}
@@ -895,8 +891,8 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 // view and holds the Screen a window is on this platform -- or, for a harness
 // that isolated a component, that component's body.
 func viewStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
-	if wins := ctx.Windows(); len(wins) > 0 {
-		return wins[0].Body
+	if h := ctx.Harness(); h != nil {
+		return h.Body
 	}
 	if ctx.Pkg == nil {
 		return nil

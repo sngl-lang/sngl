@@ -47,6 +47,21 @@ func HoldsIdentity(comp *Component) bool {
 	return slices.Contains(g.Renders, RenderedIdentity)
 }
 
+// RenderedSurface is a primitive's claim that each of its nodes is a surface
+// of its own -- a toplevel the target draws a render tree in. html's Window
+// is one: optimize.Documents writes a document from the first that no `if`
+// over state and no `for` can take away, and html shows every other as a
+// `<dialog>` in it. A target that answers its toplevels in its own codegen,
+// as gtk4 does, need not say so.
+const RenderedSurface = "surface"
+
+// IsSurface reports whether comp is a primitive whose nodes are surfaces
+// (#[gen.renders(surface)]).
+func IsSurface(comp *Component) bool {
+	g := GenCapsOf(comp)
+	return g != nil && slices.Contains(g.Renders, RenderedSurface)
+}
+
 // RenderedPrimitive is the `#[intrinsic]` component comp eventually renders, or
 // nil when it renders none.
 //

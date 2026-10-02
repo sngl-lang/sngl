@@ -12,20 +12,25 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Documents yields every window pkg renders, one at a time, for a target that
-// writes each window out as markup. It runs after lowering, on the package the
-// second Optimize left, and is where a loop is unrolled at all. Each is a clone
-// of the lowered window with the variables of the loops around it bound for
-// its iteration and every constant loop in its view unrolled.
+// Documents yields every document pkg renders, one at a time, for a target
+// that writes its view out as markup. It runs after lowering, on the package
+// the second Optimize left, and is where a loop is unrolled at all. Each is a
+// clone of the lowered document with every constant loop in its view unrolled.
+//
+// A document is written from a surface: the first node of a primitive marked
+// #[gen.renders(surface)] -- html's Window -- that no `if` over state and no
+// `for` can take away (documentSurface). The package body around it is written
+// into every document, the other surfaces included, which the target shows
+// inside it.
 //
 // One at a time because a site is a loop over its pages, and unrolling that
 // loop in the IR held every page's expanded tree live at once: 3.9 GB of heap
 // for the docs site, most of it pages already written. A document is cloned
-// from the window it came from, so nothing yielded is reachable from pkg and
+// from the surface it came from, so nothing yielded is reachable from pkg and
 // each is garbage once its caller has written it.
 //
-// A window holding a nav.stack is one document per page instead, the page
-// standing where the stack was (windowDocuments).
+// A surface holding a nav.stack is one document per page instead, the page
+// standing where the stack was (surfaceDocuments).
 func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error] {
 	return func(yield func(*codegen.Document, error) bool) {
 		if cfg.Cache == nil {
@@ -58,30 +63,23 @@ func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error]
 			}
 		}
 
-		yielded := false
-		emit := func(w *ir.Window, wctx *evalCtx, _ []*ir.For) bool {
-			yielded = true
-			before, after := bodyAround(pkg, w)
-			ok, err := windowDocuments(w, wctx, cfg.Language == "none", func(doc *codegen.Document, dctx *evalCtx) bool {
+		if doc, body := documentSurface(pkg, ctx); doc != nil {
+			before, after := bodyAround(body, doc)
+			_, err := surfaceDocuments(doc, ctx, cfg.Language == "none", func(d *codegen.Document, dctx *evalCtx) bool {
 				if len(before)+len(after) > 0 {
-					doc.Body = slices.Concat(foldStmts(cloneStmts(before), dctx), doc.Body, foldStmts(cloneStmts(after), dctx))
+					d.Body = slices.Concat(foldStmts(cloneStmts(before), dctx), d.Body, foldStmts(cloneStmts(after), dctx))
 				}
-				return yieldDocument(yield, doc, dctx)
+				return yieldDocument(yield, d, dctx)
 			})
 			if err != nil {
 				yield(nil, err)
-				return false
 			}
-			return ok
-		}
-		if err := eachWindowRoot(pkg, ctx, emit); err != nil {
-			yield(nil, err)
 			return
 		}
-		if yielded || pkg.RootComponent == "" {
+		if pkg.RootComponent == "" {
 			return
 		}
-		// A harness renders its root component in place of a window.
+		// A harness renders its root component in place of a surface.
 		for _, c := range pkg.Components {
 			if c.Name != pkg.RootComponent {
 				continue
@@ -111,146 +109,54 @@ func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error]
 	}
 }
 
-// windowVisit is handed each window with the context its enclosing loops bound
-// and those loops, outermost first. Returning false stops the walk.
-type windowVisit func(w *ir.Window, ctx *evalCtx, loops []*ir.For) bool
-
-// eachWindowRoot visits the windows ir.AllWindows reports, in its order: the
-// package's own, then those the package body renders, then a component's.
-func eachWindowRoot(pkg *ir.Package, ctx *evalCtx, visit windowVisit) error {
-	seen := map[*ir.Window]bool{}
-	w := &windowWalk{visit: visit, seen: seen}
-	for _, win := range pkg.Windows {
-		if !w.window(win, ctx) {
-			return w.err
-		}
-	}
-	w.stmts(pkg.Body, ctx)
-	for _, c := range pkg.Components {
-		if w.stopped || c == nil {
-			break
-		}
-		w.stmts(c.Body, ctx)
-	}
-	return w.err
-}
-
-type windowWalk struct {
-	visit   windowVisit
-	seen    map[*ir.Window]bool
-	loops   []*ir.For
-	inLoop  []*ir.Window
-	stopped bool
-	err     error
-}
-
-func (w *windowWalk) window(win *ir.Window, ctx *evalCtx) bool {
-	// A window reached twice through two roots is one window, and one in a
-	// loop is one per iteration: seen is filled as the outermost loop ends.
-	if win == nil || w.seen[win] {
-		return true
-	}
-	if len(w.loops) == 0 {
-		w.seen[win] = true
-	} else {
-		w.inLoop = append(w.inLoop, win)
-	}
-	if !w.visit(win, ctx, w.loops) {
-		w.stopped = true
-	}
-	return !w.stopped
-}
-
-func (w *windowWalk) stmts(stmts []ir.Stmt, ctx *evalCtx) {
-	for _, s := range stmts {
-		if w.stopped {
-			return
-		}
-		w.stmt(s, ctx)
-	}
-}
-
-func (w *windowWalk) stmt(s ir.Stmt, ctx *evalCtx) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		if ir.IsWindowNode(n) {
-			w.window(n, ctx)
-			return
-		}
-		w.stmts(n.Children, ctx)
-	case *ir.For:
-		if !holdsWindow(n) {
-			return
-		}
-		w.loop(n, ctx)
-	case *ir.If:
-		if lit, ok := foldExpr(cloneExpr(n.Cond), ctx).(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
-			if lit.Value == "true" {
-				w.stmts(n.Body, ctx)
-			} else {
-				w.stmts(n.Else, ctx)
+// documentSurface is the surface the document is written from and the
+// statement list holding it: the first in the package body -- or, for a
+// harness, its root component's -- that no `if` the build cannot decide and
+// no `for` stands around. Nil for a package that renders none, which a
+// harness isolating a component is.
+func documentSurface(pkg *ir.Package, ctx *evalCtx) (*ir.NodeInst, []ir.Stmt) {
+	find := func(stmts []ir.Stmt) (*ir.NodeInst, []ir.Stmt) {
+		var walk func(stmts []ir.Stmt) (*ir.NodeInst, []ir.Stmt)
+		walk = func(stmts []ir.Stmt) (*ir.NodeInst, []ir.Stmt) {
+			for _, s := range stmts {
+				switch n := s.(type) {
+				case *ir.NodeInst:
+					if ir.IsSurface(n.Component) {
+						return n, stmts
+					}
+				case *ir.If:
+					lit, ok := foldExpr(cloneExpr(n.Cond), ctx).(*ir.Literal)
+					if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
+						continue
+					}
+					branch := n.Body
+					if lit.Value != "true" {
+						branch = n.Else
+					}
+					if d, _ := walk(branch); d != nil {
+						return d, nil
+					}
+				case *ir.ErrorBoundary:
+					if d, _ := walk(n.Children); d != nil {
+						return d, nil
+					}
+				case *ir.ContextProvider:
+					if d, _ := walk(n.Children); d != nil {
+						return d, nil
+					}
+				}
 			}
-			return
+			return nil, nil
 		}
-		w.stmts(n.Body, ctx)
-		w.stmts(n.Else, ctx)
-	case *ir.ErrorBoundary:
-		w.stmts(n.Children, ctx)
-	case *ir.SlotInst:
-		w.stmts(n.Children, ctx)
-		for _, name := range ir.SlotNames(n.Slots) {
-			w.stmts(n.Slots[name].Body, ctx)
-		}
+		return walk(stmts)
 	}
-}
-
-// loop visits a window loop's body once per element, with the loop's
-// variables bound. A loop whose iterable does not fold is walked once unbound,
-// which leaves the windows in it naming their variable -- what a target that
-// cannot write a dynamic page already reports.
-func (w *windowWalk) loop(fs *ir.For, ctx *evalCtx) {
-	items, ok := loopItems(fs, ctx)
-	if !ok {
-		if ctx.err != nil {
-			w.err, w.stopped = ctx.err, true
-			return
-		}
-		w.stmts(fs.Body, ctx)
-		return
+	if d, body := find(pkg.Body); d != nil {
+		return d, body
 	}
-	if len(items) == 0 {
-		w.stmts(fs.Else, ctx)
-		return
+	if root := pkg.RootDecl(); root != nil {
+		return find(root.Body)
 	}
-	w.loops = append(w.loops, fs)
-	defer func() {
-		w.loops = w.loops[:len(w.loops)-1]
-		if len(w.loops) == 0 {
-			for _, win := range w.inLoop {
-				w.seen[win] = true
-			}
-			w.inLoop = w.inLoop[:0]
-		}
-	}()
-	keyVar, valueVar := loopVars(fs)
-	for i, item := range items {
-		if w.stopped {
-			return
-		}
-		w.stmts(fs.Body, bindLoopVars(fs, ctx, keyVar, valueVar, i, item))
-	}
-}
-
-func holdsWindow(fs *ir.For) bool {
-	found := false
-	_ = ir.WalkStmts(append(append([]ir.Stmt{}, fs.Body...), fs.Else...), func(s ir.Stmt) error {
-		if n, ok := s.(*ir.NodeInst); ok && ir.IsWindowNode(n) {
-			found = true
-			return ir.SkipAll
-		}
-		return nil
-	})
-	return found
+	return nil, nil
 }
 
 // loopItems evaluates a loop's iterable to the elements an unroll writes out.
@@ -344,18 +250,10 @@ func evalDocumentNatives(pkg *ir.Package, cfg *Config, ctx *evalCtx) error {
 		ne := &nativeEval{}
 		probe := ctx.child()
 		probe.native = ne
-		err := eachWindowRoot(pkg, probe, func(w *ir.Window, wctx *evalCtx, _ []*ir.For) bool {
-			if !holdsNativeCall(w, wctx) {
-				return true
-			}
-			_, err := windowDocuments(w, wctx, cfg.Language == "none", func(*codegen.Document, *evalCtx) bool { return true })
-			if err != nil && probe.err == nil {
+		if doc, _ := documentSurface(pkg, probe); doc != nil && holdsNativeCall(doc, probe) {
+			if _, err := surfaceDocuments(doc, probe, cfg.Language == "none", func(*codegen.Document, *evalCtx) bool { return true }); err != nil && probe.err == nil {
 				probe.err = err
 			}
-			return true
-		})
-		if err != nil {
-			return err
 		}
 		if len(ne.order) == 0 {
 			return nil
@@ -374,7 +272,7 @@ func evalDocumentNatives(pkg *ir.Package, cfg *Config, ctx *evalCtx) error {
 		maxEvalRounds, strings.Join(names, ", "))
 }
 
-func holdsNativeCall(w *ir.Window, ctx *evalCtx) bool {
+func holdsNativeCall(w *ir.NodeInst, ctx *evalCtx) bool {
 	found := false
 	scanStmts([]ir.Stmt{w}, func(e ir.Expr) {
 		if call, ok := e.(*ir.Call); ok && !found && isEvaluableNativeCall(call, ctx) {
@@ -396,19 +294,12 @@ func holdsNativeCall(w *ir.Window, ctx *evalCtx) bool {
 // page, the loops' variables bound for the iteration, so a site of a thousand
 // pages holds one page's tree at a time.
 
-// bodyAround is what the package body renders on either side of w, a window
-// standing in it: the windows a target shows inside its document, which the
-// composition made ordinary nodes and placed where they were written, and the
-// render slots of those under an `if`. Every document w is written as carries
-// them, a page's included.
-func bodyAround(pkg *ir.Package, w *ir.Window) (before, after []ir.Stmt) {
-	body := pkg.Body
-	i := slices.IndexFunc(body, func(s ir.Stmt) bool { return s == ir.Stmt(w) })
-	// A harness renders its root component in place of the package body.
-	if root := pkg.RootDecl(); i < 0 && root != nil {
-		body = root.Body
-		i = slices.IndexFunc(body, func(s ir.Stmt) bool { return s == ir.Stmt(w) })
-	}
+// bodyAround is what body renders on either side of doc, the surface standing
+// in it: the other surfaces a target shows inside its document, placed where
+// they were written, and the render slots of those under an `if`. Every
+// document doc is written as carries them, a page's included.
+func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
+	i := slices.IndexFunc(body, func(s ir.Stmt) bool { return s == ir.Stmt(doc) })
 	if i < 0 {
 		return nil, nil
 	}
@@ -417,9 +308,7 @@ func bodyAround(pkg *ir.Package, w *ir.Window) (before, after []ir.Stmt) {
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if !ir.IsWindowNode(n) {
-					out = append(out, n)
-				}
+				out = append(out, n)
 			case *ir.CallStmt:
 				if n.Call != nil && n.Call.Func != nil && n.Call.Func.SlotRender {
 					out = append(out, n)
@@ -431,10 +320,10 @@ func bodyAround(pkg *ir.Package, w *ir.Window) (before, after []ir.Stmt) {
 	return keep(body[:i]), keep(body[i+1:])
 }
 
-// windowDocuments hands each document w is written as to yield: w itself when
-// it holds no stack, and one per page copy when it holds one. False when
-// yield stopped the walk.
-func windowDocuments(w *ir.Window, wctx *evalCtx, static bool, yield func(*codegen.Document, *evalCtx) bool) (bool, error) {
+// surfaceDocuments hands each document w, a surface, is written as to yield:
+// w itself when it holds no stack, and one per page copy when it holds one.
+// False when yield stopped the walk.
+func surfaceDocuments(w *ir.NodeInst, wctx *evalCtx, static bool, yield func(*codegen.Document, *evalCtx) bool) (bool, error) {
 	stack, err := documentStack(w.Children, wctx)
 	if err != nil {
 		return false, err
@@ -443,8 +332,8 @@ func windowDocuments(w *ir.Window, wctx *evalCtx, static bool, yield func(*codeg
 		doc := cloneStmt(w).(*ir.NodeInst)
 		dctx := wctx.child()
 		dctx.fileAssets = nil
-		foldWindow(doc, dctx)
-		return yield(&codegen.Document{Window: doc, Body: doc.Children}, dctx), nil
+		foldSurface(doc, dctx)
+		return yield(&codegen.Document{Surface: doc, Body: doc.Children}, dctx), nil
 	}
 	copies := documentCopies(stack, wctx)
 	if wctx.err != nil {
@@ -458,11 +347,11 @@ func windowDocuments(w *ir.Window, wctx *evalCtx, static bool, yield func(*codeg
 		if !page.static {
 			doc.Params = page.param
 		}
-		foldWindow(doc, dctx)
+		foldSurface(doc, dctx)
 		if dctx.err != nil {
 			return false, dctx.err
 		}
-		if !yield(&codegen.Document{Window: doc, Body: doc.Children, Page: page.node}, dctx) {
+		if !yield(&codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dctx) {
 			return false, nil
 		}
 	}
@@ -480,7 +369,8 @@ func documentStack(stmts []ir.Stmt, ctx *evalCtx) (*ir.NodeInst, error) {
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if ir.IsWindowNode(n) {
+				// A surface shown inside the document navigates in place.
+				if ir.IsSurface(n.Component) {
 					continue
 				}
 				if holdsPages(n.Children) {
@@ -653,7 +543,7 @@ func pageDocument(stmts *[]ir.Stmt, pc pageCopy, ctx *evalCtx, static bool) docu
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if !ir.IsWindowNode(n) && holdsPages(n.Children) {
+				if holdsPages(n.Children) {
 					res = append(res, out.take(n, pc, ctx, static)...)
 					continue
 				}
@@ -723,4 +613,20 @@ func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, ctx *evalCtx, sta
 		}
 	}
 	return nil
+}
+
+// foldSurface folds what a surface carries: its props, its handlers and what
+// it renders.
+func foldSurface(n *ir.NodeInst, ctx *evalCtx) {
+	for i := range n.Props {
+		if n.Props[i].Value != nil {
+			n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
+		}
+	}
+	for i := range n.Handlers {
+		if f := n.Handlers[i].Func; f != nil {
+			f.Block = foldStmts(f.Block, ctx)
+		}
+	}
+	n.Children = foldStmts(n.Children, ctx)
 }

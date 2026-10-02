@@ -41,9 +41,6 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 		st.varHandlers(c.Vars)
 	}
 	st.stmts(pkg.Body)
-	for _, w := range pkg.Windows {
-		st.stmts(w.Children)
-	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
 			st.stmts(fn.Block)

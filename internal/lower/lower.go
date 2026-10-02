@@ -42,6 +42,7 @@ var passes = []pass{
 	passNavigationHrefs,
 	passPlatformExtensionBody,
 	passNavigation,
+	passHandleParams,
 	passImplicitState,
 	// After it, because which primitive a declaration renders is the override
 	// this target supplied; before passInlinePure, which carries a `#id` onto
@@ -69,7 +70,6 @@ var passes = []pass{
 	passInlinePure,
 	passNoInlineComponents,
 	passErrorScope,
-	passWindowNesting,
 	passRecursionDepth,
 	passInstanceSlots,
 	passCanvasInstances,
@@ -105,6 +105,8 @@ var passes = []pass{
 	passCSE,
 	passIterKind,
 	passStampUsage,
+	// Last of all: a boundary is how every pass above reaches its handler.
+	passBoundaryPassthrough,
 }
 
 // Options controls a single Lower invocation.
@@ -388,9 +390,6 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		walk(f.Block)
 	}
 	walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		walk(w.Children)
-	}
 	return out
 }
 
@@ -493,9 +492,6 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		walk(w.Children)
-	}
 	return out
 }
 

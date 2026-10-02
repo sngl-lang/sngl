@@ -23,11 +23,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if pkg == nil {
 		return nil
 	}
-	// main is nil for every ordinary build: a window is the root, and the
-	// visual tree lives in pkg.Windows or in the package's own body. It is a
-	// component only where a harness made one the whole program.
+	// main is nil for every ordinary build: the visual tree lives in the
+	// package's own body. It is a component only where a harness made one the
+	// whole program.
 	main := rootComponent(pkg, opts)
-	if main == nil && len(pkg.Windows) == 0 && len(pkg.Body) == 0 {
+	if main == nil && len(pkg.Body) == 0 {
 		// No root to inline into. Every component is its own entry point, so
 		// there is nothing to flatten and nothing is unreachable -- running
 		// the pass anyway would retain an empty keep set and drop them all.
@@ -110,11 +110,6 @@ func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Compone
 				if h.Func != nil {
 					visit(h.Func.Block)
 				}
-			}
-		}
-		for _, h := range o.Handlers {
-			if h.Func != nil {
-				visit(h.Func.Block)
 			}
 		}
 	}
@@ -257,11 +252,11 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	return nil
 }
 
-// packageOwner is the owner that is neither a component nor a window, which is
-// the package itself. ir.Owners always yields one.
+// packageOwner is the owner that is not a component, which is the package
+// itself. ir.Owners always yields one.
 func packageOwner(owners []ir.Owner) ir.Owner {
 	for _, o := range owners {
-		if o.Comp == nil && o.Win == nil {
+		if o.Comp == nil {
 			return o
 		}
 	}
@@ -383,10 +378,9 @@ func componentHoist(c *ir.Component) hoistTarget {
 	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true}
 }
 
-func windowHoist(pkg *ir.Package) hoistTarget {
-	// A window's container, which is the package: a window is a rendering
-	// root and owns nothing, so what an inlined callee declares inside one
-	// belongs where the window's own declarations went.
+// packageHoist is the package's own declarations, where what a callee spliced
+// into the package body declares goes.
+func packageHoist(pkg *ir.Package) hoistTarget {
 	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
 }
 
@@ -440,27 +434,15 @@ func (st *inlineCompState) run() error {
 		// instantiated: `main()` at the top of a file is a NodeInst here and
 		// nowhere else, and its windows reach a backend only once it has been
 		// spliced in.
-		st.hoist = windowHoist(st.pkg)
+		st.hoist = packageHoist(st.pkg)
 		pbody, pch, err := st.inlineStmts(st.pkg.Body)
 		if err != nil {
 			return err
 		}
 		st.pkg.Body = pbody
-		// A window at the root of a file is on pkg.Windows rather than in
-		// pkg.Body, and what it instantiates must be inlined too.
-		anyWinCh := false
-		for _, w := range st.pkg.Windows {
-			st.hoist = windowHoist(st.pkg)
-			wbody, wch, err := st.inlineStmts(w.Children)
-			if err != nil {
-				return err
-			}
-			w.Children = wbody
-			anyWinCh = anyWinCh || wch
-		}
 		// A component that survives is a root the backend reads its body from,
 		// so what is inlinable *inside* that body has to be inlined too. Only
-		// main and the windows were walked -- every root a *program* declares,
+		// main and the package body were walked -- every root a *program* declares,
 		// and none of the ones this pass elects. An imported component is one:
 		// nothing inlines it, so it reached codegen holding the bodied callees
 		// its body wrote, and `sngl:ui/markup`'s `list` written there emitted a
@@ -498,7 +480,7 @@ func (st *inlineCompState) run() error {
 				anyKeptCh = anyKeptCh || fch
 			}
 		}
-		if !ch && !anyFuncCh && !anyWinCh && !pch && !anyKeptCh {
+		if !ch && !anyFuncCh && !pch && !anyKeptCh {
 			break
 		}
 	}
@@ -659,17 +641,6 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	for _, c := range pkg.Components {
 		edges[c] = map[*ir.Component]bool{}
 		collectCalleeEdges(c, edges[c])
-	}
-	// A window is a root and not a node in the component graph, so its edges
-	// belong to no component: a cycle among components is found from the
-	// components alone, or `window { c }` would read as c calling itself.
-	//
-	// A harness that made a component the root is the exception, and there the
-	// windows are gone.
-	if root := rootComponent(pkg, opts); root != nil {
-		for _, w := range pkg.Windows {
-			collectCalleeEdges(w, edges[root])
-		}
 	}
 	return tarjanCycles(edges)
 }
@@ -947,12 +918,7 @@ func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir
 func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		// A window is a rendering root, so what encloses it -- a loop over
-		// pages -- is not a position its body is repeated in.
 		childRC := rc
-		if ir.IsWindowNode(n) {
-			childRC = reactiveCtx{}
-		}
 		// A page a target answers itself is mounted and unmounted as its
 		// stack moves, which is what a reactive `if` does: what it renders is
 		// built per showing, so a component with state there starts again.
@@ -962,8 +928,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		} else if n.Record != nil {
 			// A target's own primitive standing for a page, which it writes
 			// as a document or a route of its own (html): a rendering root,
-			// as a window is, so a loop of pages is not a position its body
-			// is repeated in.
+			// so a loop of pages is not a position its body is repeated in.
 			childRC = reactiveCtx{}
 		}
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
@@ -976,13 +941,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		chCh = chCh || slotsCh
-		// A window is a rendering root and instantiates nothing this pass may
-		// splice: it stays where it was written, with whatever its body held
-		// now inlined. Everything below asks what to do with a *component*
-		// instantiation, and a window is not one.
-		if ir.IsWindowNode(n) {
-			return []ir.Stmt{n}, chCh, nil
-		}
 		anyHandlerCh := false
 		for _, h := range n.Handlers {
 			if h.Func == nil {

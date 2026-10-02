@@ -129,9 +129,6 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, comp := range pkg.Components {
 		walkComponent(comp, fns)
 	}
-	for _, w := range pkg.Windows {
-		walkWindow(w, fns)
-	}
 	// The package's own body is a view body like a component's: a window under
 	// a top-level `for` is a statement in it and reaches these passes nowhere
 	// else.
@@ -167,27 +164,5 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 	}
 	if fns.stmts != nil {
 		c.Body = fns.stmts(c.Body)
-	}
-}
-
-// walkWindow deliberately skips w.Props, and a window reached as a *statement*
-// does not: passTernary and the rest carry their own `*ir.Window` arm, which
-// walks the props and hoists what it produces into the list the window sits in.
-// An entry in pkg.Windows sits in no list, so there is nothing to hoist into
-// and fns.expr -- a no-op for passTernary for exactly that reason -- would drop
-// it.
-//
-// The cost is real and pre-dates this: `window #a(title = c ? x : y)` at the
-// root of a file panics the Go emitter with "ir.Ternary reached Go codegen",
-// while the same ternary a level in lowers. Where that temp belongs is the open
-// question, and a window that is a NodeInst in pkg.Body answers it for free.
-func walkWindow(w *ir.Window, fns walkFuncs) {
-	if fns.stmts != nil {
-		w.Children = fns.stmts(w.Children)
-	}
-	for _, h := range ir.WindowHandlers(w) {
-		if h.Func != nil && fns.stmts != nil {
-			h.Func.Block = fns.stmts(h.Func.Block)
-		}
 	}
 }

@@ -815,8 +815,9 @@ Settled in C2's planning:
   a desktop's does, touching neither the address nor the browser's history.
   The document stays the builtin it is marked because html says
   `#[gen.can(documentWindow)]`; every other window is composed through the
-  override. A test may take a root component and reach its windows through
-  it.
+  override (withdrawn in C3: every window is composed, html's primitive
+  carries `#[gen.renders(surface)]`, and the dialog is the emitter's). A test
+  may take a root component and reach its windows through it.
 - **Settled after step 7: a family is crossed at the placement.**
   `#[tree.crosses]`, in `sngl:tree` and open to any package, is written on a
   node or a slot insertion and lifts only that placement's membership check;
@@ -826,7 +827,7 @@ Settled in C2's planning:
 
 ### 16. A window is a component; the package body is the application's view
 
-*Settled, not built.* The compiler knows a window by `#[builtin("window")]`
+*Built* (Phases C1 to C3). The compiler knows a window by `#[builtin("window")]`
 and answers it in about 130 places (`IsWindowNode`, `AllWindows`,
 `pkg.Windows`), and Phase C added 46 more. None of it is needed. What a window
 needs, each has a general answer:
@@ -1147,13 +1148,98 @@ fixtures written first:
    `open` in the markup; and bubbletea and android still refuse a second
    window, a test of one included.
 
-### Phase C3: no window in the compiler
+### Phase C3: no window in the compiler -- done
 
 With routing on `nav.page` (C2) and a window a component (C1), delete what is
 left: `ir.Window`, `pkg.Windows`, `ir.AllWindows`, `IsWindowNode`,
 `WindowsFlat`, `#[builtin("window")]`, the checker's `windowShell` and
 `checkWindow`, window arms in the interpreter and every platform. What html
 needs of a page is `nav.page`'s. Success is `grep -rn IsWindowNode` empty.
+
+*Done*, as settled below. Deleted besides: `passWindowNesting`,
+`keepDocumentSurface`, the `documentWindow` capability, `NodeInst.ErrorHandler`
+and `LocalRefs`, `ir.WindowHandles`/`WindowHandlers`/`WindowTitle`,
+`Owner.Win`, `CodegenCtx.Windows`/`EntryWindow` (now `Harness`), `countWindow`
+and the checker's window id hoist. Added: `passHandleParams` (a call handing a
+node's handle to a function writing one of its two-way props through the
+parameter is inlined, the write landing on the bound var or the cell, and the
+interpreter writes through a handle the same way), `passBoundaryPassthrough`
+(on fyne and gtk4, last, a boundary with no fallback is spliced into what it
+holds -- a boundary a program writes now builds there, `errorboundary_flattened.txt`),
+`findSurfaces`, `ir.IsSurface`, html's `Window` primitive and `renderDialog`
+with `_snglDialog` for one built at run time, and `build.Check` refusing a
+selected platform that reports itself unavailable before checking against it.
+Fixtures, each failing on fb3605bc: `window_reads_sibling_window.sngl`,
+`window_error_unhandled.sngl`, `cmd/sngl/testdata/program_without_window.txt`.
+
+What a window being a component exposed, each fixed where it was general: a
+boundary's own handler was walked by neither the inliner's event substitution
+nor its emit scan nor the optimizer's fold, so the override's `error(e)`
+forwarded nowhere and a call site's handler moved onto the primitive; a block
+`var`'s `@change` in a component's view was never checked (a window's was, by a
+window-only rule); the canvas redraw walks, android's content layout,
+`destroyBuiltInstances`, the html root-flex rule and the route action's
+DOM-patch filter each stopped at a boundary; `pkgUsesErrorHandling` missed a
+catch block in a lambda; a bound two-way prop passed through by an override
+(`Toplevel(:visible=visible)`) was reported twice.
+
+The goldens that moved, each for its reason: a window's `#id` names its
+primitive's field as any node's names its widget, renumbering `__nN` and adding
+the test invokers that handle drives (the fyne and gtk4 bulk); `open`/`close`
+inlined where they are called; a window with an `@error` gets the `Column` and
+layout every window gets on android; a raise under a window is caught there,
+and a boundary's handler folds; a boundary whose handler does nothing no longer
+declares an unused `ErrorEvent`; windows stay where they are written in the
+package body, which reorders `emit_family_under_if`'s instances; html's dialogs
+are the emitter's (`$N` ids, the close button's handler a write-back then
+`@closed`).
+
+Still open: a node id that is a Go keyword (`button #go`) is a field fyne and
+gtk4 cannot declare; and a reactive dialog title on html writes the label and
+the header by query rather than by a node of its own.
+
+Settled in C3's planning:
+
+- **`ui.window` is an ordinary component of `sngl:ui`**, bodyless, and every
+  platform overrides it, `none` included. No mark says what it is. Its
+  `open` and `close` are written outside the declaration, as a method
+  outside a block is: `func window.open(w window) { w.visible = true }`,
+  reading the prop through the receiver it is passed, since such a method
+  gets no ambient props. A two-way prop written through a component-typed
+  parameter lands where a write through the handle would: the var the call
+  site bound, or the instance's cell.
+- **html's document is found after inlining, by a mark on its primitive.**
+  html overrides `ui.window` once, with
+  `Window(title, favicon, :visible=visible, @closed { closed() }) { boundary(@error(e) { error(e) }) { content } }`
+  around `#[gen.renders(surface)] #[intrinsic("html:window")] component Window(…) root`
+  -- the `surface` decision 16 left for later. `optimize.Documents` writes
+  its document from the first marked node that no `if` over state and no
+  `for` can take away, which ignores `visible` and `@closed`; html's emitter
+  writes every other one as a `<dialog>`, as gtk4's codegen answers a
+  Toplevel: the title, a close button reporting `visible = false` and then
+  `@closed`, and `open` as `visible`. The chrome step 7 wrote in SNGL moves
+  into the emitter, and `keepDocumentSurface` and the `documentWindow`
+  capability go.
+- **A window's `@error` is a `boundary` in each override's body, and it
+  always catches**: a window whose call site handled no `@error` catches a
+  raise and drops it. `NodeInst.ErrorHandler` goes, and `LocalRefs` with it.
+- **A package is a program when its body renders a node**, reached through
+  an `if` or a `for`; every such node is a member of `root`, so a window and a
+  root component's instance both count, and a root component nobody
+  instantiates does not. "A program renders something at the root of a file:
+  the package body is its view, and one that renders nothing has nothing to
+  show."
+- **A node's `#id` at the root of a file is the package's**: hoisted plain,
+  with the count only an `if` or a `for` confers, and visible from every root
+  statement, package func and component body, as a window's handle was. A
+  window's body hoists like any node's, so a sibling window reads another's
+  nodes plainly: every target holds every window in one process or document.
+  `countWindow` goes.
+- **A window inside a window is ordinary membership**: the window's rest slot
+  takes `ui.node`, so the refusal is the checker's, wherever the splice that
+  made it came from, and `passWindowNesting` goes.
+- **Route mode reads a document's `title` and `favicon`** off html's document
+  primitive, by the names it declares.
 
 ### Phase D: groundwork for foreign code
 
