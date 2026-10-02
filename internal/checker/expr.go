@@ -3454,6 +3454,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					Pos:    x.Pos,
 					Target: id,
 					Args:   x.Call.Args,
+					Attrs:  x.Attrs,
 				}
 				return c.checkVisualNodeIR(vn)
 			}
@@ -3541,8 +3542,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					ID:        x.Call.ID,
 					Args:      x.Call.Args,
 					HasParens: true,
+					Attrs:     x.Attrs,
 				})
 			}
+		}
+		// A call that is no node places nothing, so a mark on it is refused.
+		if len(x.Attrs) > 0 {
+			c.applyMarks(x, nil)
 		}
 		c.stmtCall = x.Call
 		callExpr := c.checkExpr(x.Call)
@@ -4051,6 +4057,16 @@ func (c *checker) errorEventType() *ir.Type {
 // checkVisualNodeIR validates a visual node and returns the appropriate IR statement.
 // Disambiguates components, platform elements, slots, and function calls.
 func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
+	st := c.checkVisualNode(vn)
+	// The marks a placement carries, applied to what it became: a node or a
+	// slot insertion takes #[tree.crosses], and anything else refuses it.
+	if len(vn.Attrs) > 0 {
+		c.applyMarks(vn, st)
+	}
+	return st
+}
+
+func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	name := visualNodeTarget(vn)
 
 	// Built-in nodes — the compiler's own constructs, dispatched on the
@@ -5751,14 +5767,10 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
-			decl := c.entrySpec[s]
-			if decl == nil {
-				decl = s.Entry
+			if s.Crosses {
+				continue
 			}
-			if decl == nil {
-				decl = ownerSlot(owner, s.Name)
-			}
-			if got := slotTree(owner, decl); got != nil && got != want {
+			if got := c.insertedTree(owner, s); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it
@@ -5766,7 +5778,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
 		case *ir.NodeInst:
-			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
+			if s.Crosses || s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue
 			}
 			// The offending child is a better place to point than the position
@@ -5778,6 +5790,19 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.DisplayName())
 		}
 	}
+}
+
+// insertedTree is the family a slot insertion puts where it stands: the slot's
+// own, read off the declaration the insertion names.
+func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Component {
+	decl := c.entrySpec[s]
+	if decl == nil {
+		decl = s.Entry
+	}
+	if decl == nil {
+		decl = ownerSlot(owner, s.Name)
+	}
+	return slotTree(owner, decl)
 }
 
 // errorEventName spells the payload type for a diagnostic, falling back to the

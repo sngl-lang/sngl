@@ -817,6 +817,12 @@ Settled in C2's planning:
   `#[gen.can(documentWindow)]`; every other window is composed through the
   override. A test may take a root component and reach its windows through
   it.
+- **Settled after step 7: a family is crossed at the placement.**
+  `#[tree.crosses]`, in `sngl:tree` and open to any package, is written on a
+  node or a slot insertion and lifts only that placement's membership check;
+  `#[tree.none]` is not how a node crosses, and is being replaced by type
+  parameters where it means "any family". html's dialog and both `Page`
+  primitives cross that way, and the tree-less rule reads a slot insertion.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -1133,9 +1139,11 @@ fixtures written first:
    close handler. The old `index.html` patched B's label, `__n1`, in a
    document that did not hold it, so A's click threw on a null element; one
    document holds both now. `route_window_named_main` is one route where it
-   was two. Still open: the tree-less rule does not look through a slot
-   insertion, which is how `surface` lets a `root` member render an element;
-   a dialog visible at load is shown by the script rather than written with
+   was two. Since closed: the dialog went in through a `#[tree.none]`
+   wrapper inserting a `ui.node` slot, which the tree-less rule did not
+   read; the rule reads an insertion now, and crossing a family is said at
+   the placement with `#[tree.crosses]` (decision 15's last bullet). Still
+   open: a dialog visible at load is shown by the script rather than written with
    `open` in the markup; and bubbletea and android still refuse a second
    window, a test of one included.
 

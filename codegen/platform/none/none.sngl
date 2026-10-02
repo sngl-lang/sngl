@@ -163,13 +163,11 @@ const component markup.token[platform] {
 component Stack<F>(pages ...component F) ui.node
 
 // A page as the interpreter mounts it: its content, when its stack is showing
-// this page, and nothing otherwise -- a page not showing is not mounted. It
-// belongs to no family because the one its override stands in for is not
-// nameable here; the override's own return position is what says it is a
-// page.
-#[tree.none]
+// this page, and nothing otherwise -- a page not showing is not mounted. It is
+// a node, which is what it renders; the override crosses it into the page
+// family it stands in for, which is not nameable here.
 #[intrinsic("none:Page")]
-component Page(href string, title string, content ...component ui.node)
+component Page(href string, title string, content ...component ui.node) ui.node
 
 // A link: clicked, it follows `to` to the stack that holds it.
 #[intrinsic("none:Link")]
@@ -186,6 +184,7 @@ const component nav.stack[platform] {
 }
 
 const component nav.page[platform] {
+    #[tree.crosses]
     Page(href=href, title=title) {
         content(params)
     }

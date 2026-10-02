@@ -10,6 +10,22 @@ import marks "sngl:internal/marks"
 // one — so tree-lessness is a claim the declaration makes.
 func none() ir.Macro
 
+// Written on a placement -- a node, or a slot insertion, in a view -- it says
+// this one stands where its family is not the one the position accepts. That
+// one check is all it lifts: the node's own body, its slots and its children
+// are held to their families as ever, and the mark reaches no further than the
+// placement it is written on.
+//
+// Crossing a family is what a platform's primitives are for -- html's window
+// override puts an element in the root family, where a dialog is a window --
+// and a program crosses into a family of its own the same way:
+//
+//     component slide(caption string) deck {
+//         #[tree.crosses]
+//         ui.text(value=caption)
+//     }
+func crosses() ir.Macro
+
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.
 //

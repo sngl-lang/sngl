@@ -320,26 +320,23 @@ const component ui.divider[platform] {
 // title and a close the user makes, which is a window manager's close: the
 // window is reported hidden and then `@closed` runs. A close the program makes
 // runs nothing.
+//
+// A window is a member of `root` and a dialog an element, so the dialog
+// crosses into the window's family where it is placed.
 const component ui.window[platform] {
-    surface {
-        html.dialog(open=visible, attrs={"aria-label"=title}) {
-            html.header {
-                html.span(textContent=title) {}
-                html.button(attrs={"aria-label"="Close"}, @click {
-                    visible = false
-                    closed()
-                }) {
-                    html.span(textContent="×") {}
-                }
+    #[tree.crosses]
+    html.dialog(open=visible, attrs={"aria-label"=title}) {
+        html.header {
+            html.span(textContent=title) {}
+            html.button(attrs={"aria-label"="Close"}, @click {
+                visible = false
+                closed()
+            }) {
+                html.span(textContent="×") {}
             }
-            content
         }
+        content
     }
-}
-
-#[tree.none]
-const component surface(content ...component ui.node) {
-    content
 }
 
 const component ui.modal[platform] {
@@ -938,11 +935,10 @@ const component shapes.canvasText[platform] {
 // cell, which a static site binds to the page's own params and a route to the
 // request's.
 //
-// It belongs to no family because the one its override stands in for is not
-// nameable here; the override's return position is what says it is a page.
-#[tree.none]
+// It is a node, which is what it renders; the override crosses it into the
+// page family it stands in for, which is not nameable here.
 #[intrinsic("html:page")]
-component Page(content ...component ui.node)
+component Page(content ...component ui.node) ui.node
 
 // A stack of pages, which a document never shows whole: each page is written
 // out as the window with the stack standing for that page alone.
@@ -959,6 +955,7 @@ const component nav.stack[platform] {
 }
 
 const component nav.page[platform] {
+    #[tree.crosses]
     Page {
         content(params)
     }

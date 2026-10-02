@@ -94,6 +94,9 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 // is what lets `component pages() { window … }` say what it does without
 // naming `root`.
 //
+// A node marked #[tree.crosses] is no evidence either: it says it stands in a
+// family it is not a member of.
+//
 // A slot insertion is no evidence: what a slot with no declared family accepts
 // is the family of the component declaring it, so reading one would be reading
 // the answer off the question. Its *fallback* is evidence, and the distinction
@@ -125,7 +128,9 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			nested(s.Children)
 		case *ir.NodeInst:
 			switch {
-			case s.Component == nil:
+			// A node crossing into this body says it is not of the family the
+			// body is, so it is no evidence of which that is.
+			case s.Component == nil, s.Crosses:
 			case s.Component.Tree != nil:
 				note(s.Component.Tree)
 			case pending[s.Component]:

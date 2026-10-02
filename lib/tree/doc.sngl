@@ -22,3 +22,9 @@
 // placed in says so with a type parameter, `component boundary<T>(content
 // ...component T) T`, and each call site binds T from the children it
 // supplies.
+//
+// A placement that crosses a family says so where it is written:
+// `#[tree.crosses]` on a node or a slot insertion lets that one stand where
+// its family is not the one accepted, and checks everything else about it as
+// ever. It is how a platform's primitive stands in for a node of another
+// family, and how a program's own family member shows a widget.

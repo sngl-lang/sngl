@@ -607,6 +607,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		Target: target,
 		ID:     n.ID,
 	}
+	if n.Crosses {
+		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+	}
 
 	var args []ast.ArgOrEventHandler
 	for _, a := range n.Props {
@@ -797,6 +800,9 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
 	// Every insertion is written by name now, the rest slot included.
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: s.Name}}
+	if s.Crosses {
+		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+	}
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
 	}

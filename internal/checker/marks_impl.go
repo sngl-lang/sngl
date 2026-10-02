@@ -17,6 +17,7 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "none"}:                markTreeNone,
+	{"tree", "crosses"}:             markTreeCrosses,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
@@ -576,6 +577,28 @@ func markTreeNone(m *mark) error {
 	}
 	comp.Treeless = true
 	return nil
+}
+
+// markTreeCrosses implements #[tree.crosses]: this placement may stand where
+// its family is not the one accepted. It marks the placement and never the
+// declaration, so a platform says exactly which use of a node it permits.
+func markTreeCrosses(m *mark) error {
+	switch s := m.sym.(type) {
+	case *ir.NodeInst:
+		s.Crosses = true
+		return nil
+	case *ir.SlotInst:
+		s.Crosses = true
+		return nil
+	}
+	form := ast.DeclFormName(m.decl)
+	switch m.sym.(type) {
+	case *ir.ErrorBoundary:
+		form = "a boundary"
+	case *ir.ContextProvider:
+		form = "a context override"
+	}
+	return fmt.Errorf("#[tree.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a tree", form)
 }
 
 // markWildcard implements #[macro.wildcard("pattern")], which says what a

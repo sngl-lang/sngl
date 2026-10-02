@@ -45,7 +45,12 @@ type NodeInst struct {
 	// override's node, in the platform package, and a diagnostic about what
 	// the program wrote belongs at Site. Nil for a node written where it
 	// stands. NodePos reads it.
-	Site      ast.Stmt       `json:"-"`
+	Site ast.Stmt `json:"-"`
+	// Crosses is `#[tree.crosses]` on this placement: the node may stand
+	// where its family is not the one accepted. Only the membership check of
+	// the position is lifted; the node's own body, slots and children are
+	// held to their families as ever.
+	Crosses   bool           `json:",omitempty"`
 	Name      string         // resolved element/component name
 	Component *Component     // non-nil for user component; nil for platform element
 	Props     []Arg          // property assignments (positional and named)
@@ -223,6 +228,9 @@ func (*CallStmt) stmtNode() {}
 type SlotInst struct {
 	AST  *ast.VisualNode
 	Name string
+	// Crosses is `#[tree.crosses]` on this insertion: what the slot takes may
+	// stand where its family is not the one accepted (NodeInst.Crosses).
+	Crosses bool `json:",omitempty"`
 	// Rest mirrors the declaration's: this insertion renders the children a
 	// caller wrote bare, which arrive on NodeInst.Children rather than through
 	// its Slots map.

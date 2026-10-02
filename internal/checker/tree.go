@@ -330,8 +330,22 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 				}
 				continue
 			}
+			// A slot insertion puts what the slot takes where it stands, so a
+			// slot of widgets inserted here renders widgets as surely as a
+			// node would. Passed over, a tree-less wrapper carried them into
+			// any tree it was placed in.
+			if si, ok := st.(*ir.SlotInst); ok {
+				if got := c.insertedTree(comp, si); got != nil && !si.Crosses {
+					at := comp.AST.Pos
+					if si.AST != nil {
+						at = si.AST.Pos
+					}
+					c.error(at, "component %s names no tree, so it may not contain the %s slot %s", comp.Name, got.Name, si.Name)
+				}
+				continue
+			}
 			ni, ok := st.(*ir.NodeInst)
-			if !ok || ni.Component == nil || ni.Component.Tree == nil {
+			if !ok || ni.Crosses || ni.Component == nil || ni.Component.Tree == nil {
 				continue
 			}
 			at := comp.AST.Pos

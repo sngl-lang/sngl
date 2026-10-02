@@ -903,7 +903,26 @@ Two rules follow from the mark, and they are each other's halves:
   would have joined that family without saying so, and would then be
   placeable in a canvas (`checkTreelessBody`). The rule reaches through
   everything `treeTransparent` lists, so a widget wrapped in a boundary or a
-  context override is still a widget this component renders.
+  context override is still a widget this component renders -- and it counts
+  a slot insertion, which puts what the slot takes where it stands. Passed
+  over, `#[tree.none] component sneak(content ...component ui.node) { content }` carried a button into a canvas, where html painted nothing for
+  it (`error_tree_treeless_slot.sngl`).
+
+`#[tree.none]` is being weeded out for type parameters, which say "any
+family" without saying "no family". **Crossing a family is said at the
+placement, with `#[tree.crosses]`** (`sngl:tree`, for any package): written on
+a node or a slot insertion in a view, it lifts the one check the position
+makes of it -- that it belongs to the family accepted there -- and nothing
+else. The node's own body, slots and children are checked as ever, it is no
+evidence for a family the body is inferring (`treeEvidence`), and on anything
+else the mark is refused (`markTreeCrosses`). On the placement rather than the
+declaration, so a platform permits exactly the use it means: html's window
+override marks the `html.dialog` it renders in a `root` member's body, and
+each `nav.page` override marks the `Page` primitive it stands in, which is a
+`ui.node` and says so. It is `NodeInst.Crosses` and `SlotInst.Crosses`, and a
+node written as a call (`ui.text(value=v)`, an `ast.CallStmt`) carries marks
+as a `VisualNode` does. `testdata/tree_crosses.sngl` and
+`error_tree_crosses_target.sngl`.
 
 **A wrapper whose family is whatever it was handed says so with a type
 parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
@@ -2389,14 +2408,11 @@ C3's to delete. html keeps one window the builtin it is marked, below.
 `#[gen.can(documentWindow)]`: the first window in source order that no `if`
 over state and no `for` can take away is the document, and stays the builtin
 (`documentWindow`, `internal/lower/document_window.go`); every other is
-composed through html's override, `surface { html.dialog(open=visible, …) { header; content } }`, so `visible`, `open`/`close` through the `#id`,
+composed through html's override, `#[tree.crosses] html.dialog(open=visible, …) { header; content }`, so `visible`, `open`/`close` through the `#id`,
 `@closed` and a window under an `if` over state are the generic machinery
 gtk4 and fyne already use -- an implicit cell, a spliced method, a render slot
-building a runtime instance. `surface` is a `#[tree.none]` bodied component
-inserting a `ui.node` slot, which is how a `root` member's body renders an
-element: the tree-less rule reads what a body renders and not what a slot
-inserts, so that is a hole the override goes through rather than a rule it
-satisfies. The header holds the title and a close button, which is a window
+building a runtime instance. The dialog is an element placed in a `root`
+member's body, which the mark on that placement permits. The header holds the title and a close button, which is a window
 manager's close -- `visible = false`, then `@closed` -- and the only thing
 that fires `@closed`: a close the program makes runs nothing, as on gtk4. A
 page's reset strips the dialog's margin and padding, so a page holding one
