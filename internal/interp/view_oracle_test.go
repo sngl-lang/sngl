@@ -35,6 +35,17 @@ func oracleResolve(env *Env, id string) (any, error) {
 
 // collectByStmts walks IR statements collecting rendered nodes with matching id.
 func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) {
+	// Frozen walk, a second exception: a `var` in a block of a view is state
+	// of the block, which the walk read as nothing at all. It is bound at its
+	// initializer, which is what a fresh mount shows.
+	if hasViewVar(stmts) {
+		env = env.Snapshot()
+		for _, s := range stmts {
+			if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+				env.Set(lv.Sym, evalInit(env, lv.Init))
+			}
+		}
+	}
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:

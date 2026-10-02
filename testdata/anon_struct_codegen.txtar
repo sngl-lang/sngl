@@ -34,7 +34,6 @@ every settle and cannot be folded away.
 
 deny out/go/bubbletea/model.go `(?s)type __anon_a_b_\w+ struct.*type __anon_a_b_` -- four spellings of one signature are one declaration, not two that happen to look alike
 deny out/go/bubbletea/model.go `struct\{\}\{` -- a literal names its declared type; `struct{}{A: 1, B: 2}` is what a decl-less anonymous struct emitted, and it does not compile
-broken out/kotlin/android -- an empty anonymous struct emits a Kotlin `data class` with no primary constructor parameter, which the language forbids
 -- app.sngl --
 import . "sngl:ui"
 
@@ -428,8 +427,11 @@ data class __anon_a_b_8dc8a4(
     var b: Int = 0
 )
 
-data class __anon_e3b0c4(
-)
+class __anon_e3b0c4 {
+    override fun equals(other: Any?) = other is __anon_e3b0c4
+    override fun hashCode() = 0
+    override fun toString() = "__anon_e3b0c4()"
+}
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -569,6 +571,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7cce45338a3fbd2f259fab592a4f553e
 -- run/kotlin/android --
-broken sha256:3fd3f373678f1604eee6d00bfbf6b7ea
+pass sha256:010f66089cc70f43fa2309585d5307e1
 -- run/none/html --
 pass sha256:0bb277315898933a9d389e27ca9248b8

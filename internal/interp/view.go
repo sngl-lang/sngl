@@ -388,6 +388,13 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 		return prefix + "/" + s
 	}
 
+	// A `var` written in the list is state of the block: the list mounts in a
+	// scope of its own, kept across mounts by its path as a component's is,
+	// and dropped with it when a mount no longer reaches it.
+	if hasViewVar(stmts) {
+		env = m.blockEnv(env, stmts, join("block"))
+	}
+
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
@@ -909,4 +916,53 @@ func evalProps(env *Env, props []ir.Arg) (map[string]any, []string) {
 		out[p.Name] = v
 	}
 	return out, order
+}
+
+// hasViewVar reports whether a view's statement list declares a `var`.
+func hasViewVar(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// blockEnv is the scope a view's statement list mounts in when it declares a
+// `var`: the block's state, as a component's vars are an instance's. It is
+// cached by the list's path in the scope it is mounted from, so a re-mount
+// keeps what the block's handlers wrote, one per copy under a `for` (each
+// iteration's path is its own), and evictUnreached drops it once a mount does
+// not reach it -- under an `if` that went false, on a page left -- so the
+// block starts again from its initializers.
+func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
+	if env.childEnvs == nil {
+		env.childEnvs = map[childKey]*Env{}
+	}
+	key := childKey{at: at}
+	if m.reached != nil {
+		m.reached[key] = true
+		m.visited[env] = true
+	}
+	if cached, ok := env.childEnvs[key]; ok {
+		cached.ContextVals = capturedContext(env)
+		cached.parent = env
+		return cached
+	}
+	child := NewEnv()
+	child.Pkg = env.Pkg
+	child.handling = env.handling
+	child.Units = env.Units
+	child.Comp = env.Comp
+	child.parent = env
+	child.inst = env.inst
+	child.ContextVals = capturedContext(env)
+	child.RenderDepth = env.RenderDepth
+	for _, s := range stmts {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			child.Set(lv.Sym, evalInit(child, lv.Init))
+		}
+	}
+	env.childEnvs[key] = child
+	return child
 }

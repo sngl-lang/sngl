@@ -1174,8 +1174,44 @@ the checker did not see.
 come along either. A window is a rendering root and not a storage level, so
 what its body declares belongs to its container — the package, or the
 component that renders it: the checker leaves a window's `var` as an
-`*ir.LocalVar` statement in the body and `passHoistState` moves it there, and a
-`func` at the root of a window body is registered on the container directly.
+`*ir.LocalVar` statement in the body and `passHoistState` moves it there, as it
+does a `var` in any block of a view (below), and a `func` at the root of a
+window body is registered on the container directly.
+
+**A `var` written in a block of a view is state of that block**, as a
+component's `var` is state of the component, and nothing about a window
+decides it. The checker leaves one written anywhere but a component's or the
+package's own top level as an `*ir.LocalVar` where it was written, which no
+target implements: bubbletea and gtk4 emitted a local of the render function
+reset on every frame with the handler writing a name the Model lacks, and
+android and html declared it nowhere. `passHoistState`
+(`internal/lower/hoist_state.go`) answers by what the block is. Rendered once
+-- a window's top level, a vbox outside any loop -- its vars join its owner
+(the component, or the package) under their own names, renamed `<n>__block<k>`
+only where the owner already has the name. Under a `for`, an `if` over state, a
+page or a slot's population, the block becomes an instance of a component
+synthesized for it, `__block_state<N>`, which the inliner builds per copy as it
+does any component with state: what the block reads of the loop, a slot's
+parameter or the owner's props arrives as a prop, and what it reads of the
+owner's state as a two-way prop bound to it, so a write in a copy is the
+owner's. A block calling a function of the component around it from such a
+position is refused, since a copy cannot reach it. A provider's own body is
+left to passContext, which splices it up and promotes its vars with the
+provided value in scope for their initializers. The interpreter mounts a list
+declaring a `var` in a scope of its own (`blockEnv`), cached by the list's path
+as a component instance's is and evicted with it, and a handler's write in it
+is carried back through every loop snapshot above (`Env.writeBack`).
+`testdata/view_block_state.sngl` runs it on the interpreter and
+`view_block_state.txtar` is the code on all six targets.
+
+That made a two-way prop written inside a component built at run time reach
+codegen, which it never had: passPropBindings names the write-back event for
+the prop it reports, and passInstanceEvents skipped an event whose name a
+prop already had, so the emit came out as a call to `emit` nothing declares --
+on gtk4, fyne and html alike. Such an event's func prop is `__on_<prop>`
+(`testdata/two_way_prop_runtime_instance.txtar`). And a struct with no fields
+-- the empty `meta` a nav record carries, `struct Empty {}` -- is a Kotlin
+class with value equality rather than a data class, which needs a field.
 `ir.Owners` reports a window with neither. `Timers` is **gone**, and with it
 `ir.Timer`: the record held an interval, a gate and a tick body, and every one
 of those is readable off the timer-primitive node -- the `interval` and
@@ -2781,11 +2817,7 @@ bubbletea.
 step 6): a destination is a page, and a stack starts at the page at "/", or
 its first. Every program that was a window per page is a window holding a
 stack of pages, the window's title the page's (`title=pages.current.title`),
-and html writes the same documents from it. What a page cannot carry that a
-window could: a `var` written in a page's body is not hoisted the way a
-window's is -- a `var` in any node's children is a local the fold reads as a
-constant, which is a gap of its own -- so state a page reads belongs in the
-window around the stack.
+and html writes the same documents from it. A `var` written in a page's body is state of the page, which starts again when the page is left, as any block's is (see *A `var` written in a block of a view is state of that block*).
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --

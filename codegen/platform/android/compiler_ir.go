@@ -569,6 +569,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		if nav.serializable[sd] {
 			body.WriteString("@Serializable\n")
 		}
+		// A data class needs a field, and a struct with none -- `struct
+		// Empty {}`, the empty `meta` a nav record carries -- is still a value
+		// that compares equal to every other of its type.
+		if len(sd.Fields) == 0 {
+			name := exportName(sd.Name)
+			fmt.Fprintf(&body, "class %s {\n    override fun equals(other: Any?) = other is %s\n    override fun hashCode() = 0\n    override fun toString() = \"%s()\"\n}\n\n", name, name, name)
+			continue
+		}
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)

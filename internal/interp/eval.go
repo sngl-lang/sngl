@@ -498,9 +498,17 @@ func (env *Env) Snapshot() *Env {
 // from, the way LambdaValue.Call does for a callback. A node mounted in a loop
 // iteration or a scoped slot's population holds a snapshot, so a handler run
 // in it wrote only the copy.
+//
+// A scope above the snapshot may be a snapshot too, and a write the handler
+// made to a binding that scope holds landed in it rather than in the handler's
+// own: a block that declares a `var` mounts in a scope of its own (blockEnv)
+// whose parent is the loop iteration's snapshot. So every snapshot on the way
+// up carries what it was written back to where it was taken from.
 func (env *Env) writeBack() {
-	for o := env.origin; o != nil; o = o.origin {
-		o.RebindFrom(env)
+	for e := env; e != nil; e = e.parent {
+		for o := e.origin; o != nil; o = o.origin {
+			o.RebindFrom(e)
+		}
 	}
 }
 
