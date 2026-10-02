@@ -366,7 +366,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 <button id="$0">
   <span>step</span>
@@ -378,10 +378,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0, log__inst0: "" };
+  var state = { n__inst0: 0, log__inst0: "", visible__inst1: true };
   function step__mark__inst0(k) {
     state.log__inst0 = state.log__inst0 + "!";
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
     return k * 2;
   }
   function step__inst0(a) {
@@ -389,7 +389,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function reset__mark__inst0(k) {
     state.log__inst0 = "";
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
     return k - 1;
   }
   function reset__inst0(a) {
@@ -400,17 +400,17 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.n__inst0 = step__inst0(state.n__inst0);
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   });
   $1.addEventListener("click", function() {
     state.n__inst0 = reset__inst0(state.n__inst0);
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   }
   __sngl_init();
 })();
@@ -421,4 +421,4 @@ pass sha256:3edd0a33cd701bb495e58b08fed1de58
 -- run/kotlin/android --
 pass sha256:3654ea474bf4a26ffaad80fc4a8889f4
 -- run/none/html --
-pass sha256:9ea7059763190fbb73dba76fab451dda
+pass sha256:1fbdef6bdc578af462395bea4ecd73c3

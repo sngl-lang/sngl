@@ -561,9 +561,9 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span>Home</span>
   <span>About</span>
-  <span id="__n0" data-sngl-id="__n0">
-  </span>
   <span id="__n1" data-sngl-id="__n1">
+  </span>
+  <span id="__n2" data-sngl-id="__n2">
   </span>
   <button id="$3">
     <span>next</span>
@@ -575,19 +575,19 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var entries = [{ title: "Home", href: "/" }, { title: "About", href: "/about.html" }];
   var labels = /* @__PURE__ */ new Map([["home", "Start"], ["about", "Us"]]);
-  var state = { pick: 0, key: "home" };
+  var state = { pick: 0, key: "home", visible__inst0: true };
   var $3 = document.getElementById("$3");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $3.addEventListener("click", function() {
     state.pick = (state.pick + 1) % 2;
-    __n0.textContent = entries[state.pick].title;
+    __n1.textContent = entries[state.pick].title;
     state.key = state.pick === 0 ? "home" : "about";
-    __n1.textContent = labels.has(state.key) ? labels.get(state.key) : "?";
+    __n2.textContent = labels.has(state.key) ? labels.get(state.key) : "?";
   });
   function __sngl_init() {
-    __n0.textContent = entries[state.pick].title;
-    __n1.textContent = labels.has(state.key) ? labels.get(state.key) : "?";
+    __n1.textContent = entries[state.pick].title;
+    __n2.textContent = labels.has(state.key) ? labels.get(state.key) : "?";
   }
   __sngl_init();
 })();
@@ -600,4 +600,4 @@ pass sha256:8748a229d4607ab98c7d813f3b468321
 -- run/go/gtk4 --
 pass sha256:54150a38e458c2f00830403d058d0cf5
 -- run/none/html --
-pass sha256:188880d499ef6f63518e4bf72dd2341a
+pass sha256:2608b26bd2bc03c32f990746024e9d6e

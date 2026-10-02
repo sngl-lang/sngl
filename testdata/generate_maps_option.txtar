@@ -41,10 +41,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
-//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsic25nbC1lbnRyeS5qcyJdLAogICJzb3VyY2VzQ29udGVudCI6IFsiLy8gU3RhdGVcbmxldCBzdGF0ZSA9IHt9O1xuXG5cbiJdLAogICJtYXBwaW5ncyI6ICI7O0FBQ0EsTUFBSSxRQUFRLENBQUM7IiwKICAibmFtZXMiOiBbXQp9Cg==
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsic25nbC1lbnRyeS5qcyJdLAogICJzb3VyY2VzQ29udGVudCI6IFsiLy8gU3RhdGVcbmxldCBzdGF0ZSA9IHt2aXNpYmxlX19pbnN0MDogdHJ1ZX07XG5cblxuXG4iXSwKICAibWFwcGluZ3MiOiAiOztBQUNBLE1BQUksUUFBUSxFQUFDLGdCQUFnQixLQUFJOyIsCiAgIm5hbWVzIjogW10KfQo=
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d74c3f7e720d81e1b1fe51c024fdfb50
+pass sha256:7f670728297ca5af85fbb7f4fc81bbe0

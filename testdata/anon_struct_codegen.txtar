@@ -489,19 +489,19 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
 <span id="__n3" data-sngl-id="__n3">
 </span>
+<span id="__n4" data-sngl-id="__n4">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null, mounts__inst0: 0 };
+  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null, mounts__inst0: 0, visible__inst1: true };
   state.empty__inst0 = {};
   state.pair__inst0 = { a: 1, b: 2 };
   state.swapped__inst0 = { b: 4, a: 3 };
@@ -510,7 +510,7 @@ body { font-family: system-ui, sans-serif; }
   state.total__inst0 = state.pair__inst0.a + state.pair__inst0.b + (state.swapped__inst0.a + state.swapped__inst0.b) + (state.shorthand__inst0.a + state.shorthand__inst0.b) + (state.written__inst0.a + state.written__inst0.b);
   function __effect0_mount() {
     state.mounts__inst0 = state.mounts__inst0 + 1;
-    __n3.textContent = String(state.mounts__inst0);
+    __n4.textContent = String(state.mounts__inst0);
   }
   var __effect0_key = {};
   var __effect0_live = [];
@@ -553,15 +553,15 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   function __sngl_init() {
-    __n0.textContent = String(state.total__inst0);
-    __n1.textContent = String(state.pair__inst0.a);
-    __n2.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
-    __n3.textContent = String(state.mounts__inst0);
+    __n1.textContent = String(state.total__inst0);
+    __n2.textContent = String(state.pair__inst0.a);
+    __n3.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
+    __n4.textContent = String(state.mounts__inst0);
   }
   __sngl_init();
   __effects0_settle();
@@ -573,4 +573,4 @@ pass sha256:7cce45338a3fbd2f259fab592a4f553e
 -- run/kotlin/android --
 pass sha256:010f66089cc70f43fa2309585d5307e1
 -- run/none/html --
-pass sha256:0bb277315898933a9d389e27ca9248b8
+pass sha256:fccc011c85f62cb01bcea9822c124f4e

@@ -1115,32 +1115,32 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
+</span>
+<span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst2: 0, running__inst2: true, handle__inst1__inst2: 0, beats__inst3: 0, handle__inst0__inst3: 0 };
+  var state = { seconds__inst2: 0, running__inst2: true, handle__inst1__inst2: 0, visible__inst3: true, beats__inst4: 0, handle__inst0__inst4: 0 };
   function __effect0_mount() {
     state.handle__inst1__inst2 = setInterval(() => {
       state.seconds__inst2 += 1;
-      __n1.textContent = String(state.seconds__inst2);
+      __n2.textContent = String(state.seconds__inst2);
     }, __effect0_key);
   }
   function __effect0_unmount() {
     clearInterval(state.handle__inst1__inst2);
   }
   function __effect1_mount() {
-    state.handle__inst0__inst3 = setInterval(() => {
-      state.beats__inst3 += 1;
-      __n0.textContent = "beats " + String(state.beats__inst3);
+    state.handle__inst0__inst4 = setInterval(() => {
+      state.beats__inst4 += 1;
+      __n1.textContent = "beats " + String(state.beats__inst4);
     }, __effect1_key);
   }
   function __effect1_unmount() {
-    clearInterval(state.handle__inst0__inst3);
+    clearInterval(state.handle__inst0__inst4);
   }
   function __snglTeardown() {
     __effect1_teardown();
@@ -1255,11 +1255,11 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n0.textContent = "beats " + String(state.beats__inst3);
-    __n1.textContent = String(state.seconds__inst2);
+    __n1.textContent = "beats " + String(state.beats__inst4);
+    __n2.textContent = String(state.seconds__inst2);
   }
   __sngl_init();
   __effects0_settle();
@@ -1276,4 +1276,4 @@ pass sha256:0390bb1932db43443dd92109cd1b541d
 -- run/kotlin/android --
 pass sha256:0c35a7da377b9990aedb93529524ebe2
 -- run/none/html --
-pass sha256:f358e6f064901ce75fe21ae0fa3f4838
+pass sha256:d8d013ed5228f5291d44b8e2f2d178b4

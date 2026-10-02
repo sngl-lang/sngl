@@ -142,6 +142,8 @@ var orderConstraints = []orderConstraint{
 	{"InlinePure", "StampUsage",
 		"inlining can collapse an i18n wrapper into a direct intrinsic, and the usage flags have to count the call as it finally reads"},
 
+	{"BoundaryPassthrough", "StampUsage",
+		"a boundary declares no payload of its own: what names ErrorEvent is a raise, a catch block or a fallible call, and what a boundary was handed must not decide it"},
 	{"IterKind", "BoundaryPassthrough",
 		"a boundary is how a pass reaches its handler -- a catch block holds it only as an alias -- so a loop in one is stamped only while the boundary stands"},
 	{"ErrorCatch", "BoundaryPassthrough",

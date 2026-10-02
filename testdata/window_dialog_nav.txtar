@@ -74,7 +74,7 @@ dialog { margin: auto; padding: 1em; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { tabs__current: null, tabs__history: [], visible__inst0: false };
+  var state = { tabs__current: null, tabs__history: [], visible__inst0: true, visible__inst1: false };
   state.tabs__current = { id: 0, href: "/", title: "General", meta: {} };
   var __slot0 = [];
   function __renderSlot0(parent) {
@@ -172,8 +172,8 @@ dialog { margin: auto; padding: 1em; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $1.addEventListener("click", function() {
-    state.visible__inst0 = true;
-    $0.open = state.visible__inst0;
+    state.visible__inst1 = true;
+    $0.open = state.visible__inst1;
   });
   $3.addEventListener("click", function() {
     state.tabs__history.push({ page: state.tabs__current });
@@ -181,15 +181,15 @@ dialog { margin: auto; padding: 1em; }
     __renderSlot0(__slotAnchor_0);
   });
   $2.addEventListener("click", function() {
-    state.visible__inst0 = false;
-    $0.open = state.visible__inst0;
+    state.visible__inst1 = false;
+    $0.open = state.visible__inst1;
   });
   function __sngl_init() {
-    $0.open = state.visible__inst0;
+    $0.open = state.visible__inst1;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4527332c087af973e17b06c99c193a07
+pass sha256:f9939f05224d2d4ad47ce412d26b81c3

@@ -257,7 +257,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { big__inst0: true };
+  var state = { big__inst0: true, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -327,4 +327,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1b2ac6bbf014991e696ddb7350e4f49a
 -- run/none/html --
-pass sha256:694bd97383b90483f4999f25546b30b9
+pass sha256:fb9a0e611c144f30763f12bbfef5c82a

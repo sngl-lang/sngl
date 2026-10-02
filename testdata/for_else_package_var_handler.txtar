@@ -252,13 +252,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>bump</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs: [], note: "", count: 0 };
+  var state = { xs: [], note: "", count: 0, visible__inst0: true };
   function $set_count(v) {
     state.count = v;
     let __ran0 = false;
@@ -266,13 +266,13 @@ body { font-family: system-ui, sans-serif; }
       ;
       __ran0 = true;
       state.note = state.note + String(x);
-      __n0.textContent = state.note;
+      __n1.textContent = state.note;
     }
     ;
     if (!__ran0) {
       ;
       state.note = "empty";
-      __n0.textContent = state.note;
+      __n1.textContent = state.note;
     }
     ;
   }
@@ -280,12 +280,12 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.count = state.count + 1;
   });
   function __sngl_init() {
-    __n0.textContent = state.note;
+    __n1.textContent = state.note;
   }
   __sngl_init();
 })();
@@ -294,4 +294,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8d239142703fcb730d26d04953957183
 -- run/none/html --
-pass sha256:1fd5526c99d83ce684d783c70ae94e84
+pass sha256:b716dd3b99f68801f0086de7ff317032

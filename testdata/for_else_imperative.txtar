@@ -357,15 +357,15 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>run</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs__inst0: [], note__inst0: "", total__inst0: 0 };
+  var state = { xs__inst0: [], note__inst0: "", total__inst0: 0, visible__inst1: true };
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     let __ran0 = false;
     for (const x of state.xs__inst0) {
@@ -382,7 +382,7 @@ body { font-family: system-ui, sans-serif; }
     if (!__ran0) {
       ;
       state.note__inst0 = "empty";
-      __n0.textContent = state.note__inst0;
+      __n1.textContent = state.note__inst0;
     }
     ;
     let __ran1 = false;
@@ -395,12 +395,12 @@ body { font-family: system-ui, sans-serif; }
     if (!__ran1) {
       ;
       state.note__inst0 = "still empty";
-      __n0.textContent = state.note__inst0;
+      __n1.textContent = state.note__inst0;
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = state.note__inst0;
+    __n1.textContent = state.note__inst0;
   }
   __sngl_init();
 })();
@@ -411,4 +411,4 @@ pass sha256:112ed96f39046c15b37ea2b6cd8f0fd9
 -- run/kotlin/android --
 pass sha256:4c1eef2a8026552b51ea2583ba8924c5
 -- run/none/html --
-pass sha256:93e80659a3eecfbd2915cc0ee9059410
+pass sha256:683664e65e7d235c65f1a881f5ee95c9

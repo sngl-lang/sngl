@@ -1171,7 +1171,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
@@ -1210,7 +1210,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
@@ -1249,7 +1249,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   $2.addEventListener("click", function() {
@@ -1290,7 +1290,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
@@ -1336,7 +1336,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
@@ -1362,4 +1362,4 @@ pass sha256:619e417380b839cd436b537cce345c11
 -- run/kotlin/android --
 pass sha256:5adc42be901eac9d98f62dd3b735a99c
 -- run/none/html --
-pass sha256:f673a6f1ec571f84e85bf69dcb7716e1
+pass sha256:81733272006c669a4d51d0ade842e178

@@ -429,7 +429,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { calls: 0 };
+  var state = { calls: 0, visible__inst0: true };
   function deeper(d) {
     state.calls += 1;
     return d + 1;
@@ -454,4 +454,4 @@ pass sha256:3fe11ea110a7a0fccb1bb49a07d91494
 -- run/kotlin/android --
 pass sha256:7a284e1f3f77bece1c7a29ef97a96c8e
 -- run/none/html --
-pass sha256:4ee6d673ffb4fc10c4bf8a4991133caa
+pass sha256:3509037b67a6963354773defc18ee4ba

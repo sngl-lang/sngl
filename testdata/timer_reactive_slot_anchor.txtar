@@ -56,7 +56,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n2" data-sngl-id="__n2" style="position:relative">
+<div id="__n3" data-sngl-id="__n3" style="position:relative">
   <span data-sngl-slot="0" style="display:contents"></span>
   <span data-sngl-slot="1" style="display:contents"></span>
 </div>
@@ -64,7 +64,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst1: 0, handle__inst0__inst1: 0 };
+  var state = { a__inst1: 0, handle__inst0__inst1: 0, visible__inst2: true };
   function __effect0_mount() {
     state.handle__inst0__inst1 = setInterval(() => {
       state.a__inst1 = (state.a__inst1 + 1) % 2;
@@ -147,18 +147,18 @@ body { font-family: system-ui, sans-serif; }
     let __place0_i = 0;
     __slot0 = [];
     if (state.a__inst1 === 0) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = "ZERO";
+      let __n1 = document.createElement("span");
+      __n1.textContent = "ZERO";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n1) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n1, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n1);
     }
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
@@ -171,18 +171,18 @@ body { font-family: system-ui, sans-serif; }
     let __place1_i = 0;
     __slot1 = [];
     if (state.a__inst1 === 1) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "ONE";
+      let __n2 = document.createElement("span");
+      __n2.textContent = "ONE";
       let __place1_i_ref0 = null;
       if (__place1_i < __place1_prev.length) {
         __place1_i_ref0 = __place1_prev[__place1_i];
       }
-      if (__place1_i_ref0 === __n1) {
+      if (__place1_i_ref0 === __n2) {
         __place1_i = __place1_i + 1;
       } else {
-        parent.insertBefore(__n1, __place1_i_ref0);
+        parent.insertBefore(__n2, __place1_i_ref0);
       }
-      __slot1.push(__n1);
+      __slot1.push(__n2);
     }
     for (const __place1_prev_e of __place1_prev) {
       if (__slot1.indexOf(__place1_prev_e) < 0) {
@@ -200,4 +200,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:73bc702b30018af5a11af525e4a23593
+pass sha256:116a0aa0efdb01625b729df761deec47

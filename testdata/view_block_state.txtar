@@ -1539,14 +1539,14 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
+<div id="__n8" data-sngl-id="__n8" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>open</span>
   </button>
-  <span id="__n3" data-sngl-id="__n3">
+  <span id="__n4" data-sngl-id="__n4">
   </span>
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n4" data-sngl-id="__n4">
+  <span id="__n5" data-sngl-id="__n5">
   </span>
   <span>about</span>
   <button id="$2">
@@ -1559,7 +1559,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var items = globalThis.__snglShared.items;
-  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0 };
+  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0, visible__inst2: true };
   function __cf___block_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1583,21 +1583,21 @@ body { font-family: system-ui, sans-serif; }
     function __set___on_total(__v) {
       __prop___on_total = __v;
     }
-    let __n8 = document.createElement("button");
-    __n8.disabled = false;
-    __n8.addEventListener("click", () => {
+    let __n9 = document.createElement("button");
+    __n9.disabled = false;
+    __n9.addEventListener("click", () => {
       n += 1;
       __n1.textContent = __prop_it + " " + String(n);
       __prop___on_total(__prop_total + 1);
     });
-    __n8.addEventListener("contextmenu", () => {
+    __n9.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = __prop_it;
-    __n8.appendChild(__n0);
+    __n9.appendChild(__n0);
     let __n1 = document.createElement("span");
     __n1.textContent = __prop_it + " " + String(n);
-    __root.appendChild(__n8);
+    __root.appendChild(__n9);
     __root.appendChild(__n1);
     return {
       __root,
@@ -1630,14 +1630,14 @@ body { font-family: system-ui, sans-serif; }
     function __set___on0(__v) {
       __prop___on0 = __v;
     }
-    let __n9 = document.createElement("div");
-    __n9.setAttribute("style", "display:flex;flex-direction:row");
+    let __n10 = document.createElement("div");
+    __n10.setAttribute("style", "display:flex;flex-direction:row");
     let __n2 = __cf___block_state1({ it: __prop___p0, total: __prop___p1, __on_total: (__on0_0) => {
       __prop___on0(__on0_0);
     } });
     let __n2__el = __n2.__root;
-    __n9.appendChild(__n2__el);
-    __root.appendChild(__n9);
+    __n10.appendChild(__n2__el);
+    __root.appendChild(__n10);
     return {
       __root,
       __destroy() {
@@ -1656,14 +1656,14 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of items) {
-      let __n6 = null;
+      let __n7 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n6 = __inst1_live[__inst1_i];
-        __n6.__set___p0(it);
-        __n6.__set___p1(state.total__inst0);
-        __n6.__set___on0((__total) => {
+        __n7 = __inst1_live[__inst1_i];
+        __n7.__set___p0(it);
+        __n7.__set___p1(state.total__inst0);
+        __n7.__set___on0((__total) => {
           state.total__inst0 = __total;
-          __n4.textContent = "total " + String(state.total__inst0);
+          __n5.textContent = "total " + String(state.total__inst0);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
@@ -1674,30 +1674,30 @@ body { font-family: system-ui, sans-serif; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n6__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
+        let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
           state.total__inst0 = __total;
-          __n4.textContent = "total " + String(state.total__inst0);
+          __n5.textContent = "total " + String(state.total__inst0);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
           }
           ;
         } });
-        __n6 = __n6__new;
+        __n7 = __n7__new;
       }
-      __inst1_next.push(__n6);
+      __inst1_next.push(__n7);
       __inst1_i = __inst1_i + 1;
-      let __n6__el = __n6.__root;
+      let __n7__el = __n7.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n6__el) {
+      if (__place0_i_ref0 === __n7__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n6__el, __place0_i_ref0);
+        parent.insertBefore(__n7__el, __place0_i_ref0);
       }
-      __slot0.push(__n6__el);
+      __slot0.push(__n7__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1717,20 +1717,20 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   var $2 = document.getElementById("$2");
-  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
     state.opened += 1;
-    __n3.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
+    __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
   });
   $2.addEventListener("click", function() {
     location.assign("/about");
   });
   function __sngl_init() {
-    __n3.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
-    __n4.textContent = "total " + String(state.total__inst0);
+    __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
+    __n5.textContent = "total " + String(state.total__inst0);
   }
   __sngl_init();
 })();
@@ -1753,19 +1753,19 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
+<div id="__n8" data-sngl-id="__n8" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>open</span>
   </button>
-  <span id="__n3" data-sngl-id="__n3">
+  <span id="__n4" data-sngl-id="__n4">
   </span>
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n4" data-sngl-id="__n4">
+  <span id="__n5" data-sngl-id="__n5">
   </span>
   <button id="$1">
     <span>hit</span>
   </button>
-  <span id="__n5" data-sngl-id="__n5">
+  <span id="__n6" data-sngl-id="__n6">
   </span>
   <button id="$2">
     <span>about</span>
@@ -1777,7 +1777,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var items = globalThis.__snglShared.items;
-  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0 };
+  var state = { visits: 0, opened: 0, total__inst0: 0, hits__inst1: 0, visible__inst2: true };
   function __cf___block_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1801,21 +1801,21 @@ body { font-family: system-ui, sans-serif; }
     function __set___on_total(__v) {
       __prop___on_total = __v;
     }
-    let __n8 = document.createElement("button");
-    __n8.disabled = false;
-    __n8.addEventListener("click", () => {
+    let __n9 = document.createElement("button");
+    __n9.disabled = false;
+    __n9.addEventListener("click", () => {
       n += 1;
       __n1.textContent = __prop_it + " " + String(n);
       __prop___on_total(__prop_total + 1);
     });
-    __n8.addEventListener("contextmenu", () => {
+    __n9.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = __prop_it;
-    __n8.appendChild(__n0);
+    __n9.appendChild(__n0);
     let __n1 = document.createElement("span");
     __n1.textContent = __prop_it + " " + String(n);
-    __root.appendChild(__n8);
+    __root.appendChild(__n9);
     __root.appendChild(__n1);
     return {
       __root,
@@ -1848,14 +1848,14 @@ body { font-family: system-ui, sans-serif; }
     function __set___on0(__v) {
       __prop___on0 = __v;
     }
-    let __n9 = document.createElement("div");
-    __n9.setAttribute("style", "display:flex;flex-direction:row");
+    let __n10 = document.createElement("div");
+    __n10.setAttribute("style", "display:flex;flex-direction:row");
     let __n2 = __cf___block_state1({ it: __prop___p0, total: __prop___p1, __on_total: (__on0_0) => {
       __prop___on0(__on0_0);
     } });
     let __n2__el = __n2.__root;
-    __n9.appendChild(__n2__el);
-    __root.appendChild(__n9);
+    __n10.appendChild(__n2__el);
+    __root.appendChild(__n10);
     return {
       __root,
       __destroy() {
@@ -1874,14 +1874,14 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of items) {
-      let __n6 = null;
+      let __n7 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n6 = __inst1_live[__inst1_i];
-        __n6.__set___p0(it);
-        __n6.__set___p1(state.total__inst0);
-        __n6.__set___on0((__total) => {
+        __n7 = __inst1_live[__inst1_i];
+        __n7.__set___p0(it);
+        __n7.__set___p1(state.total__inst0);
+        __n7.__set___on0((__total) => {
           state.total__inst0 = __total;
-          __n4.textContent = "total " + String(state.total__inst0);
+          __n5.textContent = "total " + String(state.total__inst0);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
@@ -1892,30 +1892,30 @@ body { font-family: system-ui, sans-serif; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n6__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
+        let __n7__new = __cf___child0({ __p0: it, __p1: state.total__inst0, __on0: (__total) => {
           state.total__inst0 = __total;
-          __n4.textContent = "total " + String(state.total__inst0);
+          __n5.textContent = "total " + String(state.total__inst0);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.total__inst0);
           }
           ;
         } });
-        __n6 = __n6__new;
+        __n7 = __n7__new;
       }
-      __inst1_next.push(__n6);
+      __inst1_next.push(__n7);
       __inst1_i = __inst1_i + 1;
-      let __n6__el = __n6.__root;
+      let __n7__el = __n7.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n6__el) {
+      if (__place0_i_ref0 === __n7__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n6__el, __place0_i_ref0);
+        parent.insertBefore(__n7__el, __place0_i_ref0);
       }
-      __slot0.push(__n6__el);
+      __slot0.push(__n7__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1936,28 +1936,28 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
     state.opened += 1;
-    __n3.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
+    __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
   });
   $1.addEventListener("click", function() {
     state.hits__inst1 += 1;
-    __n5.textContent = "hits " + String(state.hits__inst1);
+    __n6.textContent = "hits " + String(state.hits__inst1);
     state.visits += 1;
-    __n3.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
+    __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
   });
   $2.addEventListener("click", function() {
     location.assign("/about");
   });
   function __sngl_init() {
-    __n3.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
-    __n4.textContent = "total " + String(state.total__inst0);
-    __n5.textContent = "hits " + String(state.hits__inst1);
+    __n4.textContent = "opened " + String(state.opened) + " visits " + String(state.visits);
+    __n5.textContent = "total " + String(state.total__inst0);
+    __n6.textContent = "hits " + String(state.hits__inst1);
   }
   __sngl_init();
 })();
@@ -1972,4 +1972,4 @@ pass sha256:9311a9c7e428121d7d6a4c45c8766742
 -- run/kotlin/android --
 pass sha256:5e146188c588322174363fd4c7988abd
 -- run/none/html --
-pass sha256:07d6287d36787cd1724c4d799d6c87b6
+pass sha256:074d136df235b3642b7873bc272fd9b2

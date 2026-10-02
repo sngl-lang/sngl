@@ -374,6 +374,11 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 	if s.Catch != nil {
 		s.Body = foldStmts(s.Body, ctx)
+		// The handler is the boundary's, which a splice may have left this
+		// the only route to; folding it again where it was reached is a no-op.
+		if h := s.Catch; h.Func != nil {
+			h.Func.Block = foldStmts(h.Func.Block, ctx)
+		}
 		return s
 	}
 	s.Cond = foldExpr(s.Cond, ctx)

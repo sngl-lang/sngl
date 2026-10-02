@@ -35,20 +35,20 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "World" };
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var state = { name__inst0: "World", visible__inst1: true };
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = state.name__inst0;
+    __n1.textContent = state.name__inst0;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:76a323ac18528368244feacdad137876
+pass sha256:17d1c2e6c9233bf42d8bd13e2fd519f9

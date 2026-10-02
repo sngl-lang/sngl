@@ -712,7 +712,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { txt: "b", xs: [1, 2] };
+  var state = { txt: "b", xs: [1, 2], visible__inst0: true };
   function __cf_show(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -814,4 +814,4 @@ pass sha256:b7fb78b50e1c81bf7afe65f99eaaa283
 -- run/kotlin/android --
 pass sha256:2bd10715e56de4c5015b0e04eeea1a0c
 -- run/none/html --
-pass sha256:4e10c54ba28fbbcf979c48286385bb02
+pass sha256:03846ef2fe0f8cca6dc5d2b6d9096fe1

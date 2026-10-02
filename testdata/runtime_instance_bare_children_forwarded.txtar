@@ -1013,7 +1013,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n9" data-sngl-id="__n9" style="display:flex;flex-direction:column">
+<div id="__n10" data-sngl-id="__n10" style="display:flex;flex-direction:column">
   <span data-sngl-slot="2" style="display:contents"></span>
   <span data-sngl-slot="3" style="display:contents"></span>
 </div>
@@ -1021,7 +1021,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items: ["a", "b"] };
+  var state = { items: ["a", "b"], visible__inst0: true };
   function __cf_Card__slot3(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1030,31 +1030,31 @@ body { font-family: system-ui, sans-serif; }
     let __slot1 = [];
     let __slot22 = [];
     let __slot32 = [];
-    let __n10 = document.createElement("div");
-    __n10.setAttribute("style", "display:flex;flex-direction:column");
-    let __n11 = document.createElement("button");
-    __n11.disabled = false;
-    __n11.addEventListener("click", () => {
-      hits = hits + 1;
-      __n0.textContent = "hit " + String(hits);
-    });
-    __n11.addEventListener("contextmenu", () => {
-    });
-    let __n0 = document.createElement("span");
-    __n0.textContent = "hit " + String(hits);
-    __n11.appendChild(__n0);
-    __n10.appendChild(__n11);
+    let __n11 = document.createElement("div");
+    __n11.setAttribute("style", "display:flex;flex-direction:column");
     let __n12 = document.createElement("button");
     __n12.disabled = false;
     __n12.addEventListener("click", () => {
+      hits = hits + 1;
+      __n0.textContent = "hit " + String(hits);
     });
     __n12.addEventListener("contextmenu", () => {
     });
-    let __n13 = document.createElement("span");
-    __n13.textContent = "BETA";
-    __n12.appendChild(__n13);
-    __n10.appendChild(__n12);
-    __root.appendChild(__n10);
+    let __n0 = document.createElement("span");
+    __n0.textContent = "hit " + String(hits);
+    __n12.appendChild(__n0);
+    __n11.appendChild(__n12);
+    let __n13 = document.createElement("button");
+    __n13.disabled = false;
+    __n13.addEventListener("click", () => {
+    });
+    __n13.addEventListener("contextmenu", () => {
+    });
+    let __n14 = document.createElement("span");
+    __n14.textContent = "BETA";
+    __n13.appendChild(__n14);
+    __n11.appendChild(__n13);
+    __root.appendChild(__n11);
     return {
       __root,
       __destroy() {
@@ -1075,24 +1075,24 @@ body { font-family: system-ui, sans-serif; }
       __prop___p0 = __v;
       __n2.textContent = "ALPHA " + __prop___p0;
     }
-    let __n14 = document.createElement("div");
-    __n14.setAttribute("style", "display:flex;flex-direction:column");
-    let __n15 = document.createElement("button");
-    __n15.disabled = false;
-    __n15.addEventListener("click", () => {
+    let __n15 = document.createElement("div");
+    __n15.setAttribute("style", "display:flex;flex-direction:column");
+    let __n16 = document.createElement("button");
+    __n16.disabled = false;
+    __n16.addEventListener("click", () => {
       hits = hits + 1;
       __n1.textContent = "hit " + String(hits);
     });
-    __n15.addEventListener("contextmenu", () => {
+    __n16.addEventListener("contextmenu", () => {
     });
     let __n1 = document.createElement("span");
     __n1.textContent = "hit " + String(hits);
-    __n15.appendChild(__n1);
-    __n14.appendChild(__n15);
+    __n16.appendChild(__n1);
+    __n15.appendChild(__n16);
     let __n2 = document.createElement("span");
     __n2.textContent = "ALPHA " + __prop___p0;
-    __n14.appendChild(__n2);
-    __root.appendChild(__n14);
+    __n15.appendChild(__n2);
+    __root.appendChild(__n15);
     return {
       __root,
       __destroy() {
@@ -1116,29 +1116,29 @@ body { font-family: system-ui, sans-serif; }
       let __inst1_next = [];
       let __inst1_i = 0;
       for (const k of [1, 2]) {
-        let __n3 = null;
+        let __n4 = null;
         if (__inst1_live.length > __inst1_i) {
-          __n3 = __inst1_live[__inst1_i];
+          __n4 = __inst1_live[__inst1_i];
         } else {
           if (__inst1_live.length > __inst1_i) {
             __inst1_live[__inst1_i].__destroy();
           }
-          let __n3__new = __cf_Card__slot3({});
-          __n3 = __n3__new;
+          let __n4__new = __cf_Card__slot3({});
+          __n4 = __n4__new;
         }
-        __inst1_next.push(__n3);
+        __inst1_next.push(__n4);
         __inst1_i = __inst1_i + 1;
-        let __n3__el = __n3.__root;
+        let __n4__el = __n4.__root;
         let __place0_i_ref0 = null;
         if (__place0_i < __place0_prev.length) {
           __place0_i_ref0 = __place0_prev[__place0_i];
         }
-        if (__place0_i_ref0 === __n3__el) {
+        if (__place0_i_ref0 === __n4__el) {
           __place0_i = __place0_i + 1;
         } else {
-          parent.insertBefore(__n3__el, __place0_i_ref0);
+          parent.insertBefore(__n4__el, __place0_i_ref0);
         }
-        __slot0.push(__n3__el);
+        __slot0.push(__n4__el);
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
         let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1160,13 +1160,13 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst1_live = [];
     }
-    let __n4 = document.createElement("div");
-    __n4.setAttribute("style", "display:flex;flex-direction:row");
+    let __n5 = document.createElement("div");
+    __n5.setAttribute("style", "display:flex;flex-direction:row");
     const __slotAnchor_0 = document.createElement("span");
     __slotAnchor_0.style.display = "contents";
-    __n4.appendChild(__slotAnchor_0);
+    __n5.appendChild(__slotAnchor_0);
     __renderSlot0(__slotAnchor_0);
-    __root.appendChild(__n4);
+    __root.appendChild(__n5);
     return {
       __root,
       __destroy() {
@@ -1198,30 +1198,30 @@ body { font-family: system-ui, sans-serif; }
       let __inst3_next = [];
       let __inst3_i = 0;
       for (const k of [1, 2]) {
-        let __n5 = null;
+        let __n6 = null;
         if (__inst3_live.length > __inst3_i) {
-          __n5 = __inst3_live[__inst3_i];
-          __n5.__set___p0(__prop___p0);
+          __n6 = __inst3_live[__inst3_i];
+          __n6.__set___p0(__prop___p0);
         } else {
           if (__inst3_live.length > __inst3_i) {
             __inst3_live[__inst3_i].__destroy();
           }
-          let __n5__new = __cf_Card__slot2({ __p0: __prop___p0 });
-          __n5 = __n5__new;
+          let __n6__new = __cf_Card__slot2({ __p0: __prop___p0 });
+          __n6 = __n6__new;
         }
-        __inst3_next.push(__n5);
+        __inst3_next.push(__n6);
         __inst3_i = __inst3_i + 1;
-        let __n5__el = __n5.__root;
+        let __n6__el = __n6.__root;
         let __place2_i_ref0 = null;
         if (__place2_i < __place2_prev.length) {
           __place2_i_ref0 = __place2_prev[__place2_i];
         }
-        if (__place2_i_ref0 === __n5__el) {
+        if (__place2_i_ref0 === __n6__el) {
           __place2_i = __place2_i + 1;
         } else {
-          parent.insertBefore(__n5__el, __place2_i_ref0);
+          parent.insertBefore(__n6__el, __place2_i_ref0);
         }
-        __slot1.push(__n5__el);
+        __slot1.push(__n6__el);
       }
       for (const [__inst3_i_d, _] of __inst3_live.entries()) {
         let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
@@ -1243,13 +1243,13 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst3_live = [];
     }
-    let __n6 = document.createElement("div");
-    __n6.setAttribute("style", "display:flex;flex-direction:row");
+    let __n7 = document.createElement("div");
+    __n7.setAttribute("style", "display:flex;flex-direction:row");
     const __slotAnchor_1 = document.createElement("span");
     __slotAnchor_1.style.display = "contents";
-    __n6.appendChild(__slotAnchor_1);
+    __n7.appendChild(__slotAnchor_1);
     __renderSlot1(__slotAnchor_1);
-    __root.appendChild(__n6);
+    __root.appendChild(__n7);
     return {
       __root,
       __destroy() {
@@ -1269,30 +1269,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst5_next = [];
     let __inst5_i = 0;
     for (const it of state.items) {
-      let __n7 = null;
+      let __n8 = null;
       if (__inst5_live.length > __inst5_i) {
-        __n7 = __inst5_live[__inst5_i];
-        __n7.__set___p0(it);
+        __n8 = __inst5_live[__inst5_i];
+        __n8.__set___p0(it);
       } else {
         if (__inst5_live.length > __inst5_i) {
           __inst5_live[__inst5_i].__destroy();
         }
-        let __n7__new = __cf_Row__slot0({ __p0: it });
-        __n7 = __n7__new;
+        let __n8__new = __cf_Row__slot0({ __p0: it });
+        __n8 = __n8__new;
       }
-      __inst5_next.push(__n7);
+      __inst5_next.push(__n8);
       __inst5_i = __inst5_i + 1;
-      let __n7__el = __n7.__root;
+      let __n8__el = __n8.__root;
       let __place4_i_ref0 = null;
       if (__place4_i < __place4_prev.length) {
         __place4_i_ref0 = __place4_prev[__place4_i];
       }
-      if (__place4_i_ref0 === __n7__el) {
+      if (__place4_i_ref0 === __n8__el) {
         __place4_i = __place4_i + 1;
       } else {
-        parent.insertBefore(__n7__el, __place4_i_ref0);
+        parent.insertBefore(__n8__el, __place4_i_ref0);
       }
-      __slot2.push(__n7__el);
+      __slot2.push(__n8__el);
     }
     for (const [__inst5_i_d, _] of __inst5_live.entries()) {
       let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
@@ -1314,29 +1314,29 @@ body { font-family: system-ui, sans-serif; }
     let __inst7_next = [];
     let __inst7_i = 0;
     for (const it of state.items) {
-      let __n8 = null;
+      let __n9 = null;
       if (__inst7_live.length > __inst7_i) {
-        __n8 = __inst7_live[__inst7_i];
+        __n9 = __inst7_live[__inst7_i];
       } else {
         if (__inst7_live.length > __inst7_i) {
           __inst7_live[__inst7_i].__destroy();
         }
-        let __n8__new = __cf_Row__slot1({});
-        __n8 = __n8__new;
+        let __n9__new = __cf_Row__slot1({});
+        __n9 = __n9__new;
       }
-      __inst7_next.push(__n8);
+      __inst7_next.push(__n9);
       __inst7_i = __inst7_i + 1;
-      let __n8__el = __n8.__root;
+      let __n9__el = __n9.__root;
       let __place6_i_ref0 = null;
       if (__place6_i < __place6_prev.length) {
         __place6_i_ref0 = __place6_prev[__place6_i];
       }
-      if (__place6_i_ref0 === __n8__el) {
+      if (__place6_i_ref0 === __n9__el) {
         __place6_i = __place6_i + 1;
       } else {
-        parent.insertBefore(__n8__el, __place6_i_ref0);
+        parent.insertBefore(__n9__el, __place6_i_ref0);
       }
-      __slot3.push(__n8__el);
+      __slot3.push(__n9__el);
     }
     for (const [__inst7_i_d, _] of __inst7_live.entries()) {
       let __inst7_i_j = __inst7_live.length - 1 - __inst7_i_d;
@@ -1366,4 +1366,4 @@ pass sha256:13ddc13bedcdf41f4f446d31bb383f79
 -- run/go/gtk4 --
 pass sha256:307156375c11cf08162910b53802109a
 -- run/none/html --
-pass sha256:b75c79ded063b66653395ab192ff015b
+pass sha256:dee694bba2b0296aada96e3263d6da6f

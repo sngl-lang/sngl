@@ -514,7 +514,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 <div style="display:flex;flex-direction:row">
   <span>Clicks</span>
@@ -526,17 +526,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 0, count__inst1: 5 };
+  var state = { count__inst0: 0, visible__inst1: true, count__inst2: 5 };
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $2.addEventListener("click", function() {
-    state.count__inst1 = state.count__inst1 + 1;
+    state.count__inst2 = state.count__inst2 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count__inst0);
+    __n1.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();
@@ -551,4 +551,4 @@ pass sha256:864c45422eb6c527b506cb53a0544613
 -- run/kotlin/android --
 pass sha256:f7e7002fb732f1c9ff58819ec91f894b
 -- run/none/html --
-pass sha256:83b5858233ffc1b516a2b48665c44e42
+pass sha256:1a145f90e55d2429fba8bb90f8ade70d

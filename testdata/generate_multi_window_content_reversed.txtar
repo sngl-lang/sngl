@@ -71,24 +71,24 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>press beta</span>
 </button>
-<span id="__n1" data-sngl-id="__n1">
+<span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0 };
+  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $1.addEventListener("click", function() {
     state.betaCount += 1;
-    __n1.textContent = "beta shows " + String(state.betaCount);
+    __n2.textContent = "beta shows " + String(state.betaCount);
   });
   function __sngl_init() {
-    __n1.textContent = "beta shows " + String(state.betaCount);
+    __n2.textContent = "beta shows " + String(state.betaCount);
   }
   __sngl_init();
 })();
@@ -113,7 +113,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0 };
+  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0, visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -135,24 +135,24 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>press gamma</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0 };
+  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.gammaCount += 1;
-    __n0.textContent = "gamma shows " + String(state.gammaCount);
+    __n1.textContent = "gamma shows " + String(state.gammaCount);
   });
   function __sngl_init() {
-    __n0.textContent = "gamma shows " + String(state.gammaCount);
+    __n1.textContent = "gamma shows " + String(state.gammaCount);
   }
   __sngl_init();
 })();
@@ -176,28 +176,28 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>press alpha</span>
 </button>
-<span id="__n2" data-sngl-id="__n2">
+<span id="__n3" data-sngl-id="__n3">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0 };
+  var state = { alphaCount: 0, betaCount: 0, gammaCount: 0, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   $1.addEventListener("click", function() {
     state.alphaCount += 1;
-    __n2.textContent = "alpha shows " + String(state.alphaCount);
+    __n3.textContent = "alpha shows " + String(state.alphaCount);
   });
   function __sngl_init() {
-    __n2.textContent = "alpha shows " + String(state.alphaCount);
+    __n3.textContent = "alpha shows " + String(state.alphaCount);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:971c255cc4d5cce4d84dcb39a47fc978
+pass sha256:6e1c9c149af1ba57aa3210afc4edb417

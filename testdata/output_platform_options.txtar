@@ -128,11 +128,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/fyne --
 pass sha256:77f74bfacc9713ba2ad6cc58ca27892b
 -- run/none/html --
-pass sha256:2a6feb6f21dfc735d9da4cc475fa404e
+pass sha256:55204b97cbc2b2297786166518136b1d

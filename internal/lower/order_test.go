@@ -61,6 +61,8 @@ var alwaysOn = []string{
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",
 	"BoundaryFailed",
+	// Once every raise is resolved a boundary holds nothing, on any target.
+	"BoundaryPassthrough",
 	"CSE",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
@@ -167,9 +169,7 @@ var soleGate = map[string][]string{
 
 	// NodeEscape has no flag of its own: the escape analysis only has
 	// something to analyse once the tree is flat.
-	// BoundaryPassthrough is the flat tree's too: a boundary is a passthrough
-	// only once what it holds is statements.
-	"Declarative": {"BoundaryPassthrough", "NoDeclarative", "NodeEscape"},
+	"Declarative": {"NoDeclarative", "NodeEscape"},
 
 	"InlineComponents": {"NoInlineComponents"},
 	"ImplicitRecv":     {"NoImplicitRecv"},

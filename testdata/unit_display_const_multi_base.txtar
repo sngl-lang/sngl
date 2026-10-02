@@ -216,7 +216,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span>A 16px B</span>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 <span>E 18em F</span>
 <span>G 0px H</span>
@@ -224,10 +224,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { held: { px: 16, em: 0, vw: 0, vh: 0, pct: 0 } };
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var state = { held: { px: 16, em: 0, vw: 0, vh: 0, pct: 0 }, visible__inst0: true };
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "C " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.held) + " D";
+    __n1.textContent = "C " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.held) + " D";
   }
   __sngl_init();
 })();
@@ -236,4 +236,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:585cf5c9f639ab53c81e65bd479ea048
 -- run/none/html --
-pass sha256:610d7f2467169d7f777c1a4e589dd88a
+pass sha256:78b2bd428697f6d4d3a3a390b7877770

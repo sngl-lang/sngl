@@ -394,13 +394,13 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, b__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, wide__inst0: null, d__inst0: 500, e__inst0: 1e3, same__inst0: null, apart__inst0: null, single__inst0: null };
+  var state = { a__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, b__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, wide__inst0: null, d__inst0: 500, e__inst0: 1e3, same__inst0: null, apart__inst0: null, single__inst0: null, visible__inst1: true };
   state.wide__inst0 = { px: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.px, em: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.em, vw: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vw, vh: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vh, pct: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.pct };
   state.same__inst0 = state.a__inst0.px === state.b__inst0.px && state.a__inst0.em === state.b__inst0.em && state.a__inst0.vw === state.b__inst0.vw && state.a__inst0.vh === state.b__inst0.vh && state.a__inst0.pct === state.b__inst0.pct;
   state.apart__inst0 = !(state.wide__inst0.px === state.a__inst0.px && state.wide__inst0.em === state.a__inst0.em && state.wide__inst0.vw === state.a__inst0.vw && state.wide__inst0.vh === state.a__inst0.vh && state.wide__inst0.pct === state.a__inst0.pct);
@@ -408,9 +408,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = String(state.same__inst0) + " " + String(state.apart__inst0) + " " + String(state.single__inst0);
+    __n1.textContent = String(state.same__inst0) + " " + String(state.apart__inst0) + " " + String(state.single__inst0);
   }
   __sngl_init();
 })();
@@ -421,4 +421,4 @@ pass sha256:2b9a9d629a73f29632158c930d7222b6
 -- run/kotlin/android --
 pass sha256:7747c37b38636e66d4e9162dd7e0fc11
 -- run/none/html --
-pass sha256:e3d67faafaf1f5b516529dae54cd6687
+pass sha256:acf6f63acdb9fb9c9b69846c7b817476

@@ -371,13 +371,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>sum</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 6, total2__inst0: 0 };
+  var state = { n__inst0: 6, total2__inst0: 0, visible__inst1: true };
   function total(xs) {
     let sum = 0;
     for (const x of xs) {
@@ -391,18 +391,18 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     for (let i = 1, __end = state.n__inst0; i < __end; i++) {
       ;
       state.total2__inst0 = state.total2__inst0 + i;
-      __n0.textContent = String(state.total2__inst0);
+      __n1.textContent = String(state.total2__inst0);
     }
     ;
     for (let d = state.n__inst0, __end = 0; d > __end; d -= 2) {
       ;
       state.total2__inst0 = state.total2__inst0 + d;
-      __n0.textContent = String(state.total2__inst0);
+      __n1.textContent = String(state.total2__inst0);
     }
     ;
     let held = (function* (__a, __b, __s) {
@@ -415,21 +415,21 @@ body { font-family: system-ui, sans-serif; }
     for (const h of held) {
       ;
       state.total2__inst0 = state.total2__inst0 + h;
-      __n0.textContent = String(state.total2__inst0);
+      __n1.textContent = String(state.total2__inst0);
     }
     ;
     for (let h2 = 0, __end = state.n__inst0; h2 < __end; h2++) {
       ;
       state.total2__inst0 = state.total2__inst0 + h2;
-      __n0.textContent = String(state.total2__inst0);
+      __n1.textContent = String(state.total2__inst0);
     }
     ;
     let ys = [1, 2, 3];
     state.total2__inst0 = state.total2__inst0 + total(ys);
-    __n0.textContent = String(state.total2__inst0);
+    __n1.textContent = String(state.total2__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.total2__inst0);
+    __n1.textContent = String(state.total2__inst0);
   }
   __sngl_init();
 })();
@@ -440,4 +440,4 @@ pass sha256:e9f770256f230e7397b33af4270194f9
 -- run/kotlin/android --
 pass sha256:47991160b2819f4ce173ddb384aff444
 -- run/none/html --
-pass sha256:5400df53a0d29779764f154019e12809
+pass sha256:7233138929e7d17f43a0f22bcdc618ea

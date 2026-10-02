@@ -70,7 +70,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
     <span>start</span>
@@ -80,11 +80,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst1: 3, running__inst1: false, handle__inst0__inst1: 0 };
+  var state = { seconds__inst1: 3, running__inst1: false, handle__inst0__inst1: 0, visible__inst2: true };
   function __effect0_mount() {
     state.handle__inst0__inst1 = setInterval(() => {
       state.seconds__inst1 -= 1;
-      __n0.textContent = String(state.seconds__inst1) + " s";
+      __n1.textContent = String(state.seconds__inst1) + " s";
       if (state.seconds__inst1 <= 0) {
         ;
         state.running__inst1 = false;
@@ -167,7 +167,7 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     if (state.seconds__inst1 > 0) {
       ;
@@ -177,7 +177,7 @@ body { font-family: system-ui, sans-serif; }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.seconds__inst1) + " s";
+    __n1.textContent = String(state.seconds__inst1) + " s";
   }
   __sngl_init();
   __effects0_settle();
@@ -186,4 +186,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:62ff4c7e349da4e94f0733d85580681c
+pass sha256:198f75248c1353fa00d8c00cd226cf30

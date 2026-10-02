@@ -332,29 +332,29 @@ body { font-family: system-ui, sans-serif; }
   <button id="$1">
     <span>+</span>
   </button>
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 0, tracked__inst0: 0 };
+  var state = { count__inst0: 0, tracked__inst0: 0, visible__inst1: true };
   function $set_tracked__inst0(v) {
     state.tracked__inst0 = v;
     state.count__inst0 = v + 1;
-    __n0.textContent = String(state.count__inst0);
+    __n1.textContent = String(state.count__inst0);
   }
   function String(v) {
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.tracked__inst0 = state.tracked__inst0 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count__inst0);
+    __n1.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();
@@ -365,4 +365,4 @@ pass sha256:30e889a4f04722a61b15afc149d59522
 -- run/go/fyne --
 pass sha256:f9fba05d1096b38d9f5f3e792bfaa003
 -- run/none/html --
-pass sha256:c74be1e35802cafac82e6cad12a16a60
+pass sha256:10316bd411154d43285c947fedfcc5f0

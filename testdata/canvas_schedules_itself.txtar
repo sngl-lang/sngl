@@ -423,7 +423,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { frame: 0, handle__inst0: 0 };
+  var state = { frame: 0, handle__inst0: 0, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -584,4 +584,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:93ff03b06e66a7d40d07e05bb60b5dd7
 -- run/none/html --
-pass sha256:c903d80b9603f9b4e96769747491efca
+pass sha256:41018febd677326df9092c549e10f55b

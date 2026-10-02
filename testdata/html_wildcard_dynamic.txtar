@@ -57,15 +57,15 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
+<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], on__inst0: false };
-  function __cf___checkbox_state0(props) {
+  var state = { items__inst0: ["a", "b"], on__inst0: false, visible__inst1: true };
+  function __cf___checkbox_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __start_checked = props.__start_checked ?? false;
@@ -81,8 +81,8 @@ body { font-family: system-ui, sans-serif; }
       __prop_label = __v;
       __n1.textContent = __prop_label;
     }
-    let __n4 = document.createElement("label");
-    __n4.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    let __n5 = document.createElement("label");
+    __n5.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
     let __n0 = document.createElement("input");
     __n0.checked = checked;
     __n0.disabled = false;
@@ -91,11 +91,11 @@ body { font-family: system-ui, sans-serif; }
       checked = __event.checked;
       __n0.checked = checked;
     });
-    __n4.appendChild(__n0);
+    __n5.appendChild(__n0);
     let __n1 = document.createElement("span");
     __n1.textContent = __prop_label;
-    __n4.appendChild(__n1);
-    __root.appendChild(__n4);
+    __n5.appendChild(__n1);
+    __root.appendChild(__n5);
     return {
       __root,
       __destroy() {
@@ -113,31 +113,31 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items__inst0) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_label(it);
-        __n2.__set___start_checked(state.on__inst0);
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set_label(it);
+        __n3.__set___start_checked(state.on__inst0);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___checkbox_state0({ label: it, __start_checked: state.on__inst0 });
-        __n2 = __n2__new;
+        let __n3__new = __cf___checkbox_state1({ label: it, __start_checked: state.on__inst0 });
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -158,4 +158,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:88ac2d27ce1db57be77a38039eb3f66d
+pass sha256:bd13543d96248f950d1d321c440e3a48

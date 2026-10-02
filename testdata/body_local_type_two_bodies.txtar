@@ -551,29 +551,29 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
-<span data-sngl-slot="0" style="display:contents"></span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
+<span data-sngl-slot="0" style="display:contents"></span>
 <span id="__n3" data-sngl-id="__n3">
 </span>
 <span id="__n4" data-sngl-id="__n4">
 </span>
-<span data-sngl-slot="1" style="display:contents"></span>
 <span id="__n5" data-sngl-id="__n5">
+</span>
+<span data-sngl-slot="1" style="display:contents"></span>
+<span id="__n6" data-sngl-id="__n6">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seed__inst0: 2, here__inst1: null, p__inst1: null, elapsed__inst1: 3, here__inst2: null, rows__inst2: [], p__inst2: null, elapsed__inst2: 5 };
-  state.here__inst1 = { a: 1 };
-  state.p__inst1 = "done";
-  state.here__inst2 = { bField: "two" };
-  state.p__inst2 = "ready";
+  var state = { seed__inst0: 2, visible__inst1: true, here__inst2: null, p__inst2: null, elapsed__inst2: 3, here__inst3: null, rows__inst3: [], p__inst3: null, elapsed__inst3: 5 };
+  state.here__inst2 = { a: 1 };
+  state.p__inst2 = "done";
+  state.here__inst3 = { bField: "two" };
+  state.p__inst3 = "ready";
   function Local__second_shout(state2, n) {
     if (n <= 0) {
       ;
@@ -592,19 +592,19 @@ body { font-family: system-ui, sans-serif; }
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    if (state.p__inst1 === "done") {
-      let __n6 = document.createElement("span");
-      __n6.textContent = "first done";
+    if (state.p__inst2 === "done") {
+      let __n7 = document.createElement("span");
+      __n7.textContent = "first done";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n6) {
+      if (__place0_i_ref0 === __n7) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n6, __place0_i_ref0);
+        parent.insertBefore(__n7, __place0_i_ref0);
       }
-      __slot0.push(__n6);
+      __slot0.push(__n7);
     }
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
@@ -616,19 +616,19 @@ body { font-family: system-ui, sans-serif; }
     let __place1_prev = __slot1;
     let __place1_i = 0;
     __slot1 = [];
-    if (state.p__inst2 === "ready") {
-      let __n7 = document.createElement("span");
-      __n7.textContent = "second ready";
+    if (state.p__inst3 === "ready") {
+      let __n8 = document.createElement("span");
+      __n8.textContent = "second ready";
       let __place1_i_ref0 = null;
       if (__place1_i < __place1_prev.length) {
         __place1_i_ref0 = __place1_prev[__place1_i];
       }
-      if (__place1_i_ref0 === __n7) {
+      if (__place1_i_ref0 === __n8) {
         __place1_i = __place1_i + 1;
       } else {
-        parent.insertBefore(__n7, __place1_i_ref0);
+        parent.insertBefore(__n8, __place1_i_ref0);
       }
-      __slot1.push(__n7);
+      __slot1.push(__n8);
     }
     for (const __place1_prev_e of __place1_prev) {
       if (__slot1.indexOf(__place1_prev_e) < 0) {
@@ -639,23 +639,23 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
   __renderSlot1(__slotAnchor_1);
   function __sngl_init() {
-    __n0.textContent = String(state.here__inst1.a * 2);
-    __n1.textContent = String(Math.trunc(state.elapsed__inst1));
-    __n2.textContent = Local__second_shout(state.here__inst2, 2);
-    __n3.textContent = String(state.rows__inst2.length);
-    __n4.textContent = String(Math.trunc(state.elapsed__inst2));
-    __n5.textContent = String(pick(state.seed__inst0));
+    __n1.textContent = String(state.here__inst2.a * 2);
+    __n2.textContent = String(Math.trunc(state.elapsed__inst2));
+    __n3.textContent = Local__second_shout(state.here__inst3, 2);
+    __n4.textContent = String(state.rows__inst3.length);
+    __n5.textContent = String(Math.trunc(state.elapsed__inst3));
+    __n6.textContent = String(pick(state.seed__inst0));
   }
   __sngl_init();
 })();
@@ -666,4 +666,4 @@ pass sha256:3fbdeadd14e40a240048dbeaa4c57558
 -- run/kotlin/android --
 pass sha256:ed3592d7e2b92f9e24c1456414be936c
 -- run/none/html --
-pass sha256:f225ea04bc516a2b1e3dd18fe9ab713b
+pass sha256:c790d97c513776a27f60f9e9f41a8644

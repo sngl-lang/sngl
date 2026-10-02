@@ -402,7 +402,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { initialTheme: "light" };
+  var state = { initialTheme: "light", visible__inst1: true };
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.textContent = state.initialTheme;
@@ -420,4 +420,4 @@ pass sha256:554cbc8267e86845c6ef2874673745f4
 -- run/kotlin/android --
 pass sha256:1723db679614ed76354e16f089414f5c
 -- run/none/html --
-pass sha256:f2bc368583c2eb9a84bd8caf208f85da
+pass sha256:8497100c0c203b70924e476c488f681a

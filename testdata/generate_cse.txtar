@@ -468,13 +468,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$2">
   <span>three</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { total__inst0: 0, seed__inst0: 4, a__inst0: 4, b__inst0: 3, log__inst0: 0, ticks__inst0: 0 };
+  var state = { total__inst0: 0, seed__inst0: 4, a__inst0: 4, b__inst0: 3, log__inst0: 0, ticks__inst0: 0, visible__inst1: true };
   function weight(n) {
     if (n > 2) {
       ;
@@ -493,23 +493,23 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     let __cse0 = weight(state.seed__inst0);
     state.total__inst0 = __cse0 + __cse0 * 2;
-    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
+    __n1.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   $1.addEventListener("click", function() {
     let __cse1 = weight(state.a__inst0);
     state.total__inst0 = __cse1 * 100 + weight(state.b__inst0) + __cse1;
-    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
+    __n1.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   $2.addEventListener("click", function() {
     state.log__inst0 = noisy__inst0() + noisy__inst0();
-    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
+    __n1.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
+    __n1.textContent = String(state.total__inst0) + String(state.log__inst0);
   }
   __sngl_init();
 })();
@@ -520,4 +520,4 @@ pass sha256:138509454756b3daed064bcd22a9b88c
 -- run/kotlin/android --
 pass sha256:81e38a2419b72054ab972bbc20849bc8
 -- run/none/html --
-pass sha256:8fd578eeef0a83d2fc8527d7630a4f02
+pass sha256:07ecfbf16e1a67a7a9040fc3ca127801

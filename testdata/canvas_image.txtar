@@ -212,7 +212,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     _snglDrawImage(ctx, "logo.png", 1, 2, 8, 4);
   }
@@ -278,4 +278,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:332991e961bbd0411f20b5b8464f2ae5
 -- run/none/html --
-pass sha256:6a9b52e9f49a1f4a72af0184d73c67ec
+pass sha256:92aba0629ecd0adeb833106243fa2186

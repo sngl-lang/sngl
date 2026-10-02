@@ -668,7 +668,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
+<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>load</span>
   </button>
@@ -679,7 +679,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { rows__inst0: [], n__inst0: 0 };
+  var state = { rows__inst0: [], n__inst0: 0, visible__inst1: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -706,9 +706,9 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __slot02 = [];
     let __slot12 = [];
-    let __n6 = document.createElement("span");
-    __n6.textContent = "tick";
-    __root.appendChild(__n6);
+    let __n7 = document.createElement("span");
+    __n7.textContent = "tick";
+    __root.appendChild(__n7);
     return {
       __root,
       __destroy() {
@@ -726,44 +726,44 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     if (state.rows__inst0.length === 0) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "NOTHING YET";
+      let __n2 = document.createElement("span");
+      __n2.textContent = "NOTHING YET";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n1) {
+      if (__place0_i_ref0 === __n2) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
+        parent.insertBefore(__n2, __place0_i_ref0);
       }
-      __slot0.push(__n1);
+      __slot0.push(__n2);
     } else {
       for (const row of state.rows__inst0) {
-        let __n2 = null;
+        let __n3 = null;
         if (__inst1_live.length > __inst1_i) {
-          __n2 = __inst1_live[__inst1_i];
-          __n2.__set___p0(row);
+          __n3 = __inst1_live[__inst1_i];
+          __n3.__set___p0(row);
         } else {
           if (__inst1_live.length > __inst1_i) {
             __inst1_live[__inst1_i].__destroy();
           }
-          let __n2__new = __cf___child0({ __p0: row });
-          __n2 = __n2__new;
+          let __n3__new = __cf___child0({ __p0: row });
+          __n3 = __n3__new;
         }
-        __inst1_next.push(__n2);
+        __inst1_next.push(__n3);
         __inst1_i = __inst1_i + 1;
-        let __n2__el = __n2.__root;
+        let __n3__el = __n3.__root;
         let __place0_i_ref1 = null;
         if (__place0_i < __place0_prev.length) {
           __place0_i_ref1 = __place0_prev[__place0_i];
         }
-        if (__place0_i_ref1 === __n2__el) {
+        if (__place0_i_ref1 === __n3__el) {
           __place0_i = __place0_i + 1;
         } else {
-          parent.insertBefore(__n2__el, __place0_i_ref1);
+          parent.insertBefore(__n3__el, __place0_i_ref1);
         }
-        __slot0.push(__n2__el);
+        __slot0.push(__n3__el);
       }
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -786,43 +786,43 @@ body { font-family: system-ui, sans-serif; }
     let __inst3_next = [];
     let __inst3_i = 0;
     if (0 >= state.n__inst0) {
-      let __n3 = document.createElement("span");
-      __n3.textContent = "NO TICKS";
+      let __n4 = document.createElement("span");
+      __n4.textContent = "NO TICKS";
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === __n3) {
+      if (__place2_i_ref0 === __n4) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n3, __place2_i_ref0);
+        parent.insertBefore(__n4, __place2_i_ref0);
       }
-      __slot1.push(__n3);
+      __slot1.push(__n4);
     } else {
       for (let __x = 0, __end = state.n__inst0; __x < __end; __x++) {
-        let __n4 = null;
+        let __n5 = null;
         if (__inst3_live.length > __inst3_i) {
-          __n4 = __inst3_live[__inst3_i];
+          __n5 = __inst3_live[__inst3_i];
         } else {
           if (__inst3_live.length > __inst3_i) {
             __inst3_live[__inst3_i].__destroy();
           }
-          let __n4__new = __cf___child1({});
-          __n4 = __n4__new;
+          let __n5__new = __cf___child1({});
+          __n5 = __n5__new;
         }
-        __inst3_next.push(__n4);
+        __inst3_next.push(__n5);
         __inst3_i = __inst3_i + 1;
-        let __n4__el = __n4.__root;
+        let __n5__el = __n5.__root;
         let __place2_i_ref1 = null;
         if (__place2_i < __place2_prev.length) {
           __place2_i_ref1 = __place2_prev[__place2_i];
         }
-        if (__place2_i_ref1 === __n4__el) {
+        if (__place2_i_ref1 === __n5__el) {
           __place2_i = __place2_i + 1;
         } else {
-          parent.insertBefore(__n4__el, __place2_i_ref1);
+          parent.insertBefore(__n5__el, __place2_i_ref1);
         }
-        __slot1.push(__n4__el);
+        __slot1.push(__n5__el);
       }
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -861,4 +861,4 @@ pass sha256:c9c45b985f7e49fb8b353e115efd6e7e
 -- run/kotlin/android --
 pass sha256:839d54c8796f8e5db330e7eb40e01f25
 -- run/none/html --
-pass sha256:2b102421337c0fbe768b31b6ca9cbcaa
+pass sha256:93c6edaae81572f1acdde181eedf1014

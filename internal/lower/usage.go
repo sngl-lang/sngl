@@ -114,13 +114,8 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch x := s.(type) {
 		case *ir.ErrorBoundary:
-			// A boundary whose handler does something hands it the payload. One
-			// that does nothing -- a window's, whose call site handled no
-			// @error -- names the payload only if something under it raises,
-			// which the walk below and the catch blocks answer.
-			if x.Handler != nil && x.Handler.Func != nil && len(x.Handler.Func.Block) > 0 {
-				return true
-			}
+			// Spliced away by now (passBoundaryPassthrough); one left is
+			// counted by what it holds, never by what it was handed.
 			if stmtsUseErrorHandling(x.Children) || stmtsUseErrorHandling(x.Failed) {
 				return true
 			}

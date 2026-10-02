@@ -71,12 +71,12 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>deeper</span>
 </button>
-<span data-sngl-inst="__n1" style="display:contents"></span>
+<span data-sngl-inst="__n2" style="display:contents"></span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: 2 };
+  var state = { d__inst0: 2, visible__inst1: true };
   function __cf_chain(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -105,31 +105,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("chain: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n2 = null;
+          let __n3 = null;
           if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set_n(__prop_n - 1);
-            __n2.__set___depth(__prop___depth + 1);
+            __n3 = __inst1_live[__inst1_i];
+            __n3.__set_n(__prop_n - 1);
+            __n3.__set___depth(__prop___depth + 1);
           } else {
             if (__inst1_live.length > __inst1_i) {
               __inst1_live[__inst1_i].__destroy();
             }
-            let __n2__new = __cf_chain({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n2 = __n2__new;
+            let __n3__new = __cf_chain({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n3 = __n3__new;
           }
-          __inst1_next.push(__n2);
+          __inst1_next.push(__n3);
           __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
+          let __n3__el = __n3.__root;
           let __place0_i_ref0 = null;
           if (__place0_i < __place0_prev.length) {
             __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          if (__place0_i_ref0 === __n2__el) {
+          if (__place0_i_ref0 === __n3__el) {
             __place0_i = __place0_i + 1;
           } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
+            parent.insertBefore(__n3__el, __place0_i_ref0);
           }
-          __slot0.push(__n2__el);
+          __slot0.push(__n3__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -171,16 +171,16 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n1__pos = document.querySelector('[data-sngl-inst="__n1"]');
-  var __n1 = __cf_chain({ n: state.d__inst0, __depth: 0 });
-  __n1__pos.appendChild(__n1.__root);
+  var __n2__pos = document.querySelector('[data-sngl-inst="__n2"]');
+  var __n2 = __cf_chain({ n: state.d__inst0, __depth: 0 });
+  __n2__pos.appendChild(__n2.__root);
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.d__inst0 = state.d__inst0 + 1;
-    __n1.__set_n(state.d__inst0);
+    __n2.__set_n(state.d__inst0);
   });
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:28c3b813d6d881d63ea50436f016aadc
+pass sha256:771e3b152db7fc4cd0f6ddbe0c9918d1

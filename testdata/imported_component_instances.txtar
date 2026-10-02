@@ -328,14 +328,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:row">
-    <span id="__n0" data-sngl-id="__n0">
+    <span id="__n1" data-sngl-id="__n1">
     </span>
     <button id="$2">
       <span>add</span>
     </button>
   </div>
   <div style="display:flex;flex-direction:row">
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
     <button id="$4">
       <span>add</span>
@@ -346,25 +346,25 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 10 };
+  var state = { n__inst0: 1, n__inst1: 10, visible__inst2: true };
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
   var $4 = document.getElementById("$4");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
     state.n__inst0 = state.n__inst0 + 1;
-    __n0.textContent = "n is " + String(state.n__inst0);
+    __n1.textContent = "n is " + String(state.n__inst0);
   });
   $4.addEventListener("click", function() {
     state.n__inst1 = state.n__inst1 + 1;
-    __n1.textContent = "n is " + String(state.n__inst1);
+    __n2.textContent = "n is " + String(state.n__inst1);
   });
   function __sngl_init() {
-    __n0.textContent = "n is " + String(state.n__inst0);
-    __n1.textContent = "n is " + String(state.n__inst1);
+    __n1.textContent = "n is " + String(state.n__inst0);
+    __n2.textContent = "n is " + String(state.n__inst1);
   }
   __sngl_init();
 })();
@@ -375,4 +375,4 @@ pass sha256:40d6cc3a42af21d94108cdaf99bb516f
 -- run/kotlin/android --
 pass sha256:4615ca97248ee84ebd32418c2700b22c
 -- run/none/html --
-pass sha256:b189ac7f63341c75c1e0d4c52b24bdb5
+pass sha256:e8c7230afc84792ede19fbbf0dc24d7d

@@ -685,7 +685,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(51,102,204,1)";
@@ -742,4 +742,4 @@ pass sha256:e950878f852bdd4a0bb9cbc6d9cc5725
 -- run/kotlin/android --
 pass sha256:4d794c5cc5a61b0d89884de7b02342a2
 -- run/none/html --
-pass sha256:8e746f36e2ffd5a497746a3afaa51c2f
+pass sha256:7e3af92a86fa381ade6ac4f0c8288783

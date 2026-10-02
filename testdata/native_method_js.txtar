@@ -77,7 +77,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0, c__inst0: null };
+  var state = { n__inst0: 0, c__inst0: null, visible__inst1: true };
   state.c__inst0 = {};
   function paint__inst0(c) {
     c.arc(1, 2, 3, 0, 6.28);
@@ -92,4 +92,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:dfe5b4006f5ecf53a9356f14aacd70a1
+pass sha256:d82dee68b7799ddafc003a614e2dccd0

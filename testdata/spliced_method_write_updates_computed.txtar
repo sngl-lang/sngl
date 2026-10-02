@@ -758,9 +758,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
+<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column">
-    <span id="__n2" data-sngl-id="__n2">
+    <span id="__n3" data-sngl-id="__n3">
     </span>
   </div>
   <span data-sngl-slot="0" style="display:contents"></span>
@@ -769,19 +769,19 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], hits__inst1: 0 };
-  function shown__inst1() {
-    return "top:" + String(state.hits__inst1) + ":6";
+  var state = { items__inst0: ["a", "b"], visible__inst1: true, hits__inst2: 0 };
+  function shown__inst2() {
+    return "top:" + String(state.hits__inst2) + ":6";
   }
-  function add__inst1(n) {
-    state.hits__inst1 = state.hits__inst1 + n;
-    __n2.textContent = shown__inst1();
+  function add__inst2(n) {
+    state.hits__inst2 = state.hits__inst2 + n;
+    __n3.textContent = shown__inst2();
   }
-  function bump__inst1() {
-    add__inst1(2);
+  function bump__inst2() {
+    add__inst2(2);
   }
   function __effect0_mount() {
-    bump__inst1();
+    bump__inst2();
   }
   function __cf_Row__slot0(props) {
     const __root = document.createElement("div");
@@ -850,16 +850,16 @@ body { font-family: system-ui, sans-serif; }
       __prop___p0 = __v;
       __n1.textContent = "foot " + __prop___p0 + " " + String(marks);
     }
-    let __n5 = document.createElement("div");
-    __n5.setAttribute("style", "display:flex;flex-direction:column");
+    let __n6 = document.createElement("div");
+    __n6.setAttribute("style", "display:flex;flex-direction:column");
     let __n0 = document.createElement("span");
     __n0.textContent = summary();
-    __n5.appendChild(__n0);
+    __n6.appendChild(__n0);
     let __n1 = document.createElement("span");
     __n1.textContent = "foot " + __prop___p0 + " " + String(marks);
-    __n5.appendChild(__n1);
+    __n6.appendChild(__n1);
     __effects1_settle();
-    __root.appendChild(__n5);
+    __root.appendChild(__n6);
     return {
       __root,
       __destroy() {
@@ -917,31 +917,31 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items__inst0) {
-      let __n3 = null;
+      let __n4 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set_label(it);
-        __n3.__set___p0(it);
+        __n4 = __inst1_live[__inst1_i];
+        __n4.__set_label(it);
+        __n4.__set___p0(it);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n3__new = __cf_Row__slot0({ label: it, __p0: it });
-        __n3 = __n3__new;
+        let __n4__new = __cf_Row__slot0({ label: it, __p0: it });
+        __n4 = __n4__new;
       }
-      __inst1_next.push(__n3);
+      __inst1_next.push(__n4);
       __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
+      let __n4__el = __n4.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n3__el) {
+      if (__place0_i_ref0 === __n4__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
+        parent.insertBefore(__n4__el, __place0_i_ref0);
       }
-      __slot0.push(__n3__el);
+      __slot0.push(__n4__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -959,11 +959,11 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n2.textContent = shown__inst1();
+    __n3.textContent = shown__inst2();
   }
   __sngl_init();
   __effects0_settle();
@@ -975,4 +975,4 @@ pass sha256:8e678085d3118204fc669afc735c5417
 -- run/go/gtk4 --
 pass sha256:5298abdd0da9b5b7de651b4bfebe0bc6
 -- run/none/html --
-pass sha256:2eda2b730449308145ac56025d91393f
+pass sha256:a99b087f88159f067b96b0c1a130ac61

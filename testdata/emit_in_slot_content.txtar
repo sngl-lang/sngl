@@ -474,7 +474,7 @@ body { font-family: system-ui, sans-serif; }
       <span>p3</span>
     </button>
   </div>
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <div style="display:flex;flex-direction:row">
     <button id="$6">
@@ -486,7 +486,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { got: 0 };
+  var state = { got: 0, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -494,25 +494,25 @@ body { font-family: system-ui, sans-serif; }
   var $3 = document.getElementById("$3");
   var $4 = document.getElementById("$4");
   var $6 = document.getElementById("$6");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $2.addEventListener("click", function() {
     state.got = 1;
-    __n0.textContent = "got=" + String(state.got);
+    __n1.textContent = "got=" + String(state.got);
   });
   $3.addEventListener("click", function() {
     state.got = 2;
-    __n0.textContent = "got=" + String(state.got);
+    __n1.textContent = "got=" + String(state.got);
   });
   $4.addEventListener("click", function() {
     state.got = 3;
-    __n0.textContent = "got=" + String(state.got);
+    __n1.textContent = "got=" + String(state.got);
   });
   $6.addEventListener("click", function() {
     state.got = 5;
-    __n0.textContent = "got=" + String(state.got);
+    __n1.textContent = "got=" + String(state.got);
   });
   function __sngl_init() {
-    __n0.textContent = "got=" + String(state.got);
+    __n1.textContent = "got=" + String(state.got);
   }
   __sngl_init();
 })();
@@ -525,4 +525,4 @@ pass sha256:3c6dfba7e875f542a67a0b69208edb26
 -- run/kotlin/android --
 pass sha256:452a8fb6690fa955a47f1123bdd5715e
 -- run/none/html --
-pass sha256:ef5f105ec74a576017d88b684066d5e1
+pass sha256:e062eb15bbca01392e58af8c753422a6

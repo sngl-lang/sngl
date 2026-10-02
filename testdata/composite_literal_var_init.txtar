@@ -676,17 +676,17 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
+</span>
+<span id="__n3" data-sngl-id="__n3">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 1, b__inst0: 2, pair__inst0: null, xs__inst0: null, tally__inst0: null, constPair__inst0: null };
+  var state = { a__inst0: 1, b__inst0: 2, pair__inst0: null, xs__inst0: null, tally__inst0: null, constPair__inst0: null, visible__inst1: true };
   state.pair__inst0 = { a: state.a__inst0, b: state.b__inst0 };
   state.xs__inst0 = [state.a__inst0, state.b__inst0];
   state.tally__inst0 = /* @__PURE__ */ new Map([["one", state.a__inst0], ["two", state.b__inst0]]);
@@ -694,13 +694,13 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   function __sngl_init() {
-    __n0.textContent = String(state.pair__inst0.a + state.pair__inst0.b);
-    __n1.textContent = String(state.xs__inst0[0] + state.constPair__inst0.b);
-    __n2.textContent = String(state.tally__inst0.has("one") ? state.tally__inst0.get("one") : 0);
+    __n1.textContent = String(state.pair__inst0.a + state.pair__inst0.b);
+    __n2.textContent = String(state.xs__inst0[0] + state.constPair__inst0.b);
+    __n3.textContent = String(state.tally__inst0.has("one") ? state.tally__inst0.get("one") : 0);
   }
   __sngl_init();
 })();
@@ -715,4 +715,4 @@ pass sha256:74a08e68e58896caac77c1ff240f3ab0
 -- run/kotlin/android --
 pass sha256:710621ebf68ec254d69370be160bbb87
 -- run/none/html --
-pass sha256:ccea7e0aa6d9e3af55bc22415876df93
+pass sha256:62823e5978d9438cb9fd0b45abdc1b50

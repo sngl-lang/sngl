@@ -104,9 +104,11 @@ var passes = []pass{
 	passMutatedVars,
 	passCSE,
 	passIterKind,
-	passStampUsage,
-	// Last of all: a boundary is how every pass above reaches its handler.
+	// After every pass that reaches a handler through its boundary.
 	passBoundaryPassthrough,
+	// After the passthrough: what is left to count is what raises or
+	// catches, whatever a boundary was given.
+	passStampUsage,
 }
 
 // Options controls a single Lower invocation.

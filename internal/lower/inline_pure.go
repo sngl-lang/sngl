@@ -638,7 +638,6 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
-	body = dropConstantWrites(body)
 
 	// Apply event-invocation substitution: replace any *ir.Emit whose
 	// Name matches a user-provided event handler with the handler body.
@@ -1375,44 +1374,6 @@ func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent
 			Params: slices.Clone(sc.Params),
 			Body:   deepCloneStmts(sc.Body),
 		}
-	}
-	return out
-}
-
-// dropConstantWrites removes a write whose target the substitution made a
-// constant: a two-way prop nothing holds, which a call site's value can only
-// have started. Every such prop is a cell by now (passImplicitState) but one --
-// the document a surface target writes its page from, which cannot leave the
-// screen and keeps no `visible` where nothing reads it -- so this is where the
-// write its host would report goes nowhere, rather than `true = __visible`.
-func dropConstantWrites(stmts []ir.Stmt) []ir.Stmt {
-	constant := func(e ir.Expr) bool { _, ok := e.(*ir.Literal); return ok }
-	out := stmts[:0:0]
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.Assign:
-			if constant(n.Target) {
-				continue
-			}
-		case *ir.Toggle:
-			if constant(n.Target) {
-				continue
-			}
-		case *ir.If:
-			n.Body, n.Else = dropConstantWrites(n.Body), dropConstantWrites(n.Else)
-		case *ir.For:
-			n.Body, n.Else = dropConstantWrites(n.Body), dropConstantWrites(n.Else)
-		case *ir.NodeInst:
-			n.Children = dropConstantWrites(n.Children)
-			for i := range n.Handlers {
-				if f := n.Handlers[i].Func; f != nil {
-					f.Block = dropConstantWrites(f.Block)
-				}
-			}
-		case *ir.ErrorBoundary:
-			n.Children = dropConstantWrites(n.Children)
-		}
-		out = append(out, s)
 	}
 	return out
 }

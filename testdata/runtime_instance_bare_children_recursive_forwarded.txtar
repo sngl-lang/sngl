@@ -1164,8 +1164,8 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span data-sngl-inst="__n0" style="display:contents"></span>
   <span data-sngl-inst="__n1" style="display:contents"></span>
+  <span data-sngl-inst="__n2" style="display:contents"></span>
   <button id="$1">
     <span>deeper</span>
   </button>
@@ -1174,7 +1174,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { depth: 2 };
+  var state = { depth: 2, visible__inst0: true };
   function __cf_frame__slot3(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1206,31 +1206,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n2 = null;
+          let __n3 = null;
           if (__inst1_live.length > __inst1_i) {
-            __n2 = __inst1_live[__inst1_i];
-            __n2.__set_n(__prop_n - 1);
-            __n2.__set___depth(__prop___depth + 1);
+            __n3 = __inst1_live[__inst1_i];
+            __n3.__set_n(__prop_n - 1);
+            __n3.__set___depth(__prop___depth + 1);
           } else {
             if (__inst1_live.length > __inst1_i) {
               __inst1_live[__inst1_i].__destroy();
             }
-            let __n2__new = __cf_frame__slot3({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n2 = __n2__new;
+            let __n3__new = __cf_frame__slot3({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n3 = __n3__new;
           }
-          __inst1_next.push(__n2);
+          __inst1_next.push(__n3);
           __inst1_i = __inst1_i + 1;
-          let __n2__el = __n2.__root;
+          let __n3__el = __n3.__root;
           let __place0_i_ref0 = null;
           if (__place0_i < __place0_prev.length) {
             __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          if (__place0_i_ref0 === __n2__el) {
+          if (__place0_i_ref0 === __n3__el) {
             __place0_i = __place0_i + 1;
           } else {
-            parent.insertBefore(__n2__el, __place0_i_ref0);
+            parent.insertBefore(__n3__el, __place0_i_ref0);
           }
-          __slot0.push(__n2__el);
+          __slot0.push(__n3__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -1253,16 +1253,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst1_live = [];
     }
-    let __n3 = document.createElement("div");
-    __n3.setAttribute("style", "display:flex;flex-direction:column");
-    let __n10 = document.createElement("span");
-    __n10.textContent = "BETA";
-    __n3.appendChild(__n10);
+    let __n4 = document.createElement("div");
+    __n4.setAttribute("style", "display:flex;flex-direction:column");
+    let __n11 = document.createElement("span");
+    __n11.textContent = "BETA";
+    __n4.appendChild(__n11);
     const __slotAnchor_0 = document.createElement("span");
     __slotAnchor_0.style.display = "contents";
-    __n3.appendChild(__slotAnchor_0);
+    __n4.appendChild(__slotAnchor_0);
     __renderSlot0(__slotAnchor_0);
-    __root.appendChild(__n3);
+    __root.appendChild(__n4);
     return {
       __root,
       __destroy() {
@@ -1303,31 +1303,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n4 = null;
+          let __n5 = null;
           if (__inst3_live.length > __inst3_i) {
-            __n4 = __inst3_live[__inst3_i];
-            __n4.__set_n(__prop_n - 1);
-            __n4.__set___depth(__prop___depth + 1);
+            __n5 = __inst3_live[__inst3_i];
+            __n5.__set_n(__prop_n - 1);
+            __n5.__set___depth(__prop___depth + 1);
           } else {
             if (__inst3_live.length > __inst3_i) {
               __inst3_live[__inst3_i].__destroy();
             }
-            let __n4__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n4 = __n4__new;
+            let __n5__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n5 = __n5__new;
           }
-          __inst3_next.push(__n4);
+          __inst3_next.push(__n5);
           __inst3_i = __inst3_i + 1;
-          let __n4__el = __n4.__root;
+          let __n5__el = __n5.__root;
           let __place2_i_ref0 = null;
           if (__place2_i < __place2_prev.length) {
             __place2_i_ref0 = __place2_prev[__place2_i];
           }
-          if (__place2_i_ref0 === __n4__el) {
+          if (__place2_i_ref0 === __n5__el) {
             __place2_i = __place2_i + 1;
           } else {
-            parent.insertBefore(__n4__el, __place2_i_ref0);
+            parent.insertBefore(__n5__el, __place2_i_ref0);
           }
-          __slot1.push(__n4__el);
+          __slot1.push(__n5__el);
         }
       }
       for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -1350,16 +1350,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst3_live = [];
     }
-    let __n5 = document.createElement("div");
-    __n5.setAttribute("style", "display:flex;flex-direction:column");
-    let __n11 = document.createElement("span");
-    __n11.textContent = "ALPHA";
-    __n5.appendChild(__n11);
+    let __n6 = document.createElement("div");
+    __n6.setAttribute("style", "display:flex;flex-direction:column");
+    let __n12 = document.createElement("span");
+    __n12.textContent = "ALPHA";
+    __n6.appendChild(__n12);
     const __slotAnchor_1 = document.createElement("span");
     __slotAnchor_1.style.display = "contents";
-    __n5.appendChild(__slotAnchor_1);
+    __n6.appendChild(__slotAnchor_1);
     __renderSlot1(__slotAnchor_1);
-    __root.appendChild(__n5);
+    __root.appendChild(__n6);
     return {
       __root,
       __destroy() {
@@ -1400,31 +1400,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n6 = null;
+          let __n7 = null;
           if (__inst5_live.length > __inst5_i) {
-            __n6 = __inst5_live[__inst5_i];
-            __n6.__set_n(__prop_n - 1);
-            __n6.__set___depth(__prop___depth + 1);
+            __n7 = __inst5_live[__inst5_i];
+            __n7.__set_n(__prop_n - 1);
+            __n7.__set___depth(__prop___depth + 1);
           } else {
             if (__inst5_live.length > __inst5_i) {
               __inst5_live[__inst5_i].__destroy();
             }
-            let __n6__new = __cf_frame__slot3({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n6 = __n6__new;
+            let __n7__new = __cf_frame__slot3({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n7 = __n7__new;
           }
-          __inst5_next.push(__n6);
+          __inst5_next.push(__n7);
           __inst5_i = __inst5_i + 1;
-          let __n6__el = __n6.__root;
+          let __n7__el = __n7.__root;
           let __place4_i_ref0 = null;
           if (__place4_i < __place4_prev.length) {
             __place4_i_ref0 = __place4_prev[__place4_i];
           }
-          if (__place4_i_ref0 === __n6__el) {
+          if (__place4_i_ref0 === __n7__el) {
             __place4_i = __place4_i + 1;
           } else {
-            parent.insertBefore(__n6__el, __place4_i_ref0);
+            parent.insertBefore(__n7__el, __place4_i_ref0);
           }
-          __slot2.push(__n6__el);
+          __slot2.push(__n7__el);
         }
       }
       for (const [__inst5_i_d, _] of __inst5_live.entries()) {
@@ -1447,16 +1447,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst5_live = [];
     }
-    let __n7 = document.createElement("div");
-    __n7.setAttribute("style", "display:flex;flex-direction:column");
-    let __n12 = document.createElement("span");
-    __n12.textContent = "BETA";
-    __n7.appendChild(__n12);
+    let __n8 = document.createElement("div");
+    __n8.setAttribute("style", "display:flex;flex-direction:column");
+    let __n13 = document.createElement("span");
+    __n13.textContent = "BETA";
+    __n8.appendChild(__n13);
     const __slotAnchor_2 = document.createElement("span");
     __slotAnchor_2.style.display = "contents";
-    __n7.appendChild(__slotAnchor_2);
+    __n8.appendChild(__slotAnchor_2);
     __renderSlot2(__slotAnchor_2);
-    __root.appendChild(__n7);
+    __root.appendChild(__n8);
     return {
       __root,
       __destroy() {
@@ -1497,31 +1497,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n8 = null;
+          let __n9 = null;
           if (__inst7_live.length > __inst7_i) {
-            __n8 = __inst7_live[__inst7_i];
-            __n8.__set_n(__prop_n - 1);
-            __n8.__set___depth(__prop___depth + 1);
+            __n9 = __inst7_live[__inst7_i];
+            __n9.__set_n(__prop_n - 1);
+            __n9.__set___depth(__prop___depth + 1);
           } else {
             if (__inst7_live.length > __inst7_i) {
               __inst7_live[__inst7_i].__destroy();
             }
-            let __n8__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n8 = __n8__new;
+            let __n9__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n9 = __n9__new;
           }
-          __inst7_next.push(__n8);
+          __inst7_next.push(__n9);
           __inst7_i = __inst7_i + 1;
-          let __n8__el = __n8.__root;
+          let __n9__el = __n9.__root;
           let __place6_i_ref0 = null;
           if (__place6_i < __place6_prev.length) {
             __place6_i_ref0 = __place6_prev[__place6_i];
           }
-          if (__place6_i_ref0 === __n8__el) {
+          if (__place6_i_ref0 === __n9__el) {
             __place6_i = __place6_i + 1;
           } else {
-            parent.insertBefore(__n8__el, __place6_i_ref0);
+            parent.insertBefore(__n9__el, __place6_i_ref0);
           }
-          __slot3.push(__n8__el);
+          __slot3.push(__n9__el);
         }
       }
       for (const [__inst7_i_d, _] of __inst7_live.entries()) {
@@ -1544,16 +1544,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst7_live = [];
     }
-    let __n9 = document.createElement("div");
-    __n9.setAttribute("style", "display:flex;flex-direction:column");
-    let __n13 = document.createElement("span");
-    __n13.textContent = "ALPHA";
-    __n9.appendChild(__n13);
+    let __n10 = document.createElement("div");
+    __n10.setAttribute("style", "display:flex;flex-direction:column");
+    let __n14 = document.createElement("span");
+    __n14.textContent = "ALPHA";
+    __n10.appendChild(__n14);
     const __slotAnchor_3 = document.createElement("span");
     __slotAnchor_3.style.display = "contents";
-    __n9.appendChild(__slotAnchor_3);
+    __n10.appendChild(__slotAnchor_3);
     __renderSlot3(__slotAnchor_3);
-    __root.appendChild(__n9);
+    __root.appendChild(__n10);
     return {
       __root,
       __destroy() {
@@ -1563,17 +1563,17 @@ body { font-family: system-ui, sans-serif; }
       __set___depth
     };
   }
-  var __n0__pos = document.querySelector('[data-sngl-inst="__n0"]');
-  var __n0 = __cf_frame__slot0({ n: state.depth, __depth: 0 });
-  __n0__pos.appendChild(__n0.__root);
   var __n1__pos = document.querySelector('[data-sngl-inst="__n1"]');
-  var __n1 = __cf_frame__slot1({ n: state.depth, __depth: 0 });
+  var __n1 = __cf_frame__slot0({ n: state.depth, __depth: 0 });
   __n1__pos.appendChild(__n1.__root);
+  var __n2__pos = document.querySelector('[data-sngl-inst="__n2"]');
+  var __n2 = __cf_frame__slot1({ n: state.depth, __depth: 0 });
+  __n2__pos.appendChild(__n2.__root);
   var $1 = document.getElementById("$1");
   $1.addEventListener("click", function() {
     state.depth += 1;
-    __n0.__set_n(state.depth);
     __n1.__set_n(state.depth);
+    __n2.__set_n(state.depth);
   });
 })();
 </script>
@@ -1583,4 +1583,4 @@ pass sha256:ea2da24364964f6798df8dd23fac5e0f
 -- run/go/gtk4 --
 pass sha256:4df8f69f5e0ed1aea605c9114d41302c
 -- run/none/html --
-pass sha256:2e5677422cd81b182dfab1afaef6daf1
+pass sha256:74d271c6f809d179caa792f95373d028

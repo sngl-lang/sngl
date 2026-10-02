@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { show: true, label: "outer" };
+  var state = { show: true, label: "outer", visible__inst0: true };
   var __slot0 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
@@ -147,4 +147,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:034674c8551d88e81d6b5fdc4f425d51
+pass sha256:269ca86b4501d691de2b996325caae89

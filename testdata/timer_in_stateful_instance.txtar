@@ -772,7 +772,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst1: true };
   function __cf_ticker(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -881,30 +881,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const p of [100, 250]) {
-      let __n1 = null;
+      let __n2 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n1 = __inst1_live[__inst1_i];
-        __n1.__set_period(p);
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set_period(p);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n1__new = __cf_ticker({ period: p });
-        __n1 = __n1__new;
+        let __n2__new = __cf_ticker({ period: p });
+        __n2 = __n2__new;
       }
-      __inst1_next.push(__n1);
+      __inst1_next.push(__n2);
       __inst1_i = __inst1_i + 1;
-      let __n1__el = __n1.__root;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n1__el) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n1__el, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n1__el);
+      __slot0.push(__n2__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -934,4 +934,4 @@ pass sha256:0d89e48a9f526f33104722d57c9efec5
 -- run/go/gtk4 --
 pass sha256:485833a562f31d9a9dfe6f9a2f009354
 -- run/none/html --
-pass sha256:2caa4942bd91738b19103205b073fd88
+pass sha256:a8ca0b6809104255cabd28702461e7fa

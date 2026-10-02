@@ -619,8 +619,10 @@ func documentView(doc *codegen.Document, harness *codegen.ViewCtx) *codegen.View
 
 // surfaceName is what a document's Window is called: its `#id`, which a route
 // is named after.
+// surfaceName is the document's name: the #id the program wrote on its
+// window, and nothing for the one a lowering pass gave it to patch a prop.
 func surfaceName(n *ir.NodeInst) string {
-	if n == nil {
+	if n == nil || strings.HasPrefix(n.ID, "__n") {
 		return ""
 	}
 	return n.ID
@@ -1093,7 +1095,7 @@ func (g *htmlGen) rewriteDocumentSlotCalls() {
 // () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
 // the parentRef it was threaded with and removeChild'd from the wrong node.
 func retargetSlotCalls(root any) {
-	_ = ir.Walk(root, func(node ir.Node) error {
+	_ = walkThroughCatch(root, func(node ir.Node) error {
 		call, ok := node.(*ir.Call)
 		if !ok || call.Func == nil {
 			return nil
@@ -1109,6 +1111,22 @@ func retargetSlotCalls(root any) {
 			Synthesized:  true,
 		}
 		return nil
+	})
+}
+
+// walkThroughCatch is ir.Walk that also walks the handler of every catch
+// block it reaches. ir.Walk leaves that handler alone, being an alias of one
+// declared elsewhere; but passBoundaryPassthrough has spliced away the
+// boundary that declared it, so the catch block is the only route to it left, and an
+// edit the page needs made in every handler would miss this one.
+func walkThroughCatch(root any, visit func(ir.Node) error) error {
+	return ir.Walk(root, func(node ir.Node) error {
+		if ifs, ok := node.(*ir.If); ok && ifs.Catch != nil && ifs.Catch.Func != nil {
+			if err := walkThroughCatch(ifs.Catch.Func.Block, visit); err != nil {
+				return err
+			}
+		}
+		return visit(node)
 	})
 }
 
@@ -1608,7 +1626,7 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 // its parent. Only the roots: a flex inside the tree is answered by the box
 // around it, and only the outermost one needs the viewport handed to it.
 func (g *htmlGen) rootFlexes() bool {
-	for _, st := range throughBoundaries(g.irBodyStmts) {
+	for _, st := range g.irBodyStmts {
 		n, ok := st.(*ir.NodeInst)
 		if !ok {
 			continue
@@ -1641,7 +1659,7 @@ func (g *htmlGen) showsDialog() bool {
 	// body's alone that counts.
 	inBody := true
 	visit := func(root any) {
-		_ = ir.Walk(root, func(n ir.Node) error {
+		_ = walkThroughCatch(root, func(n ir.Node) error {
 			switch x := n.(type) {
 			case *ir.NodeInst:
 				if isElement(x.Component) && (x.Name == "dialog" || strings.HasSuffix(x.Name, ".dialog")) || inBody && isWindowPrimitive(x) {
@@ -3503,7 +3521,7 @@ func (g *htmlGen) runtimeHandlers() []runtimeHandler {
 		return nil
 	}
 	var out []runtimeHandler
-	_ = ir.Walk(g.pkg, func(n ir.Node) error {
+	_ = walkThroughCatch(g.pkg, func(n ir.Node) error {
 		cs, ok := n.(*ir.CallStmt)
 		if !ok || cs.Call == nil || cs.Call.Func == nil || cs.Call.Func.Intrinsic != ir.NodeOpAttachHandler || len(cs.Call.Args) < 2 {
 			return nil
@@ -3712,7 +3730,7 @@ func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
 		}
 	}
 	for _, root := range []any{pkg, body} {
-		_ = ir.Walk(root, func(n ir.Node) error {
+		_ = walkThroughCatch(root, func(n ir.Node) error {
 			switch x := n.(type) {
 			case *ir.NodeInst:
 				for i := range x.Handlers {
@@ -3720,6 +3738,10 @@ func respellWindowWrites(pkg *ir.Package, doc *ir.NodeInst, body []ir.Stmt) {
 				}
 			case *ir.Lambda:
 				add(x.Func)
+			case *ir.If:
+				if x.Catch != nil {
+					add(x.Catch.Func)
+				}
 			}
 			return nil
 		})
@@ -3742,7 +3764,7 @@ func (g *htmlGen) windowIDs() map[string]bool {
 		return g.windowNames
 	}
 	g.windowNames = map[string]bool{}
-	_ = ir.Walk(g.pkg, func(n ir.Node) error {
+	_ = walkThroughCatch(g.pkg, func(n ir.Node) error {
 		lv, ok := n.(*ir.LocalVar)
 		if !ok {
 			return nil
@@ -3755,19 +3777,4 @@ func (g *htmlGen) windowIDs() map[string]bool {
 		return nil
 	})
 	return g.windowNames
-}
-
-// throughBoundaries is stmts with each boundary that holds no fallback replaced
-// by what it holds: the boundary a window's @error is, around everything the
-// window renders, puts nothing on the page.
-func throughBoundaries(stmts []ir.Stmt) []ir.Stmt {
-	var out []ir.Stmt
-	for _, s := range stmts {
-		if b, ok := s.(*ir.ErrorBoundary); ok && len(b.Failed) == 0 {
-			out = append(out, throughBoundaries(b.Children)...)
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
 }

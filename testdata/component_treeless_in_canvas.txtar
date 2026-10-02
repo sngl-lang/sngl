@@ -1338,7 +1338,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { frame: 0, handle__inst0: 0 };
+  var state = { frame: 0, handle__inst0: 0, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -1505,4 +1505,4 @@ pass sha256:d1abd77d4fe8478e26c2033fa9b1d499
 -- run/kotlin/android --
 pass sha256:0ba987f35115edd2b61ae742bf4280af
 -- run/none/html --
-pass sha256:72b487c5809c71f05f07521be01cdb58
+pass sha256:8ba795a3ecb0ad3d3eb248db4b1aea2a

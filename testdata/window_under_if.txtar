@@ -726,8 +726,8 @@ dialog { margin: auto; padding: 1em; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { details: false, n: 0, shown: 0 };
-  function __cf___window_state0__slot0(props) {
+  var state = { details: false, n: 0, shown: 0, visible__inst0: true };
+  function __cf___window_state1__slot0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __start_visible = props.__start_visible ?? true;
@@ -860,7 +860,7 @@ dialog { margin: auto; padding: 1em; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n3__new = __cf___window_state0__slot0({ title: "Load", __p0: state.n, closed: () => {
+        let __n3__new = __cf___window_state1__slot0({ title: "Load", __p0: state.n, closed: () => {
           state.details = false;
           __renderSlot0(__slotAnchor_0);
         }, __on0: () => {
@@ -945,4 +945,4 @@ pass sha256:927e1d228c5f3461949c43eb070ec5f0
 -- run/go/gtk4 --
 pass sha256:8709252be85984764652443cbb75d093
 -- run/none/html --
-pass sha256:08014bf6ef8e8130678e9857842eb16e
+pass sha256:5fae861cd67403c23eeb925fa649db51

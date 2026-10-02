@@ -437,8 +437,6 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
@@ -447,24 +445,26 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n4" data-sngl-id="__n4">
 </span>
+<span id="__n5" data-sngl-id="__n5">
+</span>
 <span>fixed 250ms</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100 };
+  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100, visible__inst1: true };
   state.mix__inst0 = { px: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.px, em: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.em, vw: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vw, vh: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vh, pct: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.pct };
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   function __sngl_init() {
-    __n0.textContent = "mix " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mix__inst0);
-    __n1.textContent = "reduced " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
-    __n2.textContent = "ticks " + (String(state.ticks__inst0) + "tk");
-    __n3.textContent = "half " + (String(state.half__inst0) + "ms");
-    __n4.textContent = "over " + (String(state.over__inst0) + "ms");
+    __n1.textContent = "mix " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mix__inst0);
+    __n2.textContent = "reduced " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
+    __n3.textContent = "ticks " + (String(state.ticks__inst0) + "tk");
+    __n4.textContent = "half " + (String(state.half__inst0) + "ms");
+    __n5.textContent = "over " + (String(state.over__inst0) + "ms");
   }
   __sngl_init();
 })();
@@ -475,4 +475,4 @@ pass sha256:1fe561be269794bfb01d81f2e6c9dfb6
 -- run/kotlin/android --
 pass sha256:d6ba1c57679b9e5f3570efbdce865b21
 -- run/none/html --
-pass sha256:7f403182faa48b4a5f43eba52a10dcfa
+pass sha256:319ac3f266af149117982681bfa60d4c

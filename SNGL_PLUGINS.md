@@ -1164,8 +1164,10 @@ and the checker's window id hoist. Added: `passHandleParams` (a call handing a
 node's handle to a function writing one of its two-way props through the
 parameter is inlined, the write landing on the bound var or the cell, and the
 interpreter writes through a handle the same way), `passBoundaryPassthrough`
-(on fyne and gtk4, last, a boundary with no fallback is spliced into what it
-holds -- a boundary a program writes now builds there, `errorboundary_flattened.txt`),
+(on every target, late, a boundary with no fallback is spliced into what it
+holds, its handlers lifted where a slot body is -- a boundary a program writes
+now builds on fyne and gtk4, `errorboundary_flattened.txt`, and android's
+content layout and html's root flex need no boundary case),
 `findSurfaces`, `ir.IsSurface`, html's `Window` primitive and `renderDialog`
 with `_snglDialog` for one built at run time, and `build.Check` refusing a
 selected platform that reports itself unavailable before checking against it.
@@ -1177,9 +1179,9 @@ boundary's own handler was walked by neither the inliner's event substitution
 nor its emit scan nor the optimizer's fold, so the override's `error(e)`
 forwarded nowhere and a call site's handler moved onto the primitive; a block
 `var`'s `@change` in a component's view was never checked (a window's was, by a
-window-only rule); the canvas redraw walks, android's content layout,
-`destroyBuiltInstances`, the html root-flex rule and the route action's
-DOM-patch filter each stopped at a boundary; `pkgUsesErrorHandling` missed a
+window-only rule); the canvas redraw walks, `destroyBuiltInstances` and the
+route action's DOM-patch filter each stopped at a boundary, and android's
+content layout and the html root-flex rule did until the passthrough splices it; `pkgUsesErrorHandling` missed a
 catch block in a lambda; a bound two-way prop passed through by an override
 (`Toplevel(:visible=visible)`) was reported twice.
 

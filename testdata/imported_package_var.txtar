@@ -338,7 +338,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { calls: 0 };
+  var state = { visible__inst0: true, calls: 0 };
   function bump() {
     state.calls += 1;
     __n0.textContent = "calls " + String(state.calls);
@@ -364,4 +364,4 @@ pass sha256:3e07ea5876f362df26f4f2d24cfa3c3b
 -- run/go/fyne --
 pass sha256:551b7ebe3d8e8dbfc5f0ad6538995059
 -- run/none/html --
-pass sha256:016c62b4e3316f2e169fdba8fe9c0f1e
+pass sha256:e4f86a287f62e506de8dd926c3803c68

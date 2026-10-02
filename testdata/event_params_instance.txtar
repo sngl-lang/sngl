@@ -728,13 +728,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span data-sngl-slot="0" style="display:contents"></span>
-<span id="__n1" data-sngl-id="__n1">
+<span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picked__inst0: "", at__inst0: 0, names__inst0: ["a", "b"] };
+  var state = { picked__inst0: "", at__inst0: 0, names__inst0: ["a", "b"], visible__inst1: true };
   function __cf_card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -752,18 +752,18 @@ body { font-family: system-ui, sans-serif; }
     function __set_pick(__v) {
       __prop_pick = __v;
     }
-    let __n3 = document.createElement("button");
-    __n3.disabled = false;
-    __n3.addEventListener("click", () => {
+    let __n4 = document.createElement("button");
+    __n4.disabled = false;
+    __n4.addEventListener("click", () => {
       clicks += 1;
       __prop_pick(clicks, __prop_label);
     });
-    __n3.addEventListener("contextmenu", () => {
+    __n4.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = __prop_label;
-    __n3.appendChild(__n0);
-    __root.appendChild(__n3);
+    __n4.appendChild(__n0);
+    __root.appendChild(__n4);
     return {
       __root,
       __destroy() {
@@ -781,41 +781,41 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const n of state.names__inst0) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_label(n);
-        __n2.__set_pick((i, l) => {
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set_label(n);
+        __n3.__set_pick((i, l) => {
           state.at__inst0 = i;
-          __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+          __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
           state.picked__inst0 = l;
-          __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+          __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf_card({ label: n, pick: (i, l) => {
+        let __n3__new = __cf_card({ label: n, pick: (i, l) => {
           state.at__inst0 = i;
-          __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+          __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
           state.picked__inst0 = l;
-          __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+          __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
         } });
-        __n2 = __n2__new;
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -833,11 +833,11 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+    __n2.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   }
   __sngl_init();
 })();
@@ -850,4 +850,4 @@ pass sha256:604db28eb601123a72b2516c6abcbd1d
 -- run/go/gtk4 --
 pass sha256:2b6b62d772169f3b9d52ed067a0cfcb6
 -- run/none/html --
-pass sha256:7acfd728d26cc64f875c9af967f23a66
+pass sha256:3fa0b30c5e947c639fade214d1eec7df

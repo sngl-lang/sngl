@@ -120,7 +120,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   globalThis.__sngl_page = { id: 1, href: "/about", title: "About", meta: { label: "about" } };
-  var state = { visits: 0 };
+  var state = { visits: 0, visible__inst0: true };
   function __effect0_mount() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -231,7 +231,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   globalThis.__sngl_page = { id: 0, href: "/", title: "Home", meta: { label: "home" } };
-  var state = { visits: 0 };
+  var state = { visits: 0, visible__inst0: true };
   function __effect0_mount() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -341,7 +341,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   globalThis.__sngl_page = { id: 2, href: "/settings.html", title: "Settings", meta: { label: "settings" } };
-  var state = { visits: 0 };
+  var state = { visits: 0, visible__inst0: true };
   function __effect0_mount() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
@@ -415,4 +415,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1104ddedb3039332804ee0a21bc8d243
+pass sha256:576842f756418c6fbf5ba7d1b12a0fd6

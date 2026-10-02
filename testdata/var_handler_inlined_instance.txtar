@@ -261,13 +261,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <div style="display:flex;flex-direction:column">
     <button id="$2">
       <span>+</span>
     </button>
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
   </div>
 </div>
@@ -275,24 +275,24 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 5, count__inst1: 0, tracked__inst1: 0 };
-  function $set_tracked__inst1(v) {
-    state.tracked__inst1 = v;
-    state.count__inst1 = v + 1;
-    __n1.textContent = String(state.count__inst1);
+  var state = { count__inst0: 5, visible__inst1: true, count__inst2: 0, tracked__inst2: 0 };
+  function $set_tracked__inst2(v) {
+    state.tracked__inst2 = v;
+    state.count__inst2 = v + 1;
+    __n2.textContent = String(state.count__inst2);
   }
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
-    state.tracked__inst1 = state.tracked__inst1 + 1;
+    state.tracked__inst2 = state.tracked__inst2 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count__inst0);
-    __n1.textContent = String(state.count__inst1);
+    __n1.textContent = String(state.count__inst0);
+    __n2.textContent = String(state.count__inst2);
   }
   __sngl_init();
 })();
@@ -301,4 +301,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:cd50f7850ad4e664ebed45a2631eea29
 -- run/none/html --
-pass sha256:88f5d81f4732637de8b4af87a83020b2
+pass sha256:e9ff7158a37e46797282f420fcacdcf4

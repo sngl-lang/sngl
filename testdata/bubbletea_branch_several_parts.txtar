@@ -270,39 +270,35 @@ func (m Model) View() tea.View {
 			contentParts = append(contentParts, contentPart_0)
 		}
 		var contentPart_1 string
-		var contentPart_1Parts []string
-		var contentPart_1Part_0 string
-		contentPart_1Part_0Focused := (m.__focusID == 2)
-		contentPart_1Part_0Prefix := " "
-		if contentPart_1Part_0Focused {
-			contentPart_1Part_0Prefix = ">"
+		contentPart_1Focused := (m.__focusID == 2)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
 		}
-		contentPart_1Part_0 = lipgloss.NewStyle().Render(contentPart_1Part_0Prefix + " " + fmt.Sprint("C"))
-		contentPart_1Parts = append(contentPart_1Parts, contentPart_1Part_0)
-		var contentPart_1Part_1 string
-		contentPart_1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
-		contentPart_1Parts = append(contentPart_1Parts, contentPart_1Part_1)
-		contentPart_1 = lipgloss.JoinVertical(lipgloss.Left, contentPart_1Parts...)
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("C"))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		var contentPart_2Children []string
-		var contentPart_2_0 string
-		var contentPart_2_0Items []string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		var contentPart_3Children []string
+		var contentPart_3_0 string
+		var contentPart_3_0Items []string
 		for _, n := range []string{"x", "y"} {
 			_ = n
-			var contentPart_2_0Item_0 string
-			contentPart_2_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
-			contentPart_2_0Items = append(contentPart_2_0Items, contentPart_2_0Item_0)
-			var contentPart_2_0Item_1 string
-			contentPart_2_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
-			contentPart_2_0Items = append(contentPart_2_0Items, contentPart_2_0Item_1)
+			var contentPart_3_0Item_0 string
+			contentPart_3_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
+			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_0)
+			var contentPart_3_0Item_1 string
+			contentPart_3_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
+			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_1)
 		}
-		contentPart_2_0 = strings.Join(contentPart_2_0Items, "")
-		if contentPart_2_0 != "" {
-			contentPart_2Children = append(contentPart_2Children, contentPart_2_0)
+		contentPart_3_0 = strings.Join(contentPart_3_0Items, "")
+		if contentPart_3_0 != "" {
+			contentPart_3Children = append(contentPart_3Children, contentPart_3_0)
 		}
-		contentPart_2 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_2Children...)
-		contentParts = append(contentParts, contentPart_2)
+		contentPart_3 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_3Children...)
+		contentParts = append(contentParts, contentPart_3)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
@@ -319,4 +315,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:35d00e31c200dd7136c9b026ffcad6d3
+pass sha256:21a265c4cdc041bde25cac475a770b73

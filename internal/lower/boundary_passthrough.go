@@ -3,8 +3,10 @@ package lower
 import "git.duckfam.us/jonathan/sngl/ir"
 
 // passBoundaryPassthrough splices each boundary that holds no fallback into
-// what it holds, on a target whose view is flattened into statements -- gtk4
-// and fyne, which have no error-boundary emitter and need none. By now every
+// what it holds, on every target, so no backend is handed one: gtk4 and fyne
+// have no error-boundary emitter, and every other rendered its children
+// inline, each having had to look through it where it asked what a node
+// holds. By now every
 // raise under a boundary is resolved to its handler (Call.ResolvedHandler,
 // and the catch blocks passErrorCatch made), the handler has had its updaters
 // injected and its loops stamped, and a fallback was lowered to an `if` by
@@ -16,7 +18,7 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // which no walk follows, and a loop in it was never given its kind.
 var passBoundaryPassthrough = pass{
 	name:    "BoundaryPassthrough",
-	enabled: func(c Features) bool { return !c.Declarative },
+	enabled: func(Features) bool { return true },
 	apply:   lowerBoundaryPassthrough,
 }
 

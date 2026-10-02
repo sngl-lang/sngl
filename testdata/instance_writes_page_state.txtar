@@ -1076,18 +1076,18 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
+<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n1" data-sngl-id="__n1">
-  </span>
   <span id="__n2" data-sngl-id="__n2">
+  </span>
+  <span id="__n3" data-sngl-id="__n3">
   </span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { start: 0, total: null, labels: ["a", "b"] };
+  var state = { start: 0, total: null, labels: ["a", "b"], visible__inst0: true };
   state.total = state.start;
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -1105,12 +1105,12 @@ body { font-family: system-ui, sans-serif; }
     function __effect0_mount() {
       state.total = state.total + 1;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     }
     function __effect0_unmount() {
       state.total = state.total - 1;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     }
     function __effect0_down() {
       __effect0_desired = [];
@@ -1175,20 +1175,20 @@ body { font-family: system-ui, sans-serif; }
       __prop_name = __v;
       __effects0_settle();
     }
-    let __n5 = document.createElement("button");
-    __n5.disabled = false;
-    __n5.addEventListener("click", () => {
+    let __n6 = document.createElement("button");
+    __n6.disabled = false;
+    __n6.addEventListener("click", () => {
       state.total = state.total + 10;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     });
-    __n5.addEventListener("contextmenu", () => {
+    __n6.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = label + " " + String(state.total);
-    __n5.appendChild(__n0);
+    __n6.appendChild(__n0);
     __effects0_settle();
-    __root.appendChild(__n5);
+    __root.appendChild(__n6);
     return {
       __root,
       __destroy() {
@@ -1206,30 +1206,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const l of state.labels) {
-      let __n3 = null;
+      let __n4 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set_name(l);
+        __n4 = __inst1_live[__inst1_i];
+        __n4.__set_name(l);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n3__new = __cf_row({ name: l });
-        __n3 = __n3__new;
+        let __n4__new = __cf_row({ name: l });
+        __n4 = __n4__new;
       }
-      __inst1_next.push(__n3);
+      __inst1_next.push(__n4);
       __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
+      let __n4__el = __n4.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n3__el) {
+      if (__place0_i_ref0 === __n4__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
+        parent.insertBefore(__n4__el, __place0_i_ref0);
       }
-      __slot0.push(__n3__el);
+      __slot0.push(__n4__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1247,13 +1247,13 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n1.textContent = String(state.total);
-    __n2.textContent = "from " + String(state.start);
+    __n2.textContent = String(state.total);
+    __n3.textContent = "from " + String(state.start);
   }
   __sngl_init();
 })();
@@ -1268,4 +1268,4 @@ pass sha256:17bca6bda0446f94293fc364d4ee80ea
 -- run/kotlin/android --
 pass sha256:eb0cb6cc8c77a080cc48ffa002e7118b
 -- run/none/html --
-pass sha256:4c8fbc3f4893f5d2cc3962c51371b3e4
+pass sha256:12cab8b7b1d961811790cde0cc361022

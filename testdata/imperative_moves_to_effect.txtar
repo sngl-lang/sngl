@@ -359,18 +359,18 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>flip</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 0, flag: false };
+  var state = { n: 0, flag: false, visible__inst0: true };
   function __effect0_mount() {
     state.n = 5;
-    __n0.textContent = String(state.n) + " " + String(state.flag);
+    __n1.textContent = String(state.n) + " " + String(state.flag);
     state.n = state.n + 1;
-    __n0.textContent = String(state.n) + " " + String(state.flag);
+    __n1.textContent = String(state.n) + " " + String(state.flag);
   }
   var __effect0_live = [];
   var __effect0_desired = [];
@@ -416,15 +416,15 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.flag = !state.flag;
-    __n0.textContent = String(state.n) + " " + String(state.flag);
+    __n1.textContent = String(state.n) + " " + String(state.flag);
     state.n = state.n + 1;
-    __n0.textContent = String(state.n) + " " + String(state.flag);
+    __n1.textContent = String(state.n) + " " + String(state.flag);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.n) + " " + String(state.flag);
+    __n1.textContent = String(state.n) + " " + String(state.flag);
   }
   __sngl_init();
   __effects0_settle();
@@ -436,4 +436,4 @@ pass sha256:bfecaadc491691566a567366adb9703d
 -- run/kotlin/android --
 pass sha256:173dff5ca2d918ecee8cdb3b992135fe
 -- run/none/html --
-pass sha256:df9f2722b8b87a8a6167597a204bbf7e
+pass sha256:4a882e02b7b634697ff2a51ce3f5d90d

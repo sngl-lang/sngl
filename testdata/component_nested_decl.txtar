@@ -441,7 +441,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -454,4 +454,4 @@ pass sha256:63b774190f455bfc48346884fa4bec51
 -- run/kotlin/android --
 pass sha256:efd2d65ce6dad22924b7829d6862f03e
 -- run/none/html --
-pass sha256:806f8cf826aebaeda1a659ca72500e52
+pass sha256:a2cc270540f8af76115ee35ce5424414

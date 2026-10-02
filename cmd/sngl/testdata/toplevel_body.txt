@@ -18,7 +18,7 @@ sngl generate --platform=android --lang=kotlin --out=w-an win.sngl
 
 # The state is the package's, and it has to reach the page as state rather than
 # as a name nothing declared -- the failure mode #133 documented.
-grep 'var state = \{ n: 0 \}' w-html/index.html
+grep 'var state = \{ n: 0[,}]' w-html/index.html
 grep 'state.n = state.n \+ 1' w-html/index.html
 
 # Several pages coexist in a window's stack: the one at "/" takes index.html
@@ -37,7 +37,7 @@ grep 'About this app' both/about/index.html
 # The instance's state is renamed per instance by the inliner, which is what a
 # component instantiated in a body has always done.
 sngl generate --platform=html --lang=none --out=comp compose.sngl
-grep 'var state = \{ n__inst0: 0 \}' comp/index.html
+grep 'var state = \{ n__inst0: 0[,}]' comp/index.html
 grep 'state.n__inst0 = state.n__inst0 \+ 1' comp/index.html
 
 -- win.sngl --

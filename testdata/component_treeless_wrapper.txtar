@@ -200,14 +200,12 @@ func (m Model) View() tea.View {
 		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("widgets"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentParts = append(contentParts, contentPart_1)
-		var contentPart_2 string
-		contentPart_2 = tui.RenderTerminal(20, 10, 1, func() image.Image {
+		contentPart_1 = tui.RenderTerminal(20, 10, 1, func() image.Image {
 			__c := _canvasSurface0.Begin(20, 20, 0, 0, "")
 			m._canvasDraw0(__c)
 			return __c.Result()
 		})
-		contentParts = append(contentParts, contentPart_2)
+		contentParts = append(contentParts, contentPart_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
@@ -375,7 +373,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -440,8 +438,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2bc83fa81758cfa2fe89a53dc884823a
+pass sha256:b2e1be46df95345ee05aee4399ffce6a
 -- run/kotlin/android --
 pass sha256:db9c521792de0d90812ffe8256f5ed10
 -- run/none/html --
-pass sha256:7b2068c12c555c65a4834e8532298193
+pass sha256:b048c35cf2daca88cee830fd47cc31d4

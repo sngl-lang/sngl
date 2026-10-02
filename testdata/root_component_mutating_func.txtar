@@ -245,7 +245,7 @@ dialog { margin: auto; padding: 1em; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { total__inst0: 0, visible__inst1: true };
+  var state = { total__inst0: 0, visible__inst1: true, visible__inst2: true };
   function add__inst0() {
     state.total__inst0 = state.total__inst0 + 1;
     __n0.textContent = "a " + String(state.total__inst0);
@@ -263,13 +263,13 @@ dialog { margin: auto; padding: 1em; }
     add__inst0();
   });
   $2.addEventListener("click", function() {
-    state.visible__inst1 = false;
-    $0.open = state.visible__inst1;
+    state.visible__inst2 = false;
+    $0.open = state.visible__inst2;
   });
   function __sngl_init() {
     __n0.textContent = "a " + String(state.total__inst0);
     __n1.textContent = "b " + String(state.total__inst0);
-    $0.open = state.visible__inst1;
+    $0.open = state.visible__inst2;
   }
   __sngl_init();
 })();
@@ -278,4 +278,4 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:150b54e15c0b2a426c00062c0b7835a4
 -- run/none/html --
-pass sha256:2a194ce90da230b25bcddc2d9f006753
+pass sha256:fd34ccc2226e235ed78acf325a2724ed

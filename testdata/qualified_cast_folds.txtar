@@ -402,8 +402,6 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
@@ -414,27 +412,29 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n5" data-sngl-id="__n5">
 </span>
+<span id="__n6" data-sngl-id="__n6">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00" };
+  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00", visible__inst2: true };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   function __sngl_init() {
-    __n0.textContent = String(state.d__inst0);
-    __n1.textContent = String(state.t__inst0);
-    __n2.textContent = String(state.dt__inst0);
-    __n3.textContent = String(state.d__inst1);
-    __n4.textContent = String(state.t__inst1);
-    __n5.textContent = String(state.dt__inst1);
+    __n1.textContent = String(state.d__inst0);
+    __n2.textContent = String(state.t__inst0);
+    __n3.textContent = String(state.dt__inst0);
+    __n4.textContent = String(state.d__inst1);
+    __n5.textContent = String(state.t__inst1);
+    __n6.textContent = String(state.dt__inst1);
   }
   __sngl_init();
 })();
@@ -445,4 +445,4 @@ pass sha256:8dc067f356bfa33459fe1232277dca93
 -- run/kotlin/android --
 pass sha256:7ac28414c5de6a6c9e6a5f6bfabb7984
 -- run/none/html --
-pass sha256:59f8744fd15fea4c7653e3bf5a4374ec
+pass sha256:b6a95228874926af03ce12bb3ec071ae

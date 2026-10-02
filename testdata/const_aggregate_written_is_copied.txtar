@@ -245,7 +245,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 <button id="$0">
   <span>go</span>
@@ -255,7 +255,7 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var xs = [1, 2];
-  var state = { a: [1, 2], n: 0 };
+  var state = { a: [1, 2], n: 0, visible__inst0: true };
   function grow(ys) {
     ys.push(3);
   }
@@ -272,16 +272,16 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.a.push(5);
-    __n0.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
+    __n1.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
     grow([1, 2]);
     state.n = state.n + 1;
-    __n0.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
+    __n1.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
   });
   function __sngl_init() {
-    __n0.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
+    __n1.textContent = String(sumFrom(xs, state.n)) + " " + String(state.a.length);
   }
   __sngl_init();
 })();
@@ -290,4 +290,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a6d7704ec2305dc8f9f342bc7e4e3ce2
 -- run/none/html --
-pass sha256:7dbfb16820ea6219b1bacba8cabd062d
+pass sha256:5906ba0ad47127ba2a37638408e234a9

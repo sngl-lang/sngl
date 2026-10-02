@@ -487,7 +487,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { txt: "b" };
+  var state = { txt: "b", visible__inst1: true };
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
@@ -510,4 +510,4 @@ pass sha256:9a8cc2dba81a22fd4324973af9426d1c
 -- run/kotlin/android --
 pass sha256:47fa01bee5d9fae22630af7564137e40
 -- run/none/html --
-pass sha256:9c2944900e4fa0f6ca86ea6ed3dd4111
+pass sha256:03169ad2d65ec99c815fb6557c5b967d

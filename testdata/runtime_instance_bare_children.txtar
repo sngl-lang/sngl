@@ -1178,11 +1178,11 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
+<div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>add</span>
   </button>
-  <span id="__n3" data-sngl-id="__n3">
+  <span id="__n4" data-sngl-id="__n4">
   </span>
   <span data-sngl-slot="0" style="display:contents"></span>
   <span data-sngl-slot="1" style="display:contents"></span>
@@ -1191,31 +1191,31 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items: ["a", "b"], picked: "" };
+  var state = { items: ["a", "b"], picked: "", visible__inst0: true };
   function __cf_Card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let hits = 0;
     let __slot02 = [];
     let __slot12 = [];
-    let __n7 = document.createElement("div");
-    __n7.setAttribute("style", "display:flex;flex-direction:column");
-    let __n8 = document.createElement("button");
-    __n8.disabled = false;
-    __n8.addEventListener("click", () => {
+    let __n8 = document.createElement("div");
+    __n8.setAttribute("style", "display:flex;flex-direction:column");
+    let __n9 = document.createElement("button");
+    __n9.disabled = false;
+    __n9.addEventListener("click", () => {
       hits = hits + 1;
       __n0.textContent = "hit " + String(hits);
     });
-    __n8.addEventListener("contextmenu", () => {
+    __n9.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = "hit " + String(hits);
-    __n8.appendChild(__n0);
-    __n7.appendChild(__n8);
-    let __n9 = document.createElement("span");
-    __n9.textContent = "empty";
-    __n7.appendChild(__n9);
-    __root.appendChild(__n7);
+    __n9.appendChild(__n0);
+    __n8.appendChild(__n9);
+    let __n10 = document.createElement("span");
+    __n10.textContent = "empty";
+    __n8.appendChild(__n10);
+    __root.appendChild(__n8);
     return {
       __root,
       __destroy() {
@@ -1240,35 +1240,35 @@ body { font-family: system-ui, sans-serif; }
     function __set___on0(__v) {
       __prop___on0 = __v;
     }
-    let __n10 = document.createElement("div");
-    __n10.setAttribute("style", "display:flex;flex-direction:column");
-    let __n11 = document.createElement("button");
-    __n11.disabled = false;
-    __n11.addEventListener("click", () => {
-      hits = hits + 1;
-      __n1.textContent = "hit " + String(hits);
-    });
-    __n11.addEventListener("contextmenu", () => {
-    });
-    let __n1 = document.createElement("span");
-    __n1.textContent = "hit " + String(hits);
-    __n11.appendChild(__n1);
-    __n10.appendChild(__n11);
-    let __n2 = document.createElement("span");
-    __n2.textContent = "item " + __prop___p0;
-    __n10.appendChild(__n2);
+    let __n11 = document.createElement("div");
+    __n11.setAttribute("style", "display:flex;flex-direction:column");
     let __n12 = document.createElement("button");
     __n12.disabled = false;
     __n12.addEventListener("click", () => {
-      __prop___on0();
+      hits = hits + 1;
+      __n1.textContent = "hit " + String(hits);
     });
     __n12.addEventListener("contextmenu", () => {
     });
-    let __n13 = document.createElement("span");
-    __n13.textContent = "pick";
-    __n12.appendChild(__n13);
-    __n10.appendChild(__n12);
-    __root.appendChild(__n10);
+    let __n1 = document.createElement("span");
+    __n1.textContent = "hit " + String(hits);
+    __n12.appendChild(__n1);
+    __n11.appendChild(__n12);
+    let __n2 = document.createElement("span");
+    __n2.textContent = "item " + __prop___p0;
+    __n11.appendChild(__n2);
+    let __n13 = document.createElement("button");
+    __n13.disabled = false;
+    __n13.addEventListener("click", () => {
+      __prop___on0();
+    });
+    __n13.addEventListener("contextmenu", () => {
+    });
+    let __n14 = document.createElement("span");
+    __n14.textContent = "pick";
+    __n13.appendChild(__n14);
+    __n11.appendChild(__n13);
+    __root.appendChild(__n11);
     return {
       __root,
       __destroy() {
@@ -1288,37 +1288,37 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items) {
-      let __n4 = null;
+      let __n5 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n4 = __inst1_live[__inst1_i];
-        __n4.__set___p0(it);
-        __n4.__set___on0(() => {
+        __n5 = __inst1_live[__inst1_i];
+        __n5.__set___p0(it);
+        __n5.__set___on0(() => {
           state.picked = it;
-          __n3.textContent = "picked " + state.picked;
+          __n4.textContent = "picked " + state.picked;
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n4__new = __cf_Card__slot0({ __p0: it, __on0: () => {
+        let __n5__new = __cf_Card__slot0({ __p0: it, __on0: () => {
           state.picked = it;
-          __n3.textContent = "picked " + state.picked;
+          __n4.textContent = "picked " + state.picked;
         } });
-        __n4 = __n4__new;
+        __n5 = __n5__new;
       }
-      __inst1_next.push(__n4);
+      __inst1_next.push(__n5);
       __inst1_i = __inst1_i + 1;
-      let __n4__el = __n4.__root;
+      let __n5__el = __n5.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n4__el) {
+      if (__place0_i_ref0 === __n5__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n4__el, __place0_i_ref0);
+        parent.insertBefore(__n5__el, __place0_i_ref0);
       }
-      __slot0.push(__n4__el);
+      __slot0.push(__n5__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1340,29 +1340,29 @@ body { font-family: system-ui, sans-serif; }
     let __inst3_next = [];
     let __inst3_i = 0;
     for (const it of state.items) {
-      let __n5 = null;
+      let __n6 = null;
       if (__inst3_live.length > __inst3_i) {
-        __n5 = __inst3_live[__inst3_i];
+        __n6 = __inst3_live[__inst3_i];
       } else {
         if (__inst3_live.length > __inst3_i) {
           __inst3_live[__inst3_i].__destroy();
         }
-        let __n5__new = __cf_Card({});
-        __n5 = __n5__new;
+        let __n6__new = __cf_Card({});
+        __n6 = __n6__new;
       }
-      __inst3_next.push(__n5);
+      __inst3_next.push(__n6);
       __inst3_i = __inst3_i + 1;
-      let __n5__el = __n5.__root;
+      let __n6__el = __n6.__root;
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === __n5__el) {
+      if (__place2_i_ref0 === __n6__el) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n5__el, __place2_i_ref0);
+        parent.insertBefore(__n6__el, __place2_i_ref0);
       }
-      __slot1.push(__n5__el);
+      __slot1.push(__n6__el);
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
       let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
@@ -1381,7 +1381,7 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
@@ -1392,7 +1392,7 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot1(__slotAnchor_1);
   });
   function __sngl_init() {
-    __n3.textContent = "picked " + state.picked;
+    __n4.textContent = "picked " + state.picked;
   }
   __sngl_init();
 })();
@@ -1407,4 +1407,4 @@ pass sha256:b3075787100c5eae518dc0966bbba924
 -- run/kotlin/android --
 pass sha256:b54e65ff91fc481b3c1dfe8aadb6589e
 -- run/none/html --
-pass sha256:96f2f9d17baf3f04cae687b6a12fb531
+pass sha256:d64a4116d50e30569792a7eddf7f2b1b

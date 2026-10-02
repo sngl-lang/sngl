@@ -648,17 +648,17 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { page__inst0: 3, a__inst0: null };
+  var state = { page__inst0: 3, a__inst0: null, visible__inst1: true };
   state.a__inst0 = { on: 1 };
   function __effect0_mount() {
     state.page__inst0 = __effect0_key + 1;
-    __n0.textContent = "page=" + String(state.page__inst0);
+    __n1.textContent = "page=" + String(state.page__inst0);
   }
   var __effect0_key = 0;
   var __effect0_live = [];
@@ -706,9 +706,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "page=" + String(state.page__inst0);
+    __n1.textContent = "page=" + String(state.page__inst0);
   }
   __sngl_init();
   __effects0_settle();
@@ -724,4 +724,4 @@ pass sha256:d53274a4e3e900ee2daa4f78bf8efd72
 -- run/kotlin/android --
 pass sha256:e9f077a84b97c3b9508fd8c97ad33973
 -- run/none/html --
-pass sha256:6c1e594c7e61007a6cf8688e8a68a7cd
+pass sha256:3c2627e582a831482d7dcafe559eac0e

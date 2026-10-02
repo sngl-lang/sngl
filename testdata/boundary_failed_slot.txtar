@@ -248,7 +248,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seen__inst0: "" };
+  var state = { seen__inst0: "", visible__inst1: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -377,4 +377,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3b1c9d446f45e45a46cb1df812ab16c5
 -- run/none/html --
-pass sha256:3a6b72e022e132cb800fc0a997fc921a
+pass sha256:ab97d69c2b6d81396cd159c4f2597660

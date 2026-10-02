@@ -897,13 +897,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span data-sngl-inst="__n2" style="display:contents"></span>
+  <span data-sngl-inst="__n3" style="display:contents"></span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { depth: 2 };
+  var state = { depth: 2, visible__inst0: true };
   function __cf_frame__slot2(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -933,31 +933,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n3 = null;
+          let __n4 = null;
           if (__inst1_live.length > __inst1_i) {
-            __n3 = __inst1_live[__inst1_i];
-            __n3.__set_n(__prop_n - 1);
-            __n3.__set___depth(__prop___depth + 1);
+            __n4 = __inst1_live[__inst1_i];
+            __n4.__set_n(__prop_n - 1);
+            __n4.__set___depth(__prop___depth + 1);
           } else {
             if (__inst1_live.length > __inst1_i) {
               __inst1_live[__inst1_i].__destroy();
             }
-            let __n3__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n3 = __n3__new;
+            let __n4__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n4 = __n4__new;
           }
-          __inst1_next.push(__n3);
+          __inst1_next.push(__n4);
           __inst1_i = __inst1_i + 1;
-          let __n3__el = __n3.__root;
+          let __n4__el = __n4.__root;
           let __place0_i_ref0 = null;
           if (__place0_i < __place0_prev.length) {
             __place0_i_ref0 = __place0_prev[__place0_i];
           }
-          if (__place0_i_ref0 === __n3__el) {
+          if (__place0_i_ref0 === __n4__el) {
             __place0_i = __place0_i + 1;
           } else {
-            parent.insertBefore(__n3__el, __place0_i_ref0);
+            parent.insertBefore(__n4__el, __place0_i_ref0);
           }
-          __slot0.push(__n3__el);
+          __slot0.push(__n4__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -980,16 +980,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst1_live = [];
     }
-    let __n4 = document.createElement("div");
-    __n4.setAttribute("style", "display:flex;flex-direction:column");
+    let __n5 = document.createElement("div");
+    __n5.setAttribute("style", "display:flex;flex-direction:column");
     let __n0 = document.createElement("span");
     __n0.textContent = "level " + String(__prop_n * 2);
-    __n4.appendChild(__n0);
+    __n5.appendChild(__n0);
     const __slotAnchor_0 = document.createElement("span");
     __slotAnchor_0.style.display = "contents";
-    __n4.appendChild(__slotAnchor_0);
+    __n5.appendChild(__slotAnchor_0);
     __renderSlot0(__slotAnchor_0);
-    __root.appendChild(__n4);
+    __root.appendChild(__n5);
     return {
       __root,
       __destroy() {
@@ -1028,31 +1028,31 @@ body { font-family: system-ui, sans-serif; }
         if (__prop___depth >= 512) {
           throw Object.assign(new Error("frame: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
-          let __n5 = null;
+          let __n6 = null;
           if (__inst3_live.length > __inst3_i) {
-            __n5 = __inst3_live[__inst3_i];
-            __n5.__set_n(__prop_n - 1);
-            __n5.__set___depth(__prop___depth + 1);
+            __n6 = __inst3_live[__inst3_i];
+            __n6.__set_n(__prop_n - 1);
+            __n6.__set___depth(__prop___depth + 1);
           } else {
             if (__inst3_live.length > __inst3_i) {
               __inst3_live[__inst3_i].__destroy();
             }
-            let __n5__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-            __n5 = __n5__new;
+            let __n6__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+            __n6 = __n6__new;
           }
-          __inst3_next.push(__n5);
+          __inst3_next.push(__n6);
           __inst3_i = __inst3_i + 1;
-          let __n5__el = __n5.__root;
+          let __n6__el = __n6.__root;
           let __place2_i_ref0 = null;
           if (__place2_i < __place2_prev.length) {
             __place2_i_ref0 = __place2_prev[__place2_i];
           }
-          if (__place2_i_ref0 === __n5__el) {
+          if (__place2_i_ref0 === __n6__el) {
             __place2_i = __place2_i + 1;
           } else {
-            parent.insertBefore(__n5__el, __place2_i_ref0);
+            parent.insertBefore(__n6__el, __place2_i_ref0);
           }
-          __slot1.push(__n5__el);
+          __slot1.push(__n6__el);
         }
       }
       for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -1075,16 +1075,16 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst3_live = [];
     }
-    let __n6 = document.createElement("div");
-    __n6.setAttribute("style", "display:flex;flex-direction:column");
+    let __n7 = document.createElement("div");
+    __n7.setAttribute("style", "display:flex;flex-direction:column");
     let __n1 = document.createElement("span");
     __n1.textContent = "level " + String(__prop_n * 2);
-    __n6.appendChild(__n1);
+    __n7.appendChild(__n1);
     const __slotAnchor_1 = document.createElement("span");
     __slotAnchor_1.style.display = "contents";
-    __n6.appendChild(__slotAnchor_1);
+    __n7.appendChild(__slotAnchor_1);
     __renderSlot1(__slotAnchor_1);
-    __root.appendChild(__n6);
+    __root.appendChild(__n7);
     return {
       __root,
       __destroy() {
@@ -1097,9 +1097,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n2__pos = document.querySelector('[data-sngl-inst="__n2"]');
-  var __n2 = __cf_frame__slot0({ n: state.depth, __depth: 0 });
-  __n2__pos.appendChild(__n2.__root);
+  var __n3__pos = document.querySelector('[data-sngl-inst="__n3"]');
+  var __n3 = __cf_frame__slot0({ n: state.depth, __depth: 0 });
+  __n3__pos.appendChild(__n3.__root);
 })();
 </script>
 </body></html>
@@ -1112,4 +1112,4 @@ pass sha256:9c3ea315b64b91fd2e8f201a06338953
 -- run/kotlin/android --
 pass sha256:e85f24fed268f30d681aee91389402e1
 -- run/none/html --
-pass sha256:28edd7ec8bd3988de8fb86518d384aec
+pass sha256:39324f7d17b4023e76f6b6f6beb67576

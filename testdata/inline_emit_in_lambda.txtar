@@ -289,13 +289,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>pick</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picks__inst0: 0 };
+  var state = { picks__inst0: 0, visible__inst1: true };
   function run(f) {
     f();
   }
@@ -303,19 +303,19 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     run(() => {
       state.picks__inst0 += 1;
-      __n0.textContent = "picks=" + String(state.picks__inst0);
+      __n1.textContent = "picks=" + String(state.picks__inst0);
     });
   });
   $0.addEventListener("picked", function() {
     state.picks__inst0 += 1;
-    __n0.textContent = "picks=" + String(state.picks__inst0);
+    __n1.textContent = "picks=" + String(state.picks__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = "picks=" + String(state.picks__inst0);
+    __n1.textContent = "picks=" + String(state.picks__inst0);
   }
   __sngl_init();
 })();
@@ -326,4 +326,4 @@ pass sha256:d137b82605cd12fcf90bf859c7fc7ccd
 -- run/kotlin/android --
 broken sha256:1e6751a22c1988061305dbf98317c902
 -- run/none/html --
-pass sha256:ad85a508a3006f638da51d3ec2142434
+pass sha256:4ea4328a22386e0cd09378fad98c021a

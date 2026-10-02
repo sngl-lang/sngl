@@ -492,9 +492,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
+<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n1" data-sngl-id="__n1">
+  <span id="__n2" data-sngl-id="__n2">
   </span>
   <button id="$0">
     <span>more</span>
@@ -504,7 +504,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items: ["a"], total: 0 };
+  var state = { items: ["a"], total: 0, visible__inst0: true };
   function __cf_Counter(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -527,19 +527,19 @@ body { font-family: system-ui, sans-serif; }
     function __set___on_n(__v) {
       __prop___on_n = __v;
     }
-    let __n4 = document.createElement("button");
-    __n4.disabled = false;
-    __n4.addEventListener("click", () => {
+    let __n5 = document.createElement("button");
+    __n5.disabled = false;
+    __n5.addEventListener("click", () => {
       clicks += 1;
       __n0.textContent = __prop_label + " " + String(clicks);
       __prop___on_n(__prop_n + 1);
     });
-    __n4.addEventListener("contextmenu", () => {
+    __n5.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = __prop_label + " " + String(clicks);
-    __n4.appendChild(__n0);
-    __root.appendChild(__n4);
+    __n5.appendChild(__n0);
+    __root.appendChild(__n5);
     return {
       __root,
       __destroy() {
@@ -558,14 +558,14 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set_n(state.total);
-        __n2.__set_label(it);
-        __n2.__set___on_n((__n) => {
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set_n(state.total);
+        __n3.__set_label(it);
+        __n3.__set___on_n((__n) => {
           state.total = __n;
-          __n1.textContent = "total " + String(state.total);
+          __n2.textContent = "total " + String(state.total);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set_n(state.total);
@@ -576,30 +576,30 @@ body { font-family: system-ui, sans-serif; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf_Counter({ n: state.total, label: it, __on_n: (__n) => {
+        let __n3__new = __cf_Counter({ n: state.total, label: it, __on_n: (__n) => {
           state.total = __n;
-          __n1.textContent = "total " + String(state.total);
+          __n2.textContent = "total " + String(state.total);
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set_n(state.total);
           }
           ;
         } });
-        __n2 = __n2__new;
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -618,7 +618,7 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
@@ -626,7 +626,7 @@ body { font-family: system-ui, sans-serif; }
     __renderSlot0(__slotAnchor_0);
   });
   function __sngl_init() {
-    __n1.textContent = "total " + String(state.total);
+    __n2.textContent = "total " + String(state.total);
   }
   __sngl_init();
 })();
@@ -637,4 +637,4 @@ pass sha256:0c6393b29960890cc0a088cf449454cd
 -- run/go/gtk4 --
 pass sha256:c34a63a473d79946d9e1e4c8d5ba0d60
 -- run/none/html --
-pass sha256:ff6f669a335bea2ece8ba9419ea81c00
+pass sha256:ed4fc2826ba0fc5dae45dcf779e8fcac

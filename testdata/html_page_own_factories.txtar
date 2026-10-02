@@ -78,7 +78,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [] };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
   function __cf___child1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -110,30 +110,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst3_next = [];
     let __inst3_i = 0;
     for (const line of state.lines__inst1) {
-      let __n3 = null;
+      let __n4 = null;
       if (__inst3_live.length > __inst3_i) {
-        __n3 = __inst3_live[__inst3_i];
-        __n3.__set___p0(line);
+        __n4 = __inst3_live[__inst3_i];
+        __n4.__set___p0(line);
       } else {
         if (__inst3_live.length > __inst3_i) {
           __inst3_live[__inst3_i].__destroy();
         }
-        let __n3__new = __cf___child1({ __p0: line });
-        __n3 = __n3__new;
+        let __n4__new = __cf___child1({ __p0: line });
+        __n4 = __n4__new;
       }
-      __inst3_next.push(__n3);
+      __inst3_next.push(__n4);
       __inst3_i = __inst3_i + 1;
-      let __n3__el = __n3.__root;
+      let __n4__el = __n4.__root;
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === __n3__el) {
+      if (__place2_i_ref0 === __n4__el) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n3__el, __place2_i_ref0);
+        parent.insertBefore(__n4__el, __place2_i_ref0);
       }
-      __slot1.push(__n3__el);
+      __slot1.push(__n4__el);
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
       let __inst3_i_j = __inst3_live.length - 1 - __inst3_i_d;
@@ -180,7 +180,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [] };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -212,30 +212,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const line of state.lines__inst0) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(line);
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set___p0(line);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___child0({ __p0: line });
-        __n2 = __n2__new;
+        let __n3__new = __cf___child0({ __p0: line });
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -282,7 +282,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [] };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -314,30 +314,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const line of state.lines__inst0) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(line);
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set___p0(line);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___child0({ __p0: line });
-        __n2 = __n2__new;
+        let __n3__new = __cf___child0({ __p0: line });
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -384,7 +384,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { lines__inst0: [], lines__inst1: [] };
+  var state = { lines__inst0: [], lines__inst1: [], visible__inst2: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -416,30 +416,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const line of state.lines__inst0) {
-      let __n2 = null;
+      let __n3 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n2 = __inst1_live[__inst1_i];
-        __n2.__set___p0(line);
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set___p0(line);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___child0({ __p0: line });
-        __n2 = __n2__new;
+        let __n3__new = __cf___child0({ __p0: line });
+        __n3 = __n3__new;
       }
-      __inst1_next.push(__n2);
+      __inst1_next.push(__n3);
       __inst1_i = __inst1_i + 1;
-      let __n2__el = __n2.__root;
+      let __n3__el = __n3.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2__el) {
+      if (__place0_i_ref0 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2__el, __place0_i_ref0);
+        parent.insertBefore(__n3__el, __place0_i_ref0);
       }
-      __slot0.push(__n2__el);
+      __slot0.push(__n3__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -465,4 +465,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:523b940928ed834878542b0be41277a5
+pass sha256:0aad999f2e9ae2fe2086e2b985a19914

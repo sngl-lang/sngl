@@ -357,14 +357,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column">
-    <span id="__n0" data-sngl-id="__n0">
+    <span id="__n1" data-sngl-id="__n1">
     </span>
     <button id="$2">
       <span>+</span>
     </button>
   </div>
   <div style="display:flex;flex-direction:column">
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
     <button id="$4">
       <span>+</span>
@@ -375,41 +375,41 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { base__inst2: 1, htmlTally__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0 };
+  var state = { base__inst2: 1, htmlTally__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0, visible__inst3: true };
   function fromBase__inst2() {
     return state.base__inst2 + 1;
   }
   function bump__inst2() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 100;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
   }
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
   var $4 = document.getElementById("$4");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 1;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
     bump__inst2();
   });
   $4.addEventListener("click", function() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 10;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     bump__inst2();
   });
   function __sngl_init() {
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
   }
   __sngl_init();
 })();
@@ -418,4 +418,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:803471d70bea0ff4cd1758e9f8540a02
 -- run/none/html --
-pass sha256:9b1dc71b7629ad945c003341d6fb726e
+pass sha256:b21c5504c6486e49d87190913191773c

@@ -260,7 +260,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { fm: null, zero: null };
+  var state = { fm: null, zero: null, visible__inst0: true };
   state.fm = { title: "Home", weight: 0, limit: 9 };
   state.zero = { title: "", weight: 0, limit: 9 };
   function String(v) {
@@ -279,4 +279,4 @@ pass sha256:d7d32462c3a2f991e293f40dcfb8b2e4
 -- run/kotlin/android --
 pass sha256:11a967c51f5a568e1ef3930623a69f5a
 -- run/none/html --
-pass sha256:f539bbccd91127861de15f4051064077
+pass sha256:af8e9656e6bdf31c1c6dc32db4727568

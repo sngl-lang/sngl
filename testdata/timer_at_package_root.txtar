@@ -470,7 +470,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks: 0, handle__inst0: 0 };
+  var state = { ticks: 0, handle__inst0: 0, visible__inst1: true };
   function __effect0_mount() {
     state.handle__inst0 = setInterval(() => {
       state.ticks = state.ticks + 1;
@@ -563,4 +563,4 @@ pass sha256:e91f5b00ce8cc5058bfe1a9ee04e7b60
 -- run/go/fyne --
 pass sha256:1d4c3e86af6c03df8ed5689b25ef1520
 -- run/none/html --
-pass sha256:6f7b5f7b828f12f594dfd5138f8774a0
+pass sha256:dd8d72f64b314c723e108ef72a6e1c1d

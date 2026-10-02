@@ -302,8 +302,6 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
@@ -314,27 +312,29 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n5" data-sngl-id="__n5">
 </span>
+<span id="__n6" data-sngl-id="__n6">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: 500, one__inst0: 1, n__inst0: 3 };
+  var state = { d__inst0: 500, one__inst0: 1, n__inst0: 3, visible__inst1: true };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   function __sngl_init() {
-    __n0.textContent = "i " + String(Math.trunc(state.d__inst0));
-    __n1.textContent = "f " + String(parseFloat(state.d__inst0));
-    __n2.textContent = "sum " + String(Math.trunc(state.d__inst0 + 100));
-    __n3.textContent = "secs " + String(Math.trunc(state.d__inst0 + 1e3));
-    __n4.textContent = "scaled " + String(Math.trunc(state.d__inst0 * 2));
-    __n5.textContent = "built " + String(Math.trunc(state.one__inst0 * state.n__inst0));
+    __n1.textContent = "i " + String(Math.trunc(state.d__inst0));
+    __n2.textContent = "f " + String(parseFloat(state.d__inst0));
+    __n3.textContent = "sum " + String(Math.trunc(state.d__inst0 + 100));
+    __n4.textContent = "secs " + String(Math.trunc(state.d__inst0 + 1e3));
+    __n5.textContent = "scaled " + String(Math.trunc(state.d__inst0 * 2));
+    __n6.textContent = "built " + String(Math.trunc(state.one__inst0 * state.n__inst0));
   }
   __sngl_init();
 })();
@@ -345,4 +345,4 @@ broken sha256:3c878a25ac369d5fd1c5b8aa375a01ed
 -- run/kotlin/android --
 pass sha256:d0127a5d38ae97b291f1f8501d8b2eb2
 -- run/none/html --
-pass sha256:ae062d101c28b5a014f2a86d8f086164
+pass sha256:11626788c90f36c9a0e83a55bca54015

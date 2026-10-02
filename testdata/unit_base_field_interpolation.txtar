@@ -402,8 +402,6 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
@@ -416,30 +414,32 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n6" data-sngl-id="__n6">
 </span>
+<span id="__n7" data-sngl-id="__n7">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { m__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, r__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, sum__inst0: null, t__inst0: 4, d__inst0: 500, w__inst0: 2.5 };
+  var state = { m__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, r__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, sum__inst0: null, t__inst0: 4, d__inst0: 500, w__inst0: 2.5, visible__inst1: true };
   state.sum__inst0 = { px: state.m__inst0.px + state.r__inst0.px, em: state.m__inst0.em + state.r__inst0.em, vw: state.m__inst0.vw + state.r__inst0.vw, vh: state.m__inst0.vh + state.r__inst0.vh, pct: state.m__inst0.pct + state.r__inst0.pct };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   var __n6 = document.querySelector('[data-sngl-id="__n6"]');
+  var __n7 = document.querySelector('[data-sngl-id="__n7"]');
   function __sngl_init() {
-    __n0.textContent = "px is " + String(state.m__inst0.px);
-    __n1.textContent = "w is " + String(state.w__inst0);
-    __n2.textContent = "em is " + String(state.m__inst0.em);
-    __n3.textContent = "sum px is " + String(state.sum__inst0.px);
-    __n4.textContent = "sum em is " + String(state.sum__inst0.em);
-    __n5.textContent = "tk is " + String(parseFloat(state.t__inst0));
-    __n6.textContent = "ms is " + String(Math.trunc(state.d__inst0));
+    __n1.textContent = "px is " + String(state.m__inst0.px);
+    __n2.textContent = "w is " + String(state.w__inst0);
+    __n3.textContent = "em is " + String(state.m__inst0.em);
+    __n4.textContent = "sum px is " + String(state.sum__inst0.px);
+    __n5.textContent = "sum em is " + String(state.sum__inst0.em);
+    __n6.textContent = "tk is " + String(parseFloat(state.t__inst0));
+    __n7.textContent = "ms is " + String(Math.trunc(state.d__inst0));
   }
   __sngl_init();
 })();
@@ -450,4 +450,4 @@ pass sha256:59654b5e7d236ab2d5aafe91a915ed17
 -- run/kotlin/android --
 pass sha256:63c9095f7c23d352333efa87cc9a648a
 -- run/none/html --
-pass sha256:085fda6ab51c09da4c63306567121035
+pass sha256:b8bacc6d0ac44ec89432c5cc2a65441f

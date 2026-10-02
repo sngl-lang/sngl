@@ -947,15 +947,15 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
+<div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
   <label style="align-items:center;display:inline-flex;gap:4px">
-    <input id="__n2" data-sngl-id="__n2" type="checkbox"/>
+    <input id="__n3" data-sngl-id="__n3" type="checkbox"/>
     <span>alone</span>
   </label>
-  <span id="__n3" data-sngl-id="__n3">
+  <span id="__n4" data-sngl-id="__n4">
   </span>
   <label style="align-items:center;display:inline-flex;gap:4px">
-    <input id="__n4" data-sngl-id="__n4" type="checkbox"/>
+    <input id="__n5" data-sngl-id="__n5" type="checkbox"/>
     <span>starts on</span>
   </label>
   <span data-sngl-slot="0" style="display:contents"></span>
@@ -964,8 +964,8 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], checked__inst1: false, checked__inst2: true };
-  function __cf___checkbox_state2(props) {
+  var state = { items__inst0: ["a", "b"], visible__inst1: true, checked__inst2: false, checked__inst3: true };
+  function __cf___checkbox_state3(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __start_checked = props.__start_checked ?? false;
@@ -981,8 +981,8 @@ body { font-family: system-ui, sans-serif; }
       __prop_label = __v;
       __n1.textContent = __prop_label;
     }
-    let __n7 = document.createElement("label");
-    __n7.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    let __n8 = document.createElement("label");
+    __n8.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
     let __n0 = document.createElement("input");
     __n0.checked = checked;
     __n0.disabled = false;
@@ -991,11 +991,11 @@ body { font-family: system-ui, sans-serif; }
       checked = __event.checked;
       __n0.checked = checked;
     });
-    __n7.appendChild(__n0);
+    __n8.appendChild(__n0);
     let __n1 = document.createElement("span");
     __n1.textContent = __prop_label;
-    __n7.appendChild(__n1);
-    __root.appendChild(__n7);
+    __n8.appendChild(__n1);
+    __root.appendChild(__n8);
     return {
       __root,
       __destroy() {
@@ -1013,30 +1013,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items__inst0) {
-      let __n5 = null;
+      let __n6 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n5 = __inst1_live[__inst1_i];
-        __n5.__set_label(it);
+        __n6 = __inst1_live[__inst1_i];
+        __n6.__set_label(it);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n5__new = __cf___checkbox_state2({ label: it });
-        __n5 = __n5__new;
+        let __n6__new = __cf___checkbox_state3({ label: it });
+        __n6 = __n6__new;
       }
-      __inst1_next.push(__n5);
+      __inst1_next.push(__n6);
       __inst1_i = __inst1_i + 1;
-      let __n5__el = __n5.__root;
+      let __n6__el = __n6.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n5__el) {
+      if (__place0_i_ref0 === __n6__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n5__el, __place0_i_ref0);
+        parent.insertBefore(__n6__el, __place0_i_ref0);
       }
-      __slot0.push(__n5__el);
+      __slot0.push(__n6__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1051,24 +1051,24 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  __n2.addEventListener("change", function(e) {
-    state.checked__inst1 = e.target.checked;
-    __n2.checked = state.checked__inst1;
-    __n3.textContent = state.checked__inst1 ? "on" : "off";
-  });
-  __n4.addEventListener("change", function(e) {
+  __n3.addEventListener("change", function(e) {
     state.checked__inst2 = e.target.checked;
-    __n4.checked = state.checked__inst2;
+    __n3.checked = state.checked__inst2;
+    __n4.textContent = state.checked__inst2 ? "on" : "off";
+  });
+  __n5.addEventListener("change", function(e) {
+    state.checked__inst3 = e.target.checked;
+    __n5.checked = state.checked__inst3;
   });
   function __sngl_init() {
-    __n2.checked = state.checked__inst1;
-    __n3.textContent = state.checked__inst1 ? "on" : "off";
-    __n4.checked = state.checked__inst2;
+    __n3.checked = state.checked__inst2;
+    __n4.textContent = state.checked__inst2 ? "on" : "off";
+    __n5.checked = state.checked__inst3;
   }
   __sngl_init();
 })();
@@ -1083,4 +1083,4 @@ pass sha256:f5ce6d1b8a6455d9c5e766f6c8b000ee
 -- run/kotlin/android --
 pass sha256:b5368a4ed7faaa084b3c29bf66f3f242
 -- run/none/html --
-pass sha256:5111d0338a362812ca35c75d6af3ade0
+pass sha256:ef3ec67e6e38af2a05fdb115d8f82c8b

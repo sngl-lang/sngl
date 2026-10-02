@@ -523,24 +523,24 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span>user widget</span>
-<input id="__n0" data-sngl-id="__n0" placeholder="" type=""/>
+<input id="__n1" data-sngl-id="__n1" placeholder="" type=""/>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "", value__inst1: null };
-  state.value__inst1 = state.name__inst0;
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  __n0.addEventListener("input", function(e) {
-    state.value__inst1 = e.target.value;
-    __n0.value = state.value__inst1;
+  var state = { name__inst0: "", visible__inst1: true, value__inst2: null };
+  state.value__inst2 = state.name__inst0;
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  __n1.addEventListener("input", function(e) {
+    state.value__inst2 = e.target.value;
+    __n1.value = state.value__inst2;
   });
-  __n0.addEventListener("change", function(e) {
-    state.value__inst1 = e.target.value;
-    __n0.value = state.value__inst1;
+  __n1.addEventListener("change", function(e) {
+    state.value__inst2 = e.target.value;
+    __n1.value = state.value__inst2;
   });
   function __sngl_init() {
-    __n0.value = state.value__inst1;
+    __n1.value = state.value__inst2;
   }
   __sngl_init();
 })();
@@ -555,4 +555,4 @@ pass sha256:73b400f8a2d7d0cf2ed3fa3095ffb8c0
 -- run/kotlin/android --
 pass sha256:cf0ce440d3f203ba2561312e88a75c34
 -- run/none/html --
-pass sha256:63e9ccc69c2e73bb08d3606f94b34b82
+pass sha256:25656ce69bcf885d3a8972dc24980edd

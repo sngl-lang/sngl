@@ -32,34 +32,34 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<input id="__n0" data-sngl-id="__n0" placeholder="" type=""/>
-<span id="__n1" data-sngl-id="__n1">
+<input id="__n1" data-sngl-id="__n1" placeholder="" type=""/>
+<span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "Alice", value__inst1: null };
-  state.value__inst1 = state.name__inst0;
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var state = { name__inst0: "Alice", visible__inst1: true, value__inst2: null };
+  state.value__inst2 = state.name__inst0;
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  __n0.addEventListener("input", function(e) {
-    state.value__inst1 = e.target.value;
-    __n0.value = state.value__inst1;
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  __n1.addEventListener("input", function(e) {
+    state.value__inst2 = e.target.value;
+    __n1.value = state.value__inst2;
     state.name__inst0 = e.target.value;
-    __n1.textContent = state.name__inst0;
+    __n2.textContent = state.name__inst0;
   });
-  __n0.addEventListener("change", function(e) {
-    state.value__inst1 = e.target.value;
-    __n0.value = state.value__inst1;
+  __n1.addEventListener("change", function(e) {
+    state.value__inst2 = e.target.value;
+    __n1.value = state.value__inst2;
   });
   function __sngl_init() {
-    __n0.value = state.value__inst1;
-    __n1.textContent = state.name__inst0;
+    __n1.value = state.value__inst2;
+    __n2.textContent = state.name__inst0;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9cca5713714db7f8cc4a73f5251de12e
+pass sha256:9a80e83e04b6d9aac511b80215ce1779

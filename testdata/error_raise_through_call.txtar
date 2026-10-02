@@ -318,36 +318,32 @@ func (m Model) View() tea.View {
 	if m.visible__inst1 {
 		var contentChildren []string
 		var content_0 string
-		var content_0Parts []string
-		var content_0Part_0 string
-		content_0Part_0Focused := (m.__focusID == 0)
-		content_0Part_0Prefix := " "
-		if content_0Part_0Focused {
-			content_0Part_0Prefix = ">"
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
 		}
-		content_0Part_0 = lipgloss.NewStyle().Render(content_0Part_0Prefix + " " + fmt.Sprint("Save"))
-		content_0Parts = append(content_0Parts, content_0Part_0)
-		var content_0Part_1 string
-		content_0Part_1Focused := (m.__focusID == 1)
-		content_0Part_1Prefix := " "
-		if content_0Part_1Focused {
-			content_0Part_1Prefix = ">"
-		}
-		content_0Part_1 = lipgloss.NewStyle().Render(content_0Part_1Prefix + " " + fmt.Sprint("Check"))
-		content_0Parts = append(content_0Parts, content_0Part_1)
-		var content_0Part_2 string
-		content_0Part_2Focused := (m.__focusID == 2)
-		content_0Part_2Prefix := " "
-		if content_0Part_2Focused {
-			content_0Part_2Prefix = ">"
-		}
-		content_0Part_2 = lipgloss.NewStyle().Render(content_0Part_2Prefix + " " + fmt.Sprint("Argument"))
-		content_0Parts = append(content_0Parts, content_0Part_2)
-		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Parts...)
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("Save"))
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
-		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(((("problem=" + m.problem__inst0) + " age=") + fmt.Sprint(m.age__inst0))))
+		content_1Focused := (m.__focusID == 1)
+		content_1Prefix := " "
+		if content_1Focused {
+			content_1Prefix = ">"
+		}
+		content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("Check"))
 		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		content_2Focused := (m.__focusID == 2)
+		content_2Prefix := " "
+		if content_2Focused {
+			content_2Prefix = ">"
+		}
+		content_2 = lipgloss.NewStyle().Render(content_2Prefix + " " + fmt.Sprint("Argument"))
+		contentChildren = append(contentChildren, content_2)
+		var content_3 string
+		content_3 = lipgloss.NewStyle().Render(fmt.Sprint(((("problem=" + m.problem__inst0) + " age=") + fmt.Sprint(m.age__inst0))))
+		contentChildren = append(contentChildren, content_3)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
 	v := tea.NewView(content)
@@ -504,7 +500,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { problem__inst0: "none", age__inst0: 7 };
+  var state = { problem__inst0: "none", age__inst0: 7, visible__inst1: true };
   function requireAge(s) {
     if (s.length === 0) {
       ;
@@ -593,8 +589,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:546fd05b8bc031c3d3e153ae0283d7b6
+pass sha256:6b53ff634f64ff0849854ce618777be3
 -- run/kotlin/android --
 pass sha256:05ad03e30f10f82edb007c856c08d4cc
 -- run/none/html --
-pass sha256:35290bf4898c6d1b12d8400cac2ceb9e
+pass sha256:b22775cd700a63cc7ff1a974d5cf04fb

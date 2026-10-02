@@ -153,11 +153,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
 pass sha256:2ba03bdefbf484694212dd4f02805bef
 -- run/none/html --
-pass sha256:d9e2b3f484d1f127da45e19496ede6b5
+pass sha256:ab26d8cb367bdd7ac45a167d4755f150

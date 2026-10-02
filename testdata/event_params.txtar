@@ -473,31 +473,31 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>second</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picked__inst0: "", at__inst0: 0 };
+  var state = { picked__inst0: "", at__inst0: 0, visible__inst1: true };
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.at__inst0 = 1;
-    __n0.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+    __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
     state.picked__inst0 = "first";
-    __n0.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+    __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   });
   $1.addEventListener("click", function() {
     state.at__inst0 = 2;
-    __n0.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+    __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
+    __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   }
   __sngl_init();
 })();
@@ -510,4 +510,4 @@ pass sha256:8e0ee477cc46670782519f072217361d
 -- run/go/gtk4 --
 pass sha256:8fd5d13178282b1b599532902ad16153
 -- run/none/html --
-pass sha256:7df31190dd0164037740aed947c6613a
+pass sha256:7ed51217ef42fa5ad9c60f4d9faadacd

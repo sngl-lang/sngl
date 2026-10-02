@@ -1074,7 +1074,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
+<div id="__n7" data-sngl-id="__n7" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
   <div id="$0" style="display:flex;flex-direction:row">
     <button id="$1">
@@ -1082,21 +1082,21 @@ body { font-family: system-ui, sans-serif; }
     </button>
   </div>
   <div style="display:flex;flex-direction:column">
-    <span id="__n2" data-sngl-id="__n2">
+    <span id="__n3" data-sngl-id="__n3">
     </span>
     <button id="$3">
-      <span id="__n3" data-sngl-id="__n3">
+      <span id="__n4" data-sngl-id="__n4">
       </span>
     </button>
   </div>
-  <span id="__n4" data-sngl-id="__n4">
+  <span id="__n5" data-sngl-id="__n5">
   </span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { got: 0, xs: [1], hits__inst0: 0, opened__inst2: 0 };
+  var state = { got: 0, xs: [1], hits__inst0: 0, visible__inst1: true, opened__inst3: 0 };
   function __cf_Picker(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1104,30 +1104,30 @@ body { font-family: system-ui, sans-serif; }
     });
     let __prop_picked = picked;
     let taps = 0;
-    let width__inst1 = 1;
+    let width__inst2 = 1;
     let __slot02 = [];
     function __set_picked(__v) {
       __prop_picked = __v;
     }
-    let __n7 = document.createElement("div");
-    __n7.setAttribute("style", "display:flex;flex-direction:row");
+    let __n8 = document.createElement("div");
+    __n8.setAttribute("style", "display:flex;flex-direction:row");
     let __n0 = document.createElement("span");
-    __n0.textContent = "w" + String(width__inst1);
-    __n7.appendChild(__n0);
-    let __n8 = document.createElement("button");
-    __n8.disabled = false;
-    __n8.addEventListener("click", () => {
+    __n0.textContent = "w" + String(width__inst2);
+    __n8.appendChild(__n0);
+    let __n9 = document.createElement("button");
+    __n9.disabled = false;
+    __n9.addEventListener("click", () => {
       taps = taps + 1;
       __n1.textContent = "tap " + String(taps);
       __prop_picked(7);
     });
-    __n8.addEventListener("contextmenu", () => {
+    __n9.addEventListener("contextmenu", () => {
     });
     let __n1 = document.createElement("span");
     __n1.textContent = "tap " + String(taps);
-    __n8.appendChild(__n1);
-    __n7.appendChild(__n8);
-    __root.appendChild(__n7);
+    __n9.appendChild(__n1);
+    __n8.appendChild(__n9);
+    __root.appendChild(__n8);
     return {
       __root,
       __destroy() {
@@ -1144,36 +1144,36 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const x of state.xs) {
-      let __n5 = null;
+      let __n6 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n5 = __inst1_live[__inst1_i];
-        __n5.__set_picked((v) => {
+        __n6 = __inst1_live[__inst1_i];
+        __n6.__set_picked((v) => {
           state.got = v + x;
-          __n4.textContent = "got=" + String(state.got);
+          __n5.textContent = "got=" + String(state.got);
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n5__new = __cf_Picker({ picked: (v) => {
+        let __n6__new = __cf_Picker({ picked: (v) => {
           state.got = v + x;
-          __n4.textContent = "got=" + String(state.got);
+          __n5.textContent = "got=" + String(state.got);
         } });
-        __n5 = __n5__new;
+        __n6 = __n6__new;
       }
-      __inst1_next.push(__n5);
+      __inst1_next.push(__n6);
       __inst1_i = __inst1_i + 1;
-      let __n5__el = __n5.__root;
+      let __n6__el = __n6.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n5__el) {
+      if (__place0_i_ref0 === __n6__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n5__el, __place0_i_ref0);
+        parent.insertBefore(__n6__el, __place0_i_ref0);
       }
-      __slot0.push(__n5__el);
+      __slot0.push(__n6__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1194,27 +1194,27 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $3 = document.getElementById("$3");
-  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $1.addEventListener("click", function() {
     state.got = 8;
-    __n4.textContent = "got=" + String(state.got);
+    __n5.textContent = "got=" + String(state.got);
   });
   $0.addEventListener("done", function(e) {
     state.got = e;
-    __n4.textContent = "got=" + String(state.got);
+    __n5.textContent = "got=" + String(state.got);
   });
   $3.addEventListener("click", function() {
     state.got = 9;
-    __n4.textContent = "got=" + String(state.got);
+    __n5.textContent = "got=" + String(state.got);
   });
   function __sngl_init() {
-    __n2.textContent = "opened " + String(state.opened__inst2);
-    __n3.textContent = "named " + String(state.hits__inst0);
-    __n4.textContent = "got=" + String(state.got);
+    __n3.textContent = "opened " + String(state.opened__inst3);
+    __n4.textContent = "named " + String(state.hits__inst0);
+    __n5.textContent = "got=" + String(state.got);
   }
   __sngl_init();
 })();
@@ -1229,4 +1229,4 @@ pass sha256:da89b46403eaf07de9506087e3f968fc
 -- run/kotlin/android --
 pass sha256:cb1f82ec954fc751cb64f7488e7b2741
 -- run/none/html --
-pass sha256:3a35d8c8accbb889dde90854fead8e64
+pass sha256:2fbe3ff03f47e26ffe2c718b3030f8c9

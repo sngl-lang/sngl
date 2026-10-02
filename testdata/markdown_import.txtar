@@ -152,22 +152,22 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { checked__inst2: true, selected__inst5: 0 };
+  var state = { visible__inst1: true, checked__inst3: true, selected__inst6: 0 };
   var $46 = document.getElementById("$46");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n1.addEventListener("change", function(e) {
-    state.checked__inst2 = e.target.checked;
-    __n1.checked = state.checked__inst2;
+    state.checked__inst3 = e.target.checked;
+    __n1.checked = state.checked__inst3;
   });
   $46.addEventListener("selected", function(e) {
-    state.selected__inst5 = e;
+    state.selected__inst6 = e;
   });
   function __sngl_init() {
-    __n1.checked = state.checked__inst2;
+    __n1.checked = state.checked__inst3;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:68f13e0652341b877a74018e43b61ed1
+pass sha256:0f137f404fd3001f87432d0cff78e2de

@@ -233,7 +233,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.font = "16px sans-serif";
@@ -287,4 +287,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a9f9448e04efea86dfe3563b4a0ac6f5
 -- run/none/html --
-pass sha256:224724bfd601a3772f70ef1a081cbc4f
+pass sha256:d014a6836fe61ad6fea5e7e440276ba2
