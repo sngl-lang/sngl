@@ -54,7 +54,7 @@ component Toplevel(
 
 const component ui.window[platform] {
     Toplevel(title=title, :visible=visible, @closed { closed() }) {
-        content(params)
+        content
     }
 }
 

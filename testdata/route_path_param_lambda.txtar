@@ -20,7 +20,7 @@ output {
     }
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var nums list<int> = [1, 2, 3]
 
     html.span(innerText=string(nums.filter(func(n) => n > 1).length()))

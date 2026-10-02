@@ -779,6 +779,27 @@ Settled in C2's planning:
   folded per document and per route, each rendering one page. The mark is
   html's own `#[intrinsic]` primitive and no new kind of mark: Documents
   finds a page by the record the primitive carries.
+- **Settled for the migration (step 6).** A stack's pages may be written
+  under a `for` over a constant and an `if` over constants, and in a
+  **group**: a component that renders members of a family and declares none
+  of its props, which renders members without being one, so its handle is no
+  value of the family and a stack splices its pages in. A copy of a page
+  under a `for` keeps the page's id, and the record holds the iteration
+  beside it (`copy`), which `==` compares too; the page's `#id` names that
+  copy inside the loop and nothing outside it. The window-id list a loop
+  used to declare (`HoistedWindowIDs`) is gone, and an index page iterates
+  the data its pages came from; `stack.all()` waits for the markup
+  conversion. A static site's loop-written page is still served at a plain
+  href, an expression constant per copy, and a placeholder there stays
+  refused. md's `site` renders one `nav.page` per file -- at the file's href,
+  titled by the frontmatter's `title` -- with the layout as the page's
+  content around the file's, and is written among a stack's pages, since a
+  window holds one stack and the docs site's holds other pages beside the
+  markdown ones; that withdraws "the md site is a `nav.stack`" above. The md
+  import skips a file or directory whose name starts with `_`, which is
+  where the docs site's tutorial source went (`learn/_tour.md`), since a
+  group cannot leave one of its pages out. No `output(entry=…)` caller chose
+  a window but the first or the one at `/`, so none moved.
 
 ### 16. A window is a component; the package body is the application's view
 
@@ -1053,7 +1074,26 @@ fixtures written first:
 6. **The migration**: `window` loses `href` and `params`, `output(entry=…)`
    goes, every call site, the md site, `website.sngl` and `docbrowser` move.
    Every html golden that was a window per page is byte-identical as a stack of
-   pages.
+   pages. *Done* (decision 15's step 6 bullet). Pages under a `for`, an `if`
+   and a group (`testdata/nav_stack_pages_written_around.sngl` and `.txtar`,
+   `nav_pages_written_around_refused.txt`, `error_family_group_not_a_value.sngl`);
+   `error_window_href_removed.sngl` and `error_output_entry_removed.sngl` for
+   the surface. Byte-identical where the program could say the same thing:
+   the multi-window, md and route goldens. What moved, each for its reason:
+   `nav_stack_html*` renumber their `$N` ids, the stack and its pages no
+   longer taking one; `html_page_own_factories` numbers its slots and
+   factories in source order, the old windows' order having been
+   `pkg.Windows` first; two route goldens whose one window was at
+   `/index.html` are served at `/`; `root_component_mutating_func` and
+   `root_component_state_two_windows` drop html until step 7, a second
+   window holding no stack being refused there with a `OneWindowError` the
+   harnesses skip. The docs site writes the same file set and the same page
+   bodies, its documents' scripts without the seven dead carousel effects
+   each used to carry. Still open: a `var` in a page's body is not state,
+   as in any node's children; android writes no route per copy; a loop
+   inside a loop of pages; and `sngl dump` prints a qualified node by its
+   local name, so a dump of a program writing `nav.page` does not check
+   again.
 7. **The `<dialog>`** for a second window on html, and `passWindowSurface`'s
    refusals become meanings.
 

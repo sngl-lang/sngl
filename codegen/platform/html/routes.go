@@ -35,12 +35,12 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	var served []servedRoute
 	for i, win := range windows {
 		// A window holding a nav.stack is a route per page, named for the
-		// page and served at its href.
+		// page and served at its href; one holding none is served at the
+		// root, or at its id beside a first.
 		page := c.routePages[i]
 		routeName, label := windowRouteName(win), routeWindowLabel(win.Name, i)
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
-			hrefExpr = win.Window.Prop(ir.WindowHref)
 			titleExpr = win.Window.Prop(ir.WindowTitle)
 		}
 		if page != nil {
@@ -53,13 +53,6 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		}
 		if path == "" {
 			path = defaultRoutePath(routeName, i)
-		}
-		// A page's href was held to its params where it was written
-		// (passNavigationHrefs), cell or no cell.
-		if page == nil {
-			if err := checkRouteParams(path, win.Window); err != nil {
-				return fmt.Errorf("html: %s: %w", label, err)
-			}
 		}
 		for _, prev := range served {
 			if !routesConflict(prev.path, path) {
@@ -358,7 +351,7 @@ func defaultRoutePath(winName string, idx int) string {
 	return "/" + winName
 }
 
-// hrefToRoutePath extracts an abstract route template from a window's href
+// hrefToRoutePath extracts an abstract route template from a page's href
 // expression. Literal strings pass through verbatim; string interpolations
 // (desugared by the checker into Binary concat chains) become "/{ident}"
 // segments for identifier parts. Framework-specific mux syntax is the
@@ -407,36 +400,6 @@ func walkHref(e ir.Expr, b *strings.Builder) error {
 }
 
 // extractRouteParams finds {param} placeholders in a route path.
-// checkRouteParams holds a route's path to the struct that says what its
-// window hands the body: every `{name}` in the path names a field of the
-// params struct, and that field is something a route can parse out of text.
-//
-// Here rather than in the checker, because a path is a plain string until
-// something serves it: the checker has no routes, `href` is an ordinary prop
-// on every other target, and reading a route out of one was the compiler
-// knowing what html knows. A window built for bubbletea gets no diagnostic
-// about its path and wants none.
-//
-// One-directional on purpose: a field the path does not name is left at the
-// struct's zero rather than reported, because the path is one source of a
-// request's values and the struct is meant to carry the others too.
-func checkRouteParams(path string, win *ir.Window) error {
-	var sd *ir.StructDef
-	if win != nil && win.Params != nil && win.Params.Type != nil && win.Params.Type.Kind == ir.TypeStruct {
-		sd, _ = win.Params.Type.Decl.(*ir.StructDef)
-	}
-	for _, name := range extractRouteParams(path) {
-		f := routeParamField(sd, name)
-		if f == nil {
-			return fmt.Errorf("the path names {%s}, but the window's params have no field %q", name, name)
-		}
-		if !routeParamParseable(f.Type) {
-			return fmt.Errorf("path parameter {%s} arrives as text, and field %q is %s, which a route cannot parse it into", name, name, f.Type)
-		}
-	}
-	return nil
-}
-
 func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
 	if sd == nil {
 		return nil
@@ -447,21 +410,6 @@ func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// routeParamParseable reports whether a path segment can be read into a field
-// of this type. The list is the scalars every target can parse from a string
-// and nothing else -- a struct or a list has no spelling in a URL path, and
-// inventing one here would be the compiler choosing an encoding.
-func routeParamParseable(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeString, ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return true
-	}
-	return false
 }
 
 func extractRouteParams(path string) []string {

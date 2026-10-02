@@ -35,7 +35,7 @@ component deep node {
     })
 }
 
-window #home(title="raise", href="/index.html", @error(e) {
+window #home(title="raise", @error(e) {
     problem = e.message
 }) {
     vbox {

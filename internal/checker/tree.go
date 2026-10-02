@@ -166,9 +166,20 @@ func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
 // A family prop with a default may be omitted, and the member then has it
 // with that default and nothing else: a call site cannot set it
 // (refuseInheritedProps), since the member never said it takes one.
+//
+// A member declaring none of them is a group (ir.Component.Group): it renders
+// several members rather than being one -- `component extras { nav.page…
+// nav.page… }` -- so there is no one value of the family for it to be, and
+// what it renders is what a reader reaches.
 func (c *checker) checkFamilyMember(comp *ir.Component) {
 	f := comp.Tree
 	if comp.AST == nil || f == nil || comp.IsFamily() {
+		return
+	}
+	if len(f.Props) > 0 && !slices.ContainsFunc(f.Props, func(fp *ir.Prop) bool {
+		return slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == fp.Name })
+	}) {
+		comp.Group = true
 		return
 	}
 	for _, fp := range f.Props {

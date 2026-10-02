@@ -81,20 +81,24 @@ type NodeInst struct {
 	// boundary for the tree it renders. Separate from Handlers because those
 	// are the events a platform wires to a widget and nothing wires this one.
 	ErrorHandler *EventHandler `json:",omitempty"`
-	// Params is the binding a window's scoped rest slot hands its body: one
-	// struct value holding what the route knows per request, typed by the
-	// `params` prop the call site wrote. Nil where the body wrote no
-	// population, and so asked for nothing.
+	// Params is the params cell of a nav.page: the parameter its content's
+	// population binds, one struct value holding what the page is shown with,
+	// typed by the `params` prop the call site wrote. passNavigationHrefs puts
+	// it on the page, the node a target's own primitive for the page carries
+	// it onward (AttachNodeSite), and optimize.Documents moves it onto the
+	// window of the document written for the page, which a route then binds
+	// from the request. Nil where the content wrote no population, and so
+	// asked for nothing.
 	//
-	// The fields are the path's `{name}` placeholders, which is why nothing
-	// here reads the href: the struct is the contract, and the path is a plain
-	// string html holds to it.
+	// The fields are the href's `{name}` placeholders, every one of them: the
+	// struct is the contract, and the path is a plain string the lowering
+	// holds to it.
 	//
 	// The *ir.Param the population declares, like every other population's
 	// binding. That a target *stores* it -- one cell filled in before the body
-	// renders, a Model field on a target with no request -- is codegen's
-	// answer and is written down there (CodegenCtx.ModelState); the checker
-	// makes no distinction, having none to make.
+	// renders -- is codegen's answer and is written down there
+	// (CodegenCtx.ModelState); the checker makes no distinction, having none
+	// to make.
 	Params *Param `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
 	// only): the set of synthesized widget ref ids (__nN) created in this
@@ -388,10 +392,6 @@ type For struct {
 	// for a name-only loop a codegen backend emits for itself.
 	KeySym   *LoopVar
 	ValueSym *LoopVar
-	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
-	// declared inside this loop's body. optimize.Documents binds each to the
-	// list of windows the loop declares, one per iteration.
-	HoistedWindowIDs []*Var
 	// LoweredSlotID is set by passReactivity to the slot ID assigned when
 	// the For's Iter depends on a reactive Var. "" when the construct is not
 	// reactive. Pass-2 of passReactivity rewrites these into CallStmt

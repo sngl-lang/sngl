@@ -151,7 +151,6 @@ func (c *checker) checkOutputTree() {
 		return
 	}
 	c.collectOutputs(root)
-	c.resolveEntryWindow(root)
 }
 
 // collectOutputs projects the checked tree into one ir.Output per

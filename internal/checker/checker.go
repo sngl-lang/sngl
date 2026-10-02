@@ -389,10 +389,6 @@ type checker struct {
 	// they are found: they read vars and instantiate components that pass1 is
 	// still registering.
 	pendingPkgBody []ast.Stmt
-	// pkgBodyWindowIDs are the `list<window>` symbols a `for` at the root of a
-	// file declares, kept so the hoist during the body check answers with the
-	// same symbol rather than declaring a second one.
-	pkgBodyWindowIDs map[string]*ir.Var
 
 	// outputDepth is where in the build directive's tree the checker is: 0
 	// outside it, 1 among the languages `output` hosts, 2 among a language's
@@ -3090,27 +3086,6 @@ func (c *checker) checkPackageBody() {
 	}
 }
 
-// hoistPkgBodyWindowIDs declares the `#id` of every window a `for` at the root
-// of a file opens.
-//
-// Ahead of the window bodies, because a sibling window iterates that id --
-// `for var p = page` walks the pages the loop declared -- and root window
-// bodies are checked before the package body.
-func (c *checker) hoistPkgBodyWindowIDs() {
-	for _, s := range c.pendingPkgBody {
-		f, ok := s.(*ast.ForStmt)
-		if !ok {
-			continue
-		}
-		for _, v := range c.hoistForLoopWindowIDs(&f.Body) {
-			if c.pkgBodyWindowIDs == nil {
-				c.pkgBodyWindowIDs = map[string]*ir.Var{}
-			}
-			c.pkgBodyWindowIDs[v.Name] = v
-		}
-	}
-}
-
 // hoistWindowInteriorIDs declares the ids inside each registered window as
 // `option<T>` in the package scope, so a read of one from another window's
 // handler is the count it carries rather than a name nothing declares.
@@ -3510,7 +3485,6 @@ func (c *checker) pass2() {
 
 	c.checkComponentBodies()
 
-	c.hoistPkgBodyWindowIDs()
 	c.hoistWindowInteriorIDs()
 
 	// The windows pass1 registered. A window written as a *statement* is
@@ -4270,8 +4244,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 //
 // All of it in pass2, which is what separates a window from a node the checker
 // meets as a statement only in *where the shell came from*. A window at the
-// root of a file is registered in pass1 so that `output(entry = home)` and a
-// sibling window have something to resolve against; what it holds is read
+// root of a file is registered in pass1 so that a sibling window has
+// something to resolve against; what it holds is read
 // here, where a declaration further down the file is in scope.
 func (c *checker) checkWindow(w *ir.Window) {
 	vn := w.VisualNode()
@@ -4300,10 +4274,7 @@ func (c *checker) checkWindow(w *ir.Window) {
 
 	// The specialization is what the call site is checked against, minted once
 	// -- binding walks the argument expressions, and a second walk reports
-	// each of their diagnostics twice. The window's route parameters are a
-	// declared prop and not a reading of its href: `params` is a struct value,
-	// T is inferred from it, and the body reads the fields through the scoped
-	// rest slot's binding.
+	// each of their diagnostics twice.
 	spec := c.bindComponentTypeParams(c.windowComp, windowPropArgs(vn.Args))
 	// Checked against the declaration like any other component's node. A
 	// window took whatever it was given: `window(width=320)` named a prop the
@@ -4327,29 +4298,13 @@ func (c *checker) checkWindow(w *ir.Window) {
 	}
 
 	// **A window's body is the population of its rest slot**, and the peel is
-	// the one every other node's children get. Its parameter is an ordinary
-	// *ir.Param like any other population's -- what a target does with it is
-	// the target's answer, and codegen is where "a route's parameters are one
-	// more cell the Model holds" is written down.
-	//
-	// **A window's parameters are reached through that population and only
-	// through it.** `component content(v) { … }` is where the name `v` is
-	// written, the same as for any other scoped slot, and children written
-	// bare see no parameters at all -- there is nowhere in a spread to write a
-	// name, so there is nothing for the arguments to be collected into. A body
-	// that wants them switches forms. Reading the names off the declaration
-	// instead would put a binding in a body that never named one, and would
-	// put it there for every window in the language.
-	//
-	// So a window that writes no population has no cell either, and nothing
-	// downstream binds a route parameter for a page that does not read one.
+	// the one every other node's children get. A window hands its body no
+	// arguments: what a route knows per request is a nav.page's params, read
+	// through the page's own population.
 	slots, bare := c.checkSlotPopulations(vn, spec)
 	if rest := spec.RestSlot(); rest != nil && slots[rest.Name] != nil {
 		sc := slots[rest.Name]
 		w.Children = sc.Body
-		if len(sc.Params) > 0 {
-			w.Params = sc.Params[0]
-		}
 	} else {
 		if !bare.IsDefined() {
 			return
@@ -4800,17 +4755,14 @@ func (c *checker) componentNamed(target string) *ir.Component {
 //
 // Two positions do not go through that pass and are bound here instead. A
 // window at the root of a file is registered rather than checked as a
-// statement, which is what `output(entry = home)` resolves against. And a
-// window inside a `for` is skipped there deliberately: the enclosing scope
-// holds the id as a `list<window>` of every iteration
-// (hoistForLoopWindowIDs), while inside the body the same name is the one
-// window this iteration renders.
+// statement, which is what a sibling window resolves against. And a window
+// inside a `for` is skipped there deliberately: the id names the one window
+// the iteration renders, inside the body and nowhere else.
 //
-// Which is why the name is measured with LookupLocal and not Lookup. Asking
-// the whole chain finds that list and declines, so the body's own `page.title`
-// resolved to nothing the fold could answer, reached codegen as a dangling
-// Select and rendered empty -- in silence, since a list *is* a legitimate
-// binding for that name one scope out.
+// Which is why the name is measured with LookupLocal and not Lookup: an outer
+// binding of the same name is not this iteration's window, and declining to
+// bind for it left the body's own `page.title` naming nothing the fold could
+// answer -- a dangling Select that rendered empty, in silence.
 func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	if vn.ID == "" {
 		return nil

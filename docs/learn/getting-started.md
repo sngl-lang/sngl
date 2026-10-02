@@ -208,7 +208,7 @@ whenSelected(selected=generateTarget, value="gohtml") {
         markup.monospace {
             markup.text(value="http.Handler")
         }
-        markup.text(value=" serving one route per window. Event handlers that call into Go run on the server; the rest stay in the browser.")
+        markup.text(value=" serving one route per page. Event handlers that call into Go run on the server; the rest stay in the browser.")
     }
 }
 ```

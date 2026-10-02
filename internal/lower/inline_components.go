@@ -959,6 +959,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// Lowered by passNavigation, it already is an `if`.
 		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
 			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+		} else if n.Record != nil {
+			// A target's own primitive standing for a page, which it writes
+			// as a document or a route of its own (html): a rendering root,
+			// as a window is, so a loop of pages is not a position its body
+			// is repeated in.
+			childRC = reactiveCtx{}
 		}
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {

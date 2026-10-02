@@ -90,6 +90,15 @@ func lowerNavigationHrefs(pkg *ir.Package, _ Features, opts Options) error {
 // named by one. A static site serves no pattern at all.
 func (h *navHrefs) checkPage(pg *navPage) error {
 	name := pageName(pg)
+	if pg.loop != nil {
+		// One page per element: the href is the copy's, known once the copy
+		// is, and the document or route written for it is where a pattern is
+		// refused. It takes no params (addPages), so it names no field.
+		if !constInLoop(pg.node.Prop("href"), pg.loop) {
+			return fmt.Errorf("%s: page %q's href is not a constant, and a page is served at its href", ir.NodePos(pg.node), name)
+		}
+		return nil
+	}
 	lit, ok := pg.node.Prop("href").(*ir.Literal)
 	if !ok {
 		return fmt.Errorf("%s: page %q's href is not a constant, and a page is served at its href", ir.NodePos(pg.node), name)
@@ -205,11 +214,19 @@ func (h *navHrefs) pageCell(pg *navPage) {
 	if st := pg.stack.node; st.Handle != nil {
 		call.Args = []ir.CallArg{{Value: varIdent(st.Handle)}}
 	}
-	cond := &ir.Binary{
+	var cond ir.Expr = &ir.Binary{
 		Type:  ir.TypBool,
 		Op:    ast.BinEq,
 		Left:  &ir.Select{Type: ir.TypInt, Operand: call, Field: "id"},
 		Right: navInt(pg.id),
+	}
+	if pg.loop != nil {
+		cond = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: cond, Right: &ir.Binary{
+			Type:  ir.TypBool,
+			Op:    ast.BinEq,
+			Left:  &ir.Select{Type: ir.TypInt, Operand: ir.CloneExprSharingDecls(call), Field: "copy"},
+			Right: pg.copyOf(),
+		}}
 	}
 	n.Children = []ir.Stmt{&ir.If{Cond: cond, Body: n.Children}}
 }
@@ -306,6 +323,11 @@ func (h *navHrefs) becomeLink(n *ir.NodeInst, href ir.Expr) {
 // string when the params are known at build time, and otherwise the call
 // that builds it when it runs.
 func (h *navHrefs) address(pg *navPage, params ir.Expr) (ir.Expr, error) {
+	if pg.loop != nil {
+		// The copy's own href, which the document folds where the loop's
+		// variables are bound.
+		return ir.CloneExprSharingDecls(pg.node.Prop("href")), nil
+	}
 	if params == nil {
 		params = pg.start()
 	}
@@ -325,6 +347,9 @@ func (h *navHrefs) address(pg *navPage, params ir.Expr) (ir.Expr, error) {
 // constAddress fills pg's href from params, where each field a placeholder
 // names is a literal.
 func (h *navHrefs) constAddress(pg *navPage, params ir.Expr) (string, bool) {
+	if pg.loop != nil {
+		return "", false
+	}
 	href := h.hrefs[pg]
 	holes := ir.HrefPlaceholders(href)
 	if len(holes) == 0 {
@@ -401,4 +426,22 @@ func findLibFunc(pkg *ir.Package, uri, name string) *ir.Func {
 		return nil
 	}
 	return walk(pkg)
+}
+
+// constInLoop reports whether e is a constant once the variables of fs, a loop
+// over a constant, are bound: one value per copy of what the loop writes.
+func constInLoop(e ir.Expr, fs *ir.For) bool {
+	if e == nil {
+		return false
+	}
+	holder := &ir.Return{Value: ir.CloneExprSharingDecls(e)}
+	_ = ir.RewriteExprs(holder, func(x ir.Expr) (ir.Expr, error) {
+		if id, ok := x.(*ir.Ident); ok && fs != nil {
+			if lv, ok := id.Sym.(*ir.LoopVar); ok && (lv == fs.KeySym || lv == fs.ValueSym) {
+				return &ir.Literal{Type: id.Type, Value: "0"}, ir.SkipDir
+			}
+		}
+		return x, nil
+	})
+	return ir.IsConst(holder.Value)
 }

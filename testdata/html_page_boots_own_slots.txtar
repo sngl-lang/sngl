@@ -11,6 +11,7 @@ deny out/none/html/two.html `__slotAnchor_0` -- two.html places no slot, so it b
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
 output {
     none {
@@ -30,11 +31,15 @@ component Toggle() ui.node {
 }
 
 component site() root {
-    ui.window(title="one", href="/one.html") {
-        Toggle
-    }
-    ui.window(title="two", href="/two.html") {
-        ui.text(value="plain")
+    ui.window(title=pages.current.title) {
+        nav.stack #pages {
+            nav.page(href="/one.html", title="one") {
+                Toggle
+            }
+            nav.page(href="/two.html", title="two") {
+                ui.text(value="plain")
+            }
+        }
     }
 }
 

@@ -25,7 +25,7 @@ output {
     }
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var active = true
 
     html.a(class=active ? "on" : "off", innerText="x")

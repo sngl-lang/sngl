@@ -88,7 +88,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// unlock further compile-time folding — either a `for var x = param`
 	// unroll, or a pure native call whose argument is a param. Otherwise
 	// leave the call as-is so component sharing is preserved.
-	if !bodyHasFoldableParamUse(comp.Body, propNames) {
+	//
+	// A group (ir.Component.Group) is spliced whatever its props: it renders
+	// members rather than being one, and what it renders is decided here --
+	// an `if` over what its call site handed it folds against the member it
+	// is about, which nothing after the splice can do.
+	if !comp.Group && !bodyHasFoldableParamUse(comp.Body, propNames) {
 		return nil
 	}
 
@@ -110,12 +115,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 	// If no provided prop folded to a const, the body's for-loop won't
 	// unroll either — bail.
-	if len(propValues) == 0 {
+	if len(propValues) == 0 && !comp.Group {
 		return nil
 	}
 
 	paramSyms := findParamSyms(comp.Body, propNames)
-	if len(paramSyms) == 0 {
+	if len(paramSyms) == 0 && !comp.Group {
 		return nil
 	}
 

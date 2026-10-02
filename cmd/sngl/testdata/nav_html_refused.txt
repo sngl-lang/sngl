@@ -5,12 +5,11 @@
 # for has nowhere to travel. A static site writes one document per page: a page
 # whose href names a placeholder is a pattern no file can be, so a page there
 # has no params at all, and nothing can hand it any. Two pages one request
-# could reach are the conflict two windows already are, and two pages at one
-# path on a static site are one file.
+# could reach are two routes conflicting, and two pages at one path on a static
+# site are one file.
 #
-# A window's documents are its pages, so it holds one stack, holds it where a
-# document can be decided -- not under an `if` that reads state -- and has no
-# href of its own beside them.
+# A window's documents are its pages, so it holds one stack, and holds it where
+# a document can be decided -- not under an `if` that reads state.
 
 ! sngl generate --platform html --lang none -o out pattern.sngl
 stderr 'pattern.sngl:12:22: page "pkg" is served at /p/\{name\}, a pattern: a static site writes one document per page and cannot serve one; compile with a server language \(e.g. --lang go\)'
@@ -26,9 +25,6 @@ stderr 'html: page "b" is written to about/index.html, as page "a" is'
 
 ! sngl generate --platform html --lang none -o out twostacks.sngl
 stderr 'twostacks.sngl:12:12: a window''s documents are its pages, and this is a second nav.stack in it; the first is at twostacks.sngl:7:12'
-
-! sngl generate --platform html --lang none -o out windowhref.sngl
-stderr 'windowhref.sngl:4:10: a window holding a nav.stack is served at its pages'' hrefs, and this one has an href of its own'
 
 ! sngl generate --platform html --lang none -o out underif.sngl
 stderr 'underif.sngl:9:16: a nav.stack under an `if` that reads state cannot be decided per document; write the `if` inside a page'
@@ -113,16 +109,6 @@ ui.window(title="Two") {
         nav.stack #right {
             nav.page #b(href="/b", title="B") {
             }
-        }
-    }
-}
--- windowhref.sngl --
-import nav "sngl:ui/nav"
-import ui "sngl:ui"
-
-ui.window(title="Href", href="/app") {
-    nav.stack #pages {
-        nav.page #a(href="/", title="A") {
         }
     }
 }

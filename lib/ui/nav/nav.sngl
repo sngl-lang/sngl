@@ -40,6 +40,13 @@ component page<T = struct {}, M = struct {}>(
 //
 // A page the stack is not showing is not mounted: leaving one destroys what it
 // rendered, as an `if` does.
+//
+// The pages are fixed when the stack is built, and need not be written one by
+// one: a `for` over a constant writes a page per element -- each copy a page of
+// its own, whose `#id` names that copy inside the loop -- an `if` over
+// constants writes one or none, and a component that renders pages without
+// declaring a page's props is a group, whose pages join the stack it is
+// written in.
 #[marks.builtin("navStack")]
 component stack<M = struct {}>(pages ...component _page<M>) ui.node
 

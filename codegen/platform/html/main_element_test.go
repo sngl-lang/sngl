@@ -26,7 +26,7 @@ func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/html"
 output { none { html() } }
-window(title="Home", href="/index.html") {
+window(title="Home") {
     html.div {
         html.main {
             html.p(innerText="BODY CONTENT")

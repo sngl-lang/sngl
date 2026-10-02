@@ -1,0 +1,131 @@
+# What a stack's pages may be written under, and what is refused there with a
+# position.
+#
+# A stack's pages are fixed when it is built, so a `for` among them iterates a
+# constant and an `if` among them reads none of the program's state. A page
+# under a `for` is one page per element, a copy whose record holds the
+# iteration beside the page's id, so a second loop inside the first is not
+# supported yet, and the copy takes no params: it reads its element. A group --
+# a component that renders pages without being one -- keeps no state of its
+# own, since nothing holds it once its pages are spliced into the stack.
+# android writes a route per page where the NavHost is declared, and does not
+# yet write one per copy.
+
+! sngl generate --platform gtk4 --lang go -o out state.sngl
+stderr 'state.sngl:12:13: a stack''s pages are fixed when it is built, and this `for` iterates state; iterate a constant'
+
+! sngl generate --platform gtk4 --lang go -o out cond.sngl
+stderr 'cond.sngl:9:9: a stack''s pages are fixed when it is built, and this `if` reads state; decide it from constants, or write it inside a page'
+
+! sngl generate --platform gtk4 --lang go -o out nested.sngl
+stderr 'nested.sngl:11:13: pages under a `for` inside another are not supported yet: a page''s copy is one iteration'
+
+! sngl generate --platform gtk4 --lang go -o out params.sngl
+stderr 'params.sngl:14:27: page "item" is written under a `for`, one page per element, and takes no params: each copy reads its element instead'
+
+! sngl generate --platform gtk4 --lang go -o out group.sngl
+stderr 'group.sngl:16:9: extras renders pages, and a group of pages keeps no state of its own: move it into a page'
+
+! sngl generate --platform android --lang kotlin -o out android.sngl
+stderr 'android.sngl:8:9: android writes a route per page where the NavHost is declared, and a page under a `for` or an `if` is not one yet: write each page in the stack'
+
+-- state.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+var items list<string> = ["a"]
+
+ui.window(title="State") {
+    ui.vbox {
+        ui.button(text="more", @click { items.push("b") })
+        nav.stack #pages {
+            nav.page(href="/", title="Home") {
+            }
+            for var it = items {
+                nav.page(href="/" + it, title=it) {
+                }
+            }
+        }
+    }
+}
+-- cond.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+var shown = true
+
+ui.window(title="Cond") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {}
+        if shown {
+            nav.page(href="/more", title="More") {}
+        }
+    }
+}
+-- nested.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+const rows list<string> = ["a"]
+const cols list<string> = ["b"]
+
+ui.window(title="Nested") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {}
+        for var r = rows {
+            for var c = cols {
+                nav.page(href="/" + r + "/" + c, title=r + c) {}
+            }
+        }
+    }
+}
+-- params.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct P {
+    name string
+}
+
+const items list<string> = ["a"]
+
+ui.window(title="Params") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {}
+        for var it = items {
+            nav.page #item(href="/" + it, title=it, params=P{name=it}) {}
+        }
+    }
+}
+-- group.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+component extras {
+    var n = 0
+
+    nav.page(href="/faq", title="FAQ") {
+        ui.button(text="n {n}", @click { n += 1 })
+    }
+}
+
+ui.window(title="Group") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {
+        }
+        extras
+    }
+}
+-- android.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+const items list<string> = ["a"]
+
+ui.window(title="Android") {
+    nav.stack #pages {
+        for var it = items {
+            nav.page(href="/" + it, title=it) {}
+        }
+    }
+}

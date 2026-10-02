@@ -114,9 +114,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
 				// Every prop of the #[builtin("window")] component is
 				// readable off the id, so each must fold here -- a Select left
-				// standing reaches codegen as a dangling reference. Keep in
-				// step with windowStructValue (expand.go), which does the same
-				// for the unrolled-list case.
+				// standing reaches codegen as a dangling reference.
 				if win := ctx.windowForHandle(v); win != nil {
 					if val := win.Prop(x.Field); val != nil {
 						// Folded again, and against *this* context: the read

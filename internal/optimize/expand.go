@@ -65,23 +65,6 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	return result
 }
 
-// windowStructValue produces the const-eval shape (map[string]any) for an
-// unrolled window: each prop literal-folded to a Go value, when available.
-// Non-foldable expressions are omitted.
-func windowStructValue(w *ir.Window) any {
-	m := map[string]any{}
-	for _, p := range w.Props {
-		lit, ok := p.Value.(*ir.Literal)
-		if !ok {
-			continue
-		}
-		if v := parseLiteral(lit); v != nil {
-			m[p.Name] = v
-		}
-	}
-	return m
-}
-
 // loopVars is the symbols a loop binds. The checker records them on the loop;
 // a loop built without them is searched for, which misses a variable read only
 // in a handler.

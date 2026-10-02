@@ -41,7 +41,7 @@ func backendHandlerPkg() *ir.Package {
 		Name:      "window",
 		ID:        "app",
 		Component: &ir.Component{Name: "window", Builtin: ir.BuiltinWindow},
-		Props:     []ir.Arg{{Name: ir.WindowHref, Value: &ir.Literal{Value: `"/"`, Type: ir.TypString}}},
+		Props:     []ir.Arg{{Name: ir.WindowTitle, Value: &ir.Literal{Value: `"App"`, Type: ir.TypString}}},
 		Children:  []ir.Stmt{btn},
 	}
 	return &ir.Package{

@@ -21,7 +21,7 @@ ui.window #win1(title="one") {
     ui.button #btn1(text="a")
 }
 
-ui.window #win2(title="two", href="/two") {
+ui.window #win2(title="two") {
     ui.button(text="b", @click {
         btn1.text = "x" // ERROR(check) "btn1 is rendered inside another window, so out here it is option<button> rather than one node; a window may not be open, and on a target whose windows are separate documents it never is from out here"
     })

@@ -182,7 +182,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// iterating every component's vars would re-add the originals and collide
 	// their synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
-		// nil for a binding no declaration made: a window's route parameters,
+		// nil for a binding no declaration made: a document's route parameters,
 		// which the slot population declares and the request fills. The
 		// special cases below are all things a body or a pass declared, so
 		// they are asked only where there is a declaration to ask.

@@ -1,29 +1,14 @@
 import marks "sngl:internal/marks"
 
-// A top-level window — the entry point of a UI. `href` is the route the
-// window is served at; `title` names it; `favicon` is its icon. `@error` is
-// the window's outermost error boundary.
+// A top-level window — a surface the user sees, which a program creates and
+// destroys with the tree. `title` names it; `favicon` is its icon. `@error` is
+// the window's outermost error boundary. A window is not a destination: the
+// pages a user goes between are sngl:ui/nav's `page`s, held by a `stack` the
+// window shows, and the window around the stack is the chrome every page
+// shares -- `title="Docs - {pages.current.title}"`.
 //
-// `params` is what the route hands the body per request, as one struct value,
-// and `T` is inferred from it: a path with `{name}` placeholders in it is
-// served with a field of that name filled in from the URL. A window that takes
-// none writes nothing, and `T` falls back to the struct with no fields.
-//
-// The body that reads them is the population of `content`, written by name
-// the way any scoped slot's is — `component content(v) { … }` — and `v` is
-// the caller's word. A body written as bare children sees no parameters at
-// all: there is nowhere in a spread to write a name for them.
-//
-// That is why the path is a plain string here where it used to be an
-// interpolation: the names in it are the struct's fields rather than
-// identifiers in scope, so a path parameter and a node `#id` no longer share
-// one namespace with nothing declaring either. Write the path with a
-// backticked string, or escape the braces.
-//
-// Reading `name.href` / `name.title` off a `window #name` declaration
-// lets links survive a window's path change without copying the path
-// string. The #[builtin("window")] mark is how the checker recognises a
-// window declaration — by tag, not by matching the name "window".
+// The #[builtin("window")] mark is how the checker recognises a window
+// declaration — by tag, not by matching the name "window".
 //
 // A program must declare at least one: the package body renders nothing on
 // its own, so a program with no window has nowhere to draw.
@@ -42,15 +27,13 @@ import marks "sngl:internal/marks"
 // without destroying it is `visible`. A close that leaves no window on screen
 // ends the program, unless it started with none.
 #[marks.builtin("window")]
-component window<T = struct {}>(
+component window(
     title string,
-    href string,
     favicon string,
-    params T,
     :visible bool = true,
     @error error,
     @closed(),
-    content ...component(v T) node,
+    content ...component node,
 ) root {
     // Puts the window on screen: `visible = true`, which is no change to a
     // window already there, so it does not raise one. Reached

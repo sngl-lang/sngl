@@ -45,6 +45,6 @@ component list node {
     text(value=problem)
 }
 
-window #home(title="t", href="/index.html") {
+window #home(title="t") {
     list()
 }

@@ -38,7 +38,11 @@ func (st *slotChildSynth) liftSlotBodies(stmts []ir.Stmt) {
 			}
 		case *ir.For:
 			// A loop is a slot when its iterable reads state, and when its body
-			// does whatever it iterates: collectFromFor's two questions.
+			// does whatever it iterates: collectFromFor's two questions. A loop
+			// of pages is no slot, which collectFromFor answers first.
+			if loopsOverPages(x) {
+				return nil
+			}
 			if st.readsCells(x.Iter) || st.armReadsCells(x.Body) || st.armReadsCells(x.Else) {
 				st.liftArm(x.Body)
 				st.liftArm(x.Else)

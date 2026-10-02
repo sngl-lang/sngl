@@ -8,6 +8,7 @@ deny * `innerHTML` -- a page is a component tree; nothing is handed to a parser 
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 import docs "md:./docs"
 
 output {
@@ -16,11 +17,13 @@ output {
     }
 }
 
-docs.site {
-    component layout(page, content) {
-        ui.window(title=page.frontmatter.title, href=page.href) {
-            ui.text(value="draft {page.frontmatter.draft}")
-            content
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        docs.site {
+            component layout(page, content) {
+                ui.text(value="draft {page.frontmatter.draft}")
+                content
+            }
         }
     }
 }

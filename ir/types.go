@@ -698,7 +698,7 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	if t.Kind == TypeComponent && target.Kind == TypeComponent {
 		if f, ok := target.Decl.(*Component); ok && f.IsFamily() {
 			m, ok := t.Decl.(*Component)
-			if !ok || m.IsFamily() || m.Tree != f {
+			if !ok || m.IsFamily() || m.Group || m.Tree != f {
 				return false
 			}
 			if len(target.Elems) == 0 {

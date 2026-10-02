@@ -1,23 +1,21 @@
-A `for` over a const list declares one window per item: title and href come
-from the item, so a two-element `items` is one.html and two.html. The loop's
-window id is itself what the index window iterates -- `for var p = page` walks
-the windows the first loop declared, and each `html.a` takes that page's
-folded href and title.
+A `for` over a const list writes one page per item: title and href come from
+the item, so a two-element `items` is one.html and two.html. The index page
+iterates the same list for its links -- a page's `#id` written in a loop names
+that copy inside the loop and nothing outside it, so the index reads the data
+the pages came from rather than the pages.
 
 Both loops run at build time. The golden is three static pages whose links are
 literal, with no client JS behind them.
 
 The body reads `page.title` beside `it.title`, and the two fold by different
-routes. `it.title` is the loop variable the unroll bound. `page.title` is a
-read off the window's own id, which folds to the window's `title` *expression*
--- itself `it.title`, written one line up and not yet substituted. Returned as
-written it stayed `it.title` in a body where the unroll had already passed, and
-the page rendered an empty span; it is folded again against the context the
-read sits in, which is where `it` is bound.
+routes. `it.title` is the loop variable the document binds for its copy.
+`page.title` is a read off the page's own id, which is the copy's record --
+`title=it.title`, folded where `it` is bound.
 
 -- site.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
+import nav "sngl:ui/nav"
 
 output { none { html } }
 
@@ -31,16 +29,19 @@ const items list<Item> = [
     {slug="two", title="Two"},
 ]
 
-window #index(title="Index", href="/index.html") {
-    for var p = page {
-        html.a(href=p.href, innerText=p.title)
-    }
-}
-
-for var it = items {
-    window #page(title=it.title, href="/" + it.slug + ".html") {
-        text(value=it.title)
-        text(value=page.title)
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #index(href="/index.html", title="Index") {
+            for var it = items {
+                html.a(href="/" + it.slug + ".html", innerText=it.title)
+            }
+        }
+        for var it = items {
+            nav.page #page(href="/" + it.slug + ".html", title=it.title) {
+                text(value=it.title)
+                text(value=page.title)
+            }
+        }
     }
 }
 -- out/none/html/index.html --

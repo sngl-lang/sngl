@@ -115,6 +115,10 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 		}
 		st := &navStackK{node: ni, name: navName(ni, len(nav.stacks))}
 		for _, s := range ni.Children {
+			switch s.(type) {
+			case *ir.For, *ir.If:
+				fail(fmt.Errorf("%s: android writes a route per page where the NavHost is declared, and a page under a `for` or an `if` is not one yet: write each page in the stack", ir.StmtPos(s)))
+			}
 			p, ok := s.(*ir.NodeInst)
 			if !ok || p.Component == nil || p.Component.Builtin != ir.BuiltinNavPage {
 				continue

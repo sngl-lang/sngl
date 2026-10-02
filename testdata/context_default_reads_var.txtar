@@ -31,7 +31,7 @@ component show ui.node {
     ui.text(value=theme)
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     show()
 }
 -- out/go/bubbletea/model.go --

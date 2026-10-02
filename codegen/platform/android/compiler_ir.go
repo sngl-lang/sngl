@@ -305,8 +305,8 @@ type irAndroidComputed struct {
 // same declaration reached through a different scope.
 func bindForVar(v *ir.Var) irAndroidBind { return bindFor(v.Name, v.Type, v.Init) }
 
-// bindFor is bindForVar for a binding with no declaration behind it -- a
-// window's route parameters, which the slot population declares and the
+// bindFor is bindForVar for a binding with no declaration behind it --
+// a document's route parameters, which the slot population declares and the
 // request fills.
 func bindFor(name string, typ *ir.Type, init ir.Expr) irAndroidBind {
 	ktType := kotlin.IRTypeToKt(typ)

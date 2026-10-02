@@ -474,7 +474,7 @@ Work these in this order:
      follows the file, and `docs/` already has the shape the directory
      form requires (`index.md`, `learn/index.md`, `reference/index.md`), so
      the site may be able to import the public `md:./docs/` with no internal
-     importer at all. Its layout skips `learn/tour.md` by href.
+     importer at all. The tutorial's source is `learn/_tour.md`, which the import skips.
    - If an internal scheme turns out to be needed after all, **docsgen runs
      the build in-process** through `internal/build` and registers the
      scheme first. The scheme does not ship in the `sngl` binary.

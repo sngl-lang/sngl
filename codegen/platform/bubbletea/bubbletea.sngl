@@ -149,7 +149,7 @@ const component ui.window[platform] {
         visible = false
         closed()
     }) {
-        content(params)
+        content
     }
 }
 

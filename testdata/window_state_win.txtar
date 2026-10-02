@@ -36,7 +36,7 @@ output {
     }
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     var n = 0
     vbox {
         text(value="{n}")

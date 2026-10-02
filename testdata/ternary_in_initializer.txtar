@@ -29,7 +29,7 @@ component show ui.node {
     ui.text(value=label)
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var on = false
     var n = 0
     var greeting = on ? "b" : (n > 1 ? "c" : "d")

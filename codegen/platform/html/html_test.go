@@ -1,6 +1,7 @@
 package html
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -56,6 +57,9 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 		Pkg:  pkg,
 		Lang: lang,
 	}, mem); err != nil {
+		if one := (*codegen.OneWindowError)(nil); errors.As(err, &one) {
+			t.Skipf("shows one window: %v", one)
+		}
 		t.Fatalf("generate: %v", err)
 	}
 	for name, content := range mem.Files() {
@@ -106,6 +110,9 @@ func generateHTML(t *testing.T, path string) string {
 		Pkg:  pkg,
 		Lang: lang,
 	}, mem); err != nil {
+		if one := (*codegen.OneWindowError)(nil); errors.As(err, &one) {
+			t.Skipf("shows one window: %v", one)
+		}
 		t.Fatalf("generate: %v", err)
 	}
 	for name, content := range mem.Files() {
@@ -271,6 +278,9 @@ ui.window {
 		Pkg:  pkg,
 		Lang: lang,
 	}, mem); err != nil {
+		if one := (*codegen.OneWindowError)(nil); errors.As(err, &one) {
+			t.Skipf("shows one window: %v", one)
+		}
 		t.Fatalf("generate: %v", err)
 	}
 	var out string

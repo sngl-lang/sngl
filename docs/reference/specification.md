@@ -1955,18 +1955,18 @@ they reach the program when something at the root instantiates it.
 ```sngl
 import ui "sngl:ui"
 
-ui.window #home(title="Home", href="/") {
+ui.window #home(title="Home") {
     var count = 0
     ui.button(text="Clicked {count} times", @click {
         count++
     })
 }
 
-ui.window #about(title="About", href="/about") {
+ui.window #about(title="About") {
     ui.text(value="A two-window program.")
 }
 
-output(entry=home) {
+output {
     none {
         html()
     }
@@ -1976,11 +1976,13 @@ output(entry=home) {
 }
 ```
 
-A window's props are `title`, `href` and `favicon`. A route with `{name}`
-placeholders hands its values to the window as one struct value in the
-`params` prop; the body that reads them is the population of the window's
-`content` slot, `component content(p) { … }`, and each placeholder must name a
-field of that struct.
+A window's props are `title` and `favicon`; a window is a surface, not a
+destination. The destinations a user moves between are the pages of a
+`sngl:ui/nav` stack the window holds, each with an `href`. A page whose href
+has `{name}` placeholders is handed their values as one struct value in its
+`params` prop; the body that reads them is the population of the page's
+`content` slot, `component content(p) { … }`, and every field of that struct is
+one of the href's placeholders.
 
 A window's body is its content; state it declares belongs to what holds the
 window (see [State and derivation](#state-and-derivation)). Where several

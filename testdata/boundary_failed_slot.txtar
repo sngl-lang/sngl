@@ -37,7 +37,7 @@ component page() node {
     }
 }
 
-window #home(title="bf", href="/index.html") {
+window #home(title="bf") {
     page()
 }
 

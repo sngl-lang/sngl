@@ -762,6 +762,12 @@ func (st *reactivityState) collectFromIf(n *ir.If) {
 }
 
 func (st *reactivityState) collectFromFor(n *ir.For) {
+	// A loop of a stack's pages, on a target that writes a document or a
+	// route per page, is decided per document: each holds one copy, and the
+	// loop is gone before anything renders it.
+	if loopsOverPages(n) {
+		return
+	}
 	deps := st.exprDeps(n.Iter)
 	// A loop over a const is a slot too when its body needs one, the way a loop
 	// over state is. Left standing, each copy's bound prop got an updater of
@@ -2100,4 +2106,27 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 	}
 	walk(stmts)
 	return fn
+}
+
+// loopsOverPages reports whether a loop's body is pages, each node carrying a
+// page's record (ir.NodeInst.Record) -- what passNavigationHrefs leaves for a
+// target that serves each page on its own.
+func loopsOverPages(n *ir.For) bool {
+	var holds func(stmts []ir.Stmt) bool
+	holds = func(stmts []ir.Stmt) bool {
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.NodeInst:
+				if x.Record != nil {
+					return true
+				}
+			case *ir.If:
+				if holds(x.Body) || holds(x.Else) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return holds(n.Body)
 }

@@ -6,12 +6,19 @@ in `docs/meta.sngl` is the vocabulary each page's frontmatter is checked
 against. Each page is a component named for its path, and a page's
 subdirectory holds its children: `guide/intro.md` is a child of `guide.md`.
 
-The package hands the program `site`, whose one slot is the layout. It takes
-the page as data -- `href`, `frontmatter` and `children` on one `Page` -- and
-the page's blocks as a component entry, so the program writes its layout once
-and the importer writes one insertion per page. The layout here makes each page
-a window and draws the page's children as a list of titles, which is what
-`children` is for.
+The package hands the program `site`, which renders a `nav.page` per file at
+the file's href, titled by its frontmatter's `title`, and whose one slot is the
+layout around the page's content. The layout takes the page as data -- `href`,
+`frontmatter` and `children` on one `Page` -- and the page's blocks as a
+component entry, so the program writes its layout once and the importer writes
+one page per file. `site` renders pages without being one, so it is written
+among a stack's pages, and the window around the stack is the chrome every page
+shares. The layout here draws the page's children as a list of titles, which is
+what `children` is for.
+
+`_draft.md` is no page: a name starting with `_` is the directory's own
+material, as Go skips one, and the golden's file set is what says there is no
+`_draft.html`.
 
 `ref/index.md` is the page `ref` and is written to `/ref/index.html`, because
 an href follows the file; `guide.md` is `/guide.html`.
@@ -25,6 +32,7 @@ deny * `innerHTML` -- a page is a component tree; nothing is handed to a parser 
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 import docs "md:./docs/"
 
 output {
@@ -33,15 +41,17 @@ output {
     }
 }
 
-docs.site {
-    component layout(page, content) {
-        ui.window(title=page.frontmatter.title, href=page.href) {
-            ui.vbox {
-                ui.text(value="weight {page.frontmatter.weight}")
-                for var child = page.children {
-                    ui.text(value="child: {child.frontmatter.title}")
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        docs.site {
+            component layout(page, content) {
+                ui.vbox {
+                    ui.text(value="weight {page.frontmatter.weight}")
+                    for var child = page.children {
+                        ui.text(value="child: {child.frontmatter.title}")
+                    }
+                    content
                 }
-                content
             }
         }
     }
@@ -94,6 +104,12 @@ weight: 3
 ---
 
 # Reference
+-- docs/_draft.md --
+---
+title: Draft
+---
+
+# Not a page
 -- docs/ref/types.md --
 ---
 title: Types

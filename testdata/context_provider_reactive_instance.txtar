@@ -35,7 +35,7 @@ component show(n int) ui.node {
     ui.text(value="{label} {n}")
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var txt = "b"
     var xs = [1, 2]
 

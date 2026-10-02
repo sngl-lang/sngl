@@ -56,12 +56,8 @@ type Package struct {
 	// every ordinary build, where a window is the root and a component is
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
-	// EntryWindow is the id `output(entry = home)` names: the window a build
-	// scopes to when the program opens more than one. Empty when the
-	// directive names none, which the single-window case does not need.
-	EntryWindow string `json:",omitempty"`
-	Contexts    []*Context
-	Symbols     *SymbolTable
+	Contexts      []*Context
+	Symbols       *SymbolTable
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -737,6 +733,12 @@ type Component struct {
 	// one, which is an error, so the two states are told apart here rather
 	// than by the absence of a pointer.
 	Treeless bool `json:",omitempty"`
+	// Group is a member of a family with props that declares none of them: it
+	// renders members rather than being one -- `component extras { nav.page…
+	// nav.page… }` -- so it has no one value of the family to be. Its handle
+	// is not assignable to the family's type, and a nav.stack splices its
+	// body among its pages.
+	Group bool `json:",omitempty"`
 	// TreeParam is the component's own type parameter written in the return
 	// position, for a wrapper whose family is whatever it was handed. Nil Tree
 	// and a TreeParam is a third state: tree-less at the declaration, and a
@@ -1004,10 +1006,9 @@ func IsWindowNode(n *NodeInst) bool {
 // The window props the compiler itself reads. Each is declared in
 // lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
 // matches, not a second declaration of them, and nothing enumerates the set --
-// html asks for the href, gtk4 for the title.
+// html asks for the favicon, gtk4 for the title.
 const (
 	WindowTitle   = "title"
-	WindowHref    = "href"
 	WindowFavicon = "favicon"
 )
 

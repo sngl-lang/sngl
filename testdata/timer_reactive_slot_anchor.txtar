@@ -39,7 +39,7 @@ component Car() node {
     }
 }
 
-window(title="H", href="/index.html") {
+window(title="H") {
     Car()
 }
 -- out/none/html/index.html --

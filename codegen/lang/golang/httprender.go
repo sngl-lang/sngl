@@ -46,7 +46,7 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 	if r.Window != nil {
 		ctx = ctx.ForWindow(r.Window)
 	}
-	// The window's route parameters resolve through that window scope, and
+	// The document's route parameters resolve through that window scope, and
 	// they are bound per request rather than per session -- so left alone
 	// they would project onto `s.<Field>` of a State struct that has no such
 	// field. As a local the binding renders as the bare name

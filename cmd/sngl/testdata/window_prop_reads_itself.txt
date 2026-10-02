@@ -11,17 +11,14 @@
 stderr 'names the node this argument list declares'
 ! sngl generate --lang none --platform html --out out selfref.sngl
 
-# Mutual reference is not reached by that rule and is not meant to be: neither
-# window reads its own id, so what the two name is each other and there is no
-# single declaration to blame. It reaches the fold's guard by a second key
-# rather than by the first one twice, which is the path a self-reference never
-# took, and it is still left standing -- the page comes out with content and no
-# <title>. The general rule the language has not made is this one.
-sngl generate --lang none --platform html --out out2 mutual.sngl
-grep '<span>a</span>' out2/a.html
-grep '<span>b</span>' out2/b.html
-! grep '<title>' out2/a.html
-! grep '<title>' out2/b.html
+# Mutual reference between two pages is refused too, by the lowering that
+# answers a read of a node's prop (passNodePropReads): each title is the other,
+# so neither has an answer. Two windows were the case that used to show it on
+# html -- the fold's guard left both standing and the pages came out with no
+# <title> -- and html now writes one window per document, so the pages are
+# what reaches it there.
+! sngl generate --lang none --platform html --out out2 mutual.sngl
+stderr 'mutual.sngl:12:20: `#a` reads its own value back through `#a`: each prop is the other, so there is nothing to answer with'
 
 -- selfref.sngl --
 import . "sngl:ui"
@@ -32,11 +29,12 @@ output {
     }
 }
 
-window #home(title=home.title, href="/index.html") {
+window #home(title=home.title) {
     text(value="hi")
 }
 -- mutual.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 output {
     none {
@@ -44,13 +42,13 @@ output {
     }
 }
 
-component pages root {
-    window #a(title=b.title, href="/a.html") {
-        text(value="a")
-    }
-    window #b(title=a.title, href="/b.html") {
-        text(value="b")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #a(href="/a.html", title=b.title) {
+            text(value="a")
+        }
+        nav.page #b(href="/b.html", title=a.title) {
+            text(value="b")
+        }
     }
 }
-
-pages()

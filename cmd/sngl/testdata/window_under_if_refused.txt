@@ -32,13 +32,13 @@ import ui "sngl:ui"
 
 const wide = true
 
-ui.window #main(title="Main") {
-    ui.text(value="main")
-}
-
 if wide {
-    ui.window(title="Wide", href="/wide.html") {
+    ui.window(title="Wide") {
         ui.text(value="wide")
+    }
+} else {
+    ui.window(title="Narrow") {
+        ui.text(value="narrow")
     }
 }
 -- only.sngl --

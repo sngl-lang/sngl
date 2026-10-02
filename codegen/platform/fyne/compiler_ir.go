@@ -64,7 +64,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// body instantiating it, so there are no remaining child-component vars to
 	// collect.
 	for _, ov := range ctx.ModelState() {
-		// nil for a binding no declaration made: a window's route parameters,
+		// nil for a binding no declaration made: a document's route parameters,
 		// which the slot population declares and the request fills. None of
 		// the special cases below can be one -- a const, a synthesized var and
 		// a slot ref are all things a body or a pass declared -- so they are

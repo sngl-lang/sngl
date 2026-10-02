@@ -23,7 +23,7 @@ output {
 
 const packages list<string> = []
 
-ui.window #home(title="Docs", href="/") {
+ui.window #home(title="Docs") {
     html.nav {
         html.span(innerText="still here")
         for var p = packages {

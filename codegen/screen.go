@@ -26,6 +26,13 @@ type OneWindowError struct{ msg string }
 
 func (e *OneWindowError) Error() string { return e.msg }
 
+// NewOneWindowError is the refusal for a platform other than SoleScreen's that
+// cannot yet show a second window -- html, whose second window will be a
+// `<dialog>` and is a second document until then.
+func NewOneWindowError(format string, a ...any) error {
+	return &OneWindowError{fmt.Sprintf(format, a...)}
+}
+
 // Shown is whether the screen is drawn, as the target spells an expression:
 // the conditions around it and its own `visible`.
 func (sc *Screen) Shown(eval func(ir.Expr) string) string {

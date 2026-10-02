@@ -46,7 +46,7 @@ component shell node {
 
 var caught = "none"
 
-window #home(title="raise", href="/index.html", @error(e) {
+window #home(title="raise", @error(e) {
     caught = "window: " + e.message
 }) {
     vbox {
@@ -341,7 +341,7 @@ import (
 // Handler returns an http.Handler wired with every route.
 func Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /index.html", handleHome)
+	mux.HandleFunc("GET /", handleHome)
 	return mux
 }
 
@@ -529,7 +529,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3e420d5e363104f655f007cad7bd5774
 -- run/go/html --
-pass sha256:b4de8c1d3c65bd5137d84ae16e784b31
+pass sha256:6959bd235b6d49c9254315726d53404d
 -- run/kotlin/android --
 pass sha256:eaabe44222e4623d15671c640195643d
 -- run/none/html --

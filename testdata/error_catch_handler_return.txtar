@@ -18,7 +18,7 @@ func check(s string) {
 var caught = "none"
 var n = 0
 
-window #home(title="raise", href="/index.html", @error(e) {
+window #home(title="raise", @error(e) {
     caught = "window: " + e.message
     if n > 3 {
         return
@@ -527,7 +527,7 @@ import (
 // Handler returns an http.Handler wired with every route.
 func Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /index.html", handleHome)
+	mux.HandleFunc("GET /", handleHome)
 	return mux
 }
 
@@ -697,7 +697,7 @@ pass sha256:eb14c0aab21109d9f67efa8e07f298a2
 -- run/go/gtk4 --
 pass sha256:a8225bb560b2171381ceafd36da123fa
 -- run/go/html --
-pass sha256:59018dd30db3198aa186be8954dabc52
+pass sha256:554f956873c9f1f27724827151e3add8
 -- run/kotlin/android --
 pass sha256:f9f954940226329dd65c59d9ce06e0f0
 -- run/none/html --

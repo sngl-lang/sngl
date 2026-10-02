@@ -18,7 +18,7 @@ import . "sngl:ui/draw"
 var radius = 50.0
 
 component main root {
-    window #w(title="c", href="/") {
+    window #w(title="c") {
         canvas(width=400px, height=280px) {
             circle(cx=200.0, cy=140.0, r=radius, style=CanvasStyle{fill=color{r=99, g=102, b=241, a=255}}) {}
         }

@@ -502,9 +502,8 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 
 // foldWindow folds everything a window owns. It must stay in step with the
 // *ir.Window arm of foldStmt, which handles a window nested in a for-loop
-// body: the two used to disagree about the props, so a top-level window's href
-// was never folded and html's static mode rejected a compile-time-constant one
-// as dynamic. ir.Rewrite has one window walk for both positions; this driver
+// body: the two used to disagree about the props, so a top-level window's
+// props were never folded. ir.Rewrite has one window walk for both positions; this driver
 // folds rather than rewrites, so it keeps its own.
 func foldWindow(w *ir.Window, ctx *evalCtx) {
 	for i := range w.Props {

@@ -58,7 +58,7 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			computedDeps[f] = deps
 		}
 	}
-	// A window's route parameters are not a declaration any owner made -- the
+	// A document's route parameters are not a declaration any owner made -- the
 	// window's slot binds them and the request fills them in -- so Owners has
 	// nothing to yield. They are tracked for the same reason state is: an
 	// expression reading one has a dependency, and an updater with no

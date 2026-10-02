@@ -32,7 +32,7 @@ component Toolbar node {
     text(value=label())
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     theme("dark") {
         Toolbar()
     }

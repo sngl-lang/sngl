@@ -138,8 +138,8 @@ func markedPackage() *Package {
 		}},
 		Windows: []*Window{{
 			Props: []Arg{
-				{Name: WindowHref, Value: mark("Window.Props[0]")},
-				{Name: WindowTitle, Value: mark("Window.Props[1]")},
+				{Name: WindowTitle, Value: mark("Window.Props[0]")},
+				{Name: WindowFavicon, Value: mark("Window.Props[1]")},
 			},
 			ErrorHandler: &EventHandler{Func: fn("Window.ErrorHandler")},
 		}},

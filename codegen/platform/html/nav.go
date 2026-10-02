@@ -84,6 +84,12 @@ func emitNavHref(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 func navAddressJS(to, params ir.Expr, tr func(ir.Expr) string) string {
 	href, ok := recordHref(to)
 	if !ok {
+		// A copy of a page under a `for` whose href the document did not
+		// fold: it has no placeholders (it takes no params), so the address
+		// is the href as the program computes it.
+		if e := recordField(to, "href"); e != nil {
+			return tr(e)
+		}
 		return ""
 	}
 	if len(ir.HrefPlaceholders(href)) == 0 {
@@ -125,18 +131,26 @@ func navAddressJS(to, params ir.Expr, tr func(ir.Expr) string) string {
 	return "((__p) => " + strings.Join(parts, " + ") + ")(" + tr(params) + ")"
 }
 
-// recordHref is the href a page's record holds.
+// recordHref is the href a page's record holds, where it is a literal.
 func recordHref(e ir.Expr) (string, bool) {
-	lit, ok := e.(*ir.StructLit)
-	if !ok {
-		return "", false
-	}
-	for _, f := range lit.Fields {
-		if f.Name == "href" {
-			return codegen.IRLiteralString(f.Value)
-		}
+	if v := recordField(e, "href"); v != nil {
+		return codegen.IRLiteralString(v)
 	}
 	return "", false
+}
+
+// recordField is the value a page's record literal holds for name.
+func recordField(e ir.Expr, name string) ir.Expr {
+	lit, ok := e.(*ir.StructLit)
+	if !ok {
+		return nil
+	}
+	for _, f := range lit.Fields {
+		if f.Name == name {
+			return f.Value
+		}
+	}
+	return nil
 }
 
 // pageHref is the href of the page a document is written for, read off the

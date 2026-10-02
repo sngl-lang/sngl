@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"iter"
+	"maps"
 	"slices"
 	"strings"
 
@@ -23,10 +24,8 @@ import (
 // from the window it came from, so nothing yielded is reachable from pkg and
 // each is garbage once its caller has written it.
 //
-// A `#id` on a window in a loop names the list of those windows, and a window
-// anywhere may read it -- an index page listing the pages after it. So every
-// such list is bound before the first document is yielded, from the windows'
-// props alone.
+// A window holding a nav.stack is one document per page instead, the page
+// standing where the stack was (windowDocuments).
 func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error] {
 	return func(yield func(*codegen.Document, error) bool) {
 		if cfg.Cache == nil {
@@ -59,64 +58,17 @@ func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error]
 			}
 		}
 
-		lists := map[*ir.Var][]any{}
-		bindLists := func(w *ir.Window, wctx *evalCtx, loops []*ir.For) bool {
-			if w.ID == "" || len(loops) == 0 {
-				return true
-			}
-			for _, fs := range loops {
-				for _, v := range fs.HoistedWindowIDs {
-					if v.Name == w.ID {
-						props := cloneStmt(w).(*ir.NodeInst)
-						for i := range props.Props {
-							props.Props[i].Value = foldExpr(props.Props[i].Value, wctx)
-						}
-						lists[v] = append(lists[v], windowStructValue(props))
-					}
-				}
-			}
-			return true
-		}
-		if err := eachWindowRoot(pkg, ctx, bindLists); err != nil {
-			yield(nil, err)
-			return
-		}
-		for v, vals := range lists {
-			ctx.values[v] = vals
-		}
-
 		yielded := false
 		emit := func(w *ir.Window, wctx *evalCtx, _ []*ir.For) bool {
 			yielded = true
-			n, err := documentPages(w.Children, wctx)
-			if err == nil && n > 0 && w.Prop(ir.WindowHref) != nil {
-				err = fmt.Errorf("%s: a window holding a nav.stack is served at its pages' hrefs, and this one has an href of its own", ir.NodePos(w))
-			}
+			ok, err := windowDocuments(w, wctx, cfg.Language == "none", func(doc *codegen.Document, dctx *evalCtx) bool {
+				return yieldDocument(yield, doc, dctx)
+			})
 			if err != nil {
 				yield(nil, err)
 				return false
 			}
-			if n == 0 {
-				doc := cloneStmt(w).(*ir.NodeInst)
-				dctx := wctx.child()
-				dctx.fileAssets = nil
-				foldWindow(doc, dctx)
-				return yieldDocument(yield, &codegen.Document{Window: doc, Body: doc.Children}, dctx)
-			}
-			for i := range n {
-				doc := cloneStmt(w).(*ir.NodeInst)
-				dctx := wctx.child()
-				dctx.fileAssets = nil
-				page := pageDocument(&doc.Children, i, dctx, cfg.Language == "none")
-				if !page.static {
-					doc.Params = page.param
-				}
-				foldWindow(doc, dctx)
-				if !yieldDocument(yield, &codegen.Document{Window: doc, Body: doc.Children, Page: page.node}, dctx) {
-					return false
-				}
-			}
-			return true
+			return ok
 		}
 		if err := eachWindowRoot(pkg, ctx, emit); err != nil {
 			yield(nil, err)
@@ -130,21 +82,21 @@ func Documents(pkg *ir.Package, cfg *Config) iter.Seq2[*codegen.Document, error]
 			if c.Name != pkg.RootComponent {
 				continue
 			}
-			n, err := documentPages(c.Body, ctx)
+			stack, err := documentStack(c.Body, ctx)
 			if err != nil {
 				yield(nil, err)
 				return
 			}
-			if n == 0 {
+			if stack == nil {
 				dctx := ctx.child()
 				body := foldStmts(cloneStmts(c.Body), dctx)
 				yieldDocument(yield, &codegen.Document{Body: body}, dctx)
 				return
 			}
-			for i := range n {
+			for _, pc := range documentCopies(stack, ctx) {
 				dctx := ctx.child()
-				body := cloneStmts(c.Body)
-				page := pageDocument(&body, i, dctx, true)
+				body := cloneWithOnly(stack, pc, func() []ir.Stmt { return cloneStmts(c.Body) })
+				page := pageDocument(&body, pc, dctx, true)
 				body = foldStmts(body, dctx)
 				if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dctx) {
 					return
@@ -392,9 +344,10 @@ func evalDocumentNatives(pkg *ir.Package, cfg *Config, ctx *evalCtx) error {
 			if !holdsNativeCall(w, wctx) {
 				return true
 			}
-			doc := cloneStmt(w).(*ir.NodeInst)
-			dctx := wctx.child()
-			foldWindow(doc, dctx)
+			_, err := windowDocuments(w, wctx, cfg.Language == "none", func(*codegen.Document, *evalCtx) bool { return true })
+			if err != nil && probe.err == nil {
+				probe.err = err
+			}
 			return true
 		})
 		if err != nil {
@@ -433,11 +386,55 @@ func holdsNativeCall(w *ir.Window, ctx *evalCtx) bool {
 // what the target's own primitive for nav.page is handed as it stands in for
 // the node the program wrote; its stack is the node holding it.
 //
-// documentPages counts the pages of the window's one stack and refuses what
+// A page may be written under a `for` over a constant and an `if` the build
+// decides, so a document is a *copy* of a page: the page node and, for each
+// loop around it, the iteration it is. The window is cloned holding that one
+// page, the loops' variables bound for the iteration, so a site of a thousand
+// pages holds one page's tree at a time.
+
+// windowDocuments hands each document w is written as to yield: w itself when
+// it holds no stack, and one per page copy when it holds one. False when
+// yield stopped the walk.
+func windowDocuments(w *ir.Window, wctx *evalCtx, static bool, yield func(*codegen.Document, *evalCtx) bool) (bool, error) {
+	stack, err := documentStack(w.Children, wctx)
+	if err != nil {
+		return false, err
+	}
+	if stack == nil {
+		doc := cloneStmt(w).(*ir.NodeInst)
+		dctx := wctx.child()
+		dctx.fileAssets = nil
+		foldWindow(doc, dctx)
+		return yield(&codegen.Document{Window: doc, Body: doc.Children}, dctx), nil
+	}
+	copies := documentCopies(stack, wctx)
+	if wctx.err != nil {
+		return false, wctx.err
+	}
+	for _, pc := range copies {
+		dctx := wctx.child()
+		dctx.fileAssets = nil
+		doc := cloneWithOnly(stack, pc, func() []ir.Stmt { return []ir.Stmt{cloneStmt(w)} })[0].(*ir.NodeInst)
+		page := pageDocument(&doc.Children, pc, dctx, static)
+		if !page.static {
+			doc.Params = page.param
+		}
+		foldWindow(doc, dctx)
+		if dctx.err != nil {
+			return false, dctx.err
+		}
+		if !yield(&codegen.Document{Window: doc, Body: doc.Children, Page: page.node}, dctx) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// documentStack is the one stack stmts render, nil for none, refusing what
 // cannot be decided per document: a second stack, which would make the
 // documents a product of the two, and a stack under an `if` the build cannot
 // fold, whose pages a document can neither hold nor leave out.
-func documentPages(stmts []ir.Stmt, ctx *evalCtx) (int, error) {
+func documentStack(stmts []ir.Stmt, ctx *evalCtx) (*ir.NodeInst, error) {
 	var stack *ir.NodeInst
 	var walk func(stmts []ir.Stmt) error
 	walk = func(stmts []ir.Stmt) error {
@@ -447,7 +444,7 @@ func documentPages(stmts []ir.Stmt, ctx *evalCtx) (int, error) {
 				if ir.IsWindowNode(n) {
 					continue
 				}
-				if pageCount(n) > 0 {
+				if holdsPages(n.Children) {
 					if stack != nil {
 						return fmt.Errorf("%s: a window's documents are its pages, and this is a second nav.stack in it; the first is at %s", ir.NodePos(n), ir.NodePos(stack))
 					}
@@ -496,22 +493,102 @@ func documentPages(stmts []ir.Stmt, ctx *evalCtx) (int, error) {
 		return nil
 	}
 	if err := walk(stmts); err != nil {
-		return 0, err
+		return nil, err
 	}
-	if stack == nil {
-		return 0, nil
-	}
-	return pageCount(stack), nil
+	return stack, nil
 }
 
-func pageCount(n *ir.NodeInst) int {
-	count := 0
-	for _, s := range n.Children {
-		if p, ok := s.(*ir.NodeInst); ok && p.Record != nil {
-			count++
+// holdsPages reports whether stmts hold a page, directly or under the `for`
+// and `if` a stack's pages may be written in.
+func holdsPages(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if n.Record != nil {
+				return true
+			}
+		case *ir.For:
+			if holdsPages(n.Body) {
+				return true
+			}
+		case *ir.If:
+			if holdsPages(n.Body) || holdsPages(n.Else) {
+				return true
+			}
 		}
 	}
-	return count
+	return false
+}
+
+// pageStep is one level of the way from a stack to a page copy: the index of
+// the statement in the list, and for an `if` the branch taken (0 its body, 1
+// its else) or for a `for` the iteration.
+type pageStep struct {
+	idx, sub int
+}
+
+// pageCopy is one page a document is written for, by the way to it from its
+// stack, so that the same way can be followed in a clone.
+type pageCopy struct {
+	path []pageStep
+}
+
+// documentCopies is every page copy the stack holds, in order: an `if` the
+// build decides contributes the branch it takes, and a `for` one copy per
+// element.
+func documentCopies(stack *ir.NodeInst, ctx *evalCtx) []pageCopy {
+	var out []pageCopy
+	var walk func(stmts []ir.Stmt, ctx *evalCtx, path []pageStep)
+	walk = func(stmts []ir.Stmt, ctx *evalCtx, path []pageStep) {
+		for i, s := range stmts {
+			at := func(sub int) []pageStep {
+				return append(slices.Clip(path), pageStep{i, sub})
+			}
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				if n.Record != nil {
+					out = append(out, pageCopy{path: at(0)})
+				}
+			case *ir.If:
+				lit, ok := foldExpr(cloneExpr(n.Cond), ctx).(*ir.Literal)
+				if !ok || lit.Type == nil || lit.Type.Kind != ir.TypeBool {
+					if ctx.err == nil {
+						ctx.err = fmt.Errorf("%s: a page under an `if` the build cannot decide is in no document and every one at once; decide it from constants", ir.StmtPos(n))
+					}
+					continue
+				}
+				if lit.Value == "true" {
+					walk(n.Body, ctx, at(0))
+				} else {
+					walk(n.Else, ctx, at(1))
+				}
+			case *ir.For:
+				items, ok := loopItems(n, ctx)
+				if !ok {
+					if ctx.err == nil {
+						ctx.err = fmt.Errorf("%s: pages under a `for` whose iterable the build cannot evaluate have no documents; iterate a constant", ir.StmtPos(n))
+					}
+					continue
+				}
+				keyVar, valueVar := loopVars(n)
+				for k, item := range items {
+					walk(n.Body, bindLoopVars(n, ctx, keyVar, valueVar, k, item), at(k))
+				}
+			}
+		}
+	}
+	walk(stack.Children, ctx, nil)
+	return out
+}
+
+// cloneWithOnly clones what clone copies while stack holds only the
+// statement pc's way starts at, so a document's clone holds its one page and
+// not every page beside it. The stack is restored before it returns.
+func cloneWithOnly(stack *ir.NodeInst, pc pageCopy, clone func() []ir.Stmt) []ir.Stmt {
+	kids := stack.Children
+	stack.Children = []ir.Stmt{kids[pc.path[0].idx]}
+	defer func() { stack.Children = kids }()
+	return clone()
 }
 
 // documentPage is the page a document is written for.
@@ -525,10 +602,11 @@ type documentPage struct {
 	static bool
 }
 
-// pageDocument rewrites stmts, a clone, so that the stack holding the pages
-// stands for its i'th page alone: the page's content, in the stack's place.
-// `pages.current` in the document is that page's record.
-func pageDocument(stmts *[]ir.Stmt, i int, ctx *evalCtx, static bool) documentPage {
+// pageDocument rewrites stmts, a clone made by cloneWithOnly, so that the
+// stack holding the pages stands for the copy pc names alone: the page's
+// content, in the stack's place, with the variables of the loops around it
+// bound in ctx. `pages.current` in the document is that copy's record.
+func pageDocument(stmts *[]ir.Stmt, pc pageCopy, ctx *evalCtx, static bool) documentPage {
 	var out documentPage
 	var walk func(stmts []ir.Stmt) []ir.Stmt
 	walk = func(stmts []ir.Stmt) []ir.Stmt {
@@ -536,8 +614,8 @@ func pageDocument(stmts *[]ir.Stmt, i int, ctx *evalCtx, static bool) documentPa
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if !ir.IsWindowNode(n) && pageCount(n) > 0 {
-					res = append(res, out.take(n, i, ctx, static)...)
+				if !ir.IsWindowNode(n) && holdsPages(n.Children) {
+					res = append(res, out.take(n, pc, ctx, static)...)
 					continue
 				}
 				n.Children = walk(n.Children)
@@ -561,28 +639,49 @@ func pageDocument(stmts *[]ir.Stmt, i int, ctx *evalCtx, static bool) documentPa
 	return out
 }
 
-func (out *documentPage) take(stack *ir.NodeInst, i int, ctx *evalCtx, static bool) []ir.Stmt {
-	k := 0
-	for _, s := range stack.Children {
-		p, ok := s.(*ir.NodeInst)
-		if !ok || p.Record == nil {
-			continue
+// take follows pc's way through the stack's one statement to the page,
+// binding each loop's variables for the iteration on the way, and returns the
+// page's content.
+func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, ctx *evalCtx, static bool) []ir.Stmt {
+	stmts := stack.Children
+	for depth, step := range pc.path {
+		idx := step.idx
+		if depth == 0 {
+			idx = 0 // the clone holds only this statement
 		}
-		if k != i {
-			k++
-			continue
+		if idx >= len(stmts) {
+			return nil
 		}
-		out.node, out.static = p, static
-		if v, ok := evalExpr(p.Record, ctx); ok {
-			ctx.navCurrent = v
-		}
-		body := p.Children
-		if out.param = p.Params; out.param != nil && static {
-			if v, ok := evalExpr(p.Prop("params"), ctx); ok {
-				ctx.values[out.param] = v
+		switch n := stmts[idx].(type) {
+		case *ir.If:
+			stmts = n.Body
+			if step.sub == 1 {
+				stmts = n.Else
 			}
+		case *ir.For:
+			items, ok := loopItems(n, ctx)
+			if !ok || step.sub >= len(items) {
+				return nil
+			}
+			keyVar, valueVar := loopVars(n)
+			bound := bindLoopVars(n, ctx, keyVar, valueVar, step.sub, items[step.sub])
+			maps.Copy(ctx.values, bound.values)
+			stmts = n.Body
+		case *ir.NodeInst:
+			out.node, out.static = n, static
+			// The record is the copy's: under a `for` it reads the loop's
+			// variables, which ctx now binds.
+			n.Record = foldExpr(n.Record, ctx)
+			if v, ok := evalExpr(n.Record, ctx); ok {
+				ctx.navCurrent = v
+			}
+			if out.param = n.Params; out.param != nil && static {
+				if v, ok := evalExpr(n.Prop("params"), ctx); ok {
+					ctx.values[out.param] = v
+				}
+			}
+			return n.Children
 		}
-		return body
 	}
 	return nil
 }

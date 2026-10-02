@@ -214,13 +214,13 @@ body { font-family: system-ui, sans-serif; }
   <a href="/about">
     <span>About</span>
   </a>
-  <button id="$9">
+  <button id="$5">
     <span>Home</span>
   </button>
-  <button id="$10">
+  <button id="$6">
     <span>Settings</span>
   </button>
-  <button id="$11">
+  <button id="$7">
     <span>Back</span>
   </button>
   <span id="__n0" data-sngl-id="__n0">
@@ -281,19 +281,19 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $10 = document.getElementById("$10");
-  var $11 = document.getElementById("$11");
-  var $9 = document.getElementById("$9");
+  var $5 = document.getElementById("$5");
+  var $6 = document.getElementById("$6");
+  var $7 = document.getElementById("$7");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  $9.addEventListener("click", function() {
+  $5.addEventListener("click", function() {
     location.assign("/");
   });
-  $10.addEventListener("click", function() {
+  $6.addEventListener("click", function() {
     state.visits += 1;
     __n0.textContent = "visits " + String(state.visits);
     location.assign("/settings.html");
   });
-  $11.addEventListener("click", function() {
+  $7.addEventListener("click", function() {
     history.back();
   });
   function __sngl_init() {
@@ -415,4 +415,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8c9004699772cd26535e3bb59c08d5b2
+pass sha256:1104ddedb3039332804ee0a21bc8d243

@@ -51,7 +51,7 @@ component App() node {
     chain(n=d)
 }
 
-window(title="H", href="/index.html") {
+window(title="H") {
     App()
 }
 -- out/none/html/index.html --

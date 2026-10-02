@@ -139,3 +139,38 @@ func TestResolveProjectFSRefusals(t *testing.T) {
 		}
 	}
 }
+
+// A name starting with `_` in a directory import is the directory's own
+// material -- a template, a tutorial's source -- and no page, as Go skips one:
+// neither a `_` file nor anything under a `_` directory is rendered.
+func TestDirectorySkipsUnderscoreNames(t *testing.T) {
+	fsys := fstest.MapFS{
+		"docs/index.md":           &fstest.MapFile{Data: []byte("# Home\n")},
+		"docs/_tour.md":           &fstest.MapFile{Data: []byte("# Tour\n")},
+		"docs/_templates/page.md": &fstest.MapFile{Data: []byte("# Template\n")},
+		"docs/guide.md":           &fstest.MapFile{Data: []byte("# Guide\n")},
+		"docs/guide/_draft.md":    &fstest.MapFile{Data: []byte("# Draft\n")},
+	}
+	out, err := (&Importer{}).ResolveProjectFS("./docs/", fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := fs.ReadFile(out, "generated.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(got)
+	for _, page := range []string{"component index ", "component guide "} {
+		if !strings.Contains(src, page) {
+			t.Errorf("no %q in the site:\n%s", page, src)
+		}
+	}
+	for _, skipped := range []string{"Tour", "Template", "Draft", "_tour", "_draft"} {
+		if strings.Contains(src, skipped) {
+			t.Errorf("%q reached the site, which skips a `_` name:\n%s", skipped, src)
+		}
+	}
+	if !strings.Contains(src, "nav.page(href=") {
+		t.Errorf("site renders no nav.page:\n%s", src)
+	}
+}

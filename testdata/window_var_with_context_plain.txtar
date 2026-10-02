@@ -27,7 +27,7 @@ output {
     }
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     var name = "alpha"
     vbox {
         text(value=name)

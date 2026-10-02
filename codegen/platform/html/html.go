@@ -148,26 +148,6 @@ document.addEventListener('DOMContentLoaded', () => main());
 	}
 }
 
-// rejectDynamicHref errors in static mode: {param} routes need a server.
-//
-// Two shapes say a path is dynamic and the first is no longer the whole
-// question. An href the optimizer could not settle to a string is still one.
-// But a path's placeholders are ordinary characters in a plain string now,
-// where they used to be an interpolation the checker desugared -- so
-// `/p/{pkg}` is a perfectly good literal, and read for that alone the static
-// build wrote a directory called `{pkg}` and said nothing.
-func rejectDynamicHref(win *codegen.WindowCtx) error {
-	href := win.Window.Prop(ir.WindowHref)
-	if href == nil {
-		return nil
-	}
-	path, ok := codegen.IRLiteralString(href)
-	if ok && len(extractRouteParams(path)) == 0 {
-		return nil
-	}
-	return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
-}
-
 type compilation struct {
 	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
@@ -515,8 +495,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	// document with nowhere to fetch a second from.
 	shareConsts := staticMode && !opts.Preview && more
 	var mainStmts []ir.Stmt
-	seenPaths := map[string]ast.Pos{}
-	seenPages := map[string]string{}
+	seenPaths := map[string]string{}
 	seenAssets := map[string]bool{}
 	for _, fa := range c.assetFiles {
 		seenAssets[fa.name] = true
@@ -532,8 +511,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 				c.assetFiles = append(c.assetFiles, htmlAssetFile{name: fa.OutPath, bytes: fa.Data})
 			}
 		}
+		// A document is served at the href of the page it is written for; a
+		// window holding no stack is the one document a site has, at its root.
 		var name string
-		href := win.Window.Prop(ir.WindowHref)
+		var href ir.Expr
 		if doc.Page != nil {
 			href = pageHref(doc.Page)
 		}
@@ -545,27 +526,30 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			c.routeWindows = append(c.routeWindows, win)
 			c.routePages = append(c.routePages, doc.Page)
 		case href == nil:
-			// No declaration to take an href from: the package body's root
-			// window, or one a component renders. It is the document the site
-			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			if err := rejectDynamicHref(win); err != nil {
-				return nil, err
+			// passNavigationHrefs refused a pattern where it could see one; a
+			// page under a `for` has its href only once the copy is known.
+			h, ok := codegen.IRLiteralString(href)
+			if !ok || len(extractRouteParams(h)) > 0 {
+				return nil, fmt.Errorf("%s: page %q is served at a pattern: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID)
 			}
-			h, _ := codegen.IRLiteralString(href)
 			name = pathFromHref(h)
 		}
-		if staticMode && doc.Page != nil {
-			if prev, dup := seenPages[name]; dup {
-				return nil, fmt.Errorf("html: page %q is written to %s, as page %q is", doc.Page.ID, name, prev)
+		if staticMode {
+			label := "window " + ir.StmtPos(win.Window).String()
+			if doc.Page != nil {
+				label = fmt.Sprintf("page %q", doc.Page.ID)
 			}
-			seenPages[name] = doc.Page.ID
-		} else if staticMode {
 			if prev, dup := seenPaths[name]; dup {
-				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, ir.StmtPos(win.Window))
+				// Two windows holding no stack: a page is a nav.page, and a
+				// second window is a surface html does not show yet.
+				if doc.Page == nil {
+					return nil, codegen.NewOneWindowError("html: %s is written to %s, as %s is: html shows one window per document; write the pages as a nav.stack's", label, name, prev)
+				}
+				return nil, fmt.Errorf("html: %s is written to %s, as %s is", label, name, prev)
 			}
-			seenPaths[name] = ir.StmtPos(win.Window)
+			seenPaths[name] = label
 		}
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
@@ -699,7 +683,7 @@ type htmlGen struct {
 	noCacheBust bool
 
 	// outDir is what the inline source map's `sources` resolve against. It
-	// only makes them a good label: a window with `href="/about"` lands a
+	// only makes them a good label: a page with `href="/about"` lands a
 	// directory lower, and that name is decided after the map is rendered.
 	// The map's sourcesContent is what actually carries the source.
 	outDir string
@@ -957,6 +941,12 @@ func (g *htmlGen) prewalkNodes() {
 			// names no DOM node, so allocating a var for one would declare a
 			// binding against a `document.querySelector` that finds nothing.
 			if ir.IsWindowNode(n) {
+				visitStmts(n.Children)
+				return
+			}
+			// Nor does a stack or a page: a document stands the page's content
+			// where the stack was, so neither is an element of any page.
+			if n.Record != nil || (n.Component != nil && n.Component.Intrinsic == "html:stack") {
 				visitStmts(n.Children)
 				return
 			}

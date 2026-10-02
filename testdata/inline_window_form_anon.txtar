@@ -28,7 +28,7 @@ component table(rows list<Row>, children ...component) node {
     }
 }
 
-window #w(href="/index.html", title="x") {
+window #w(title="x") {
     table(rows=[Row{title="alpha"}]) {
         text(value="inner")
     }

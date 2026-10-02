@@ -36,7 +36,7 @@ component show ui.node {
     ui.text(value=label)
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var txt = "b"
 
     ui.vbox {

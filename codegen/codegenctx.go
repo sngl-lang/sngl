@@ -81,23 +81,13 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	return c
 }
 
-// EntryWindow is the window a single-model target scopes to, or nil where the
-// program has not said which.
-//
-// The single-window case is unambiguous and always has been. Past one, the
-// answer used to be nothing at all -- scoping to a guess was worse than
-// scoping to none -- and `output(entry = home)` is what lets the program
-// answer instead.
+// EntryWindow is the window a single-model target scopes to, or nil where
+// there is not exactly one to be unambiguous about. Past one the answer is
+// nothing at all: scoping to a guess is worse than scoping to none, and a
+// program's destinations are nav.pages in one window rather than windows.
 func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 	if ctx.Pkg == nil {
 		return nil
-	}
-	if name := ctx.Pkg.EntryWindow; name != "" {
-		for _, w := range ctx.Pkg.Windows {
-			if w.ID == name {
-				return w
-			}
-		}
 	}
 	// A window written inside a component is already in that component's
 	// scope, so only the root-level ones are counted here.
@@ -114,7 +104,7 @@ func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 // emission cannot.
 //
 // Sym is a symbol rather than an *ir.Var because not everything a Model holds
-// is a declaration a body made: a window's route parameters are the *ir.Param
+// is a declaration a body made: a document's route parameters are the *ir.Param
 // its slot population binds, and whatever serves the page fills them in. A
 // target stores the two the same way, which is the whole of what this list
 // says; the accessors below are what a Param answers and a Var answers more
@@ -198,11 +188,10 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 			add(c, o)
 		}
 	}
-	// A window's route parameters are the one cell no owner declares: the
-	// window's scoped slot binds them and whatever serves the page fills them
-	// in. A target with no request never fills one and renders the struct's
-	// zero -- but it still reads the binding, so the Model has to hold it or
-	// the read names a field nothing declared.
+	// A document's route parameters are the one cell no owner declares: the
+	// page its document is written for binds them (optimize.Documents puts
+	// the page's cell on the document's window) and whatever serves the page
+	// fills them in.
 	for _, w := range ctx.Windows() {
 		if w.Window != nil && w.Window.Params != nil {
 			add(w.Window.Params, ir.Owner{Win: w.Window})

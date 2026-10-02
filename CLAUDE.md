@@ -494,9 +494,9 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 ### Platform Details
 
 - **html** — two modes selected by `--lang`:
-  - `--lang none` (default): static site — one `index.html` per window with inline JS, or per page of the `nav.stack` a window holds (see *Navigation*).
+  - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). A second window holding no stack is refused with a `codegen.OneWindowError` until it is a `<dialog>` in the first one's document (Phase C2, step 7).
     Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows -- or the pages of the stack one holds -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
@@ -1097,15 +1097,16 @@ fields against 72 arms. None is a *body owner*: `Vars` and `Funcs` stay off
 bookkeeping about its own progress and so a set there.
 
 **And a window's props are the declaration's, not the compiler's.**
-`lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
-component declares a prop, so they are the `Props []Arg` any node carries and
-`Component` is the declaration they were measured against. Naming the three as
-Go fields cost 22 files a hardcoded triple, and two of them — `buildWindow` and
-the window's own convert path — a hand-maintained list that had to agree; a
-fourth prop would have needed every one of them edited before it reached a
-backend. What a Go consumer still spells is `ir.WindowTitle` and its two
-siblings, which name the *prop it reads* rather than redeclaring one: html asks
-for the href, gtk4 for the title, and neither is a list of what a window has.
+`lib/ui/window.sngl` declares `title` and `favicon` like any other component
+declares a prop, so they are the `Props []Arg` any node carries and `Component`
+is the declaration they were measured against. Naming them as Go fields cost 22
+files a hardcoded list, and two of them — `buildWindow` and the window's own
+convert path — a hand-maintained list that had to agree; another prop would
+have needed every one of them edited before it reached a backend. What a Go
+consumer still spells is `ir.WindowTitle` and its sibling, which name the *prop
+it reads* rather than redeclaring one: html asks for the favicon, gtk4 for the
+title, and neither is a list of what a window has. A window has no `href` or
+`params` and is no destination: those are a `nav.page`'s (see *Navigation*).
 
 **A window's `#id` binds a node handle**, and it is `NodeInst.ID` like every
 other node's. `declareNodeID` had the split written out: every node id bound an
@@ -1114,8 +1115,7 @@ other node's. `declareNodeID` had the split written out: every node id bound an
 answers. It binds the same handle now, `Handle` points at it, and
 `SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
 window as a symbol. That is what found the three consumers rather than leaving
-them to a grep: `output(entry = home)` matches by handle and falls back to the
-name for a window a component renders, folding `home.title` reaches the window
+them to a grep: folding `home.title` reaches the window
 through `ir.WindowHandles` (the optimizer's `windowForHandle`), and `hoistedWindow`/`bindWindow` are deleted —
 the handle is the stable thing a reference resolves to, so `buildWindow` builds
 a fresh window every call. `ir.Window.Typ` went with them, having only ever
@@ -1152,19 +1152,22 @@ off before the rule is asked, and a handler runs after mount.
 What it does **not** cover is the two cases where no single declaration reads
 itself, and both keep the guards they had. **Mutual reference** —
 `window #a(title = b.title)` beside `window #b(title = a.title)` — reaches
-`evalCtx.foldingProp` by a second key and is still left standing, so the page
-comes out with content and no `<title>`, silently. And `const a int = a` is the
-same shape one layer down in a scope of its own: `sngl check` accepts it and
-always did, because the checker never folds, while `sngl generate` used to
-crash — `evalIdent` and `evalExpr` calling each other until the stack went,
-with no position and no message
+`evalCtx.foldingProp` by a second key and is still left standing: html used to
+write both pages with no `<title>`, silently, and fyne emits `SetTitle(title)`
+against a name nothing declares. Between two `nav.page`s the same pair is
+refused with a position by `passNodePropReads`, which is what reaches it on
+html now that a second window there is not a document of its own. And
+`const a int = a` is the same shape one layer down in a scope of its own:
+`sngl check` accepts it and always did, because the checker never folds, while
+`sngl generate` used to crash — `evalIdent` and `evalExpr` calling each other
+until the stack went, with no position and no message
 (`cmd/sngl/testdata/const_reads_itself.txt`).
 
 So the general rule — a *declaration* that reads itself, however many hops
 round — is still not made, and both guards are still the survivable answer
 rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt`
-holds the two halves apart: the self-reference refused with a position, the
-mutual pair still emitted with nothing said.
+holds the two halves: the self-reference refused by the checker, the mutual
+pair of pages refused by the lowering.
 
 **A window owns no state**, which is why `Vars`, `Funcs` and `Timers` did not
 come along either. A window is a rendering root and not a storage level, so
@@ -1214,8 +1217,10 @@ route mode skips anything that still carries a receiver
 **Several windows each get it, and the platform says what that means.** One
 root component rendering two windows is spliced once, so both read the one
 cell: a target whose windows are one process shares it — bubbletea, fyne and
-gtk4 each put it in one Model — and a target whose windows are separate
-documents copies it, html writing its own `state` into each page. That divergence is the point
+gtk4 each put it in one Model — and a target whose pages are separate
+documents copies it, html writing its own `state` into each page of a stack.
+html shows one window per document until a second is a `<dialog>` (Phase C2,
+step 7), so the fixture below builds the desktop targets alone. That divergence is the point
 rather than a gap: two pages *are* two states and one process *is* one, and
 forcing either way round in the lowering would be the language overriding the
 platform it compiled to. The author picks a target knowing it. Shared top-level
@@ -1250,10 +1255,10 @@ directory of files each declaring one was read as a corpus of programs rather
 than a package, a library declaring one could not be imported, and route mode
 gave a `window #main` the index's `/` beside the first window's
 (`route_window_named_main.txtar`). Route mode and html ask
-`ir.Package.RootDecl()` for a harness root. `output(entry = home)` names the
-window a build opens at, by element reference so a typo is a name nobody
-declared; it completes the gap `codegen/codegenctx.go` already admitted to,
-where one window was scoped implicitly and two or more got no scoping at all.
+`ir.Package.RootDecl()` for a harness root. One window is scoped implicitly and
+two or more get no scoping at all (`CodegenCtx.EntryWindow`): `output(entry = home)` used to choose, and went with a window's `href` (Phase C2, step 6),
+since which destination a build opens at is a stack's question -- the page at
+`/`, or its first.
 
 The facts land on `ir.Component.Tree` at registration and on
 `ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
@@ -1346,9 +1351,10 @@ nothing to bind them to" — and allowing it needed no lowering change at all:
 a population already arrives through `NodeInst.Slots`, which is the first
 thing `ir.SlotBody` looks at.
 
-`lib/ui/window.sngl` is the user: a window's route parameters arrive as one
+`sngl:ui/nav`'s `page` is the user: a page's route parameters arrive as one
 struct value in the `params` prop, `T` is inferred from it, and the body that
-reads them is the population of the window's `content` slot. That is what
+reads them is the population of the page's `content` slot. (A window was the
+user until Phase C2, step 6, when `href` and `params` moved to the page.) That is what
 makes a path a plain string rather than an interpolation — the names in
 `/p/{pkg}` are the struct's fields, not identifiers in scope. Before it, the
 checker read the placeholders off the href and synthesized an `*ir.Var` per
@@ -1356,11 +1362,12 @@ name: a placeholder and a node `#id` shared one namespace with nothing
 declaring either, so which one a body's `pkg` reached fell out of scope-push
 order; nothing could say a parameter was anything but a string; and a
 misspelled placeholder declared a var rather than being reported.
-html's `checkRouteParams` (`codegen/platform/html/routes.go`) asks the last two
-now, holding every `{name}` to a field of the struct and that field to a type a
-route can parse text into.
+`passNavigationHrefs` (`internal/lower/navigation_hrefs.go`) asks the last two
+now, holding every `{name}` to a field of the struct, that field to a type a
+path can carry, and every field to a placeholder.
 
-`NodeInst.Params` is the cell it lands in, and it is the `*ir.Param` the
+`NodeInst.Params` is the cell it lands in -- on the page, and from there on the
+window of the document `optimize.Documents` writes for it -- and it is the `*ir.Param` the
 population declares — an ordinary slot binding, because there is no
 distinction for the checker to make. That a target *stores* it is codegen's
 answer: `CodegenCtx.ModelState` is "which bindings a single-Model target puts
@@ -1377,12 +1384,12 @@ target with no request renders that zero.
 Two things follow from the zero being codegen's. The shake roots the window
 *node* rather than its children, so `Params.Type` and the `@error` are
 reachable — the struct a route's parameters name is otherwise declared and
-never constructed, and went. And the window that writes no population carries
-no cell at all, so nothing downstream binds a route parameter for a page that
-does not read one.
+never constructed, and went. And a page that writes no population carries no
+cell at all, so nothing downstream binds a route parameter for a page that does
+not read one.
 
-**A window's body reaches `checkSlotPopulations` like every other node's**,
-and `w.Params` is that population's own parameter. It used to read its own
+**A window's body reaches `checkSlotPopulations` like every other node's**.
+It used to read its own
 population out of the block: sixty-five lines restating "no such slot",
 "already populated" and "populated by name and bare", and missing the ones it
 did not think to restate — slot arity, and a population naming an override
@@ -1391,16 +1398,13 @@ that peel is `windowBodyBlock`, which answers only *which lines* the body is,
 and exists because a window hoists its own node ids before the body is read.
 
 **And a window is built in pass2**, like every other node. `windowShell` is
-what pass1 reserves — the target name, the `#id`, the handle — because
-`output(entry = home)` and a sibling window need something to resolve against
-before any body is read; `checkWindow` reads the props, the `@error` and the
+what pass1 reserves — the target name, the `#id`, the handle — because a
+sibling window needs something to resolve against before any body is read; `checkWindow` reads the props, the `@error` and the
 body. Building the whole thing in pass1 checked its arguments against a scope
 pass1 had not finished filling, so `window #home(title = greeting())` above
 `func greeting()` was `undefined: greeting` while the same window one level
 into a component body checked clean
-(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`). One local
-specialization also means the bound `T` needs no carrying, which is what the
-params cell used to be for.
+(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`).
 
 What is still the checker's alone is the **id scope**: a window pushes one and
 hoists its own `#id`s into it, which `declareNodeIDsStmt` says by not
@@ -2552,15 +2556,20 @@ the doc site uses, so two readings of one document cannot differ.
   content is `guide.md` or `guide/index.md` — both is an error, and neither
   leaves the child with no parent. A page's href follows its file:
   `/guide/intro.html`, and `/guide/index.html` for `guide/index.md` where
-  `guide.md` is `/guide.html`.
+  `guide.md` is `/guide.html`. A file or directory whose name starts with `_`
+  is the directory's own material and no page -- a template, a tutorial's
+  source -- as Go skips one; the docs site's tutorial is `learn/_tour.md`.
 
   The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
-  **`root`**, a const holding the whole tree, and **`site<T>(layout component(page Page, content component ui.node) T) T`**, which inserts
-  `layout` once per page — reading each page out of `root` so the tree is
-  written once — and populates its `content` entry with that page's component.
-  The program writes the layout once and decides what a page is: a `window`
-  per page, a route, a pane. Nothing holds a component, so all of it is
-  compile-time. Those four names are reserved, and a page taking one, or two
+  **`root`**, a const holding the whole tree, and **`site(layout component(page Page, content component ui.node) ui.node)`**, which renders
+  one `nav.page` per file -- at the file's href, titled by the frontmatter's
+  `title` where `Frontmatter` has one -- with `layout` inserted around it,
+  reading each page out of `root` so the tree is written once, and populates
+  its `content` entry with that page's component. `site` renders pages without
+  declaring a page's props, so it is a group (see *Navigation*): the program
+  writes it among a `nav.stack`'s pages, beside pages of its own, and the
+  window around the stack is the chrome every page shares. Nothing holds a
+  component, so all of it is compile-time. Those four names are reserved, and a page taking one, or two
   paths becoming one name, is refused naming the files.
 
   **`Frontmatter` is the site's own vocabulary.** A `struct Frontmatter`
@@ -2725,11 +2734,57 @@ function, a test body, the step an effect in a page settles by -- reads
 `globalThis.__sngl_page`, which a document publishes only when its script
 names it. A `go` is `location.assign` and `back` is `history.back()`: the
 browser's history, so at its bottom it leaves the site. A window holds one
-stack and no href of its own beside it. Refused with a position:
+stack. Refused with a position:
 `cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and
 `nav_stack_html_route.txtar` are the code, and `nav_stack_runs.txt` runs what
 a document answers without leaving itself -- a test runs inside the document
 it was loaded in, and a navigation ends it.
+
+**A stack's pages are fixed when it is built, and need not be written one by
+one.** A `for` over a constant writes a page per element, an `if` over
+constants one or none, and a **group** -- a component whose body renders pages
+and which declares none of the page family's props (`ir.Component.Group`,
+set by `checkFamilyMember`) -- adds the pages it renders. A group renders
+members without being one, so its handle is no value of the family
+(`Type.IsAssignableTo` refuses it, and `bindFromChildren` skips it); the
+optimizer splices one wherever it is written (`inlineComponentCall`, whatever
+its props), which is what folds an `if` over what the call site handed it --
+md's `site` and its layout -- and `spliceGroups` splices whatever the optimizer
+did not before passNavigationValues numbers the pages, since the inliner runs
+long after. A copy of a page under a `for` shares the page's id, and its
+record holds the iteration beside it, `copy` -- present on a family's record
+only where some page of it is under a loop -- so `==` compares both, the
+loop's index is made explicit (`ensureLoopIndex`), and the page's `#id` names
+that copy inside the loop and is nothing outside it (the checker's "rendered
+inside a for" diagnostic). html writes a document per copy: `optimize.Documents`
+enumerates the copies (`documentCopies`), folds an `if` and walks a loop with
+its variables bound, and clones the window holding only the statement the copy
+is in, so a site of a thousand pages holds one page's tree at a time; a loop of
+pages is no render slot (`loopsOverPages`, asked by passReactivity and
+passSlotChildInstances) and the page primitive under one is a rendering root
+for the inliner, as a window is. passNavigation keeps the loop: each copy is
+the `if` on `id` and `copy`, and where a copy may be the start the stack's
+first page is `<stack>__start()`, which looks for the page at "/" among the
+copies and falls back to the first written -- folded at build time where the
+iterable is a constant. Refused with a position
+(`cmd/sngl/testdata/nav_pages_written_around_refused.txt`): a `for` over state
+or an `if` reading it, a loop inside a loop of pages, params on a page under a
+`for` (each copy reads its element), a group with state of its own, and any of
+it on android, whose NavHost declares a route per page and not yet one per
+copy. `testdata/nav_stack_pages_written_around.sngl` runs it on the
+interpreter, which needed nothing new -- each copy is an instance of its own --
+and `nav_stack_pages_written_around.txtar` is the code on html, gtk4, fyne and
+bubbletea.
+
+**A window lost `href` and `params`, and `output(entry=…)` went** (Phase C2,
+step 6): a destination is a page, and a stack starts at the page at "/", or
+its first. Every program that was a window per page is a window holding a
+stack of pages, the window's title the page's (`title=pages.current.title`),
+and html writes the same documents from it. What a page cannot carry that a
+window could: a `var` written in a page's body is not hoisted the way a
+window's is -- a `var` in any node's children is a local the fold reads as a
+constant, which is a gap of its own -- so state a page reads belongs in the
+window around the stack.
 
 Three limits that are not navigation's. On bubbletea a stateful component in a
 page is spliced into the Model, so its state survives the page being left --

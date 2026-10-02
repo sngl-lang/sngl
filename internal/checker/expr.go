@@ -3604,12 +3604,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				iter = exprType(iterExpr)
 			}
 		}
-		// Hoist window #ids declared inside the loop body as list<Window>
-		// symbols in the enclosing scope, so refs outside the loop type-check
-		// against the unrolled list. Done before pushScope so the symbol
-		// lives in the parent scope.
 		c.checkViewMapFor(x.Pos, iter)
-		hoistedIDs := c.hoistForLoopWindowIDs(&x.Body)
 		c.pushScope()
 		// Resolve &-binding: only the ELEMENT loop var may be &-bound, only
 		// over a mutable addressable list. The element is Key in single-var
@@ -3726,7 +3721,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
-		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
+		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, RefElem: elemRef}
 		c.checkViewForElse(x.Pos, loop, iter)
 		return loop
 	case *ast.VisualNode:
@@ -5135,67 +5130,6 @@ func bindWildcardName(comp *ir.Component, name string, props []ir.Arg) []ir.Arg 
 		Name:  comp.WildcardInto,
 		Value: &ir.Literal{Type: TypString, Value: name},
 	})
-}
-
-// hoistForLoopWindowIDs scans a for-loop body for window declarations with
-// non-empty #ids and declares each as a list<Window> symbol in the current
-// (enclosing) scope. After optimizer expansion, the bound value is the list
-// of unrolled windows; inside the loop body, the same id remains a scalar
-// Window (declared per-iteration during normal body checking).
-func (c *checker) hoistForLoopWindowIDs(block *ast.StmtBlock) []*ir.Var {
-	if block == nil || !block.IsDefined() {
-		return nil
-	}
-	seen := map[string]bool{}
-	var vars []*ir.Var
-	c.collectForLoopWindowIDs(block, seen, &vars)
-	return vars
-}
-
-func (c *checker) collectForLoopWindowIDs(block *ast.StmtBlock, seen map[string]bool, vars *[]*ir.Var) {
-	if block == nil || !block.IsDefined() {
-		return
-	}
-	for _, s := range block.Stmts {
-		c.collectForLoopWindowIDsStmt(s, seen, vars)
-	}
-}
-
-func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, vars *[]*ir.Var) {
-	switch n := s.(type) {
-	case *ast.VisualNode:
-		if c.isWindowNode(visualNodeTarget(n)) && n.ID != "" {
-			if !seen[n.ID] {
-				seen[n.ID] = true
-				// A name this checker already hoisted for the package body
-				// is the same list, so the loop reports it again rather than
-				// declaring a second symbol for it.
-				if v, ok := c.pkgBodyWindowIDs[n.ID]; ok {
-					*vars = append(*vars, v)
-					return
-				}
-				// Skip if a symbol with this name already exists in the
-				// enclosing scope (e.g., a package-level window with the
-				// same id — duplicate-id checking belongs elsewhere).
-				if _, ok := c.scope.Lookup(n.ID); !ok {
-					v := &ir.Var{
-						Name:    n.ID,
-						Type:    ir.ListOf(c.windowType),
-						IsConst: true,
-					}
-					c.declare(n.Pos, v)
-					*vars = append(*vars, v)
-				}
-			}
-		}
-		// Don't descend into a window's body — nested windows hoist
-		// against their own enclosing for, not this one.
-	case *ast.IfStmt:
-		c.collectForLoopWindowIDs(&n.Body, seen, vars)
-		c.collectForLoopWindowIDs(&n.Else, seen, vars)
-	case *ast.ForStmt:
-		// Inner for-loops hoist their own ids; don't double-declare here.
-	}
 }
 
 // rejectNodeInFuncBody reports a visual node written in an imperative body --

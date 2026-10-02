@@ -56,7 +56,7 @@ output {
 
 const a int = a
 
-window #home(title="t", href="/index.html") {
+window #home(title="t") {
     text(value="{a}")
 }
 -- cycle.sngl --
@@ -71,6 +71,6 @@ output {
 const a int = b
 const b int = a
 
-window #home(title="t", href="/index.html") {
+window #home(title="t") {
     text(value="{a}")
 }

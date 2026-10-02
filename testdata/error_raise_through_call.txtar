@@ -62,7 +62,7 @@ component form() node {
     }
 }
 
-window #home(title="raise", href="/index.html") {
+window #home(title="raise") {
     form()
 }
 

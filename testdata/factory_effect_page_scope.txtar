@@ -46,7 +46,7 @@ component App() node {
     }
 }
 
-window(title="H", href="/index.html") {
+window(title="H") {
     App()
 }
 -- out/none/html/index.html --

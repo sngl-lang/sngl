@@ -29,7 +29,7 @@ output {
     }
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var pal = markup.lightPalette
 
     ui.vbox {

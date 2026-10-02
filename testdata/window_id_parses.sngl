@@ -1,9 +1,9 @@
 import . "sngl:ui"
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="Home")
 }
 
-window #about(title="About", href="/about.html") {
+window #about(title="About") {
     text(value="About")
 }
