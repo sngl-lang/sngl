@@ -1149,25 +1149,26 @@ own declaration, so `context #depth(depth)` is the same error rather than an
 read of something that does exist. A handler is untouched — `@click` is split
 off before the rule is asked, and a handler runs after mount.
 
-What it does **not** cover is the two cases where no single declaration reads
-itself, and both keep the guards they had. **Mutual reference** —
-`window #a(title = b.title)` beside `window #b(title = a.title)` — reaches
-`evalCtx.foldingProp` by a second key and is still left standing: html used to
-write both pages with no `<title>`, silently, and fyne emits `SetTitle(title)`
-against a name nothing declares. Between two `nav.page`s the same pair is
-refused with a position by `passNodePropReads`, which is what reaches it on
-html now that a second window there is not a document of its own. And
-`const a int = a` is the same shape one layer down in a scope of its own:
-`sngl check` accepts it and always did, because the checker never folds, while
-`sngl generate` used to crash — `evalIdent` and `evalExpr` calling each other
-until the stack went, with no position and no message
-(`cmd/sngl/testdata/const_reads_itself.txt`).
-
-So the general rule — a *declaration* that reads itself, however many hops
-round — is still not made, and both guards are still the survivable answer
-rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt`
-holds the two halves: the self-reference refused by the checker, the mutual
-pair of pages refused by the lowering.
+What it does not cover is a cycle through *other* declarations, which is the
+checker's cycle rule (`reportDeclarativeCycles`, `internal/checker/cycles.go`):
+a declaration that reads itself however many hops round has no value to be
+read, and it is refused at the read that leaves the declaration written first,
+naming each read on the way round. The graph's vertices are consts, the
+functions a const calls -- evaluated where the const is folded -- and each
+node's props, an edge running from a prop to each `x.p` it reads through a
+handle and to every prop of a handle it reads whole. A cycle of functions
+alone is recursion and is left alone. So `const a int = a`, `const a = b`
+beside `const b = a`, `window #a(title = b.title)` beside
+`window #b(title = a.title)` and two canvas shapes reading each other's radius
+are all positioned errors (`testdata/error_declarative_cycle.sngl`,
+`cmd/sngl/testdata/const_reads_itself.txt`, `node_prop_read_cycle.txt`,
+`window_prop_reads_itself.txt`). Each used to reach the build: the const fold
+recursed until a guard left the initializer standing (a page rendering
+nothing, silently, and before the guard a stack overflow with no position),
+and the props were refused by the lowering or left standing by the fold --
+an empty `<title>` on html, a name nothing declared on fyne. Those guards
+(`evalCtx.foldingProp`, the const fold's, `passNodePropReads`') remain for IR
+the checker did not see.
 
 **A window owns no state**, which is why `Vars`, `Funcs` and `Timers` did not
 come along either. A window is a rendering root and not a storage level, so

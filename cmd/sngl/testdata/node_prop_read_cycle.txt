@@ -1,21 +1,16 @@
-# Two node props that read each other have no answer.
+# Two node props that read each other have no answer, and the checker says
+# so with a position, naming each read on the way round.
 #
 # A prop read off a `#id` whose node the target keeps nothing of is answered
 # with the expression the prop was given, and answering runs to a fixed point
 # because one answer can uncover the next -- `circle #b(r=a.r)` is a read that
-# only becomes readable once `a`'s own props are known.
-#
-# A cycle has no fixed point to reach. It is detected before any substitution
-# rather than discovered by running out of stack, which is what a depth guard
-# would have done: the graph is known, so the question can be asked outright.
-#
-# The same shape one layer down -- a window prop that reads itself -- is only
-# guarded in consteval today, and is the reason PLAN.md says a checker rule
-# about self-reference is the real answer to both.
+# only becomes readable once `a`'s own props are known. A cycle has no fixed
+# point to reach. The lowering used to be what found it (passNodePropReads,
+# which keeps the check for IR the checker did not see); the read graph is
+# known when the program is checked, so the question is asked there.
 
-! sngl generate --lang none --platform html --out out .
-stderr 'reads its own value back'
-stderr 'nothing to answer with'
+! sngl check .
+stderr 'app.sngl:6:42: a cycle: a.r reads b.r, b.r reads a.r; each needs the next one''s value first, so none has one'
 
 -- app.sngl --
 import ui "sngl:ui"

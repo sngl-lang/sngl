@@ -3618,6 +3618,7 @@ func (c *checker) pass2() {
 	}
 	c.runConstArgChecks()
 	c.runConstSlotChecks()
+	c.reportDeclarativeCycles()
 	for _, comp := range c.pkg.Components {
 		if comp.Const && !comp.Stdlib {
 			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
