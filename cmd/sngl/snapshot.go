@@ -172,6 +172,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 	}
 
 	results, err := snapshot.GenerateBatch(snapshot.BatchConfig{
+		Trust:     cliTrust,
 		Docs:      docs,
 		Platforms: platforms,
 		Width:     width,

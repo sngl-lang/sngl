@@ -170,6 +170,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
+			Trust:    cliTrust,
 			Platform: target.Platform,
 			Language: target.Lang,
 			Dir:      dir,
@@ -201,6 +202,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
+			Trust:    cliTrust,
 			Platform: target.Platform,
 			Language: target.Lang,
 			Dir:      dir,
@@ -266,6 +268,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	start := time.Now()
 	if err := optimize.Optimize(pkg, &optimize.Config{
+		Trust:    cliTrust,
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,
@@ -314,6 +317,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 
 	optCfg := &optimize.Config{
+		Trust:    cliTrust,
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,

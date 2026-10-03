@@ -328,6 +328,9 @@ type Env struct {
 	// handling counts the event handlers running, shared by every env of one
 	// program so that a nested dispatch can tell it is one.
 	handling *int
+	// build answers sngl:x/gen's host API, set only by the build's evaluator
+	// (stream.go).
+	build *buildFrame
 	// nav is what a stack's instance keeps across mounts (nav.go), navStack
 	// the stack a page's instance registered with, and navParams the params
 	// that page is showing with, nil for its own.
@@ -489,6 +492,7 @@ func (env *Env) Snapshot() *Env {
 		origin:     env,
 		spreadVals: env.spreadVals,
 		handling:   env.handling,
+		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
@@ -1641,6 +1645,9 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 }
 
 func (env *Env) evalCallSite(call *ir.Call) (any, error) {
+	if call.Func != nil && call.Func.BuildOnly {
+		return env.callBuildOnly(call)
+	}
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
 	// the wrapper is inlined, so neither is reliably a namespace call by the
@@ -2413,6 +2420,7 @@ func argExprs(args []ir.CallArg) []ir.Expr {
 // (no expression evaluation needed). Used by the optimizer's interpretFunc
 // adapter, which already has folded constant values in hand.
 func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
+	defer env.enterFunc(fn)()
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
@@ -2508,7 +2516,7 @@ func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
-
+	defer env.enterFunc(fn)()
 	env.depth++
 	if env.depth > maxCallDepth {
 		env.depth--

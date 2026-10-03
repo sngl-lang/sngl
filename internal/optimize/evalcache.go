@@ -15,7 +15,10 @@ import (
 // value, or the reason there will never be one.
 type constResult struct {
 	expr ir.Expr
-	err  error
+	// value is a producer's answer (produce.go), held as the interpreter's
+	// value rather than IR: it is what the fold that asked goes on with.
+	value any
+	err   error
 }
 
 // EvalCache memoizes compile-time evaluation across the rounds and the Optimize

@@ -1,0 +1,81 @@
+# Evaluating a `const func` imported from Go builds the project's own package
+# and runs it: native code with the user's privileges, which nothing between it
+# and the OS asks about. So it is never done unasked, and the grant is the
+# whole package -- there is nothing finer to grant.
+#
+# The project is a module of its own, built against this checkout.
+exec sh -c 'printf "module example.com/app\n\ngo %s\n\nrequire git.duckfam.us/jonathan/sngl v0.0.0\n\nreplace git.duckfam.us/jonathan/sngl => %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > go.mod'
+env GOPROXY=off GOFLAGS=-mod=mod
+exec go mod tidy
+env SNGL_GENCACHE_DIR=$WORK/store
+
+# A target that can call the function at run time builds without the value,
+# and says so: once per package, at the first call, with the count.
+sngl generate --lang=go --platform=bubbletea -o out-go app.sngl
+stderr '^warning: app.sngl:4:11: 2 calls into go:example.com/app/lib were not evaluated: running them needs --allow-eval="go:example.com/app/lib" \(or `sngl trust --allow-eval="go:example.com/app/lib"` to record it\)$'
+grep 'lib.Shout\("hi"\)' out-go/model.go
+
+# A target that cannot fails, with the same remedy.
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr '^app.sngl:4:11: 2 calls into go:example.com/app/lib were not evaluated, and a "none" build cannot call them at run time: running them needs --allow-eval="go:example.com/app/lib" \(or `sngl trust --allow-eval="go:example.com/app/lib"` to record it\)$'
+! exists out/index.html
+
+# Allowed, it folds, and the child it runs does not see SNGL_ALLOW.
+env SNGL_ALLOW='env=dir:/nowhere=HOME'
+sngl generate --lang=none --platform=html -o out --allow-eval=go:example.com/app/lib app.sngl
+! stderr 'warning'
+grep 'hi!' out/index.html
+grep 'sees \[\]' out/index.html
+env SNGL_ALLOW=
+
+# A value in the store was computed by a run that was allowed, and replaying
+# it runs nothing: the warm build needs no grant.
+sngl generate --lang=none --platform=html -o out-warm app.sngl
+! stderr 'warning'
+grep 'hi!' out-warm/index.html
+
+# An edit to the package is a miss, and a miss asks again.
+cp lib2.go lib/lib.go
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr 'calls into go:example.com/app/lib were not evaluated'
+
+-- app.sngl --
+import ui "sngl:ui"
+import lib "go:example.com/app/lib"
+
+const v = lib.Shout("hi")
+const env = lib.Allow()
+
+ui.window(title="t") {
+    ui.text(value=v)
+    ui.text(value="sees [{env}]")
+}
+-- lib/lib.go --
+package lib
+
+import "os"
+
+//sngl:pure
+func Shout(s string) string { return s + "!" }
+
+//sngl:pure
+func Allow() string { return os.Getenv("SNGL_ALLOW") }
+-- lib2.go --
+package lib
+
+import "os"
+
+//sngl:pure
+func Shout(s string) string { return s + "!!" }
+
+//sngl:pure
+func Allow() string { return os.Getenv("SNGL_ALLOW") }
+-- lib/keep.go --
+package lib
+
+// Kept so the module requires what the evaluator imports.
+import (
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+)

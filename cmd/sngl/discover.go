@@ -227,6 +227,7 @@ func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTa
 		Resolver: build.NewResolver(dir),
 		IsMain:   isMain,
 		Targets:  targets,
+		Warn:     func(d ir.Diagnostic) { fmt.Fprintln(os.Stderr, "warning: "+d.Error()) },
 	})
 }
 

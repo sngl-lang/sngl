@@ -164,7 +164,7 @@ func targetsWithPackages() []any {
 // target's implementation of the id, so an id nothing implements is a build
 // emitting a call to a function that does not exist.
 //
-// Three ways an id is legitimately absent from the language emitter registry,
+// Four ways an id is legitimately absent from the language emitter registry,
 // each read off the declaration rather than off a list of names:
 //
 //   - a written body says it computes the same answer, so a backend may emit
@@ -174,6 +174,8 @@ func targetsWithPackages() []any {
 //     platform draw context and are translated inside each platform.
 //   - error.raise lowers to each target's abort form rather than to a call at
 //     all, which ir.IsErrorRaiseFunc is the compiler's own statement of.
+//   - the `build` flag says only the build's evaluator answers it, so no target
+//     emits a call at all: sngl:x/gen's host API.
 func TestEveryIntrinsicIsImplemented(t *testing.T) {
 	loadEveryPackage(t)
 	langs := codegen.Langs()
@@ -182,7 +184,9 @@ func TestEveryIntrinsicIsImplemented(t *testing.T) {
 	}
 	checked := 0
 	for def := range ir.AllIntrinsics() {
-		if def.Name == errorRaiseID {
+		// Answered by the build's evaluator alone, which says so on the
+		// declaration: a call no fold reached is refused rather than emitted.
+		if def.Name == errorRaiseID || def.BuildOnly {
 			continue
 		}
 		fn := intrinsicDecl(def.Name)

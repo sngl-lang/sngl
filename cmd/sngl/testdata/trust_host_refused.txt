@@ -1,0 +1,132 @@
+# A plugin reaches the host only through sngl:x/gen, and unasked it may
+# compute and read inside the import root -- the directory the program's
+# package is read from -- and nothing else. Running a command, reading the
+# environment and reading outside the root are each refused, at the call,
+# naming the flag that would allow it and the `sngl trust` line that would
+# record it. With no terminal there is no prompt: the refusal is the answer.
+env SNGL_GENCACHE=off
+
+# Reading inside the root needs no grant: the plugin's data is the project's.
+sngl generate --lang=none --platform=html -o out-inside read/inside.sngl
+grep 'from inside the root' out-inside/index.html
+
+! sngl generate --lang=none --platform=html -o out exec/app.sngl
+stderr '^pc/pc.sngl:6:13: \./pc may not run sh -c ''echo hi'': running it needs --allow-command="\./pc=sh" \(or `sngl trust --allow-command="\./pc=sh"` to record it\)$'
+! exists out/index.html
+
+! sngl generate --lang=none --platform=html -o out env/app.sngl
+stderr '^pc/pc.sngl:5:13: \./pc may not read \$HOME: reading it needs --allow-env="\./pc=HOME" \(or `sngl trust --allow-env="\./pc=HOME"` to record it\)$'
+
+# The root is the program's directory, not the working directory: run from
+# the parent, the plugin still may not read the parent's files.
+! sngl generate --lang=none --platform=html -o out read/outside.sngl
+stderr '^pc/pc.sngl:8:20: \./pc may not read '$WORK'/secret.txt, outside the import root '$WORK'/read: reading it needs --allow-file="\./pc='$WORK'/secret.txt" \(or `sngl trust --allow-file="\./pc='$WORK'/secret.txt"` to record it\)$'
+
+# A listing outside the root is a directory grant.
+! sngl generate --lang=none --platform=html -o out read/listing.sngl
+stderr '^pc/pc.sngl:16:12: \./pc may not list '$WORK', outside the import root '$WORK'/read: listing it needs --allow-dir="\./pc='$WORK'" \(or `sngl trust --allow-dir="\./pc='$WORK'"` to record it\)$'
+
+# A symlink inside the root that points out of it is outside the root.
+symlink read/escape.txt -> ../secret.txt
+! sngl generate --lang=none --platform=html -o out read/escape.sngl
+stderr 'may not read '$WORK'/secret.txt, outside the import root'
+
+-- secret.txt --
+the parent's secret
+-- exec/app.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.greet()
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- exec/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+// What `echo` prints.
+const func greet() string {
+    var out = ""
+    var p = gen.exec(cmd=["sh", "-c", "echo hi"])
+    for var line = p.stdout {
+        out = out + line
+    }
+    return out
+}
+-- env/app.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.home()
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- env/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+// Where the user lives.
+const func home() string {
+    var h = gen.env("HOME")
+    if h != null {
+        return h
+    }
+    return ""
+}
+-- read/inside.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.first("data.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- read/outside.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.first("../secret.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- read/listing.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.names("..")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- read/escape.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.first("escape.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- read/data.txt --
+from inside the root
+-- read/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+// The first line of path.
+const func first(path string) string {
+    // A plugin that stops early still records the whole file: the rest is
+    // read and hashed without being handed out.
+
+    for var line = gen.lines(path) {
+        return line
+    }
+    return ""
+}
+
+// The names in dir, joined.
+const func names(dir string) string {
+    return gen.names(dir, "*").join(",")
+}

@@ -11,6 +11,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -51,6 +52,23 @@ type Config struct {
 	// targets of a build; left nil, Optimize allocates one for this Config,
 	// which is what confines a folded value to the compilation that folded it.
 	Cache *EvalCache
+
+	// Trust is what this build may run of the project's own code: an
+	// evaluated go: or js: package, and a build-time function's reads of the
+	// host. Nil refuses all of it, so a caller that never thought about it
+	// runs nothing a repository brought.
+	Trust *trust.Policy
+
+	// Warnings are what the optimizer has to say that does not stop the
+	// build: a call it was not allowed to evaluate, on a target that calls it
+	// at run time instead. Optimize appends to it.
+	Warnings []ir.Diagnostic
+
+	// refused tallies the evaluated packages a grant was missing for, by
+	// package, across both Optimize calls of a target; warned is what has been
+	// reported of it.
+	refused map[string]*refusedPkg
+	warned  map[string]bool
 
 	// nativeErr records, per scheme, that this build's round loop failed as a
 	// whole — a build error, a timeout — rather than for any one call. The
@@ -141,6 +159,12 @@ type evalCtx struct {
 	// navCurrent is the record of the page a document is written for, which
 	// `pages.current` is there (Documents). Nil everywhere else.
 	navCurrent any
+	// host answers sngl:x/gen for the run, and hostMemo memoizes which
+	// functions reach it. Nil where the build has no import root.
+	host     *buildHost
+	hostMemo map[*ir.Func]bool
+	// cfg is the run's Config, for what a fold reports back to it.
+	cfg *Config
 }
 
 // child returns a context for folding a nested scope — a for-loop iteration,
@@ -185,6 +209,8 @@ type optimizerRun struct {
 	writes     *writesAnalysis
 	interpEnvs map[*ir.Package]*interp.Env
 	readsCtx   map[*ir.Func]bool
+	host       *buildHost
+	hostMemo   map[*ir.Func]bool
 }
 
 // maxEvalRounds bounds the round loop. Every round either caches a value for
@@ -219,7 +245,10 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 		}
 	}
 	cfg.nativeSettled = true
-	return optimizeIR(pkg, cfg, nil)
+	if err := optimizeIR(pkg, cfg, nil); err != nil {
+		return err
+	}
+	return reportRefused(cfg)
 }
 
 // evalNativeRounds discovers and evaluates every pure native call reachable
@@ -246,7 +275,7 @@ func evalNativeRounds(pkg *ir.Package, cfg *Config) error {
 		}
 		pending = ne.order
 		slog.Info("consteval round", "calls", len(pending))
-		if errs := runNativeRequests(cfg.Cache, cfg.Dir, ir.IndexNativeDecls(pkg), pending); len(errs) > 0 {
+		if errs := runNativeRequests(cfg.Cache, cfg.Trust, cfg.Dir, ir.IndexNativeDecls(pkg), pending); len(errs) > 0 {
 			// Nothing is cached for these calls, so retrying the identical
 			// batch would only repeat the failure. The fold reports it per
 			// call site, which is where the target's ability to call the
@@ -308,6 +337,10 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		writes:     newWritesAnalysis(cfg.Platform, cfg.Language),
 		interpEnvs: map[*ir.Package]*interp.Env{},
 		readsCtx:   map[*ir.Func]bool{},
+		hostMemo:   map[*ir.Func]bool{},
+	}
+	if cfg.Dir != "" {
+		run.host = newBuildHost(cfg, pkg)
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
@@ -463,6 +496,9 @@ func (r *optimizerRun) newCtx(pkg *ir.Package) *evalCtx {
 		writes:          r.writes,
 		interpEnvs:      r.interpEnvs,
 		readsCtx:        r.readsCtx,
+		host:            r.host,
+		hostMemo:        r.hostMemo,
+		cfg:             r.cfg,
 	}
 	// Only the root's: a backend emits the package it compiles, and an
 	// imported package's const reached through an inlined body has no

@@ -4,6 +4,7 @@ package optimize
 
 import (
 	"errors"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -111,7 +112,7 @@ func evalNow(t *testing.T, ctx *evalCtx, calls ...struct {
 		}
 	}
 	if len(ctx.native.order) > 0 {
-		runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order)
+		runNativeRequests(ctx.evalCache(), trust.AllowAll(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order)
 	}
 	out := make([]constResult, len(calls))
 	for i, c := range calls {
@@ -305,7 +306,7 @@ func TestNestedCallTakesASecondRound(t *testing.T) {
 		}},
 	}
 
-	if err := Optimize(pkg, &Config{Platform: "html", Language: "none", Dir: dir}); err != nil {
+	if err := Optimize(pkg, &Config{Platform: "html", Language: "none", Dir: dir, Trust: trust.AllowAll()}); err != nil {
 		t.Fatalf("Optimize: %v", err)
 	}
 	lit, ok := outer.Init.(*ir.Literal)
@@ -474,7 +475,7 @@ func TestUnresolvedNativeCallGate(t *testing.T) {
 			},
 		}},
 	}
-	cfg := &Config{Platform: "html", Language: "none", Dir: dir}
+	cfg := &Config{Platform: "html", Language: "none", Dir: dir, Trust: trust.AllowAll()}
 	if !hasUnresolvedNativeCall(pkg, cfg) {
 		t.Fatal("a pure go: call in a const was not seen")
 	}
@@ -709,7 +710,7 @@ func TestBatchFailureIsNotCached(t *testing.T) {
 		ret:        ir.TypString,
 	}
 	cache := NewEvalCache()
-	if err := runNativeRequests(cache, t.TempDir(), nil, []*nativeRequest{req}); err == nil {
+	if err := runNativeRequests(cache, trust.AllowAll(), t.TempDir(), nil, []*nativeRequest{req}); err == nil {
 		t.Fatal("the evaluator built in a directory with no module")
 	}
 	if _, cached := cache.load(req.key); cached {
@@ -795,7 +796,7 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 		inlined bool
 	}{{"inlined component body", true}, {"for-loop iteration", false}} {
 		t.Run(tc.name, func(t *testing.T) {
-			pkg, cfg := mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir}
+			pkg, cfg := mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir, Trust: trust.AllowAll()}
 			err := Optimize(pkg, cfg)
 			// A loop is unrolled by Documents, which is where its iteration's fold
 			// runs.

@@ -6,7 +6,7 @@
 # and one that does not.
 env PATH=
 
-! sngl generate --lang=none --platform=html --out=out app.sngl
+! sngl generate --allow-eval=js:./lib --lang=none --platform=html --out=out app.sngl
 stderr 'needs node on PATH'
 
 -- app.sngl --

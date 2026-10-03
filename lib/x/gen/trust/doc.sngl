@@ -1,0 +1,20 @@
+// Package trust is the vocabulary of the user's grants: what code a project
+// brought may do on the machine that builds it.
+//
+// A build reads them from `trust.sngl` in the user's config directory
+// (`~/.config/sngl/` on Linux), written by `sngl trust` and by the build's
+// own prompt, and never from the project: a repository shipping its own
+// allow list is the attack this guards against.
+//
+//     import trust "sngl:x/gen/trust"
+//
+//     trust.allow(origin="dir:/home/me/src/site/docs", module="example.com/site") { trust.eval() }
+//     trust.allow(origin="dir:/home/me/src/bar/pc") {
+//         trust.command(prefix=["pkg-config"])
+//         trust.env(name="PKG_CONFIG_PATH")
+//     }
+//
+// A grant names code by its **origin** -- the directory it is on disk, or the
+// module version go.sum pinned -- and never by its import path, which is a
+// name the repository chooses: a project may put a package of its own at any
+// path it likes.

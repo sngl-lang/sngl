@@ -35,6 +35,8 @@ type CheckConfig struct {
 	// though the document had imported it, so its overrides are checked here
 	// and its failures belong to this build.
 	Targets []ir.StaticTarget
+	// Warn receives each warning the check reports. Nil drops them.
+	Warn func(ir.Diagnostic)
 }
 
 // Check type-checks doc against every registered language and platform.
@@ -79,6 +81,9 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 		// plugin, so a name outside it is a name nobody serves.
 		TargetsComplete: true,
 	})
+	if pkg != nil {
+		pkg.Origin = &ir.PackageOrigin{Dir: ".", Docs: []*ast.Document{doc}}
+	}
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			if os.Getenv("SNGL_DEBUG_CHECK") != "" {
@@ -87,6 +92,13 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 				}
 			}
 			return pkg, d
+		}
+	}
+	if cfg.Warn != nil {
+		for _, d := range diags {
+			if d.Severity == ir.Warning {
+				cfg.Warn(d)
+			}
 		}
 	}
 	return pkg, nil

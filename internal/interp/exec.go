@@ -510,6 +510,8 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 		}
 		env.unbindLoopVars(s)
+	case *Stream:
+		return env.execStreamLoop(s, v)
 	default:
 		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
 		// of the two produced it, and neither is walked by building the other.

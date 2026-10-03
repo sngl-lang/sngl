@@ -334,6 +334,7 @@ const (
 	flagMutates         = "mutates"
 	flagReadonly        = "readonly"
 	flagMutatesReceiver = "mutatesReceiver"
+	flagBuild           = "build"
 )
 
 // markIntrinsic implements #[intrinsic("Id", flags...)], stamping the id and
@@ -374,6 +375,7 @@ func markIntrinsic(m *mark) error {
 	}
 	fn.Intrinsic = id
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
+	fn.BuildOnly = slices.Contains(flags, flagBuild)
 	switch {
 	case slices.Contains(flags, flagMutates):
 		fn.Purity = ir.PurityMutates

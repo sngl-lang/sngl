@@ -111,9 +111,21 @@ func copySnapshots(outDir string) {
 	log.Printf("gallery: copied %d snapshots", len(entries))
 }
 
+// generateArgs is the `go` command line that builds the site, which its test
+// runs too.
+func generateArgs(filename, outDir string) []string {
+	return []string{"tool", "sngl", "generate",
+		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs",
+		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup",
+		"--platform", "html", "--lang", "none", "--out", outDir, filename}
+}
+
+// compileSNGL builds the site. website.sngl folds its pages out of two of this
+// repository's own Go packages at build time, which is running them: the
+// grant is named here, for this build, rather than taken for granted by the
+// compiler.
 func compileSNGL(filename, outDir string) error {
-	cmd := exec.Command("go", "tool", "sngl", "generate",
-		"--platform", "html", "--lang", "none", "--out", outDir, filename)
+	cmd := exec.Command("go", generateArgs(filename, outDir)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

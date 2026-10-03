@@ -57,6 +57,11 @@ type Package struct {
 	RootComponent string `json:",omitempty"`
 	Contexts      []*Context
 	Symbols       *SymbolTable
+	// Origin is where a package the program reads by path came from: the
+	// program's own, a directory import, a fetched one. Nil for a library
+	// package and a native scheme's shell. A build-time function asks it who
+	// is reaching the host, and what code a stored answer depends on.
+	Origin *PackageOrigin `json:"-"`
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -359,6 +364,18 @@ type Import struct {
 	Native  *NativeImport // non-nil for scheme imports
 }
 
+// PackageOrigin is where a package came from.
+type PackageOrigin struct {
+	// Dir is a directory package's path from the import root, "." for the
+	// program's own; it may climb above the root (`../docui`).
+	Dir string
+	// URI is a fetched package's import, scheme and all.
+	URI string
+	// Docs are the package's parsed files: what its code is, for a digest of
+	// it. Shared, never cloned -- an AST is not edited after it is parsed.
+	Docs []*ast.Document
+}
+
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
 
@@ -554,6 +571,9 @@ type Func struct {
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
 	MutatesReceiver bool
+	// BuildOnly says only the build's evaluator answers this intrinsic: no
+	// target emits a call to it, so a call left unfolded is a build error.
+	BuildOnly bool
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms

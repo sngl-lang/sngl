@@ -1517,6 +1517,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 			exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 			c.mergePkgInto(exported, pkg)
 			c.adoptContexts(pkg)
+			exported.Origin = &ir.PackageOrigin{URI: scheme + ":" + uri, Docs: docs}
 			irImport.Pkg = exported
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
@@ -1608,6 +1609,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 				c.mergePkgInto(exported, pkg)
 				c.adoptContexts(pkg)
+				exported.Origin = &ir.PackageOrigin{Dir: dirPath, Docs: docs}
 				irImport.Pkg = exported
 				// The view is memoized, not the checked package: two importers
 				// of one directory must see one set of declarations, or a

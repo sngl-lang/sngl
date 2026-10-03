@@ -562,6 +562,11 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 			// in hand.
 			return nil, false
 		case nativeFailed:
+			// Refused rather than failed: tallied per package and reported
+			// once, as a warning or as the error that stops the target.
+			if ctx.noteRefused(call, scheme, err) {
+				return nil, false
+			}
 			// A failed compile-time evaluation can only be tolerated when
 			// the target can recompute the value at runtime instead. That
 			// requires the target language to call this scheme natively

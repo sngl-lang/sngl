@@ -1,0 +1,97 @@
+# A recorded grant binds to where the code came from, never to what it calls
+# itself: an import path is a name the repository chooses. A grant recorded
+# for one project's package reaches neither another project claiming the same
+# module path nor a replace pointing that path at a directory of its own.
+exec sh -c 'for d in a:a b:a c:c; do printf "module example.com/%s\n\ngo %s\n\nrequire git.duckfam.us/jonathan/sngl v0.0.0\n\nreplace git.duckfam.us/jonathan/sngl => %s\n" "${d#*:}" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > ${d%%:*}/go.mod; done'
+exec sh -c 'printf "\nrequire example.com/a v0.0.0\n\nreplace example.com/a => ./evil\n" >> c/go.mod'
+exec sh -c 'printf "module example.com/a\n\ngo %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" > c/evil/go.mod'
+env GOPROXY=off GOFLAGS=-mod=mod
+cd a
+exec go mod tidy
+cd ../b
+exec go mod tidy
+cd ../c
+exec go mod tidy
+cd $WORK
+env SNGL_GENCACHE=off
+
+# Recorded in a, by its directory and module path.
+cd a
+sngl trust --allow-eval=go:example.com/a/lib
+stdout '^trust.allow\(origin="dir:'$WORK'/a/lib", module="example.com/a"\) \{ trust.eval\(\) \}$'
+sngl generate --lang=none --platform=html -o out app.sngl
+grep '>from a<' out/index.html
+
+# b is module example.com/a too, with a package at the same path.
+cd ../b
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr '1 call into go:example.com/a/lib was not evaluated'
+
+# c requires example.com/a and replaces it with a directory of its own.
+cd ../c
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr '1 call into go:example.com/a/lib was not evaluated'
+
+-- a/app.sngl --
+import ui "sngl:ui"
+import lib "go:example.com/a/lib"
+
+const v = lib.Who()
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- a/lib/lib.go --
+package lib
+
+import (
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+)
+
+//sngl:pure
+func Who() string { return "from a" }
+-- b/app.sngl --
+import ui "sngl:ui"
+import lib "go:example.com/a/lib"
+
+const v = lib.Who()
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- b/lib/lib.go --
+package lib
+
+import (
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+)
+
+//sngl:pure
+func Who() string { return "from b" }
+-- c/app.sngl --
+import ui "sngl:ui"
+import lib "go:example.com/a/lib"
+
+const v = lib.Who()
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- c/keep.go --
+package keep
+
+import (
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	_ "example.com/a/lib"
+)
+-- c/evil/lib/lib.go --
+package lib
+
+//sngl:pure
+func Who() string { return "from c" }

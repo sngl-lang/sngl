@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/internal/gencache/godeps"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
 )
@@ -171,7 +173,7 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	// hasUnresolvedNativeCall found nothing to evaluate. That walk is allowed
 	// to be approximate precisely because of this branch — a call it missed is
 	// evaluated on its own here, costing one extra build rather than the value.
-	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), []*nativeRequest{req}); errs[scheme] != nil {
+	if errs := runNativeRequests(ctx.evalCache(), ctx.policy(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), []*nativeRequest{req}); errs[scheme] != nil {
 		return nil, nativeFailed, errs[scheme]
 	}
 	if r, ok := ctx.evalCache().load(key); ok && r.err == nil {
@@ -273,7 +275,7 @@ func unnameableStruct(e ir.Expr) *ir.StructDef {
 // nothing about any one call and must not become that call's answer. It is
 // returned under its scheme: one scheme failing that way keeps neither
 // another scheme's values out of the cache nor its calls from folding.
-func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
+func runNativeRequests(cache *EvalCache, policy *trust.Policy, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
 	byScheme := map[string][]*nativeRequest{}
 	var order []string
 	for _, r := range reqs {
@@ -284,7 +286,7 @@ func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs 
 	}
 	errs := map[string]error{}
 	for _, scheme := range order {
-		if err := runSchemeRequests(cache, dir, types, scheme, byScheme[scheme]); err != nil {
+		if err := runSchemeRequests(cache, policy, dir, types, scheme, byScheme[scheme]); err != nil {
 			errs[scheme] = err
 		}
 	}
@@ -292,7 +294,7 @@ func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs 
 }
 
 // runSchemeRequests runs one scheme's batch and caches its outcome per call.
-func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, scheme string, reqs []*nativeRequest) error {
+func runSchemeRequests(cache *EvalCache, policy *trust.Policy, dir string, types ir.NativeDecls, scheme string, reqs []*nativeRequest) error {
 	var (
 		values map[string]ir.Expr
 		bad    map[string]error
@@ -300,9 +302,19 @@ func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, schem
 	)
 	switch scheme {
 	case "js":
-		values, bad, err = execJSConstEval(dir, types, reqs)
+		// Nothing js: computes is stored, so every call is a run, and every
+		// run is asked about.
+		run, refused, gerr := gateEval(policy, dir, reqs)
+		if gerr != nil {
+			return gerr
+		}
+		values, bad = map[string]ir.Expr{}, map[string]error{}
+		if len(run) > 0 {
+			values, bad, err = execJSConstEval(dir, types, run)
+		}
+		maps.Copy(bad, refused)
 	default:
-		values, bad, err = execConstEval(cache.genStore(), dir, types, reqs)
+		values, bad, err = execConstEval(cache.genStore(), policy, dir, types, reqs)
 	}
 	if err != nil {
 		return err
@@ -336,7 +348,7 @@ func runSchemeRequests(cache *EvalCache, dir string, types ir.NativeDecls, schem
 // Stored values are checked against the declared return type on the way back
 // in, exactly as fresh ones are: they pass through the same results reader, so
 // a declaration that changed on the SNGL side is held to what it says now.
-func execConstEval(gen *gencache.Store, dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
+func execConstEval(gen *gencache.Store, policy *trust.Policy, dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
 	}
@@ -357,6 +369,13 @@ func execConstEval(gen *gencache.Store, dir string, types ir.NativeDecls, reqs [
 		misses = append(misses, r)
 	}
 	slog.Debug("consteval store", "calls", len(reqs), "stored", len(reqs)-len(misses))
+
+	// Only a miss runs anything, so only a miss is asked about: a stored
+	// value was computed by a run that was allowed.
+	misses, refused, err := gateEval(policy, absDir, misses)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Recorded before the program is built, so a file edited while it builds
 	// is recorded as it was and found stale next time.
@@ -409,6 +428,12 @@ func execConstEval(gen *gencache.Store, dir string, types ir.NativeDecls, reqs [
 				Body:   []byte(storedValuePrefix + raw[r.key] + "\n"),
 			})
 		}
+	}
+	for k, e := range refused {
+		if bad == nil {
+			bad = map[string]error{}
+		}
+		bad[k] = e
 	}
 	return values, bad, nil
 }
@@ -551,7 +576,7 @@ func runConstEval(dir, binPath, resultPath string) error {
 	defer cancel()
 	run := exec.CommandContext(ctx, binPath)
 	run.Dir = dir
-	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	run.Env = append(ChildEnv(), consteval.OutEnv+"="+resultPath)
 	// Anything an evaluated function prints goes to stderr: results travel in
 	// the file, so stdout carries nothing we need.
 	run.Stdout = os.Stderr

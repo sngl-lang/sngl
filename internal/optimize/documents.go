@@ -259,7 +259,7 @@ func evalDocumentNatives(pkg *ir.Package, cfg *Config, ctx *evalCtx) error {
 			return nil
 		}
 		pending = ne.order
-		if errs := runNativeRequests(cfg.Cache, cfg.Dir, ir.IndexNativeDecls(pkg), pending); len(errs) > 0 {
+		if errs := runNativeRequests(cfg.Cache, cfg.Trust, cfg.Dir, ir.IndexNativeDecls(pkg), pending); len(errs) > 0 {
 			cfg.nativeErr, ctx.nativeErr = errs, errs
 			return nil
 		}

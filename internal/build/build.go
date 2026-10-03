@@ -13,6 +13,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"iter"
@@ -25,6 +26,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -54,6 +56,10 @@ type Options struct {
 	// is a request for that package's declarations rather than a program to
 	// run, and a library has no window by construction.
 	Library bool
+	// Trust is what the build may run of the project's own code: an
+	// evaluated go: or js: package, and a build-time function's reads of the
+	// host. Nil refuses all of it.
+	Trust *trust.Policy
 }
 
 // Result is one target's build.
@@ -71,6 +77,9 @@ type Result struct {
 	// a digest stand for these, so a hundred fixtures do not each carry a
 	// copy of the same Gradle project.
 	Boilerplate map[string]bool
+	// Warnings are what the build has to say that did not stop it: a call it
+	// was not allowed to evaluate, on a target that calls it at run time.
+	Warnings []ir.Diagnostic
 }
 
 // Emit builds pkg for every resolved target.
@@ -154,10 +163,11 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		Dir:         o.Dir,
 		NoCacheBust: optionBool(target.Options, "noCacheBust"),
 		Cache:       evalCache,
+		Trust:       o.Trust,
 	}
 	start := time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
-		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+		return Result{}, inDir(o.Dir, err)
 	}
 	slog.Info("optimize", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
@@ -187,7 +197,10 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		return Result{Target: target, Pkg: tpkg, Files: emitted}, nil
+		if err := refuseBuildOnlyCalls(tpkg); err != nil {
+			return Result{}, err
+		}
+		return Result{Target: target, Pkg: tpkg, Files: emitted, Warnings: optCfg.Warnings}, nil
 	}
 
 	feats, err := codegen.CapsFor(target.Lang, target.Platform)
@@ -207,7 +220,10 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	// one are calls nothing has looked at.
 	start = time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
-		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+		return Result{}, inDir(o.Dir, err)
+	}
+	if err := refuseBuildOnlyCalls(tpkg); err != nil {
+		return Result{}, err
 	}
 	slog.Info("optimize2", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
@@ -229,7 +245,39 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		}
 		files[name] = data
 	}
-	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
+	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate, Warnings: optCfg.Warnings}, nil
+}
+
+// inDir places err in dir, unless it already says where it happened.
+func inDir(dir string, err error) error {
+	var d ir.Diagnostic
+	if errors.As(err, &d) && d.Pos.IsValid() {
+		return err
+	}
+	return fmt.Errorf("%s: %w", dir, err)
+}
+
+// refuseBuildOnlyCalls reports a call to an intrinsic only the build answers
+// -- sngl:x/gen's host API -- that survived the optimizer: one written
+// outside a const func, or in one whose arguments are not known until the
+// program runs. No target can make it.
+func refuseBuildOnlyCalls(pkg *ir.Package) error {
+	var found *ir.Call
+	ir.Walk(pkg, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && c.Func != nil && c.Func.BuildOnly {
+			found = c
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if found == nil {
+		return nil
+	}
+	d := ir.Diagnostic{Severity: ir.Error, Msg: fmt.Sprintf("%s reads the machine the build runs on, so only the build can call it, and this call was left for the program to make: call it from a const func whose arguments are known at build time", found.Func.Intrinsic)}
+	if found.AST != nil {
+		d.Pos = found.AST.Pos
+	}
+	return d
 }
 
 func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {

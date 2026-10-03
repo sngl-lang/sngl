@@ -146,9 +146,14 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		Main:     p.main,
 		OutDir:   p.outDir,
 		Library:  p.library,
+		Trust:    cliTrust,
 	})
 	if err != nil {
 		return err
+	}
+	seen := map[string]bool{}
+	for _, res := range results {
+		printWarnings(res.Warnings, seen)
 	}
 	for _, res := range results {
 		out := p.outDir

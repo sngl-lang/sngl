@@ -552,7 +552,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A package documents itself with a **package comment**: a run of line comments
@@ -1814,7 +1814,9 @@ const is a wrong build. Hand the data in as an argument instead:
 `file:`'s `names(pattern)` lists a directory at build time, which is how
 website.sngl gives `docs.LibraryComponents` the snapshots it used to `os.Stat`.
 Reading the compiler's own generated source is the one exception, and only
-because the store reports it.
+because the store reports it. A SNGL `const func` reading through
+`sngl:x/gen` is the other, and for the same reason: every such read records
+what it read (see *Trust*).
 
 The mark imports nothing, resolves nothing and validates nothing, and never
 confers type identity — only a scheme importer's `Foreign.Origin` unifies two
@@ -3133,7 +3135,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 **A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
-**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory -- unset before Phase D, so a script naming it got the empty string), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
 
 **Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
 from the root `TestGolden`): the archive's root-level files are one SNGL
@@ -3259,8 +3261,8 @@ targets in parallel) is not a saving.
   and is tuned to one machine besides.
 - **The docs site (`go tool docsgen`) is the stress case**: one html build
   writing ~1200 files, where per-page costs dominate. Its compile step is
-  `sngl generate --platform html --lang none website.sngl` once
-  `internal/playground/assets/sngl.wasm` is staged.
+  `sngl generate --allow-eval=go:git.duckfam.us/jonathan/sngl/docs --allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
+  staged.
 - **What another process produces is SNGL, and it is stored.** A step
   whose output the compiler reads but did not write -- the compile-time
   evaluator's run, gtk4's GIR -- is a *producer* registered with
@@ -3271,7 +3273,13 @@ targets in parallel) is not a saving.
   producer's code is an input nothing in a file can record), it re-checks the
   recorded inputs and hands back the stored file when all still hold. Under
   `os.UserCacheDir()/sngl/gen`, `SNGL_GENCACHE_DIR` to move it,
-  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU.
+  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU. A
+  producer written in SNGL adds its own identity to the key
+  (`Request.Identity`, the digest of its package closure), since editing it
+  changes every answer while every input it recorded still holds. `Default`
+  is the store the environment names *when asked*, and `ResetDefault` forgets
+  them: a store memoizes each input's verdict for its life, which is one
+  build's, and the in-process script harness runs many.
   An `entry` input names another producer's output by digest, which is how a
   consteval value depends on the `go.deps` closure of the packages its
   program imported without restating hundreds of files, and on whatever of the
@@ -3285,6 +3293,48 @@ targets in parallel) is not a saving.
   package for every target but the last, and `ir.ClonePackage` copies by
   reflection everything reachable — library IR included, since per-target
   override bodies are written onto the shared library declarations.
+
+### Trust
+
+**A malicious repository may not reach the host.** Running any `sngl`
+command in a clone must not run a process, read the environment or read
+outside the project on the repository's say-so (`SNGL_PLUGINS.md` decisions
+11 and 12; `internal/trust`). Two kinds of code ask, and they are gated
+differently because they reach differently:
+
+- **An evaluated go: or js: package** is native code with the user's
+  privileges, so the grant is per package and total: `--allow-eval="go:<path>"`.
+  It is asked only of a store *miss* (`gateEval`, after the lookups in
+  `execConstEval`): a stored value was computed by a run that was allowed.
+  A refused call does not fold. On a target that calls the scheme at run
+  time it is emitted as a call and `Config.Warnings` says so once per
+  package (`reportRefused`), which `build.Result.Warnings` carries and the
+  CLI prints beside the checker's; on one that cannot, it is the error.
+- **A build-time SNGL function** reaches the host only through
+  `sngl:x/gen`'s `lines`, `exists`, `names`, `env` and `exec`, intrinsics
+  marked `build` that only the optimizer's build host
+  (`internal/optimize/buildhost.go`) answers -- a call left unfolded is
+  refused by `refuseBuildOnlyCalls`. Each call is gated by the package that
+  wrote it (the interpreter keeps the frame stack for that): inside the
+  import root (`Config.Dir`, symlinks resolved) or the package's own
+  directory reads unasked, anything else needs `--allow-file`/`--allow-dir`,
+  and env and exec always need a grant. `gen.exec` holds every call to its
+  declared prefix and banned flags whatever was granted. Every read is
+  recorded, so a fold that reaches the host is a producer (`produce.go`):
+  stored as `sngl.eval` under its package closure's digest, the files it read
+  hashed as they streamed.
+
+A grant comes from a flag (an import path or an origin, one invocation),
+`SNGL_ALLOW` (`;`-separated, origins only, no `all`) or the user's
+`os.UserConfigDir()/sngl/trust.sngl` (`sngl:x/gen/trust`, written by `sngl trust` and the terminal prompt, never read from the project). A recorded grant
+names where code came from -- `dir:<path>` (with the go.mod module path for a
+Go package), `go:<module>@<version>`, a fetched URI and its digest -- because
+an import path is a name a repository chooses. `SNGL_ALLOW` is unset in
+`setupTrust`, so no child sngl starts inherits it. **A nil `*trust.Policy`
+refuses everything**: a caller that never thought about trust runs nothing a
+repository brought, which is why the golden harness, docsgen and
+docbrowser's `go:generate` each name their grant. A library package is
+trusted.
 
 ### Debugging
 

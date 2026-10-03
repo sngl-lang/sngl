@@ -805,6 +805,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		TypeParams:      intrinsicTypeParamNames(fn),
 		Purity:          fn.Purity,
 		MutatesReceiver: fn.MutatesReceiver,
+		BuildOnly:       fn.BuildOnly,
 		Pkg:             c.libPkgName,
 		DeclaredAs:      funcDeclName(fn),
 	})

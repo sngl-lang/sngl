@@ -1246,7 +1246,7 @@ Settled in C3's planning:
 - **Route mode reads a document's `title` and `favicon`** off html's document
   primitive, by the names it declares.
 
-### Phase D: groundwork for foreign code
+### Phase D: groundwork for foreign code -- done
 
 Decisions 7, 10, 11 and 12: the host API skeleton recording through
 `internal/gencache`, the producer identity in the key, the permission gate
@@ -1254,6 +1254,117 @@ with `--allow-eval` in front of the existing go: and js: evaluation, and an
 optimizer warning channel through `build.Emit`. Lands before any plugin can
 exec, so there is no release where the new gate exists and the old hole does
 not close.
+
+*Done*, as settled below. `internal/trust` holds the policy: flags, `SNGL_ALLOW`
+and the config file, matching by import path (a flag) or origin (everything
+recorded), the refusal messages, and the config file's reader and writer. The
+optimizer's build host (`buildhost.go`) answers `sngl:x/gen`'s `lines`,
+`exists`, `names`, `env` and `exec` -- `#[marks.intrinsic(…, build)]`, a new
+flag saying no target emits the id -- gating each by the package that wrote
+the call and recording each read; `produce.go` stores a fold that reached the
+host as `sngl.eval`, keyed by its package closure (`gencache.Request.Identity`,
+decision 10), with its value as JSON read back by the declared type. The
+interpreter gained `Stream`, a pull iterable whose `else` takes the first
+element, and a frame stack for who is calling. `gateEval` asks before a go:
+or js: batch runs a miss; a refused call is tallied per package and reported
+by `reportRefused`, as `Config.Warnings` (carried on `build.Result.Warnings`)
+or as the error. The CLI prints those and the checker's warnings, both of
+which it used to drop. `sngl trust` records, lists and removes; `--project` is
+gone. docsgen and docbrowser's `go:generate` name their grants.
+
+Fixtures, each failing on 59083490: `cmd/sngl/testdata/trust_host_refused.txt`,
+`trust_host_allowed.txt`, `trust_exec_prefix.txt`, `trust_eval.txt`,
+`trust_eval_spoofed.txt`, `trust_eval_js.txt` and `gen_store.txt`. No golden:
+nothing here changes what a target generates for a program the gate allows.
+
+Found on the way: the script harness never set `$WORK`, so sixteen scripts
+naming it got the empty string (`js_consteval_fold.txt` pointed a cache at
+`/evalcache`); and `gencache.Default` was fixed by whichever build asked
+first, so an in-process script's `SNGL_GENCACHE=off` was ignored once any
+earlier code had opened the store.
+
+Two deviations from what planning settled, both to raise: the directory
+listing is `gen.names(dir, pattern)`, since a func named `list` in
+`sngl:x/gen` shadows `list<T>` there (and `file:` already says `names`); and
+`SNGL_ALLOW` takes origins only, since decision 11's example names an import
+path, and an ambient grant by import path reaches any repository claiming it.
+
+Left for Phase E: the LSP's half of the gate (nothing it checks reaches the
+host yet); a plugin's literal cache nodes in its output; a host call written
+outside a const func, which is refused rather than answered; and the
+audit's findings below.
+
+Settled in D's planning:
+
+- **A `const func` folding through `sngl:x/gen` is the producer** until Phase
+  E brings `@generate`. `file:`'s `contents` is the precedent: a const func
+  that reads at build time. `gen.*` are `const func` intrinsics only the
+  build's evaluator answers; a call left unfolded is a build error, since no
+  target implements one at run time. A fold that reaches one is stored
+  (`sngl.eval`) under its package closure's digest.
+- **The host API streams.** `gen.lines(path) iter<string>` in place of
+  `readFile`, and `gen.exec` returns a `Process` whose `stdout` is an
+  `iter<string>`, with `code()` draining it and waiting. The recorder hashes
+  what it hands out, and drains the rest unyielded when a plugin stops early,
+  so an input records the whole file. The interpreter gains a pull iterable
+  for it, whose `else` is asked by taking the first element.
+- **`gen.exec` records the resolved binary**, its argv riding in the fold's
+  key, and nothing re-runs on a hit. What a process reads beyond that is
+  said by literal `sngl:x/gen/cache` nodes in a plugin's output, the store
+  filling in the digests -- which needs output text, so it lands with
+  `out.write` in Phase E.
+- **A recorded grant for code inside the project** is keyed by its directory
+  (symlinks resolved) and, for Go, the go.mod's module path. An edit never
+  asks again. A dependency is keyed by `module@version`, a vendored or
+  replaced-to-a-directory one by its directory, a js: module always by its
+  directory (node_modules is the repository's), and a fetched SNGL package by
+  its URI and closure digest.
+- **The config file is `os.UserConfigDir()/sngl/trust.sngl`**, written in
+  `sngl:x/gen/trust`: `trust.allow(origin=…, module=…, sha256=…) { trust.eval() trust.command(prefix=…, banFlags=…) trust.env(name=…) trust.file(path=…) trust.dir(path=…) }`.
+- **A flag splits its plugin from its value at the first `=`**:
+  `--allow-command='./pc=pkg-config --cflags'`. An import path never holds
+  one. A flag names an import path or an origin; an origin is `dir:<abs>`,
+  `go:<module>@<version>` or a scheme URI.
+- **`SNGL_ALLOW` is `;`-separated `kind=value` entries**, whitespace trimmed,
+  `\;` and `\\` escaped, so it fits on the one line a `.env` file holds. Its
+  entries name origins, not import paths: an ambient grant by import path
+  would reach any repository that claims the path. `all` is refused there.
+- **The prompt offers once, always or no** (the default), only when stdin and
+  stderr are terminals. `--allow-all` is never recorded. `sngl trust` prints
+  the line it wrote and the file; `--list` numbers the lines in the config's
+  own spelling; `--remove` takes a number or an origin.
+- **docsgen passes `--allow-eval` for `docs` and `docs/lookup`**, and nothing
+  exempts the project's own packages. The golden harness grants everything;
+  a CLI script that evaluates passes the flag it needs.
+- **The import root stays `Config.Dir`.** A relative import may still reach
+  above it (`internal/docbrowser` imports `../docui`); that package's code may
+  read its own directory as a plugin's own package, and nothing else changes.
+- **`--project` is deleted.**
+- **The LSP gate waits for Phase E**: nothing the check runs can reach the
+  host API in D -- the LSP never optimizes with a project directory -- so a
+  refusal diagnostic at an import has nothing to report yet.
+
+Audit of what the library-shipped importers run (decision 11), to raise again:
+
+- **go:, `go.deps`, the evaluator's build.** `go list` (via `go/packages`,
+  whose type mode builds export data, cgo included), `go env` and
+  `go build` run in the import root. The project's go.mod may select a
+  toolchain (`GOTOOLCHAIN=auto` fetches only official, checksum-verified
+  releases) and cgo flags are Go's allowlist, so this stays inside Go's own
+  rule that building untrusted code runs none of it. A store hit re-runs
+  `go env` to check its `goenv` inputs: "a hit runs nothing" means nothing of
+  the project's.
+- **`git:`** joins the import's host and path into the cache directory with
+  no `..` check, so a crafted import makes `git clone` write outside the
+  cache. The clone itself runs no repository code (`--branch=` is one
+  argument; the URL is always `https://`).
+- **`file:` and `md:`** check the root lexically, so a symlink inside the
+  root escapes it.
+- **`c:`** reads any absolute header path unasked, and runs `pkg-config` on a
+  name the repository chose (no option of pkg-config's runs a process). Phase
+  E deletes the importer.
+- **js: (TypeScript)** runs in process over `os.DirFS(root)` and execs
+  nothing; a symlink in node_modules escapes the root as `file:`'s does.
 
 ### Phase E: `gen.scheme`
 

@@ -155,7 +155,7 @@ func runJSConstEval(node, dir, mainPath, resultPath string) error {
 	defer cancel()
 	run := exec.CommandContext(ctx, node, mainPath)
 	run.Dir = dir
-	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	run.Env = append(ChildEnv(), consteval.OutEnv+"="+resultPath)
 	// Anything an evaluated function prints goes to stderr: results travel in
 	// the file, so stdout carries nothing we need.
 	run.Stdout = os.Stderr
