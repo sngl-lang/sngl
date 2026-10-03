@@ -76,7 +76,14 @@ func (c *EvalCache) file(dirPath, filename string) fileResult {
 		return v.(fileResult)
 	}
 	var res fileResult
-	res.data, res.err = fs.ReadFile(os.DirFS(dirPath), filename)
+	// Through an os.Root, so a symlink in the asset directory cannot hand a
+	// build a file from outside it.
+	if root, err := os.OpenRoot(dirPath); err != nil {
+		res.err = err
+	} else {
+		res.data, res.err = fs.ReadFile(root.FS(), filename)
+		root.Close()
+	}
 	if res.err == nil {
 		res.hashed = asset.HashedName(path.Base(filename), res.data)
 	}

@@ -578,21 +578,9 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
-	var cNativeImports []*ir.NativeImport
-	for _, imp := range ctx.Pkg.Imports {
-		if imp.Native == nil {
-			continue
-		}
-		for _, fn := range imp.Native.Funcs {
-			if fn.Foreign.Path == "C" {
-				cNativeImports = append(cNativeImports, imp.Native)
-				break
-			}
-		}
-	}
-	if len(cNativeImports) > 0 {
+	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
 		if cc, ok := lang.(codegen.CCompiler); ok {
-			td.CgoPreamble = cc.EmitCHeader(cNativeImports)
+			td.CgoPreamble = cc.EmitCHeader(links)
 		} else {
 			return templateData{}, fmt.Errorf("platform fyne with lang %T does not support C imports", lang)
 		}

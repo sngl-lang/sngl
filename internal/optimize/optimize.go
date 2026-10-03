@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
@@ -161,7 +162,7 @@ type evalCtx struct {
 	navCurrent any
 	// host answers sngl:x/gen for the run, and hostMemo memoizes which
 	// functions reach it. Nil where the build has no import root.
-	host     *buildHost
+	host     *buildhost.Host
 	hostMemo map[*ir.Func]bool
 	// cfg is the run's Config, for what a fold reports back to it.
 	cfg *Config
@@ -209,7 +210,7 @@ type optimizerRun struct {
 	writes     *writesAnalysis
 	interpEnvs map[*ir.Package]*interp.Env
 	readsCtx   map[*ir.Func]bool
-	host       *buildHost
+	host       *buildhost.Host
 	hostMemo   map[*ir.Func]bool
 }
 
@@ -340,7 +341,7 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		hostMemo:   map[*ir.Func]bool{},
 	}
 	if cfg.Dir != "" {
-		run.host = newBuildHost(cfg, pkg)
+		run.host = buildhost.New(cfg.Trust, cfg.Dir, pkg, nil)
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).

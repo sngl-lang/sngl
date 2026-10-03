@@ -3,6 +3,7 @@ package git
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -101,6 +102,13 @@ func parseGitURI(uri string) (*gitURI, error) {
 
 	// Split host/path
 	if before, after, ok := strings.Cut(rest, "/"); ok {
+		// Each part becomes a directory under the cache, so none may name the
+		// directory above it: `git:host/../../x@v` would clone outside.
+		for _, part := range []struct{ what, v string }{{"host", before}, {"path", after}, {"ref", ref}} {
+			if err := cacheSafe(part.v); err != nil {
+				return nil, fmt.Errorf("git:// URI %s %q: %w", part.what, part.v, err)
+			}
+		}
 		return &gitURI{
 			host: before,
 			path: after,
@@ -110,6 +118,25 @@ func parseGitURI(uri string) (*gitURI, error) {
 	}
 
 	return nil, fmt.Errorf("git:// URI requires host/path (e.g., git://github.com/user/repo)")
+}
+
+// cacheSafe refuses a URI part that would leave the directory it is joined
+// under: an empty, `.` or `..` segment, a backslash, or a leading `-`, which
+// git would read as an option.
+func cacheSafe(v string) error {
+	if strings.HasPrefix(v, "-") {
+		return errors.New("may not begin with '-'")
+	}
+	if strings.ContainsAny(v, "\\\x00") {
+		return errors.New("may not hold a backslash or NUL")
+	}
+	for seg := range strings.SplitSeq(v, "/") {
+		switch seg {
+		case "", ".", "..":
+			return fmt.Errorf("has a %q segment", seg)
+		}
+	}
+	return nil
 }
 
 func gitCacheDir(host, repoPath, ref string) string {

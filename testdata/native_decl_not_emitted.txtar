@@ -210,7 +210,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}()
 				time.Sleep(1)
 				m.name__inst0 = func() string { v, _ := os.Hostname(); return v }()
-				m.v__inst0 = C.abs(C.int((m.v__inst0 - 5)))
+				m.v__inst0 = int(C.abs(C.int((m.v__inst0 - 5))))
 			}()
 		}
 	}
@@ -248,4 +248,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:7863f03d0ab70d541e4e9cbf0cc6d5db
+broken sha256:407b7ef8b9c5fb266b7011db869d6c90

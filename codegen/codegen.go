@@ -531,9 +531,9 @@ type WASMFunc struct {
 // call sites via cgo. Checked via type assertion at codegen time.
 type CCompiler interface {
 	// EmitCHeader returns the cgo preamble comment block and `import "C"` line
-	// for the given C native imports. Called once per output file.
-	// Returns empty string when imports is empty.
-	EmitCHeader(imports []*ir.NativeImport) string
+	// for the headers the program's c.link directives name. Called once per
+	// output file. Returns empty string when links is empty.
+	EmitCHeader(links []*ir.CLink) string
 }
 
 // MutationModelEmitter is optionally implemented by platforms that emit a

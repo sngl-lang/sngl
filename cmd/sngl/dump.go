@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -360,7 +359,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		Options:    target.Options,
 		Source:     filepath.Base(dir),
 		FileAssets: fileAssets,
-		ProjectFS:  os.DirFS(dir),
+		ProjectFS:  build.ProjectFS(dir),
 	}
 	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
 	mem := codegen.NewMemSink()

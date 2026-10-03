@@ -1100,6 +1100,11 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 	}
 	f := ctx.evalCache().file(dirPath, filename)
 	if f.err != nil {
+		// A symlink out of the asset directory is not a file that is
+		// missing: left unfolded, the call would render nothing in silence.
+		if strings.Contains(f.err.Error(), "path escapes") {
+			ctx.fail(fmt.Errorf("file: %s in %s is a link to something outside it", filename, dirPath))
+		}
 		return nil, false
 	}
 

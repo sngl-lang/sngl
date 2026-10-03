@@ -18,7 +18,6 @@ import (
 	"io/fs"
 	"iter"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -290,7 +289,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 
 	projectFS := o.ProjectFS
 	if projectFS == nil {
-		projectFS = os.DirFS(filepath.Dir(o.Name))
+		projectFS = ProjectFS(filepath.Dir(o.Name))
 	}
 
 	req := &codegen.Request{

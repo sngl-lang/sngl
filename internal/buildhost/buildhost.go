@@ -1,4 +1,11 @@
-package optimize
+// Package buildhost is how SNGL run at build time reads the machine the build
+// runs on: sngl:x/gen's lines, exists, files, env and exec. Two things run
+// there -- a const func the optimizer folds, and a gen.scheme's @generate
+// handler the checker runs to resolve an import -- and both are producers:
+// what they compute is stored between builds behind what they read and the
+// code that read it. Each call is gated (internal/trust) by the package that
+// made it, and each read is recorded.
+package buildhost
 
 import (
 	"bufio"
@@ -25,34 +32,31 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The build host is how a function folded at build time reads the machine the
-// build runs on: sngl:x/gen's lines, exists, names, env and exec. Each call is
-// gated (internal/trust) by the package that made it, and each read is
-// recorded, so the fold that made it is a producer -- its value stored between
-// builds behind what it read and the code that read it (producer below).
-
-// genProducer names the values stored for a fold that read the host.
-const genProducer = "sngl.eval"
-
-// hostError is a host call that failed: a refusal, or a read that could not
+// Error is a host call that failed: a refusal, or a read that could not
 // be made. Unlike a fold that simply could not finish, it stops the build,
 // since no target can make the call at run time instead.
-type hostError struct {
+type Error struct {
 	pos ast.Pos
 	err error
 }
 
-func (e *hostError) Error() string {
+func (e *Error) Error() string {
 	if e.pos.IsValid() {
 		return e.pos.String() + ": " + e.err.Error()
 	}
 	return e.err.Error()
 }
 
-func (e *hostError) Unwrap() error { return e.err }
+func (e *Error) Unwrap() error { return e.err }
 
-// owner is a package as the host sees it: who is asking, and what its code is.
-type owner struct {
+// Pos is where the failing call is written, when it is known.
+func (e *Error) Pos() ast.Pos { return e.pos }
+
+// Err is the failure without its position.
+func (e *Error) Err() error { return e.err }
+
+// Owner is a package as the host sees it: who is asking, and what its code is.
+type Owner struct {
 	pkg     *ir.Package
 	library bool
 	// name is the package as a flag spells it: its import path from the root.
@@ -64,7 +68,7 @@ type owner struct {
 }
 
 // subject is the owner as the trust gate sees it.
-func (o *owner) subject() trust.Subject {
+func (o *Owner) Subject() trust.Subject {
 	if o == nil {
 		return trust.Subject{}
 	}
@@ -72,7 +76,7 @@ func (o *owner) subject() trust.Subject {
 	if o.dir != "" {
 		s.Origin = trust.DirOrigin(o.dir)
 	} else if o.uri != "" {
-		s.Origin = trust.Origin{Spec: o.uri, Digest: o.closure()}
+		s.Origin = trust.Origin{Spec: o.uri, Digest: o.Closure()}
 	}
 	return s
 }
@@ -80,14 +84,14 @@ func (o *owner) subject() trust.Subject {
 // closure is the digest of the owner's code and the code of every package it
 // imports that is not compiled into the compiler: what a stored answer from
 // it depends on that no recorded input could say.
-func (o *owner) closure() string {
+func (o *Owner) Closure() string {
 	if o.digest == "" {
-		o.digest = closureDigest(o.pkg, map[*ir.Package]string{})
+		o.digest = ClosureDigest(o.pkg, map[*ir.Package]string{})
 	}
 	return o.digest
 }
 
-func closureDigest(pkg *ir.Package, memo map[*ir.Package]string) string {
+func ClosureDigest(pkg *ir.Package, memo map[*ir.Package]string) string {
 	if d, ok := memo[pkg]; ok {
 		return d
 	}
@@ -109,7 +113,7 @@ func closureDigest(pkg *ir.Package, memo map[*ir.Package]string) string {
 		case imp.Native != nil:
 			deps = append(deps, "native:"+imp.Path)
 		case imp.Pkg != nil && imp.Pkg.Origin != nil:
-			deps = append(deps, closureDigest(imp.Pkg, memo))
+			deps = append(deps, ClosureDigest(imp.Pkg, memo))
 		}
 	}
 	sort.Strings(deps)
@@ -121,26 +125,46 @@ func closureDigest(pkg *ir.Package, memo map[*ir.Package]string) string {
 	return d
 }
 
-// buildHost answers sngl:x/gen for one Optimize run.
-type buildHost struct {
-	cfg    *Config
-	root   string // the import root, canonical
-	owners map[*ir.Func]*owner
-	rootOw *owner
-	// rec is the producer recording now; nil outside one.
-	rec *recorder
+// NewOwner is a package the caller has already placed: a plugin a check is
+// running, which it knows the origin of better than an ir.PackageOrigin says.
+func NewOwner(pkg *ir.Package, name, dir, uri string, library bool) *Owner {
+	o := &Owner{pkg: pkg, name: name, uri: uri, library: library}
+	if dir != "" {
+		o.dir = trust.Canonical(dir)
+	}
+	return o
 }
 
-// newBuildHost indexes which package declares each function reachable from
-// root, which is who a host call written in it is asked of.
-func newBuildHost(cfg *Config, root *ir.Package) *buildHost {
-	h := &buildHost{cfg: cfg, owners: map[*ir.Func]*owner{}}
-	if cfg.Dir != "" {
-		h.root = trust.Canonical(cfg.Dir)
+// Name is the package as a flag spells it.
+func (o *Owner) Name() string { return o.name }
+
+// Dir is where the package is on disk, canonical; "" for a fetched one.
+func (o *Owner) Dir() string { return o.dir }
+
+// Host answers sngl:x/gen for one Optimize run, or one scheme handler.
+type Host struct {
+	trust  *trust.Policy
+	root   string // the import root, canonical
+	owners map[*ir.Func]*Owner
+	rootOw *Owner
+	// rec is the producer recording now; nil outside one.
+	rec *Recorder
+	// out is what a scheme handler writes; nil outside one.
+	out *Output
+}
+
+// New indexes which package declares each function reachable from root,
+// which is who a host call written in it is asked of. dir is the import root,
+// and rootOwner is root as the host should see it, or nil to derive it from
+// root's origin.
+func New(policy *trust.Policy, dir string, root *ir.Package, rootOwner *Owner) *Host {
+	h := &Host{trust: policy, owners: map[*ir.Func]*Owner{}}
+	if dir != "" {
+		h.root = trust.Canonical(dir)
 	}
 	seen := map[*ir.Package]bool{}
-	var walk func(pkg *ir.Package, ow *owner)
-	walk = func(pkg *ir.Package, ow *owner) {
+	var walk func(pkg *ir.Package, ow *Owner)
+	walk = func(pkg *ir.Package, ow *Owner) {
 		if pkg == nil || seen[pkg] {
 			return
 		}
@@ -158,19 +182,37 @@ func newBuildHost(cfg *Config, root *ir.Package) *buildHost {
 				continue
 			}
 			if strings.HasPrefix(imp.Path, "sngl:") || imp.Pkg.Origin == nil {
-				walk(imp.Pkg, &owner{pkg: imp.Pkg, library: true, name: imp.Path})
+				walk(imp.Pkg, &Owner{pkg: imp.Pkg, library: true, name: imp.Path})
 				continue
 			}
-			walk(imp.Pkg, h.ownerOf(imp.Pkg))
+			walk(imp.Pkg, h.OwnerOf(imp.Pkg))
 		}
 	}
-	h.rootOw = h.ownerOf(root)
+	h.rootOw = rootOwner
+	if h.rootOw == nil {
+		h.rootOw = h.OwnerOf(root)
+	}
 	walk(root, h.rootOw)
 	return h
 }
 
-func (h *buildHost) ownerOf(pkg *ir.Package) *owner {
-	o := &owner{pkg: pkg}
+// Recording makes rec what host calls record into until the returned func
+// puts the previous recorder back.
+func (h *Host) Recording(rec *Recorder) func() {
+	outer := h.rec
+	h.rec = rec
+	return func() { h.rec = outer }
+}
+
+// Recorder is the producer recording now, or nil.
+func (h *Host) Recorder() *Recorder { return h.rec }
+
+// Writing makes out what a handler's out.write calls write.
+func (h *Host) Writing(out *Output) { h.out = out }
+
+// OwnerOf is pkg as the host sees it, by its origin.
+func (h *Host) OwnerOf(pkg *ir.Package) *Owner {
+	o := &Owner{pkg: pkg}
 	switch {
 	case pkg.Origin == nil:
 		o.name = "."
@@ -188,7 +230,8 @@ func (h *buildHost) ownerOf(pkg *ir.Package) *owner {
 	return o
 }
 
-func (h *buildHost) ownerFor(fn *ir.Func) *owner {
+// OwnerFor is the package that declares fn, which a call written in it is asked of.
+func (h *Host) OwnerFor(fn *ir.Func) *Owner {
 	if o, ok := h.owners[fn]; ok {
 		return o
 	}
@@ -196,36 +239,36 @@ func (h *buildHost) ownerFor(fn *ir.Func) *owner {
 }
 
 // Call answers one host call.
-func (h *buildHost) Call(id string, caller *ir.Func, call *ir.Call, args []any) (any, error) {
-	ow := h.ownerFor(caller)
+func (h *Host) Call(id string, caller *ir.Func, call *ir.Call, args []any) (any, error) {
+	ow := h.OwnerFor(caller)
 	pos := h.position(ow, call)
 	v, err := h.call(id, ow, call, args)
 	if err != nil {
-		if _, ok := errors.AsType[*hostError](err); ok {
+		if _, ok := errors.AsType[*Error](err); ok {
 			return nil, err
 		}
-		return nil, &hostError{pos: pos, err: err}
+		return nil, &Error{pos: pos, err: err}
 	}
 	return v, nil
 }
 
 // position is where call is written, with the file named from the import
 // root as a flag names the package.
-func (h *buildHost) position(ow *owner, call *ir.Call) ast.Pos {
+func (h *Host) position(ow *Owner, call *ir.Call) ast.Pos {
 	if call == nil || call.AST == nil {
 		return ast.Pos{}
 	}
-	pos := callStart(call.AST)
+	pos := CallStart(call.AST)
 	if ow != nil && ow.pkg != nil && ow.pkg.Origin != nil && ow.pkg.Origin.Dir != "" && ow.pkg.Origin.Dir != "." && pos.File != "" {
 		pos.File = path.Join(ow.pkg.Origin.Dir, path.Base(filepath.ToSlash(pos.File)))
 	}
 	return pos
 }
 
-func (h *buildHost) call(id string, ow *owner, call *ir.Call, args []any) (any, error) {
+func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error) {
 	rec := h.rec
 	if rec == nil {
-		return nil, fmt.Errorf("%s answers only inside a const func the build evaluates", id)
+		return nil, fmt.Errorf("%s answers only inside a const func the build evaluates, or a gen.scheme handler", id)
 	}
 	str := func(i int) string {
 		if i < len(args) {
@@ -266,16 +309,22 @@ func (h *buildHost) call(id string, ow *owner, call *ir.Call, args []any) (any, 
 		return rec.listing(dir, str(1))
 	case "gen.env":
 		name := str(0)
-		if err := h.cfg.Trust.Check(trust.Request{Kind: trust.Env, Subject: ow.subject(), Value: name}); err != nil {
+		if err := h.trust.Check(trust.Request{Kind: trust.Env, Subject: ow.Subject(), Value: name}); err != nil {
 			return nil, err
 		}
-		rec.add(gencache.Env(name))
+		rec.Add(gencache.Env(name))
 		if v, ok := os.LookupEnv(name); ok {
 			return v, nil
 		}
 		return nil, nil
 	case "gen.exec":
 		return h.exec(rec, ow, call, strs(0), strs(1), strs(2), str(3))
+	case "gen.Out.write":
+		if h.out == nil {
+			return nil, errors.New("out.write answers only in a gen.scheme's @generate handler")
+		}
+		// args[0] is the receiver.
+		return nil, h.out.write(str(1), str(2))
 	case "gen.Process.code":
 		p, _ := args[0].(*interp.Struct)
 		st, _ := p.Get("stdout")
@@ -295,7 +344,7 @@ func streamOf(v any) *interp.Stream {
 
 // readable resolves p against the import root and asks whether ow may read
 // it: inside the root, or inside ow's own package, needs nothing.
-func (h *buildHost) readable(ow *owner, p string, kind trust.Kind) (string, error) {
+func (h *Host) readable(ow *Owner, p string, kind trust.Kind) (string, error) {
 	if h.root == "" {
 		return "", errors.New("there is no import root to read from")
 	}
@@ -307,10 +356,10 @@ func (h *buildHost) readable(ow *owner, p string, kind trust.Kind) (string, erro
 	if trust.Within(abs, h.root) || ow.dir != "" && trust.Within(abs, ow.dir) {
 		return abs, nil
 	}
-	return abs, h.cfg.Trust.Check(trust.Request{Kind: kind, Subject: ow.subject(), Value: abs, Root: h.root})
+	return abs, h.trust.Check(trust.Request{Kind: kind, Subject: ow.Subject(), Value: abs, Root: h.root})
 }
 
-func (h *buildHost) exec(rec *recorder, ow *owner, call *ir.Call, cmd, prefix, banFlags []string, dir string) (any, error) {
+func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFlags []string, dir string) (any, error) {
 	if len(cmd) == 0 {
 		return nil, errors.New("gen.exec: no command")
 	}
@@ -325,7 +374,7 @@ func (h *buildHost) exec(rec *recorder, ow *owner, call *ir.Call, cmd, prefix, b
 			return nil, fmt.Errorf("gen.exec: argument %q is a flag the call bans (%s)", arg, ban)
 		}
 	}
-	if err := h.cfg.Trust.Check(trust.Request{Kind: trust.Command, Subject: ow.subject(), Cmd: cmd, Prefix: prefix, BanFlags: banFlags, Root: h.root}); err != nil {
+	if err := h.trust.Check(trust.Request{Kind: trust.Command, Subject: ow.Subject(), Cmd: cmd, Prefix: prefix, BanFlags: banFlags, Root: h.root}); err != nil {
 		return nil, err
 	}
 	bin, err := exec.LookPath(cmd[0])
@@ -339,7 +388,7 @@ func (h *buildHost) exec(rec *recorder, ow *owner, call *ir.Call, cmd, prefix, b
 	if err != nil {
 		return nil, fmt.Errorf("gen.exec: %w", err)
 	}
-	rec.add(in)
+	rec.Add(in)
 	runDir := h.root
 	if dir != "" {
 		runDir = dir
@@ -448,8 +497,33 @@ func (p *process) wait() (any, error) {
 	return p.code, p.err
 }
 
-// recorder collects what one producer read.
-type recorder struct {
+// Output is the files a scheme handler wrote, in the order it wrote them. It
+// records nothing: it is the output.
+type Output struct {
+	Names []string
+	Files map[string]string
+}
+
+func (o *Output) write(name, src string) error {
+	if name == "" || path.Base(name) != name || !strings.HasSuffix(name, ".sngl") {
+		return fmt.Errorf("out.write: %q is not a file name: want a .sngl name with no directory", name)
+	}
+	if o.Files == nil {
+		o.Files = map[string]string{}
+	}
+	if _, dup := o.Files[name]; dup {
+		return fmt.Errorf("out.write: %s written twice", name)
+	}
+	o.Names = append(o.Names, name)
+	o.Files[name] = src
+	return nil
+}
+
+// NewRecorder is a recorder with nothing recorded.
+func NewRecorder() *Recorder { return &Recorder{procs: map[*interp.Stream]*process{}} }
+
+// Recorder collects what one producer read.
+type Recorder struct {
 	inputs []gencache.Input
 	files  []*fileStream
 	procs  map[*interp.Stream]*process
@@ -458,9 +532,9 @@ type recorder struct {
 	unrecordable bool
 }
 
-func (r *recorder) add(in gencache.Input) { r.inputs = append(r.inputs, in) }
+func (r *Recorder) Add(ins ...gencache.Input) { r.inputs = append(r.inputs, ins...) }
 
-func (r *recorder) lines(p string) (any, error) {
+func (r *Recorder) lines(p string) (any, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, fmt.Errorf("gen.lines: %w", err)
@@ -470,29 +544,29 @@ func (r *recorder) lines(p string) (any, error) {
 	return &interp.Stream{Next: fs.next, Stop: fs.drain}, nil
 }
 
-func (r *recorder) exists(p string) (any, error) {
+func (r *Recorder) exists(p string) (any, error) {
 	info, err := os.Stat(p)
 	switch {
 	case err != nil:
-		r.add(gencache.Absent(p))
+		r.Add(gencache.Absent(p))
 		return false, nil
 	case info.IsDir():
 		in, err := gencache.Dir(p)
 		if err != nil {
 			return nil, fmt.Errorf("gen.exists: %w", err)
 		}
-		r.add(in)
+		r.Add(in)
 	default:
 		in, err := gencache.File(p)
 		if err != nil {
 			return nil, fmt.Errorf("gen.exists: %w", err)
 		}
-		r.add(in)
+		r.Add(in)
 	}
 	return true, nil
 }
 
-func (r *recorder) listing(dir, pattern string) (any, error) {
+func (r *Recorder) listing(dir, pattern string) (any, error) {
 	if _, err := path.Match(pattern, ""); err != nil {
 		return nil, fmt.Errorf("gen.files: %q: %w", pattern, err)
 	}
@@ -500,7 +574,7 @@ func (r *recorder) listing(dir, pattern string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gen.files: %w", err)
 	}
-	r.add(in)
+	r.Add(in)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("gen.files: %w", err)
@@ -516,14 +590,14 @@ func (r *recorder) listing(dir, pattern string) (any, error) {
 
 // finish completes every read the producer left open -- a file stream it
 // stopped taking, a process it never waited for -- and returns the inputs.
-func (r *recorder) finish() ([]gencache.Input, error) {
+func (r *Recorder) Finish() ([]gencache.Input, error) {
 	var errs []error
 	for _, f := range r.files {
 		if err := f.drain(); err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		r.add(gencache.Input{Kind: "file", Props: []gencache.Prop{{Name: "path", Value: f.path}, {Name: "sha256", Value: hex.EncodeToString(f.h.Sum(nil))}}})
+		r.Add(gencache.Input{Kind: "file", Props: []gencache.Prop{{Name: "path", Value: f.path}, {Name: "sha256", Value: hex.EncodeToString(f.h.Sum(nil))}}})
 	}
 	for _, p := range r.procs {
 		if _, err := p.wait(); err != nil {
@@ -573,4 +647,23 @@ func (s *fileStream) drain() error {
 	defer s.f.Close()
 	_, err := io.Copy(s.h, s.r)
 	return err
+}
+
+// CallStart is where a call is written: the start of what it calls, which is
+// where a reader looks, rather than its parenthesis.
+func CallStart(c *ast.CallExpr) ast.Pos {
+	e := c.Func
+	for {
+		sel, ok := e.(*ast.SelectExpr)
+		if !ok {
+			break
+		}
+		e = sel.Operand
+	}
+	if e != nil {
+		if p := e.ExprPos(); p != nil && p.IsValid() {
+			return *p
+		}
+	}
+	return c.Pos
 }

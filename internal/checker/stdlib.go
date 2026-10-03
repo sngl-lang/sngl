@@ -129,7 +129,9 @@ func parseStdlibDocs() []*ast.Document {
 				if err != nil {
 					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
 				}
-				if !targetTier(tier) {
+				// A plugin is not a declaration library: it is checked as a
+				// package of its own when its scheme is asked for.
+				if !targetTier(tier) && !strings.HasPrefix(tier, SchemeTier) {
 					stdlibDocs = append(stdlibDocs, doc)
 				}
 				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)

@@ -205,6 +205,16 @@ func (p *Policy) SetAll() {
 	p.all = true
 }
 
+// All reports whether the policy grants everything.
+func (p *Policy) All() bool {
+	if p == nil {
+		return false
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.all
+}
+
 // Grants returns every grant the policy holds, in the order added.
 func (p *Policy) Grants() []Grant {
 	if p == nil {

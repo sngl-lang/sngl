@@ -13,7 +13,11 @@ component input build.family
 component inputs(const entries ...component input) root {}
 
 // A file whose content the output was derived from, by its SHA-256.
-component file(const path string, const sha256 string) input {}
+//
+// Every digest and value here may be left out where a producer writes the
+// directive into its own output -- a plugin naming a file a process it ran
+// read -- and the store fills in what it is when the output is stored.
+component file(const path string, const sha256 string = "") input {}
 
 // A path that resolved to nothing: missing, a link to nothing, or under
 // something that is not a directory. A producer that probes a list of
@@ -23,15 +27,15 @@ component absent(const path string) input {}
 
 // A directory's listing, by the SHA-256 of its sorted entry names. It is what
 // notices a file added beside the ones a producer read.
-component dir(const path string, const sha256 string) input {}
+component dir(const path string, const sha256 string = "") input {}
 
 // A directory's listing as the go command reads it: `dir`, leaving out the
 // names beginning with `_` or `.` that no build or directory embed sees. A
 // scratch directory a test writes beside a package leaves it unchanged.
-component godir(const path string, const sha256 string) input {}
+component godir(const path string, const sha256 string = "") input {}
 
 // An environment variable the producer read, and the value it had.
-component env(const name string, const value string) input {}
+component env(const name string, const value string = "") input {}
 
 // An environment variable the producer read and found unset.
 component unsetenv(const name string) input {}
@@ -39,9 +43,9 @@ component unsetenv(const name string) input {}
 // A value `go env` reports when run in dir. The Go toolchain's configuration
 // is more than the environment -- a go.env file, GOTOOLCHAIN switching on a
 // go.mod line -- so it is asked rather than reconstructed.
-component goenv(const dir string, const name string, const value string) input {}
+component goenv(const dir string, const name string, const value string = "") input {}
 
 // Another stored output, by the SHA-256 of its content. The store answers it
 // the way it answers any request: the output is re-checked, or produced again,
 // and the two must agree.
-component entry(const producer string, const params list<string>, const sha256 string) input {}
+component entry(const producer string, const params list<string>, const sha256 string = "") input {}

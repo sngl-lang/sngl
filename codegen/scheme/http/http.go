@@ -190,7 +190,7 @@ func httpCacheDir(cleanURL string) string {
 	key := fmt.Sprintf("%x", sha256.Sum256([]byte(cleanURL)))
 	u, err := url.Parse(cleanURL)
 	host := "unknown"
-	if err == nil {
+	if err == nil && u.Host != "" && u.Host != "." && u.Host != ".." && !strings.ContainsAny(u.Host, `/\`) {
 		host = u.Host
 	}
 	return filepath.Join(codegen.SnglCacheDir(), "http", host, key)

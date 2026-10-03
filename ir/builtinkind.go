@@ -108,6 +108,14 @@ const (
 	// where they are written and nowhere else.
 	BuiltinGenEmit BuiltinKind = "genEmit"
 	BuiltinGenNode BuiltinKind = "genNode"
+	// GenScheme is `sngl:x/gen`'s `scheme`: an import scheme a package
+	// declares. Read where it is written and taken out of the package before
+	// anything renders it.
+	BuiltinGenScheme BuiltinKind = "genScheme"
+	// CLink is `sngl:x/c`'s `link`: a header and the flags a C preamble
+	// includes for the package's `#[cnative]` declarations. Read into
+	// Package.CLinks rather than rendered.
+	BuiltinCLink BuiltinKind = "cLink"
 
 	// Target identities. An opaque value type each of whose values is one
 	// target's build-tree node read as a value -- html.platform,
@@ -206,7 +214,7 @@ func (b BuiltinKind) IsNode() bool {
 // root instantiates to say something to the compiler, which is read rather
 // than rendered.
 func (b BuiltinKind) IsDirective() bool {
-	return b == BuiltinOutput || b == BuiltinGenInputs
+	return b == BuiltinOutput || b == BuiltinGenInputs || b == BuiltinGenScheme || b == BuiltinCLink
 }
 
 // IsEmitter reports whether the kind marks one of the declarations an emitter
@@ -236,7 +244,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
-		BuiltinOutput, BuiltinGenInputs, BuiltinGenEmit, BuiltinGenNode,
+		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}

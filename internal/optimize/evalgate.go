@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -120,24 +121,7 @@ func (ctx *evalCtx) noteRefused(call *ir.Call, scheme string, err error) bool {
 	return true
 }
 
-// callStart is where a call is written: the start of what it calls, which is
-// where a reader looks, rather than its parenthesis.
-func callStart(c *ast.CallExpr) ast.Pos {
-	e := c.Func
-	for {
-		sel, ok := e.(*ast.SelectExpr)
-		if !ok {
-			break
-		}
-		e = sel.Operand
-	}
-	if e != nil {
-		if p := e.ExprPos(); p != nil && p.IsValid() {
-			return *p
-		}
-	}
-	return c.Pos
-}
+func callStart(c *ast.CallExpr) ast.Pos { return buildhost.CallStart(c) }
 
 func before(a, b ast.Pos) bool {
 	if a.File != b.File {
@@ -196,7 +180,7 @@ func GoOrigin(dir, pkg string) (trust.Origin, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "go", "list", "-find", "-json=ImportPath,Dir,Module", "--", pkg)
 	cmd.Dir = dir
-	cmd.Env = ChildEnv()
+	cmd.Env = buildhost.ChildEnv()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

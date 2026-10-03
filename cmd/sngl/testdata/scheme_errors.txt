@@ -1,0 +1,162 @@
+# What an import of a plugin's scheme refuses, each at the import or the
+# gen.scheme it is about.
+env SNGL_GENCACHE=off
+
+# A scheme nothing serves: no importer is built in for it and no package the
+# program imports declares it.
+! sngl check unknown/app.sngl
+stderr 'unknown/app.sngl:1:1: import "nosuch:thing": unknown import scheme "nosuch": no built-in importer serves it, and no package this one imports declares it with gen.scheme'
+
+# A plugin may not take a built-in scheme's name: a scheme is a dispatch key
+# every import of the build shares.
+! sngl check shadow/app.sngl
+stderr 'go.sngl:3:1: scheme "go" is built into the compiler, and a plugin may not take its name'
+
+# Nor the name of one the library ships.
+! sngl check shadowlib/app.sngl
+stderr 'c.sngl:3:1: scheme "c" is shipped by the library \(sngl:x/scheme/c\), and a plugin may not take its name'
+
+# Two packages one import reaches may not both declare a name; the import that
+# brings the second is the one reported, naming both.
+! sngl check dup/app.sngl
+stderr 'dup/app.sngl:3:1: import "\./two" brings a second scheme "dup": it is declared at one.sngl:3:1 and at two.sngl:3:1'
+
+# A plugin may not use a scheme it declares.
+! sngl check self/app.sngl
+stderr 'self.sngl:2:1: import "self:x" uses the scheme "self" this package declares at self.sngl:4:1: a plugin may not use a scheme it declares'
+
+# Two plugins each using the other's scheme import each other, and the import
+# that closes the cycle is the one reported -- not the scheme it left
+# unresolved.
+! sngl check cycle/app.sngl
+stderr 'b.sngl:2:1: import cycle detected: "\.\./a"'
+! stderr 'unknown import scheme'
+
+# A gen.scheme is read at the root of a file, and nowhere else.
+! sngl check nested/app.sngl
+stderr 'nested.sngl:5:[0-9]+: gen.scheme may only be written at the root of a file'
+
+# A raise that leaves the handler is an error at the import, carrying its
+# message.
+! sngl check raise/app.sngl
+stderr 'raise/app.sngl:1:1: import "boom:x": scheme "boom": no such thing as x'
+
+# A handler is gated like any build-time SNGL: an unasked command is refused,
+# and the refusal is reported at the import that ran the plugin.
+! sngl check exec/app.sngl
+stderr 'exec/app.sngl:1:1: import "run:x": pc/pc.sngl:4:13: \./pc may not run sh -c ''echo hi'': running it needs --allow-command="\./pc=sh"'
+sngl check --allow-command='./pc=sh' exec/app.sngl
+
+-- unknown/app.sngl --
+import x "nosuch:thing"
+
+const v = 1
+-- shadow/app.sngl --
+import "./go"
+
+const v = 1
+-- shadow/go/go.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="go", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- shadowlib/app.sngl --
+import "./c"
+
+const v = 1
+-- shadowlib/c/c.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="c", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- dup/app.sngl --
+import x "dup:x"
+import "./one"
+import "./two"
+
+const v = x.v
+-- dup/one/one.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="dup", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- dup/two/two.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="dup", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 2\n")
+})
+-- self/app.sngl --
+import "./self"
+
+const v = 1
+-- self/self/self.sngl --
+import gen "sngl:x/gen"
+import x "self:x"
+
+gen.scheme(name="self", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- cycle/app.sngl --
+import "./a"
+
+const v = 1
+-- cycle/a/a.sngl --
+import gen "sngl:x/gen"
+import y "b:y"
+import "../b"
+
+gen.scheme(name="a", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- cycle/b/b.sngl --
+import gen "sngl:x/gen"
+import "../a"
+import x "a:x"
+
+gen.scheme(name="b", @generate(out, importPath) {
+    out.write("x.sngl", "const v = 1\n")
+})
+-- nested/app.sngl --
+import "./nested"
+
+const v = 1
+-- nested/nested/nested.sngl --
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component c ui.node {
+    gen.scheme(name="n", @generate(out, importPath) {
+        out.write("x.sngl", "const v = 1\n")
+    })
+}
+-- raise/app.sngl --
+import x "boom:x"
+import "./boom"
+
+const v = 1
+-- raise/boom/boom.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="boom", @generate(out, importPath) {
+    error.raise("no such thing as " + importPath, "missing")
+})
+-- exec/app.sngl --
+import x "run:x"
+import "./pc"
+
+const v = x.line
+-- exec/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="run", @generate(out, importPath) {
+    var p = gen.exec(cmd=["sh", "-c", "echo hi"])
+    var line = ""
+    for var l = p.stdout {
+        line = l
+    }
+    out.write("x.sngl", "const line = \"" + line + "\"\n")
+})

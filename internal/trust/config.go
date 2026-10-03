@@ -353,3 +353,12 @@ func writeAtomic(path string, data []byte) error {
 	}
 	return os.Rename(tmp.Name(), path)
 }
+
+// FormatGrant spells g for a log line: what it allows, to whom.
+func FormatGrant(g Grant) string {
+	who := g.Subject
+	if who == "" {
+		who = "every project"
+	}
+	return g.child() + " to " + who
+}

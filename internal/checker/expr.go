@@ -4081,6 +4081,14 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		c.error(vn.Pos, "%s may only be written at the root of a file: it says what the file was generated from, not what it renders", name)
 		return nil
 	}
+	if kind == ir.BuiltinCLink && !slices.Contains(c.cLinks, vn) {
+		c.error(vn.Pos, "%s may only be written at the root of a file: it says what the package links, not what it renders", name)
+		return nil
+	}
+	if kind == ir.BuiltinGenScheme && !slices.Contains(c.genSchemes, vn) {
+		c.error(vn.Pos, "%s may only be written at the root of a file: it declares an import scheme, not something the package renders", name)
+		return nil
+	}
 	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
 		return nil
 	}

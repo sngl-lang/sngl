@@ -62,6 +62,14 @@ type Package struct {
 	// package and a native scheme's shell. A build-time function asks it who
 	// is reaching the host, and what code a stored answer depends on.
 	Origin *PackageOrigin `json:"-"`
+	// Schemes are the import schemes the package declares with gen.scheme,
+	// taken out of its body where they were written. An importer reaches
+	// them, and everything its imports reach, through Imports.
+	Schemes []*Scheme `json:"-"`
+	// CLinks are the C headers and flags the package's `c.link` directives
+	// name: what a cgo preamble includes and links for the `#[cnative]`
+	// declarations beside them.
+	CLinks []*CLink `json:",omitempty"`
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -376,6 +384,54 @@ type PackageOrigin struct {
 	Docs []*ast.Document
 }
 
+// Scheme is an import scheme a package declares: `gen.scheme(name=…,
+// @generate(out, importPath) { … })`. Its handler runs in the interpreter when
+// a check meets `<name>:<path>`, and what it writes is the package the import
+// resolves to.
+type Scheme struct {
+	Name string
+	// Pos is where the gen.scheme is written.
+	Pos ast.Pos
+	// Handler is the checked @generate handler, and Pkg the checked package
+	// it runs in: what the interpreter is built over.
+	Handler *EventHandler
+	Pkg     *Package
+	// Library says the scheme ships in the sngl: tree, compiled into the
+	// binary the user chose to run, so its host calls are trusted.
+	Library bool
+}
+
+// CLink is one `c.link` directive: a header a cgo preamble includes, and the
+// compiler and linker flags it needs.
+type CLink struct {
+	// Include is the header as written between the quotes or brackets of an
+	// #include; System says brackets.
+	Include string
+	System  bool
+	CFlags  []string
+	LDFlags []string
+}
+
+// ReachedCLinks is every c.link pkg and the packages it imports carry, each
+// once, in the order an import first reaches it.
+func ReachedCLinks(pkg *Package) []*CLink {
+	var out []*CLink
+	seen := map[*Package]bool{}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p.CLinks...)
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+		}
+	}
+	walk(pkg)
+	return out
+}
+
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
 
@@ -386,9 +442,6 @@ type NativeImport struct {
 	Enums      []*EnumDef
 	Funcs      []*Func
 	Vars       []*Var
-	// LinkFlags holds linker flags for C imports (e.g. pkg-config --libs output).
-	// Empty for non-C imports.
-	LinkFlags []string
 }
 
 // NativeDeclRef names a foreign declaration the way an encoded value does:

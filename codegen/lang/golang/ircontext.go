@@ -1000,7 +1000,18 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
-	return name + "(" + strings.Join(args, ", ") + ")", true
+	call := name + "(" + strings.Join(args, ", ") + ")"
+	// The other direction of wrapCArgs: a C function's number comes back as
+	// cgo's type for it, which a Go int or float64 is not assignable from.
+	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
+		switch n.Func.Return.Kind {
+		case ir.TypeInt:
+			call = "int(" + call + ")"
+		case ir.TypeFloat:
+			call = "float64(" + call + ")"
+		}
+	}
+	return call, true
 }
 
 // wrapCArgs converts each argument to the C type of the parameter it fills.

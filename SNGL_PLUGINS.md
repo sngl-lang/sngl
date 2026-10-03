@@ -548,12 +548,13 @@ Rules that follow:
 - **A plugin may not use a scheme it defines**, directly or through a cycle of
   plugins. Reported at the import that closes the cycle.
 
-- **A scheme is visible through the whole import graph.** A package that
-  imports a library which imports a plugin can use the plugin's scheme; the
-  library needing it is reason enough for everything built on the library to
-  resolve it too. So the fixed point runs over the graph rather than per
-  package, and two plugins anywhere in it declaring one scheme is an error at
-  the import that brings in the second, naming both.
+- **A scheme is visible through the package's import closure.** A package
+  that imports a library which imports a plugin can use the plugin's scheme;
+  the library needing it is reason enough for everything built on the library
+  to resolve it too. A sibling that reaches neither cannot (settled in Phase
+  E): it would then check only beside the package that brought the scheme.
+  Two plugins in one closure declaring one scheme is an error at the import
+  that brings in the second, naming both.
 
 ### 14. Commands are children of the target node
 
@@ -1376,11 +1377,98 @@ Audit of what the library-shipped importers run (decision 11), to raise again:
 - **js: (TypeScript)** runs in process over `os.DirFS(root)` and execs
   nothing; a symlink in node_modules escapes the root as `file:`'s does.
 
-### Phase E: `gen.scheme`
+### Phase E: `gen.scheme` -- done
 
 Decision 13, with the order fixtures (plugin imported after its use, in
 another file, a cycle, an unknown scheme, a shadowed built-in). First real
 user: `c:`'s `pkg-config` in SNGL with `gen.exec`, deleting the Go importer.
+
+*Done*, as settled below. `gen.scheme(name=…, @generate(out, importPath) { … })`
+is a `#[marks.builtin("genScheme")]` directive of `sngl:x/gen`
+(`lib/x/gen/scheme.sngl`), recorded at the root of a file in pass1, checked in
+pass2 and taken out of the package onto `ir.Package.Schemes`
+(`internal/checker/schemes.go`); anywhere else it is an error. A package's
+imports resolve in two phases: an import no compiled-in importer and no
+library plugin serves is deferred (`deferImport`), and once every other import
+of the package has resolved, the deferred ones resolve against the schemes the
+imported packages declare and reach (`resolveDeferredImports`), round after
+round. The handler runs in `internal/plugin` -- the interpreter over the
+plugin's checked package, through the build host, which moved out of the
+optimizer into `internal/buildhost` so both producers share it -- and what it
+writes is checked as a package with no directory. `build.Resolver` is the
+`SchemeRunner` and the `SchemeKnower`, so a check with a resolver runs plugins
+and one without (the playground, the fixture harness) resolves no plugin
+scheme, as it resolves no scheme at all.
+
+The output is stored as `sngl.scheme`, keyed by the plugin's origin, the scheme
+and the import's path, behind the plugin's closure digest; a literal
+`cache.inputs` directive in a written file adds its inputs, each digest or
+value it leaves out filled in by `Store.Complete` when the output is stored.
+`c:` is `lib/x/scheme/c`, a SNGL plugin that runs pkg-config and writes one
+`c.link` (`sngl:x/c`, a `cLink` directive read onto `ir.Package.CLinks`); the
+Go cgo preamble is written from every `CLink` the program reaches
+(`ir.ReachedCLinks`), and `codegen/scheme/c` and modernc's C parser are gone.
+The LSP resolves imports now, under the config file's, the flags' and
+`SNGL_ALLOW`'s grants and never a prompt, and logs the grants from the last two
+at startup.
+
+Fixtures, each failing on ef56de9d: `cmd/sngl/testdata/scheme_order.txt`
+(each of its three cases also fails with resolution in statement order),
+`scheme_errors.txt`, `scheme_store.txt`, `c_pkgconfig.txt`,
+`trust_symlink_escape.txt`, `testdata/c_link.txtar`,
+`internal/lsp/trust_test.go` and `codegen/scheme/git/git_test.go`.
+
+Found on the way: no C function ever returned a number Go could assign --
+cgo hands back `C.int` -- so a `#[cnative]` call returning an int or a float
+is converted at the call, as its arguments already were
+(`native_decl_not_emitted.txtar` moved with it); a missing `file:` asset that
+was a symlink out of its directory rendered an empty string where it now fails
+the build; and `modernc.org/cc` could not parse `<gtk/gtk.h>` in ten minutes,
+which is what decided the `c:` plugin's shape.
+
+Settled in E's planning:
+
+- **A package resolves the schemes its own import closure declares**, plus
+  the built-in ones -- not a sibling's. Every package checks on its own, no
+  package is re-checked once a scheme appears elsewhere, and two plugins using
+  each other's schemes must import each other: a cycle of plugins is a
+  directory import cycle, reported at the import that closes it, and the
+  scheme it leaves unresolved is not reported a second time.
+- **`out` is `struct Out`, and `Out.write(name, src)` is a build intrinsic**:
+  a handler may write several `.sngl` files, each name once, none in a
+  directory. A stored output holds them in one body, each after a
+  `// sngl:file <name>` line.
+- **A raise that leaves the handler is the import's error**, carrying the
+  raise's message; a failed run stores nothing.
+- **A plugin's output has no directory**, so it may not import by path.
+- **`c:` declares nothing a program calls.** Neither a C parser in SNGL nor
+  one behind the host API reads GTK's headers in reasonable time, so the
+  plugin writes only the `c.link` -- `c:pkg:<library>/<header>` asks
+  pkg-config and includes `<header>`, anything else is a header included as
+  written -- and the program declares each function with `#[cnative]`.
+- **A library plugin lives at `sngl:x/scheme/<name>`** and serves `<name>:`
+  without an import: the layout is the registration, as it is for every lib
+  package, and it is trusted because it is `sngl:`. It is loaded the first
+  time a check meets its scheme, and checked as a package rather than as
+  library source.
+- **A literal cache node may be any kind, and is not gated**: it only says
+  when the output goes stale. `sha256` and `value` are optional throughout
+  `sngl:x/gen/cache`; a path is the import root's when relative, and a file or
+  directory that is not there is recorded absent.
+- **The LSP builds a resolver per check**, with the server's policy; a
+  refusal is the import's diagnostic, naming the flag and the `sngl trust`
+  line. It still checks one file rather than its package.
+- **No registry outlives a check.** The schemes a package reaches hang off
+  its IR, and the library plugins loaded are in the check's `libCache`, so an
+  in-process script and the LSP rebuild them per check.
+- **The audit:** `git:` refuses a host, path or ref with an empty, `.` or
+  `..` segment, a backslash or a leading `-`, and `http:` a host that would
+  leave its cache directory; the project is read through an `os.Root`
+  (`build.ProjectFS`), which holds `md:`, `js:`'s node_modules and a
+  directory import to the root, and `file:` resolves and reads its assets
+  through one. A directory import that leaves the root through a symlink is
+  read as `../x` is. A host call outside a folded const func or a scheme
+  handler stays refused.
 
 ### Phase F: process emitters and commands
 

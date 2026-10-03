@@ -10,10 +10,14 @@ import (
 	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// genProducer names the values stored for a fold that read the host.
+const genProducer = "sngl.eval"
 
 // reachesHost reports whether fn's body can call sngl:x/gen's host API: a
 // build-only intrinsic, directly or through any function or lambda it names.
@@ -61,7 +65,7 @@ func reachesHost(fn *ir.Func, memo map[*ir.Func]bool) bool {
 // can make the call at run time instead.
 func (ctx *evalCtx) produce(fn *ir.Func, args []any) (any, bool) {
 	h := ctx.host
-	ow := h.ownerFor(fn)
+	ow := h.OwnerFor(fn)
 	req, storable := producerRequest(ow, fn, args)
 	memoKey := ""
 	if storable {
@@ -87,22 +91,22 @@ func (ctx *evalCtx) produce(fn *ir.Func, args []any) (any, bool) {
 	if err != nil {
 		return nil, false
 	}
-	rec := &recorder{procs: map[*interp.Stream]*process{}}
-	outer := h.rec
-	h.rec = rec
+	rec := buildhost.NewRecorder()
+	outer := h.Recorder()
+	restore := h.Recording(rec)
 	copied := make([]any, len(args))
 	for i, a := range args {
 		copied[i] = interp.CloneValue(a)
 	}
 	v, err := env.CallUserFuncValues(fn, copied)
-	inputs, ferr := rec.finish()
-	h.rec = outer
+	inputs, ferr := rec.Finish()
+	restore()
 	if outer != nil {
 		// A producer folded inside another records into it: the outer value
 		// depends on everything the inner one read.
-		outer.inputs = append(outer.inputs, inputs...)
+		outer.Add(inputs...)
 	}
-	var he *hostError
+	var he *buildhost.Error
 	switch {
 	case errors.As(err, &he):
 		if storable {
@@ -131,9 +135,9 @@ func (ctx *evalCtx) fail(err error) {
 	if ctx.err != nil {
 		return
 	}
-	var he *hostError
-	if errors.As(err, &he) && he.pos.IsValid() {
-		err = ir.Diagnostic{Pos: he.pos, Msg: he.err.Error(), Severity: ir.Error}
+	var he *buildhost.Error
+	if errors.As(err, &he) && he.Pos().IsValid() {
+		err = ir.Diagnostic{Pos: he.Pos(), Msg: he.Err().Error(), Severity: ir.Error}
 	}
 	ctx.err = err
 }
@@ -141,10 +145,10 @@ func (ctx *evalCtx) fail(err error) {
 // producerRequest names a fold in the store: the package by where it came
 // from, the function, and its arguments, behind the closure digest of the
 // package's code. An argument with no stored form leaves the fold unstored.
-func producerRequest(ow *owner, fn *ir.Func, args []any) (gencache.Request, bool) {
-	where := ow.name
-	if ow.dir != "" {
-		where = "dir:" + ow.dir
+func producerRequest(ow *buildhost.Owner, fn *ir.Func, args []any) (gencache.Request, bool) {
+	where := ow.Name()
+	if ow.Dir() != "" {
+		where = "dir:" + ow.Dir()
 	}
 	params := []string{where, fn.Name}
 	for i, a := range args {
@@ -162,7 +166,7 @@ func producerRequest(ow *owner, fn *ir.Func, args []any) (gencache.Request, bool
 		}
 		params = append(params, string(b))
 	}
-	return gencache.Request{Producer: genProducer, Params: params, Identity: ow.closure()}, true
+	return gencache.Request{Producer: genProducer, Params: params, Identity: ow.Closure()}, true
 }
 
 // storedPrefix is how a stored value is written: the const it is, holding the

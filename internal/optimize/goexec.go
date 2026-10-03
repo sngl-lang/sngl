@@ -20,6 +20,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/internal/gencache/godeps"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
@@ -576,7 +577,7 @@ func runConstEval(dir, binPath, resultPath string) error {
 	defer cancel()
 	run := exec.CommandContext(ctx, binPath)
 	run.Dir = dir
-	run.Env = append(ChildEnv(), consteval.OutEnv+"="+resultPath)
+	run.Env = append(buildhost.ChildEnv(), consteval.OutEnv+"="+resultPath)
 	// Anything an evaluated function prints goes to stderr: results travel in
 	// the file, so stdout carries nothing we need.
 	run.Stdout = os.Stderr

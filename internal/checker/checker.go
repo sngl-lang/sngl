@@ -83,6 +83,16 @@ type Config struct {
 	// per-declaration -- which reads as "cannot pass Op as Op" at the call
 	// site where the two meet.
 	dirPkgs map[string]*ir.Package
+	// generating is the stack of scheme imports whose plugin is running, so a
+	// plugin whose output imports its own scheme again is a cycle rather than
+	// a recursion.
+	generating map[string]bool
+	// generatedBy names the scheme import whose plugin wrote this package,
+	// which has no directory for a relative import to be read from.
+	generatedBy string
+	// libraryScheme names the scheme of the library plugin this check is
+	// loading: the one package that may declare a scheme the library ships.
+	libraryScheme string
 }
 
 // visitedStack is the import stack a nested check inherits, or a fresh one for
@@ -90,6 +100,14 @@ type Config struct {
 func (cfg *Config) visitedStack() map[string]bool {
 	if cfg != nil && cfg.visited != nil {
 		return cfg.visited
+	}
+	return map[string]bool{}
+}
+
+// generatingStack is the stack of running plugins a nested check inherits.
+func (cfg *Config) generatingStack() map[string]bool {
+	if cfg != nil && cfg.generating != nil {
+		return cfg.generating
 	}
 	return map[string]bool{}
 }
@@ -124,6 +142,9 @@ type libCache struct {
 	// macroSigs records the macro declarations whose parameter types have
 	// been resolved; see resolveMacroSig.
 	macroSigs map[*ir.Func]bool
+	// schemes holds the library's plugins this build has loaded, by scheme;
+	// nil for one the library ships but that failed to load.
+	schemes map[string]*ir.Scheme
 	// Shared for the same reason `extended` is: the packages are shared, so a
 	// later check must re-bind the same symbol rather than a second one, which
 	// Declare would rightly call a redeclaration.
@@ -135,7 +156,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
 }
 
 type ImportResolver interface {
@@ -231,6 +252,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.reportBodylessLibComponents()
 	c.reportTargetNames()
 	c.reportEmitterPlacement()
+	c.reportUnresolvedSchemes()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }
@@ -312,6 +334,30 @@ type checker struct {
 	// dirPkgs is the build's checked-package cache, shared with every nested
 	// check so that one directory yields one set of declarations.
 	dirPkgs map[string]*ir.Package
+	// generating is Config.generating, shared with every nested check.
+	generating map[string]bool
+
+	// deferred holds the imports whose scheme nothing built in serves, until
+	// the schemes the package's other imports bring are known; unresolved is
+	// what the second phase left, reported once the package's own schemes
+	// are (see schemes.go). resolvingDeferred is set while one of them is
+	// registered, and unresolvedImport while one is bound with no package.
+	deferred          []deferredImport
+	unresolved        []deferredImport
+	resolvingDeferred bool
+	unresolvedImport  bool
+	// schemeClashes is each scheme already reported as a second declaration
+	// of a name.
+	schemeClashes map[*ir.Scheme]bool
+	// importCycle is set when an import of this package closed a cycle: the
+	// scheme an import is left waiting for is then that cycle's, and is not
+	// reported a second time.
+	importCycle bool
+	// genSchemes holds each gen.scheme written at the root of a file,
+	// recorded in pass1 and checked in pass2.
+	genSchemes []*ast.VisualNode
+	// cLinks holds each c.link written at the root of a file, likewise.
+	cLinks []*ast.VisualNode
 
 	// foreign marks declarations that arrived from another package, so their
 	// unexported members stay private to it.
@@ -619,6 +665,9 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		visited: cfg.visitedStack(),
 		dirPkgs: cfg.dirPkgCache(),
 		libs:    cfg.libCache(),
+
+		generating:    cfg.generatingStack(),
+		schemeClashes: map[*ir.Scheme]bool{},
 	}
 	// Allocated before the library loads, because those now run the same
 	// pass1 a program's package does, and pass1 enters a file per document.
@@ -1265,6 +1314,9 @@ func (c *checker) pass1() {
 		}
 		c.fileTopLevel[d] = c.topLevel
 	}
+	// The imports whose scheme a plugin serves, now that every import that
+	// could bring one has.
+	c.resolveDeferredImports()
 
 	// Pre-register type declarations so they're visible for forward references
 	// (test functions referencing later types, a struct field or component prop
@@ -1366,6 +1418,8 @@ func (c *checker) pass1() {
 					c.registerRootContextDecl(s)
 				} else if vn := c.outputCallStmt(s); vn != nil {
 					c.registerOutput(vn)
+				} else if vn := c.directiveCallStmt(s); vn != nil {
+					c.registerRootVisualNode(vn)
 				} else {
 					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
@@ -1402,6 +1456,11 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	scheme, uri := ParseScheme(target)
+	// An import no built-in importer serves waits until the package's other
+	// imports have brought the schemes plugins declare (schemes.go).
+	if c.deferImport(imp, scheme) {
+		return
+	}
 	// A dot import keeps "." here rather than deriving a namespace name it
 	// never binds: consumers match ir.Import.Alias against a namespace they
 	// are resolving, and a derived name would make those matches succeed.
@@ -1492,6 +1551,14 @@ func (c *checker) registerImport(imp *ast.Import) {
 			return
 		}
 		irImport.Pkg = c.libPkg(uri)
+	} else if c.unresolvedImport {
+		// Reported once the package's own schemes are known; bound with no
+		// package meanwhile.
+	} else if plugin := c.pluginScheme(scheme); plugin != nil {
+		// A scheme a plugin serves: its handler writes the package.
+		if docs := c.generateScheme(imp, plugin, uri); len(docs) > 0 {
+			irImport.Pkg = c.checkSchemePackage(docs, nil, scheme, uri, true)
+		}
 	} else if scheme != "" && c.cfg.Resolver != nil {
 		// Scheme import. Try FS-backed schemes first (git://, http://, …) so
 		// remote SNGL packages resolve to .sngl docs; fall back to native
@@ -1500,25 +1567,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
 		} else if len(docs) > 0 {
-			// One package, however many files it arrived as -- the same rule
-			// a directory import follows.
-			pkg, diags := CheckPackage(docs, &Config{
-				FS:         subFS,
-				Dir:        c.cfg.Dir,
-				Resolver:   c.cfg.Resolver,
-				Languages:  c.cfg.Languages,
-				Platforms:  c.cfg.Platforms,
-				Replaces:   c.replaces,
-				Targets:    c.targets,
-				LibSources: c.cfg.LibSources,
-				libs:       c.libs,
-			})
-			c.diags = append(c.diags, diags...)
-			exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-			c.mergePkgInto(exported, pkg)
-			c.adoptContexts(pkg)
-			exported.Origin = &ir.PackageOrigin{URI: scheme + ":" + uri, Docs: docs}
-			irImport.Pkg = exported
+			irImport.Pkg = c.checkSchemePackage(docs, subFS, scheme, uri, false)
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
 			if err != nil {
@@ -1550,6 +1599,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 				irImport.Pkg = nsPkg
 			}
 		}
+	} else if c.cfg.generatedBy != "" {
+		c.error(imp.Pos, "import %q: %s was generated by a plugin and has no directory, so it may not import by path", imp.Path, c.cfg.generatedBy)
 	} else if c.cfg.Resolver != nil {
 		// A `./` or `../` import is relative to the file that wrote it, so it
 		// is rebased onto the importing package's own path before the resolver
@@ -1567,6 +1618,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		switch {
 		case c.visited[dirPath]:
 			c.error(imp.Pos, "import cycle detected: %q", imp.Path)
+			c.importCycle = true
 		case c.dirPkgs[dirPath] != nil:
 			irImport.Pkg = c.dirPkgs[dirPath]
 		default:
@@ -1599,8 +1651,12 @@ func (c *checker) registerImport(imp *ast.Import) {
 					Targets:    c.targets,
 					LibSources: c.cfg.LibSources,
 					libs:       c.libs,
+					generating: c.generating,
 				})
 				c.diags = append(c.diags, diags...)
+				// A plugin's handler runs in the checked package, and what a
+				// stored answer from it depends on is this origin's code.
+				pkg.Origin = &ir.PackageOrigin{Dir: dirPath, Docs: docs}
 				// mergePkgInto builds the view an importer sees: the package's
 				// own declarations, and not the names its own dot imports
 				// lifted into its scope. A package does not re-export what it
@@ -1609,7 +1665,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 				c.mergePkgInto(exported, pkg)
 				c.adoptContexts(pkg)
-				exported.Origin = &ir.PackageOrigin{Dir: dirPath, Docs: docs}
+				exported.Origin = pkg.Origin
 				irImport.Pkg = exported
 				// The view is memoized, not the checked package: two importers
 				// of one directory must see one set of declarations, or a
@@ -1678,6 +1734,36 @@ func (c *checker) registerImport(imp *ast.Import) {
 	c.bindImport(claimed, ns)
 }
 
+// checkSchemePackage checks the files a scheme import resolved to as one
+// package, however many files it arrived as -- the same rule a directory
+// import follows -- and returns the view an importer sees.
+func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, uri string, generated bool) *ir.Package {
+	cfg := &Config{
+		FS:         subFS,
+		Dir:        c.cfg.Dir,
+		Resolver:   c.cfg.Resolver,
+		Languages:  c.cfg.Languages,
+		Platforms:  c.cfg.Platforms,
+		Replaces:   c.replaces,
+		Targets:    c.targets,
+		LibSources: c.cfg.LibSources,
+		libs:       c.libs,
+		generating: c.generating,
+	}
+	if generated {
+		cfg.generatedBy = scheme + ":" + uri
+	}
+	pkg, diags := CheckPackage(docs, cfg)
+	c.diags = append(c.diags, diags...)
+	origin := &ir.PackageOrigin{URI: scheme + ":" + uri, Docs: docs}
+	pkg.Origin = origin
+	exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
+	c.mergePkgInto(exported, pkg)
+	c.adoptContexts(pkg)
+	exported.Origin = origin
+	return exported
+}
+
 // declPkg is the package a declaration being registered belongs to: the
 // library package while one loads, and the program's own otherwise. Every
 // registrar appends through this rather than naming c.pkg, which is what lets
@@ -1737,6 +1823,8 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Vars = append(dst.Vars, src.Vars...)
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
+	dst.Schemes = append(dst.Schemes, src.Schemes...)
+	dst.CLinks = append(dst.CLinks, src.CLinks...)
 	for _, sd := range src.Structs {
 		// Nobody named it, so it is not part of what the package exports.
 		if sd.Anon {
@@ -2975,6 +3063,16 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	switch kind, _ := c.builtinNode(name); kind {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
+	case ir.BuiltinCLink:
+		if !c.inLibSource() {
+			c.cLinks = append(c.cLinks, vn)
+		}
+	case ir.BuiltinGenScheme:
+		// Library source is not body-checked; the library's own plugins are
+		// checked as packages of their own when a scheme asks for one.
+		if !c.inLibSource() {
+			c.genSchemes = append(c.genSchemes, vn)
+		}
 	case ir.BuiltinGenInputs:
 		// A library package's -- a target serving generated source -- is not
 		// checked: library source is registered here and not body-checked,
@@ -2989,6 +3087,35 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		// until pass2, because it reads declarations pass1 is still making.
 		c.pendingPkgBody = append(c.pendingPkgBody, ast.Stmt(vn))
 	}
+}
+
+// directiveCallStmt is a gen.scheme or a c.link written as a call -- neither
+// has a block -- as the node it is, or nil when s is something else.
+func (c *checker) directiveCallStmt(s *ast.CallStmt) *ast.VisualNode {
+	if s.Call.ID != "" {
+		return nil
+	}
+	target, ok := s.Call.Func.(ast.TargetExpr)
+	if !ok {
+		return nil
+	}
+	vn := &ast.VisualNode{Pos: s.Call.Pos, Target: target, Args: s.Call.Args}
+	if k := c.builtinNodeKind(visualNodeTarget(vn)); k != ir.BuiltinGenScheme && k != ir.BuiltinCLink {
+		return nil
+	}
+	// Where the name starts, as a node's position is.
+	e := ast.Expr(s.Call.Func)
+	for {
+		sel, ok := e.(*ast.SelectExpr)
+		if !ok {
+			break
+		}
+		e = sel.Operand
+	}
+	if p := e.ExprPos(); p != nil && p.IsValid() {
+		vn.Pos = *p
+	}
+	return vn
 }
 
 func (c *checker) outputCallStmt(s *ast.CallStmt) *ast.VisualNode {
@@ -3445,6 +3572,8 @@ func (c *checker) pass2() {
 	c.checkPackageBody()
 	c.checkOutputTree()
 	c.checkGenInputs()
+	c.checkGenSchemes()
+	c.checkCLinks()
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.

@@ -15,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/plugin"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -51,7 +52,7 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	}
 	fsys := cfg.FS
 	if fsys == nil {
-		fsys = os.DirFS(dir)
+		fsys = ProjectFS(dir)
 	}
 	resolver := cfg.Resolver
 	if resolver == nil {
@@ -172,7 +173,21 @@ func MergeInto(dst, src *ast.Document) {
 // NewResolver builds the resolver a check of dir uses. One is built per check,
 // which is the lifetime any scheme session it opens inherits.
 func NewResolver(dir string) *Resolver {
-	return &Resolver{RootDir: dir, FS: os.DirFS(dir)}
+	return &Resolver{RootDir: dir, FS: ProjectFS(dir)}
+}
+
+// ProjectFS reads the project at dir through an os.Root, so a symlink inside
+// it that points out of it is refused as surely as a `..` path: every scheme
+// that reads the project through the FS it is handed -- a directory import,
+// md:, js:'s node_modules -- is then held to the import root by the
+// filesystem rather than by each one's check of a path. A directory os.Root
+// cannot open is read plainly, and fails where it is read.
+func ProjectFS(dir string) fs.FS {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return os.DirFS(dir)
+	}
+	return root.FS()
 }
 
 // NewFSResolver serves a package's imports out of fsys. rootDir stays empty,
@@ -211,6 +226,12 @@ func (r *Resolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, erro
 	// fs.ValidPath has no "./" prefix. Clean gives the form ReadDir accepts.
 	dir := path.Clean(importPath)
 	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil && r.RootDir != "" && strings.Contains(err.Error(), "path escapes") {
+		// A directory import may leave the root -- `../docui` does, by
+		// design, and only the reads a plugin makes are held to it -- so a
+		// symlink that leaves it is read the way `..` is.
+		return resolveImportFromDir(filepath.Join(r.RootDir, filepath.FromSlash(dir)))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
 	}
@@ -291,6 +312,20 @@ func (r *Resolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, err
 		return fsa.ResolveFS(uri, r.FS, dir)
 	}
 	return imp.Resolve(uri, dir)
+}
+
+// HasScheme reports whether an importer compiled into the compiler serves
+// name: what a plugin may not take the name of, and what resolves before any
+// plugin's scheme does.
+func (r *Resolver) HasScheme(name string) bool {
+	return codegen.LookupScheme(name) != nil || codegen.LookupFSScheme(name) != nil
+}
+
+// GenerateScheme runs a plugin's handler for uri, gated by r.Trust and stored
+// in the default store, and returns the files it wrote.
+func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
+	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir}
+	return run.Generate(s, uri)
 }
 
 // The FS is returned alongside the documents so nested imports within the

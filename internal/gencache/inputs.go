@@ -504,3 +504,97 @@ func (s *Store) goEnv(dir string) (map[string]string, error) {
 	s.mu.Unlock()
 	return r.vals, r.err
 }
+
+// LiteralInputs reads the inputs a producer's output says it depends on in a
+// `cache.inputs` directive of its own: what a process it ran reads, which no
+// recorder can see. data is one file of SNGL; a file with no directive has
+// none.
+func LiteralInputs(data []byte) ([]Input, error) {
+	doc, err := parser.Parse("output", data)
+	if err != nil {
+		return nil, err
+	}
+	alias := ""
+	for _, st := range doc.Stmts {
+		if imp, ok := st.(*ast.Import); ok && imp.Path == VocabPath {
+			alias = imp.Alias
+		}
+	}
+	if alias == "" {
+		return nil, nil
+	}
+	if alias == "." {
+		return nil, errors.New("gencache: an output's directive imports " + VocabPath + " under a name")
+	}
+	var out []Input
+	for _, st := range doc.Stmts {
+		vn, ok := st.(*ast.VisualNode)
+		if !ok || vn.TargetName() != alias+".inputs" {
+			continue
+		}
+		for _, s := range vn.Block.Stmts {
+			in, err := readInput(s, alias)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, in)
+		}
+	}
+	return out, nil
+}
+
+// Complete fills in what a literal input left out -- a file's or a
+// directory's digest, a variable's value, another output's digest -- with
+// what it is now, the moment the output depending on it is stored. A file or
+// directory that is not there is recorded absent, which is what a producer
+// reading it would have depended on.
+func (s *Store) Complete(in Input) (Input, error) {
+	has := func(name string) bool {
+		for _, p := range in.Props {
+			if p.Name == name && p.Value != "" {
+				return true
+			}
+		}
+		return false
+	}
+	switch in.Kind {
+	case "file", "dir", "godir":
+		if has("sha256") {
+			return in, nil
+		}
+		path := in.Get("path")
+		if _, err := os.Stat(path); err != nil {
+			return Absent(path), nil
+		}
+		switch in.Kind {
+		case "file":
+			return File(path)
+		case "dir":
+			return Dir(path)
+		}
+		return GoDir(path)
+	case "env":
+		if has("value") {
+			return in, nil
+		}
+		return Env(in.Get("name")), nil
+	case "goenv":
+		if has("value") {
+			return in, nil
+		}
+		ins, err := s.GoEnv(in.Get("dir"), in.Get("name"))
+		if err != nil {
+			return Input{}, err
+		}
+		return ins[0], nil
+	case "entry":
+		if has("sha256") {
+			return in, nil
+		}
+		got, _, err := s.Entry(Request{Producer: in.Get("producer"), Params: in.getList("params")})
+		return got, err
+	case "absent", "unsetenv":
+		return in, nil
+	}
+	return Input{}, fmt.Errorf("gencache: unknown input %s", in.Kind)
+}

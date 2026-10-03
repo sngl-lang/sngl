@@ -1,0 +1,85 @@
+import gen "sngl:x/gen"
+
+// `c:` names the C header a program's `#[cnative]` declarations come from,
+// and resolves to a package holding the one `c.link` that includes it.
+//
+// `c:pkg:<library>/<header>` asks pkg-config for the library's compiler and
+// linker flags and includes `<header>` from the include path:
+// `c:pkg:gtk4/gtk/gtk.h`. Anything else is a header beside the program,
+// included as written: `c:lib/math.h`.
+//
+// It declares nothing a program calls. The program declares each function it
+// calls with `#[cnative("name")]`, which is what a header cannot be read for
+// in reasonable time: GTK's takes a C parser minutes.
+gen.scheme(name="c", @generate(out, importPath) {
+    if !importPath.startsWith("pkg:") {
+        out.write("c.sngl", link(importPath, false, [], [], []))
+        return
+    }
+    var spec = importPath.substring(4, importPath.length())
+    var slash = spec.indexOf("/")
+    if slash <= 0 || slash == spec.length() - 1 {
+        error.raise("c:" + importPath + " names no header: write c:pkg:<library>/<header>, such as c:pkg:gtk4/gtk/gtk.h", "import")
+        return
+    }
+    var lib = spec.substring(0, slash)
+    var header = spec.substring(slash + 1, spec.length())
+    var cflags = pkgConfig(["--cflags", lib])
+    var ldflags = pkgConfig(["--libs", lib])
+    // What pkg-config read to answer: the library's .pc file, and the
+    // variables that say where it looks for one. The store fills in what each
+    // is when it keeps the package.
+    var pcdir = pkgConfig(["--variable=pcfiledir", lib])
+    var inputs = ["cache.env(name=\"PKG_CONFIG_PATH\")", "cache.env(name=\"PKG_CONFIG_LIBDIR\")"]
+    if pcdir.length() > 0 {
+        inputs.push("cache.file(path=" + quote(pcdir[0] + "/" + lib + ".pc") + ")")
+    }
+    out.write("c.sngl", link(header, true, cflags, ldflags, inputs))
+})
+
+// The fields pkg-config prints for args, which fail the import when it does.
+func pkgConfig(args list<string>) list<string> {
+    var cmd = ["pkg-config"]
+    for var a = args {
+        cmd.push(a)
+    }
+    var p = gen.exec(cmd=cmd, prefix=["pkg-config"])
+    var fields list<string> = []
+    for var line = p.stdout {
+        for var f = line.split(" ") {
+            if f.trim().length() > 0 {
+                fields.push(f.trim())
+            }
+        }
+    }
+    if p.code() != 0 {
+        error.raise("pkg-config " + args.join(" ") + " failed: is the library installed, and pkg-config with it?", "import")
+    }
+    return fields
+}
+
+// The package an import resolves to: one c.link, and the inputs pkg-config
+// read.
+func link(include string, system bool, cflags list<string>, ldflags list<string>, inputs list<string>) string {
+    var src = ""
+    if inputs.length() > 0 {
+        src = src + "import cache \"sngl:x/gen/cache\"\n"
+    }
+    src = src + "import c \"sngl:x/c\"\n\n"
+    if inputs.length() > 0 {
+        src = src + "cache.inputs \{\n"
+        for var in = inputs {
+            src = src + "    " + in + "\n"
+        }
+        src = src + "\}\n\n"
+    }
+    var sys = "false"
+    if system {
+        sys = "true"
+    }
+    return src + "c.link(include=" + quote(include) + ", system=" + sys + ", cflags=" + quoteAll(cflags) + ", ldflags=" + quoteAll(ldflags) + ")\n"
+}
+
+const func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\{", "\\\{").replace("\}", "\\\}") + "\""
+
+const func quoteAll(xs list<string>) => "[" + xs.map(func(x string) => quote(x)).join(", ") + "]"
