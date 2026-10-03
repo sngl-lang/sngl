@@ -258,12 +258,12 @@ func (h *buildHost) call(id string, ow *owner, call *ir.Call, args []any) (any, 
 			return nil, err
 		}
 		return rec.exists(p)
-	case "gen.names":
+	case "gen.files":
 		dir, err := h.readable(ow, str(0), trust.Dir)
 		if err != nil {
 			return nil, err
 		}
-		return rec.names(dir, str(1))
+		return rec.listing(dir, str(1))
 	case "gen.env":
 		name := str(0)
 		if err := h.cfg.Trust.Check(trust.Request{Kind: trust.Env, Subject: ow.subject(), Value: name}); err != nil {
@@ -492,18 +492,18 @@ func (r *recorder) exists(p string) (any, error) {
 	return true, nil
 }
 
-func (r *recorder) names(dir, pattern string) (any, error) {
+func (r *recorder) listing(dir, pattern string) (any, error) {
 	if _, err := path.Match(pattern, ""); err != nil {
-		return nil, fmt.Errorf("gen.names: %q: %w", pattern, err)
+		return nil, fmt.Errorf("gen.files: %q: %w", pattern, err)
 	}
 	in, err := gencache.Dir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("gen.names: %w", err)
+		return nil, fmt.Errorf("gen.files: %w", err)
 	}
 	r.add(in)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("gen.names: %w", err)
+		return nil, fmt.Errorf("gen.files: %w", err)
 	}
 	out := []any{}
 	for _, e := range entries {

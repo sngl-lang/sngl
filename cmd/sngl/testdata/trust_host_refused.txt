@@ -128,5 +128,5 @@ const func first(path string) string {
 
 // The names in dir, joined.
 const func names(dir string) string {
-    return gen.names(dir, "*").join(",")
+    return gen.files(dir, "*").join(",")
 }

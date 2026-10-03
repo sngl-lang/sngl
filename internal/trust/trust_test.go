@@ -188,3 +188,35 @@ func TestRemoveByNumberAndOrigin(t *testing.T) {
 		t.Error("removing nothing is an error")
 	}
 }
+
+func TestNetGrantMatchesHostsExactlyOrBelow(t *testing.T) {
+	for _, c := range []struct {
+		pattern, host string
+		want          bool
+	}{
+		{"github.com", "github.com", true},
+		{"github.com", "GitHub.com:443", true},
+		{"github.com", "api.github.com", false},
+		{"*.github.com", "api.github.com", true},
+		{"*.github.com", "github.com", false},
+		{"*.github.com", "evilgithub.com", false},
+	} {
+		if got := HostMatches(c.pattern, c.host); got != c.want {
+			t.Errorf("HostMatches(%q, %q) = %v, want %v", c.pattern, c.host, got, c.want)
+		}
+	}
+	project := Subject{Name: ".", Origin: DirOrigin(t.TempDir())}
+	other := Subject{Name: ".", Origin: DirOrigin(t.TempDir())}
+	p := &Policy{}
+	p.Add(Grant{Kind: Net, Subject: project.Origin.Spec, Value: "github.com"})
+	if err := p.Check(Request{Kind: Net, Subject: project, Value: "github.com"}); err != nil {
+		t.Errorf("the project granted: %v", err)
+	}
+	if err := p.Check(Request{Kind: Net, Subject: other, Value: "github.com"}); err == nil {
+		t.Error("another project is not granted")
+	}
+	p.Add(Grant{Kind: Net, Value: "github.com"})
+	if err := p.Check(Request{Kind: Net, Subject: other, Value: "github.com"}); err != nil {
+		t.Errorf("everywhere: %v", err)
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -190,6 +191,10 @@ func NewFSResolver(fsys fs.FS) *Resolver {
 type Resolver struct {
 	RootDir string
 	FS      fs.FS
+	// Trust is what the project may fetch over the network: a git: or http:
+	// import of a package its cache does not hold asks it for the host. Nil
+	// refuses, so a resolver nobody thought about fetches nothing.
+	Trust *trust.Policy
 
 	mu       sync.Mutex
 	sessions map[string]codegen.SchemeImporter
@@ -291,6 +296,16 @@ func (r *Resolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, err
 // The FS is returned alongside the documents so nested imports within the
 // package resolve against it. (nil, nil, nil) means the scheme has no FS
 // importer registered.
+// netGate asks r.Trust whether the project -- the import root, which is what
+// wrote the import -- may contact host.
+func (r *Resolver) netGate(host string) error {
+	subject := trust.Subject{Name: "."}
+	if r.RootDir != "" {
+		subject.Origin = trust.DirOrigin(r.RootDir)
+	}
+	return r.Trust.Check(trust.Request{Kind: trust.Net, Subject: subject, Value: host})
+}
+
 func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
 	imp := codegen.LookupFSScheme(scheme)
 	if imp == nil {
@@ -300,6 +315,8 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 	var err error
 	if proj, ok := imp.(codegen.ProjectFSScheme); ok && r.FS != nil {
 		fsys, err = proj.ResolveProjectFS(uri, r.FS, dir)
+	} else if net, ok := imp.(codegen.NetworkScheme); ok {
+		fsys, err = net.ResolveFSNet(uri, dir, r.netGate)
 	} else {
 		fsys, err = imp.ResolveFS(uri, dir)
 	}

@@ -1259,7 +1259,7 @@ not close.
 and the config file, matching by import path (a flag) or origin (everything
 recorded), the refusal messages, and the config file's reader and writer. The
 optimizer's build host (`buildhost.go`) answers `sngl:x/gen`'s `lines`,
-`exists`, `names`, `env` and `exec` -- `#[marks.intrinsic(…, build)]`, a new
+`exists`, `files`, `env` and `exec` -- `#[marks.intrinsic(…, build)]`, a new
 flag saying no target emits the id -- gating each by the package that wrote
 the call and recording each read; `produce.go` stores a fold that reached the
 host as `sngl.eval`, keyed by its package closure (`gencache.Request.Identity`,
@@ -1283,11 +1283,20 @@ naming it got the empty string (`js_consteval_fold.txt` pointed a cache at
 first, so an in-process script's `SNGL_GENCACHE=off` was ignored once any
 earlier code had opened the store.
 
-Two deviations from what planning settled, both to raise: the directory
-listing is `gen.names(dir, pattern)`, since a func named `list` in
-`sngl:x/gen` shadows `list<T>` there (and `file:` already says `names`); and
-`SNGL_ALLOW` takes origins only, since decision 11's example names an import
-path, and an ambient grant by import path reaches any repository claiming it.
+Two deviations from what planning settled, both accepted: the directory
+listing is `gen.files(dir, pattern)`, since a func named `list` in
+`sngl:x/gen` shadows `list<T>` there; and `SNGL_ALLOW` takes origins only,
+since an ambient grant by import path reaches any repository claiming it --
+a permission protects the files, not a name that resolves to them.
+
+**A network permission, added after.** A `git:` or `http:` import fetching
+what its cache does not hold asks for its host first (`--allow-net=<host>`,
+`*.<domain>` for its subdomains and not itself), redirects included; a cache
+hit asks nothing. A grant is the project's -- `trust.allow(origin=<root>) { trust.net(host=…) }`, what `sngl trust --allow-net` records -- or every
+project's, `trust.everywhere { trust.net(host=…) }` from `sngl trust --everywhere`, which records nothing else. `SNGL_ALLOW` takes `net=<host>` or
+`net=<origin>=<host>`. The go command's own fetches are not gated: once it
+is run as a plugin's command sngl cannot see them, so it is trusted as a
+command, as a built-in plugin will be. Fixture: `cmd/sngl/testdata/trust_net.txt`, failing on 58a1464e.
 
 Left for Phase E: the LSP's half of the gate (nothing it checks reaches the
 host yet); a plugin's literal cache nodes in its output; a host call written
@@ -1354,6 +1363,7 @@ Audit of what the library-shipped importers run (decision 11), to raise again:
   rule that building untrusted code runs none of it. A store hit re-runs
   `go env` to check its `goenv` inputs: "a hit runs nothing" means nothing of
   the project's.
+- **`git:` and `http:`** fetch over the network; gated since, by host.
 - **`git:`** joins the import's host and path into the cache directory with
   no `..` check, so a crafted import makes `git clone` write outside the
   cache. The clone itself runs no repository code (`--branch=` is one

@@ -3311,7 +3311,7 @@ differently because they reach differently:
   package (`reportRefused`), which `build.Result.Warnings` carries and the
   CLI prints beside the checker's; on one that cannot, it is the error.
 - **A build-time SNGL function** reaches the host only through
-  `sngl:x/gen`'s `lines`, `exists`, `names`, `env` and `exec`, intrinsics
+  `sngl:x/gen`'s `lines`, `exists`, `files`, `env` and `exec`, intrinsics
   marked `build` that only the optimizer's build host
   (`internal/optimize/buildhost.go`) answers -- a call left unfolded is
   refused by `refuseBuildOnlyCalls`. Each call is gated by the package that
@@ -3323,6 +3323,19 @@ differently because they reach differently:
   recorded, so a fold that reaches the host is a producer (`produce.go`):
   stored as `sngl.eval` under its package closure's digest, the files it read
   hashed as they streamed.
+
+- **A fetch** -- a `git:` or `http:` import of a package its cache does not
+  hold -- contacts a host the repository chose, so the importer asks before
+  any request (`codegen.NetworkScheme`'s `ResolveFSNet`, with a `NetGate`
+  `build.Resolver` builds from its `Trust`), a redirect's host included:
+  git is run with `http.followRedirects=false`, and the http client's
+  `CheckRedirect` asks. A cache hit asks nothing. The grant is a host, exact
+  or `*.<domain>` for what is below it and not it, and belongs to the project
+  -- the import root -- or, recorded under `trust.everywhere`, to every
+  project. The go command's own fetches (modules, a toolchain) are not
+  gated: once a plugin runs it as a command sngl cannot see them, and the
+  go command is trusted as a command. `sngl pkg`, which fetches because it
+  was asked to, grants itself the network.
 
 A grant comes from a flag (an import path or an origin, one invocation),
 `SNGL_ALLOW` (`;`-separated, origins only, no `all`) or the user's

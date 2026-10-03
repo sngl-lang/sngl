@@ -11,6 +11,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -21,7 +22,7 @@ import (
 var cliTrust *trust.Policy
 
 // allowKinds are the per-call grants, each a repeatable --allow-<kind>.
-var allowKinds = []trust.Kind{trust.Eval, trust.Command, trust.Env, trust.File, trust.Dir}
+var allowKinds = []trust.Kind{trust.Eval, trust.Command, trust.Env, trust.File, trust.Dir, trust.Net}
 
 func init() {
 	pf := rootCmd.PersistentFlags()
@@ -30,6 +31,7 @@ func init() {
 	pf.StringArray("allow-env", nil, `let a plugin read an environment variable: "<plugin>=<name>"`)
 	pf.StringArray("allow-file", nil, `let a plugin read a file outside the import root: "<plugin>=<path>"`)
 	pf.StringArray("allow-dir", nil, `let a plugin read a directory outside the import root: "<plugin>=<path>"`)
+	pf.StringArray("allow-net", nil, `let an import fetch from a host: "<host>", or "*.<domain>" for its subdomains`)
 	pf.Bool("allow-all", false, "trust the project's code with everything, for this invocation only")
 	rootCmd.AddCommand(trustCmd)
 }
@@ -106,6 +108,8 @@ func (terminalPrompt) Ask(r trust.Request, origin trust.Origin) trust.Answer {
 		fmt.Fprintf(w, "sngl: %s asks to read %s, outside %s\n", r.Subject.Name, r.Value, r.Root)
 	case trust.Dir:
 		fmt.Fprintf(w, "sngl: %s asks to list %s, outside %s\n", r.Subject.Name, r.Value, r.Root)
+	case trust.Net:
+		fmt.Fprintf(w, "sngl: an import fetches from %s over the network\n", r.Value)
 	}
 	fmt.Fprintf(w, "  from: %s\n", origin.Spec)
 	fmt.Fprintf(w, "Allow? [o]nce, [a]lways (recorded in %s), [N]o: ", trust.ConfigPath())
@@ -117,6 +121,14 @@ func (terminalPrompt) Ask(r trust.Request, origin trust.Origin) trust.Answer {
 		return trust.Always
 	}
 	return trust.No
+}
+
+// cliResolver resolves a package's imports with what this invocation may
+// fetch.
+func cliResolver(dir string) *build.Resolver {
+	r := build.NewResolver(dir)
+	r.Trust = cliTrust
+	return r
 }
 
 // printWarnings writes each warning once, in the form the checker's take.
@@ -184,8 +196,22 @@ the program's import root.
 		if err != nil {
 			return err
 		}
+		everywhere, _ := cmd.Flags().GetBool("everywhere")
 		var record []trust.Grant
 		for _, g := range grants {
+			if everywhere {
+				if g.Kind != trust.Net || g.Subject != "" {
+					return errors.New("--everywhere records only --allow-net=<host>: every other grant names the code it trusts")
+				}
+				g.Source = ""
+				record = append(record, g)
+				continue
+			}
+			if g.Kind == trust.Net && g.Subject == "" {
+				// The project in the current directory, which is what writes
+				// the imports.
+				g.Subject = "."
+			}
 			origin, err := resolveOrigin(cwd, g)
 			if err != nil {
 				return err
@@ -212,6 +238,7 @@ the program's import root.
 func init() {
 	trustCmd.Flags().Bool("list", false, "list the recorded grants, numbered")
 	trustCmd.Flags().String("remove", "", "remove a recorded grant, by its number or its origin")
+	trustCmd.Flags().Bool("everywhere", false, "record --allow-net for every project rather than the one in the current directory")
 }
 
 // resolveOrigin is where the code a grant names comes from, seen from dir.

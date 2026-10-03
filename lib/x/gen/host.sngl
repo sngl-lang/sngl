@@ -20,10 +20,11 @@ const func lines(path string) iter<string>
 #[marks.intrinsic("gen.exists", build)]
 const func exists(path string) bool
 
-// The names in the directory dir matching pattern, a `path.Match` glob,
-// sorted. Gated as a read of dir, and recorded as its listing.
-#[marks.intrinsic("gen.names", build)]
-const func names(dir string, pattern string) list<string>
+// The names of what the directory dir holds -- files and directories alike --
+// that match pattern, a `path.Match` glob, sorted. Gated as a read of dir, and
+// recorded as its listing.
+#[marks.intrinsic("gen.files", build)]
+const func files(dir string, pattern string) list<string>
 
 // The environment variable name, or null where it is unset. Needs
 // `--allow-env` for that variable, granted to the package making the call.

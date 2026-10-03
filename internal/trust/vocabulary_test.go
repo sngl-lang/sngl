@@ -22,6 +22,8 @@ func TestEveryGrantKindIsDeclared(t *testing.T) {
 		{Kind: File, Subject: "dir:/src/pc", Value: "/usr/share/gir-1.0/Gtk-4.0.gir"},
 		{Kind: Dir, Subject: "dir:/src/pc", Value: "/usr/share/gir-1.0"},
 		{Kind: Eval, Subject: "git://example.com/p@v1", Digest: "abc"},
+		{Kind: Net, Subject: "dir:/src/site", Value: "github.com"},
+		{Kind: Net, Value: "*.example.com"},
 	}
 	if err := AppendConfig(path, grants); err != nil {
 		t.Fatal(err)

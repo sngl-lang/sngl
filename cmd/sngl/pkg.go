@@ -15,6 +15,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -73,8 +74,12 @@ type schemeRef struct {
 }
 
 func newCapturingResolver(dir string) *capturingResolver {
+	r := build.NewResolver(dir)
+	// `sngl pkg` fetches because it was asked to by name, and runs nothing it
+	// fetches.
+	r.Trust = trust.AllowAll()
 	return &capturingResolver{
-		Resolver: build.NewResolver(dir),
+		Resolver: r,
 		seen:     map[string]bool{},
 	}
 }

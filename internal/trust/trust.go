@@ -44,6 +44,10 @@ const (
 	File Kind = "file"
 	// Dir reads a directory, and everything below it, outside the import root.
 	Dir Kind = "dir"
+	// Net contacts a host over the network: a git: or http: import fetching
+	// what is not yet in the cache. A grant names the host exactly, or with a
+	// leading `*.` its subdomains and not itself.
+	Net Kind = "net"
 )
 
 // Origin is where code came from: what a recorded grant is bound to.
@@ -268,6 +272,8 @@ func grantFor(r Request, origin Origin, source string) Grant {
 		g.BanFlags = slices.Clone(r.BanFlags)
 	case Env, File, Dir:
 		g.Value = r.Value
+	case Net:
+		g.Value = stripPort(r.Value)
 	}
 	return g
 }
@@ -302,6 +308,14 @@ func (g Grant) covers(r *Request) (bool, error) {
 		if !Within(r.Value, Canonical(g.Value)) {
 			return false, nil
 		}
+	case Net:
+		if !HostMatches(g.Value, r.Value) {
+			return false, nil
+		}
+	}
+	if g.Subject == "" {
+		// Everywhere: a host granted to every project.
+		return true, nil
 	}
 	if !IsOrigin(g.Subject) {
 		return samePath(g.Subject, r.Subject.Name), nil
@@ -320,6 +334,29 @@ func (g Grant) covers(r *Request) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// HostMatches reports whether host is one pattern names: the host itself, or
+// with a leading `*.` any host below it but not it. Case is ignored, as DNS
+// does, and so is a port.
+func HostMatches(pattern, host string) bool {
+	pattern, host = strings.ToLower(pattern), strings.ToLower(stripPort(host))
+	if rest, ok := strings.CutPrefix(pattern, "*."); ok {
+		return strings.HasSuffix(host, "."+rest)
+	}
+	return pattern == host
+}
+
+func stripPort(host string) string {
+	if strings.HasPrefix(host, "[") {
+		if i := strings.Index(host, "]"); i >= 0 {
+			return host[1:i]
+		}
+	}
+	if i := strings.LastIndex(host, ":"); i >= 0 && !strings.Contains(host[:i], ":") {
+		return host[:i]
+	}
+	return host
 }
 
 // samePath compares two import paths as a flag and a message spell them:
@@ -370,6 +407,9 @@ func (e *Refusal) Error() string {
 	case Dir:
 		flag := fmt.Sprintf("--allow-dir=%q", name+"="+r.Value)
 		return fmt.Sprintf("%s may not list %s, outside the import root %s: listing it needs %s (or `sngl trust %s` to record it)", name, r.Value, r.Root, flag, flag)
+	case Net:
+		flag := fmt.Sprintf("--allow-net=%q", stripPort(r.Value))
+		return fmt.Sprintf("fetching from %s needs %s (or `sngl trust %s` to record it for this project, or with --everywhere for every project)", stripPort(r.Value), flag, flag)
 	}
 	flag := fmt.Sprintf("--allow-eval=%q", name)
 	return fmt.Sprintf("running %s needs %s (or `sngl trust %s` to record it)", name, flag, flag)
@@ -406,6 +446,18 @@ func quoteArg(a string) string {
 // first `=` splits them, since no import path holds one.
 func ParseFlag(kind Kind, v string) (Grant, error) {
 	g := Grant{Kind: kind, Source: "--allow-" + string(kind)}
+	if kind == Net {
+		// A host alone is every project's; `<origin>=<host>` one project's.
+		subject, host, ok := strings.Cut(v, "=")
+		if !ok {
+			subject, host = "", v
+		}
+		if host == "" || strings.ContainsAny(host, "/ ") {
+			return Grant{}, fmt.Errorf("--allow-net=%q: want a host, or *.<domain> for its subdomains", v)
+		}
+		g.Subject, g.Value = subject, strings.ToLower(host)
+		return g, nil
+	}
 	if kind == Eval {
 		if v == "" {
 			return Grant{}, errors.New("--allow-eval needs a package: --allow-eval=\"go:<import path>\"")
@@ -456,15 +508,15 @@ func ParseEnv(v string) ([]Grant, error) {
 		switch k {
 		case "all", "allow-all":
 			return nil, fmt.Errorf("%s: %q grants everything, which an environment variable may not: pass --allow-all", EnvVar, string(k))
-		case Eval, Command, Env, File, Dir:
+		case Eval, Command, Env, File, Dir, Net:
 		default:
-			return nil, fmt.Errorf("%s: %q is not a grant: want eval, command, env, file or dir", EnvVar, entry)
+			return nil, fmt.Errorf("%s: %q is not a grant: want eval, command, env, file, dir or net", EnvVar, entry)
 		}
 		g, err := ParseFlag(k, strings.TrimSpace(value))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", EnvVar, err)
 		}
-		if !IsOrigin(g.Subject) {
+		if !IsOrigin(g.Subject) && !(k == Net && g.Subject == "") {
 			return nil, fmt.Errorf("%s: %s names %q by its import path, which any repository may claim; an environment grant names an origin (dir:<path>, go:<module>@<version>)", EnvVar, entry, g.Subject)
 		}
 		g.Source = EnvVar

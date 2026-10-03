@@ -224,7 +224,7 @@ func parseDir(dir string) (*ast.Document, error) {
 func checkDoc(doc *ast.Document, dir string, isMain bool, targets ...ir.StaticTarget) (*ir.Package, error) {
 	return build.Check(doc, build.CheckConfig{
 		Dir:      dir,
-		Resolver: build.NewResolver(dir),
+		Resolver: cliResolver(dir),
 		IsMain:   isMain,
 		Targets:  targets,
 		Warn:     func(d ir.Diagnostic) { fmt.Fprintln(os.Stderr, "warning: "+d.Error()) },

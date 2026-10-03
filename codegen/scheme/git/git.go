@@ -31,6 +31,11 @@ type Importer struct{}
 func (g *Importer) Scheme() string { return "git" }
 
 func (g *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
+	return g.ResolveFSNet(uri, dir, nil)
+}
+
+// ResolveFSNet resolves uri, asking gate before a clone contacts its host.
+func (g *Importer) ResolveFSNet(uri, dir string, gate codegen.NetGate) (fs.FS, error) {
 	parsed, err := parseGitURI(uri)
 	if err != nil {
 		return nil, err
@@ -49,6 +54,9 @@ func (g *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
 	}
 
 	// Clone into cache
+	if err := codegen.AskNet(gate, parsed.host); err != nil {
+		return nil, err
+	}
 	if err := gitClone(parsed, cacheDir); err != nil {
 		return nil, fmt.Errorf("git clone: %w", err)
 	}
@@ -115,7 +123,9 @@ func gitClone(parsed *gitURI, destDir string) error {
 
 	repoURL := "https://" + parsed.host + "/" + parsed.path + ".git"
 	slog.Info("exec", "cmd", "git clone", "repo", repoURL, "ref", parsed.ref, "dest", destDir)
-	cmd := exec.Command("git", "clone", "--depth=1", "--branch="+parsed.ref, repoURL, destDir)
+	// No redirect is followed: the host was what was granted, and a redirect
+	// would contact another one nothing asked about.
+	cmd := exec.Command("git", "-c", "http.followRedirects=false", "clone", "--depth=1", "--branch="+parsed.ref, repoURL, destDir)
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }

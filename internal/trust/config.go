@@ -22,6 +22,8 @@ const (
 )
 
 // Allow is one `trust.allow` of the config file: an origin and what it may do.
+// An empty origin is `trust.everywhere`, which grants every project network
+// access and nothing else.
 type Allow struct {
 	Origin Origin
 	Grants []Grant
@@ -30,6 +32,14 @@ type Allow struct {
 // String is the allow as the config file spells it, on one line.
 func (a Allow) String() string {
 	var b strings.Builder
+	if a.Origin.Spec == "" {
+		b.WriteString(vocabAlias + ".everywhere {")
+		for _, g := range a.Grants {
+			b.WriteString(" " + g.child())
+		}
+		b.WriteString(" }")
+		return b.String()
+	}
 	fmt.Fprintf(&b, "%s.allow(origin=%s", vocabAlias, quote(a.Origin.Spec))
 	if a.Origin.Module != "" {
 		fmt.Fprintf(&b, ", module=%s", quote(a.Origin.Module))
@@ -59,6 +69,8 @@ func (g Grant) child() string {
 		return fmt.Sprintf("%s.file(path=%s)", vocabAlias, quote(g.Value))
 	case Dir:
 		return fmt.Sprintf("%s.dir(path=%s)", vocabAlias, quote(g.Value))
+	case Net:
+		return fmt.Sprintf("%s.net(host=%s)", vocabAlias, quote(g.Value))
 	}
 	return vocabAlias + ".eval()"
 }
@@ -106,8 +118,9 @@ func parseConfig(path string, data []byte) ([]Allow, error) {
 		if name == "" {
 			continue
 		}
-		if name != alias+".allow" {
-			return nil, fmt.Errorf("%s:%d: %s is not a %s.allow", path, st.StmtPos().Line, name, alias)
+		everywhere := name == alias+".everywhere"
+		if name != alias+".allow" && !everywhere {
+			return nil, fmt.Errorf("%s:%d: %s is not a %s.allow or a %s.everywhere", path, st.StmtPos().Line, name, alias, alias)
 		}
 		where := fmt.Sprintf("%s:%d", path, st.StmtPos().Line)
 		props, err := readProps(args)
@@ -115,10 +128,12 @@ func parseConfig(path string, data []byte) ([]Allow, error) {
 			return nil, fmt.Errorf("%s: %w", where, err)
 		}
 		a := Allow{Origin: Origin{Spec: props["origin"].s, Module: props["module"].s, Digest: props["sha256"].s}}
-		if a.Origin.Spec == "" {
+		switch {
+		case everywhere:
+			a.Origin = Origin{}
+		case a.Origin.Spec == "":
 			return nil, fmt.Errorf("%s: %s.allow names no origin", where, alias)
-		}
-		if !IsOrigin(a.Origin.Spec) {
+		case !IsOrigin(a.Origin.Spec):
 			return nil, fmt.Errorf("%s: origin %q is an import path, which any repository may claim; a recorded grant names where the code came from", where, a.Origin.Spec)
 		}
 		for _, c := range block {
@@ -146,8 +161,13 @@ func parseConfig(path string, data []byte) ([]Allow, error) {
 				g.Kind, g.Value = File, cp["path"].s
 			case Dir:
 				g.Kind, g.Value = Dir, cp["path"].s
+			case Net:
+				g.Kind, g.Value = Net, strings.ToLower(cp["host"].s)
 			default:
 				return nil, fmt.Errorf("%s:%d: %s is not a grant", path, c.StmtPos().Line, cname)
+			}
+			if everywhere && g.Kind != Net {
+				return nil, fmt.Errorf("%s:%d: %s.everywhere grants network access only; anything else names the code it trusts, in a %s.allow", path, c.StmtPos().Line, alias, alias)
 			}
 			a.Grants = append(a.Grants, g)
 		}
