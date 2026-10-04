@@ -150,7 +150,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	// Ahead of the optimizer, which has no reason to keep a bodyless host it
 	// cannot render: the emitter reads the host as it was written, and takes
 	// it out of the package so nothing after it has to know it was there.
-	emitted, err := emitFamilies(tpkg, target)
+	emitted, err := emitFamilies(tpkg, target, o)
 	if err != nil {
 		return Result{}, err
 	}

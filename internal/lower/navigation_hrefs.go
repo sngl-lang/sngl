@@ -36,7 +36,7 @@ var passNavigationHrefs = pass{
 }
 
 type navHrefs struct {
-	nv     *navigation
+	nv *navigation
 	// hrefs is each page's, as written.
 	hrefs map[*navPage]string
 	// surfaces says which nodes are in a surface other than the document --
@@ -323,7 +323,6 @@ func pathParseable(t *ir.Type) bool {
 	}
 	return false
 }
-
 
 // constInLoop reports whether e is a constant once the variables of fs, a loop
 // over a constant, are bound: one value per copy of what the loop writes.

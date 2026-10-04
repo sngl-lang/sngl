@@ -865,7 +865,6 @@ func (nv *navigation) hasLinks() bool {
 	return found
 }
 
-
 // lowerCalls replaces each `go` and `back` in an imperative block, at any
 // depth, with the statements that move the stack.
 func (nv *navigation) lowerCalls(stmts []ir.Stmt) ([]ir.Stmt, error) {

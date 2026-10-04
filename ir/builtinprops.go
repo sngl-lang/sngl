@@ -35,14 +35,15 @@ const (
 
 // sngl:x/gen's gen.emit and gen.node.
 const (
-	GenEmitFile    = "file"
-	GenEmitOpen    = "open"
-	GenEmitClose   = "close"
-	GenEmitRender  = "render"
-	GenEmitMembers = "members"
-	GenNodeOpen    = "open"
-	GenNodeClose   = "close"
-	GenNodeValue   = "value"
+	GenEmitFile     = "file"
+	GenEmitOpen     = "open"
+	GenEmitClose    = "close"
+	GenEmitRender   = "render"
+	GenEmitMembers  = "members"
+	GenEmitGenerate = "generate"
+	GenNodeOpen     = "open"
+	GenNodeClose    = "close"
+	GenNodeValue    = "value"
 )
 
 // Vocabulary is what compiler code reads by name off a declaration of one
@@ -58,7 +59,7 @@ var BuiltinVocabulary = map[BuiltinKind]Vocabulary{
 	BuiltinNavPage:  {Props: []string{NavPageHref, NavPageParams}},
 	BuiltinNavLink:  {Props: []string{NavLinkTo, NavLinkText, NavLinkStyle, NavLinkParams}, Events: []string{NavLinkClick}},
 	BuiltinNavStack: {Methods: []string{NavCurrentID, NavGoID, NavBackID}},
-	BuiltinGenEmit:  {Props: []string{GenEmitFile, GenEmitOpen, GenEmitClose, GenEmitRender, GenEmitMembers}},
+	BuiltinGenEmit:  {Props: []string{GenEmitFile, GenEmitOpen, GenEmitClose, GenEmitRender, GenEmitMembers}, Events: []string{GenEmitGenerate}},
 	BuiltinGenNode:  {Props: []string{GenNodeOpen, GenNodeClose, GenNodeValue}},
 }
 

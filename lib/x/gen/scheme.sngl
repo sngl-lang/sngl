@@ -30,11 +30,13 @@ import marks "sngl:internal/marks"
 #[marks.builtin("genScheme")]
 component scheme(const name string, @generate(out Out, importPath string)) root {}
 
-// Where a scheme's handler writes the package an import resolves to.
+// Where a handler writes what it produces: a scheme's the package an import
+// resolves to, a family's `@generate` the files its emitter generates.
 struct Out {}
 
-// Writes one file of the package: name is a `.sngl` file name with no
-// directory, and src its source. Each name is written once. It records
+// Writes one file: for a scheme, name is a `.sngl` file name with no
+// directory, and src its source; for a family's emitter, name is a path
+// inside the output directory. Each name is written once. It records
 // nothing, since it is the output.
 #[marks.intrinsic("gen.Out.write", build)]
 func Out.write(name string, src string)

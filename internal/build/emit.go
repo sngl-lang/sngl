@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
+	"git.duckfam.us/jonathan/sngl/internal/plugin"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -53,8 +54,8 @@ type emittedHost struct {
 // family's gen.emit is made of sit under the same `if` and passEffect mounts
 // and unmounts them with it. A template-mode host writes its file once, at
 // build time, so the `if` has to be decidable then.
-func emitFamilies(pkg *ir.Package, t Target) (map[string][]byte, error) {
-	e := &familyEmission{pkg: pkg, t: t, reached: map[*ir.Component]bool{nil: true}}
+func emitFamilies(pkg *ir.Package, t Target, o Options) (map[string][]byte, error) {
+	e := &familyEmission{pkg: pkg, t: t, reached: map[*ir.Component]bool{nil: true}, runner: &plugin.Runner{Trust: o.Trust, Root: o.Dir}}
 	pkg.Body = e.stmts(pkg.Body, nil, nil)
 	for _, comp := range reachedComponents(pkg) {
 		e.reached[comp] = true
@@ -80,6 +81,8 @@ type familyEmission struct {
 	env     *interp.Env
 	files   map[string][]byte
 	errs    []error
+	// runner runs a family's @generate handler.
+	runner *plugin.Runner
 }
 
 // stmts answers every host in one statement list. owner is the root
@@ -130,6 +133,11 @@ func (e *familyEmission) host(ni *ir.NodeInst, family *ir.Component, owner *ir.C
 		e.errs = append(e.errs, err)
 		return nil, false
 	}
+	generate := generateHandler(emit)
+	if generate != nil && codeMode(emit) {
+		e.errs = append(e.errs, posErr(nodePos(emit), "gen.emit is generated as code or by its @generate handler, and this one gives both a render and a handler"))
+		return nil, false
+	}
 	if codeMode(emit) {
 		inst, err := emitCode(e.pkg, owner, ni, family, emit, e.t)
 		if err != nil {
@@ -165,20 +173,84 @@ func (e *familyEmission) host(ni *ir.NodeInst, family *ir.Component, owner *ir.C
 		e.errs = append(e.errs, err)
 		return nil, false
 	}
-	name, data, err := runTemplates(e.env, h, e.t)
+	written := map[string][]byte{}
+	if generate != nil {
+		written, err = e.runGenerate(h, generate)
+	} else {
+		var name string
+		var data []byte
+		name, data, err = runTemplates(e.env, h, e.t)
+		written[name] = data
+	}
 	if err != nil {
 		e.errs = append(e.errs, err)
-		return nil, false
-	}
-	if _, dup := e.files[name]; dup {
-		e.errs = append(e.errs, posErr(nodePos(ni), "%s writes %s, which another %s in this program already writes", ni.Component.Name, name, ni.Component.Name))
 		return nil, false
 	}
 	if e.files == nil {
 		e.files = map[string][]byte{}
 	}
-	e.files[name] = data
+	for name, data := range written {
+		if _, dup := e.files[name]; dup {
+			e.errs = append(e.errs, posErr(nodePos(ni), "%s writes %s, which another %s in this program already writes", ni.Component.Name, name, ni.Component.Name))
+			return nil, false
+		}
+		e.files[name] = data
+	}
 	return nil, true
+}
+
+// generateHandler is the gen.emit's @generate handler, when it handles one.
+func generateHandler(emit *ir.NodeInst) *ir.EventHandler {
+	for i := range emit.Handlers {
+		if emit.Handlers[i].Name == ir.GenEmitGenerate {
+			return &emit.Handlers[i]
+		}
+	}
+	return nil
+}
+
+// runGenerate hands the walked members to the family's @generate handler,
+// each as the value its gen.node gives and the members it holds. The handler
+// runs as the package the family's override is written in.
+func (e *familyEmission) runGenerate(h *emittedHost, handler *ir.EventHandler) (map[string][]byte, error) {
+	members, err := e.memberValues(h, h.members)
+	if err != nil {
+		return nil, err
+	}
+	body, _ := override(h.family, e.t)
+	return e.runner.Emit(plugin.Emit{
+		Handler: handler,
+		Pkg:     body.Pkg,
+		Program: e.pkg,
+		Key:     []string{e.t.Platform, e.t.Lang, h.family.Name},
+		Members: members,
+	})
+}
+
+// memberValues evaluates each member's gen.node value with its props bound.
+func (e *familyEmission) memberValues(h *emittedHost, nodes []emittedNode) ([]plugin.Member, error) {
+	out := make([]plugin.Member, 0, len(nodes))
+	for _, n := range nodes {
+		body, ok := override(n.comp, e.t)
+		node := soleGenNode(body, ir.BuiltinGenNode)
+		if !ok || node == nil {
+			return nil, posErr(n.at, "the %s family emits for %s, and %s says nothing about what it writes: give it an override whose body is a gen.node",
+				h.family.Name, describe(e.t), n.comp.Name)
+		}
+		for p, v := range n.props {
+			e.env.Set(p.Sym, v)
+		}
+		v, err := nodeArg(e.env, node, ir.GenNodeValue)
+		if err != nil {
+			return nil, err
+		}
+		children, err := e.memberValues(h, n.children)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, plugin.Member{Value: v, Children: children})
+	}
+	return out, nil
 }
 
 // emittedFamilyOf is the family that generates this node, when it is a host
@@ -496,8 +568,15 @@ func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, er
 	return path.Clean(file), []byte(b.String()), nil
 }
 
-// templateArg evaluates one of a gen node's props, or its default.
+// templateArg evaluates one of a gen node's string props, or its default.
 func templateArg(env *interp.Env, ni *ir.NodeInst, name string) (string, error) {
+	v, err := nodeArg(env, ni, name)
+	s, _ := v.(string)
+	return s, err
+}
+
+// nodeArg evaluates one of a gen node's props, or its default.
+func nodeArg(env *interp.Env, ni *ir.NodeInst, name string) (any, error) {
 	e := argNamed(ni.Props, name)
 	if e == nil {
 		for _, p := range ni.Component.Props {
@@ -507,14 +586,13 @@ func templateArg(env *interp.Env, ni *ir.NodeInst, name string) (string, error) 
 		}
 	}
 	if e == nil {
-		return "", nil
+		return nil, nil
 	}
 	v, err := env.Eval(e)
 	if err != nil {
-		return "", posErr(nodePos(ni), "%s: %v", name, err)
+		return nil, posErr(nodePos(ni), "%s: %v", name, err)
 	}
-	s, _ := v.(string)
-	return s, nil
+	return v, nil
 }
 
 func describe(t Target) string {

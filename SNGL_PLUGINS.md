@@ -1475,6 +1475,14 @@ Settled in E's planning:
 A runner that execs a process over the walked tree (decision 3), and decision
 14's command children, with CLI scripts since they execute.
 
+*The emitter half is done.* `gen.emit(@generate(out, members list<gen.Member<T>>))`
+is process mode: the template walk, then the handler run by
+`plugin.Runner.Emit` as the package that wrote the family's override
+(`ir.Body.Pkg`), its files stored as `sngl.emit` keyed by the members' values.
+`gen.exec` takes `stdin`, and a handler's parameter annotation binds a
+component's type parameter. `cmd/sngl/testdata/emit_family_generate.txt`.
+Still to do: the commands.
+
 Settled in F's planning:
 
 - **A process emitter is a handler, not a protocol.** `gen.emit` gains

@@ -366,3 +366,9 @@ func decodeValue(j any, t *ir.Type) (any, error) {
 	}
 	return bad()
 }
+
+// EncodeValue is v's stored form as a value of t, and whether it has one: a
+// func, a host handle or a generic struct has none. Another producer keying
+// its request by build-time values asks it, so two producers cannot spell one
+// value two ways.
+func EncodeValue(v any, t *ir.Type) (any, bool) { return encodeValue(v, t) }

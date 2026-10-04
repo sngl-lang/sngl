@@ -1084,6 +1084,10 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
 		return
 	}
+	var userPkg *ir.Package
+	if user {
+		userPkg = c.declPkg()
+	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		pos:       pos,
@@ -1094,6 +1098,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		selection: selection,
 		isConst:   isConst,
 		name:      qualifiedComponentName(ns, local),
+		pkg:       userPkg,
 	})
 }
 
@@ -1233,6 +1238,10 @@ type pendingExtension struct {
 	// what it overrides.
 	isConst bool
 	name    string
+	// pkg is the package a user override is written in: who a handler in it
+	// runs as when the build runs one. Nil for a target package's, which is
+	// library source.
+	pkg *ir.Package
 }
 
 // Runs after user pass1, so user-declared symbols are in scope. Each extension
@@ -1352,6 +1361,7 @@ func (c *checker) checkPendingExtensions() {
 				Funcs:     pe.comp.Funcs,
 				Methods:   pe.comp.Methods,
 				Const:     pe.isConst,
+				Pkg:       pe.pkg,
 			}
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked

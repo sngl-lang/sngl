@@ -109,7 +109,7 @@ func renders(these list<Rendered>) ir.Macro
 // override's body. The build walks each place the program renders the family
 // -- a component whose rest slot takes it -- and each member supplies its own
 // part with `node`, so nothing here asks what kind of member it is looking at.
-// There are two ways to say what the walk produces.
+// There are three ways to say what the walk produces.
 //
 // **A file**, named `file`: `open`, then what each member's `node` writes,
 // then `close`, all at build time.
@@ -145,6 +145,24 @@ func renders(these list<Rendered>) ir.Macro
 // handing it that function as `members`. The body below is the whole of what
 // it means, so a target compiles it with nothing to learn. `members` is the
 // build's to supply and a program does not write it.
+//
+// **What a handler writes**, when `@generate` is handled: the walk reads the
+// host at build time, as it does for a file, and hands the handler each
+// member's `node` value with what that member holds. The handler writes the
+// files with `out.write`, each a path inside the output directory, and may run
+// another process over what it was handed with `exec`. It runs at build time
+// under the host API, gated as the package that wrote it and recorded, so what
+// it writes is stored and replayed until the members, its code or anything it
+// read changes. A raise that leaves it is the build's error.
+//
+//     component block[go.language] {
+//         gen.emit(@generate(out, members list<gen.Member<Entry>>) {
+//             out.write("blocks.json", encode(members))
+//         })
+//     }
+//
+// A handler's annotation is what says what `T` is, as `render`'s does in code
+// mode.
 #[marks.builtin("genEmit")]
 #[tree.none]
 component emit<T = struct {}>(
@@ -160,6 +178,7 @@ component emit<T = struct {}>(
     },
     @start(members func() list<T>),
     @change(text string),
+    @generate(out Out, members list<Member<T>>),
 ) {
     effect(@mount {
         start(members)
@@ -167,6 +186,14 @@ component emit<T = struct {}>(
     effect(on=render(members()), @mount(text) {
         change(text)
     })
+}
+
+// One member as a `@generate` handler is handed it: the value its `node` gives,
+// read at build time with its props bound, and the members it holds, in the
+// order they are written.
+struct Member<T> {
+    value T
+    children list<Member<T>>
 }
 
 // What one member writes, written as the whole body of the member's override

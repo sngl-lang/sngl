@@ -44,7 +44,7 @@ struct Process {
 const func Process.code() int
 
 // Runs cmd -- the program, then its arguments -- in dir, the import root when
-// empty, and returns the running process.
+// empty, with stdin on its standard input, and returns the running process.
 //
 // A call says what it needs, and the compiler holds it to that whatever was
 // granted: `cmd` must begin with `prefix` -- the program alone when empty --
@@ -65,4 +65,4 @@ const func Process.code() int
 // visible, which is why running one is never allowed unasked. The process
 // gets the build's environment, less SNGL_ALLOW.
 #[marks.intrinsic("gen.exec", build)]
-const func exec(cmd list<string>, prefix list<string> = [], banFlags list<string> = [], dir string = "") Process
+const func exec(cmd list<string>, prefix list<string> = [], banFlags list<string> = [], dir string = "", stdin string = "") Process

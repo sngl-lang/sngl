@@ -776,6 +776,11 @@ type Body struct {
 	// Const is the override's own `const` prefix. The component a target
 	// renders is const when its base declaration is or this is.
 	Const bool `json:",omitempty"`
+	// Pkg is the package a program's override is written in, which is who
+	// a handler in it runs as at build time -- a family's gen.emit
+	// @generate. Nil for a target package's override, which is library
+	// source and trusted.
+	Pkg *Package `json:"-"`
 }
 
 // Component represents a resolved component declaration.

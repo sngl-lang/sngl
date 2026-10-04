@@ -42,7 +42,43 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		}
 		bindTypeParams(p.Type, argType, bindings)
 	}
+	c.bindFromHandlers(comp, args, bindings)
 	return c.specializeWith(comp, bindings)
+}
+
+// bindFromHandlers binds what the props left unbound from the types a handler
+// writes on its parameters, the way a lambda's annotation binds a func's:
+// `gen.emit(@generate(out, members list<gen.Member<Entry>>) { … })` says T is
+// Entry, and nothing else at that call site could. A written type is resolved
+// quietly here, since bindParams resolves it again and reports it there.
+func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, bindings map[string]*ir.Type) {
+	for _, a := range args.Args {
+		h, ok := a.(ast.EventHandler)
+		if !ok {
+			continue
+		}
+		var ev *ir.EventDecl
+		for _, e := range comp.Events {
+			if e.Name == h.Name {
+				ev = e
+			}
+		}
+		if ev == nil {
+			continue
+		}
+		for i, p := range h.Params.Params {
+			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !mentionsTypeParam(ev.Params[i].Type) {
+				continue
+			}
+			n := len(c.diags)
+			got := c.resolveType(p.Type)
+			c.diags = c.diags[:n]
+			if got == nil || got.Kind == ir.TypeDyn {
+				continue
+			}
+			bindTypeParams(ev.Params[i].Type, got, bindings)
+		}
+	}
 }
 
 // specializeWith is the specialization of comp at bindings, its defaults

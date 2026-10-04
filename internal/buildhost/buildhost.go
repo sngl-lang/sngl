@@ -274,7 +274,7 @@ func (h *Host) position(ow *Owner, call *ir.Call) ast.Pos {
 func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error) {
 	rec := h.rec
 	if rec == nil {
-		return nil, fmt.Errorf("%s answers only inside a const func the build evaluates, or a gen.scheme handler", id)
+		return nil, fmt.Errorf("%s answers only inside a const func the build evaluates, or a gen.scheme or gen.emit @generate handler", id)
 	}
 	str := func(i int) string {
 		if i < len(args) {
@@ -324,10 +324,10 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		}
 		return nil, nil
 	case "gen.exec":
-		return h.exec(rec, ow, call, strs(0), strs(1), strs(2), str(3))
+		return h.exec(rec, ow, call, strs(0), strs(1), strs(2), str(3), str(4))
 	case "gen.Out.write":
 		if h.out == nil {
-			return nil, errors.New("out.write answers only in a gen.scheme's @generate handler")
+			return nil, errors.New("out.write answers only in a gen.scheme's or a gen.emit's @generate handler")
 		}
 		// args[0] is the receiver.
 		return nil, h.out.write(str(1), str(2))
@@ -403,7 +403,7 @@ func (h *Host) Declared(ow *Owner, in gencache.Input) error {
 	return nil
 }
 
-func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFlags []string, dir string) (any, error) {
+func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFlags []string, dir, stdin string) (any, error) {
 	if len(cmd) == 0 {
 		return nil, errors.New("gen.exec: no command")
 	}
@@ -446,6 +446,11 @@ func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFla
 	c := exec.Command(bin, cmd[1:]...)
 	c.Dir = runDir
 	c.Env = ChildEnv()
+	// What it reads on stdin is the call's own argument, so it is part of
+	// what the value is stored under and needs recording no more than cmd.
+	if stdin != "" {
+		c.Stdin = strings.NewReader(stdin)
+	}
 	var stderr bytes.Buffer
 	c.Stderr = &stderr
 	out, err := c.StdoutPipe()
@@ -544,15 +549,25 @@ func (p *process) wait() (any, error) {
 	return p.code, p.err
 }
 
-// Output is the files a scheme handler wrote, in the order it wrote them. It
-// records nothing: it is the output.
+// Output is the files a handler wrote, in the order it wrote them. It records
+// nothing: it is the output.
 type Output struct {
+	// Paths says the handler is a family's emitter, which writes into the
+	// output directory: a name is any path inside it. A scheme's writes a
+	// package, whose files are .sngl names with no directory.
+	Paths bool
 	Names []string
 	Files map[string]string
 }
 
 func (o *Output) write(name, src string) error {
-	if name == "" || path.Base(name) != name || !strings.HasSuffix(name, ".sngl") {
+	if o.Paths {
+		clean := path.Clean(name)
+		if name == "" || path.IsAbs(name) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+			return fmt.Errorf("out.write: %q is not a path inside the output directory", name)
+		}
+		name = clean
+	} else if name == "" || path.Base(name) != name || !strings.HasSuffix(name, ".sngl") {
 		return fmt.Errorf("out.write: %q is not a file name: want a .sngl name with no directory", name)
 	}
 	if o.Files == nil {
