@@ -55,11 +55,7 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	}
 	host := buildhost.New(r.Trust, r.Root, s.Pkg, ow)
 	ow = host.OwnerFor(nil)
-	where := ow.Name()
-	if ow.Dir() != "" {
-		where = "dir:" + ow.Dir()
-	}
-	req := gencache.Request{Producer: Producer, Params: []string{where, s.Name, uri}, Identity: ow.Closure()}
+	req := gencache.Request{Producer: Producer, Params: append(host.Key(ow), s.Name, uri), Identity: ow.Closure()}
 	store := r.Store
 	if store == nil {
 		store = gencache.Default()
@@ -80,7 +76,7 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	literal, err := r.literalInputs(store, out)
+	literal, err := r.literalInputs(host, ow, store, out)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +127,9 @@ func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []g
 
 // literalInputs reads the directive each written file carries, if any, with
 // what each input leaves out filled in now. A relative path is the import
-// root's, as a read's is.
-func (r *Runner) literalInputs(store *gencache.Store, out *buildhost.Output) ([]gencache.Input, error) {
+// root's, as a read's is, and each is held to what the plugin may read: the
+// store reads what an input names to complete it and to check it again.
+func (r *Runner) literalInputs(host *buildhost.Host, ow *buildhost.Owner, store *gencache.Store, out *buildhost.Output) ([]gencache.Input, error) {
 	var all []gencache.Input
 	for _, name := range out.Names {
 		ins, err := gencache.LiteralInputs([]byte(out.Files[name]))
@@ -144,6 +141,9 @@ func (r *Runner) literalInputs(store *gencache.Store, out *buildhost.Output) ([]
 				if (p.Name == "path" || p.Name == "dir") && p.Value != "" && !filepath.IsAbs(p.Value) && r.Root != "" {
 					in.Props[i].Value = filepath.Join(r.Root, filepath.FromSlash(p.Value))
 				}
+			}
+			if err := host.Declared(ow, in); err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
 			}
 			got, err := store.Complete(in)
 			if err != nil {

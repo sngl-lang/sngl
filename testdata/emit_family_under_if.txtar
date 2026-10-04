@@ -9,7 +9,11 @@ unmounted when it turns false, and settled on nothing while it is gone.
 
 In a root component the members function is the component's own, so the
 inliner renames what it reads with everything else the component declares:
-`ticks` is `ticks__inst0` in it, as it is in the component's body.
+`ticks` is `ticks__inst0` in it, as it is in the component's body. Its reads
+are analysed against the component's state as well as the package's, so a
+click writing `ticks` settles the effect keyed on the members: analysed
+against the package's alone, the function read nothing, and the bar never
+changed after it started.
 
 deny out/go/fyne/model.go `(?i)\bbar\b` -- no host reaches a backend
 deny out/go/gtk4/model.go `(?i)\bbar\b` -- likewise
@@ -327,6 +331,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_click_handler() {
 	m.ticks__inst1 += 1
+	m.__effects0_settle()
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -666,6 +671,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_clicked_handler() {
 	m.ticks__inst1 += 1
+	m.__effects0_settle()
 }
 
 func (m *Model) __n1_closed_handler() {
@@ -765,6 +771,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:a7ab467173ca863bbacd48308565681f
+pass sha256:c121abcd05c761edf683d6fb9913daeb
 -- run/go/gtk4 --
-pass sha256:499887d710d4d513891e3a9dc75a50a2
+pass sha256:010d62b6eb1ab6f342aadcf2fe7bce4c

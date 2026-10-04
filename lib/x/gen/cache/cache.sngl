@@ -34,8 +34,10 @@ component dir(const path string, const sha256 string = "") input {}
 // scratch directory a test writes beside a package leaves it unchanged.
 component godir(const path string, const sha256 string = "") input {}
 
-// An environment variable the producer read, and the value it had.
-component env(const name string, const value string = "") input {}
+// An environment variable the producer read, and the value it had: written
+// out, or by its sha256 -- which is how the store records one it completes,
+// since a variable may hold a secret.
+component env(const name string, const value string = "", const sha256 string = "") input {}
 
 // An environment variable the producer read and found unset.
 component unsetenv(const name string) input {}

@@ -99,7 +99,7 @@ func (c *checker) captureHint(name string) string {
 // Runs at the end of the check, once every body has resolved: the scopes hold
 // the written name, so renaming earlier would leave a body unable to find what
 // it calls.
-func (c *checker) renameNestedFuncs() {
+func (c *checker) renameNestedFuncs(pkg *ir.Package) {
 	if len(c.nestedOrder) == 0 {
 		return
 	}
@@ -116,21 +116,21 @@ func (c *checker) renameNestedFuncs() {
 	// type and a func together. Reserved from slices and never from a map, so
 	// two runs allocate the same names.
 	reg := &names.Registry{}
-	if c.pkg != nil {
-		for _, s := range c.pkg.Structs {
+	if pkg != nil {
+		for _, s := range pkg.Structs {
 			reg.Reserve(s.Name)
 		}
-		for _, e := range c.pkg.Enums {
+		for _, e := range pkg.Enums {
 			reg.Reserve(e.Name)
 		}
-		for _, u := range c.pkg.Units {
+		for _, u := range pkg.Units {
 			reg.Reserve(u.Name)
 		}
-		for _, comp := range c.pkg.Components {
+		for _, comp := range pkg.Components {
 			reg.Reserve(comp.Name)
 		}
 	}
-	for _, o := range ir.Owners(c.pkg) {
+	for _, o := range ir.Owners(pkg) {
 		for _, f := range o.Funcs {
 			if !renaming[f] {
 				reg.Reserve(f.Name)
@@ -143,7 +143,7 @@ func (c *checker) renameNestedFuncs() {
 		// compose rather than collide.
 		n.fn.Name = reg.Unique(n.in.Name + "__" + n.fn.Name)
 	}
-	c.orderNestedFuncs()
+	c.orderNestedFuncs(pkg)
 }
 
 // orderNestedFuncs moves each hoisted func ahead of the body that declared it.
@@ -152,7 +152,7 @@ func (c *checker) renameNestedFuncs() {
 // android emits an owner's funcs as local `fun`s inside one composable, where a
 // local function may not be referenced above its declaration -- so the append
 // order is the one order that does not compile.
-func (c *checker) orderNestedFuncs() {
+func (c *checker) orderNestedFuncs(pkg *ir.Package) {
 	declaredIn := map[*ir.Func]*ir.Func{}
 	children := map[*ir.Func][]*ir.Func{}
 	for _, n := range c.nestedOrder {
@@ -193,11 +193,11 @@ func (c *checker) orderNestedFuncs() {
 		}
 		copy(fns, out)
 	}
-	if c.pkg == nil {
+	if pkg == nil {
 		return
 	}
-	reorder(c.pkg.Funcs)
-	for _, comp := range c.pkg.Components {
+	reorder(pkg.Funcs)
+	for _, comp := range pkg.Components {
 		reorder(comp.Funcs)
 	}
 }

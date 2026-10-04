@@ -29,10 +29,10 @@ func (c *checker) buildTrees() (lang, platform *ir.Component) {
 		if !f.IsFamily() {
 			continue
 		}
-		switch f.Name {
-		case "language":
+		switch ir.TargetTier(f) {
+		case ir.BuiltinLanguage:
 			c.langTree = f
-		case "platform":
+		case ir.BuiltinPlatform:
 			c.platformTree = f
 		}
 	}
@@ -66,13 +66,8 @@ func (c *checker) targetNode(name string, depth int) *ir.Component {
 		if pkg == nil || pkg.Symbols == nil {
 			continue
 		}
-		// The node is named for its tier, `platform` or `language`, and the
-		// name the directive wrote is the one #[gen.name] gives it.
-		sym, ok := pkg.Symbols.LookupRootComponent(targetTierMember(kind))
-		if !ok {
-			continue
-		}
-		if comp, got, ok := ir.TargetNode(sym); ok && got == name {
+		// The name the directive wrote is the one #[gen.name] gives the node.
+		if comp := ir.TargetNodeOf(pkg, kind); comp != nil && comp.Gen.TargetName == name {
 			return comp
 		}
 	}

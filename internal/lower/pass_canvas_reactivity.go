@@ -299,8 +299,22 @@ func gatherBlockMutations(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out map[*
 }
 
 // injectIntoNodeHandlers walks the visual tree and injects CanvasRedrawStmt
-// into event handlers on non-canvas NodeInsts (e.g. button @click).
+// into event handlers on non-canvas NodeInsts (e.g. button @click) and into a
+// boundary's own @error -- a window's included, which every window override
+// wraps its content in -- since a write there changes what a canvas draws as
+// much as a click does.
 func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
+	inject := func(fn *ir.Func) {
+		if fn == nil {
+			return
+		}
+		mutated := handlerMutatedVars(fn, stateVars)
+		for _, e := range canvases {
+			if varsOverlap(mutated, e.deps) {
+				fn.Block = append(fn.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
+			}
+		}
+	}
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
@@ -308,28 +322,15 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 				continue // canvas nodes themselves don't have user handlers
 			}
 			for i := range n.Handlers {
-				if n.Handlers[i].Func == nil {
-					continue
-				}
-				mutated := handlerMutatedVars(n.Handlers[i].Func, stateVars)
-				for _, e := range canvases {
-					if varsOverlap(mutated, e.deps) {
-						n.Handlers[i].Func.Block = append(n.Handlers[i].Func.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
-					}
-				}
+				inject(n.Handlers[i].Func)
 			}
-			injectIntoNodeHandlers(n.Children, stateVars, canvases)
-		case *ir.If:
-			injectIntoNodeHandlers(n.Body, stateVars, canvases)
-			injectIntoNodeHandlers(n.Else, stateVars, canvases)
-		case *ir.For:
-			injectIntoNodeHandlers(n.Body, stateVars, canvases)
-			injectIntoNodeHandlers(n.Else, stateVars, canvases)
 		case *ir.ErrorBoundary:
-			injectIntoNodeHandlers(n.Children, stateVars, canvases)
-			injectIntoNodeHandlers(n.Failed, stateVars, canvases)
-		case *ir.ContextProvider:
-			injectIntoNodeHandlers(n.Children, stateVars, canvases)
+			if n.Handler != nil {
+				inject(n.Handler.Func)
+			}
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			injectIntoNodeHandlers(*b, stateVars, canvases)
 		}
 	}
 }

@@ -162,6 +162,12 @@ func (st *blockState) walk(o *stateOwner, stmts []ir.Stmt, dyn, top bool) []ir.S
 			n.Children = st.walk(o, n.Children, dyn, !dyn)
 		case *ir.SlotInst:
 			n.Children = st.walk(o, n.Children, dyn, false)
+			for _, name := range ir.SlotNames(n.Slots) {
+				// An entry's population renders wherever the population it
+				// was handed inserts the entry -- any number of times, as a
+				// node's population does.
+				n.Slots[name].Body = st.walk(o, n.Slots[name].Body, true, false)
+			}
 		}
 	}
 	return stmts

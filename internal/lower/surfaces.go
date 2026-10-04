@@ -9,7 +9,7 @@ import (
 // A target whose primitive says #[gen.renders(surface)] draws each of its nodes
 // as a surface of its own, and one whose view is markup writes its document
 // from one of them: html's Window, the first that no `if` over state and no
-// `for` can take away, with every other shown inside it. optimize.Documents
+// `for` can take away, with every other shown inside it. html's documentsOf
 // finds that node once everything is inlined. What the lowering needs to know
 // before then is which node the program wrote will become it, because
 // navigation is decided per surface: a stack in the document is the target's
@@ -41,7 +41,12 @@ func (s *surfaceSet) inSurface(n *ir.NodeInst) bool { return s != nil && s.inner
 // reached through: a root component's windows are rendered where it is. The
 // optimizer has decided every `if` the build could, so an `if` still standing
 // is one over state.
-func findSurfaces(pkg *ir.Package) (*surfaceSet, error) {
+//
+// A component's body is the one this target renders, asked of its override
+// rather than read off the declaration: a pass running before
+// passPlatformExtensionBody swaps the override in must see the same surfaces
+// as one running after it.
+func findSurfaces(pkg *ir.Package, opts Options) (*surfaceSet, error) {
 	memo := map[*ir.Component]bool{}
 	isSurface := func(c *ir.Component) bool {
 		if c == nil {
@@ -49,7 +54,7 @@ func findSurfaces(pkg *ir.Package) (*surfaceSet, error) {
 		}
 		v, ok := memo[c]
 		if !ok {
-			v = rootsAtSurface(c)
+			v = rootsAtSurface(c, opts)
 			memo[c] = v
 		}
 		return v
@@ -93,16 +98,18 @@ func findSurfaces(pkg *ir.Package) (*surfaceSet, error) {
 					seen[c] = true
 					walk(c.Body, always)
 				}
-			case *ir.If:
-				walk(n.Body, false)
-				walk(n.Else, false)
-			case *ir.For:
-				walk(n.Body, false)
-				walk(n.Else, false)
 			case *ir.ErrorBoundary:
+				// Its content stands where it does; its fallback only once
+				// a raise reaches it.
 				walk(n.Children, always)
+				walk(n.Failed, false)
 			case *ir.ContextProvider:
 				walk(n.Children, always)
+			default:
+				// An `if` or a `for`, which may take what it holds away.
+				for _, b := range ir.TransparentBlocks(s) {
+					walk(*b, false)
+				}
 			}
 		}
 	}
@@ -117,13 +124,17 @@ func findSurfaces(pkg *ir.Package) (*surfaceSet, error) {
 	return set, nil
 }
 
-// rootsAtSurface reports whether c is a surface primitive, or its body has one
-// at its root.
-func rootsAtSurface(c *ir.Component) bool {
+// rootsAtSurface reports whether c is a surface primitive, or the body this
+// target renders for it has one at its root.
+func rootsAtSurface(c *ir.Component, opts Options) bool {
 	if ir.IsSurface(c) {
 		return true
 	}
-	for _, s := range c.Body {
+	body := c.Body
+	if o, ok := ir.ComponentOverride(c, opts.Platform, opts.Language); ok {
+		body = o.Stmts
+	}
+	for _, s := range body {
 		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && ir.IsSurface(n.Component) {
 			return true
 		}

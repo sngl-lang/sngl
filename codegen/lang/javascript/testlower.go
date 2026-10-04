@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -213,19 +212,7 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 		return "", false
 	}
 	c := call.Call
-	if c.AST == nil || c.Event == "" {
-		return "", false
-	}
-	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	// outerSel.Operand is `c.inc` -- another SelectExpr Operand:Ident{c}, Field:"inc".
-	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	recv, ok := innerSel.Operand.(*ast.IdentExpr)
+	recv, id, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
@@ -233,7 +220,7 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	for i, a := range c.Args {
 		args[i] = jc.EvalExpr(a.Value)
 	}
-	return fmt.Sprintf("%s.%s%s(%s);", recv.Name, innerSel.Field, exportEventName(c.Event), strings.Join(args, ", ")), true
+	return fmt.Sprintf("%s.%s%s(%s);", recv, id, exportEventName(c.Event), strings.Join(args, ", ")), true
 }
 
 // exportEventName upper-cases the first letter, matching the name the platform

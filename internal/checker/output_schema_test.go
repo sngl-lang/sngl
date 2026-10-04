@@ -36,7 +36,7 @@ struct Options {
 }
 
 #[gen.name("optstub")]
-component platform(gadget string, knob string = "fallback") build.platform {}
+component platform(gadget string, knob string = "fallback") build.platform
 `
 
 const optStubLangSource = `
@@ -44,7 +44,7 @@ import build "sngl:build"
 import gen "sngl:x/gen"
 
 #[gen.name("optlang")]
-component language(lever string, platforms ...component build.platform) build.language {}
+component language(lever string, platforms ...component build.platform) build.language
 `
 
 // A declared default is part of the schema, so it reaches the record a build

@@ -240,6 +240,9 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if covers(comp.SpecializedFor, t) {
 		return
 	}
+	if comp.SpecializedFor == "" && comp.DeclaredBody == nil {
+		comp.DeclaredBody = comp.Body
+	}
 	comp.SpecializedFor = t.key()
 	// The vars travel with the statements: the body reads them, and a var
 	// belonging to a target that is not this one must never reach codegen.

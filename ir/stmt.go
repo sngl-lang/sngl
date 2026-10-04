@@ -80,7 +80,7 @@ type NodeInst struct {
 	// population binds, one struct value holding what the page is shown with,
 	// typed by the `params` prop the call site wrote. passNavigationHrefs puts
 	// it on the page, the node a target's own primitive for the page carries
-	// it onward (AttachNodeSite), and optimize.Documents moves it onto the
+	// it onward (AttachNodeSite), and html's documentsOf moves it onto the
 	// window of the document written for the page, which a route then binds
 	// from the request. Nil where the content wrote no population, and so
 	// asked for nothing.
@@ -104,16 +104,15 @@ type NodeInst struct {
 	// anywhere one could point at, for a target that declares the stack in
 	// its own code (android) rather than lowering it. Nil on every other node.
 	Start Expr `json:"-"`
+	// Document marks the surface a target writes its document from (lower's
+	// findSurfaces, on a target whose surfaces are documents): decided once,
+	// before inlining, where navigation is decided per surface, and read by
+	// the target where it writes the document, so the two cannot answer
+	// differently. AttachNodeSite carries it onto the primitive standing for
+	// the node.
+	Document bool `json:",omitempty"`
 }
 
-// Prop is the value written for name, or nil if the call site did not write
-// it. checkAndSplitArgs binds a positional arg to its declared name before the
-// slice reaches here, so a lookup by name finds what was written positionally.
-//
-// Nil-safe on the receiver, and two callers depend on it:
-// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
-// harness-isolated root component, so html and gtk4 ask a window that is not
-// there rather than guarding first.
 // VisualNode is the source node n was built from, or nil where it was
 // synthesized or came from a call statement.
 //
@@ -130,6 +129,10 @@ func (n *NodeInst) VisualNode() *ast.VisualNode {
 	return vn
 }
 
+// Prop is the value written for name, or nil if the call site did not write
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+// Nil-safe on the receiver.
 func (n *NodeInst) Prop(name string) Expr {
 	if n == nil {
 		return nil

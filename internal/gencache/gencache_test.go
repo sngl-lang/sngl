@@ -328,3 +328,19 @@ func TestUsedReportsWhatGetHandedOut(t *testing.T) {
 		t.Errorf("ParseInputs(Used()) = %v, %v; want %v", back, err, used)
 	}
 }
+
+// TestEnvRecordsNoValue holds Env to recording a variable by its digest: the
+// store is a directory on disk that outlives the build, and a variable may
+// hold a token.
+func TestEnvRecordsNoValue(t *testing.T) {
+	t.Setenv("SNGL_GENCACHE_TEST_SECRET", "hunter2")
+	in := Env("SNGL_GENCACHE_TEST_SECRET")
+	for _, p := range in.Props {
+		if p.Value == "hunter2" {
+			t.Fatalf("Env recorded the value itself: %+v", in)
+		}
+	}
+	if in.Get("sha256") == "" {
+		t.Fatalf("Env recorded no digest: %+v", in)
+	}
+}

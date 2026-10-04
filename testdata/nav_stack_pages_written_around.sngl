@@ -98,3 +98,34 @@ func testAComponentsPagesArePagesOfTheStack(t Test, c composed) {
     c.back.click()
     t.assert(c.heading.value == "FAQ")
 }
+
+// A wrapper may declare a page's own props and render the page from them --
+// a page with chrome around its content. It composes like any other: inlined
+// among the stack's pages, it is the page it renders. Its `meta` is the
+// program's own `struct {}`, the type the page family's is: two anonymous
+// structs with the same fields are one type, whichever package spelled them.
+component framed(href string, title string, meta struct {} = {}, label string) {
+    nav.page(href=href, title=title) {
+        ui.text(value="[{label}]")
+    }
+}
+
+component wrapped ui.node {
+    nav.stack #pages {
+        framed(href="/", title="Framed", label="inside")
+        nav.page #plain(href="/plain", title="Plain") {
+            ui.text(value="plain")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toPlain(text="Plain", @click { pages.go(plain) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testAWrapperDeclaringAPagesPropsIsThePageItRenders(t Test, c wrapped) {
+    t.assert(c.heading.value == "Framed")
+    c.toPlain.click()
+    t.assert(c.heading.value == "Plain")
+    c.back.click()
+    t.assert(c.heading.value == "Framed")
+}

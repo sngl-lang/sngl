@@ -113,6 +113,37 @@ func TestDirGrantCoversWhatIsBelowIt(t *testing.T) {
 	if err := p.Check(out); err == nil {
 		t.Error("a sibling sharing the granted directory's name as a prefix is not below it")
 	}
+	file := Request{Kind: File, Subject: Subject{Name: "./pc"}, Value: Canonical(filepath.Join(dir, "a", "b", "f.pc"))}
+	if err := p.Check(file); err != nil {
+		t.Errorf("a file below the granted directory: %v", err)
+	}
+	fileOut := Request{Kind: File, Subject: Subject{Name: "./pc"}, Value: Canonical(filepath.Join(dir, "f.pc"))}
+	if err := p.Check(fileOut); err == nil {
+		t.Error("a file beside the granted directory is not below it")
+	}
+	fg := &Policy{}
+	fg.Add(Grant{Kind: File, Subject: "./pc", Value: filepath.Join(dir, "a")})
+	if err := fg.Check(in); err == nil {
+		t.Error("a file grant does not cover a listing")
+	}
+}
+
+func TestAllowingAddsKindsAndKeepsGrants(t *testing.T) {
+	p := &Policy{}
+	p.Add(Grant{Kind: Env, Subject: "./pc", Value: "HOME"})
+	q := p.Allowing(Net)
+	if err := q.Check(Request{Kind: Net, Subject: Subject{Name: "./x"}, Value: "example.com"}); err != nil {
+		t.Errorf("the allowed kind: %v", err)
+	}
+	if err := q.Check(Request{Kind: Env, Subject: Subject{Name: "./pc"}, Value: "HOME"}); err != nil {
+		t.Errorf("a grant the policy held: %v", err)
+	}
+	if err := q.Check(Request{Kind: Command, Subject: Subject{Name: "./pc"}, Cmd: []string{"sh"}, Prefix: []string{"sh"}}); err == nil {
+		t.Error("a kind neither allowed nor granted")
+	}
+	if err := p.Check(Request{Kind: Net, Subject: Subject{Name: "./x"}, Value: "example.com"}); err == nil {
+		t.Error("Allowing changed the policy it copied")
+	}
 }
 
 func TestLibraryAndNilPolicy(t *testing.T) {

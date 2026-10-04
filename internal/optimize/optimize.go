@@ -152,14 +152,15 @@ type evalCtx struct {
 	interpEnvs map[*ir.Package]*interp.Env
 	// readsCtx memoizes readsContext for the run, shared the same way.
 	readsCtx map[*ir.Func]bool
-	// unroll and spliced are set only by Documents. Optimize leaves every loop
+	// unroll and spliced are set only by a Fold. Optimize leaves every loop
 	// for the target to emit: a language target writes its own, and a static
 	// one gets its loops unrolled one document at a time, after lowering. For
 	// spliced see addSplicedNativeImports.
 	unroll, spliced bool
-	// navCurrent is the record of the page a document is written for, which
-	// `pages.current` is there (Documents). Nil everywhere else.
-	navCurrent any
+	// answers is what a call of an intrinsic folds to in this fold, by id:
+	// the record of the page a document is written for is `pages.current`
+	// there (Fold.Answer). Nil everywhere else.
+	answers map[string]any
 	// host answers sngl:x/gen for the run, and hostMemo memoizes which
 	// functions reach it. Nil where the build has no import root.
 	host     *buildhost.Host

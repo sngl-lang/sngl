@@ -57,7 +57,7 @@ component platform(
     const minify bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
     const noCacheBust bool,
-) build.platform {}
+) build.platform
 
 // The element every tag resolves to. The web's element set is open — a new
 // standard adds to it, and a custom element is a tag nobody declared — so one
@@ -962,4 +962,14 @@ const component nav.page[platform] {
     Page {
         content(params)
     }
+}
+
+// A link is an address here: the page's href, filled from the params it
+// passes. Its own `@click` runs before the browser follows it, as ui.link's
+// does. A link in a window shown inside the document navigates in place, and
+// renders sngl:ui/nav's own body there instead.
+const component nav.link[platform] {
+    ui.link(href=nav.href(to, params), text=text, style=style, @click {
+        click()
+    })
 }

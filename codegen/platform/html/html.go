@@ -44,13 +44,17 @@ func (g *Generator) SupportedLangs() []string {
 	out := []string{"none"}
 	var httpLangs []string
 	for _, name := range codegen.Langs() {
-		if _, ok := codegen.LookupLang(name).(codegen.HTTPCompiler); ok {
+		if codegen.ServesRoutes(name) {
 			httpLangs = append(httpLangs, name)
 		}
 	}
 	sort.Strings(httpLangs)
 	return append(out, httpLangs...)
 }
+
+// GeneratesUntranslated says html answers `--lang none` with a static site,
+// which the browser runs: there is no interpreter in the way.
+func (g *Generator) GeneratesUntranslated() bool { return true }
 
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// Agent mode suppresses the user's main() entry so the testagent's drives
@@ -173,14 +177,17 @@ type compilation struct {
 // documents is the build's documents, or this package's for a caller that
 // ran no build.
 func (c *compilation) documents(req *codegen.Request) iter.Seq2[*codegen.Document, error] {
-	if req.Documents != nil {
-		return req.Documents()
+	var fold codegen.Fold
+	if req.Fold != nil {
+		fold = req.Fold()
+	} else {
+		fold = optimize.NewFold(req.Pkg, &optimize.Config{
+			Platform: "html",
+			Language: req.Lang.LanguageIdentifier(),
+			Dir:      codegen.OptionString(req.Options, "projectDir"),
+		})
 	}
-	return optimize.Documents(req.Pkg, &optimize.Config{
-		Platform: "html",
-		Language: req.Lang.LanguageIdentifier(),
-		Dir:      codegen.OptionString(req.Options, "projectDir"),
-	})
+	return documentsOf(req.Pkg, fold, !codegen.ServesRoutes(req.Lang.LanguageIdentifier()))
 }
 
 // codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
@@ -533,11 +540,16 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		case href == nil:
 			name = "index.html"
 		default:
-			// passNavigationHrefs refused a pattern where it could see one; a
-			// page under a `for` has its href only once the copy is known.
+			// A static site serves no pattern: whether this language serves
+			// routes is the platform's to know, and a page under a `for` has
+			// its href only once the copy is known.
 			h, ok := codegen.IRLiteralString(href)
 			if !ok || len(extractRouteParams(h)) > 0 {
-				return nil, fmt.Errorf("%s: page %q is served at a pattern: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID)
+				at := "a pattern"
+				if ok {
+					at = h + ", a pattern"
+				}
+				return nil, fmt.Errorf("%s: page %q is served at %s: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(doc.Page), doc.Page.ID, at)
 			}
 			name = pathFromHref(h)
 		}
@@ -3000,6 +3012,17 @@ func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stm
 		lines = append(lines, g.canvasRedrawLine(rs)+";")
 	}
 	return lines
+}
+
+// pageCanvas is the canvas the page rendered for n, as the draw call names
+// it, or nil.
+func (g *htmlGen) pageCanvas(n *ir.NodeInst) *canvasutil.Meta {
+	for _, cs := range g.canvasSetups {
+		if cs.node == n {
+			return &canvasutil.Meta{ID: cs.id, Node: cs.node, DrawName: cs.drawName, Width: cs.w, Height: cs.h, Scaling: cs.scaling}
+		}
+	}
+	return nil
 }
 
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {

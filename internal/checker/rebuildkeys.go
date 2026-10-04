@@ -37,12 +37,12 @@ const maxRebuildDepth = 16
 // binds it, and the call site that binds it may be an outer generic's own call
 // site, arbitrarily far up. Descending the instances with the bindings in hand
 // is the only place all of that is known at once.
-func (c *checker) checkRebuildKeys() {
-	if c.pkg == nil {
+func (c *checker) checkRebuildKeys(pkg *ir.Package) {
+	if pkg == nil {
 		return
 	}
 	w := &rebuildWalker{c: c, reported: map[rebuildDiag]bool{}, frames: map[rebuildFrame]bool{}}
-	for _, o := range ir.Owners(c.pkg) {
+	for _, o := range ir.Owners(pkg) {
 		w.body(o.Stmts(), rebuildScope{})
 	}
 }

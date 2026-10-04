@@ -71,12 +71,12 @@ func testGoShowsThePageAndBackReturns(t Test, c site) {
 
 func testParamsTravelWithTheEntry(t Test, c site) {
     c.toPkg.click()
-    t.assert(c.name.value == "first")
+    t.assert(c.pkg.name.value == "first")
     c.toOther.click()
-    t.assert(c.name.value == "other")
+    t.assert(c.pkg.name.value == "other")
     c.back.click()
     t.assert(c.pages.current == c.pkg)
-    t.assert(c.name.value == "first")
+    t.assert(c.pkg.name.value == "first")
 }
 
 func testAPagesParamsAreWhereItStarts(t Test, c site) {
@@ -89,7 +89,7 @@ func testALinkGoesToItsPage(t Test, c site) {
     t.assert(c.pages.current == c.about)
     c.otherLink.click()
     t.assert(c.pages.current == c.pkg)
-    t.assert(c.name.value == "linked")
+    t.assert(c.pkg.name.value == "linked")
 }
 
 func testAPageNotShowingIsNotMounted(t Test, c site) {

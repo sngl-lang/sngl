@@ -535,6 +535,9 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 			walkFunc(n.Handler.Func, used, walk)
 		}
 		walkStmts(n.Children, used, walk)
+		// The fallback renders once a raise reaches the boundary, and what it
+		// names is as used as what the content names.
+		walkStmts(n.Failed, used, walk)
 	case *ir.CanvasRedrawStmt:
 		// Carries only NodeInst/Func pointers already tracked by other walk paths.
 	case *ir.Break, *ir.Continue:
@@ -665,7 +668,12 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 			walkViewStmts(n.Body, walk, buildWalk)
 			walkViewStmts(n.Else, walk, buildWalk)
 		case *ir.SlotInst:
+			// What an insertion hands its population, as walkStmt reads it.
+			for _, a := range n.Args {
+				walkExpr(a, nil, walk)
+			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkSlots(n.Slots, nil, walk)
 		case *ir.ContextProvider:
 			walkExpr(n.Value, nil, walk)
 			walkViewStmts(n.Children, walk, buildWalk)
@@ -674,6 +682,7 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 				walkFunc(n.Handler.Func, nil, walk)
 			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkViewStmts(n.Failed, walk, buildWalk)
 		default:
 			walkStmt(s, nil, walk)
 		}

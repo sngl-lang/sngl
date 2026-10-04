@@ -97,7 +97,7 @@ func (t *codeTable) loop(f *ir.For) loopRef {
 
 // codeMode reports whether a family override's gen.emit generates code.
 func codeMode(emit *ir.NodeInst) bool {
-	return argNamed(emit.Props, "render") != nil
+	return argNamed(emit.Props, ir.GenEmitRender) != nil
 }
 
 // codeWalker reads a host's content for a family generated as code.
@@ -305,7 +305,7 @@ func rewriteIdents(root []ir.Stmt, bind func(ir.Symbol) (ir.Expr, bool)) {
 func runSNGL(pkg *ir.Package, h *codeHost, t Target) (ir.Stmt, error) {
 	// The members are whatever `render` takes a list of: the one thing the
 	// override wrote that says what T is.
-	render := argNamed(h.emit.Props, "render")
+	render := argNamed(h.emit.Props, ir.GenEmitRender)
 	rt := render.ExprType()
 	if rt == nil || rt.Kind != ir.TypeFunc || rt.Sig == nil || len(rt.Sig.Params) != 1 {
 		return nil, posErr(nodePos(h.emit), "gen.emit's render takes the list of members")
@@ -336,7 +336,7 @@ func runSNGL(pkg *ir.Package, h *codeHost, t Target) (ir.Stmt, error) {
 		Return: listType,
 		Block:  block,
 	}
-	checker.AnalyzeSynthesizedFunc(pkg, fn)
+	checker.AnalyzeSynthesizedFunc(pkg, h.owner, fn)
 	if h.owner != nil {
 		// The component's own, so the inliner renames what it reads with
 		// the rest of what the component declares when it splices the body.
@@ -346,8 +346,8 @@ func runSNGL(pkg *ir.Package, h *codeHost, t Target) (ir.Stmt, error) {
 	}
 
 	inst := ir.CloneStmtsSharingDecls([]ir.Stmt{h.emit})[0].(*ir.NodeInst)
-	inst.Props = append(slices.DeleteFunc(inst.Props, func(a ir.Arg) bool { return a.Name == "members" }), ir.Arg{
-		Name:  "members",
+	inst.Props = append(slices.DeleteFunc(inst.Props, func(a ir.Arg) bool { return a.Name == ir.GenEmitMembers }), ir.Arg{
+		Name:  ir.GenEmitMembers,
 		Value: &ir.Ident{Name: fn.Name, Type: &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}, Sym: fn},
 	})
 	return inst, nil
@@ -410,7 +410,7 @@ func (r *snglRunner) member(at ast.Pos, m *codeMember) (ir.Stmt, error) {
 	comp := r.table.decls[m.decl]
 	body, _ := override(comp, r.t)
 	node := soleGenNode(body, ir.BuiltinGenNode)
-	value := argNamed(node.Props, "value")
+	value := argNamed(node.Props, ir.GenNodeValue)
 	if value == nil {
 		return nil, posErr(at, "the %s family generates code for %s, and %s's gen.node gives no value to contribute", r.family.Name, describe(r.t), comp.Name)
 	}

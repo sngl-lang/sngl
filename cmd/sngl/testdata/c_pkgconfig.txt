@@ -13,6 +13,11 @@ stderr 'missing/app.sngl:1:1: import "c:pkg:nonexistent-lib-xyz-9999/x.h": schem
 ! sngl check noheader/app.sngl
 stderr 'import "c:pkg:gtk4": scheme "c": c:pkg:gtk4 names no header: write c:pkg:<library>/<header>'
 
+# The library name is the repository's, and pkg-config runs unasked for this
+# plugin: one that reads as a flag is refused rather than handed over.
+! sngl check flag/app.sngl
+stderr 'c:pkg:--with-path=/tmp/x.h names no library: "--with-path=" reads as a pkg-config flag'
+
 [!gtk4] skip 'needs pkg-config and GTK 4'
 
 sngl generate --platform=fyne --lang=go -o out --debug gtk/app.sngl
@@ -34,6 +39,10 @@ import "c:pkg:nonexistent-lib-xyz-9999/x.h"
 const v = 1
 -- noheader/app.sngl --
 import "c:pkg:gtk4"
+
+const v = 1
+-- flag/app.sngl --
+import "c:pkg:--with-path=/tmp/x.h"
 
 const v = 1
 -- gtk/app.sngl --

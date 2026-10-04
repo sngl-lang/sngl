@@ -10,6 +10,15 @@ import marks "sngl:internal/marks"
 // one — so tree-lessness is a claim the declaration makes.
 func none() ir.Macro
 
+// Marks a family whose members raise no events: what they are has nothing to
+// raise one from -- a painted shape is pixels, not an element. A member that
+// declares an event is refused where it is declared, since a handler written
+// for it would never run. A platform primitive is the exception, in the other
+// direction: its event is the target calling in -- with the drawing context,
+// say -- which is how an override is handed what it renders with, and only an
+// #[intrinsic] declaration can be one.
+func eventless() ir.Macro
+
 // Written on a placement -- a node, or a slot insertion, in a view -- it says
 // this one stands where its family is not the one the position accepts. That
 // one check is all it lifts: the node's own body, its slots and its children

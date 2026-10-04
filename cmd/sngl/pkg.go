@@ -75,9 +75,10 @@ type schemeRef struct {
 
 func newCapturingResolver(dir string) *capturingResolver {
 	r := build.NewResolver(dir)
-	// `sngl pkg` fetches because it was asked to by name, and runs nothing it
-	// fetches.
-	r.Trust = trust.AllowAll()
+	// `sngl pkg` fetches because it was asked to by name. That is all it was
+	// asked: the check that finds the imports runs every gen.scheme plugin it
+	// reaches, and a plugin is held to the invocation's own grants.
+	r.Trust = cliTrust.Allowing(trust.Net)
 	return &capturingResolver{
 		Resolver: r,
 		seen:     map[string]bool{},
@@ -107,7 +108,7 @@ func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
 			continue
 		}
 		_, diags := checker.Check(doc, &checker.Config{
-			FS:        os.DirFS(u.dir),
+			FS:        build.ProjectFS(u.dir),
 			Dir:       u.dir,
 			IsMain:    true,
 			Resolver:  resolver,
@@ -126,12 +127,14 @@ func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
 // remote fetches on its own — whatever it imports, the program importing it
 // imports too.
 //
-// A program is a package that declares a window, which is build.Emit's rule.
-// Answered from the parse rather than the check -- a type check for this alone
-// would double the work -- so the window is recognised by the name written and
-// not by the `#[builtin]` mark only the checker holds. A package declaring its
-// own `component window` is read as a program here and is not one; the cost is
-// a fetch nobody needed.
+// A program is a package whose body renders a node, which is build.Emit's
+// rule (ir.Package.IsProgram). Answered from the parse rather than the check
+// -- the check is what this command runs on the programs it finds -- so a
+// file's root is read for any node or call written there at all: a window, a
+// root component's instance, a generated family's host, and also a directive
+// such as `output`. That errs toward a program, and the cost of a library read
+// as one is a fetch nobody needed; the other way, a program whose root holds
+// no window would have none of its dependencies fetched.
 func mainUnits(units []unit) ([]unit, error) {
 	var mains []unit
 	for _, u := range units {
@@ -140,31 +143,21 @@ func mainUnits(units []unit) ([]unit, error) {
 			// Not this command's to report: `check` says so with a position.
 			continue
 		}
-		if declaresWindow(doc) {
+		if rendersAtRoot(doc) {
 			mains = append(mains, u)
 		}
 	}
 	return mains, nil
 }
 
-func declaresWindow(doc *ast.Document) bool {
+func rendersAtRoot(doc *ast.Document) bool {
 	if doc == nil {
 		return false
 	}
 	for _, stmt := range doc.Stmts {
-		vn, ok := stmt.(*ast.VisualNode)
-		if !ok {
-			continue
-		}
-		switch t := vn.Target.(type) {
-		case *ast.IdentExpr:
-			if t.Name == "window" {
-				return true
-			}
-		case *ast.SelectExpr:
-			if t.Field == "window" {
-				return true
-			}
+		switch stmt.(type) {
+		case *ast.VisualNode, *ast.CallStmt:
+			return true
 		}
 	}
 	return false

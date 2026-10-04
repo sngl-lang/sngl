@@ -132,9 +132,12 @@ func GoDir(path string) (Input, error) {
 }
 
 // Env records an environment variable's value, or that it is unset.
+//
+// The value is recorded by its digest: a variable may hold a token, and the
+// store is a directory on disk that outlives the build.
 func Env(name string) Input {
 	if v, ok := os.LookupEnv(name); ok {
-		return Input{Kind: "env", Props: []Prop{str("name", name), str("value", v)}}
+		return Input{Kind: "env", Props: []Prop{str("name", name), str("sha256", valueSum(v))}}
 	}
 	return Input{Kind: "unsetenv", Props: []Prop{str("name", name)}}
 }
@@ -230,7 +233,12 @@ func (s *Store) recheck(in Input) string {
 			return in.Get("path") + " listing changed"
 		}
 	case "env":
-		if v, ok := os.LookupEnv(in.Get("name")); !ok || v != in.Get("value") {
+		v, ok := os.LookupEnv(in.Get("name"))
+		if sum := in.Get("sha256"); sum != "" {
+			if !ok || valueSum(v) != sum {
+				return "$" + in.Get("name") + " changed"
+			}
+		} else if !ok || v != in.Get("value") {
 			return "$" + in.Get("name") + " changed"
 		}
 	case "unsetenv":
@@ -414,6 +422,12 @@ func readProp(a ast.Arg) (Prop, error) {
 	return Prop{}, fmt.Errorf("%s is not a literal", a.Name)
 }
 
+// valueSum is the digest an env input records in place of the value.
+func valueSum(v string) string {
+	h := sha256.Sum256([]byte(v))
+	return hex.EncodeToString(h[:])
+}
+
 func fileSum(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -574,7 +588,7 @@ func (s *Store) Complete(in Input) (Input, error) {
 		}
 		return GoDir(path)
 	case "env":
-		if has("value") {
+		if has("value") || has("sha256") {
 			return in, nil
 		}
 		return Env(in.Get("name")), nil

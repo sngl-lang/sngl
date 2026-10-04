@@ -90,10 +90,6 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 				if err := walk(n.Else, conds, inLoop); err != nil {
 					return err
 				}
-			case *ir.ErrorBoundary:
-				if err := walk(n.Children, conds, inLoop); err != nil {
-					return err
-				}
 			case *ir.NodeInst:
 				if n.Component == nil {
 					continue
@@ -121,6 +117,14 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 					return &OneWindowError{fmt.Sprintf("%s: %s shows one window, and this is a second; the first is at %s", pos(n), platform, pos(found.Node))}
 				}
 				found = &Screen{Node: n, Conds: conds, Owner: owner}
+			default:
+				// A boundary and a provider: reached through, with nothing
+				// about when.
+				for _, b := range ir.TransparentBlocks(s) {
+					if err := walk(*b, conds, inLoop); err != nil {
+						return err
+					}
+				}
 			}
 		}
 		return nil

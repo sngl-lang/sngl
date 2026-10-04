@@ -38,8 +38,9 @@ import (
 //
 // `pages.go(pkg, P{…})` pushes an entry and writes the params and the current
 // page, and `pages.go(pkg)` writes the params the page's call site wrote;
-// `pages.back()` pops one and restores both, and does nothing at the bottom. `nav.link` becomes a `ui.button` showing its text whose click runs
-// the link's own `@click` and then the same `go`. A read of `pages.current`
+// `pages.back()` pops one and restores both, and does nothing at the bottom. `nav.link` renders the body its declaration writes -- a `ui.button`
+// whose click runs the link's own `@click` and then `_follow` -- and that
+// call becomes the same `go`. A read of `pages.current`
 // is a read of the var, a page's handle read as a value is its record, `==`
 // against a page's value compares ids, and every page type the program names
 // is the record's. `pkg.params` reads what the page's call site wrote, which
@@ -119,7 +120,6 @@ type navigation struct {
 	byField  map[navKey]any // a handle reached by select through a component
 	byRecord map[navRecordKey]*navPage
 	families map[string]*navFamily
-	button   *ir.Component
 	names    map[string]bool
 	err      error // the first a view lowering refused
 	// lenient leaves a call naming no stack of these for the target, which
@@ -167,7 +167,7 @@ func collectNavigation(pkg *ir.Package) (*navigation, error) {
 }
 
 func lowerNavigationValues(pkg *ir.Package, feats Features, _ Options) error {
-	if err := spliceGroups(pkg); err != nil {
+	if err := spliceComposedPages(pkg); err != nil {
 		return err
 	}
 	nv, err := collectNavigation(pkg)
@@ -226,28 +226,28 @@ func (nv *navigation) handLoopedParams() {
 	_ = ir.Walk(nv.pkg, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.CallStmt:
-			if x.Call == nil || x.Call.Func == nil || x.Call.Func.Intrinsic != "nav.go" {
+			if x.Call == nil || x.Call.Func == nil || x.Call.Func.Intrinsic != ir.NavGoID {
 				return nil
 			}
 			if pg := looped(callArg(x.Call, "to", 1)); pg != nil {
-				if p, err := handed(callArg(x.Call, "params", 2)); err == nil && p == nil {
-					setCallArg(x.Call, "params", 2, pg.start())
+				if p, err := handed(callArg(x.Call, ir.NavGoParamsArg, 2)); err == nil && p == nil {
+					setCallArg(x.Call, ir.NavGoParamsArg, 2, pg.start())
 				}
 			}
 		case *ir.NodeInst:
 			if !isNavNode(x, ir.BuiltinNavLink) {
 				return nil
 			}
-			if pg := looped(x.Prop("to")); pg != nil {
-				if p, err := handed(x.Prop("params")); err == nil && p == nil {
+			if pg := looped(x.Prop(ir.NavLinkTo)); pg != nil {
+				if p, err := handed(x.Prop(ir.NavLinkParams)); err == nil && p == nil {
 					set := false
 					for i := range x.Props {
-						if x.Props[i].Name == "params" {
+						if x.Props[i].Name == ir.NavLinkParams {
 							x.Props[i].Value, set = pg.start(), true
 						}
 					}
 					if !set {
-						x.Props = append(x.Props, ir.Arg{Name: "params", Value: pg.start()})
+						x.Props = append(x.Props, ir.Arg{Name: ir.NavLinkParams, Value: pg.start()})
 					}
 				}
 			}
@@ -262,9 +262,9 @@ func (nv *navigation) handLoopedParams() {
 // document's own were composed into the target's primitives, so a call naming
 // one resolves to no stack here and is left for the target; and a target that
 // renders no surface -- android -- answers every stack itself.
-func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
+func lowerNavigation(pkg *ir.Package, feats Features, opts Options) error {
 	if feats.Navigation {
-		if surfaces, err := findSurfaces(pkg); surfaces == nil || err != nil {
+		if surfaces, err := findSurfaces(pkg, opts); surfaces == nil || err != nil {
 			return err
 		}
 	}
@@ -273,21 +273,15 @@ func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
 		return err
 	}
 	nv.lenient = feats.Navigation
-	if nv.hasLinks() {
-		nv.button = findLibComponent(pkg, "sngl:ui", "button")
-		if nv.button == nil {
-			return fmt.Errorf("nav.link is lowered to sngl:ui's button, which this build does not load")
-		}
-	}
 	for _, st := range nv.stacks {
 		nv.declare(st)
 	}
-	for _, fn := range navFuncs(pkg) {
-		block, err := nv.lowerCalls(fn.Block)
+	for _, b := range imperativeBlocks(pkg) {
+		block, err := nv.lowerCalls(*b)
 		if err != nil {
 			return err
 		}
-		fn.Block = block
+		*b = block
 	}
 	for _, o := range ir.Owners(pkg) {
 		*o.Body = nv.lowerView(*o.Body)
@@ -302,48 +296,21 @@ func lowerNavigation(pkg *ir.Package, feats Features, _ Options) error {
 // holds.
 func (nv *navigation) collect(o ir.Owner, stmts []ir.Stmt, loops int) error {
 	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if isNavNode(n, ir.BuiltinNavStack) {
-				if loops > 0 {
-					return fmt.Errorf("%s: a nav.stack under a `for` would be one stack for every copy; write it in a component the loop renders", ir.NodePos(n))
-				}
-				if err := nv.addStack(o, n); err != nil {
-					return err
-				}
-				continue
+		if n, ok := s.(*ir.NodeInst); ok && isNavNode(n, ir.BuiltinNavStack) {
+			if loops > 0 {
+				return fmt.Errorf("%s: a nav.stack under a `for` would be one stack for every copy; write it in a component the loop renders", ir.NodePos(n))
 			}
-			if err := nv.collect(o, n.Children, loops); err != nil {
+			if err := nv.addStack(o, n); err != nil {
 				return err
 			}
-			for _, name := range ir.SlotNames(n.Slots) {
-				if err := nv.collect(o, n.Slots[name].Body, loops); err != nil {
-					return err
-				}
+			continue
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			depth := loops
+			if f, ok := s.(*ir.For); ok && b == &f.Body {
+				depth++ // a copy per element; the else is written once
 			}
-		case *ir.If:
-			if err := nv.collect(o, n.Body, loops); err != nil {
-				return err
-			}
-			if err := nv.collect(o, n.Else, loops); err != nil {
-				return err
-			}
-		case *ir.For:
-			if err := nv.collect(o, n.Body, loops+1); err != nil {
-				return err
-			}
-			if err := nv.collect(o, n.Else, loops); err != nil {
-				return err
-			}
-		case *ir.ErrorBoundary:
-			if err := nv.collect(o, n.Children, loops); err != nil {
-				return err
-			}
-			if err := nv.collect(o, n.Failed, loops); err != nil {
-				return err
-			}
-		case *ir.ContextProvider:
-			if err := nv.collect(o, n.Children, loops); err != nil {
+			if err := nv.collect(o, *b, depth); err != nil {
 				return err
 			}
 		}
@@ -368,8 +335,8 @@ func (nv *navigation) addStack(o ir.Owner, n *ir.NodeInst) error {
 // addPages numbers the pages a stack holds, in the order written: directly,
 // under an `if` the build decides, and under a `for` over a constant, which
 // is one page per element -- every copy shares the page's id, and its record
-// holds the iterations beside it, one per loop. Groups were spliced in before
-// (spliceGroups).
+// holds the iterations beside it, one per loop. A component composing pages
+// was inlined before (spliceComposedPages).
 func (nv *navigation) addPages(st *navStack, o ir.Owner, stmts []ir.Stmt, loops []*ir.For, conds ...ir.Expr) error {
 	for _, s := range stmts {
 		switch p := s.(type) {
@@ -647,7 +614,7 @@ func (nv *navigation) declare(st *navStack) {
 	}
 	for _, pg := range st.pages {
 		pg.ptype = pageParamsType(pg.node)
-		if sc := pg.node.Slots["content"]; sc != nil && len(sc.Params) > 0 {
+		if sc := pg.node.RestPopulation(); sc != nil && len(sc.Params) > 0 {
 			pg.pparam = sc.Params[0]
 		}
 		if isEmptyStruct(pg.ptype) {
@@ -690,7 +657,7 @@ func (st *navStack) start() *navPage {
 		return nil
 	}
 	for _, pg := range st.pages {
-		if lit, ok := pg.node.Prop("href").(*ir.Literal); ok && lit.Value == "/" {
+		if lit, ok := pg.node.Prop(ir.NavPageHref).(*ir.Literal); ok && lit.Value == "/" {
 			return pg
 		}
 	}
@@ -709,7 +676,7 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 	if st.startExpr != nil {
 		return ir.CloneExprSharingDecls(st.startExpr)
 	}
-	if lit, ok := pg.node.Prop("href").(*ir.Literal); (ok && lit.Value == "/" && !pg.looped() && len(pg.conds) == 0) || !st.wrapped() {
+	if lit, ok := pg.node.Prop(ir.NavPageHref).(*ir.Literal); (ok && lit.Value == "/" && !pg.looped() && len(pg.conds) == 0) || !st.wrapped() {
 		st.startExpr = nv.record(pg)
 		return ir.CloneExprSharingDecls(st.startExpr)
 	}
@@ -736,7 +703,7 @@ func (nv *navigation) startRecord(st *navStack) ir.Expr {
 		return s
 	}
 	for _, pg := range st.pages {
-		root := &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: ir.CloneExprSharingDecls(pg.node.Prop("href")), Right: &ir.Literal{Type: ir.TypString, Value: "/"}}
+		root := &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: ir.CloneExprSharingDecls(pg.node.Prop(ir.NavPageHref)), Right: &ir.Literal{Type: ir.TypString, Value: "/"}}
 		fn.Block = append(fn.Block, at(pg, root))
 	}
 	for _, pg := range st.pages {
@@ -771,7 +738,7 @@ func pageName(pg *navPage) string {
 // start is the params a page starts at, and is shown with by a `go` or a
 // link that hands it none: what its call site wrote, or the type's zero.
 func (pg *navPage) start() ir.Expr {
-	if e := pg.node.Prop("params"); e != nil {
+	if e := pg.node.Prop(ir.NavPageParams); e != nil {
 		return ir.CloneExprSharingDecls(e)
 	}
 	return ir.ZeroExpr(pg.ptype)
@@ -898,82 +865,6 @@ func (nv *navigation) hasLinks() bool {
 	return found
 }
 
-// findLibComponent is the component name in the library package uri, reached
-// through what pkg imports.
-func findLibComponent(pkg *ir.Package, uri, name string) *ir.Component {
-	seen := map[*ir.Package]bool{}
-	var walk func(p *ir.Package) *ir.Component
-	walk = func(p *ir.Package) *ir.Component {
-		if p == nil || seen[p] {
-			return nil
-		}
-		seen[p] = true
-		for _, imp := range p.Imports {
-			if imp == nil || imp.Pkg == nil {
-				continue
-			}
-			if imp.Path == uri && imp.Pkg.Symbols != nil {
-				if sym, ok := imp.Pkg.Symbols.LookupRootComponent(name); ok {
-					if c, ok := sym.(*ir.Component); ok {
-						return c
-					}
-				}
-			}
-			if c := walk(imp.Pkg); c != nil {
-				return c
-			}
-		}
-		return nil
-	}
-	return walk(pkg)
-}
-
-// navFuncs is every function whose block a `go` or `back` may be written in:
-// the package's and each component's funcs, and every handler and lambda.
-func navFuncs(pkg *ir.Package) []*ir.Func {
-	var out []*ir.Func
-	seen := map[*ir.Func]bool{}
-	add := func(f *ir.Func) {
-		if f != nil && !seen[f] {
-			seen[f] = true
-			out = append(out, f)
-		}
-	}
-	for _, f := range pkg.Funcs {
-		add(f)
-	}
-	for _, c := range pkg.Components {
-		for _, f := range c.Funcs {
-			add(f)
-		}
-		for _, v := range c.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
-		}
-	}
-	for _, v := range pkg.Vars {
-		for _, h := range v.Handlers {
-			add(h.Func)
-		}
-	}
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		switch x := n.(type) {
-		case *ir.NodeInst:
-			for _, h := range x.Handlers {
-				add(h.Func)
-			}
-		case *ir.Lambda:
-			add(x.Func)
-		case *ir.ErrorBoundary:
-			if x.Handler != nil {
-				add(x.Handler.Func)
-			}
-		}
-		return nil
-	})
-	return out
-}
 
 // lowerCalls replaces each `go` and `back` in an imperative block, at any
 // depth, with the statements that move the stack.
@@ -989,14 +880,14 @@ func (nv *navigation) lowerCalls(stmts []ir.Stmt) ([]ir.Stmt, error) {
 					}
 				}
 				switch n.Call.Func.Intrinsic {
-				case "nav.go":
+				case ir.NavGoID:
 					repl, err := nv.lowerGo(n)
 					if err != nil {
 						return nil, err
 					}
 					out = append(out, repl...)
 					continue
-				case "nav.back":
+				case ir.NavBackID:
 					repl, err := nv.lowerBack(n)
 					if err != nil {
 						return nil, err
@@ -1088,7 +979,7 @@ func (nv *navigation) lowerGo(n *ir.CallStmt) ([]ir.Stmt, error) {
 	if pg.stack != st {
 		return nil, fmt.Errorf("%s: %s.go names %s, which is a page of %s", ir.StmtPos(n), st.name, pageName(pg), pg.stack.name)
 	}
-	params, err := handed(callArg(n.Call, "params", 2))
+	params, err := handed(callArg(n.Call, ir.NavGoParamsArg, 2))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ir.StmtPos(n), err)
 	}
@@ -1172,8 +1063,8 @@ func elemOf(t *ir.Type) *ir.Type {
 	return ir.TypDyn
 }
 
-// lowerView replaces each stack with the if-chain over its pages and each
-// link with a button, at any depth of a view body.
+// lowerView replaces each stack with the if-chain over its pages and lowers
+// each link's body, at any depth of a view body.
 func (nv *navigation) lowerView(stmts []ir.Stmt) []ir.Stmt {
 	out := stmts[:0:0]
 	for _, s := range stmts {
@@ -1193,21 +1084,9 @@ func (nv *navigation) lowerView(stmts []ir.Stmt) []ir.Stmt {
 				}
 				continue
 			}
-			n.Children = nv.lowerView(n.Children)
-			for _, name := range ir.SlotNames(n.Slots) {
-				n.Slots[name].Body = nv.lowerView(n.Slots[name].Body)
-			}
-		case *ir.If:
-			n.Body = nv.lowerView(n.Body)
-			n.Else = nv.lowerView(n.Else)
-		case *ir.For:
-			n.Body = nv.lowerView(n.Body)
-			n.Else = nv.lowerView(n.Else)
-		case *ir.ErrorBoundary:
-			n.Children = nv.lowerView(n.Children)
-			n.Failed = nv.lowerView(n.Failed)
-		case *ir.ContextProvider:
-			n.Children = nv.lowerView(n.Children)
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			*b = nv.lowerView(*b)
 		}
 		out = append(out, s)
 	}
@@ -1275,7 +1154,7 @@ func (nv *navigation) wrappedChain(st *navStack, stmts []ir.Stmt) []ir.Stmt {
 // page's params.
 func (nv *navigation) content(pg *navPage) []ir.Stmt {
 	body := pg.node.Children
-	if sc := pg.node.Slots["content"]; sc != nil {
+	if sc := pg.node.RestPopulation(); sc != nil {
 		body = sc.Body
 	}
 	if pg.pparam == nil {
@@ -1294,45 +1173,73 @@ func (nv *navigation) content(pg *navPage) []ir.Stmt {
 	return body
 }
 
-// link is a nav.link as a button showing its text, whose click runs the
-// link's own `@click` and then goes to its page.
+// link is a nav.link as the body sngl:ui/nav writes for it -- a button whose
+// click runs the link's own `@click` and then `_follow(to, params)` -- with
+// that call lowered: the node is pointed at a copy of the declaration of its
+// own, unmarked, whose body goes to this node's page in place of the call. A
+// copy per node, because which page and stack that is is the node's; the
+// inliner then splices it like any component with a body.
 func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
-	btn := &ir.NodeInst{
-		AST:       n.AST,
-		Site:      n.Site,
-		Name:      n.Name,
-		Component: nv.button,
-		ID:        n.ID,
-		Handle:    n.Handle,
-		Key:       n.Key,
+	decl := n.Component
+	pg, ok := nv.resolve(n.Prop(ir.NavLinkTo)).(*navPage)
+	if !ok {
+		return nil, fmt.Errorf("%s: a nav.link names its page through a value; name the page's own #id", ir.NodePos(n))
 	}
-	for _, p := range n.Props {
-		if p.Name == "text" || p.Name == "style" {
-			btn.Props = append(btn.Props, p)
+	params, err := handed(n.Prop(ir.NavLinkParams))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", ir.NodePos(n), err)
+	}
+	// The declaration's own body, which an override this target supplies may
+	// have been swapped over: a link reaching this pass is one the target
+	// left to it.
+	own := decl.DeclaredBody
+	if own == nil {
+		own = decl.Body
+	}
+	if len(own) == 0 {
+		return nil, fmt.Errorf("%s: nav.link has no body to render here", ir.NodePos(n))
+	}
+	body := deepCloneStmts(own)
+	followed := false
+	var rewrite func(stmts []ir.Stmt) []ir.Stmt
+	rewrite = func(stmts []ir.Stmt) []ir.Stmt {
+		out := stmts[:0:0]
+		for _, s := range stmts {
+			if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.Func != nil && cs.Call.Func.Intrinsic == ir.NavFollowID {
+				out = append(out, nv.goStmts(pg, params)...)
+				followed = true
+				continue
+			}
+			out = append(out, s)
 		}
+		return out
 	}
-	var click *ir.EventHandler
-	for i := range n.Handlers {
-		if n.Handlers[i].Name == "click" {
-			h := n.Handlers[i]
-			click = &h
+	_ = ir.Walk(body, func(x ir.Node) error {
+		switch h := x.(type) {
+		case *ir.NodeInst:
+			for i := range h.Handlers {
+				if f := h.Handlers[i].Func; f != nil {
+					f.Block = rewrite(f.Block)
+				}
+			}
+		case *ir.Lambda:
+			if h.Func != nil {
+				h.Func.Block = rewrite(h.Func.Block)
+			}
 		}
+		return nil
+	})
+	if !followed {
+		return nil, fmt.Errorf("%s: nav.link's body here never goes to its page", ir.NodePos(n))
 	}
-	if click == nil {
-		click = &ir.EventHandler{Name: "click", Func: &ir.Func{Return: ir.TypVoid}}
-	}
-	if pg, ok := nv.resolve(n.Prop("to")).(*navPage); ok {
-		params, err := handed(n.Prop("params"))
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", ir.NodePos(n), err)
-		}
-		click.Func.Block = append(click.Func.Block, nv.goStmts(pg, params)...)
-	}
-	btn.Handlers = append(btn.Handlers, *click)
+	cp := *decl
+	cp.Builtin = ""
+	cp.Body = body
+	n.Component = &cp
 	if n.Handle != nil {
-		n.Handle.Type = nv.button.SymType()
+		n.Handle.Type = cp.SymType()
 	}
-	return btn, nil
+	return n, nil
 }
 
 // valueExpr reads every page handle as its record, `pkg.params` as what the
@@ -1360,14 +1267,13 @@ func (nv *navigation) valueExpr(n ir.Node) (ir.Node, error) {
 		}
 		return same, ir.SkipDir
 	case *ir.Select:
-		switch x.Field {
-		case "current":
-			if st, ok := nv.resolve(x.Operand).(*navStack); ok {
-				if fn := st.node.Component.Methods["current"]; fn != nil {
-					return &ir.Call{Type: x.Type, Func: fn, Args: []ir.CallArg{{Value: x.Operand}}}, nil
-				}
+		if st, ok := nv.resolve(x.Operand).(*navStack); ok {
+			if fn := st.node.Component.MethodByIntrinsic(ir.NavCurrentID); fn != nil && x.Field == fn.Name {
+				return &ir.Call{Type: x.Type, Func: fn, Args: []ir.CallArg{{Value: x.Operand}}}, nil
 			}
-		case "params":
+		}
+		switch x.Field {
+		case ir.NavPageParams:
 			// What the page's call site wrote: where it starts.
 			if pg, ok := nv.resolve(x.Operand).(*navPage); ok {
 				return pg.start(), ir.SkipDir
@@ -1386,7 +1292,7 @@ func (nv *navigation) valueExpr(n ir.Node) (ir.Node, error) {
 
 // structureExpr reads `pages.current` as the cell that holds it.
 func (nv *navigation) structureExpr(n ir.Node) (ir.Node, error) {
-	if x, ok := n.(*ir.Call); ok && x.Func != nil && x.Func.Intrinsic == "nav.current" && len(x.Args) > 0 {
+	if x, ok := n.(*ir.Call); ok && x.Func != nil && x.Func.Intrinsic == ir.NavCurrentID && len(x.Args) > 0 {
 		if st, ok := nv.resolve(x.Args[0].Value).(*navStack); ok {
 			return rebase(st.current, x.Args[0].Value), ir.SkipDir
 		}
@@ -1529,7 +1435,7 @@ func (nv *navigation) retype() {
 			fixFunc(f)
 		}
 	}
-	for _, f := range navFuncs(nv.pkg) {
+	for _, f := range signedFuncs(nv.pkg) {
 		fixFunc(f)
 	}
 	exprType := reflect.TypeFor[*ir.Type]()
@@ -1580,17 +1486,19 @@ func (nv *navigation) recordType(t *ir.Type) *ir.Type {
 	return &cp
 }
 
-// spliceGroups puts the body of every group a stack holds in its place, so
-// the pages the group renders are pages of the stack when they are numbered:
-// a group (ir.Component.Group) renders pages without being one, and nothing
-// else will splice it before the inliner, which runs long after navigation.
-// What a group's call site writes -- its props and slot populations -- is
-// bound the way the inliner binds it.
-func spliceGroups(pkg *ir.Package) error {
+// spliceComposedPages inlines every component a stack holds that composes
+// pages rather than being the page primitive, so what reaches the numbering
+// is the pages themselves: pages compose in and out of components as widgets
+// and shapes do, and the stack is answered by the page primitives they come
+// down to. Nothing else inlines a component before the inliner, which runs
+// long after navigation. What the call site writes -- its props and slot
+// populations -- is bound the way the inliner binds it.
+func spliceComposedPages(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
 	var err error
+	spliced := map[*ir.Component]bool{}
 	var stacks func(stmts []ir.Stmt)
 	var pages func(stmts []ir.Stmt, depth int) []ir.Stmt
 	pages = func(stmts []ir.Stmt, depth int) []ir.Stmt {
@@ -1598,16 +1506,17 @@ func spliceGroups(pkg *ir.Package) error {
 		for _, s := range stmts {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				if c := n.Component; c != nil && c.Group && err == nil {
-					if depth > maxInlineGroupDepth {
-						err = fmt.Errorf("%s: group %s renders itself", ir.NodePos(n), c.Name)
+				if c := n.Component; composesPages(c) && err == nil {
+					if depth > maxInlinePagesDepth {
+						err = fmt.Errorf("%s: %s renders itself among a stack's pages", ir.NodePos(n), c.Name)
 						return out
 					}
 					if len(c.Vars) > 0 || len(c.Funcs) > 0 {
-						err = fmt.Errorf("%s: %s renders pages, and a group of pages keeps no state of its own: move it into a page", ir.NodePos(n), c.Name)
+						err = fmt.Errorf("%s: %s renders pages, and what a stack's pages are composed of keeps no state of its own: move it into a page", ir.NodePos(n), c.Name)
 						return out
 					}
-					body := substituteParams(deepCloneStmts(c.Body), groupBindings(c, n))
+					spliced[c] = true
+					body := substituteParams(deepCloneStmts(c.Body), pageBindings(c, n))
 					body = substituteSlots(body, n)
 					out = append(out, pages(body, depth+1)...)
 					continue
@@ -1623,27 +1532,12 @@ func spliceGroups(pkg *ir.Package) error {
 	}
 	stacks = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.NodeInst:
-				if isNavNode(n, ir.BuiltinNavStack) {
-					n.Children = pages(n.Children, 0)
-					continue
-				}
-				stacks(n.Children)
-				for _, name := range ir.SlotNames(n.Slots) {
-					stacks(n.Slots[name].Body)
-				}
-			case *ir.If:
-				stacks(n.Body)
-				stacks(n.Else)
-			case *ir.For:
-				stacks(n.Body)
-				stacks(n.Else)
-			case *ir.ErrorBoundary:
-				stacks(n.Children)
-				stacks(n.Failed)
-			case *ir.ContextProvider:
-				stacks(n.Children)
+			if n, ok := s.(*ir.NodeInst); ok && isNavNode(n, ir.BuiltinNavStack) {
+				n.Children = pages(n.Children, 0)
+				continue
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				stacks(*b)
 			}
 		}
 	}
@@ -1653,28 +1547,42 @@ func spliceGroups(pkg *ir.Package) error {
 	if err != nil {
 		return err
 	}
-	// A group nothing instantiates any more is gone with its splice: its body
-	// renders pages outside a stack, which no target answers.
+	// A member of the page family nothing instantiates any more -- spliced
+	// away, or never written in a stack -- is gone: its body renders pages
+	// outside a stack, which no target answers. Its family is the page
+	// primitive's, inferred from what its body renders.
+	pageFamilies := map[*ir.Component]bool{}
 	used := map[*ir.Component]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil && inst.Component.Group {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
+			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Tree != nil {
+				pageFamilies[inst.Component.Tree] = true
+			}
 			used[inst.Component] = true
 		}
 		return nil
 	})
 	pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
-		return c != nil && c.Group && !used[c]
+		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Tree])
 	})
 	return nil
 }
 
-// maxInlineGroupDepth bounds a group that renders a group, which only a group
-// rendering itself reaches.
-const maxInlineGroupDepth = 16
+// composesPages reports whether c, written among a stack's pages, is a
+// composition to inline rather than the page primitive: a component of the
+// program's with a body. The page builtin -- or a target's primitive standing
+// for it -- is what the composition comes down to.
+func composesPages(c *ir.Component) bool {
+	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Body) > 0
+}
 
-// groupBindings is what a group's call site binds its props to, by name, and
-// each default it leaves standing.
-func groupBindings(c *ir.Component, n *ir.NodeInst) map[string]ir.Expr {
+// maxInlinePagesDepth bounds a composition of pages that renders a
+// composition, which only one rendering itself reaches.
+const maxInlinePagesDepth = 16
+
+// groupBindings is what a composition's call site binds its props to, by
+// name, and each default it leaves standing.
+func pageBindings(c *ir.Component, n *ir.NodeInst) map[string]ir.Expr {
 	out := map[string]ir.Expr{}
 	for _, p := range c.Props {
 		if v := n.Prop(p.Name); v != nil {
@@ -1812,4 +1720,45 @@ func (nv *navigation) loopedStartParams(st *navStack, pg *navPage) (ir.Expr, err
 	}}
 	nv.pkg.Funcs = append(nv.pkg.Funcs, fn)
 	return &ir.Call{Type: pg.ptype, Func: fn}, nil
+}
+
+// signedFuncs is every function whose signature may name a page type: each
+// owner's declared funcs, the handlers on its vars and nodes and boundaries,
+// and every lambda. Functions rather than blocks (imperativeBlocks): what is
+// retyped is the parameters and the result.
+func signedFuncs(pkg *ir.Package) []*ir.Func {
+	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f != nil && !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	for _, o := range ir.Owners(pkg) {
+		for _, f := range o.Funcs {
+			add(f)
+		}
+		for _, v := range o.Vars {
+			for _, h := range v.Handlers {
+				add(h.Func)
+			}
+		}
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			for _, h := range x.Handlers {
+				add(h.Func)
+			}
+		case *ir.Lambda:
+			add(x.Func)
+		case *ir.ErrorBoundary:
+			if x.Handler != nil {
+				add(x.Handler.Func)
+			}
+		}
+		return nil
+	})
+	return out
 }

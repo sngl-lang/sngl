@@ -34,7 +34,7 @@ component platform(
     // effects, posted work -- with no window on screen. `args` is the command
     // line after the program's name.
     @run(args list<string>, run func()),
-) build.platform {}
+) build.platform
 
 // --- Windows ---
 

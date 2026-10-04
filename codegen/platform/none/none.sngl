@@ -24,7 +24,7 @@ import gen "sngl:x/gen"
 #[gen.can(instanceState)]
 #[gen.cannot(structSpread)]
 #[gen.name("none")]
-component platform() build.platform {}
+component platform() build.platform
 
 // A deadline that recurs. The interpreter's clock finds these in the rendered
 // tree and fires each one's `@tick` when the clock reaches its deadline.
@@ -184,14 +184,6 @@ component Stack<F>(pages ...component F) ui.node
 #[intrinsic("none:Page")]
 component Page(href string, title string, content ...component ui.node) ui.node
 
-// A link: clicked, it follows `to` to the stack that holds it.
-#[intrinsic("none:Link")]
-component Link(text string, @click ui.ClickEvent) ui.node
-
-// Goes to `to` in the stack that holds it, as `go` does from that stack.
-#[intrinsic("none:follow")]
-func follow(to dyn, params dyn)
-
 const component nav.stack[platform] {
     Stack {
         pages
@@ -203,11 +195,4 @@ const component nav.page[platform] {
     Page(href=href, title=title) {
         content(params)
     }
-}
-
-const component nav.link[platform] {
-    Link(text=text, @click {
-        click()
-        follow(to, params)
-    }) {}
 }

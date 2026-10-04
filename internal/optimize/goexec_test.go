@@ -798,13 +798,13 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pkg, cfg := mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir, Trust: trust.AllowAll()}
 			err := Optimize(pkg, cfg)
-			// A loop is unrolled by Documents, which is where its iteration's fold
+			// A loop is unrolled by a Fold, which is where its iteration's fold
 			// runs.
 			pkg.RootComponent = "main"
-			for _, derr := range Documents(pkg, cfg) {
-				if err == nil {
-					err = derr
-				}
+			f := NewFold(pkg, cfg).Child()
+			f.Stmts(f.Clone(pkg.RootDecl().Body))
+			if err == nil {
+				err = f.Err()
 			}
 			if err == nil {
 				t.Fatal("a nested fold's fatal error was dropped")

@@ -29,7 +29,7 @@ func installRun(pkg *ir.Package, t Target) {
 		Return: ir.TypVoid,
 		Block:  h.Func.Block,
 	}
-	checker.AnalyzeSynthesizedFunc(pkg, fn)
+	checker.AnalyzeSynthesizedFunc(pkg, nil, fn)
 	pkg.Funcs = append(pkg.Funcs, fn)
 	pkg.Run = fn
 }

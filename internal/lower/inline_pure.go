@@ -1190,6 +1190,22 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.ErrorBoundary:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
+		clone.Failed = deepCloneStmts(n.Failed)
+		// The handler is the boundary's own code, rewritten per clone like its
+		// children -- a window's `boundary(@error(e) { error(e) })` forwards to
+		// the @error its call site wrote. Shared, every window rendered the
+		// first one's.
+		if h := n.Handler; h != nil {
+			hc := *h
+			if h.Func != nil {
+				fc := *h.Func
+				fc.Block = deepCloneStmts(h.Func.Block)
+				hc.Func = &fc
+			}
+			clone.Handler = &hc
+			ir.RepointHandler(clone.Children, h, &hc)
+			ir.RepointHandler(clone.Failed, h, &hc)
+		}
 		return &clone
 	case *ir.ContextProvider:
 		clone := *n

@@ -41,8 +41,8 @@ import (
 // record alone.
 
 func init() {
-	codegen.RegisterPlatformIntrinsic("android", "nav.go", emitNavGo)
-	codegen.RegisterPlatformIntrinsic("android", "nav.back", emitNavBack)
+	codegen.RegisterPlatformIntrinsic("android", ir.NavGoID, emitNavGo)
+	codegen.RegisterPlatformIntrinsic("android", ir.NavBackID, emitNavBack)
 	codegen.RegisterPlatformIntrinsic("android", "nav.current", emitNavCurrent)
 }
 
@@ -149,7 +149,7 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 					continue
 				}
 				pg := &navPageK{node: p, record: lit, id: recordID(lit), loops: loops}
-				if e := p.Prop("params"); e != nil {
+				if e := p.Prop(ir.NavPageParams); e != nil {
 					if t := e.ExprType(); t != nil && !emptyStruct(t) {
 						pg.params = t
 					}
@@ -161,7 +161,7 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 					if bad, where := unserializable(pg.params, nav.serializable, map[*ir.StructDef]bool{}); bad != nil {
 						fail(fmt.Errorf("%s: android carries a page's params in its route, and %s is a %s, which has no serializer: give the page params of strings, numbers, bools, enums and structs, lists, maps and options of them", nodeAt(p), where, bad))
 					}
-					if !constUnder(p.Prop("params"), loops) {
+					if !constUnder(p.Prop(ir.NavPageParams), loops) {
 						fail(fmt.Errorf("%s: android starts a page's params in its route's declaration, so the params a page is written with are a constant", nodeAt(p)))
 					}
 				}
@@ -204,7 +204,7 @@ func collectAndroidNav(ctx *codegen.CodegenCtx) (*androidNav, error) {
 		if len(st.pages) > 0 && st.start == nil {
 			st.start = st.pages[0]
 			for _, pg := range st.pages {
-				if l, ok := pg.node.Prop("href").(*ir.Literal); ok && l.Value == "/" {
+				if l, ok := pg.node.Prop(ir.NavPageHref).(*ir.Literal); ok && l.Value == "/" {
 					st.start = pg
 					break
 				}
@@ -347,7 +347,7 @@ func (nav *androidNav) emitNavDecls(b *strings.Builder, kc *kotlin.KtIRContext) 
 			case pg.params == nil:
 				fmt.Fprintf(b, "class %s\n\n", pg.route())
 			default:
-				fmt.Fprintf(b, "data class %s(val params: %s = %s)\n\n", pg.route(), kotlin.IRTypeToKt(pg.params), kc.EvalExpr(pg.node.Prop("params")))
+				fmt.Fprintf(b, "data class %s(val params: %s = %s)\n\n", pg.route(), kotlin.IRTypeToKt(pg.params), kc.EvalExpr(pg.node.Prop(ir.NavPageParams)))
 			}
 		}
 		rec := exportName(def.Name)
@@ -516,7 +516,7 @@ func emitNavStateMembers(b *strings.Builder, stacks []*navStackK, kc *kotlin.KtI
 // pageContent is what a page renders: its content population, or the content
 // it was written with bare.
 func pageContent(n *ir.NodeInst) []ir.Stmt {
-	if sc := n.Slots["content"]; sc != nil {
+	if sc := n.RestPopulation(); sc != nil {
 		return sc.Body
 	}
 	return n.Children
@@ -548,7 +548,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 	cc.line("NavHost(navController = %s__nav, startDestination = %s, %s) {", st.name, startRoute, cc.buildModifier(n))
 	cc.indent++
 	for _, pg := range st.pages {
-		sc := pg.node.Slots["content"]
+		sc := pg.node.RestPopulation()
 		var param *ir.Param
 		if sc != nil && len(sc.Params) > 0 {
 			param = sc.Params[0]
@@ -574,7 +574,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 				if pg.params == nil {
 					cc.line("val %s = %s", param.Name, kotlin.KtZeroFor(param.Type))
 				} else {
-					cc.line("val %s = __r.params ?: %s", param.Name, cc.kc.EvalExpr(pg.node.Prop("params")))
+					cc.line("val %s = __r.params ?: %s", param.Name, cc.kc.EvalExpr(pg.node.Prop(ir.NavPageParams)))
 				}
 				cc.kc = cc.kc.WithLocal(param.Name)
 			}
@@ -662,13 +662,14 @@ func (nav *androidNav) pageFor(e ir.Expr) (*navStackK, *navPageK) {
 	return nil, nil
 }
 
-// renderNavLink draws a link as a button showing its text, whose click runs
-// the link's own `@click` and then navigates to its page.
+// renderNavLink draws this platform's Link, which sngl:ui/nav's link is here,
+// as a button showing its text, whose click runs the link's own `@click` and
+// then navigates the controller of the stack its page is in.
 func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
-	st, pg := cc.nav.pageFor(n.Prop("to"))
+	st, pg := cc.nav.pageFor(n.Prop(ir.NavLinkTo))
 	cc.line("Button(onClick = {")
 	cc.indent++
-	if h := codegen.NodeHandler(n, "click"); h != nil && h.Func != nil {
+	if h := codegen.NodeHandler(n, ir.NavLinkClick); h != nil && h.Func != nil {
 		for _, stmt := range h.Func.Block {
 			for _, l := range cc.kc.EvalStmt(stmt) {
 				cc.line("%s", l)
@@ -676,13 +677,17 @@ func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 		}
 	}
 	if st != nil {
-		cc.line("%s", navigateTo(st.name+"__nav", pg, n.Prop("params"), cc.kc.EvalExpr))
+		params := n.Prop(ir.NavLinkParams)
+		if lit, ok := params.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull {
+			params = nil
+		}
+		cc.line("%s", navigateTo(st.name+"__nav", pg, params, cc.kc.EvalExpr))
 	}
 	cc.indent--
 	cc.line("}, %s) {", cc.buildModifier(n))
 	cc.indent++
 	text := `""`
-	if t := n.Prop("text"); t != nil {
+	if t := n.Prop(ir.NavLinkText); t != nil {
 		text = cc.kc.EvalExpr(t)
 	}
 	cc.line("Text(text = %s)", text)

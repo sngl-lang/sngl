@@ -1475,6 +1475,35 @@ Settled in E's planning:
 A runner that execs a process over the walked tree (decision 3), and decision
 14's command children, with CLI scripts since they execute.
 
+Settled in F's planning:
+
+- **A process emitter is a handler, not a protocol.** `gen.emit` gains
+  `@generate(out Out, members list<gen.Member<T>>)`, the counterpart of
+  `gen.scheme`'s: the walk's tree arrives as SNGL data -- each member's
+  `gen.node(value=…)` evaluated at build time with its props bound, and its
+  children -- and the handler runs in the interpreter under the build host,
+  gated and recorded as a scheme's handler is, writing files with
+  `out.write`. Running another process is what a handler chooses to do with
+  `gen.exec`, which gains `stdin`. No wire format to version: what a process
+  is handed is whatever the handler serializes.
+- **Commands are `run` and `build` first**: `gen.run(@run(dir, args))` and
+  `gen.build(@build(dir, out))`. test, snapshot, preview and `HTTPCompiler`
+  stay Go interfaces until Phase G, since they carry an RPC channel and image
+  capture. A command's process is the user's terminal rather than a build
+  input, so its handler runs processes through `gen.shell`, which passes
+  stdio through, records nothing and is refused anywhere but a command
+  handler.
+- **A command is a child of the target node's body.** The platform's wins,
+  else the language's: `go run` is written once on `sngl:language/go`, and
+  html's serve and android's install on their platforms. An override of the
+  platform node for one language (`component platform[go.language] { gen.run(…) }`)
+  is allowed where a platform wants to tweak it, and wins over both.
+- **A target node with nothing to say has no body.** `{}` is an empty body and
+  says the node renders nothing; a target node's rendering comes from its
+  generator, so a node writing no command is bodyless, like a family, and is
+  exempt from the bodyless rule for the same reason. Every `build.platform {}`
+  and `build.language {}` loses its braces.
+
 ### Phase G: a built-in target moves
 
 The smallest real one, likely `none`, then html's static mode. Success is its

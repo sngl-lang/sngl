@@ -89,6 +89,11 @@ var referenceSlots = map[string]bool{
 	"Closure.Func": true,
 	// The same *Funcs already reached through their owning slice.
 	"Component.Methods": true,
+	// The declaration's own body, set aside when an override was swapped in.
+	// Nothing renders it where it lies -- a node that wants it is handed a
+	// deep clone (passNavigation's link) -- and a pass rewriting it in place
+	// would edit library IR every build shares.
+	"Component.DeclaredBody": true,
 	// A macro is a declaration, not code: it is never called and no backend
 	// emits it, so no pass has anything to do to its body. Excluded here
 	// deliberately rather than by omission -- walking it would subject a

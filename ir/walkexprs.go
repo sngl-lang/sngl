@@ -57,6 +57,8 @@ var (
 //   - StructLit.Def — the struct being constructed, owned by pkg.Structs.
 //   - Component.Methods, StructDef/EnumDef/UnitDef.Methods — the same *Funcs
 //     already reached through their owning slice.
+//   - Component.DeclaredBody — the declaration's own body, set aside when an
+//     override was swapped in; a node rendering it is handed a deep clone.
 //   - Func.Reads, Func.Writes — analysis results naming Vars owned by a scope.
 //   - Package.Symbols, Import.Pkg, Context/ContextRead.Ref — tables and
 //     cross-package or cross-declaration links.

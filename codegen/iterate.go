@@ -146,22 +146,25 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			if !fn(n, depth) {
-				walkVisual(n.Children, fn, depth+1)
+				// Its children and each population of its slots, one level
+				// down.
+				for _, b := range ir.ViewBlocks(n) {
+					walkVisual(*b, fn, depth+1)
+				}
 			}
-		case *ir.If:
-			walkVisual(n.Body, fn, depth)
-			walkVisual(n.Else, fn, depth)
-		case *ir.For:
-			walkVisual(n.Body, fn, depth)
-		case *ir.SlotInst:
-			walkVisual(n.Children, fn, depth)
-		case *ir.ErrorBoundary:
-			walkVisual(n.Children, fn, depth)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Not a visual statement; nothing to visit.
 		default:
-			panic(fmt.Sprintf("walkVisual: unhandled stmt %T", n))
+			// An `if`, a `for`, a boundary, a provider or a slot insertion:
+			// what it holds stands at its own depth.
+			blocks := ir.ViewBlocks(s)
+			if blocks == nil {
+				panic(fmt.Sprintf("walkVisual: unhandled stmt %T", n))
+			}
+			for _, b := range blocks {
+				walkVisual(*b, fn, depth)
+			}
 		}
 	}
 }

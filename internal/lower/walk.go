@@ -47,15 +47,21 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				n.Ref = rewrite(n.Ref)
 			}
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			rewriteSlotExprs(n.Slots, rewrite)
 			for i := range n.Handlers {
 				if n.Handlers[i].Func != nil {
 					n.Handlers[i].Func.Block = rewriteStmtExprs(n.Handlers[i].Func.Block, rewrite)
 				}
 			}
 		case *ir.SlotInst:
+			for i := range n.Args {
+				n.Args[i] = rewrite(n.Args[i])
+			}
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			rewriteSlotExprs(n.Slots, rewrite)
 		case *ir.ErrorBoundary:
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			n.Failed = rewriteStmtExprs(n.Failed, rewrite)
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = rewriteStmtExprs(n.Handler.Func.Block, rewrite)
 			}
@@ -65,6 +71,9 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 			}
 		case *ir.CallStmt:
 			if n.Call != nil {
+				if n.Call.Callee != nil {
+					n.Call.Callee = rewrite(n.Call.Callee)
+				}
 				if n.Call.Receiver != nil {
 					n.Call.Receiver = rewrite(n.Call.Receiver)
 				}
@@ -84,6 +93,15 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 		}
 	}
 	return stmts
+}
+
+// rewriteSlotExprs is rewriteStmtExprs over each population, in name order.
+func rewriteSlotExprs(slots map[string]*ir.SlotContent, rewrite func(ir.Expr) ir.Expr) {
+	for _, name := range ir.SlotNames(slots) {
+		if sc := slots[name]; sc != nil {
+			sc.Body = rewriteStmtExprs(sc.Body, rewrite)
+		}
+	}
 }
 
 // walkFuncs collects optional callbacks invoked while walking a package's

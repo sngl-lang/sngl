@@ -491,9 +491,26 @@ func targetNamespaceName(pkgName string) (string, bool) {
 // merged corpus had no package to belong to.
 func (c *checker) inLibSource() bool { return c.libDepth > 0 }
 
+// enterDeclSet starts a declaration set of its own: the work a package's bodies
+// defer to the end of its check. A library package loads part-way through a
+// program's check, on the same checker, so the program's deferred work is put
+// aside while the library's is done and comes back untouched.
+func (c *checker) enterDeclSet() func() {
+	bodyComps, viewSpreads, nestedOrder := c.bodyComps, c.viewSpreads, c.nestedOrder
+	treeChecks, narrowChecks, constAsserts := c.treeChecks, c.narrowChecks, c.constAsserts
+	constArgs, constSlotNodes := c.constArgs, c.constSlotNodes
+	c.bodyComps, c.viewSpreads, c.nestedOrder = nil, nil, nil
+	c.treeChecks, c.narrowChecks, c.constAsserts = nil, nil, nil
+	c.constArgs, c.constSlotNodes = nil, nil
+	return func() {
+		c.bodyComps, c.viewSpreads, c.nestedOrder = bodyComps, viewSpreads, nestedOrder
+		c.treeChecks, c.narrowChecks, c.constAsserts = treeChecks, narrowChecks, constAsserts
+		c.constArgs, c.constSlotNodes = constArgs, constSlotNodes
+	}
+}
+
 func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libDepth++
-	constArgMark, constSlotMark := len(c.constArgs), len(c.constSlotNodes)
 	savedPkgName := c.libPkgName
 	c.libPkgName = "sngl:" + pkgName
 	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
@@ -536,11 +553,10 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// Running it means running everything it resets, which is why the restore
 	// covers more than the documents: see enterPackage.
 	defer c.enterPackage(docs)()
+	// Its own declaration set from the first registration on: pass1 defers
+	// work as well as the bodies.
+	defer c.enterDeclSet()()
 	c.pass1()
-	// A field default is a value expression, so it waits until every name it
-	// could refer to is registered. pass2 does this for a program; a library
-	// package does not get one, so it happens here.
-	c.checkStructFieldDefaults()
 
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
@@ -552,103 +568,33 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		}
 	}
 
-	// Library funcs are not body-checked by pass2, which walks a program's own
-	// declarations, so their bodies are checked below. An expression body
-	// (`=> expr`) is lowered into ir.Block, and a block body is lowered too so
-	// the optimizer can fold through it; a bodyless signature has nothing to
-	// check.
-	type stdlibFuncBody struct {
-		ast *ast.FuncDef
-		fn  *ir.Func
-	}
-	var pendingBodies []stdlibFuncBody
-	// A func a component body declares is that component's method and reads
-	// its props; checkComponentBody below checks it in that scope. Checked
-	// here, at package scope, a library component's `func open() { visible =
-	// true }` found no `visible`.
-	owned := map[*ir.Func]bool{}
-	for _, comp := range stdlibPkg.Components {
-		if comp.AST == nil || !comp.AST.Body.IsDefined() {
-			continue
-		}
-		for _, fn := range ir.BodyFuncs(comp) {
-			if fn.Receiver == "" || fn.Receiver == comp.Name {
-				owned[fn] = true
-			}
-		}
-	}
-	for _, fn := range stdlibPkg.Funcs {
-		if owned[fn] {
-			continue
-		}
-		if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) {
-			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: fn.AST, fn: fn})
-		}
-	}
-
-	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
-	// that bodies can read freshly-registered context decls (e.g. the
-	// `#locale` context used by i18n.* wrappers).
-	for _, pb := range pendingBodies {
-		c.checkFuncBody(pb.fn)
-	}
-
-	// Phase 2b: refine stdlib function purity by propagating from called
-	// functions. The Pure seed registerFunc gives a bodied library func is a
-	// placeholder;
-	// now that every body is checked, lift each func's purity to
-	// max(self, max(called.Purity)) and iterate to a fixed point. This
-	// makes wrappers like `i18n.defaultLocale() => intl.DefaultLocale()`
-	// inherit PurityReadonly from the intrinsic, which prevents the
-	// optimizer from folding them.
-	for changed := true; changed; {
-		changed = false
-		for _, pb := range pendingBodies {
-			bodyPurity := highestCalledPurity(pb.fn)
-			if bodyPurity > pb.fn.Purity {
-				pb.fn.Purity = bodyPurity
-				changed = true
-			}
-		}
-	}
-	c.checkConstFuncs(stdlibPkg.Funcs)
-	c.runConstArgChecksFrom(constArgMark)
-	c.runConstSlotChecksFrom(constSlotMark)
-
-	// A platform or language package may ship its own body-bearing
-	// components (the wrappers lower's strict InlinePure pass is written
-	// against), and pass2 only walks the program's own components, so their
-	// bodies are checked here. A `component sngl.X` extension declaration is
-	// not one of those: mergePlatformExtensions splices its platform blocks
-	// into the component it names and checkPendingExtensions checks them
-	// there.
+	// The same two declaration halves a program's pass2 runs, with nothing
+	// between them: a library has no tests, no package body and no build
+	// directive. Its own bodies are judged as one declaration set, apart from
+	// the program it loaded part-way through (enterDeclSet, above).
 	//
-	// The body's own declarations were collected when the component was
-	// registered, as a program's are: registerComponent does that for every
-	// tier, so this only has to check what is already there.
+	// Every component body, not only the target tiers'. A body is what a
+	// component renders, and a bodied component nobody checks renders
+	// *nothing*: the conversion happens here or not at all, so
+	// `sngl:ui/markup`'s blocks reached every backend as empty declarations
+	// and `md.list { … }` emitted its children and neither body. A bodyless
+	// declaration is checked too: its props' defaults are read here, and a
+	// target node with no command to write has no body, so skipped it lost
+	// every option default it declared.
 	//
-	// Every tier, not only the target ones. A body is what a component
-	// renders, and a bodied component nobody checks renders *nothing*: the
-	// conversion happens here or not at all, so `sngl:ui/markup`'s blocks
-	// reached every backend as empty declarations and `md.list { … }` emitted
-	// its children and neither body. The library's own scope is the right one
-	// to resolve them against -- it is the scope they were written in -- which
-	// is also what makes the first check of them catch a `Role` member the
-	// enum never declared.
-	for _, irComp := range stdlibPkg.Components {
-		if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
-			continue
-		}
-		c.checkComponentBody(irComp)
-	}
+	// A library names its family, so nothing is inferred: the membership
+	// checks its bodies deferred are drained by finishDeclarations.
+	c.checkDeclarationBodies(stdlibPkg, nil)
+	c.finishDeclarations(stdlibPkg)
+
 	if _, ok := targetNamespaceName(pkgName); ok {
 		c.checkTargetComponentsConst(stdlibPkg)
 	}
 
-	// Phase 3: refine stdlib context types from their default expressions.
-	// Context decls run BEFORE wrapper body checks (so wrapper bodies can
-	// read them), at which point a default like `i18n.defaultLocale()` still
-	// types as dyn. After Phase 2 the wrapper has its concrete return type,
+	// Refine stdlib context types from their default expressions. Context
+	// decls run BEFORE wrapper body checks (so wrapper bodies can read them),
+	// at which point a default like `i18n.defaultLocale()` still types as dyn.
+	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range c.pkg.Contexts {
 		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
@@ -664,9 +610,8 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 // TargetNode returns the build-directive node `sngl:<uri>` declares -- the
 // component an output block writes to name that target -- or nil when the
-// package declares none. The node is named for its tier, `platform` or
-// `language`, and carries the target's name in #[gen.name], which is what an
-// output block writes.
+// package declares none. The node is found by its family and carries the
+// target's name in #[gen.name], which is what an output block writes.
 func TargetNode(uri string) *ir.Component {
 	pkg := LibPackage(uri)
 	if pkg == nil || pkg.Symbols == nil {
@@ -676,12 +621,8 @@ func TargetNode(uri string) *ir.Component {
 	if !ok {
 		return nil
 	}
-	sym, ok := pkg.Symbols.LookupRootComponent(targetTierMember(kind))
-	if !ok {
-		return nil
-	}
-	comp, got, ok := ir.TargetNode(sym)
-	if !ok || got != name {
+	comp := ir.TargetNodeOf(pkg, kind)
+	if comp == nil || comp.Gen.TargetName != name {
 		return nil
 	}
 	return comp
@@ -1674,10 +1615,6 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
-	// A membership check a library body deferred is drained by the pass2 of
-	// the program that loaded the package, and this entry point has no
-	// program. Nothing to infer first: a library declaration names its family.
-	c.runTreeChecks()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }

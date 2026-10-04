@@ -297,6 +297,31 @@ func (p *Package) NoteTreeKind(f *Component) {
 	p.TreeKinds[f] = true
 }
 
+// IsFamilyValue reports whether a handle to c, a member of a family, is a
+// value of the family: a record of the props the family declares, read off
+// whichever member it holds. A member declaring the family's props is one;
+// a member of a family with props that declares none of them composes
+// members rather than being one -- `component extras { nav.page… nav.page…
+// }` -- and there is no one value for it to be. Composition itself is not the
+// question: a member declaring the props may compose others too, and either
+// kind is inlined where its family's members are collected.
+func IsFamilyValue(c *Component) bool {
+	if c == nil || c.Tree == nil {
+		return false
+	}
+	if len(c.Tree.Props) == 0 {
+		return true
+	}
+	for _, fp := range c.Tree.Props {
+		for _, p := range c.Props {
+			if p.Name == fp.Name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // IsFamily reports whether c declares a family: a component that is itself a
 // member of `build.family`. The family of families is the one declaration that
 // is a member of itself, which is what its #[builtin("treeFamily")] mark says.
@@ -612,6 +637,11 @@ type Func struct {
 	// at all -- and the platforms that give a slot render a host-typed
 	// container parameter were giving those one as well.
 	SlotRender bool `json:"-"`
+	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
+	// async subexpression a view prop read: a zero-argument body returning it,
+	// lowered as a named async computed is. Said here rather than read off the
+	// `__hoist_` its name is spelled with.
+	AsyncHoist bool `json:"-"`
 	// Stdlib is true for functions declared in the SNGL standard library
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
@@ -775,12 +805,9 @@ type Component struct {
 	// one, which is an error, so the two states are told apart here rather
 	// than by the absence of a pointer.
 	Treeless bool `json:",omitempty"`
-	// Group is a member of a family with props that declares none of them: it
-	// renders members rather than being one -- `component extras { nav.page…
-	// nav.page… }` -- so it has no one value of the family to be. Its handle
-	// is not assignable to the family's type, and a nav.stack splices its
-	// body among its pages.
-	Group bool `json:",omitempty"`
+	// Eventless is the #[tree.eventless] mark on a family: its members raise
+	// no events, an #[intrinsic] primitive's being the target calling in.
+	Eventless bool `json:",omitempty"`
 	// TreeParam is the component's own type parameter written in the return
 	// position, for a wrapper whose family is whatever it was handed. Nil Tree
 	// and a TreeParam is a third state: tree-less at the declaration, and a
@@ -821,6 +848,12 @@ type Component struct {
 	// and Vars, so a second swap for the same target is a no-op instead of a
 	// reset of everything lowering has since added.
 	SpecializedFor string `json:",omitempty"`
+	// DeclaredBody is the body the declaration itself writes, kept the first
+	// time an override is swapped into Body: a node a target renders with the
+	// declaration's own body rather than its override -- a nav.link in a
+	// surface that navigates in place, on a target whose links are addresses
+	// -- reads it here. Nil until a swap, when Body still is it.
+	DeclaredBody []Stmt `json:"-"`
 	// WildcardInto names the prop the matched name binds to, from the mark's
 	// second argument. Without it the name a wildcard matched reaches nothing:
 	// the component was resolved by a name it has no way to read.

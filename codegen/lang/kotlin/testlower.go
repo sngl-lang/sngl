@@ -175,22 +175,11 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	c := call.Call
-	if c == nil || c.AST == nil || c.Event == "" {
-		return "", false
-	}
-	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	_, id, ok := codegen.EventTriggerTarget(c)
 	if !ok {
-		return "", false
-	}
-	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	if _, ok := innerSel.Operand.(*ast.IdentExpr); !ok {
 		return "", false
 	}
 	event := c.Event
-	id := innerSel.Field
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips

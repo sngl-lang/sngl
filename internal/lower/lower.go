@@ -469,21 +469,19 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				for _, name := range ir.SlotNames(n.Slots) {
 					walk(n.Slots[name].Body)
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.SlotInst:
-				walk(n.Children)
-				for _, name := range ir.SlotNames(n.Slots) {
-					walk(n.Slots[name].Body)
-				}
 			case *ir.ErrorBoundary:
-				walk(n.Children)
-			case *ir.ContextProvider:
-				walk(n.Children)
+				if n.Handler != nil && n.Handler.Func != nil {
+					walk(n.Handler.Func.Block)
+				}
+				for _, b := range ir.ViewBlocks(n) {
+					walk(*b)
+				}
+			default:
+				// An `if`, a `for`, a provider, a slot insertion: what each
+				// holds, fallbacks and entries' populations included.
+				for _, b := range ir.ViewBlocks(n) {
+					walk(*b)
+				}
 			}
 		}
 	}

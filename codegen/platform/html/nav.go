@@ -15,7 +15,7 @@ import (
 // written is a browser following an address.
 //
 // A stack and its pages are this platform's Stack and Page primitives, and
-// optimize.Documents writes one document per page, the window with the stack
+// html's documentsOf writes one document per page, the window with the stack
 // standing for that page alone, `pages.current` folded to its record. A
 // nav.link is a ui.link by then, and so is a clickable that only goes to a
 // page. What a handler still calls:
@@ -68,7 +68,7 @@ func emitNavBack(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 	return "history.back()", nil
 }
 
-// emitNavHref is `_href(to, params)`, the address a link whose params are not
+// emitNavHref is `nav.href(to, params)`, the address a link whose params are not
 // known until it is shown follows.
 func emitNavHref(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 	if len(args) < 2 {

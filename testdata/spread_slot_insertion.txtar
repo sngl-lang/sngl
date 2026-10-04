@@ -39,12 +39,12 @@ component mixed(p Partial, cell component(title string, count int)) node {
 
 component main node {
     var seen = ""
-    whole(r=Row{title="row", count=3}) {
+    whole #w(r=Row{title="row", count=3}) {
         component cell(t, n) {
             button #a(text=t, @click { seen = seen + t + string(n) + ";" })
         }
     }
-    mixed(p=Partial{title="part"}) {
+    mixed #m(p=Partial{title="part"}) {
         component cell(t, n) {
             button #b(text=t, @click { seen = seen + t + string(n) + ";" })
         }
@@ -52,8 +52,8 @@ component main node {
 }
 
 func testSpreadIntoSlot(t Test, c main) {
-    c.a.click()
-    c.b.click()
+    c.w.a.click()
+    c.m.b.click()
     t.assert(c.seen == "row3;part7;")
 }
 
@@ -264,10 +264,10 @@ import (
 type Model struct {
 	seen string
 
-	__n0 *fyne.Container
-	a    *widget.Button
-	__n1 *fyne.Container
-	b    *widget.Button
+	w *fyne.Container
+	a *widget.Button
+	m *fyne.Container
+	b *widget.Button
 }
 
 // New creates a Model with default values.
@@ -309,19 +309,19 @@ func (m *Model) SetSeen(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
+	m.w = container.NewVBox()
 	m.a = widget.NewButton("", nil)
 	m.a.SetText("row")
 	m.a.OnTapped = m.a_click_handler
-	m.__n0.Add(m.a)
-	m.__n1 = container.NewVBox()
+	m.w.Add(m.a)
+	m.m = container.NewVBox()
 	m.b = widget.NewButton("", nil)
 	m.b.SetText("part")
 	m.b.OnTapped = m.b_click_handler
-	m.__n1.Add(m.b)
+	m.m.Add(m.b)
 	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n1)
+	parts = append(parts, m.w)
+	parts = append(parts, m.m)
 	return container.NewVBox(parts...)
 }
 
@@ -382,7 +382,9 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	seen   string
+	w      gtk4rt.Handle
 	a      gtk4rt.Handle
+	m      gtk4rt.Handle
 	b      gtk4rt.Handle
 	__root gtk4rt.Handle
 }
@@ -416,22 +418,22 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n0, 6)
+	m.w = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.w, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.w, 6)
 	m.a = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.a, "row")
 	gtk4rt.Connect(m.a, "clicked", m.a_clicked_handler)
-	gtk4rt.BoxAppend(__n0, m.a)
-	__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n1, 6)
+	gtk4rt.BoxAppend(m.w, m.a)
+	m.m = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.m, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.m, 6)
 	m.b = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.b, "part")
 	gtk4rt.Connect(m.b, "clicked", m.b_clicked_handler)
-	gtk4rt.BoxAppend(__n1, m.b)
-	gtk4rt.BoxAppend(m.__root, __n0)
-	gtk4rt.BoxAppend(m.__root, __n1)
+	gtk4rt.BoxAppend(m.m, m.b)
+	gtk4rt.BoxAppend(m.__root, m.w)
+	gtk4rt.BoxAppend(m.__root, m.m)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -494,14 +496,14 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column {
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier.testTag("w").safeDrawingPadding()) {
             Button(onClick = {
                 state.seen = (((state.seen + "row") + "3") + ";")
             }, modifier = Modifier.testTag("a")) {
                 Text(text = "row", modifier = Modifier)
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier.testTag("m").safeDrawingPadding()) {
             Button(onClick = {
                 state.seen = (((state.seen + "part") + "7") + ";")
             }, modifier = Modifier.testTag("b")) {
@@ -557,13 +559,13 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column">
-  <button id="$0" data-sngl-id="a">
+<div style="display:flex;flex-direction:column" data-sngl-id="w">
+  <button id="$1" data-sngl-id="a">
     <span>row</span>
   </button>
 </div>
-<div style="display:flex;flex-direction:column">
-  <button id="$1" data-sngl-id="b">
+<div style="display:flex;flex-direction:column" data-sngl-id="m">
+  <button id="$3" data-sngl-id="b">
     <span>part</span>
   </button>
 </div>
@@ -583,8 +585,8 @@ window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { seen: "" };
-  state.aClick = () => $0.click();
-  state.bClick = () => $1.click();
+  state.aClick = () => $1.click();
+  state.bClick = () => $3.click();
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -596,12 +598,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testSpreadIntoSlot });
   }
-  var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  $0.addEventListener("click", function() {
+  var $3 = document.getElementById("$3");
+  $1.addEventListener("click", function() {
     state.seen = state.seen + "row3;";
   });
-  $1.addEventListener("click", function() {
+  $3.addEventListener("click", function() {
     state.seen = state.seen + "part7;";
   });
 })();
@@ -612,10 +614,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cd613dafad6bdb89e23de6f81cf0c78a
 -- run/go/fyne --
-pass sha256:a3094aa73845499a51e1f05bcb98635a
+pass sha256:0d9a9fa1ac7c614ccfcb369f70338219
 -- run/go/gtk4 --
-pass sha256:5d58f3139568ec433f15a8b914c384da
+pass sha256:78acf4f456b8b42b1f22efc361a98ab1
 -- run/kotlin/android --
-pass sha256:da9e09f6a64034b5694601c772f9b8a6
+pass sha256:4e89ce83d4f79c65c5f1b978cdf2f7fb
 -- run/none/html --
-pass sha256:ffa97928bccae3290457f61950d6548c
+pass sha256:459a698e1cde1ca1e17da99c6c256cd3

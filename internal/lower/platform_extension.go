@@ -26,9 +26,14 @@ func lowerPlatformExtensionBody(pkg *ir.Package, _ Features, opts Options) error
 	if opts.Platform == "" {
 		return nil
 	}
-	surfaces, err := findSurfaces(pkg)
+	surfaces, err := findSurfaces(pkg, opts)
 	if err != nil {
 		return err
+	}
+	if surfaces != nil && surfaces.doc != nil {
+		// The target writes its document from this one; it reads the mark
+		// rather than deciding again after inlining.
+		surfaces.doc.Document = true
 	}
 	composeOverriddenBuiltins(pkg, opts, surfaces)
 	return nil

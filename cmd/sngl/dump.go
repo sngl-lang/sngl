@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"iter"
 	"log/slog"
 	"path/filepath"
 	"sort"
@@ -361,7 +360,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		FileAssets: fileAssets,
 		ProjectFS:  build.ProjectFS(dir),
 	}
-	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
+	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	start = time.Now()
 	if err := plat.Generate(req, mem); err != nil {

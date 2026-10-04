@@ -129,7 +129,8 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		case ir.BuiltinNavStack:
 			cc.renderNavStack(n)
 			return
-		case ir.BuiltinNavLink:
+		}
+		if n.Component.Intrinsic == intrinsicNS+"Link" {
 			cc.renderNavLink(n)
 			return
 		}

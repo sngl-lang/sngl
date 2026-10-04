@@ -342,28 +342,14 @@ func collectHandlerFuncs(stmts []ir.Stmt, add func(*ir.Func)) {
 					add(lam.Func)
 				}
 			}
-			collectHandlerFuncs(n.Children, add)
-			for _, sc := range n.Slots {
-				if sc != nil {
-					collectHandlerFuncs(sc.Body, add)
-				}
-			}
-		case *ir.If:
-			collectHandlerFuncs(n.Body, add)
-			collectHandlerFuncs(n.Else, add)
-		case *ir.For:
-			collectHandlerFuncs(n.Body, add)
-			collectHandlerFuncs(n.Else, add)
-		case *ir.SlotInst:
-			collectHandlerFuncs(n.Children, add)
-			for _, name := range ir.SlotNames(n.Slots) {
-				collectHandlerFuncs(n.Slots[name].Body, add)
-			}
 		case *ir.ErrorBoundary:
 			if n.Handler != nil {
 				add(n.Handler.Func)
 			}
-			collectHandlerFuncs(n.Children, add)
+		}
+		// Slots in name order: this order numbers __async_offN.
+		for _, b := range ir.ViewBlocks(s) {
+			collectHandlerFuncs(*b, add)
 		}
 	}
 }

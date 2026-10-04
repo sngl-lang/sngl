@@ -1586,6 +1586,14 @@ func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
 	if !ok {
 		return nil
 	}
+	// `c.card.title`: a node a population at `c`'s `#card` declares, reached
+	// through the node it populates (populationHost).
+	if inner, ok := sel.Operand.(*ast.SelectExpr); ok {
+		if owner := c.componentOfIdent(inner.Operand); owner != nil && owner.AST != nil {
+			return c.populationHost(findNodeAST(owner.AST.Body.Stmts, inner.Field), sel.Field)
+		}
+		return nil
+	}
 	ident, ok := sel.Operand.(*ast.IdentExpr)
 	if !ok {
 		return nil
@@ -1634,20 +1642,12 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				}
 				return nil
 			}
+			// A population in the node's block is a ComponentDecl, which
+			// this does not descend into: it is a scope of its own, as a
+			// component's body is, and its ids are reached through the node it
+			// populates (populationHost), not as this component's.
 			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
 				return comp
-			}
-			// A population's block is written in this component's body, so an
-			// id in it resolves here. See collectElementRefIDs, which draws
-			// the same line for the same reason.
-			for _, inner := range n.Block.Stmts {
-				cd, isDecl := inner.(*ast.ComponentDecl)
-				if !isDecl {
-					continue
-				}
-				if comp := c.findHostComponentAST(cd.Body.Stmts, id); comp != nil {
-					return comp
-				}
 			}
 		case *ast.CallStmt:
 			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
@@ -1671,6 +1671,56 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			}
 			if comp := c.findHostComponentAST(n.Else.Stmts, id); comp != nil {
 				return comp
+			}
+		}
+	}
+	return nil
+}
+
+// findNodeAST is the node in stmts whose `#id` is id, through `if`s, `for`s
+// and nodes' children but not into a population, whose ids are its own.
+func findNodeAST(stmts []ast.Stmt, id string) *ast.VisualNode {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			if n.ID == id {
+				return n
+			}
+			if found := findNodeAST(n.Block.Stmts, id); found != nil {
+				return found
+			}
+		case *ast.IfStmt:
+			if found := findNodeAST(n.Body.Stmts, id); found != nil {
+				return found
+			}
+			if found := findNodeAST(n.Else.Stmts, id); found != nil {
+				return found
+			}
+		case *ast.ForStmt:
+			if found := findNodeAST(n.Body.Stmts, id); found != nil {
+				return found
+			}
+			if found := findNodeAST(n.Else.Stmts, id); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
+
+// populationHost is the component of the node with `#id` id written in one of
+// the populations node's call site wrote, nil for none. That is how a node in
+// a population is reached from outside it: through the node it populates,
+// `c.card.title` for `card #card { component top { text #title } }`, as an
+// instance's own ids are reached through its handle.
+func (c *checker) populationHost(node *ast.VisualNode, id string) *ir.Component {
+	if node == nil {
+		return nil
+	}
+	for _, s := range node.Block.Stmts {
+		if cd, ok := s.(*ast.ComponentDecl); ok {
+			if host := c.findHostComponentAST(cd.Body.Stmts, id); host != nil {
+				return host
 			}
 		}
 	}
@@ -2139,11 +2189,28 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					}
 					restore()
 					if host != nil {
+						c.refuseAmbiguousReach(x, comp, x.Field)
 						typ := host.SymType()
 						if args, ok := c.handleArgs[handleKey{comp, x.Field}]; ok {
 							typ = withComponentArgs(typ, host, args)
 						}
 						return &ir.Select{AST: x, Type: typ, Operand: operandExpr, Field: x.Field}
+					}
+					// Not the instance's own: a node a population written at
+					// the instance's call site declares. `c.card.title` is the
+					// node `title` in what `c`'s body handed `card #card`, and
+					// it is the same node `c` renders, so it reads as `c`'s
+					// member does -- the reach every target already answers.
+					if sel, ok := operandExpr.(*ir.Select); ok {
+						if owner := handleOwner(sel.Operand); owner != nil && owner.AST != nil {
+							restoreOwner := c.fileOf(compDeclPos(owner))
+							ph := c.populationHost(findNodeAST(owner.AST.Body.Stmts, sel.Field), x.Field)
+							restoreOwner()
+							if ph != nil {
+								c.refuseAmbiguousReach(x, owner, x.Field)
+								return &ir.Select{AST: x, Type: ph.SymType(), Operand: sel.Operand, Field: x.Field}
+							}
+						}
 					}
 					if descendant != nil {
 						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
@@ -5617,7 +5684,18 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		sc.Params = append(sc.Params, p)
 	}
 	c.entryScopes = append(c.entryScopes, entries)
-	sc.Body = c.checkBlockIR(&cd.Body)
+	// A population is a scope of its own, as a component's body is: the ids
+	// its nodes declare are hoisted there, a node's children included, so a
+	// sibling reads one written inside a vbox or a canvas. Checked as a plain
+	// block, only a node's own `#id` at the top was bound. The names it binds
+	// are its head, which an id gives way to as a loop's variables do.
+	var bound []string
+	for _, entry := range params {
+		if a, ok := entry.(ast.Param); ok {
+			bound = append(bound, a.Name)
+		}
+	}
+	sc.Body = c.checkScopeBlockIR(&cd.Body, bound...)
 	c.entryScopes = c.entryScopes[:len(c.entryScopes)-1]
 	c.popScope()
 	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
@@ -5912,4 +5990,90 @@ func handleComponent(t *ir.Type) *ir.Component {
 	}
 	comp, _ := t.Decl.(*ir.Component)
 	return comp
+}
+
+// handleOwner is the component whose instance e is, nil for anything else.
+func handleOwner(e ir.Expr) *ir.Component {
+	if e == nil {
+		return nil
+	}
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	return comp
+}
+
+// componentOfIdent is the component a bare identifier's param or var is an
+// instance of, nil for anything else.
+func (c *checker) componentOfIdent(e ast.Expr) *ir.Component {
+	ident, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return nil
+	}
+	sym, ok := c.scope.Lookup(ident.Name)
+	if !ok {
+		return nil
+	}
+	var t *ir.Type
+	switch v := sym.(type) {
+	case *ir.Param:
+		t = v.Type
+	case *ir.Var:
+		t = v.Type
+	}
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, _ := t.Decl.(*ir.Component)
+	return comp
+}
+
+// refuseAmbiguousReach reports a read of a node through an instance, `c.x` or
+// `c.card.x`, where the instance's component renders more than one node named
+// x: one in a slot population and another beside it, say. Each is legal where
+// it is written -- a population is a scope of its own -- but every target
+// reaches a node from outside the component by the id it renders, which is
+// then two nodes, and the read cannot say which it means.
+func (c *checker) refuseAmbiguousReach(x *ast.SelectExpr, comp *ir.Component, id string) {
+	if comp == nil || comp.AST == nil {
+		return
+	}
+	var at []ast.Pos
+	var walk func(stmts []ast.Stmt)
+	walk = func(stmts []ast.Stmt) {
+		for _, ref := range collectElementRefIDs(stmts) {
+			if ref.name == id {
+				at = append(at, ref.pos)
+			}
+		}
+		// The populations collectElementRefIDs leaves to their own scope.
+		var pops func(stmts []ast.Stmt)
+		pops = func(stmts []ast.Stmt) {
+			for _, s := range stmts {
+				switch n := s.(type) {
+				case *ast.VisualNode:
+					for _, inner := range n.Block.Stmts {
+						if cd, ok := inner.(*ast.ComponentDecl); ok {
+							walk(cd.Body.Stmts)
+						}
+					}
+					pops(n.Block.Stmts)
+				case *ast.IfStmt:
+					pops(n.Body.Stmts)
+					pops(n.Else.Stmts)
+				case *ast.ForStmt:
+					pops(n.Body.Stmts)
+					pops(n.Else.Stmts)
+				}
+			}
+		}
+		pops(stmts)
+	}
+	walk(comp.AST.Body.Stmts)
+	if len(at) > 1 {
+		c.error(x.Pos, "#%s names %d nodes %s renders (at %s and %s): each is legal in its own scope, but a read from outside reaches a node by the id it renders and cannot say which; give one another name",
+			id, len(at), comp.Name, at[0], at[1])
+	}
 }

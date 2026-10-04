@@ -180,6 +180,7 @@ const (
 type Policy struct {
 	mu     sync.Mutex
 	all    bool
+	kinds  []Kind
 	grants []Grant
 	// Prompt is consulted when nothing grants a request. Nil refuses.
 	Prompt Prompter
@@ -190,6 +191,21 @@ type Policy struct {
 // AllowAll is a policy that grants everything: --allow-all, and the test
 // harnesses that build their own fixtures.
 func AllowAll() *Policy { return &Policy{all: true} }
+
+// Allowing is a copy of p that also grants every request of the given kinds:
+// what a command asked to do by name holds, and nothing more. `sngl pkg`
+// fetches because it was told to, and still runs a plugin it reaches under
+// p's own grants. A nil p is the empty policy.
+func (p *Policy) Allowing(ks ...Kind) *Policy {
+	out := &Policy{kinds: ks}
+	if p != nil {
+		p.mu.Lock()
+		out.all, out.grants, out.Prompt, out.ConfigPath = p.all, slices.Clone(p.grants), p.Prompt, p.ConfigPath
+		out.kinds = append(slices.Clone(p.kinds), ks...)
+		p.mu.Unlock()
+	}
+	return out
+}
 
 // Add appends grants.
 func (p *Policy) Add(gs ...Grant) {
@@ -235,7 +251,7 @@ func (p *Policy) Check(r Request) error {
 		return &Refusal{Request: r}
 	}
 	p.mu.Lock()
-	all, grants, prompt := p.all, slices.Clone(p.grants), p.Prompt
+	all, grants, prompt := p.all || slices.Contains(p.kinds, r.Kind), slices.Clone(p.grants), p.Prompt
 	p.mu.Unlock()
 	if all {
 		return nil
@@ -292,8 +308,11 @@ func grantFor(r Request, origin Origin, source string) Grant {
 func GrantFor(r Request, origin Origin) Grant { return grantFor(r, origin, "") }
 
 // covers reports whether g allows r.
+//
+// A directory grant answers a file read below it as well as a listing: what
+// may be listed may be read.
 func (g Grant) covers(r *Request) (bool, error) {
-	if g.Kind != r.Kind {
+	if g.Kind != r.Kind && (g.Kind != Dir || r.Kind != File) {
 		return false, nil
 	}
 	switch r.Kind {
@@ -311,7 +330,11 @@ func (g Grant) covers(r *Request) (bool, error) {
 			return false, nil
 		}
 	case File:
-		if Canonical(g.Value) != r.Value {
+		if g.Kind == Dir {
+			if !Within(r.Value, Canonical(g.Value)) {
+				return false, nil
+			}
+		} else if Canonical(g.Value) != r.Value {
 			return false, nil
 		}
 	case Dir:

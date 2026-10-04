@@ -13,7 +13,7 @@ import marks "sngl:internal/marks"
 //
 // `meta` is what a program says about every page of a stack beside its href
 // and title, one type for all of them -- a menu's label, an icon.
-component _page<M = struct {}>(href string, title string, meta M) build.family
+component _page<M = struct {}>(href string, title string, meta M = M{}) build.family
 
 // A destination. `href` is where it is served on a target that has addresses,
 // with `{name}` placeholders filled from the fields of `params`; `title` names
@@ -44,9 +44,9 @@ component page<T = struct {}, M = struct {}>(
 // The pages are fixed when the stack is built, and need not be written one by
 // one: a `for` over a constant writes a page per element -- each copy a page of
 // its own, whose `#id` names that copy inside the loop -- an `if` over
-// constants writes one or none, and a component that renders pages without
-// declaring a page's props is a group, whose pages join the stack it is
-// written in.
+// constants writes one or none, and pages compose in components as widgets
+// do: a component rendering pages, written among them, is inlined to the
+// pages it renders.
 #[marks.builtin("navStack")]
 component stack<M = struct {}>(pages ...component _page<M>) ui.node
 
@@ -66,18 +66,31 @@ func stack<M>.go<T>(to page<T, M>, params option<T> = null)
 #[marks.intrinsic("nav.back")]
 func stack<M>.back()
 
-// Where `to` is reached with `params`: its href with each `{name}` filled
-// from the field of that name, escaped as a path segment. Nothing names it: a
-// target whose pages are addresses asks for it (`#[gen.wants(navigationHrefs)]`),
-// and the lowering writes it where a link or a `go` needs the address it
-// cannot fold.
+// Where `to` is reached with `params`, or the page's own when null: its href
+// with each `{name}` filled from the field of that name, escaped as a path
+// segment. A target whose pages are addresses answers it -- html, whose
+// override makes a link follow it -- and the build folds it where the page
+// and the params are both known then.
 #[marks.intrinsic("nav.href")]
-const func _href<T, M>(to page<T, M>, params T) string
+const func href<T, M>(to page<T, M>, params option<T> = null) string
+
+// Goes to `to` in the stack that holds it, handing it `params`, or the page's
+// own when null: what a link does when activated, where there is no address
+// to follow. A link names a page and not its stack, which is why this is not
+// the stack's `go`; the lowering knows which stack holds the page, and the
+// interpreter asks the page.
+#[marks.intrinsic("nav.follow")]
+func _follow<T, M>(to page<T, M>, params option<T> = null)
 
 // Goes to `to` when activated, handing it `params`, or the page's own when not
-// given: an `<a href>` on html, and the stack's `go` wherever there is no
-// address to follow. `text` is what it shows, as `ui.link`'s is. `@click` runs
-// first, as `ui.link`'s does.
+// given. `text` is what it shows, as `ui.link`'s is. `@click` runs first, as
+// `ui.link`'s does.
+//
+// What is written here is what a link is wherever there is no address to
+// follow: a button that goes to the page. A target whose pages are addresses
+// overrides it -- html's is an `<a href>` -- and a link inside a surface that
+// navigates in place keeps this body there too, which is why the mark stays:
+// which body a link renders is decided per node.
 #[marks.builtin("navLink")]
 component link<T = struct {}, M = struct {}>(
     to page<T, M>,
@@ -85,4 +98,9 @@ component link<T = struct {}, M = struct {}>(
     text string,
     style ui.Style,
     @click ui.ClickEvent,
-) ui.node
+) ui.node {
+    ui.button(text=text, style=style, @click {
+        click()
+        _follow(to, params)
+    })
+}

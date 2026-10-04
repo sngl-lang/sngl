@@ -48,7 +48,7 @@ component platform(
     const minSdk int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
-) build.platform {}
+) build.platform
 
 // --- The intrinsics ---
 //

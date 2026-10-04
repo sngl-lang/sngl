@@ -95,6 +95,26 @@ func (env *Env) enterFunc(fn *ir.Func) func() {
 	return func() { b.stack = b.stack[:len(b.stack)-1] }
 }
 
+// enterFrame is enterFunc for a body run through a value, whose code may be
+// the root's: a nil fn is pushed as such rather than skipped, so a host call in
+// a lambda the root wrote is not asked of whichever function called it.
+func (env *Env) enterFrame(fn *ir.Func) func() {
+	if env.build == nil {
+		return func() {}
+	}
+	b := env.build
+	b.stack = append(b.stack, fn)
+	return func() { b.stack = b.stack[:len(b.stack)-1] }
+}
+
+// runningFunc is the function whose body is running, nil at the root.
+func (env *Env) runningFunc() *ir.Func {
+	if env.build == nil || len(env.build.stack) == 0 {
+		return nil
+	}
+	return env.build.stack[len(env.build.stack)-1]
+}
+
 // callBuildOnly answers a call to an intrinsic only the build's evaluator
 // answers.
 func (env *Env) callBuildOnly(call *ir.Call) (any, error) {
@@ -106,11 +126,7 @@ func (env *Env) callBuildOnly(call *ir.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	var caller *ir.Func
-	if n := len(env.build.stack); n > 0 {
-		caller = env.build.stack[n-1]
-	}
-	return env.build.host.Call(fn.Intrinsic, caller, call, args)
+	return env.build.host.Call(fn.Intrinsic, env.runningFunc(), call, args)
 }
 
 // boundArgs evaluates a call's arguments into fn's parameter order, a

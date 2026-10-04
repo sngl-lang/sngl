@@ -21,7 +21,7 @@ component platform(
     const main bool,
     // Emit companion test files (default: true; set "false" to skip).
     const tests bool,
-) build.platform {}
+) build.platform
 
 // --- Blueprint vocabulary ---
 //

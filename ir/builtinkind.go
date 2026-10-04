@@ -54,7 +54,7 @@ const (
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 
-	// The four families the compiler itself has to name, each marked on the
+	// The families the compiler itself has to name, each marked on the
 	// component that declares it so no phase spells a package and a name.
 	//
 	// TreeFamily is `sngl:build`'s `family`, the family of families: every
@@ -73,6 +73,11 @@ const (
 	// TreeShape is the drawing tree. A node hosting its members is a canvas,
 	// whose shapes passShapeDraw turns into the statements that paint them.
 	BuiltinTreeShape BuiltinKind = "treeShape"
+	// TreeLanguage and TreePlatform are `sngl:build`'s `language` and
+	// `platform`: the families a build-target node is a member of, which is
+	// what makes a component a target and says which tier it is.
+	BuiltinTreeLanguage BuiltinKind = "treeLanguage"
+	BuiltinTreePlatform BuiltinKind = "treePlatform"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
@@ -177,13 +182,14 @@ func (b BuiltinKind) IsSlotBound() bool {
 }
 
 // IsTreeRole reports whether the kind marks a family the compiler itself has
-// to name. Four do -- the family of families, the package body's, the widget
-// family, and the drawing family -- because a phase asks after each by role
-// rather than by declaration. Every other family is compared by declaration
+// to name. Six do -- the family of families, the package body's, the widget
+// family, the drawing family and the two build-target tiers -- because a phase
+// asks after each by role rather than by declaration. Every other family is compared by declaration
 // and never spelled.
 func (b BuiltinKind) IsTreeRole() bool {
 	switch b {
-	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape:
+	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
+		BuiltinTreeLanguage, BuiltinTreePlatform:
 		return true
 	}
 	return false
@@ -242,6 +248,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
+		BuiltinTreeLanguage, BuiltinTreePlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode,

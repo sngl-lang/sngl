@@ -38,7 +38,7 @@ component platform(
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
     const gir string,
-) build.platform {}
+) build.platform
 
 // --- Windows ---
 

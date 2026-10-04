@@ -23,6 +23,13 @@ gen.scheme(name="c", @generate(out, importPath) {
         return
     }
     var lib = spec.substring(0, slash)
+    // The library name is the repository's, and this plugin is trusted to
+    // run pkg-config with it: a name that reads as a flag is refused rather
+    // than handed over as one.
+    if lib.startsWith("-") {
+        error.raise("c:" + importPath + " names no library: \"" + lib + "\" reads as a pkg-config flag", "import")
+        return
+    }
     var header = spec.substring(slash + 1, spec.length())
     var cflags = pkgConfig(["--cflags", lib])
     var ldflags = pkgConfig(["--libs", lib])

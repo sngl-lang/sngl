@@ -214,8 +214,8 @@ func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 					}
 				}
 				walk(n.Children, in)
-				for _, sc := range n.Slots {
-					if sc != nil {
+				for _, name := range ir.SlotNames(n.Slots) {
+					if sc := n.Slots[name]; sc != nil {
 						walk(sc.Body, in)
 					}
 				}

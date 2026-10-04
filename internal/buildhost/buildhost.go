@@ -181,11 +181,17 @@ func New(policy *trust.Policy, dir string, root *ir.Package, rootOwner *Owner) *
 			if imp.Pkg == nil || imp.Native != nil {
 				continue
 			}
-			if strings.HasPrefix(imp.Path, "sngl:") || imp.Pkg.Origin == nil {
+			switch {
+			case strings.HasPrefix(imp.Path, "sngl:"):
 				walk(imp.Pkg, &Owner{pkg: imp.Pkg, library: true, name: imp.Path})
-				continue
+			case imp.Pkg.Origin == nil:
+				// Nothing says where it came from, so nothing may be granted
+				// to it: its name is the import's, and it has no origin a
+				// recorded grant could match.
+				walk(imp.Pkg, &Owner{pkg: imp.Pkg, name: imp.Path})
+			default:
+				walk(imp.Pkg, h.OwnerOf(imp.Pkg))
 			}
-			walk(imp.Pkg, h.OwnerOf(imp.Pkg))
 		}
 	}
 	h.rootOw = rootOwner
@@ -359,6 +365,44 @@ func (h *Host) readable(ow *Owner, p string, kind trust.Kind) (string, error) {
 	return abs, h.trust.Check(trust.Request{Kind: kind, Subject: ow.Subject(), Value: abs, Root: h.root})
 }
 
+// Key is what names ow's code in a stored answer: where it came from, and the
+// import root it ran under. The root is part of it because a relative read
+// resolves against it and a read inside it is unasked, so two projects
+// importing one plugin or one shared package may each get a different answer
+// from the same call.
+func (h *Host) Key(ow *Owner) []string {
+	where := ow.Name()
+	if ow.Dir() != "" {
+		where = "dir:" + ow.Dir()
+	}
+	return []string{where, "root:" + h.root}
+}
+
+// Declared gates an input ow's output names in a literal cache.inputs: the
+// store completes and later re-checks it by reading what it names, so it is a
+// read ow makes, held to what ow may read. A file or directory is a read like
+// gen.lines' or gen.files', a variable is gen.env's, and a go env value or
+// another producer's output runs a process in a directory ow chose, which only
+// a library may ask.
+func (h *Host) Declared(ow *Owner, in gencache.Input) error {
+	switch in.Kind {
+	case "file", "godir", "absent":
+		_, err := h.readable(ow, in.Get("path"), trust.File)
+		return err
+	case "dir":
+		_, err := h.readable(ow, in.Get("path"), trust.Dir)
+		return err
+	case "env", "unsetenv":
+		return h.trust.Check(trust.Request{Kind: trust.Env, Subject: ow.Subject(), Value: in.Get("name")})
+	case "goenv", "entry":
+		if ow.library {
+			return nil
+		}
+		return fmt.Errorf("cache.%s is the library's to declare: it runs a process, and a plugin's own output may not ask for one", in.Kind)
+	}
+	return nil
+}
+
 func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFlags []string, dir string) (any, error) {
 	if len(cmd) == 0 {
 		return nil, errors.New("gen.exec: no command")
@@ -391,10 +435,13 @@ func (h *Host) exec(rec *Recorder, ow *Owner, call *ir.Call, cmd, prefix, banFla
 	rec.Add(in)
 	runDir := h.root
 	if dir != "" {
-		runDir = dir
-		if !filepath.IsAbs(runDir) {
-			runDir = filepath.Join(h.root, filepath.FromSlash(dir))
+		// The directory a command runs in is what its relative paths read,
+		// so it is held to what the plugin may list.
+		d, err := h.readable(ow, dir, trust.Dir)
+		if err != nil {
+			return nil, err
 		}
+		runDir = d
 	}
 	c := exec.Command(bin, cmd[1:]...)
 	c.Dir = runDir

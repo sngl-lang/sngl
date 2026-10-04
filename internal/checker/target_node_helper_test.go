@@ -50,7 +50,7 @@ func TestTargetPackageNodeCarriesItsPackageName(t *testing.T) {
 import gen "sngl:x/gen"
 
 #[gen.name("other")]
-component platform() build.platform {}
+component platform() build.platform
 `))
 	if err != nil {
 		t.Fatalf("parse stub: %v", err)

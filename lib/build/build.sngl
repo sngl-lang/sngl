@@ -12,8 +12,10 @@ import marks "sngl:internal/marks"
 component family
 
 // The family a build-target language belongs to: the members `output` hosts.
+#[marks.builtin("treeLanguage")]
 component language family
 
 // The family a build-target platform belongs to: the members a language node
 // hosts.
+#[marks.builtin("treePlatform")]
 component platform family

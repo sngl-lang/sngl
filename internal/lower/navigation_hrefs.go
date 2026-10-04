@@ -2,7 +2,6 @@ package lower
 
 import (
 	"fmt"
-	"net/url"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -13,22 +12,21 @@ import (
 // writes a document or serves a route per page -- and so answers navigation
 // by following a href rather than by moving a stack it holds.
 //
-//	nav.link(to=pkg, params=Pkg{name="x"}, text="x")   →  ui.link(href="/p/x", text="x")
-//	pages.go(pkg)                                       →  pages.go(pkg, Pkg{name="first"})
+//	nav.link(to=pkg, text="x")   →  nav.link(to=pkg, params=Pkg{name="first"}, text="x")
+//	pages.go(pkg)                →  pages.go(pkg, Pkg{name="first"})
 //
-// A link is sngl:ui's link to the page's href, with each `{name}` filled from
-// the field of that name. Only a link: a clickable whose handler goes to a
-// page keeps its look and navigates when it runs, since `<a>` around a
-// `<button>` is not HTML a browser agrees on. A link whose params are not known until it runs is handed the
-// address `nav._href` builds, which the target answers. A `go` passing no
-// params passes the page's own, which is what it shows them with.
+// What a link is on such a target is the target's override of nav.link --
+// html's is sngl:ui's link to `nav.href(to, params)`, which the build folds to
+// the page's href with each `{name}` filled where the params are known then.
+// What this pass adds is what only the call site knows: a link or a `go`
+// passing no params passes the page's own, which is what it shows them with.
 //
 // It is also where what such a target cannot answer is refused, since this is
 // the last point that sees the program's nav.page, nav.link and `go` as they
 // were written: a page's params travel in its path, so each field is one of
-// its placeholders, and a static site -- a target with no language to serve
-// it -- writes each page once and serves no pattern, so a page there has no
-// params to be handed. A stack under an `if` that reads state is refused as
+// its placeholders. Whether a pattern can be served at all -- a static site
+// writes each page once -- is the platform's to say, since it is the platform
+// that knows which languages serve routes. A stack under an `if` that reads state is refused as
 // well: each page is a document or a route of its own, decided at build time,
 // and the `if` would build the stack when the program runs.
 var passNavigationHrefs = pass{
@@ -39,9 +37,6 @@ var passNavigationHrefs = pass{
 
 type navHrefs struct {
 	nv     *navigation
-	static bool
-	link   *ir.Component
-	href   *ir.Func
 	// hrefs is each page's, as written.
 	hrefs map[*navPage]string
 	// surfaces says which nodes are in a surface other than the document --
@@ -54,13 +49,13 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 	if nv == nil || err != nil {
 		return err
 	}
-	h := &navHrefs{nv: nv, static: opts.Language == "none", hrefs: map[*navPage]string{}}
-	h.link = findLibComponent(pkg, "sngl:ui", "link")
-	h.href = findLibFunc(pkg, "sngl:ui/nav", "_href")
+	h := &navHrefs{nv: nv, hrefs: map[*navPage]string{}}
 	// A stack in a surface other than the document is no address: it
-	// navigates in place, and passNavigation lowers it. Which surface is the
-	// document is the composition's to refuse.
-	surfaces, _ := findSurfaces(pkg)
+	// navigates in place, and passNavigation lowers it.
+	surfaces, err := findSurfaces(pkg, opts)
+	if err != nil {
+		return err
+	}
 	if err := refuseStacksUnderReactiveIf(pkg, surfaces.inSurface); err != nil {
 		return err
 	}
@@ -76,8 +71,8 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 		}
 	}
 	h.surfaces = surfaces
-	for _, fn := range navFuncs(pkg) {
-		if err := h.calls(fn.Block); err != nil {
+	for _, b := range imperativeBlocks(pkg) {
+		if err := h.calls(*b); err != nil {
 			return err
 		}
 	}
@@ -98,28 +93,25 @@ func lowerNavigationHrefs(pkg *ir.Package, feats Features, opts Options) error {
 
 // checkPage holds a page's href to its params: written as a constant, each
 // placeholder naming a field a path segment can be parsed into, and each field
-// named by one. A static site serves no pattern at all.
+// named by one.
 func (h *navHrefs) checkPage(pg *navPage) error {
 	name := pageName(pg)
 	if pg.looped() {
 		// One page per element: the href is the copy's, known once the copy
 		// is, and the document or route written for it is where a pattern is
 		// refused. It takes no params (addPages), so it names no field.
-		if !constInLoop(pg.node.Prop("href"), pg.loops...) {
+		if !constInLoop(pg.node.Prop(ir.NavPageHref), pg.loops...) {
 			return fmt.Errorf("%s: page %q's href is not a constant, and a page is served at its href", ir.NodePos(pg.node), name)
 		}
 		return nil
 	}
-	lit, ok := pg.node.Prop("href").(*ir.Literal)
+	lit, ok := pg.node.Prop(ir.NavPageHref).(*ir.Literal)
 	if !ok {
 		return fmt.Errorf("%s: page %q's href is not a constant, and a page is served at its href", ir.NodePos(pg.node), name)
 	}
 	href := lit.Value
 	h.hrefs[pg] = href
 	holes := ir.HrefPlaceholders(href)
-	if h.static && len(holes) > 0 {
-		return fmt.Errorf("%s: page %q is served at %s, a pattern: a static site writes one document per page and cannot serve one; compile with a server language (e.g. --lang go)", ir.NodePos(pg.node), name, href)
-	}
 	sd, _ := pageParamsType(pg.node).Decl.(*ir.StructDef)
 	for _, hole := range holes {
 		f := structField(sd, hole)
@@ -149,15 +141,10 @@ func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(*ir.NodeInst) bool) 
 	var walk func(stmts []ir.Stmt, reactive bool) error
 	walk = func(stmts []ir.Stmt, reactive bool) error {
 		for _, s := range stmts {
+			r := reactive
 			switch n := s.(type) {
 			case *ir.If:
-				r := reactive || len(fx.reactiveVarsIn(n.Cond)) > 0
-				if err := walk(n.Body, r); err != nil {
-					return err
-				}
-				if err := walk(n.Else, r); err != nil {
-					return err
-				}
+				r = reactive || len(fx.reactiveVarsIn(n.Cond)) > 0
 			case *ir.NodeInst:
 				if skip(n) {
 					continue
@@ -165,24 +152,9 @@ func refuseStacksUnderReactiveIf(pkg *ir.Package, skip func(*ir.NodeInst) bool) 
 				if isNavNode(n, ir.BuiltinNavStack) && reactive {
 					return fmt.Errorf("%s: a nav.stack under an `if` that reads state cannot be decided per document; write the `if` inside a page", ir.NodePos(n))
 				}
-				if err := walk(n.Children, reactive); err != nil {
-					return err
-				}
-				for _, name := range ir.SlotNames(n.Slots) {
-					if err := walk(n.Slots[name].Body, reactive); err != nil {
-						return err
-					}
-				}
-			case *ir.For:
-				if err := walk(n.Body, reactive); err != nil {
-					return err
-				}
-			case *ir.ErrorBoundary:
-				if err := walk(n.Children, reactive); err != nil {
-					return err
-				}
-			case *ir.ContextProvider:
-				if err := walk(n.Children, reactive); err != nil {
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				if err := walk(*b, r); err != nil {
 					return err
 				}
 			}
@@ -222,7 +194,7 @@ func (h *navHrefs) pageCell(pg *navPage) {
 		n.Children = append(n.Children, sc.Body...)
 		delete(n.Slots, name)
 	}
-	current := pg.stack.node.Component.Methods["current"]
+	current := pg.stack.node.Component.MethodByIntrinsic(ir.NavCurrentID)
 	if current == nil || len(n.Children) == 0 {
 		return
 	}
@@ -248,7 +220,7 @@ func (h *navHrefs) calls(stmts []ir.Stmt) error {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.CallStmt:
-			if n.Call == nil || n.Call.Func == nil || n.Call.Func.Intrinsic != "nav.go" {
+			if n.Call == nil || n.Call.Func == nil || n.Call.Func.Intrinsic != ir.NavGoID {
 				continue
 			}
 			if st, _ := h.nv.resolve(callArg(n.Call, "", 0)).(*navStack); st != nil && h.surfaces.inSurface(st.node) {
@@ -258,12 +230,12 @@ func (h *navHrefs) calls(stmts []ir.Stmt) error {
 			if pg == nil {
 				return fmt.Errorf("%s: go names its page through a value; name the page's own #id", ir.StmtPos(n))
 			}
-			params, err := handed(callArg(n.Call, "params", 2))
+			params, err := handed(callArg(n.Call, ir.NavGoParamsArg, 2))
 			if err != nil {
 				return fmt.Errorf("%s: %w", ir.StmtPos(n), err)
 			}
 			if params == nil {
-				setCallArg(n.Call, "params", 2, pg.start())
+				setCallArg(n.Call, ir.NavGoParamsArg, 2, pg.start())
 			}
 		case *ir.If:
 			if err := h.calls(n.Body); err != nil {
@@ -296,96 +268,35 @@ func setCallArg(c *ir.Call, name string, pos int, v ir.Expr) {
 	c.Args = append(c.Args, ir.CallArg{Name: name, Value: v})
 }
 
-// navLink makes a nav.link the ui.link to its page's address, in place: the
-// node keeps its `#id`, so a test clicks it as it would have, and its own
-// `@click` runs before the browser follows the href, as ui.link's does.
+// navLink hands a nav.link that passes no params its page's own, as a `go`
+// passing none is handed them: html's override makes the link the address
+// `nav.href(to, params)` names, and an address is built from the params it
+// is handed. The page has to be named by its own #id, since this is where it
+// is known which page that is.
 func (h *navHrefs) navLink(n *ir.NodeInst) error {
-	pg, _ := h.nv.resolve(n.Prop("to")).(*navPage)
+	pg, _ := h.nv.resolve(n.Prop(ir.NavLinkTo)).(*navPage)
 	if pg == nil {
 		return fmt.Errorf("%s: a nav.link names its page through a value; name the page's own #id", ir.NodePos(n))
 	}
-	params, err := handed(n.Prop("params"))
+	params, err := handed(n.Prop(ir.NavLinkParams))
 	if err != nil {
 		return fmt.Errorf("%s: %w", ir.NodePos(n), err)
 	}
-	if h.link == nil {
-		return fmt.Errorf("%s: a nav.link is sngl:ui's link here, which this build does not load", ir.NodePos(n))
+	if params == nil {
+		setProp(n, ir.NavLinkParams, pg.start())
 	}
-	href, err := h.address(pg, params)
-	if err != nil {
-		return fmt.Errorf("%s: %w", ir.NodePos(n), err)
-	}
-	h.becomeLink(n, href)
 	return nil
 }
 
-func (h *navHrefs) becomeLink(n *ir.NodeInst, href ir.Expr) {
-	props := []ir.Arg{{Name: "href", Value: href}}
-	for _, p := range n.Props {
-		if p.Name == "text" || p.Name == "style" {
-			props = append(props, p)
+// setProp replaces the value n's call site writes for name, or adds it.
+func setProp(n *ir.NodeInst, name string, v ir.Expr) {
+	for i := range n.Props {
+		if n.Props[i].Name == name {
+			n.Props[i].Value = v
+			return
 		}
 	}
-	n.Component = h.link
-	n.Props = props
-	n.Bindings = nil
-	if n.Handle != nil {
-		n.Handle.Type = h.link.SymType()
-	}
-}
-
-// address is where pg is reached with params, the page's own when nil: a
-// string when the params are known at build time, and otherwise the call
-// that builds it when it runs.
-func (h *navHrefs) address(pg *navPage, params ir.Expr) (ir.Expr, error) {
-	if pg.looped() {
-		// The copy's own href, which the document folds where the loop's
-		// variables are bound.
-		return ir.CloneExprSharingDecls(pg.node.Prop("href")), nil
-	}
-	if params == nil {
-		params = pg.start()
-	}
-	if href, ok := h.constAddress(pg, params); ok {
-		return &ir.Literal{Type: ir.TypString, Value: href}, nil
-	}
-	if h.href == nil {
-		return nil, fmt.Errorf("the address of page %q is built when the link is shown, which needs sngl:ui/nav's _href", pageName(pg))
-	}
-	return &ir.Call{
-		Type: ir.TypString,
-		Func: h.href,
-		Args: []ir.CallArg{{Value: h.nv.record(pg)}, {Value: params}},
-	}, nil
-}
-
-// constAddress fills pg's href from params, where each field a placeholder
-// names is a literal.
-func (h *navHrefs) constAddress(pg *navPage, params ir.Expr) (string, bool) {
-	if pg.looped() {
-		return "", false
-	}
-	href := h.hrefs[pg]
-	holes := ir.HrefPlaceholders(href)
-	if len(holes) == 0 {
-		return href, true
-	}
-	lit, ok := params.(*ir.StructLit)
-	if !ok {
-		return "", false
-	}
-	values := map[string]string{}
-	for _, f := range lit.Fields {
-		l, ok := f.Value.(*ir.Literal)
-		if !ok {
-			return "", false
-		}
-		values[f.Name] = l.Value
-	}
-	return ir.FillHref(href, func(name string) (string, bool) {
-		v, ok := values[name]
-		return url.PathEscape(v), ok
-	})
+	n.Props = append(n.Props, ir.Arg{Name: name, Value: v})
 }
 
 func structField(sd *ir.StructDef, name string) *ir.StructField {
@@ -413,35 +324,6 @@ func pathParseable(t *ir.Type) bool {
 	return false
 }
 
-// findLibFunc is the function name in the library package uri, reached
-// through what pkg imports.
-func findLibFunc(pkg *ir.Package, uri, name string) *ir.Func {
-	seen := map[*ir.Package]bool{}
-	var walk func(p *ir.Package) *ir.Func
-	walk = func(p *ir.Package) *ir.Func {
-		if p == nil || seen[p] {
-			return nil
-		}
-		seen[p] = true
-		for _, imp := range p.Imports {
-			if imp == nil || imp.Pkg == nil {
-				continue
-			}
-			if imp.Path == uri {
-				for _, f := range imp.Pkg.Funcs {
-					if f != nil && f.Name == name && f.Receiver == "" {
-						return f
-					}
-				}
-			}
-			if f := walk(imp.Pkg); f != nil {
-				return f
-			}
-		}
-		return nil
-	}
-	return walk(pkg)
-}
 
 // constInLoop reports whether e is a constant once the variables of fs, a loop
 // over a constant, are bound: one value per copy of what the loop writes.

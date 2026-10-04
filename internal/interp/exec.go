@@ -692,7 +692,7 @@ func numKindOfValue(v any) opeval.NumKind {
 
 // execCatch runs a catch block. Only lowered IR holds one -- `sngl test` runs
 // checked IR -- so this answers a caller that interprets after lowering, as the
-// optimizer does in optimize.Documents.
+// build-time Fold does (optimize.NewFold).
 func (env *Env) execCatch(s *ir.If) error {
 	for _, st := range s.Body {
 		err := env.Exec(st)

@@ -66,19 +66,14 @@ func lowerBoundaryPassthrough(pkg *ir.Package, _ Features, _ Options) error {
 func spliceBoundaries(stmts []ir.Stmt) []ir.Stmt {
 	out := stmts[:0:0]
 	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.ErrorBoundary:
-			if n.Handler != nil && len(n.Failed) == 0 {
-				out = append(out, spliceBoundaries(n.Children)...)
-				continue
-			}
-			n.Children = spliceBoundaries(n.Children)
-		case *ir.NodeInst:
-			n.Children = spliceBoundaries(n.Children)
-		case *ir.If:
-			n.Body, n.Else = spliceBoundaries(n.Body), spliceBoundaries(n.Else)
-		case *ir.For:
-			n.Body, n.Else = spliceBoundaries(n.Body), spliceBoundaries(n.Else)
+		if n, ok := s.(*ir.ErrorBoundary); ok && n.Handler != nil && len(n.Failed) == 0 {
+			out = append(out, spliceBoundaries(n.Children)...)
+			continue
+		}
+		// Every view block: a population, a fallback, a slot insertion's,
+		// a provider's -- a boundary in any of them is one to splice.
+		for _, b := range ir.ViewBlocks(s) {
+			*b = spliceBoundaries(*b)
 		}
 		out = append(out, s)
 	}

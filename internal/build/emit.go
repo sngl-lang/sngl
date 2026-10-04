@@ -101,16 +101,25 @@ func (e *familyEmission) stmts(stmts []ir.Stmt, owner *ir.Component, conds []con
 				}
 				continue
 			}
+		case *ir.ErrorBoundary:
+			// What a boundary holds is rendered where it stands; its
+			// fallback only once a raise reaches it, which no build decides.
+			n.Children = e.stmts(n.Children, owner, conds)
+			n.Failed = e.stmts(n.Failed, owner, append(conds[:len(conds):len(conds)], condFrame{runtime: true}))
+		case *ir.ContextProvider:
+			n.Children = e.stmts(n.Children, owner, conds)
 		}
 		kept = append(kept, st)
 	}
 	return kept
 }
 
-// condFrame is one `if` above a host.
+// condFrame is one `if` above a host, or something else only the running
+// program decides (runtime) -- a boundary's fallback.
 type condFrame struct {
-	cond ir.Expr
-	neg  bool
+	cond    ir.Expr
+	neg     bool
+	runtime bool
 }
 
 // host answers one host: the statement standing in its place, if any, and
@@ -138,6 +147,10 @@ func (e *familyEmission) host(ni *ir.NodeInst, family *ir.Component, owner *ir.C
 	// A file is written once, at build time, so whether it is written has to
 	// be known then.
 	for _, c := range conds {
+		if c.runtime {
+			e.errs = append(e.errs, posErr(nodePos(ni), "%s writes its file at build time, and a boundary's fallback is rendered only once a raise reaches it", ni.Component.Name))
+			return nil, false
+		}
 		v, err := buildValue(e.env, c.cond, nodePos(ni))
 		if err != nil {
 			e.errs = append(e.errs, posErr(nodePos(ni), "%s writes its file at build time, so the `if` it is written under has to be decided then, and it reads state the program changes as it runs", ni.Component.Name))
@@ -200,11 +213,7 @@ func refuseNestedHosts(pkg *ir.Package) error {
 // override is the body t renders comp with: the platform's override, else the
 // language's, which is the order ir.SpecializeForTarget picks in.
 func override(comp *ir.Component, t Target) (ir.Body, bool) {
-	if b, ok := comp.PlatformOverrides[t.Platform]; ok {
-		return b, true
-	}
-	b, ok := comp.LanguageOverrides[t.Lang]
-	return b, ok
+	return ir.ComponentOverride(comp, t.Platform, t.Lang)
 }
 
 // soleGenNode is the one statement of an emitter override body, when it is a
@@ -433,7 +442,7 @@ func buildValue(env *interp.Env, e ir.Expr, at ast.Pos) (any, error) {
 // gen.emit brackets what each member's gen.node writes, in the order the walk
 // reached them, with a member's props bound where its templates are read.
 func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, error) {
-	file, err := templateArg(env, h.emit, "file")
+	file, err := templateArg(env, h.emit, ir.GenEmitFile)
 	if err != nil {
 		return "", nil, err
 	}
@@ -441,7 +450,7 @@ func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, er
 		return "", nil, posErr(nodePos(h.emit), "gen.emit's file is a path inside the output directory, and %q is not", file)
 	}
 	var b strings.Builder
-	open, err := templateArg(env, h.emit, "open")
+	open, err := templateArg(env, h.emit, ir.GenEmitOpen)
 	if err != nil {
 		return "", nil, err
 	}
@@ -458,7 +467,7 @@ func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, er
 			for p, v := range n.props {
 				env.Set(p.Sym, v)
 			}
-			s, err := templateArg(env, node, "open")
+			s, err := templateArg(env, node, ir.GenNodeOpen)
 			if err != nil {
 				return err
 			}
@@ -469,7 +478,7 @@ func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, er
 			for p, v := range n.props {
 				env.Set(p.Sym, v)
 			}
-			if s, err = templateArg(env, node, "close"); err != nil {
+			if s, err = templateArg(env, node, ir.GenNodeClose); err != nil {
 				return err
 			}
 			b.WriteString(s)
@@ -479,7 +488,7 @@ func runTemplates(env *interp.Env, h *emittedHost, t Target) (string, []byte, er
 	if err := write(h.members); err != nil {
 		return "", nil, err
 	}
-	closeText, err := templateArg(env, h.emit, "close")
+	closeText, err := templateArg(env, h.emit, ir.GenEmitClose)
 	if err != nil {
 		return "", nil, err
 	}

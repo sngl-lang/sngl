@@ -1,7 +1,5 @@
 package ir
 
-import ()
-
 // Owner is a declaration that owns state: the vars it declares and the body
 // that reads them. There are two kinds -- the package itself and a component.
 // A window is neither: it is an ordinary node, and what its body declares

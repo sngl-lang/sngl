@@ -35,12 +35,12 @@ component mixed(p Partial, cell component(title string, count int)) node {
 
 component main node {
     var seen = ""
-    whole(r=Row{title="row", count=3}) {
+    whole #w(r=Row{title="row", count=3}) {
         component cell(t, n) {
             button #a(text=t, @click { seen = seen + t + string(n) + ";" })
         }
     }
-    mixed(p=Partial{title="part"}) {
+    mixed #m(p=Partial{title="part"}) {
         component cell(t, n) {
             button #b(text=t, @click { seen = seen + t + string(n) + ";" })
         }
@@ -48,7 +48,7 @@ component main node {
 }
 
 func testSpreadIntoSlot(t Test, c main) {
-    c.a.click()
-    c.b.click()
+    c.w.a.click()
+    c.m.b.click()
     t.assert(c.seen == "row3;part7;")
 }

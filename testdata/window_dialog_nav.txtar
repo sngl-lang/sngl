@@ -5,7 +5,8 @@ the dialog's stack is lowered as a desktop's is (passNavigation): the page
 showing is state, a link is a button, and `back` at the bottom does nothing.
 
 deny out/none/html/index.html `location\.assign|history\.back` -- the dialog's stack never touches the document's address
-deny out/none/html/index.html `<a ` -- a link in a dialog is a button, as on a desktop
+deny out/none/html/index.html `<a |createElement\("a"\)` -- a link in a dialog is a button, as on a desktop, whether the dialog is written as markup or built by its slot
+deny out/none/html/index.html `if \(state\.tabs__current\.id === 0\) \{\s*if \(state\.tabs__current\.id === 0\)` -- a page is chosen once: passNavigationHrefs leaves a dialog's stack to passNavigation
 
 -- app.sngl --
 import nav "sngl:ui/nav"
@@ -82,81 +83,82 @@ dialog { margin: auto; padding: 1em; }
     let __place0_i = 0;
     __slot0 = [];
     if (state.tabs__current.id === 0) {
-      if (state.tabs__current.id === 0) {
-        let __n0 = document.createElement("span");
-        __n0.textContent = "general";
-        let __place0_i_ref0 = null;
-        if (__place0_i < __place0_prev.length) {
-          __place0_i_ref0 = __place0_prev[__place0_i];
-        }
-        if (__place0_i_ref0 === __n0) {
-          __place0_i = __place0_i + 1;
-        } else {
-          parent.insertBefore(__n0, __place0_i_ref0);
-        }
-        __slot0.push(__n0);
+      let __n0 = document.createElement("span");
+      __n0.textContent = "general";
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
       }
+      if (__place0_i_ref0 === __n0) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n0, __place0_i_ref0);
+      }
+      __slot0.push(__n0);
     } else {
       if (state.tabs__current.id === 1) {
-        if (state.tabs__current.id === 1) {
-          let __n1 = document.createElement("span");
-          __n1.textContent = "advanced";
-          let __place0_i_ref1 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref1 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref1 === __n1) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n1, __place0_i_ref1);
-          }
-          __slot0.push(__n1);
-          let __n2 = document.createElement("a");
-          __n2.setAttribute("href", "/");
-          __n2.addEventListener("click", () => {
-          });
-          let __n3 = document.createElement("span");
-          __n3.textContent = "General";
-          __n2.appendChild(__n3);
-          let __place0_i_ref2 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref2 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref2 === __n2) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n2, __place0_i_ref2);
-          }
-          __slot0.push(__n2);
-          let __n4 = document.createElement("button");
-          __n4.disabled = false;
-          __n4.addEventListener("click", () => {
-            if (state.tabs__history.length > 0) {
-              ;
-              state.tabs__current = state.tabs__history[state.tabs__history.length - 1].page;
-              __renderSlot0(__slotAnchor_0);
-              ((__l, __i) => {
-                if (__i >= 0 && __i < __l.length) __l.splice(__i, 1);
-              })(state.tabs__history, state.tabs__history.length - 1);
-            }
-            ;
-          });
-          __n4.addEventListener("contextmenu", () => {
-          });
-          let __n5 = document.createElement("span");
-          __n5.textContent = "Back";
-          __n4.appendChild(__n5);
-          let __place0_i_ref3 = null;
-          if (__place0_i < __place0_prev.length) {
-            __place0_i_ref3 = __place0_prev[__place0_i];
-          }
-          if (__place0_i_ref3 === __n4) {
-            __place0_i = __place0_i + 1;
-          } else {
-            parent.insertBefore(__n4, __place0_i_ref3);
-          }
-          __slot0.push(__n4);
+        let __n1 = document.createElement("span");
+        __n1.textContent = "advanced";
+        let __place0_i_ref1 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref1 = __place0_prev[__place0_i];
         }
+        if (__place0_i_ref1 === __n1) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n1, __place0_i_ref1);
+        }
+        __slot0.push(__n1);
+        let __n2 = document.createElement("button");
+        __n2.disabled = false;
+        __n2.addEventListener("click", () => {
+          state.tabs__history.push({ page: state.tabs__current });
+          state.tabs__current = { id: 0, href: "/", title: "General", meta: {} };
+          __renderSlot0(__slotAnchor_0);
+        });
+        __n2.addEventListener("contextmenu", () => {
+        });
+        let __n3 = document.createElement("span");
+        __n3.textContent = "General";
+        __n2.appendChild(__n3);
+        let __place0_i_ref2 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref2 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref2 === __n2) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n2, __place0_i_ref2);
+        }
+        __slot0.push(__n2);
+        let __n4 = document.createElement("button");
+        __n4.disabled = false;
+        __n4.addEventListener("click", () => {
+          if (state.tabs__history.length > 0) {
+            ;
+            state.tabs__current = state.tabs__history[state.tabs__history.length - 1].page;
+            __renderSlot0(__slotAnchor_0);
+            ((__l, __i) => {
+              if (__i >= 0 && __i < __l.length) __l.splice(__i, 1);
+            })(state.tabs__history, state.tabs__history.length - 1);
+          }
+          ;
+        });
+        __n4.addEventListener("contextmenu", () => {
+        });
+        let __n5 = document.createElement("span");
+        __n5.textContent = "Back";
+        __n4.appendChild(__n5);
+        let __place0_i_ref3 = null;
+        if (__place0_i < __place0_prev.length) {
+          __place0_i_ref3 = __place0_prev[__place0_i];
+        }
+        if (__place0_i_ref3 === __n4) {
+          __place0_i = __place0_i + 1;
+        } else {
+          parent.insertBefore(__n4, __place0_i_ref3);
+        }
+        __slot0.push(__n4);
       }
     }
     for (const __place0_prev_e of __place0_prev) {
@@ -192,4 +194,4 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f9939f05224d2d4ad47ce412d26b81c3
+pass sha256:0a9f063f10400633247eb6256c9bb8a1

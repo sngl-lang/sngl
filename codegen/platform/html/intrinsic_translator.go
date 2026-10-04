@@ -53,6 +53,10 @@ type htmlTranslator struct {
 	// out as a bare element nothing ever drew into.
 	canvasByID   map[string]*canvasutil.Meta
 	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
+	// pageCanvas is a canvas the page rendered as markup, which canvasByNode
+	// does not hold: a redraw nested where translateBlockJC cannot lift it out
+	// -- inside a catch block, a window's @error -- finds it here.
+	pageCanvas func(*ir.NodeInst) *canvasutil.Meta
 	// canvasDraws are the canvases this scope created, in order. The draw call
 	// cannot be emitted where the element is: it reads the box the element was
 	// laid out in, and the props that size it are assigned after OnCreateNode.
@@ -70,7 +74,7 @@ type htmlTranslator struct {
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
-		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
+		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode, pageCanvas: g.pageCanvas,
 		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
 		windows: g.windowIDs(),
 	}
@@ -459,6 +463,11 @@ func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	if rs, ok := stmt.(*ir.CanvasRedrawStmt); ok {
 		if m := t.canvasByNode[rs.Canvas]; m != nil {
 			return []ir.Stmt{canvasDrawStmt(m)}
+		}
+		if t.pageCanvas != nil {
+			if m := t.pageCanvas(rs.Canvas); m != nil {
+				return []ir.Stmt{canvasDrawStmt(m)}
+			}
 		}
 	}
 	return []ir.Stmt{stmt}

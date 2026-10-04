@@ -52,16 +52,16 @@ func testTheStartIsTheNestedCopyAtTheRoot(t Test, c grid) {
 }
 
 func testACopyIsShownWithItsOwnParams(t Test, c grid) {
-    t.assert(c.line.value == "b 3 picked 3")
-    c.pick.click()
-    t.assert(c.line.value == "b 3 picked x")
+    t.assert(c.cell.line.value == "b 3 picked 3")
+    c.cell.pick.click()
+    t.assert(c.cell.line.value == "b 3 picked x")
 }
 
 func testBackRestoresTheCopyAndItsParams(t Test, c grid) {
-    c.pick.click()
+    c.cell.pick.click()
     c.toAbout.click()
     t.assert(c.heading.value == "About")
     c.back.click()
     t.assert(c.heading.value == "b3")
-    t.assert(c.line.value == "b 3 picked x")
+    t.assert(c.cell.line.value == "b 3 picked x")
 }

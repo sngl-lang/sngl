@@ -44,7 +44,7 @@ func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	if !ok {
 		return nil
 	}
-	if node.Tree.Name == "language" {
+	if ir.TargetTier(node.Tree) == ir.BuiltinLanguage {
 		if c.languageType != nil {
 			return c.languageType.SymType()
 		}
@@ -56,8 +56,9 @@ func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	return nil
 }
 
-// targetTierMember is the identity a target of this kind carries, as it is
-// written: `html.platform`, `go.language`.
+// targetTierMember is the word for a tier: the segment of a target package's
+// URI (`sngl:platform/html`), and what a message calls one. Its node is
+// conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
 	if kind == ir.BuiltinLanguage {
 		return "language"
@@ -130,10 +131,7 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	if node.Tree.Name == "language" {
-		return name, ir.BuiltinLanguage, true
-	}
-	return name, ir.BuiltinPlatform, true
+	return name, ir.TargetTier(node.Tree), true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program
@@ -515,9 +513,10 @@ func (c *checker) reportTargetNames() {
 	})
 	first := map[string]*ir.Component{}
 	for _, n := range nodes {
-		tier, name := n.Tree.Name, n.Gen.TargetName
+		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
+		tier := targetTierMember(tierKind)
 		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
-			targetTierMember(kind) == tier && owner != name {
+			kind == tierKind && owner != name {
 			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
 			continue
 		}

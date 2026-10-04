@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -60,8 +61,10 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
 	case *ir.Call:
-		if x.Func != nil && x.Func.Intrinsic == "nav.current" && ctx.navCurrent != nil {
-			return true // the page the document is written for
+		if x.Func != nil && x.Func.Intrinsic != "" {
+			if _, ok := ctx.answers[x.Func.Intrinsic]; ok {
+				return true // answered for this fold: the page a document is for
+			}
 		}
 		for _, a := range x.Args {
 			if !isConstExpr(a.Value, ctx) {
@@ -361,15 +364,24 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 }
 
 func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
-	// A document written for one page of a stack: what the stack shows there
-	// is that page, whatever handle names the stack.
-	if call.Func != nil && call.Func.Intrinsic == "nav.current" && ctx.navCurrent != nil {
-		return ctx.navCurrent, true
+	// What this fold answers the intrinsic with: in a document written for
+	// one page of a stack, what the stack shows is that page, whatever handle
+	// names the stack.
+	if call.Func != nil && call.Func.Intrinsic != "" {
+		if v, ok := ctx.answers[call.Func.Intrinsic]; ok {
+			return v, true
+		}
 	}
-	// Collect argument values.
+	// Collect argument values. An argument is consumed as a value and never
+	// rebuilt into an expression, so a T promoted to option<T> is its
+	// operand's: the wrap evalConversion declines changes nothing here.
 	args := make([]any, 0, len(call.Args))
 	for _, a := range call.Args {
-		v, ok := evalExpr(a.Value, ctx)
+		e := a.Value
+		if c, ok := e.(*ir.Conversion); ok && ir.IsOptionWrap(c) {
+			e = c.Operand
+		}
+		v, ok := evalExpr(e, ctx)
 		if !ok {
 			return nil, false
 		}
@@ -462,6 +474,8 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 		return opeval.Sequence(start, end, step), true
 	}
 	switch id {
+	case ir.NavHrefID:
+		return foldNavHref(args)
 	case "seq.count":
 		if a, ok := ints(1); ok {
 			return seq(0, a[0], 1)
@@ -1319,4 +1333,50 @@ func unitAmounts(e ir.Expr, sign float64, out map[string]float64, seen map[*ir.V
 		}
 	}
 	return false
+}
+
+// foldNavHref is `nav.href(to, params)` where both are known: the page's href
+// with each `{name}` filled from the params' field of that name, escaped as a
+// path segment -- what html's emitter writes for one it is handed at run time.
+// A float field is left to run time, whose spelling of one is the target's.
+func foldNavHref(args []any) (any, bool) {
+	if len(args) < 1 {
+		return nil, false
+	}
+	rec, ok := args[0].(*interp.Struct)
+	if !ok {
+		return nil, false
+	}
+	hv, _ := rec.Get("href")
+	href, ok := hv.(string)
+	if !ok {
+		return nil, false
+	}
+	var params *interp.Struct
+	if len(args) > 1 && args[1] != nil {
+		if params, ok = args[1].(*interp.Struct); !ok {
+			return nil, false
+		}
+	}
+	filled, ok := ir.FillHref(href, func(name string) (string, bool) {
+		if params == nil {
+			return "", false
+		}
+		v, ok := params.Get(name)
+		if !ok {
+			return "", false
+		}
+		switch x := v.(type) {
+		case string:
+			return url.PathEscape(x), true
+		case int64:
+			return strconv.FormatInt(x, 10), true
+		case int:
+			return strconv.Itoa(x), true
+		case bool:
+			return strconv.FormatBool(x), true
+		}
+		return "", false
+	})
+	return filled, ok
 }

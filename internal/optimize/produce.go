@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -66,7 +67,7 @@ func reachesHost(fn *ir.Func, memo map[*ir.Func]bool) bool {
 func (ctx *evalCtx) produce(fn *ir.Func, args []any) (any, bool) {
 	h := ctx.host
 	ow := h.OwnerFor(fn)
-	req, storable := producerRequest(ow, fn, args)
+	req, storable := producerRequest(h.Key(ow), ow, fn, args)
 	memoKey := ""
 	if storable {
 		memoKey = "produce\x00" + req.Identity + "\x00" + strings.Join(req.Params, "\x00")
@@ -142,15 +143,12 @@ func (ctx *evalCtx) fail(err error) {
 	ctx.err = err
 }
 
-// producerRequest names a fold in the store: the package by where it came
-// from, the function, and its arguments, behind the closure digest of the
+// producerRequest names a fold in the store: the package by its key (where it
+// came from and the root it ran under),
+// the function, and its arguments, behind the closure digest of the
 // package's code. An argument with no stored form leaves the fold unstored.
-func producerRequest(ow *buildhost.Owner, fn *ir.Func, args []any) (gencache.Request, bool) {
-	where := ow.Name()
-	if ow.Dir() != "" {
-		where = "dir:" + ow.Dir()
-	}
-	params := []string{where, fn.Name}
+func producerRequest(key []string, ow *buildhost.Owner, fn *ir.Func, args []any) (gencache.Request, bool) {
+	params := append(slices.Clone(key), fn.Name)
 	for i, a := range args {
 		var t *ir.Type
 		if i < len(fn.Params) {

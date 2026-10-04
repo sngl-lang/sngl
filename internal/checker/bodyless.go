@@ -22,7 +22,7 @@ func (c *checker) reportBodylessComponents() {
 		return
 	}
 	for _, comp := range c.pkg.Components {
-		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || renderSuppliedElsewhere(comp) {
+		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || isTargetNode(comp) || renderSuppliedElsewhere(comp) {
 			continue
 		}
 		c.error(comp.AST.Pos, "component %q has no body: give it one, or say where the render comes from with a per-target override", comp.Name)
@@ -60,7 +60,7 @@ func (c *checker) reportBodylessLibComponents() {
 			if comp == nil || comp.AST == nil || !comp.Bodyless {
 				continue
 			}
-			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone {
+			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
 				continue
 			}
 			if !used[comp] {
@@ -192,4 +192,11 @@ func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 		}
 	}
 	return out
+}
+
+// isTargetNode reports whether comp is a build-target node. What one renders
+// is its generator's, so with no command to write it has no body to give --
+// `{}` would say it renders nothing -- and is exempt as a family is.
+func isTargetNode(comp *ir.Component) bool {
+	return ir.TargetTier(comp.Tree) != ""
 }

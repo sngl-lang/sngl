@@ -39,6 +39,14 @@ grep '^x$' out/blocks.txt
 sngl generate -o out2 shell_unused.sngl
 ! exists out2/blocks.txt
 
+# A boundary and a context provider put nothing in the tree, so a host under
+# one is read where it stands. A boundary's fallback is rendered only once a
+# raise reaches it, which no build decides.
+sngl generate -o out3 wrapped.sngl
+grep '^x$' out3/blocks.txt
+! sngl generate -o out4 fallback.sngl
+stderr 'fallback.sngl:[0-9]+:[0-9]+: bar writes its file at build time, and a boundary''s fallback is rendered only once a raise reaches it'
+
 # A family generated as code takes a value from each member; a member whose
 # gen.node writes a template and gives none has nothing to contribute.
 ! sngl generate -o out no_value.sngl
@@ -314,6 +322,81 @@ component shell() root {
 }
 
 shell()
+-- wrapped.sngl --
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+output {
+    go {
+        bubbletea
+    }
+}
+
+component block build.family
+
+component text(full string) block
+
+component bar(blocks ...component block) root
+
+component block[go.language] {
+    gen.emit(file="blocks.txt")
+}
+
+component text[go.language] {
+    gen.node(open="{full}\n")
+}
+
+context #theme("light")
+
+theme("dark") {
+    boundary(@error(e) {}) {
+        bar {
+            text(full="x")
+        }
+    }
+}
+
+ui.window {
+    ui.text(value="hi")
+}
+-- fallback.sngl --
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+output {
+    go {
+        bubbletea
+    }
+}
+
+component block build.family
+
+component text(full string) block
+
+component bar(blocks ...component block) root
+
+component block[go.language] {
+    gen.emit(file="blocks.txt")
+}
+
+component text[go.language] {
+    gen.node(open="{full}\n")
+}
+
+boundary {
+    ui.window {
+        ui.text(value="hi")
+    }
+    component failed {
+        bar {
+            text(full="x")
+        }
+    }
+}
 -- shell_unused.sngl --
 import build "sngl:build"
 import gen "sngl:x/gen"

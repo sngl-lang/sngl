@@ -62,7 +62,7 @@ type Features struct {
 	// compile-time-constant iterable has nowhere to run: nothing iterates it,
 	// and it renders its body once with its variable bound to nothing.
 	// Withholding it is what makes the build unroll such loops after lowering
-	// (optimize.Documents), and what shake reads to keep a const only they walk
+	// (html's documentsOf), and what shake reads to keep a const only they walk
 	// as a build value.
 	//
 	// Unlike every other capability here it gates no pass: what a target

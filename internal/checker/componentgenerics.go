@@ -133,9 +133,9 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 				continue
 			}
 			n, ok := st.(*ir.NodeInst)
-			// A group renders members without being one, so it has no one
-			// type to hold; the members it renders are checked where it is.
-			if !ok || n.Component == nil || n.Component.Tree != fam || n.Component.Group {
+			// A member that is no value of the family has no one type to
+			// hold; the members it composes are checked where it is.
+			if !ok || n.Component == nil || n.Component.Tree != fam || !ir.IsFamilyValue(n.Component) {
 				continue
 			}
 			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, c.nodeArgs[n])}

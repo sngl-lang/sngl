@@ -2,9 +2,9 @@
 # position.
 #
 # A stack's pages are fixed when it is built, so a `for` among them iterates a
-# constant and an `if` among them reads none of the program's state. A group --
-# a component that renders pages without being one -- keeps no state of its
-# own, since nothing holds it once its pages are spliced into the stack.
+# constant and an `if` among them reads none of the program's state. A
+# component pages are composed in keeps no state of its own, since nothing
+# holds it once it is inlined into the stack.
 
 ! sngl generate --platform gtk4 --lang go -o out state.sngl
 stderr 'state.sngl:12:13: a stack''s pages are fixed when it is built, and this `for` iterates state; iterate a constant'
@@ -13,7 +13,7 @@ stderr 'state.sngl:12:13: a stack''s pages are fixed when it is built, and this 
 stderr 'cond.sngl:9:9: a stack''s pages are fixed when it is built, and this `if` reads state; decide it from constants, or write it inside a page'
 
 ! sngl generate --platform gtk4 --lang go -o out group.sngl
-stderr 'group.sngl:16:9: extras renders pages, and a group of pages keeps no state of its own: move it into a page'
+stderr 'group.sngl:16:9: extras renders pages, and what a stack''s pages are composed of keeps no state of its own: move it into a page'
 
 -- state.sngl --
 import nav "sngl:ui/nav"

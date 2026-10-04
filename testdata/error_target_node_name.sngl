@@ -6,7 +6,7 @@ import build "sngl:build"
 import gen "sngl:x/gen"
 import ui "sngl:ui"
 
-component platform() build.platform {} // ERROR(check) "component platform is a build-target node: say what the build calls it with #[gen.name"
+component platform() build.platform // ERROR(check) "component platform is a build-target node: say what the build calls it with #[gen.name"
 
 #[gen.name("widget")] // ERROR(check) "component widget: #[gen.name] names a build target, and belongs on a build-target node"
 component widget() ui.node {}

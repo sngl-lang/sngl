@@ -25,9 +25,9 @@ import (
 // first, naming every read on the way round. The fold's re-entry guards
 // (evalCtx.foldingProp, and passNodePropReads in the lowering) stay as the
 // survivable answer for IR the checker did not see.
-func (c *checker) reportDeclarativeCycles() {
+func (c *checker) reportDeclarativeCycles(pkg *ir.Package) {
 	g := &cycleGraph{edges: map[cycleVertex][]cycleEdge{}, decl: map[cycleVertex]ast.Pos{}}
-	g.collect(c.pkg)
+	g.collect(pkg)
 	g.report(c)
 }
 

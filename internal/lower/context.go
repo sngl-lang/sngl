@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -876,7 +877,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 		case *ir.NodeInst:
 			// Thread hidden args onto user-component calls that are reachable.
 			if n.Component != nil {
-				for ctx, val := range active {
+				// By name: the order is the props' order, which is output.
+				for _, ctx := range sortedContexts(active) {
+					val := active[ctx]
 					if !pc.reach.Components[ctx][n.Component] {
 						continue
 					}
@@ -905,7 +908,8 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 				entry = calleeEntry(active, pc)
 			}
 			n.Children = lowerInStmts(n.Children, slotActive(active, entry, slots[""], pc), pc)
-			for name, sc := range n.Slots {
+			for _, name := range ir.SlotNames(n.Slots) {
+				sc := n.Slots[name]
 				sc.Body = lowerInStmts(sc.Body, slotActive(active, entry, slots[name], pc), pc)
 			}
 			out = append(out, n)
@@ -923,8 +927,13 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			out = append(out, n)
 
 		case *ir.SlotInst:
+			// What the insertion hands its population is evaluated here.
+			for i := range n.Args {
+				n.Args[i] = lowerInExpr(n.Args[i], active, pc)
+			}
 			n.Children = lowerInStmts(n.Children, active, pc)
-			for _, sc := range n.Slots {
+			for _, name := range ir.SlotNames(n.Slots) {
+				sc := n.Slots[name]
 				sc.Body = lowerInStmts(sc.Body, active, pc)
 			}
 			out = append(out, n)
@@ -932,6 +941,7 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 		case *ir.ErrorBoundary:
 			lowerInHandler(n.Handler, active, pc)
 			n.Children = lowerInStmts(n.Children, active, pc)
+			n.Failed = lowerInStmts(n.Failed, active, pc)
 			out = append(out, n)
 
 		case *ir.Assign:
@@ -1273,4 +1283,15 @@ func rereadable(e ir.Expr) bool {
 		return nil
 	})
 	return ok
+}
+
+// sortedContexts is active's contexts by name, then by declaration where two
+// share one.
+func sortedContexts(active map[*ir.Context]ir.Expr) []*ir.Context {
+	out := make([]*ir.Context, 0, len(active))
+	for ctx := range active {
+		out = append(out, ctx)
+	}
+	slices.SortStableFunc(out, func(a, b *ir.Context) int { return strings.Compare(a.Name, b.Name) })
+	return out
 }

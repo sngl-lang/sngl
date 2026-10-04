@@ -9,6 +9,7 @@ import ui "sngl:ui"
 import build "sngl:build"
 import math "sngl:math"
 import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
@@ -46,8 +47,11 @@ struct PathCmd {
 // not: passShapeDraw turns a canvas's children into the calls that paint them,
 // so the compiler has to name the tree those rules are about. It names it by the mark rather than by
 // the pair "sngl:ui/draw" and "shape", so a program declaring a `shape` family
-// of its own is a different one and is not painted.
+// of its own is a different one and is not painted. `#[tree.eventless]` is
+// what a painted shape cannot do -- raise an event -- said by the family, so
+// the checker holds its members to it without knowing what drawing is.
 #[marks.builtin("treeShape")]
+#[tree.eventless]
 component shape build.family
 
 // How a canvas is shown when the room it is given is not the size it draws at.

@@ -41,7 +41,7 @@ component language(
     // locally instead of via the public proxy.
     const goModExtra string,
     const platforms ...component build.platform,
-) build.language {}
+) build.language
 
 // --- sngl:remote/http ---
 

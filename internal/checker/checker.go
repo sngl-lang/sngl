@@ -2482,8 +2482,8 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 
 	// Library source is not body-checked by pass2, so two things it would
 	// otherwise infer are stated here. A signature with no return annotation
-	// is dyn rather than void. And a bodied function's purity starts pure: the
-	// library's own fixpoint (checkLibFuncs) lowers it to what the body calls.
+	// is dyn rather than void. And a bodied function's purity starts pure
+	// until finishDeclarations reads it off the body.
 	// A bodyless one is pure only where it is declared `const func`, which
 	// buildFunc has already said -- nothing in the program says what a host
 	// does.
@@ -2752,17 +2752,12 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 				if n.ID != "" {
 					out = append(out, elementRef{n.ID, n.Pos})
 				}
-				walk(n.Block.Stmts)
 				// A component declaration in a node's block is a slot
-				// population, so its body is written in *this* component's
-				// body and any id in it is this component's. One at the root
-				// of a body is a declaration and its ids are its own, which
-				// is why this sits here rather than in walk.
-				for _, inner := range n.Block.Stmts {
-					if cd, isDecl := inner.(*ast.ComponentDecl); isDecl {
-						walk(cd.Body.Stmts)
-					}
-				}
+				// population, which reads like a component declaration and is
+				// scoped like one: the ids its body declares are its own, not
+				// claims in this component's namespace, as a nested
+				// declaration's are. So it is not descended into.
+				walk(n.Block.Stmts)
 			case *ast.CallStmt:
 				if _, id, isElem := elementRefCallInfo(n.Call); isElem && id != "" {
 					out = append(out, elementRef{id, n.Pos})
@@ -2930,12 +2925,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				c.error(comp.Pos, "param %q must have a type hint or a default value", pd.Name)
 			}
 			// Default is checked later in checkComponentBody when scope is
-			// ready. A library component has no body to check, so its default
-			// is recorded as a typed placeholder: what reads it downstream asks
-			// whether the prop has one, not what it is.
-			if pd.Default != nil && c.inLibSource() {
-				prop.Default = &ir.Literal{Type: prop.Type}
-			}
+			// ready.
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
@@ -3503,16 +3493,74 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 	}
 }
 
+// pass2 checks the program's package: the declarations every package has,
+// then what only a program has -- its tests, its package body, its build
+// directive and plugins -- and then the analyses over all of it.
+//
+// A library package gets the two declaration halves and nothing between them
+// (loadStdlibPackage). One checker, two entry points: what differs is what a
+// package is made of, not how a declaration is checked.
 func (c *checker) pass2() {
 	c.hoistPackageBodyIDs()
 
+	owned := c.checkDeclarationBodies(c.pkg, c.pendingExtensionComps())
+
+	// A test reads a component's vars through `c.<var>`, and an unannotated
+	// var has no type until the body declaring it has been checked; nothing
+	// calls a test, so nothing needs its body earlier.
+	for _, fn := range c.pkg.Funcs {
+		if fn.IsTest && !owned[fn] && !fn.Nested {
+			c.checkFuncBody(fn)
+		}
+	}
+	c.reportBodylessComponents()
+
+	c.checkPackageBody()
+	c.checkOutputTree()
+	c.checkGenInputs()
+	c.checkGenSchemes()
+	c.checkCLinks()
+
+	// Every body has now been read, which is what a family read off one waits
+	// for -- and every membership check waits for that in turn. A library
+	// names its family, so only a program infers one.
+	c.inferComponentTrees()
+
+	c.finishDeclarations(c.pkg)
+}
+
+// hasDeclaredBody reports whether fn has a body of its own to analyze: one
+// written in source, or the block a synthesized func was built with.
+func hasDeclaredBody(fn *ir.Func) bool {
+	if fn.AST == nil {
+		return len(fn.Block) > 0
+	}
+	return funcHasBody(fn.AST)
+}
+
+// pendingExtensionComps is the base of every override this check installs.
+// An override's base need not be this package's: every stdlib and
+// target-package one is declared elsewhere, so pkg.Components omits it.
+func (c *checker) pendingExtensionComps() []*ir.Component {
+	out := make([]*ir.Component, 0, len(c.pendingExtensions))
+	for _, pe := range c.pendingExtensions {
+		out = append(out, pe.comp)
+	}
+	return out
+}
+
+// checkDeclarationBodies checks the body of every function, component and
+// var handler pkg declares, and returns the funcs whose body a component's
+// check owns. extra names components outside pkg whose funcs are owned the
+// same way.
+func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component) map[*ir.Func]bool {
 	// Pre-pass: check component nested-method bodies so their return types
 	// are inferred before any top-level func body that calls them (test
 	// funcs frequently invoke `c.foo()` on a component instance). The full
 	// component body (visual nodes, initializer refinement) is still done
 	// later via checkComponentBody — this pre-pass only resolves method
 	// signatures and Block IRs.
-	for _, comp := range c.pkg.Components {
+	for _, comp := range pkg.Components {
 		c.preCheckComponentMethods(comp)
 	}
 
@@ -3532,112 +3580,82 @@ func (c *checker) pass2() {
 	// the base by now, so a func an override body declared is no longer on the
 	// live list, and checking it here resolves it at package scope where the
 	// component's own vars are undefined (#230).
-	compOwnedFuncs := map[*ir.Func]bool{}
+	owned := map[*ir.Func]bool{}
 	noteOwned := func(comp *ir.Component) {
 		for _, fn := range ir.BodyFuncs(comp) {
 			if fn.Receiver == "" || fn.Receiver == comp.Name {
-				compOwnedFuncs[fn] = true
+				owned[fn] = true
 			}
 		}
 	}
-	for _, comp := range c.pkg.Components {
+	for _, comp := range pkg.Components {
 		noteOwned(comp)
 	}
-	// An override's base need not be this package's: every stdlib and
-	// target-package one is declared elsewhere, so pkg.Components omits it.
-	for _, pe := range c.pendingExtensions {
-		noteOwned(pe.comp)
+	for _, comp := range extra {
+		noteOwned(comp)
 	}
-	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] || fn.Nested || fn.IsTest {
+	for _, fn := range pkg.Funcs {
+		if owned[fn] || fn.Nested || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
 	}
 
-	c.checkComponentBodies()
+	c.checkComponentBodies(pkg)
+	c.reportBodyComponentCollisions(pkg)
+	c.reportBodyComponentCapture(pkg)
 
-	// A test reads a component's vars through `c.<var>`, and an unannotated
-	// var has no type until the body declaring it has been checked; nothing
-	// calls a test, so nothing needs its body earlier.
-	for _, fn := range c.pkg.Funcs {
-		if fn.IsTest && !compOwnedFuncs[fn] && !fn.Nested {
-			c.checkFuncBody(fn)
-		}
-	}
-	c.reportBodyComponentCollisions()
-	c.reportBodyComponentCapture()
-	c.reportBodylessComponents()
-
-	c.checkPackageBody()
-	c.checkOutputTree()
-	c.checkGenInputs()
-	c.checkGenSchemes()
-	c.checkCLinks()
-
-	c.checkVarHandlerBodies(c.pkg.Vars)
+	c.checkVarHandlerBodies(pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
+	return owned
+}
 
+// finishDeclarations is what waits for every body of pkg to have been read:
+// nested-func names, membership, and the purity fixed point and the rules
+// judged against it.
+func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// Every body has now been read, so no scope holds a written name any more
 	// and a hoisted func can take the name it is emitted under.
-	c.renameNestedFuncs()
+	c.renameNestedFuncs(pkg)
 
-	// Every body has now been read, which is what a family read off one waits
-	// for -- and every membership check waits for that in turn.
-	c.inferComponentTrees()
 	c.runTreeChecks()
 
-	// Purity + access analysis, over the checked IR with resolved symbols.
-	// The var *set* is by pointer identity, so a local that shadows a package
-	// var is correctly excluded (fixes the name-collision false positive).
-	pkgVarSet := make(map[*ir.Var]struct{}, len(c.pkg.Vars))
-	for _, v := range c.pkg.Vars {
-		pkgVarSet[v] = struct{}{}
-	}
-	// A `var` in a block of the package body's view -- a window's body -- is
-	// the package's state until passHoistState moves it there, so left out of
-	// this set a write to one is recorded nowhere and the func writing it
-	// reads as pure, which is const-foldable.
-	for _, v := range viewStateVars(c.pkg.Body) {
-		pkgVarSet[v] = struct{}{}
-	}
+	// Purity + access analysis, over the checked IR with resolved symbols,
+	// each function against the state its owner can reach (stateVars).
 	// Every reactive var in the package, which is what a callee could reach.
-	narrowVarSet := make(map[*ir.Var]struct{}, len(pkgVarSet))
-	maps.Copy(narrowVarSet, pkgVarSet)
-	for _, comp := range c.pkg.Components {
+	narrowVarSet := stateVars(pkg, nil)
+	for _, comp := range pkg.Components {
 		for _, v := range comp.Vars {
 			narrowVarSet[v] = struct{}{}
 		}
 	}
-	for _, fn := range c.pkg.Funcs {
-		analyzeEffects(fn, pkgVarSet)
-	}
-	for _, comp := range c.pkg.Components {
-		// Component methods read/write the component's own vars (referenced
-		// bare, e.g. `name`), so purity and Reads/Writes must be computed
-		// against a set that includes them. Using only package vars marks a
-		// method like `func isLong() => name.length > 3` as PurityPure with
-		// empty Reads — which lets the optimizer const-fold calls to it and
-		// leaves reactivity unable to see its dep on `name`.
-		varSet := make(map[*ir.Var]struct{}, len(pkgVarSet)+len(comp.Vars))
-		maps.Copy(varSet, pkgVarSet)
-		for _, v := range comp.Vars {
-			varSet[v] = struct{}{}
+	// A bodyless func is not analyzed: its purity is what its declaration
+	// says (`const func`, a #[foreign] flag) or unknown, and an empty block
+	// read as a body would call every host function pure.
+	pkgVars := stateVars(pkg, nil)
+	for _, fn := range pkg.Funcs {
+		if hasDeclaredBody(fn) {
+			analyzeEffects(fn, pkgVars)
 		}
+	}
+	for _, comp := range pkg.Components {
+		varSet := stateVars(pkg, comp)
 		for _, fn := range comp.Funcs {
-			analyzeEffects(fn, varSet)
+			if hasDeclaredBody(fn) {
+				analyzeEffects(fn, varSet)
+			}
 		}
 	}
 
-	// Transitive purity propagation. analyzePurity above only sees a
+	// Transitive purity propagation. analyzeEffects above only sees a
 	// function's *direct* effects, so a function that merely calls an impure
 	// one is left PurityPure — which the optimizer would then const-fold or
 	// inline, silently discarding the transitive side effect. Propagate over
-	// the user call graph to a fixed point (purity only increases, so this
-	// converges), mirroring the stdlib pass's highestCalledPurity loop.
-	allFuncs := make([]*ir.Func, 0, len(c.pkg.Funcs))
-	allFuncs = append(allFuncs, c.pkg.Funcs...)
-	for _, comp := range c.pkg.Components {
+	// the call graph to a fixed point (purity only increases, so this
+	// converges).
+	allFuncs := make([]*ir.Func, 0, len(pkg.Funcs))
+	allFuncs = append(allFuncs, pkg.Funcs...)
+	for _, comp := range pkg.Components {
 		allFuncs = append(allFuncs, comp.Funcs...)
 	}
 	for changed := true; changed; {
@@ -3645,6 +3663,11 @@ func (c *checker) pass2() {
 		for _, fn := range allFuncs {
 			if fn.Foreign.Name != "" {
 				continue // asserted by the mark; the body is only a description
+			}
+			// Nor a bodyless one: an empty block calls nothing, and read as a
+			// body it would lift an undeclared native from unknown to pure.
+			if !hasDeclaredBody(fn) {
+				continue
 			}
 			if p := highestCalledPurity(fn); p > fn.Purity {
 				fn.Purity = p
@@ -3658,11 +3681,11 @@ func (c *checker) pass2() {
 
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.
-	c.checkEffectSelfRekey()
+	c.checkEffectSelfRekey(pkg)
 
 	// Every body is checked, so every instance is built and every type
 	// parameter a call site pinned can be followed to what it pinned it to.
-	c.checkRebuildKeys()
+	c.checkRebuildKeys(pkg)
 
 	// Same moment, same reason: a narrowing is only sound if nothing in the
 	// branch could have written the value, and what a call writes is not
@@ -3678,13 +3701,12 @@ func (c *checker) pass2() {
 	}
 	c.runConstArgChecks()
 	c.runConstSlotChecks()
-	c.reportDeclarativeCycles()
-	for _, comp := range c.pkg.Components {
+	c.reportDeclarativeCycles(pkg)
+	for _, comp := range pkg.Components {
 		if comp.Const && !comp.Stdlib {
 			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
 		}
 	}
-
 }
 
 // enterFuncBody marks the start of an imperative body -- a function, an event
@@ -3816,8 +3838,10 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		}
 	} else if fn.AST != nil {
 		// No body at all: a signature. Something else has to supply the answer,
-		// and this is where that is required rather than assumed.
-		if !c.bodySuppliedElsewhere(fn) {
+		// and this is where that is required rather than assumed. Not of a
+		// library's: a target package implements one (`sngl:remote/http`'s
+		// `get`), and its overrides are attached after the library loads.
+		if !c.inLibSource() && !c.bodySuppliedElsewhere(fn) {
 			c.error(fn.AST.Pos, "%q has no body: give it one, or say where the answer comes from — #[intrinsic], #[foreign], or a per-target override",
 				fn.Name)
 		}
@@ -4037,9 +4061,15 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 
 // checkComponentBodies checks every component body in the package, including
 // one registered mid-walk -- a range would snapshot pkg.Components' length.
-func (c *checker) checkComponentBodies() {
-	for i := 0; i < len(c.pkg.Components); i++ {
-		c.checkBodyOnce(c.pkg.Components[i])
+func (c *checker) checkComponentBodies(pkg *ir.Package) {
+	for i := 0; i < len(pkg.Components); i++ {
+		// A dotted name is an extension declaration, `component sngl.X`:
+		// mergePlatformExtensions splices its blocks into the component it
+		// names and checkPendingExtensions checks them there.
+		if strings.Contains(pkg.Components[i].Name, ".") {
+			continue
+		}
+		c.checkBodyOnce(pkg.Components[i])
 	}
 }
 

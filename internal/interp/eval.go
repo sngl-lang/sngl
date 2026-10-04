@@ -26,10 +26,20 @@ type LambdaValue struct {
 	// body reads wherever it is later called -- the answer passContext gives,
 	// since a call through a value cannot know what to pass.
 	ctx map[*ir.Context]any
+	// site is the function whose code the body is, for the build host to ask
+	// a host call in it of: the function a lambda was written in, or a named
+	// function taken as a value. Nil is the root's code.
+	site *ir.Func
 }
 
+// newLambda is a lambda written where env is running.
 func newLambda(fn *ir.Func, env *Env) *LambdaValue {
-	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env)}
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env), site: env.runningFunc()}
+}
+
+// funcValue is the named function fn taken as a value.
+func funcValue(fn *ir.Func, env *Env) *LambdaValue {
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env), site: fn}
 }
 
 // call invokes the lambda with the given values.
@@ -50,6 +60,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 			child.Set(p, args[i])
 		}
 	}
+	defer child.enterFrame(lv.site)()
 	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
 	return res, err
@@ -62,6 +73,7 @@ func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 			env.Set(p, args[i])
 		}
 	}
+	defer env.enterFrame(lv.site)()
 	return env.underContext(lv.ctx, func() (any, error) { return env.execBlockForResult(lv.fn.Block) })
 }
 
@@ -1203,7 +1215,7 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 			(effective == 1 && fn.Params[0].Receiver) {
 			return env.EvalUserFunc(fn, nil)
 		}
-		return newLambda(fn, env), nil
+		return funcValue(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
 	// value: a constant from a library package, which is in no list this

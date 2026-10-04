@@ -63,9 +63,10 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 			return
 		}
 		if c.inLibSource() {
-			// A library's declarations are a published contract, and only the
-			// target tiers have their bodies checked at all -- so there is
-			// nothing here to read an answer off, and every tier says it.
+			// A library's declarations are a published contract, which a body
+			// should not be quietly restating -- and a bodyless one, the common
+			// case in lib/, has nothing to read an answer off. Every tier says
+			// it.
 			c.error(decl.Pos, "component %s: name the tree it belongs to in the return position, or mark it #[tree.none]",
 				comp.Name)
 			return
@@ -100,16 +101,11 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
 			c.error(decl.Pos, "component %s is a build-target node: say what the build calls it with #[gen.name(\"…\")]", comp.Name)
 		}
-		// A painted shape has nothing to raise an event from. This is drawing's
-		// rule rather than one about trees, and it sits here because membership
-		// is conferred here -- until a tree can carry rules of its own.
-		//
-		// A platform primitive is exempt, and in the opposite direction: its
-		// event is not the shape raising anything, it is the target calling in
-		// with the drawing context, which is how an override says what to
-		// paint. Only an #[intrinsic] declaration can be one.
-		if ir.IsDrawShapeTree(f) && len(comp.Events) > 0 && comp.Intrinsic == "" {
-			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
+		// A family that says its members raise nothing (#[tree.eventless]):
+		// a handler written for one would never run. A platform primitive is
+		// exempt, its event being the target calling in.
+		if f.Eventless && len(comp.Events) > 0 && comp.Intrinsic == "" {
+			c.error(decl.Pos, "component %s: a member of %s raises no events, so it declares none", comp.Name, f.Name)
 		}
 		return
 	}
@@ -167,10 +163,11 @@ func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
 // with that default and nothing else: a call site cannot set it
 // (refuseInheritedProps), since the member never said it takes one.
 //
-// A member declaring none of them is a group (ir.Component.Group): it renders
-// several members rather than being one -- `component extras { nav.page…
-// nav.page… }` -- so there is no one value of the family for it to be, and
-// what it renders is what a reader reaches.
+// A member declaring none of them is no value of the family
+// (ir.IsFamilyValue): it composes members rather than being one --
+// `component extras { nav.page… nav.page… }` -- and what it renders is what a
+// reader reaches, once it is inlined where the family's members are
+// collected.
 func (c *checker) checkFamilyMember(comp *ir.Component) {
 	f := comp.Tree
 	if comp.AST == nil || f == nil || comp.IsFamily() {
@@ -179,7 +176,6 @@ func (c *checker) checkFamilyMember(comp *ir.Component) {
 	if len(f.Props) > 0 && !slices.ContainsFunc(f.Props, func(fp *ir.Prop) bool {
 		return slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == fp.Name })
 	}) {
-		comp.Group = true
 		return
 	}
 	for _, fp := range f.Props {
@@ -232,11 +228,19 @@ func familyArgsWritten(f *ir.Component, written []*ir.Type) []*ir.Type {
 // familyPropType is the type a member must declare a family prop at: the
 // family's, with its type parameters bound as the member's return position
 // binds them.
+//
+// A member whose family was inferred from its body wrote no return position,
+// so the family's defaults bind it, as a written `_page` with no arguments
+// would.
 func familyPropType(f, member *ir.Component, fp *ir.Prop) *ir.Type {
-	if fp.Type == nil || len(member.TreeArgs) == 0 {
+	if fp.Type == nil || len(f.TypeParams) == 0 {
 		return fp.Type
 	}
-	return fp.Type.Substitute(familyBindings(f, member.TreeArgs))
+	args := member.TreeArgs
+	if len(args) == 0 {
+		args = familyArgsWritten(f, nil)
+	}
+	return fp.Type.Substitute(familyBindings(f, args))
 }
 
 // familyBindings binds a generic family's type parameters to args.

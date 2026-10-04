@@ -17,6 +17,11 @@ stderr 'branches.sngl:10:14: bubbletea shows one window, and this is a second; t
 ! sngl generate --lang go --platform bubbletea -o tea3 loop.sngl
 stderr 'loop.sngl:6:14: bubbletea shows one window, and a `for` makes a copy of this one per element'
 
+# A context provider puts nothing in the tree, so a window under one is still
+# a second window.
+! sngl generate --lang go --platform bubbletea -o tea4 provided.sngl
+stderr 'provided.sngl:10:14: bubbletea shows one window, and this is a second; the first is at provided.sngl:5:10'
+
 sngl generate --lang go --platform gtk4 -o gtk4 two.sngl
 sngl generate --lang go --platform bubbletea -o one one.sngl
 
@@ -31,6 +36,20 @@ ui.window #main(title="Main") {
 
 ui.window #log(title="Log") {
     ui.text(value="log")
+}
+-- provided.sngl --
+import ui "sngl:ui"
+
+context #theme("light")
+
+ui.window(title="Main") {
+    ui.text(value="main")
+}
+
+theme("dark") {
+    ui.window(title="Log") {
+        ui.text(value="log")
+    }
 }
 -- branches.sngl --
 import ui "sngl:ui"

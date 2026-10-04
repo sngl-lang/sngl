@@ -67,30 +67,12 @@ type boundaryFailedState struct {
 // through the nodes, conditionals and loops that hold others.
 func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			st.stmts(n.Children)
-			for _, sc := range n.Slots {
-				if sc != nil {
-					st.stmts(sc.Body)
-				}
-			}
-		case *ir.If:
-			st.stmts(n.Body)
-			st.stmts(n.Else)
-		case *ir.For:
-			st.stmts(n.Body)
-			st.stmts(n.Else)
-		case *ir.SlotInst:
-			st.stmts(n.Children)
-			for _, name := range ir.SlotNames(n.Slots) {
-				st.stmts(n.Slots[name].Body)
-			}
-		case *ir.ContextProvider:
-			st.stmts(n.Children)
-		case *ir.ErrorBoundary:
-			st.stmts(n.Children)
-			st.stmts(n.Failed)
+		// What a statement holds first, then the boundary itself: slots in
+		// name order, since this order numbers __failedN.
+		for _, b := range ir.ViewBlocks(s) {
+			st.stmts(*b)
+		}
+		if n, ok := s.(*ir.ErrorBoundary); ok {
 			st.rewrite(n)
 		}
 	}

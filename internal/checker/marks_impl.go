@@ -18,6 +18,7 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "none"}:                markTreeNone,
 	{"tree", "crosses"}:             markTreeCrosses,
+	{"tree", "eventless"}:           markTreeEventless,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
@@ -578,6 +579,17 @@ func markTreeNone(m *mark) error {
 		return fmt.Errorf("#[tree.none] cannot mark %s; only a component belongs to a tree", ast.DeclFormName(m.decl))
 	}
 	comp.Treeless = true
+	return nil
+}
+
+// markTreeEventless implements #[tree.eventless]: the members of this family
+// raise no events (checkFamilyMember).
+func markTreeEventless(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[tree.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
+	}
+	comp.Eventless = true
 	return nil
 }
 

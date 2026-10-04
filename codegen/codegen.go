@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"iter"
 	"strings"
 	"text/template"
 	"time"
@@ -415,6 +414,30 @@ type HTTPCompiler interface {
 	CompileHTTP(req *HTTPRequest) ([]*OutputFile, error)
 }
 
+// ServesRoutes reports whether the language named serves a document per
+// route at run time rather than having each written out at build time: it
+// implements HTTPCompiler. The one answer to "static site or server", which
+// the html platform's documents and its route mode both ask.
+func ServesRoutes(lang string) bool {
+	_, ok := LookupLang(lang).(HTTPCompiler)
+	return ok
+}
+
+// Untranslated is optionally implemented by a PlatformGenerator that
+// generates a program for `--lang none` itself -- html, whose static site is
+// the browser's to run. Every other platform given `--lang none` has nothing
+// to generate: the interpreter runs the program.
+type Untranslated interface {
+	GeneratesUntranslated() bool
+}
+
+// GeneratesUntranslated reports whether the platform named answers
+// `--lang none` with output of its own (Untranslated).
+func GeneratesUntranslated(platform string) bool {
+	u, ok := LookupPlatform(platform).(Untranslated)
+	return ok && u.GeneratesUntranslated()
+}
+
 // HTTPRequest describes what the platform needs the language to generate.
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.
@@ -670,11 +693,56 @@ type Request struct {
 	// OutDir is where the generated files will be written. Only source-map
 	// emission reads it; see FileOptions.OutDir.
 	OutDir string
-	// Documents yields each document Pkg renders as a target that writes
-	// markup writes it: one at a time, loop variables bound and constant loops
-	// unrolled (optimize.Documents). Nil for a caller that did not run the build
-	// pipeline; a platform that needs it builds its own.
-	Documents func() iter.Seq2[*Document, error]
+	// Fold starts the build-time evaluation a target writing markup writes its
+	// documents with (optimize.NewFold), configured as the build that lowered
+	// Pkg was: its trust, its evaluation cache, its project directory. Nil for
+	// a caller that did not run the build pipeline; a platform that needs one
+	// builds its own.
+	Fold func() Fold
+}
+
+// Fold is a build-time evaluation over a lowered package, for a target that
+// writes its view out rather than running it: which document a page is, what
+// a loop's iterations are, and each document's tree folded with them bound.
+// Which documents a program has is the target's to decide; this is what it
+// decides with. A child shares what its parent has evaluated and binds what it
+// adds without touching the parent.
+type Fold interface {
+	Child() Fold
+	// Eval is e's value, where the build can know it.
+	Eval(e ir.Expr) (any, bool)
+	// Expr and Stmts fold what they are handed, unrolling a constant loop.
+	Expr(e ir.Expr) ir.Expr
+	Stmts(stmts []ir.Stmt) []ir.Stmt
+	// Clone copies statements so a fold may rewrite them, sharing every
+	// declaration they name.
+	Clone(stmts []ir.Stmt) []ir.Stmt
+	// Decide is a condition's value, where the build can know it.
+	Decide(cond ir.Expr) (value, ok bool)
+	// LoopItems is what a loop iterates, where the build can know it; past the
+	// static unroll limit it is an error on the fold.
+	LoopItems(fs *ir.For) ([]any, bool)
+	// BindLoop binds one iteration's variables in this fold.
+	BindLoop(fs *ir.For, i int, item any)
+	// Bind binds a symbol's value in this fold.
+	Bind(sym ir.Symbol, v any)
+	// Answer makes every call of the intrinsic id fold to v in this fold and
+	// its children -- `pages.current`, in the document written for a page.
+	Answer(id string, v any)
+	// Fail records err as the fold's error, unless it has one.
+	Fail(err error)
+	Err() error
+	// TakeFileAssets is the file: assets this fold resolved since the last
+	// call, and forgets them.
+	TakeFileAssets() []FileAsset
+	// SettleNatives answers, before the first document is written, the pure
+	// native calls that only a loop's binding makes constant: probe walks the
+	// documents with the fold it is handed, and each round runs what it could
+	// not answer as one program.
+	SettleNatives(probe func(Fold) error) error
+	// HoldsNativeCall reports whether s holds a pure native call the fold
+	// could evaluate.
+	HoldsNativeCall(s ir.Stmt) bool
 }
 
 // Document is one document as a static target writes it.

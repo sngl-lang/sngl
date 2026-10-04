@@ -111,53 +111,18 @@ type implicitState struct {
 
 func (st *implicitState) stmts(stmts []ir.Stmt) error {
 	for i, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if err := st.stmts(n.Children); err != nil {
+		for _, b := range ir.ViewBlocks(s) {
+			if err := st.stmts(*b); err != nil {
 				return err
 			}
-			for _, sc := range n.Slots {
-				if sc != nil {
-					if err := st.stmts(sc.Body); err != nil {
-						return err
-					}
-				}
-			}
+		}
+		if n, ok := s.(*ir.NodeInst); ok {
 			w, err := st.wrap(n)
 			if err != nil {
 				return err
 			}
 			if w != nil {
 				stmts[i] = w
-			}
-		case *ir.If:
-			if err := st.stmts(n.Body); err != nil {
-				return err
-			}
-			if err := st.stmts(n.Else); err != nil {
-				return err
-			}
-		case *ir.For:
-			if err := st.stmts(n.Body); err != nil {
-				return err
-			}
-			if err := st.stmts(n.Else); err != nil {
-				return err
-			}
-		case *ir.SlotInst:
-			if err := st.stmts(n.Children); err != nil {
-				return err
-			}
-		case *ir.ErrorBoundary:
-			if err := st.stmts(n.Children); err != nil {
-				return err
-			}
-			if err := st.stmts(n.Failed); err != nil {
-				return err
-			}
-		case *ir.ContextProvider:
-			if err := st.stmts(n.Children); err != nil {
-				return err
 			}
 		}
 	}
@@ -201,6 +166,9 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		Component: comp,
 		ID:        n.ID,
 		Handle:    n.Handle,
+		// The node is what renders, and the wrapper only holds its cells: a
+		// surface marked the document stays marked where it now stands.
+		Document: n.Document,
 	}
 	cells := map[string]*ir.Var{}
 	for _, p := range unbound {

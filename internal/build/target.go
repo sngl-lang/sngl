@@ -21,10 +21,11 @@ type Target struct {
 // translated into a language.
 //
 // `--lang none` says the program is not translated; something else runs it.
-// For html that something is the browser, and the platform genuinely generates
-// a static site. For every other platform it is the interpreter.
+// A platform that generates for it says so (codegen.Untranslated) -- html,
+// whose static site the browser runs. For every other platform it is the
+// interpreter.
 func IsInterpreted(t Target) bool {
-	return t.Lang == "none" && t.Platform != "html"
+	return t.Lang == "none" && !codegen.GeneratesUntranslated(t.Platform)
 }
 
 // SelectedTargets is the caller's own target selection, as the checker takes

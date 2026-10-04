@@ -49,7 +49,7 @@ func HoldsIdentity(comp *Component) bool {
 
 // RenderedSurface is a primitive's claim that each of its nodes is a surface
 // of its own -- a toplevel the target draws a render tree in. html's Window
-// is one: optimize.Documents writes a document from the first that no `if`
+// is one: html's documentsOf writes a document from the first that no `if`
 // over state and no `for` can take away, and html shows every other as a
 // `<dialog>` in it. A target that answers its toplevels in its own codegen,
 // as gtk4 does, need not say so.
@@ -125,10 +125,6 @@ func GenCapsOf(c *Component) *GenCaps {
 	return c.Gen
 }
 
-// BuildTreePkg is the package declaring the two families a build-target node
-// belongs to.
-const BuildTreePkg = "sngl:build"
-
 // TargetNode reports the registered name of the build-target node sym is, and
 // whether it is one: a component in `build.language` or `build.platform`
 // carrying `#[gen.name]`. A reference to one is how a program names a target
@@ -170,10 +166,35 @@ func EmittedFamily(host *Component) *Component {
 
 // IsBuildTargetTree reports whether f is `build.language` or `build.platform`
 // -- the families a target package's own node is a member of.
-//
-// By package and name rather than by a mark, because neither carries one: the
-// three trees the compiler marks are the ones it has to name for itself, and
-// this one it reaches through the declaration it is asking about.
 func IsBuildTargetTree(f *Component) bool {
-	return f.IsFamily() && f.Pkg == BuildTreePkg && (f.Name == "language" || f.Name == "platform")
+	return TargetTier(f) != ""
+}
+
+// TargetTier is the tier a build-target family holds -- BuiltinLanguage for
+// `build.language`, BuiltinPlatform for `build.platform` -- and "" for any
+// other family. Read off the family's mark, so a package declaring a
+// `language` family of its own declares a different one.
+func TargetTier(f *Component) BuiltinKind {
+	switch {
+	case isTreeRole(f, BuiltinTreeLanguage):
+		return BuiltinLanguage
+	case isTreeRole(f, BuiltinTreePlatform):
+		return BuiltinPlatform
+	}
+	return ""
+}
+
+// TargetNodeOf is the build-target node of the given tier pkg declares: the
+// one component whose family is that tier and that carries #[gen.name]. Found
+// by what it is rather than by what it is called, which is a convention.
+func TargetNodeOf(pkg *Package, tier BuiltinKind) *Component {
+	if pkg == nil {
+		return nil
+	}
+	for _, c := range pkg.Components {
+		if node, _, ok := TargetNode(c); ok && TargetTier(node.Tree) == tier {
+			return node
+		}
+	}
+	return nil
 }

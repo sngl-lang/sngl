@@ -16,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"iter"
 	"log/slog"
 	"path/filepath"
 	"slices"
@@ -302,7 +301,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		Maps:       optionBool(target.Options, "maps"),
 		OutDir:     o.OutDir,
 	}
-	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
+	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)

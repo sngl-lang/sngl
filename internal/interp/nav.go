@@ -83,7 +83,7 @@ func (m *mounter) navStack(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	if env.nav.current == nil && len(frame.pages) > 0 {
 		start := frame.pages[0]
 		for _, p := range frame.pages {
-			if href, _ := p.Props["href"].(string); href == "/" {
+			if href, _ := p.Props[ir.NavPageHref].(string); href == "/" {
 				start = p
 				break
 			}
@@ -129,7 +129,7 @@ func (m *mounter) navPage(env *Env, inst *ir.NodeInst, path string) ([]*Node, er
 	// The params it was handed, over the prop the call site wrote, for as long
 	// as the content mounts: the population reads them there, and the prop
 	// itself stays what the call site wrote, which `pkg.params` reads.
-	if sym := propSym(env.Comp, "params"); sym != nil && env.navParams != nil {
+	if sym := propSym(env.Comp, ir.NavPageParams); sym != nil && env.navParams != nil {
 		written, had := env.vals[sym]
 		env.Set(sym, env.navParams.v)
 		defer func() {
@@ -217,7 +217,7 @@ func navBack(stack *Env) error {
 }
 
 func init() {
-	intrinsics["nav.go"] = func(args []any) (any, error) {
+	intrinsics[ir.NavGoID] = func(args []any) (any, error) {
 		if len(args) < 2 {
 			return nil, fmt.Errorf("go: want (stack, page, params), got %d args", len(args))
 		}
@@ -227,7 +227,7 @@ func init() {
 		}
 		return nil, navGo(instanceEnv(args[0]), args[1], params)
 	}
-	intrinsics["nav.current"] = func(args []any) (any, error) {
+	intrinsics[ir.NavCurrentID] = func(args []any) (any, error) {
 		if len(args) < 1 {
 			return nil, fmt.Errorf("current: want the stack")
 		}
@@ -237,7 +237,7 @@ func init() {
 		}
 		return stack.nav.current, nil
 	}
-	intrinsics["nav.back"] = func(args []any) (any, error) {
+	intrinsics[ir.NavBackID] = func(args []any) (any, error) {
 		if len(args) < 1 {
 			return nil, fmt.Errorf("back: want the stack")
 		}
@@ -245,7 +245,7 @@ func init() {
 	}
 	// A link names a page and not its stack, so it goes through the stack the
 	// page registered with.
-	intrinsics["none:follow"] = func(args []any) (any, error) {
+	intrinsics[ir.NavFollowID] = func(args []any) (any, error) {
 		if len(args) < 1 {
 			return nil, fmt.Errorf("follow: want (page, params)")
 		}
