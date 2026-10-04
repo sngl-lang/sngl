@@ -4,7 +4,7 @@
 // The handler runs in the interpreter, through the build host, so every read
 // it makes is gated by the plugin's own grants and recorded. What it writes is
 // the package the import resolves to, and is stored like any producer's output
-// (decision 10 of SNGL_PLUGINS.md): keyed by the request and by the digest of
+// (CLAUDE.md, *Plugins*): keyed by the request and by the digest of
 // the plugin's code, and replayed while every input it recorded still holds.
 // A literal `cache.inputs` directive in what it writes adds inputs the
 // recorder could not see.

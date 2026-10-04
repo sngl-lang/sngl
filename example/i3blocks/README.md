@@ -61,7 +61,7 @@ and runs it as i3bar would, so a change that breaks it fails the suite.
 - **The header before the host starts.** It is written by `@start`, which
   runs with the tree's first settle -- once the host has built the tree and
   before `@run`. Nothing here needs it earlier; an emitter's own layer of the
-  process start (`p.main` in `SNGL_PLUGINS.md`) is what would.
+  process start (an emitter layer of `@run`, CLAUDE.md *Plugins*) is what would.
 - **One line per handler.** The effect settles after every write, so a tick
   writing `uptime` and then `samples` prints two lines. i3bar shows the last,
   but the protocol carries both.

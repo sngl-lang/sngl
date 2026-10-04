@@ -5,7 +5,7 @@ snglWindow record that shows it (window_several.txtar).
 
 A link does not navigate between them, and is not meant to: a window is a
 surface and a link names a destination, which is `sngl:ui/nav`'s page
-(SNGL_PLUGINS.md, decision 15). fyne's in-window switcher, which is what an
+(CLAUDE.md, *Navigation*). fyne's in-window switcher, which is what an
 href would have navigated, is gone with it; the link still opens the OS
 browser.
 

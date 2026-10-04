@@ -1156,7 +1156,7 @@ checking it: checked in whatever file scope pass1 ended on, `time.timer` at the
 root of one file was undefined because the file sorted after it imported no
 `time` (`cmd/sngl/testdata/package_body_reads_its_own_imports.txt`).
 
-**A window is an ordinary component** (Phase C3). `lib/ui/window.sngl`
+**A window is an ordinary component**. `lib/ui/window.sngl`
 declares `ui.window` with no body and no mark, a member of `root`, and every
 platform overrides it with a primitive of its own: a Toplevel on gtk4 and
 fyne, a `Screen` on bubbletea and android, html's `Window` and `none`'s.
@@ -1164,7 +1164,7 @@ Nothing in the compiler names a window -- there is no `ir.Window`,
 `pkg.Windows`, `ir.AllWindows` or `IsWindowNode`, no `#[builtin("window")]`,
 and no window arm in the checker, the lowering, the optimizer, the
 interpreter or a platform. What a window needed, each had a general answer
-(decision 16's table): the `root` family to stand at the root of a file, the
+(one each): the `root` family to stand at the root of a file, the
 node ops to be created and destroyed with the tree, the primitive's own
 codegen for its children, a `boundary` for `@error`, a two-way prop and an
 event for `visible` and `@closed`, and `nav.page` for everything html once
@@ -1359,7 +1359,7 @@ than a package, a library declaring one could not be imported, and route mode
 gave a `window #main` the index's `/` beside the first window's
 (`route_window_named_main.txtar`). Route mode and html ask
 `ir.Package.RootDecl()` for a harness root. `output(entry = home)` used to
-choose a window, and went with a window's `href` (Phase C2, step 6), since
+choose a window, and went with a window's `href` since
 which destination a build opens at is a stack's question -- the page at `/`,
 or its first.
 
@@ -1460,7 +1460,7 @@ thing `ir.SlotBody` looks at.
 `sngl:ui/nav`'s `page` is the user: a page's route parameters arrive as one
 struct value in the `params` prop, `T` is inferred from it, and the body that
 reads them is the population of the page's `content` slot. (A window was the
-user until Phase C2, step 6, when `href` and `params` moved to the page.) That is what
+user until `href` and `params` moved to the page.) That is what
 makes a path a plain string rather than an interpolation — the names in
 `/p/{pkg}` are the struct's fields, not identifiers in scope. Before it, the
 checker read the placeholders off the href and synthesized an `*ir.Var` per
@@ -2484,7 +2484,7 @@ since library IR is shared between builds) -- sngl:ui/nav's stack and page on
 html.
 
 **html writes its document from a Window and shows every other as a
-`<dialog>`** (Phase C2, step 7; Phase C3). html overrides `ui.window` once,
+`<dialog>`**. html overrides `ui.window` once,
 with `Window(title, favicon, :visible=visible, @closed { closed() }) { boundary(@error(e) { error(e) }) { content } }`, around its
 `#[gen.renders(surface)] #[intrinsic("html:window")] component Window(…) root`.
 The mark is what says the primitive's nodes are surfaces (`ir.IsSurface`,
@@ -2785,6 +2785,75 @@ collapsed only when identical, since rewriting an alias would be checking. A
 mistake inside one reports the markdown file and line, because the position the
 checker has is the `import` that read the document.
 
+### Plugins
+
+A new family, language, platform or import scheme is a SNGL package rather than
+Go compiled into the binary, and the rules below are what that rests on. The
+mechanisms themselves are described where they live: families under
+*Stdlib*, targets under *A target is its library package*, `gen.emit` and
+`gen.scheme` under `sngl:x/gen` and *Import schemes*, commands beside them, and
+*Trust*.
+
+- **A platform is a host plus the families it renders.** The host owns the
+  process -- `main`, the Model, the event loop, the drawing thread; a family
+  emitter turns a family's subtrees into code inside it. A new use is usually
+  a family, not a platform: an i3 bar is a family a program builds for gtk4 or
+  fyne, getting the bar and its windows in one process
+  (`example/i3blocks/`). Two code-generating platforms in one process is out
+  of scope until someone asks.
+- **Dispatch is the override mechanism.** A family's override is its emitter
+  and a member's override is what that member contributes, found in the
+  existing order -- platform, language, the declaration's own body, then the
+  per-target bodyless error. The compiler walks; an emitter never switches on
+  a node's kind. A member with a body composes, so only primitives need an
+  override.
+- **Walk and runner are separate.** The walk produces data carrying no IR --
+  member, position, build-time prop values, children -- and a runner turns it
+  into files: a template, SNGL the host compiles (code mode), or a handler
+  (process mode). Keep that tree free of IR pointers as it grows; it is what a
+  process would be handed.
+- **An emitter that reads state writes SNGL**, not host code: the host is
+  rewritten into a members function and the family's `gen.emit`, two effects
+  every host already compiles. A direct API writing host code through the
+  language's translator, for output no SNGL construct expresses, is the door
+  left open; measure the interpreter on a large host before building on it.
+- **Every read a handler makes is recorded**, through `sngl:x/gen`, so a
+  plugin's output is a store entry with no bookkeeping by its author, and a
+  result depends only on what was recorded -- there is no unrecorded way to
+  read. `gen.exec` is the exception in what it can see (the process's own
+  reads are invisible), which is why it is never allowed unasked.
+- **Handlers run in the interpreter**, in process: an import resolves during
+  the check, which is every LSP keystroke, and the playground cannot exec a
+  toolchain. The cost is that the interpreter's correctness now matters for
+  output, not only for tests.
+- **A plugin's code is part of its key**: a SNGL producer adds the digest of
+  its package closure to the store key (`Request.Identity`), or editing a
+  plugin would replay what the old one produced.
+- **A command is the user's terminal, not a build input**: `gen.run` and
+  `gen.build` handlers run processes through `gen.shell`, which records
+  nothing; test, snapshot and preview are still Go interfaces
+  (`codegen.TestRunner`, `Snapshotter`, `PreviewStyler`) and are the next to
+  become commands.
+
+Known gaps, each refused or documented where it bites:
+
+- A generated family's host under a `for` is refused, and so are a composed
+  member's handlers and a member holding children in code mode.
+- Emitter layers of `@run` (a family adding its own process start) do not
+  exist; `none` and bubbletea do not declare `@run`.
+- html route mode under `--lang go`: `sngl run` serves the static files
+  rather than running the server.
+- bubbletea splices a stateful component in a page, or a window under an `if`,
+  into the Model, so its state survives the page being left.
+- A page handle read above its `nav.page` does not check
+  (`specializeHandle` runs only when the node is), and no Go test emitter
+  reaches a node's prop or a nested component.
+- `sngl dump` prints a qualified node by its local name, so a dump of a
+  program writing `nav.page` does not check again.
+- A node id that is a Go keyword (`button #go`) is a field fyne and gtk4
+  cannot declare.
+- `gir:` reads only `Gtk-4.0`.
+
 ### Import schemes
 
 **A scheme is served by a compiled-in importer, by a library plugin, or by a
@@ -2833,7 +2902,7 @@ arguments are to C's.
 
 ### Navigation
 
-`sngl:ui/nav` is decision 15 of `SNGL_PLUGINS.md`, landing over Phase C2: a
+`sngl:ui/nav` says a
 window is a surface and a page a destination. A stack shows one page, named by
 its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
 `nav.link(to=about, text="About")` -- and `pages.current` is the page
@@ -3040,8 +3109,7 @@ run it on the interpreter, which needed nothing new -- each copy is an
 instance of its own -- and the two `.txtar`s are the code on html, gtk4, fyne,
 bubbletea and android.
 
-**A window lost `href` and `params`, and `output(entry=…)` went** (Phase C2,
-step 6): a destination is a page, and a stack starts at the page at "/", or
+**A window lost `href` and `params`, and `output(entry=…)` went**: a destination is a page, and a stack starts at the page at "/", or
 its first. Every program that was a window per page is a window holding a
 stack of pages, the window's title the page's (`title=pages.current.title`),
 and html writes the same documents from it. A `var` written in a page's body is state of the page, which starts again when the page is left, as any block's is (see *A `var` written in a block of a view is state of that block*).
@@ -3311,7 +3379,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 **A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
-**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory -- unset before Phase D, so a script naming it got the empty string), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
 
 **Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
 from the root `TestGolden`): the archive's root-level files are one SNGL
@@ -3478,8 +3546,7 @@ targets in parallel) is not a saving.
 
 **A malicious repository may not reach the host.** Running any `sngl`
 command in a clone must not run a process, read the environment or read
-outside the project on the repository's say-so (`SNGL_PLUGINS.md` decisions
-11 and 12; `internal/trust`). Two kinds of code ask, and they are gated
+outside the project on the repository's say-so (`internal/trust`). Two kinds of code ask, and they are gated
 differently because they reach differently:
 
 - **An evaluated go: or js: package** is native code with the user's
