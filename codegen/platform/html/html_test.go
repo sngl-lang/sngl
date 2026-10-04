@@ -16,7 +16,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {

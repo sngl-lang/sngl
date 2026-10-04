@@ -21,7 +21,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 

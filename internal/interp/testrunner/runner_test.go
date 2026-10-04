@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
+	"git.duckfam.us/jonathan/sngl/internal/interp/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testtargets"

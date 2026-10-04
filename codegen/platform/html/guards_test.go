@@ -8,7 +8,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // noneLang returns the registered "none" (static-site) language translator.

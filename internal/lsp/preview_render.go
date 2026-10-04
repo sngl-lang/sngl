@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	// The preview renders through these whatever else the binary links.
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 
 	"git.duckfam.us/jonathan/sngl/ast"

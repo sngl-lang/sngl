@@ -10,7 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 	"github.com/go-rod/rod"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 const stableWait = 200 * time.Millisecond

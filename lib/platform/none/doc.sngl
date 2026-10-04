@@ -1,0 +1,9 @@
+// Headless execution in the interpreter, which generates no code.
+//
+// The interpreter emits nothing, so this package holds only what it has to be
+// *told* rather than shown: a primitive whose meaning is a schedule, which no
+// visual tree can express and no host widget stands in for.
+//
+// It is a package in lib/ with no Go behind it. What runs a program built for
+// it is the compiler's own interpreter, which `sngl run` and `sngl test` reach
+// for every pair `--lang none` leaves untranslated.

@@ -1532,6 +1532,30 @@ Go package deleted with its goldens unmoved. html stays Go-backed for good,
 through a mark on its node naming the Go generator; which others move is
 decided per target.
 
+Settled in G's planning:
+
+- **A target with no Go is a `lib/` directory.** `lib/platform/<name>` and
+  `lib/language/<name>` are its package, and the layout is the registration,
+  as `lib/x/scheme/<name>` is a scheme's: `codegen/declared.go` registers a
+  `DeclaredPlatform` or `DeclaredLang` for each, described by the first
+  sentence of its package comment, generating nothing.
+- **The interpreter is the compiler's, not a target's.** `none` mostly calls
+  into compiler internals, and those stay Go: a pair `--lang none` leaves
+  untranslated is run by `interprun` and tested by
+  `internal/interp/testrunner`, reached from `cmd/sngl` for any interpreted
+  pair rather than through a method of the `none` platform. Test as a command
+  waits for test, snapshot and preview to move together.
+- **The mark naming a Go generator is `#[gen.native("html")]`**, on a
+  build-target node of either tier, echoing `go.native`: the node is a host
+  thing, and the string is the key Go registered under.
+
+*`none` has moved.* `codegen/platform/none` and `codegen/lang/none` are gone;
+their source is `lib/platform/none` and `lib/language/none`, the test runner
+is `internal/interp/testrunner`, and the interpreter's claim on `sngl:ui/nav`
+is declared beside the registration. No golden builds none/none, so the bar
+was the `--platform=none` scripts and `TestRunFixtures`, unmoved.
+`codegen/declared_test.go` holds the registration.
+
 ### Last: delete this file
 
 The branch's final commit deletes `SNGL_PLUGINS.md`. What the work leaves

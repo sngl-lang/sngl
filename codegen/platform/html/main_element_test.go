@@ -11,7 +11,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // TestMainElementNotSwallowedByMainComponent guards a regression where a

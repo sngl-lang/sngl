@@ -13,8 +13,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
 	"git.duckfam.us/jonathan/sngl/internal/build"
+	"git.duckfam.us/jonathan/sngl/internal/interp/testrunner"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +88,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runner, _ := plat.(codegen.TestRunner)
+	runner := testRunnerFor(plat, lang)
 	if runner == nil && resolveLauncher(plat, lang) == nil {
 		return fmt.Errorf("platform %q does not support testing", platform)
 	}
@@ -119,14 +119,12 @@ func runTestAll(language string, units []unit, runFilter string, verbose bool, f
 			continue
 		}
 		plat := codegen.LookupPlatform(name)
-		runner, _ := plat.(codegen.TestRunner)
-		if runner == nil {
-			// Provisional: a lang lookup failure is handled below, this only
-			// skips the platform when neither test path exists.
-			lang, _ := resolveTestLang(plat, language)
-			if resolveLauncher(plat, lang) == nil {
-				continue
-			}
+		// Provisional: a lang lookup failure is handled below, this only
+		// skips the platform when neither test path exists.
+		guess, _ := resolveTestLang(plat, language)
+		runner := testRunnerFor(plat, guess)
+		if runner == nil && resolveLauncher(plat, guess) == nil {
+			continue
 		}
 		if prober, ok := plat.(codegen.TestProber); ok {
 			if okp, reason := prober.ProbeTest(); !okp {
@@ -165,6 +163,36 @@ func runTestAll(language string, units []unit, runFilter string, verbose bool, f
 		return fmt.Errorf("%d platform(s) failed to start", failedPlats)
 	}
 	return nil
+}
+
+// testRunnerFor is what runs a pair's tests in process: the platform's own
+// runner where it has one, and otherwise the interpreter for a pair it runs.
+// The interpreter is the compiler's, not a target's, so the `none` platform --
+// a package in lib/ with no Go behind it -- is answered here rather than by a
+// method of its own.
+func testRunnerFor(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestRunner {
+	if r, ok := plat.(codegen.TestRunner); ok {
+		return r
+	}
+	if build.IsInterpreted(build.Target{Lang: langOrNone(lang), Platform: plat.PlatformIdentifier()}) &&
+		resolveLauncher(plat, lang) == nil {
+		return interpreterTests{}
+	}
+	return nil
+}
+
+// A platform that supports no language is run untranslated.
+func langOrNone(lang codegen.LangTranslator) string {
+	if lang == nil {
+		return "none"
+	}
+	return lang.LanguageIdentifier()
+}
+
+type interpreterTests struct{}
+
+func (interpreterTests) RunTests(pkg *ir.Package, _ codegen.LangTranslator, _ *ir.StructLit) ([]*codegen.TestResult, error) {
+	return testrunner.Run(pkg)
 }
 
 // A platform with no supported langs (`none`) is fine, and returns nil.
