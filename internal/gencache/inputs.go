@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -142,6 +143,42 @@ func Env(name string) Input {
 	return Input{Kind: "unsetenv", Props: []Prop{str("name", name)}}
 }
 
+// Settings are values a build is configured with in process -- a target
+// option -- that a producer depends on without reading anything the store
+// could stat. Each is registered under a name by the code that holds it.
+var (
+	settingsMu sync.RWMutex
+	settings   = map[string]func() string{}
+)
+
+// RegisterSetting makes get the current value of the setting name.
+func RegisterSetting(name string, get func() string) {
+	settingsMu.Lock()
+	defer settingsMu.Unlock()
+	settings[name] = get
+}
+
+func settingValue(name string) (string, bool) {
+	settingsMu.RLock()
+	get := settings[name]
+	settingsMu.RUnlock()
+	if get == nil {
+		return "", false
+	}
+	return get(), true
+}
+
+// Setting records the value the setting name has now. A name nothing
+// registered is an error: the producer asking is recording a dependency
+// nothing could check.
+func Setting(name string) (Input, error) {
+	v, ok := settingValue(name)
+	if !ok {
+		return Input{}, fmt.Errorf("gencache: no setting %q is registered", name)
+	}
+	return Input{Kind: "setting", Props: []Prop{str("name", name), str("value", v)}}, nil
+}
+
 // GoEnv records what `go env` reports in dir for each name.
 func (s *Store) GoEnv(dir string, names ...string) ([]Input, error) {
 	vals, err := s.goEnv(dir)
@@ -191,6 +228,12 @@ func (s *Store) Stale(data []byte) (string, error) {
 // A verdict is memoized for the life of the store: two entries recording one
 // file ask the filesystem once.
 func (s *Store) check(in Input) string {
+	// A setting is in process and changes between builds a store outlives
+	// (the LSP, the script harness): asking it costs nothing, so it is never
+	// memoized.
+	if in.Kind == "setting" {
+		return s.recheck(in)
+	}
 	memo := in.String()
 	s.mu.Lock()
 	ok, seen := s.checks[memo]
@@ -249,6 +292,10 @@ func (s *Store) recheck(in Input) string {
 		vals, err := s.goEnv(in.Get("dir"))
 		if err != nil || vals[in.Get("name")] != in.Get("value") {
 			return "go env " + in.Get("name") + " changed"
+		}
+	case "setting":
+		if v, ok := settingValue(in.Get("name")); !ok || v != in.Get("value") {
+			return "setting " + in.Get("name") + " changed"
 		}
 	case "entry":
 		req := Request{Producer: in.Get("producer"), Params: in.getList("params")}
@@ -607,6 +654,11 @@ func (s *Store) Complete(in Input) (Input, error) {
 		}
 		got, _, err := s.Entry(Request{Producer: in.Get("producer"), Params: in.getList("params")})
 		return got, err
+	case "setting":
+		if has("value") {
+			return in, nil
+		}
+		return Setting(in.Get("name"))
 	case "absent", "unsetenv":
 		return in, nil
 	}

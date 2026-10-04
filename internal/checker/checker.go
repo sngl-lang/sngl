@@ -90,6 +90,20 @@ type Config struct {
 	// generatedBy names the scheme import whose plugin wrote this package,
 	// which has no directory for a relative import to be read from.
 	generatedBy string
+	// byLibrary says the plugin that wrote this package is the library's, so
+	// what it wrote is library source in all but where it came from: it may
+	// import the compiler's own tier, as the gir: scheme's widgets import
+	// sngl:internal/marks for #[intrinsic]. A library plugin's own package
+	// (libraryScheme) may too, for the build intrinsics its handler calls.
+	byLibrary bool
+	// noTargets says the package is checked against no target at all, rather
+	// than against every target as a package naming none is: a library
+	// plugin's package and what it writes are build tools and declarations,
+	// with nothing a target overrides. Loading every target's package there
+	// is not merely wasted -- sngl:platform/gtk4 imports gir:, so checking the
+	// gir plugin's own package would load gtk4 and reach the plugin while it
+	// is still being checked.
+	noTargets bool
 	// libraryScheme names the scheme of the library plugin this check is
 	// loading: the one package that may declare a scheme the library ships.
 	libraryScheme string
@@ -1528,7 +1542,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// sngl:internal/<name> is the compiler's own tier, importable only
 		// from library source.
 		internal := strings.HasPrefix(uri, "internal/")
-		if internal && !c.inLibSource() {
+		if internal && !c.inLibSource() && !c.cfg.byLibrary && c.cfg.libraryScheme == "" {
 			c.error(imp.Pos, "%q is internal to the compiler and cannot be imported", target)
 			return
 		}
@@ -1557,7 +1571,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 	} else if plugin := c.pluginScheme(scheme); plugin != nil {
 		// A scheme a plugin serves: its handler writes the package.
 		if docs := c.generateScheme(imp, plugin, uri); len(docs) > 0 {
-			irImport.Pkg = c.checkSchemePackage(docs, nil, scheme, uri, true)
+			irImport.Pkg = c.checkSchemePackage(docs, nil, scheme, uri, true, plugin.Library)
 		}
 	} else if scheme != "" && c.cfg.Resolver != nil {
 		// Scheme import. Try FS-backed schemes first (git://, http://, …) so
@@ -1567,7 +1581,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
 		} else if len(docs) > 0 {
-			irImport.Pkg = c.checkSchemePackage(docs, subFS, scheme, uri, false)
+			irImport.Pkg = c.checkSchemePackage(docs, subFS, scheme, uri, false, false)
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
 			if err != nil {
@@ -1737,7 +1751,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 // checkSchemePackage checks the files a scheme import resolved to as one
 // package, however many files it arrived as -- the same rule a directory
 // import follows -- and returns the view an importer sees.
-func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, uri string, generated bool) *ir.Package {
+func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, uri string, generated, byLibrary bool) *ir.Package {
 	cfg := &Config{
 		FS:         subFS,
 		Dir:        c.cfg.Dir,
@@ -1752,6 +1766,8 @@ func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, 
 	}
 	if generated {
 		cfg.generatedBy = scheme + ":" + uri
+		cfg.byLibrary = byLibrary
+		cfg.noTargets = byLibrary
 	}
 	pkg, diags := CheckPackage(docs, cfg)
 	c.diags = append(c.diags, diags...)
@@ -2872,9 +2888,13 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	popTypeParams := pushTypeParams(c, comp.TypeParams)
 
 	irComp := &ir.Component{
-		AST:        comp,
-		Name:       comp.Name,
-		Stdlib:     c.inLibSource(),
+		AST:  comp,
+		Name: comp.Name,
+		// A library plugin's output is library source in all but where it
+		// came from: gtk4's widgets were sngl:platform/gtk4's, and moving them
+		// to the gir: scheme changes nothing a call site can see -- a prop
+		// with no default stays optional, by platform convention.
+		Stdlib:     c.inLibSource() || c.cfg.byLibrary,
 		Pkg:        c.libPkgName,
 		Bodyless:   !comp.Body.IsDefined(),
 		Const:      comp.Const,

@@ -64,7 +64,7 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 	var buildable []string
 	refused := map[string]string{}
 	for _, n := range names {
-		if _, err := generateGtk4(t, gtk4Window("            gtk4."+n+"() {}")); err != nil {
+		if _, err := generateGtk4(t, gtk4Window("            gtk."+n+"() {}")); err != nil {
 			// A refusal has to name the class, or it is not actionable.
 			if !strings.Contains(err.Error(), n) {
 				t.Errorf("%s was refused without being named: %v", n, err)
@@ -88,7 +88,7 @@ func TestWidgetSurface_EitherCompilesOrRefuses(t *testing.T) {
 
 	var b strings.Builder
 	for _, n := range buildable {
-		fmt.Fprintf(&b, "            gtk4.%s() {}\n", n)
+		fmt.Fprintf(&b, "            gtk.%s() {}\n", n)
 	}
 	files, err := generateGtk4(t, gtk4Window(b.String()))
 	if err != nil {

@@ -23,6 +23,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
@@ -340,7 +341,37 @@ func (h *Host) call(id string, ow *Owner, call *ir.Call, args []any) (any, error
 		}
 		return proc.wait()
 	}
+	if fn := registered(id); fn != nil {
+		return fn(rec, args)
+	}
 	return nil, fmt.Errorf("%s: no build host answers it", id)
+}
+
+// IntrinsicFunc answers a build intrinsic a plugin compiled into `sngl`
+// registered: what only its Go can compute, for a library plugin's handler
+// to call. It records each input it reads on rec, as the host's own
+// intrinsics do, so what the handler writes is invalidated when one changes.
+type IntrinsicFunc func(rec *Recorder, args []any) (any, error)
+
+var (
+	intrinsicsMu sync.RWMutex
+	intrinsics   = map[string]IntrinsicFunc{}
+)
+
+// RegisterIntrinsic makes fn the answer to the `build` intrinsic id. Called
+// from a plugin's init: gtk4 answers `gir.widgets`, which the library's gir:
+// scheme calls. Nothing is gated here -- an intrinsic is the compiler's own
+// code, reached from library source.
+func RegisterIntrinsic(id string, fn IntrinsicFunc) {
+	intrinsicsMu.Lock()
+	defer intrinsicsMu.Unlock()
+	intrinsics[id] = fn
+}
+
+func registered(id string) IntrinsicFunc {
+	intrinsicsMu.RLock()
+	defer intrinsicsMu.RUnlock()
+	return intrinsics[id]
 }
 
 func streamOf(v any) *interp.Stream {

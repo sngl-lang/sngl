@@ -1570,9 +1570,22 @@ translator, under a platform that does not generate for one.
 key its node names. Moving android's put its three topic files under the
 library's package-comment rule, so their headers sit below the imports.
 
-*gtk4 is next, and different*: half its package is generated from the host's
-GIR. The generated half moves to an import scheme in a package of its own,
-which the written wrappers in `lib/platform/gtk4` import.
+*gtk4 has moved, its generated half to a scheme.* Its wrappers are
+`lib/platform/gtk4`, which imports `gtk "gir:Gtk-4.0"`; `gir:` is a library
+plugin, `lib/x/scheme/gir`, whose handler calls the build intrinsic
+`gir.widgets` that gtk4's Go registers (`buildhost.RegisterIntrinsic`) over
+the existing `gtk4.widgets` store entry. `--opt gir=` still chooses the GIR:
+the intrinsic records a `cache.setting(name="gtk4.gir")`, a new input kind a
+target option is compared through, never memoized. GIR methods taking nothing
+and returning nothing are generated as `#[cnative]` methods, which replaced the
+hand-declared `pulse`. Programs name a widget through the same import. Three
+checker rules came with it: library source may import a library scheme with no
+build resolver (the runner `internal/plugin` registers), a library plugin's
+package and output may import `sngl:internal/` and declare `Stdlib`
+components, and both are checked against no target. Nothing in the repository
+serves its own package through `PackageFS` any more.
+`codegen/platform/gtk4/gir_scheme_test.go`, `cmd/sngl/testdata/gir_scheme.txt`,
+and `TestSettingInvalidatesWithinOneStore`.
 
 ### Last: delete this file
 

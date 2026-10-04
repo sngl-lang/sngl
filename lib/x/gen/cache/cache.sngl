@@ -51,3 +51,10 @@ component goenv(const dir string, const name string, const value string = "") in
 // the way it answers any request: the output is re-checked, or produced again,
 // and the two must agree.
 component entry(const producer string, const params list<string>, const sha256 string = "") input {}
+
+// A setting of the compiler's for this build, and the value it had: what a
+// target option selects for a producer that reads no file to learn it --
+// gtk4's `gir`, which decides which introspection data the gir: scheme
+// writes widgets from. A setting is named by the code that registers it, and
+// one no code in this compiler registers has no value to compare.
+component setting(const name string, const value string = "") input {}

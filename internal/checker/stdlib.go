@@ -794,6 +794,9 @@ func intrinsicTypeParamNames(fn *ir.Func) []string {
 // the overrides have to be spliced before anything reads a stdlib component's
 // body, and that is earlier than checking an output block.
 func (c *checker) targetPackages() []string {
+	if c.cfg.noTargets {
+		return nil
+	}
 	seen := map[string]bool{}
 	var out []string
 	addPkg := func(p string) {

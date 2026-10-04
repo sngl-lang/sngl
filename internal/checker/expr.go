@@ -4201,7 +4201,7 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 					}
 				}
 				// A name the package does not declare: a wildcard component
-				// of its own, else the platform's Resolve (gtk4.GtkBox →
+				// of its own, else the platform's Resolve (gtk.GtkBox →
 				// GIR-resolved widget). Lets platform-extension bodies
 				// reference native tags qualified by platform name.
 				if comp == nil {

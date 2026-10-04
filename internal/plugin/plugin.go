@@ -21,12 +21,27 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/buildhost"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// A check with no build around it -- `sngl doc`, the LSP's library path, a
+// target's capabilities -- still resolves an import of a scheme the library
+// ships, since library source may write one. A library plugin is trusted, so
+// the runner asks no grant and reads relative to nothing.
+func init() {
+	checker.RegisterLibraryRunner(libraryRunner{&Runner{}})
+}
+
+type libraryRunner struct{ r *Runner }
+
+func (l libraryRunner) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
+	return l.r.Generate(s, uri)
+}
 
 // Producer names the outputs a plugin's handler writes.
 const Producer = "sngl.scheme"

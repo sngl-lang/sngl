@@ -2,7 +2,7 @@ End-to-end gtk4 platform compile test, run against the bundled GIR
 (gir="builtin") so it does not need system GTK4 development files. The
 fixture's widgets descend from a Widget base class because that is where real
 GIR declares visible/sensitive/hexpand/tooltip-text and where the stdlib
-override bodies in lib/platforms/gtk4/gtk4.sngl are written against them -- so
+override bodies in lib/platform/gtk4/gtk4.sngl are written against them -- so
 this also checks that the parent-chain merge reaches them.
 
 model.go is cgo: a `#include <gtk/gtk.h>` preamble and `import "C"`. Each
@@ -26,7 +26,7 @@ deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_butto
 broken out/go/gtk4 -- `undefined: app`, and a GtkApplicationWindow is passed where gtk_window_set_child wants a GtkWindow
 -- main.sngl --
 import . "sngl:test"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 import ui "sngl:ui"
 
 output {
@@ -38,10 +38,10 @@ output {
 component main ui.node {
     var count int
 
-    gtk4.GtkApplicationWindow(title="Test") {
-        gtk4.GtkBox(orientation="vertical", tooltipText="a box") {
-            gtk4.GtkLabel(label="hello") {}
-            gtk4.GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
+    gtk.GtkApplicationWindow(title="Test") {
+        gtk.GtkBox(orientation="vertical", tooltipText="a box") {
+            gtk.GtkLabel(label="hello") {}
+            gtk.GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
         }
     }
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
@@ -41,6 +42,29 @@ type SchemeRunner interface {
 	GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error)
 }
 
+// The runner a library plugin's handler runs through when the check has no
+// resolver that runs one. internal/plugin registers it: this package cannot
+// import the interpreter that runs a handler, which imports this package.
+var (
+	libRunnerMu sync.RWMutex
+	libRunner   SchemeRunner
+)
+
+// RegisterLibraryRunner makes r what runs a library plugin's handler for a
+// check whose resolver runs none. A library plugin is trusted, so nothing a
+// project grants is asked.
+func RegisterLibraryRunner(r SchemeRunner) {
+	libRunnerMu.Lock()
+	defer libRunnerMu.Unlock()
+	libRunner = r
+}
+
+func libraryRunner() (SchemeRunner, bool) {
+	libRunnerMu.RLock()
+	defer libRunnerMu.RUnlock()
+	return libRunner, libRunner != nil
+}
+
 // deferredImport is an import whose scheme nothing built in serves, waiting
 // for the schemes the package's other imports bring.
 type deferredImport struct {
@@ -49,10 +73,22 @@ type deferredImport struct {
 }
 
 // schemeBuiltIn reports whether a compiled-in importer serves name. With no
-// resolver nothing resolves at all, and every scheme counts as known so the
-// import is left as it always was.
+// resolver nothing the project brings resolves, and every scheme counts as
+// known so the import is left as it always was -- but a scheme the library
+// ships still resolves, through the library runner, since library source may
+// import one (sngl:platform/gtk4 imports gir:) and is checked with no build
+// around it: `sngl doc`, the LSP's library path, a target's capabilities.
 func (c *checker) schemeBuiltIn(name string) bool {
-	if name == "" || name == "sngl" || c.cfg.Resolver == nil {
+	if name == "" || name == "sngl" {
+		return true
+	}
+	// No compiled-in importer may take a name the library ships a plugin for,
+	// so the library's answer stands whatever resolver the check has -- the
+	// fixture harness's stub answers no scheme at all.
+	if libSchemeShipped(name) {
+		return false
+	}
+	if c.cfg.Resolver == nil {
 		return true
 	}
 	if k, ok := c.cfg.Resolver.(SchemeKnower); ok {
@@ -69,7 +105,7 @@ func libSchemeShipped(name string) bool {
 // libraryScheme is the library's plugin for name, checked once per build. Nil
 // when the library ships none.
 func (c *checker) libraryScheme(name string) *ir.Scheme {
-	if !libSchemeShipped(name) || c.cfg.Resolver == nil {
+	if !libSchemeShipped(name) {
 		return nil
 	}
 	libs := c.libs
@@ -89,6 +125,7 @@ func (c *checker) libraryScheme(name string) *ir.Scheme {
 		libs:          libs,
 		generating:    c.generating,
 		libraryScheme: name,
+		noTargets:     true,
 	})
 	for _, d := range diags {
 		// The library's own source failing to check is the compiler's bug;
@@ -324,6 +361,9 @@ func (c *checker) hasErrorAt(pos ast.Pos) bool {
 // output imports its own scheme again, however indirectly, is a cycle.
 func (c *checker) generateScheme(imp *ast.Import, s *ir.Scheme, uri string) []*ast.Document {
 	runner, ok := c.cfg.Resolver.(SchemeRunner)
+	if !ok && s.Library {
+		runner, ok = libraryRunner()
+	}
 	if !ok {
 		c.error(imp.Pos, "import %q: nothing here runs a plugin's handler", imp.Path)
 		return nil

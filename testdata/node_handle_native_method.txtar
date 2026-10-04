@@ -26,7 +26,7 @@ deny out/go/gtk4/model.go `(?m)^\s*C\.gtk_progress_bar_pulse\(bar\)` -- the rece
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:time"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 
 output {
     go {
@@ -36,7 +36,7 @@ output {
 
 window {
     vbox {
-        gtk4.GtkProgressBar #bar(fraction=0.0) {}
+        gtk.GtkProgressBar #bar(fraction=0.0) {}
         time.timer(interval=100ms, @tick {
             bar.pulse()
         })

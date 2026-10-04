@@ -4,7 +4,6 @@ package gtk4
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -60,7 +59,9 @@ var girAutoPaths = []string{
 }
 
 func init() {
-	codegen.RegisterPlatform(&Generator{})
+	g := &Generator{}
+	codegen.RegisterNative(platformName, g)
+	registerGIRScheme(g)
 }
 
 // Generator implements codegen.PlatformGenerator for GTK4.
@@ -71,7 +72,6 @@ type Generator struct {
 	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
 	fsOnce   sync.Once
-	pkgFS    fs.FS
 	fsErr    error
 	// store is where the registry and the declarations derived from it are
 	// kept between builds. Nil means the process's default store.
@@ -86,16 +86,16 @@ func (g *Generator) genStore() *gencache.Store {
 }
 
 // Configure implements codegen.OptionConfigurable. Reads the "gir" option so
-// PackageFS (called during type-check, before code generation) can honor the
-// CLI-supplied GIR path. Resets the cached registry and the source built from
-// it so both re-load against the new path.
+// the gir: import sngl:platform/gtk4 makes (resolved during type-check, before
+// code generation) can honor the CLI-supplied GIR path. Resets the cached
+// registry and the declarations built from it so both re-load against the new
+// path.
 func (g *Generator) Configure(opts map[string]string) error {
 	g.girOpt = opts["gir"]
 	g.once = sync.Once{}
 	g.fsOnce = sync.Once{}
 	g.registry = nil
 	g.initErr = nil
-	g.pkgFS = nil
 	g.fsErr = nil
 	return nil
 }
@@ -147,7 +147,7 @@ func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
 		g.girOpt = opt
 		g.once = sync.Once{}
 		g.fsOnce = sync.Once{}
-		g.registry, g.initErr, g.pkgFS, g.fsErr = nil, nil, nil, nil
+		g.registry, g.initErr, g.fsErr = nil, nil, nil
 	}
 	return g.gir()
 }
