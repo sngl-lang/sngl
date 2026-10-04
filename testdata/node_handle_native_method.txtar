@@ -1,12 +1,11 @@
 A `#id` names a handle to the rendered node, and a host method called on that
 handle has to reach the field the target stores it in.
 
-gtk4's declarations are generated from GIR, which describes a widget's
-*properties* -- so a method that sets nothing has no generated form.
-`gtk_progress_bar_pulse` is one: it moves the block along by a step and takes no
-value, which is how GTK spells an indeterminate bar. It is hand-declared in
-`gtk4.sngl` as the C identifier it is, and a program reaches it by naming the
-widget `#bar` and calling `bar.pulse()`.
+gtk4's declarations are generated from GIR, and a GIR method that takes
+nothing beyond its instance and returns nothing is declared as the C identifier
+it is. `gtk_progress_bar_pulse` is one: it moves the block along by a step,
+which is how GTK spells an indeterminate bar, and a program reaches it by
+naming the widget `#bar` and calling `bar.pulse()`.
 
 That emitted `C.gtk_progress_bar_pulse(bar)` against a field the same file
 declares as `m.bar`, so the generated package did not build: `undefined: bar`.

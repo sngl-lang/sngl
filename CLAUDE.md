@@ -1837,8 +1837,10 @@ the Go language context rather than in a platform emitter because the question
 each platform's own intrinsic path already wrote `m.<id>` for the references it
 emits, which is why only a native call's *receiver* went bare and why it read
 as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
-`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
-it is hand-declared as a `#[cnative]` method reached through the handle.
+`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it; it
+is one of the *actions* `declgen` generates from GIR -- a method taking nothing
+beyond its instance and returning nothing -- as a `#[cnative]` method reached
+through the handle.
 
 **A node's one-way prop may not be written**, which `refuseNodePropAssign`
 reports on both the assignment and the toggle paths, through the node's `#id`

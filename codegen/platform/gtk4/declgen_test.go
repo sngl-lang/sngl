@@ -567,3 +567,28 @@ func componentDecl(t *testing.T, src, name string) string {
 	}
 	return before
 }
+
+// TestWidgetSource_DeclaresActions pins the methods a generated declaration
+// carries: a GIR method that takes nothing beyond its instance and returns
+// nothing is an action a program calls through a `#id` -- `bar.pulse()` --
+// declared as the C identifier it is. A method taking a value is a setter the
+// props already reach, and one returning a value is a query nothing here
+// reads, so neither is declared.
+func TestWidgetSource_DeclaresActions(t *testing.T) {
+	src := string(widgetSource(bundledGIR(t)))
+	for _, want := range []string{
+		"#[macro.cnative(\"gtk_progress_bar_pulse\")]\nfunc GtkProgressBar.pulse()\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated source lacks\n%s", want)
+		}
+	}
+	for _, deny := range []string{
+		"gtk_progress_bar_set_fraction", // takes a value: the fraction prop's setter
+		"gtk_progress_bar_get_fraction", // returns one
+	} {
+		if strings.Contains(src, deny) {
+			t.Errorf("generated source declares %s", deny)
+		}
+	}
+}
