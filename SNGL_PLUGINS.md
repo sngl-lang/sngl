@@ -1481,7 +1481,20 @@ is process mode: the template walk, then the handler run by
 (`ir.Body.Pkg`), its files stored as `sngl.emit` keyed by the members' values.
 `gen.exec` takes `stdin`, and a handler's parameter annotation binds a
 component's type parameter. `cmd/sngl/testdata/emit_family_generate.txt`.
-Still to do: the commands.
+
+*The commands are done for run and build.* `gen.run`, `gen.build` and
+`gen.shell` are `lib/x/gen/command.sngl`; `codegen.Runner`, `Builder` and
+`LangRunner` are gone. What Go alone can do is a build intrinsic a target
+registers (`codegen.RegisterCommand`): `go.buildModule` keeps the go.mod
+written against the host checkout in Go, as agreed, and html's serve and
+android's build and install are the same shape over their existing code.
+`sngl run`'s `-- args` reached no program before this, cobra having taken the
+`--` out; `platform_run_handler_runs.txt` runs fyne through `sngl run` with
+and without them. A wildcard element no longer shadows a func the package
+declares (`mark_wildcard.sngl`), which html's `serve` met first. Still open:
+html route mode under `--lang go` serves the static files, as its Runner did,
+rather than running the server; test, snapshot and preview stay Go
+interfaces until Phase G.
 
 Settled in F's planning:
 

@@ -347,37 +347,17 @@ type BatchTextSnapshotter interface {
 	BatchSnapshotText(docs []BatchDoc, width, height int) (map[string][]byte, error)
 }
 
-// Runner is optionally implemented by PlatformGenerators that can execute
-// their generated output directly (e.g., "go run" for bubbletea, open
-// browser for HTML, adb install for Android).
-type Runner interface {
-	Run(dir string, opts *ir.StructLit, args []string) error
-}
-
-// LangRunner is optionally implemented by LangTranslators that know how to
-// execute generated code in a temp directory. Platforms delegate to this
-// interface so execution logic lives in the language, not each platform.
-type LangRunner interface {
-	// RunDir bootstraps a module in dir and runs the generated code.
-	// goVersion sets the toolchain version emitted in go.mod (Go lang).
-	// goModExtra is appended verbatim — typically a `replace …` directive
-	// pointing SNGL runtime imports at a local checkout when developing.
-	RunDir(dir, goVersion, goModExtra string, args []string) error
-}
-
-// Builder is optionally implemented by PlatformGenerators that have a build
-// step between code generation and execution (e.g., compiling an APK).
-type Builder interface {
-	Build(dir string, opts *ir.StructLit) (artifact string, err error)
-}
+// `sngl run` and `sngl build` are not interfaces: a target says what each does
+// with a gen.run or gen.build in its build-tree node's body (sngl:x/gen), and
+// what only Go can do for one is a CommandFunc it registers.
 
 // TestLauncher launches a compiled SNGL program in agent mode and
 // returns an RPC channel for the sngl test driver to use. Implementable
 // by either a PlatformGenerator (custom build/launch lifecycle — e.g.
 // android APK + adb forward) or a LangTranslator (default lifecycle —
 // compile a binary and spawn it with stdin/stdout RPC). The driver
-// tries the platform first and falls back to the language; mirrors
-// codegen.Builder's resolution.
+// tries the platform first and falls back to the language; the platform-then-language order
+// a command is found in.
 type TestLauncher interface {
 	// LaunchTest compiles the package, spawns the agent-mode binary, and
 	// returns a connected RPCChannel plus a Cleanup func the caller must

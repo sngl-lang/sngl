@@ -48,7 +48,25 @@ component platform(
     const minSdk int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
-) build.platform
+) build.platform {
+    gen.run(@run(dir, args) {
+        install(dir)
+    })
+    gen.build(@build(dir, out) {
+        buildApk(dir, out)
+    })
+}
+
+// Builds the project in dir into a debug APK at out. The options are the
+// node's, as the build had them.
+#[intrinsic("android.buildApk", build)]
+func buildApk(dir string, out string)
+
+// Builds the project in dir, makes sure a device is attached -- starting an
+// emulator where none is -- installs the APK, launches it and follows its log
+// until it exits.
+#[intrinsic("android.install", build)]
+func install(dir string)
 
 // --- The intrinsics ---
 //

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )

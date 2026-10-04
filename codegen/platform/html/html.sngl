@@ -11,6 +11,12 @@ import gen "sngl:x/gen"
 import nav "sngl:ui/nav"
 import tree "sngl:tree"
 
+// Serves dir over HTTP at listen, ":0" when empty, printing the address, until
+// the process is stopped. What `sngl run` does with a site. Declared above the
+// node whose command calls it, which is where library source resolves it.
+#[intrinsic("html.serve", build)]
+func serve(dir string, listen string)
+
 // The `html` node of a build directive: `output { none { html() } }`. Its props
 // are the build options this platform accepts.
 // Both modes write the tree as markup -- static mode to a file, route mode into
@@ -57,7 +63,11 @@ component platform(
     const minify bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
     const noCacheBust bool,
-) build.platform
+) build.platform {
+    gen.run(@run(dir, args) {
+        serve(dir, listen)
+    })
+}
 
 // The element every tag resolves to. The web's element set is open — a new
 // standard adds to it, and a custom element is a tag nobody declared — so one

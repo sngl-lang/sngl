@@ -41,7 +41,29 @@ component language(
     // locally instead of via the public proxy.
     const goModExtra string,
     const platforms ...component build.platform,
-) build.language
+) build.language {
+    gen.run(@run(dir, args) {
+        var cmd = [buildModule(dir, dir + ".app", goVersion, goModExtra)]
+        for var a = args {
+            cmd.push(a)
+        }
+        var code = gen.shell(cmd=cmd, dir=dir)
+        if code != 0 {
+            error.raise("exit status {code}", "exit")
+        }
+    })
+    gen.build(@build(dir, out) {
+        buildModule(dir, out, goVersion, goModExtra)
+    })
+}
+
+// Builds the module the build wrote to dir into the binary out, and returns
+// out. The go.mod it writes first follows the host's own -- its go line, and
+// a replace for each module the host replaces, so the program builds against
+// the checkout it was generated from -- with goVersion and goModExtra over
+// it; it is tidied when it is new or the build says it is stale.
+#[marks.intrinsic("go.buildModule", build)]
+func buildModule(dir string, out string, goVersion string, goModExtra string) string
 
 // --- sngl:remote/http ---
 

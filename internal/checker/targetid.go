@@ -577,13 +577,24 @@ func (c *checker) reportMisplacedEmitters(st ir.Stmt, allowed, seen map[*ir.Node
 	{
 		ir.Walk(st, func(n ir.Node) error { //nolint:errcheck // the visit never fails
 			ni, ok := n.(*ir.NodeInst)
-			if !ok || ni.Component == nil || !ni.Component.Builtin.IsEmitter() || allowed[ni] || seen[ni] {
+			if !ok || ni.Component == nil || seen[ni] {
+				return nil
+			}
+			kind := ni.Component.Builtin
+			if !kind.IsCommand() && (!kind.IsEmitter() || allowed[ni]) {
 				return nil
 			}
 			seen[ni] = true
 			var at ast.Pos
 			if sp := stmtPos(ni.AST); sp != nil {
 				at = *sp
+			}
+			// A command is the target package's: a program is never asked
+			// one, so it would be read by nobody, and a repository choosing
+			// what `sngl build` runs is what trust exists to stop.
+			if kind.IsCommand() {
+				c.error(at, "gen.%s is written in the body of a target package's build-tree node, where the command reads it, and not in a program", ni.Component.Name)
+				return nil
 			}
 			what := "a member's override for the target whose family emits"
 			if ni.Component.Builtin == ir.BuiltinGenEmit {

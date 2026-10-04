@@ -239,11 +239,14 @@ func (c *checker) checkOverrideConst(pe pendingExtension) {
 // a wildcard, #[builtin] -- has no body and is exempt.
 func (c *checker) checkTargetComponentsConst(pkg *ir.Package) {
 	for _, comp := range pkg.Components {
-		if comp.Bodyless || comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone {
+		// A target's build node is never rendered: its body holds the
+		// commands the CLI reads, and the output block it is written in is
+		// read before anything runs.
+		if comp.Bodyless || comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
 			continue
 		}
-		// `{}` renders nothing, which depends on nothing: a target's build
-		// node is that, and so is anything else declared only to be named.
+		// `{}` renders nothing, which depends on nothing: anything declared
+		// only to be named.
 		if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 			continue
 		}

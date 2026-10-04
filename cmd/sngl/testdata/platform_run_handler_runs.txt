@@ -21,6 +21,13 @@ cmp stdout hidden.txt
 exec ./fyne/app --window x
 cmp stdout shown.txt
 
+# `sngl run` is sngl:language/go's gen.run, which every Go platform inherits:
+# the same binary, handed the command line after `--`.
+sngl run --lang go --platform fyne app.sngl
+cmp stdout hidden.txt
+sngl run --lang go --platform fyne app.sngl -- --window x
+cmp stdout shown.txt
+
 -- hidden.txt --
 before 0
 after

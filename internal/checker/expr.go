@@ -5444,7 +5444,12 @@ func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, b
 		// { ... }` body, whose scope carries the target package's wildcards.
 		// Asked for here rather than in Scope.Lookup because a visual node is
 		// the only bare position a wildcard stands in: as an expression the
-		// same name is a misspelling.
+		// same name is a misspelling. A name the scope declares is not one
+		// nobody declared, so a func the package wrote is called rather than
+		// rendered as an element of its name.
+		if _, declared := c.scope.Lookup(name); declared {
+			return nil, false
+		}
 		sym = c.scopeWildcard(pos, c.scope, name)
 		if sym == nil {
 			return nil, false

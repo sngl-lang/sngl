@@ -584,6 +584,22 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
 - **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+  **`sngl run` and `sngl build` are commands a target writes**, not Go
+  interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
+  the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
+  node's override for the language wins, then the platform node's body, then
+  the language node's (`internal/build/command.go`), so `go run` is written
+  once on `sngl:language/go` and fyne, gtk4 and bubbletea say nothing. The
+  handler runs in the interpreter with the node's props bound to the target's
+  options; `gen.shell` runs a process on the user's terminal, and what only Go
+  can do is a build intrinsic the target registers with
+  `codegen.RegisterCommand` -- `go.buildModule` (the go.mod written against
+  the host checkout, tidy, build), `html.serve`, `android.buildApk` and
+  `android.install`. A target that writes none has no such command. A command
+  written in a program is refused (`error_command_placement.sngl`): nothing
+  would read it, and a repository may not choose what `sngl build` runs. A
+  build node is never rendered, which is why it may have a body and is exempt
+  from the const-component rule.
 - **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` is the one: it runs pkg-config and writes a `c.link`. Checked as a package of its own when its scheme is first asked for, never as library source, and left out of the merged stdlib documents.
 - **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[cnative]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`).
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.

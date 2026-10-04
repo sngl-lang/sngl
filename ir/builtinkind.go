@@ -117,6 +117,11 @@ const (
 	// declares. Read where it is written and taken out of the package before
 	// anything renders it.
 	BuiltinGenScheme BuiltinKind = "genScheme"
+	// GenRun and GenBuild are `sngl:x/gen`'s `run` and `build`: what `sngl
+	// run` and `sngl build` do with a target's output, written in the body of
+	// the target's build-tree node and read from there by the command.
+	BuiltinGenRun   BuiltinKind = "genRun"
+	BuiltinGenBuild BuiltinKind = "genBuild"
 	// CLink is `sngl:x/c`'s `link`: a header and the flags a C preamble
 	// includes for the package's `#[cnative]` declarations. Read into
 	// Package.CLinks rather than rendered.
@@ -229,6 +234,11 @@ func (b BuiltinKind) IsEmitter() bool {
 	return b == BuiltinGenEmit || b == BuiltinGenNode
 }
 
+// IsCommand reports whether the kind marks a command a target's node holds.
+func (b BuiltinKind) IsCommand() bool {
+	return b == BuiltinGenRun || b == BuiltinGenBuild
+}
+
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
 // are stamped on const declarations, and the compiler replaces the declared
 // type and value.
@@ -251,7 +261,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinTreeLanguage, BuiltinTreePlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
-		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode,
+		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
@@ -261,5 +271,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsTargetID() || b.IsConst()
 }
