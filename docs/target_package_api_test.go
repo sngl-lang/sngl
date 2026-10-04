@@ -9,17 +9,21 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
-// A target's library package is not under lib/ -- the plugin serves it -- so
-// the package-level readers have to reach it through the registry rather than
-// through the embedded tiers. These assert the three things that silently
-// returned nothing when they did not: the option schema every `--opt` table is
-// built from, the source that schema's declaration is found in, and the
-// language half of the same question.
+// A target's library package is served one of two ways -- by its plugin, or
+// as a lib/ directory once it has moved (codegen/declared.go) -- and the
+// package-level readers have to answer for both. These assert the three things
+// that silently returned nothing when they did not: the option schema every
+// `--opt` table is built from, the source that schema's declaration is found
+// in, and the language half of the same question.
 func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
-	for _, uri := range []string{"platform/html", "language/go"} {
+	for _, tc := range []struct {
+		uri      string
+		embedded bool
+	}{{"platform/html", true}, {"language/go", false}} {
+		uri := tc.uri
 		t.Run(uri, func(t *testing.T) {
-			if checker.HasPackage(uri) {
-				t.Fatalf("%s is embedded under lib/ after all; this test no longer proves anything", uri)
+			if checker.HasPackage(uri) != tc.embedded {
+				t.Fatalf("%s: embedded under lib/ is %v, want %v; this case no longer proves what it says", uri, !tc.embedded, tc.embedded)
 			}
 			comp := checker.TargetNode(uri)
 			if comp == nil {

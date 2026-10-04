@@ -6,7 +6,7 @@ import (
 )
 
 // snglsrc is this platform's own library package, `sngl:platform/bubbletea`.
-// See codegen/platform/html/packagefs.go for why a plugin carries its own
+// See codegen/declared.go for why a plugin carries its own
 // source rather than the standard library holding it.
 //
 //go:embed *.sngl

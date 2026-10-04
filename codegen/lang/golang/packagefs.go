@@ -7,7 +7,7 @@ import (
 
 // snglsrc is this language's own library package, `sngl:language/go`. A
 // language declares its foreign-type surface the way a platform declares its
-// widgets; see codegen/platform/html/packagefs.go.
+// widgets; see codegen/declared.go.
 //
 //go:embed *.sngl
 var snglsrc embed.FS

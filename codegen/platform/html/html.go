@@ -26,7 +26,7 @@ import (
 )
 
 func init() {
-	codegen.RegisterPlatform(&Generator{})
+	codegen.RegisterNative("html", &Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for HTML output.

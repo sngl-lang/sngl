@@ -1,7 +1,7 @@
 A flow of rich text, rendered by html.
 
 The span family is an ordinary component tree and this is a platform
-implementing it: `codegen/platform/html/html.sngl` names the element html
+implementing it: `lib/platform/html/html.sngl` names the element html
 already has for what each member means, so `bold` is `<strong>` and a link is
 `<a>`, and the nesting an author wrote carries straight over. The cascade is
 CSS's own -- the five typography fields a `SpanStyle` carries are exactly the

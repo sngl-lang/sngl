@@ -1556,6 +1556,15 @@ is declared beside the registration. No golden builds none/none, so the bar
 was the `--platform=none` scripts and `TestRunFixtures`, unmoved.
 `codegen/declared_test.go` holds the registration.
 
+*html has moved its package.* Its source is `lib/platform/html`, its node
+says `#[gen.native("html")]`, and the Go generator registers under that key
+with `codegen.RegisterNative` and serves no package. `LookupPlatform` and
+`LookupLang` resolve a declared target through its node's mark, once, and one
+naming a generator the binary lacks refuses to generate, naming it.
+`build.IsInterpreted` asks the same thing: a language that resolves to no
+translator, under a platform that does not generate for one.
+`testdata/error_gen_native_placement.sngl` and `codegen/declared_test.go`.
+
 ### Last: delete this file
 
 The branch's final commit deletes `SNGL_PLUGINS.md`. What the work leaves

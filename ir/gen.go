@@ -26,6 +26,9 @@ type GenCaps struct {
 	// `platform` or `language` by convention, so it is this, not the
 	// component's name, that a registry and the CLI match on.
 	TargetName string `json:",omitempty"`
+	// Native is `#[gen.native]`: the key the Go generator of this target was
+	// registered under, empty for a target with none.
+	Native string `json:",omitempty"`
 }
 
 // RenderedIdentity is the one thing a primitive can claim about its nodes: a

@@ -8,7 +8,7 @@ import (
 
 // snglsrc is the written half of sngl:platform/gtk4: the overrides and
 // primitives this platform declares by hand. See
-// codegen/platform/html/packagefs.go for why a plugin carries its own source.
+// codegen/declared.go for why a plugin carries its own source.
 //
 //go:embed *.sngl
 var snglsrc embed.FS

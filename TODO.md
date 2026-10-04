@@ -53,7 +53,7 @@ own blocks name.
 
 ## 2. Platform implementations
 
-- [X] **html**, `--lang none`. `codegen/platform/html/html.sngl` declares
+- [X] **html**, `--lang none`. `lib/platform/html/html.sngl` declares
   `flow` and `inline` -- the same element twice, differing only in the
   family each joins -- and one override per member. `spanStyleCSS` in Go
   maps a `run`'s style, because which fields a `SpanStyle` literal set is a

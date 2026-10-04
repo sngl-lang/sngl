@@ -43,6 +43,9 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		if g.TargetName != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.name] names a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}
+		if g.Native != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
+			c.error(decl.Pos, "component %s: #[gen.native] names the Go generator of a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
 		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
 			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
 		}
