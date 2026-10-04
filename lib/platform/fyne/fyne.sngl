@@ -22,6 +22,7 @@ import gen "sngl:x/gen"
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 #[gen.name("fyne")]
+#[gen.native("fyne")]
 component platform(
     // Go package name for the generated files.
     const package string,

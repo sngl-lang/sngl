@@ -23,6 +23,7 @@ import gen "sngl:x/gen"
     viewStatements,
 )]
 #[gen.name("kotlin")]
+#[gen.native("kotlin")]
 component language(const platforms ...component build.platform) build.language
 
 // Names the Kotlin identifier a declaration *is*. The counterpart of

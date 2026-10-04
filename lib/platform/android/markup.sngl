@@ -1,3 +1,7 @@
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+import . "sngl:internal/marks"
+
 // Inline rich text, implemented for this platform.
 //
 // A file is a topic here rather than a compilation unit, so the two
@@ -14,10 +18,6 @@
 // of them unset by default -- which is exactly what `markup.SpanStyle`'s
 // `inherit` members mean -- so nested `withStyle` calls merge and the *host*
 // resolves the cascade. Nothing here is flattened.
-
-import ui "sngl:ui"
-import markup "sngl:ui/markup"
-import . "sngl:internal/marks"
 
 // A flow of spans, as a node. `richText` cannot insert its own content -- the
 // component is a `ui.node` whose slot is the span family -- so something has

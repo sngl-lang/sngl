@@ -40,7 +40,7 @@ type Config struct {
 	Description string
 	Version     string
 
-	// Lang globals (codegen/lang/golang/golang.sngl).
+	// Lang globals (lib/language/go/golang.sngl).
 	GoVersion string // Go toolchain version for generated go.mod (default: "1.23")
 
 	// Internal — set by Generate(), not from source.

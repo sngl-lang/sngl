@@ -70,7 +70,7 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
   an empty `{}` component (a build node) and a primitive are exempt. This
   replaces what `passInlinePure`'s strict mode found at lowering with no
   position, so its impure-wrapper branch is now unreachable from a checked
-  program. Every override in `codegen/**/*.sngl` says `const` for that reason.
+  program. Every override in a target package (`lib/platform/*`, `lib/language/*`, `codegen/platform/gtk4/*.sngl`) says `const` for that reason.
 
 **The library says `const` where it means it.** There is no default-pure rule
 any more: a bodied library func is seeded pure for its own fixpoint, and a
@@ -616,7 +616,7 @@ comment counting, in a load order nothing guarantees, published whichever file
 header a directory listed first. It is also what keeps a stored file's
 `// Code generated … DO NOT EDIT.` header, which gtk4 serves as part of its
 package, out of that package's description. A leading comment in any other
-file is an ordinary comment about that file. Target packages under `codegen/`
+file is an ordinary comment about that file. Target packages
 follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
@@ -637,7 +637,7 @@ under.
 
 **A target is its build-target node.** A platform package declares `#[gen.name("html")] component platform(…) build.platform`, a language package `component language(…) build.language`: the node is named for its tier by convention only -- it is found by its family and its mark (`ir.TargetNodeOf`) -- and `#[gen.name]` is the string the CLI, the Go registry and an `output` block's bare `html` match on (`ir.TargetNode`, `GenCaps.TargetName`). The same declaration is the option schema, carries the `#[gen.can]` marks and is the identity: `[platform]` and `[html.platform]` resolve to it (`resolveTargetIndex`), and read as a value it has sngl:builtin's `platform` type (`targetValueType`), folding to its name in the optimizer and the interpreter, so `PLATFORM == html.platform` is unchanged. There used to be a generated `const platform = "html"` mounted into every target package (`identityDoc`, `#[macro.identity]`), a second declaration that could disagree with the first. A build-target node without the mark is an error, as is the mark anywhere else, and so is a name another node of the same tier carries (`reportTargetNames`, run last over every loaded package, library nodes ahead of the program's so the program's is the one reported) or a target package's node naming anything but its own package: `none` may be both a language and a platform, and nothing else may be two things. Diagnostics name a node by `Component.DisplayName`, its target name, since every platform's node is called `platform`.
 
-**A target carries its own library package.** `sngl:platform/<name>` and `sngl:language/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/lang/golang/golang.sngl` — and is embedded there. That is being retired target by target (Phase G of `SNGL_PLUGINS.md`): a moved target's package is `lib/platform/<name>` or `lib/language/<name>`, and the layout is its registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, and a node naming none generates nothing. `none` and `html` have moved.
+**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. gtk4 is the one target still served by its plugin (`RegisterPlatform`, `PackageFS() fs.FS`, read by `ProvidedDocs`), since half of its package is generated.
 
 The point is that the checker does not know where a package comes from. gtk4's `PackageFS` returns its embedded overrides merged with one component declaration per GTK widget class, generated from the host's introspection data; nothing outside `codegen/platform/gtk4/packagefs.go` knows half of that package did not exist a moment earlier. The same interface is what will let a plugin outside this repository answer over an RPC.
 
@@ -1608,7 +1608,7 @@ mark names a signature in `ir.Intrinsics` that every language backend must
 implement. On a component there is no signature to register — the declaration
 *is* the contract for props and events, and one platform's codegen emits the
 widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
-`codegen/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
+`lib/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
 the emitting platform (`android:Column`) so it can never collide with a stdlib
 intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a
@@ -2913,7 +2913,7 @@ renders is decided per node: html overrides it with `ui.link(href=nav.href(to, p
   interpreter.
 
 **android is a NavHost.** A link is android's own `Link` primitive
-(`codegen/platform/android/nav.sngl`), since its body names a page and a
+(`lib/platform/android/nav.sngl`), since its body names a page and a
 NavHost answers that only knowing which controller holds it. Each page is a destination with a typed route of
 its own, a `@Serializable` class named for the page's record and id
 (`_page__valueRoute2`), holding the params where the page has any with the

@@ -15,7 +15,7 @@ import (
 var previewCSS string
 
 func init() {
-	codegen.RegisterPlatform(&Generator{})
+	codegen.RegisterNative("android", &Generator{})
 }
 
 // writeAndroidFile writes content to a named file in sink. Plain bytes;

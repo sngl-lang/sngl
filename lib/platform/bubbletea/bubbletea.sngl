@@ -14,6 +14,7 @@ import gen "sngl:x/gen"
 #[gen.cannot(inlineComponents, implicitRecv, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
 #[gen.name("bubbletea")]
+#[gen.native("bubbletea")]
 component platform(
     // Go package name for the generated files.
     const package string,

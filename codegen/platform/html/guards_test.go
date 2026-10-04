@@ -7,7 +7,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
-
 )
 
 // noneLang returns the registered "none" (static-site) language translator.

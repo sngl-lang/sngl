@@ -1,9 +1,3 @@
-// The drawing surface, implemented for this platform.
-//
-// Split from android.sngl for the reason widgets.sngl is: one topic per file.
-// A shape override here is written against the Compose vocabulary declared
-// below and nothing in the widget half.
-
 import ui "sngl:ui"
 import . "sngl:macro"
 import . "sngl:internal/marks"
@@ -11,6 +5,12 @@ import tree "sngl:tree"
 import shapes "sngl:ui/draw"
 import math "sngl:math"
 import kt "sngl:language/kotlin"
+
+// The drawing surface, implemented for this platform.
+//
+// Split from android.sngl for the reason widgets.sngl is: one topic per file.
+// A shape override here is written against the Compose vocabulary declared
+// below and nothing in the widget half.
 
 // --- Drawing ---
 //

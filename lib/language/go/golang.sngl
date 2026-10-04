@@ -30,6 +30,7 @@ import gen "sngl:x/gen"
     asyncSpawn,
 )]
 #[gen.name("go")]
+#[gen.native("go")]
 component language(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.

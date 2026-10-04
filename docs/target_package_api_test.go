@@ -19,7 +19,7 @@ func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
 	for _, tc := range []struct {
 		uri      string
 		embedded bool
-	}{{"platform/html", true}, {"language/go", false}} {
+	}{{"platform/html", true}, {"language/go", true}, {"platform/gtk4", false}} {
 		uri := tc.uri
 		t.Run(uri, func(t *testing.T) {
 			if checker.HasPackage(uri) != tc.embedded {
@@ -53,8 +53,8 @@ func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
 	}
 }
 
-// LangDocs is the language half of PlatformDocs, and go's package moved out of
-// lib/languages with everything else.
+// LangDocs is the language half of PlatformDocs, and go's package is
+// lib/language/go.
 func TestLangDocsReadsTheServedPackage(t *testing.T) {
 	l := codegen.LookupLang("go")
 	if l == nil {

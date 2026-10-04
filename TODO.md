@@ -77,7 +77,7 @@ own blocks name.
   renderers now ask `nodeInlineCSS` for an element's inline CSS, which is
   also what stops a node carrying a box style and a run style from
   emitting `style` twice. Both targets are in `markup_inline.txtar`.
-- [X] **none** (interpreter). `codegen/platform/none/none.sngl` declares
+- [X] **none** (interpreter). `lib/platform/none/none.sngl` declares
   `flow` and `inline` and overrides the six signatures. The interpreter
   draws nothing, so what it owes the family is the tree `sngl test`
   asserts on -- but a member whose body inserts its content is a component

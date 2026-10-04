@@ -1,6 +1,7 @@
 package fyne
 
 import (
+	"git.duckfam.us/jonathan/sngl/lib"
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ import (
 // mark reappearing on a list-valued prop would not be a drift to notice later
 // but a package that stops checking.
 func TestNoWidgetPropIsConstructOnly(t *testing.T) {
-	src, err := snglsrc.ReadFile("fyne.sngl")
+	src, err := lib.FS.ReadFile("platform/fyne/fyne.sngl")
 	if err != nil {
 		t.Fatal(err)
 	}

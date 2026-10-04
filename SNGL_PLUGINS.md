@@ -1565,6 +1565,15 @@ naming a generator the binary lacks refuses to generate, naming it.
 translator, under a platform that does not generate for one.
 `testdata/error_gen_native_placement.sngl` and `codegen/declared_test.go`.
 
+*So have fyne, bubbletea, android, go, js and kotlin.* Each package is a
+`lib/` directory and each generator registers with `RegisterNative` under the
+key its node names. Moving android's put its three topic files under the
+library's package-comment rule, so their headers sit below the imports.
+
+*gtk4 is next, and different*: half its package is generated from the host's
+GIR. The generated half moves to an import scheme in a package of its own,
+which the written wrappers in `lib/platform/gtk4` import.
+
 ### Last: delete this file
 
 The branch's final commit deletes `SNGL_PLUGINS.md`. What the work leaves

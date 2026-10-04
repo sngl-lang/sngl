@@ -10,7 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
-
 )
 
 // TestMainElementNotSwallowedByMainComponent guards a regression where a

@@ -25,6 +25,7 @@ import gen "sngl:x/gen"
     viewStatements,
 )]
 #[gen.name("js")]
+#[gen.native("js")]
 component language(const platforms ...component build.platform) build.language
 
 // Names the JavaScript identifier a declaration *is*, rather than one it

@@ -1,12 +1,13 @@
-// The portable components, implemented for this platform.
-//
-// Split from android.sngl rather than living in it: the package is embedded as
-// `*.sngl`, so a file is a topic and not a compilation unit. The intrinsics
-// these are written in terms of are declared there.
-
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:internal/marks"
+
+// The portable components, implemented for this platform.
+//
+// Split from android.sngl rather than living in it: a package is its
+// directory, so a file is a topic and not a compilation unit. The intrinsics
+// these are written in terms of are declared there.
+
 // --- The window ---
 
 // The window's `@error` is the outermost boundary of what it renders, and

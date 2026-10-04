@@ -20,6 +20,7 @@ import gen "sngl:x/gen"
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 #[gen.name("android")]
+#[gen.native("android")]
 component platform(
     // Kotlin package / Android application ID.
     const package string,
