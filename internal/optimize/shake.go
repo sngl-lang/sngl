@@ -629,6 +629,13 @@ func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) 
 	for _, a := range call.Args {
 		walkExpr(a.Value, used, walk)
 	}
+	// A call's own @error is rendered at the call (catchAtCall), so what it
+	// names is used there. Missed, a var only the handler wrote was shaken
+	// while the handler kept writing it: `problem__inst2 = …` against a Model
+	// with no such field.
+	if call.ErrorHandler != nil {
+		walkFunc(call.ErrorHandler.Func, used, walk)
+	}
 }
 
 func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
