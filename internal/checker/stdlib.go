@@ -1651,10 +1651,8 @@ func ownTarget(name string) []ir.StaticTarget {
 }
 
 // Packages lists the `sngl:` packages this process can reach: the public
-// tiers embedded under lib/, plus the package each registered target serves
-// for itself. A target that cannot serve one — gtk4 with no introspection
-// data — contributes nothing, so the list is what is actually addressable
-// here rather than what the build could in principle offer.
+// tiers embedded under lib/, plus each registered target's package that has
+// source to read.
 func Packages() []string {
 	out := lib.PublicPackages()
 	targetPkgMu.RLock()

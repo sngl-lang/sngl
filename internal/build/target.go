@@ -26,7 +26,7 @@ type Target struct {
 // whose static site the browser runs. For every other platform it is the
 // interpreter.
 func IsInterpreted(t Target) bool {
-	return !codegen.Translates(t.Lang) && !codegen.GeneratesUntranslated(t.Platform)
+	return t.Lang != "" && !codegen.Translates(t.Lang) && !codegen.GeneratesUntranslated(t.Platform)
 }
 
 // SelectedTargets is the caller's own target selection, as the checker takes

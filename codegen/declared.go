@@ -65,16 +65,30 @@ func RegisterNative(key string, g any) {
 // package whose import fails is exactly the one being asked about. The mark is
 // placed on a build-target node and held there by the checker, so the first
 // one written is the node's.
-func nodeNative(uri string) string {
-	for _, doc := range checker.PackageSource(uri) {
-		alias := "gen"
+func nodeNative(uri string) string { return nativeIn(checker.PackageSource(uri)) }
+
+// nativeIn is the first #[gen.native] key the documents write, resolving
+// sngl:x/gen's alias per file as the checker does: the written one, the
+// path's last segment when none is written, no qualifier under a dot import,
+// and no mark at all in a file that does not import the package.
+func nativeIn(docs []*ast.Document) string {
+	for _, doc := range docs {
+		alias, imported := "", false
 		for _, st := range doc.Stmts {
 			if imp, ok := st.(*ast.Import); ok && imp.Path == "sngl:x/gen" {
-				alias = imp.Alias
-				if alias == "." {
+				imported = true
+				switch imp.Alias {
+				case "":
+					alias = "gen"
+				case ".":
 					alias = ""
+				default:
+					alias = imp.Alias
 				}
 			}
+		}
+		if !imported {
+			continue
 		}
 		for _, st := range doc.Stmts {
 			decl, ok := st.(*ast.ComponentDecl)
@@ -179,6 +193,13 @@ func (p *DeclaredPlatform) Generate(*Request, Sink) error {
 		return p.missingErr()
 	}
 	return fmt.Errorf("platform %q generates no code", p.name)
+}
+
+// GeneratesNothing reports whether p is a platform with no generator behind
+// it -- `none` -- rather than one whose generator this binary lacks.
+func GeneratesNothing(p PlatformGenerator) bool {
+	d, ok := p.(*DeclaredPlatform)
+	return ok && d.missing == ""
 }
 
 // DeclaredLang is a language whose package is in lib/, resolved as a

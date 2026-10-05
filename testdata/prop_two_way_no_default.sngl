@@ -1,6 +1,6 @@
 // A two-way prop is never required. Left unbound it is a cell of the instance,
 // and a cell starts from the prop's default or, with none declared, from its
-// type's zero -- which is what decision 17 says and what the checker did not:
+// type's zero -- which is what an unbound two-way prop means and what the checker did not:
 // it asked for a value no caller had any reason to supply.
 
 import . "sngl:test"

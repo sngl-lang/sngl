@@ -460,8 +460,8 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // package prose is easy to leave in by accident: three files in lib/remote
 // opened with a file header, and the package read as whichever the directory
 // listed first. A stored file is the same accident made by a program, since
-// every one opens with a "Code generated" header and gtk4 serves one as part of
-// its package.
+// every one opens with a "Code generated" header, the gir: scheme's widget
+// file included.
 const PackageDocFile = "doc.sngl"
 
 // DocumentFile is the base name of the file a parsed document came from. An

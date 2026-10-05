@@ -2,7 +2,7 @@
 # activity one content view. A second window is refused at the second, where
 # it used to be dropped without a word -- including one in the other branch
 # of an `if`, which is still a second window the program says exists. A
-# program wanting several screens on one surface wants a navigator (Phase C2).
+# program wanting several screens on one surface wants a navigator (`sngl:ui/nav`).
 # gtk4 builds the same source, two toplevels.
 
 ! sngl generate --lang go --platform bubbletea -o tea two.sngl

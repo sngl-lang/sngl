@@ -70,7 +70,7 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
   an empty `{}` component (a build node) and a primitive are exempt. This
   replaces what `passInlinePure`'s strict mode found at lowering with no
   position, so its impure-wrapper branch is now unreachable from a checked
-  program. Every override in a target package (`lib/platform/*`, `lib/language/*`, `codegen/platform/gtk4/*.sngl`) says `const` for that reason.
+  program. Every override in a target package (`lib/platform/*`, `lib/language/*`) says `const` for that reason.
 
 **The library says `const` where it means it.** There is no default-pure rule
 any more: a bodied library func is seeded pure for its own fixpoint, and a
@@ -502,7 +502,7 @@ Languages and platforms register via `init()` and are looked up by name at runti
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
 - **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
 - **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html), each registers in `init()`. A moved target's package is a `lib/` directory instead, and its Go registers by key (`codegen.RegisterNative`) -- see *A target carries its own library package*
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html), each registers in `init()`. A moved target's package is a `lib/` directory instead, and its Go registers by key (`codegen.RegisterNative`) -- see *A target is its library package*
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -535,7 +535,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
-- **none** — no codegen and no Go package: `lib/platform/none` and `lib/language/none` are the whole target, registered by `codegen/declared.go` from the layout as a `DeclaredPlatform` and a `DeclaredLang`. A pair `--lang none` leaves untranslated (`build.IsInterpreted`) is run by the compiler's own interpreter -- `sngl run` through `interprun`, `sngl test` through `internal/interp/testrunner` (`testRunnerFor` in `cmd/sngl/test.go`) -- and the interpreter's claim on `sngl:ui/nav` is declared beside the registration.
+- **none** — no codegen and no Go package: `lib/platform/none` and `lib/language/none` are the whole target, registered by `codegen/declared.go` from the layout as a `DeclaredPlatform` and a `DeclaredLang`. The interpreter is the none language's and the none platform's: `sngl test` runs a program through `internal/interp/testrunner` on `none` alone (`testRunnerFor` in `cmd/sngl/test.go`, `codegen.GeneratesNothing`), and a platform with a generator given `--lang none` has no tests to run (`test_interpreter_none_only.txt`). `sngl run` drives an interpreted pair through `interprun` (`build.IsInterpreted`), which is also how fyne's worker host runs `--lang none` -- and the interpreter's claim on `sngl:ui/nav` is declared beside the registration.
 
 ### Key Internal Packages
 
@@ -614,8 +614,8 @@ adding a `lib/` directory with a package comment needs no code change.
 `checker.PackageDoc`), which is where Go's semantics are dropped: every file's
 comment counting, in a load order nothing guarantees, published whichever file
 header a directory listed first. It is also what keeps a stored file's
-`// Code generated … DO NOT EDIT.` header, which gtk4 serves as part of its
-package, out of that package's description. A leading comment in any other
+`// Code generated … DO NOT EDIT.` header -- what the `gir:` scheme writes for
+gtk4 opens with one -- out of that package's description. A leading comment in any other
 file is an ordinary comment about that file. Target packages
 follow the same rule, each with a `doc.sngl` beside its source.
 

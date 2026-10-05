@@ -166,27 +166,19 @@ func runTestAll(language string, units []unit, runFilter string, verbose bool, f
 }
 
 // testRunnerFor is what runs a pair's tests in process: the platform's own
-// runner where it has one, and otherwise the interpreter for a pair it runs.
-// The interpreter is the compiler's, not a target's, so the `none` platform --
-// a package in lib/ with no Go behind it -- is answered here rather than by a
-// method of its own.
+// runner where it has one, and the interpreter for the none platform -- a
+// package in lib/ with no generator behind it -- under the none language.
+// The interpreter is the compiler's, not a target's, so it is answered here
+// rather than by a method of the platform's own; a platform that generates
+// code has no tests the interpreter runs for it, whatever language is named.
 func testRunnerFor(plat codegen.PlatformGenerator, lang codegen.LangTranslator) codegen.TestRunner {
 	if r, ok := plat.(codegen.TestRunner); ok {
 		return r
 	}
-	if build.IsInterpreted(build.Target{Lang: langOrNone(lang), Platform: plat.PlatformIdentifier()}) &&
-		resolveLauncher(plat, lang) == nil {
+	if codegen.GeneratesNothing(plat) && (lang == nil || !codegen.Translates(lang.LanguageIdentifier())) {
 		return interpreterTests{}
 	}
 	return nil
-}
-
-// A platform that supports no language is run untranslated.
-func langOrNone(lang codegen.LangTranslator) string {
-	if lang == nil {
-		return "none"
-	}
-	return lang.LanguageIdentifier()
 }
 
 type interpreterTests struct{}
