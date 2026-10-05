@@ -22,11 +22,11 @@ const girSetting = "gtk4.gir"
 // from.
 func registerGIRScheme(g *Generator) {
 	buildhost.RegisterIntrinsic("gir.widgets", g.girWidgets)
-	gencache.RegisterSetting(girSetting, func() string { return g.girOpt })
+	gencache.RegisterSetting(girSetting, g.girOption)
 }
 
 func (g *Generator) girWidgets(rec *buildhost.Recorder, _ []any) (any, error) {
-	req, err := girRequest(widgetsProducer, g.girOpt)
+	req, err := girRequest(widgetsProducer, g.girOption())
 	if err != nil {
 		return nil, err
 	}
@@ -42,16 +42,25 @@ func (g *Generator) girWidgets(rec *buildhost.Recorder, _ []any) (any, error) {
 	return string(data), nil
 }
 
-// widgets loads the generated declarations once, which is what says whether
-// the option names introspection data this platform can read.
+// widgets loads the generated declarations once per option, which is what
+// says whether the option names introspection data this platform can read.
+// The caller holds mu.
 func (g *Generator) widgets() bool {
-	g.fsOnce.Do(func() {
+	if !g.fsLoaded {
+		g.fsLoaded = true
 		req, err := girRequest(widgetsProducer, g.girOpt)
 		if err != nil {
 			g.fsErr = err
-			return
+		} else {
+			_, g.fsErr = g.genStore().Get(req)
 		}
-		_, g.fsErr = g.genStore().Get(req)
-	})
+	}
 	return g.fsErr == nil
+}
+
+// girOption is the GIR the "gir" option selects now.
+func (g *Generator) girOption() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.girOpt
 }
