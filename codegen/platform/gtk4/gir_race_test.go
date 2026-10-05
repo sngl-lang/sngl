@@ -16,9 +16,7 @@ func TestGIROptionIsSafeConcurrently(t *testing.T) {
 	g := &Generator{store: gencache.Open(t.TempDir())}
 	var wg sync.WaitGroup
 	for i := range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := range 20 {
 				switch (i + j) % 5 {
 				case 0:
@@ -33,7 +31,7 @@ func TestGIROptionIsSafeConcurrently(t *testing.T) {
 					_ = g.girOption()
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }

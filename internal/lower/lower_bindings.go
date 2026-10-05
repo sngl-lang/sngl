@@ -162,10 +162,8 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 					return true
 				}
 			}
-			for _, f := range propLambdas(n) {
-				if has(f) {
-					return true
-				}
+			if slices.ContainsFunc(propLambdas(n), has) {
+				return true
 			}
 		case *ir.ErrorBoundary:
 			if n.Handler != nil && has(n.Handler.Func) {
