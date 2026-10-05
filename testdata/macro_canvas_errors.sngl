@@ -1,11 +1,11 @@
-// A painted shape has nothing to raise an event from. The rule used to ride
-// on a mark that conferred membership; membership is the return position
-// now, so the rule sits where that is read and holds for every member.
+// A painted shape has nothing to raise an event from, which the family says
+// with #[tree.eventless], and the checker holds every member to it without
+// knowing what a shape is.
 
 import . "sngl:ui"
 import "sngl:ui/draw"
 
-component badShape(x float, @click ClickEvent) draw.shape {} // ERROR(check) "a shape supports no event declarations"
+component badShape(x float, @click ClickEvent) draw.shape {} // ERROR(check) "a member of shape raises no events, so it declares none"
 
 window {
 }

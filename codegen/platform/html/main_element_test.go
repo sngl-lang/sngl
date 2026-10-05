@@ -10,8 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
-
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // TestMainElementNotSwallowedByMainComponent guards a regression where a
@@ -26,7 +24,7 @@ func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/html"
 output { none { html() } }
-window(title="Home", href="/index.html") {
+window(title="Home") {
     html.div {
         html.main {
             html.p(innerText="BODY CONTENT")

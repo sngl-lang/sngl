@@ -125,10 +125,6 @@ func testEqualsAloneIsInert(t test.Test) {
     t.assert(c.digit("7").equals().entry == "7")
 }
 
-// Pressing keys goes through the same handler the keypad is wired to. `main`
-// is declared in app.sngl, the file next to this one: a directory is one
-// package, so a test names what its package declares.
-
 // --- The readout ---
 
 // A point folds onto the cell to its left and the number is padded from the
@@ -174,10 +170,10 @@ func testKeypadCoversEveryKey(t test.Test) {
     t.assert(labels == "C +/- % / 7 8 9 x 4 5 6 - 1 2 3 + 0 . < = ")
 }
 
-// Pressing keys goes through the same handler the keypad is wired to. `main`
+// Pressing keys goes through the same handler the keypad is wired to. `Calculator`
 // is declared in app.sngl, the file next to this one: a directory is one
 // package, so a test names what its package declares.
-func testPressingKeysDrivesTheCalculator(t test.Test, c main) {
+func testPressingKeysDrivesTheCalculator(t test.Test, c Calculator) {
     c.press(keypad.digitKey("4"))
     c.press(keypad.opKey(calc.Op.mul))
     c.press(keypad.digitKey("6"))

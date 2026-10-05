@@ -391,7 +391,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -602,7 +602,9 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
 }
 
-func (c *Card__slot0Instance) Destroy() {}
+func (c *Card__slot0Instance) Destroy() {
+	c.__n2.Destroy()
+}
 
 func main() {
 	a := app.New()
@@ -670,7 +672,6 @@ type Model struct {
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*Card__slot0Instance
-	__n4         gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -889,7 +890,12 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
 }
 
+func (c *Card__slot0Instance) teardown() {
+	c.__n2.Destroy()
+}
+
 func (c *Card__slot0Instance) Destroy() {
+	c.teardown()
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
@@ -920,11 +926,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.__renderSlot0(m.__n4)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n4, 6)
+	m.__renderSlot0(__n4)
+	gtk4rt.BoxAppend(m.__root, __n4)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1273,9 +1279,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:a13d32cd1a8fe78de3054bd40335a0ea
 -- run/go/fyne --
-pass sha256:79be73aacea51fce9552ca2c7edc2f95
+pass sha256:8a6c02914d09ab2daafe680ae4a78823
 -- run/go/gtk4 --
-pass sha256:986f32f5e8af93b94adb87527e9bb344
+pass sha256:7fdd619dc7599b919d203a75ce7ce11d
 -- run/kotlin/android --
 pass sha256:b028f42c2045d676ff53c5510125d5c1
 -- run/none/html --

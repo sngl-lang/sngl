@@ -1,0 +1,253 @@
+# A raise inside a called function reaches the boundary around the handler that
+# made the call, on every target, and ends that handler.
+#
+# Run rather than read, because what is being claimed is what executes: a
+# golden shows a recover or a catch, and only running it shows the handler ran
+# and the statements after the raise did not. Before passErrorCatch a raise
+# that reached a boundary ran its handler and let the click go on, and a raise
+# in a call whose value is used (`age = parseTwice("")`) was caught nowhere --
+# on the interpreter either, which dispatched only a bare call statement.
+#
+# The per-call handler is the other half: it catches at its call, the boundary
+# never hears of it, and the handler goes on after the statement. The argument
+# case holds the line between the two -- a raise from an argument happens
+# before the call it is passed to, so it is the boundary's.
+#
+# Android only compiles the program, in the record of
+# testdata/error_raise_through_call.txtar, which declares no test functions.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func requireAge(s string) int {
+    if s.length == 0 {
+        error.raise("an age is required", "validation")
+    }
+    return int(s)
+}
+
+func parseTwice(s string) int {
+    var n = requireAge(s)
+    return n * 2
+}
+
+// One component per case: html's test agent shares one page's state across
+// the tests of a component, so two tests of one would each see the other's
+// clicks.
+component throughCalls node {
+    var problem = "none"
+    var age = 7
+    var after = false
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        button #save(text="Save", @click {
+            age = parseTwice("")
+            after = true
+        })
+    }
+}
+
+func testRaiseTwoCallsDownReachesBoundary(t Test, c throughCalls) {
+    c.save.click()
+    t.assert(c.problem == "an age is required")
+    t.assert(c.age == 7)
+    t.assert(c.after == false)
+}
+
+component direct node {
+    var problem = "none"
+    var after = false
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        button #go(text="Direct", @click {
+            error.raise("stop", "")
+            after = true
+        })
+    }
+}
+
+func testDirectRaiseEndsHandler(t Test, c direct) {
+    c.go.click()
+    t.assert(c.problem == "stop")
+    t.assert(c.after == false)
+}
+
+component perCall node {
+    var problem = "none"
+    var after = false
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        button #check(text="Check", @click {
+            requireAge("", @error(e) {
+                problem = "call: " + e.kind
+            })
+            after = true
+        })
+    }
+}
+
+func testPerCallCatchesAndContinues(t Test, c perCall) {
+    c.check.click()
+    t.assert(c.problem == "call: validation")
+    t.assert(c.after == true)
+}
+
+component argument node {
+    var problem = "none"
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        button #go(text="Argument", @click {
+            parseTwice(string(requireAge("")), @error(e) {
+                problem = "not this one"
+            })
+        })
+    }
+}
+
+func testRaiseInArgumentReachesBoundary(t Test, c argument) {
+    c.go.click()
+    t.assert(c.problem == "an age is required")
+}
+
+component noRaise node {
+    var problem = "none"
+    var age = 7
+    boundary(@error(e) {
+        problem = e.message
+    }) {
+        button #ok(text="Ok", @click {
+            age = parseTwice("21")
+        })
+    }
+}
+
+func testNoRaiseCompletes(t Test, c noRaise) {
+    c.ok.click()
+    t.assert(c.age == 42)
+    t.assert(c.problem == "none")
+}
+
+window {
+    throughCalls()
+    direct()
+    perCall()
+    argument()
+    noRaise()
+}
+-- testrun/bubbletea/go/app.sngl/argument/1 --
+sha256:d1a54fd3e1943219e4ea2e6673c29c3f
+{
+  "results": [
+    {
+      "Desc": "RaiseInArgumentReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/direct/1 --
+sha256:8e6c01f52ef80773282dfe66cfcb1906
+{
+  "results": [
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/noRaise/1 --
+sha256:58ff536c567d078fb99f7dbc9f989681
+{
+  "results": [
+    {
+      "Desc": "NoRaiseCompletes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/perCall/1 --
+sha256:684d01b3fb1e0161977ee8ffc5cf870a
+{
+  "results": [
+    {
+      "Desc": "PerCallCatchesAndContinues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/throughCalls/1 --
+sha256:be573bf2dd1324d9aae165287a7670fa
+{
+  "results": [
+    {
+      "Desc": "RaiseTwoCallsDownReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/argument/1 --
+sha256:53c09f928f509b9a478ac1df0f13c026
+{
+  "results": [
+    {
+      "Desc": "RaiseInArgumentReachesBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/direct/1 --
+sha256:d4b935712bad11de5720bfaf45ec7885
+{
+  "results": [
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/noRaise/1 --
+sha256:335dfd12c05a8eef4dfa40a2ad0e8bc4
+{
+  "results": [
+    {
+      "Desc": "NoRaiseCompletes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/perCall/1 --
+sha256:95efd2d987acce81678c74ce2ede2436
+{
+  "results": [
+    {
+      "Desc": "PerCallCatchesAndContinues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/throughCalls/1 --
+sha256:804e7534ad0b6f69b27d15f18b8bb627
+{
+  "results": [
+    {
+      "Desc": "RaiseTwoCallsDownReachesBoundary",
+      "Passed": true
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import . "sngl:test"
 // label changes the chosen node.
 component main node {
     var sel = ""
-    tree(items=["Documents", "Photos", "Music"], selected=sel)
+    tree(items=["Documents", "Photos", "Music"], :selected=sel)
 }
 
 func testTreeSelectedMutates(t Test, c main) {
@@ -137,6 +137,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.__focusID == 0 {
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
+		m.sel = tui.SelectedString(m.widget0)
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -198,6 +199,10 @@ func New() *Model {
 	m := &Model{}
 	m.sel = ""
 	return m
+}
+
+func (m *Model) __n0_selected_handler(__selected string) {
+	m.sel = __selected
 }
 
 func (m *Model) Sel() string {
@@ -345,7 +350,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<ul style="list-style-type:none;padding-left:16px">
+<ul id="$0" style="list-style-type:none;padding-left:16px">
   <li>Documents</li>
   <li>Photos</li>
   <li>Music</li>
@@ -379,16 +384,20 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testTreeSelectedMutates });
   }
+  var $0 = document.getElementById("$0");
+  $0.addEventListener("selected", function(e) {
+    state.sel = e;
+  });
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b854d8fc4f9dc65c5ac51937ae711b49
+pass sha256:b3734735fd8fd880f8bfef4fffc21c7f
 -- run/go/fyne --
-pass sha256:76dcccdef30312bbedc6bc23744c20aa
+pass sha256:05fadfb3fa2057fe9e5857358f7c846b
 -- run/kotlin/android --
 pass sha256:ce54071b300022b51e362c122fe30705
 -- run/none/html --
-pass sha256:ac4d21c97d69fe70c0a5141da474608d
+pass sha256:e8242cbdaa0cfcc6c3babc9b9a7f24dc

@@ -103,10 +103,10 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// A directory walk reaches a program's library packages too, and a
 		// library has nothing to emit -- generating one wrote a second
 		// index.html over the program's. A file named on the command line is
-		// generated whether or not it opens a window, since naming it is the
-		// request.
+		// generated whether or not its body renders anything, since naming it
+		// is the request.
 		if !u.solo && !pkg.IsProgram() {
-			slog.Info("skip: no window", "unit", u.name)
+			slog.Info("skip: renders nothing", "unit", u.name)
 			skipped = append(skipped, u.name)
 			continue
 		}
@@ -120,7 +120,7 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 	// Only a command line holds the whole set of units, which is why
 	// internal/build, seeing one package at a time, cannot ask this.
 	if !emitted && len(skipped) > 0 {
-		return fmt.Errorf("nothing to generate: no window declared in %s: a program declares at least one window, since the package body renders only what a window holds", strings.Join(skipped, ", "))
+		return fmt.Errorf("nothing to generate: nothing rendered at the root of a file in %s: a program's package body is its view", strings.Join(skipped, ", "))
 	}
 	return nil
 }
@@ -146,16 +146,29 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		Main:     p.main,
 		OutDir:   p.outDir,
 		Library:  p.library,
+		Trust:    cliTrust,
 	})
 	if err != nil {
 		return err
 	}
+	seen := map[string]bool{}
 	for _, res := range results {
-		if err := writeFiles(res.Files, p.outDir, p.quiet); err != nil {
+		printWarnings(res.Warnings, seen)
+	}
+	for _, res := range results {
+		out := p.outDir
+		// A command that builds what it generates -- run, build -- owns its
+		// output directory, and each target is a program of its own: written
+		// into one directory, the second target's build found the first's
+		// files beside its own and declared main twice.
+		if p.onTarget != nil && len(results) > 1 {
+			out = filepath.Join(p.outDir, res.Target.Lang+"-"+res.Target.Platform)
+		}
+		if err := writeFiles(res.Files, out, p.quiet); err != nil {
 			return err
 		}
 		if p.onTarget != nil {
-			if err := p.onTarget(res.Target, res.Pkg, dir, p.outDir); err != nil {
+			if err := p.onTarget(res.Target, res.Pkg, dir, out); err != nil {
 				return err
 			}
 		}

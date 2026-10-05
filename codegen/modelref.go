@@ -111,12 +111,14 @@ func HandlerPayload(handler ir.Expr) (*ir.Type, *ir.StructDef) {
 // visible. A platform whose primitive declares the component's own event name
 // gets the same answer from the fallback.
 func TriggerEventName(handler ir.Expr, fallback string) string {
-	id, ok := handler.(*ir.Ident)
-	if !ok {
-		return fallback
+	var fn *ir.Func
+	switch h := handler.(type) {
+	case *ir.Ident:
+		fn, _ = h.Sym.(*ir.Func)
+	case *ir.Lambda:
+		fn = h.Func
 	}
-	fn, ok := id.Sym.(*ir.Func)
-	if !ok || fn.LoweredFromComponentEvent == "" {
+	if fn == nil || fn.LoweredFromComponentEvent == "" {
 		return fallback
 	}
 	return fn.LoweredFromComponentEvent

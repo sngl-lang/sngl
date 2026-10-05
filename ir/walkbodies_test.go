@@ -82,11 +82,18 @@ var referenceSlots = map[string]bool{
 	// Aliases Call.ErrorHandler or a handler owned by an enclosing boundary
 	// or window, each of which is walked where it is owned.
 	"Call.ResolvedHandler": true,
+	// The same alias, on the catch block passErrorCatch renders it from.
+	"If.Catch": true,
 	// The lifted body, appended to pkg.Funcs by passLambda; this field stores
 	// the pointer so the closure's construction site can name it.
 	"Closure.Func": true,
 	// The same *Funcs already reached through their owning slice.
 	"Component.Methods": true,
+	// The declaration's own body, set aside when an override was swapped in.
+	// Nothing renders it where it lies -- a node that wants it is handed a
+	// deep clone (passNavigation's link) -- and a pass rewriting it in place
+	// would edit library IR every build shares.
+	"Component.DeclaredBody": true,
 	// A macro is a declaration, not code: it is never called and no backend
 	// emits it, so no pass has anything to do to its body. Excluded here
 	// deliberately rather than by omission -- walking it would subject a
@@ -105,6 +112,9 @@ var referenceSlots = map[string]bool{
 	// brackets it moves and walked there. Same reason as Teardown, at the
 	// other end of the lifetime.
 	"Package.Mounts": true,
+	// The @run function, owned by pkg.Funcs and walked there. Stored on the
+	// package so the host's entry point calls it without a name to look up.
+	"Package.Run": true,
 }
 
 // bodySlots returns "Type.Field" for every field holding IR a node owns and
@@ -158,10 +168,9 @@ func bodiedPackage() *Package {
 				&ContextProvider{Children: body("ContextProvider.Children")},
 				&SlotInst{Children: body("SlotInst.Children")},
 				&NodeInst{
-					Children:     body("NodeInst.Children"),
-					Handlers:     []EventHandler{*h("NodeInst.Handlers")},
-					ErrorHandler: h("NodeInst.ErrorHandler"),
-					Slots:        map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
+					Children: body("NodeInst.Children"),
+					Handlers: []EventHandler{*h("NodeInst.Handlers")},
+					Slots:    map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
 				},
 				&Return{Value: &Call{ErrorHandler: h("Call.ErrorHandler")}},
 				&Return{Value: &Lambda{Func: fn("Lambda.Func")}},
@@ -172,11 +181,6 @@ func bodiedPackage() *Package {
 			Funcs: []*Func{fn("Component.Funcs")},
 			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		}},
-		// A window is a NodeInst, so its own slots are the ones marked above.
-		// It is here so that the walk has one to reach through pkg.Windows,
-		// which bodySlots does not list -- the field holds nodes rather than
-		// bodies.
-		Windows: []*Window{{Children: body("Package.Windows")}},
 	}
 }
 

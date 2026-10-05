@@ -1,0 +1,109 @@
+# A generated host under `if shown` runs while `shown` holds: the timer bumps n
+# on each of its first three ticks, hiding the bar on the second, and on the
+# fourth shows it again and then bumps n. While hidden the bar prints nothing
+# (no n=2, no n=3 as it happens), and coming back it starts again and prints
+# the line as it now is before the write after it -- its gen.emit's effects
+# are mounted and unmounted with the branch, on both hosts.
+#
+# testdata/emit_family_under_if.txtar is the code.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 .
+[gtk4] exec ./gtk4/app
+[gtk4] cmp stdout want.txt
+
+sngl build --lang go --platform fyne -o fyne .
+exec ./fyne/app
+cmp stdout want.txt
+
+-- want.txt --
+start
+n=0
+n=1
+start
+n=3
+n=4
+-- family.sngl --
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+
+component block build.family
+
+component text(full string) block
+
+component bar(blocks ...component block) root
+
+struct Entry {
+    full string
+}
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+func encode(members list<Entry>) string {
+    var parts list<string> = []
+    for var e = members {
+        parts.push(e.full)
+    }
+    return parts.join("|")
+}
+
+component block[go.language] {
+    gen.emit(
+        render=encode,
+        @start(members) {
+            print("start\n")
+        },
+        @change(line) {
+            print(line + "\n")
+        },
+    )
+}
+
+component text[go.language] {
+    gen.node(value=Entry{full=full})
+}
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+var (
+    shown = true
+    n = 0
+    ticks = 0
+)
+
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks == 2 {
+        shown = false
+    }
+    if ticks == 4 {
+        shown = true
+    }
+    if ticks == 5 {
+        exit(0)
+    }
+    if ticks < 4 {
+        n += 1
+    }
+    if ticks == 4 {
+        n += 1
+    }
+})
+
+if shown {
+    bar {
+        text(full="n={n}")
+    }
+}
+
+ui.window(title="Main") {
+    ui.text(value="{n}")
+}

@@ -8,7 +8,7 @@ type Config struct {
 	Main    bool   `option:"main"`    // default: true — emit main() entrypoint
 	GIRPath string `option:"gir"`     // default: "" — autodetect from standard paths
 
-	// Lang globals (codegen/lang/golang/golang.sngl).
+	// Lang globals (lib/language/go/golang.sngl).
 	GoVersion  string `option:"goVersion"`  // Go toolchain version for go.mod (default: "1.23")
 	GoModExtra string `option:"goModExtra"` // Extra text appended to temp test-module go.mod (e.g. replace directive)
 

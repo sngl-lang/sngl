@@ -8,11 +8,11 @@ import . "sngl:ui"
 var count = 0
 
 component pages() {
-    window #home(title="Home", href="/") {
+    window #home(title="Home") {
         text(value="Count: {count}")
     }
 
-    window #settings(title="Settings", href="/settings.html") {
+    window #settings(title="Settings") {
         text(value="Config")
     }
 }

@@ -4,7 +4,7 @@ output {
     none { html }
 }
 
-component main ui.node {
+ui.window {
     var name = "World"
 
     ui.vbox(style={gap=12, padding=16}) {
@@ -13,8 +13,4 @@ component main ui.node {
             ui.input(:value=name, placeholder="Enter your name")
         }
     }
-}
-
-ui.window {
-    main
 }

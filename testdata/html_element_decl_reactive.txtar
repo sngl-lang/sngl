@@ -38,7 +38,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n0" data-sngl-id="__n0">
+<div id="__n1" data-sngl-id="__n1">
   <span id="s">
   </span>
 </div>
@@ -48,19 +48,19 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { shown: false };
+  var state = { shown: false, visible__inst0: true };
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.shown = !state.shown;
-    __n0.hidden = state.shown;
+    __n1.hidden = state.shown;
   });
   function __sngl_init() {
-    __n0.hidden = state.shown;
+    __n1.hidden = state.shown;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a7b69feae13ed3d5e72e38efff4f094f
+pass sha256:e69604be9dd40006c0f6863a0d3ee48d

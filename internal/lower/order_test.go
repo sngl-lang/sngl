@@ -61,11 +61,25 @@ var alwaysOn = []string{
 	// it, and every target is asked -- what differs is the answer.
 	"AsyncCapable",
 	"BoundaryFailed",
+	// Once every raise is resolved a boundary holds nothing, on any target.
+	"BoundaryPassthrough",
 	"CSE",
+	// A call through a name the inliner bound to a declared function.
+	"DirectCalls",
+	// A raise is a raise on every target, and the catch it unwinds to is a block
+	// every language renders.
+	"ErrorCatch",
+	// Where a raise lands is the render tree's answer, not a target's.
+	"ErrorScope",
 	"ForElse",
 	"ForeignPrimitive",
+	// A function writing a prop through the handle it is handed is inlined
+	// on every target: no target writes a prop through a handle.
+	"HandleParams",
 	"HoistBodyTypes",
 	"HoistState",
+	// An unbound two-way prop is state of the instance on every target.
+	"ImplicitState",
 	"IndexedIter",
 	"InlinePure",
 	"IterKind",
@@ -77,6 +91,14 @@ var alwaysOn = []string{
 	// every target has a backend that may care -- Kotlin copies on binding
 	// unless this says the binding is never written.
 	"MutatedVars",
+	// A stack the target does not answer is plain UI on every target: all of
+	// them on one without Navigation, and on one with it the stacks in a
+	// surface other than the document (html's dialogs), which the pass finds
+	// by the package rather than by a capability.
+	"Navigation",
+	// What a page is read as a value is the same on every target; only what
+	// shows it differs (passNavigation, or the target's own codegen).
+	"NavigationValues",
 	// A prop read off a `#id` is answered by what the *tree* says the node's
 	// primitive keeps, so every target runs the pass and the declaration
 	// decides what it does.
@@ -92,7 +114,6 @@ var alwaysOn = []string{
 	// ones that lower contexts to state, and the ones that keep them.
 	"UnprovidedContext",
 	"ViewForElse",
-	"WindowNesting",
 }
 
 func TestAlwaysOnPasses(t *testing.T) {
@@ -144,7 +165,7 @@ var soleGate = map[string][]string{
 
 	// hasInstanceRuntime reads Reactivity and nothing else, so a target that
 	// keeps its reactivity gets none of the instance machinery.
-	"Reactivity": {"CanvasInstances", "ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity"},
+	"Reactivity": {"CanvasInstances", "ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity", "SlotChildInstances"},
 
 	// NodeEscape has no flag of its own: the escape analysis only has
 	// something to analyse once the tree is flat.
@@ -171,6 +192,11 @@ var soleGate = map[string][]string{
 	// it is what asks for the pass.
 	"ReactiveCanvas": {"CanvasReactivity"},
 	"Effects":        {"Effect"},
+	// Read by passNavigation and the composition rather than gating either:
+	// with it, only the stacks in a surface other than the document are
+	// lowered.
+	"Navigation":      nil,
+	"NavigationHrefs": {"NavigationHrefs"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance

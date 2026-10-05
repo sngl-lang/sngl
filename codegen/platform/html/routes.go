@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -33,31 +34,36 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	var served []servedRoute
 	for i, win := range windows {
+		// A window holding a nav.stack is a route per page, named for the
+		// page and served at its href; one holding none is served at the
+		// root, or at its id beside a first.
+		page := c.routePages[i]
+		routeName, label := windowRouteName(win), routeWindowLabel(win.Name, i)
 		var hrefExpr, titleExpr ir.Expr
-		if win.Window != nil {
-			hrefExpr = win.Window.Prop(ir.WindowHref)
-			titleExpr = win.Window.Prop(ir.WindowTitle)
+		if win.Surface != nil {
+			titleExpr = win.Surface.Prop(windowTitle)
+		}
+		if page != nil {
+			hrefExpr = pageHref(page)
+			routeName, label = page.ID, fmt.Sprintf("page %q", page.ID)
 		}
 		path, err := hrefToRoutePath(hrefExpr)
 		if err != nil {
-			return fmt.Errorf("html: window %q href: %v", win.Name, err)
+			return fmt.Errorf("html: %s href: %v", label, err)
 		}
 		if path == "" {
-			path = defaultRoutePath(windowRouteName(win), i)
-		}
-		if err := checkRouteParams(path, win.Window); err != nil {
-			return fmt.Errorf("html: window %q: %w", win.Name, err)
+			path = defaultRoutePath(routeName, i)
 		}
 		for _, prev := range served {
 			if !routesConflict(prev.path, path) {
 				continue
 			}
 			if routeSegsEqual(prev.path, path) {
-				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, routeWindowLabel(win.Name, i), path)
+				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, label, path)
 			}
-			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, routeWindowLabel(win.Name, i), path)
+			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, label, path)
 		}
-		served = append(served, servedRoute{path, routeWindowLabel(win.Name, i)})
+		served = append(served, servedRoute{path, label})
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -79,12 +85,12 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
 		routes = append(routes, codegen.HTTPRoute{
-			Name:      routeHandlerName(windowRouteName(win), path),
+			Name:      routeHandlerName(routeName, path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
-			WindowIdx: i,
-			Window:    win.Window,
+			DocIdx:    i,
+			Surface:   win.Surface,
 			Actions:   actions,
 			Render:    render,
 			StateVars: stateVars,
@@ -171,47 +177,73 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 	return nil
 }
 
-// backendHandlerWindow scans every window's event handlers (node handlers and
-// var handlers) for a Backend placement. It returns the name of the first
-// window carrying a server-side handler, or false if all handlers are
-// client-side. Used by the static-mode (non-HTTPCompiler) guard: a build with
-// no server cannot run a backend handler.
-func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string, bool) {
+// backendHandlerWindow scans the package's event handlers (node handlers and
+// var handlers) for a Backend placement, and names the window holding the
+// first: its Window's `#id`, "" for one written outside any. False if every
+// handler is client-side. Used by the static-mode (non-HTTPCompiler) guard: a
+// build with no server cannot run a backend handler.
+func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 	if pkg == nil {
 		return "", false
 	}
-	for _, win := range windows {
-		backend := false
-		check := func(h *ir.EventHandler) {
-			if h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend {
-				backend = true
-			}
-		}
-		for _, v := range routeVars(pkg, win) {
-			for _, h := range v.Handlers {
-				check(h)
-			}
-		}
-		walkInstances(win.Body, func(n *ir.NodeInst) {
-			for i := range n.Handlers {
-				check(&n.Handlers[i])
-			}
-		})
-		if backend {
-			return win.Name, true
+	backend := func(h *ir.EventHandler) bool {
+		return h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend
+	}
+	for _, v := range pkg.Vars {
+		if slices.ContainsFunc(v.Handlers, backend) {
+			return "", true
 		}
 	}
-	return "", false
+	name, found := "", false
+	var walk func(stmts []ir.Stmt, win string)
+	walk = func(stmts []ir.Stmt, win string) {
+		for _, s := range stmts {
+			if found {
+				return
+			}
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				in := win
+				if n.Component != nil && ir.IsSurface(n.Component) {
+					in = n.ID
+				}
+				for i := range n.Handlers {
+					if backend(&n.Handlers[i]) {
+						name, found = in, true
+						return
+					}
+				}
+				walk(n.Children, in)
+				for _, name := range ir.SlotNames(n.Slots) {
+					if sc := n.Slots[name]; sc != nil {
+						walk(sc.Body, in)
+					}
+				}
+			case *ir.If:
+				walk(n.Body, win)
+				walk(n.Else, win)
+			case *ir.For:
+				walk(n.Body, win)
+				walk(n.Else, win)
+			case *ir.ErrorBoundary:
+				walk(n.Children, win)
+			case *ir.ContextProvider:
+				walk(n.Children, win)
+			}
+		}
+	}
+	walk(pkg.Body, "")
+	for _, c := range pkg.Components {
+		walk(c.Body, "")
+	}
+	return name, found
 }
 
-// windowRouteName is the `#id` a route is named for. A harness root has no
-// window and so none: the component it isolated is not a window's name, and
-// using it made a handler's name depend on whether a harness ran.
-func windowRouteName(win *codegen.WindowCtx) string {
-	if win.Window == nil {
-		return ""
-	}
-	return win.Window.ID
+// windowRouteName is the `#id` a route is named for: its document's Window's.
+// A harness root has none: the component it isolated is not a window's name,
+// and using it made a handler's name depend on whether a harness ran.
+func windowRouteName(win *codegen.ViewCtx) string {
+	return surfaceName(win.Surface)
 }
 
 type servedRoute struct{ path, label string }
@@ -345,7 +377,7 @@ func defaultRoutePath(winName string, idx int) string {
 	return "/" + winName
 }
 
-// hrefToRoutePath extracts an abstract route template from a window's href
+// hrefToRoutePath extracts an abstract route template from a page's href
 // expression. Literal strings pass through verbatim; string interpolations
 // (desugared by the checker into Binary concat chains) become "/{ident}"
 // segments for identifier parts. Framework-specific mux syntax is the
@@ -394,36 +426,6 @@ func walkHref(e ir.Expr, b *strings.Builder) error {
 }
 
 // extractRouteParams finds {param} placeholders in a route path.
-// checkRouteParams holds a route's path to the struct that says what its
-// window hands the body: every `{name}` in the path names a field of the
-// params struct, and that field is something a route can parse out of text.
-//
-// Here rather than in the checker, because a path is a plain string until
-// something serves it: the checker has no routes, `href` is an ordinary prop
-// on every other target, and reading a route out of one was the compiler
-// knowing what html knows. A window built for bubbletea gets no diagnostic
-// about its path and wants none.
-//
-// One-directional on purpose: a field the path does not name is left at the
-// struct's zero rather than reported, because the path is one source of a
-// request's values and the struct is meant to carry the others too.
-func checkRouteParams(path string, win *ir.Window) error {
-	var sd *ir.StructDef
-	if win != nil && win.Params != nil && win.Params.Type != nil && win.Params.Type.Kind == ir.TypeStruct {
-		sd, _ = win.Params.Type.Decl.(*ir.StructDef)
-	}
-	for _, name := range extractRouteParams(path) {
-		f := routeParamField(sd, name)
-		if f == nil {
-			return fmt.Errorf("the path names {%s}, but the window's params have no field %q", name, name)
-		}
-		if !routeParamParseable(f.Type) {
-			return fmt.Errorf("path parameter {%s} arrives as text, and field %q is %s, which a route cannot parse it into", name, name, f.Type)
-		}
-	}
-	return nil
-}
-
 func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
 	if sd == nil {
 		return nil
@@ -434,21 +436,6 @@ func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// routeParamParseable reports whether a path segment can be read into a field
-// of this type. The list is the scalars every target can parse from a string
-// and nothing else -- a struct or a list has no spelling in a URL path, and
-// inventing one here would be the compiler choosing an encoding.
-func routeParamParseable(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeString, ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return true
-	}
-	return false
 }
 
 func extractRouteParams(path string) []string {
@@ -533,7 +520,7 @@ func buildNativeFuncMap(pkg *ir.Package, langID string) map[*ir.Func]bool {
 // _action value — so a form and the switch case that handles it can never
 // disagree (even with multiple backend handlers per node, or backend var
 // handlers that emit no form).
-func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Func]bool) ([]codegen.HTTPAction, map[*ir.EventHandler]int) {
+func collectActions(pkg *ir.Package, win *codegen.ViewCtx, targets map[*ir.Func]bool) ([]codegen.HTTPAction, map[*ir.EventHandler]int) {
 	if len(targets) == 0 {
 		return nil, nil
 	}
@@ -592,4 +579,51 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			panic(fmt.Sprintf("html.walkInstances: unhandled ir.Stmt %T", n))
 		}
 	}
+}
+
+// routeParamsJS is the script that reads a route's params out of the path the
+// browser asked for: the struct's zero, with each field a `{name}` segment of
+// path names parsed from that segment. Empty for a path that names none, which
+// leaves the cell its zero.
+//
+// The server binds the same fields from the same path when it renders the
+// route, but a client-only route ships one document for every request, so the
+// script has to read the request again for itself.
+func routeParamsJS(path string, t *ir.Type, zero string) string {
+	holes := extractRouteParams(path)
+	if len(holes) == 0 || t == nil {
+		return ""
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	var re strings.Builder
+	re.WriteString("^")
+	group := map[string]int{}
+	for seg := range strings.SplitSeq(strings.TrimPrefix(path, "/"), "/") {
+		re.WriteString("\\/")
+		if len(seg) > 2 && strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			group[seg[1:len(seg)-1]] = len(group) + 1
+			re.WriteString("([^/]*)")
+			continue
+		}
+		re.WriteString(regexp.QuoteMeta(seg))
+	}
+	re.WriteString("$")
+	var fields []string
+	for _, name := range holes {
+		f := routeParamField(sd, name)
+		if f == nil {
+			continue
+		}
+		seg := fmt.Sprintf("decodeURIComponent(__m[%d])", group[name])
+		switch f.Type.Kind {
+		case ir.TypeInt:
+			seg = "parseInt(" + seg + ", 10)"
+		case ir.TypeFloat:
+			seg = "parseFloat(" + seg + ")"
+		case ir.TypeBool:
+			seg = "(" + seg + " === \"true\")"
+		}
+		fields = append(fields, name+": "+seg)
+	}
+	return fmt.Sprintf("((__m) => __m ? { ...%s, %s } : %s)(location.pathname.match(/%s/))", zero, strings.Join(fields, ", "), zero, re.String())
 }

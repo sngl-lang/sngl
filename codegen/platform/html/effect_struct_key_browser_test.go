@@ -31,7 +31,7 @@ component App() node {
     effect(on=key, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

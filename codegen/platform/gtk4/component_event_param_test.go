@@ -14,7 +14,7 @@ import (
 // (instance, user_data) returning void. An event no GTK signal answers to is
 // not connected to a trampoline at all -- OnAttachHandler emits nothing for it
 // -- and the payload reaches the handler as the argument its declaration
-// names. Dropping it left `func (m *Model) __n0_done_handler() { m.got = v }`,
+// names. Dropping it left `func (m *Model) __n1_done_handler() { m.got = v }`,
 // where v is undefined.
 //
 // Both sides now ask signalFor, so the signature and the wiring cannot
@@ -26,7 +26,7 @@ func TestAComponentEventHandlerKeepsItsPayloadParameter(t *testing.T) {
 	// the window inlines it: one call site, no reactive position, so its state
 	// is renamed per instance onto the Model rather than into a record of its
 	// own. The handler is a Model method for the same reason.
-	const want = "func (m *Model) __n0_done_handler(v int) {"
+	const want = "func (m *Model) __n1_done_handler(v int) {"
 	if !strings.Contains(model, want) {
 		t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)
 	}

@@ -52,8 +52,8 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<details id="__n1" data-sngl-id="__n1">
-  <input id="__n2" data-sngl-id="__n2"/>
+<details id="__n2" data-sngl-id="__n2">
+  <input id="__n3" data-sngl-id="__n3"/>
 </details>
 <my-widget role="main">
 </my-widget>
@@ -62,7 +62,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { shown: false, locked: true, rows: ["a"] };
+  var state = { shown: false, locked: true, rows: ["a"], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -100,31 +100,31 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const r of state.rows) {
-      let __n3 = null;
+      let __n4 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set___p0(r);
-        __n3.__set___p1(state.shown);
+        __n4 = __inst1_live[__inst1_i];
+        __n4.__set___p0(r);
+        __n4.__set___p1(state.shown);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n3__new = __cf___child0({ __p0: r, __p1: state.shown });
-        __n3 = __n3__new;
+        let __n4__new = __cf___child0({ __p0: r, __p1: state.shown });
+        __n4 = __n4__new;
       }
-      __inst1_next.push(__n3);
+      __inst1_next.push(__n4);
       __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
+      let __n4__el = __n4.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n3__el) {
+      if (__place0_i_ref0 === __n4__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
+        parent.insertBefore(__n4__el, __place0_i_ref0);
       }
-      __slot0.push(__n3__el);
+      __slot0.push(__n4__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -139,17 +139,17 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n2.readOnly = state.locked;
-    __n1.open = state.shown;
+    __n3.readOnly = state.locked;
+    __n2.open = state.shown;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7696d7b19aaa9542ccd01d6d8d4ea495
+pass sha256:3327ac76ea0a900cf1d370d3d3d89f52

@@ -1,0 +1,122 @@
+# A gen.exec call says what it needs -- the prefix its command begins with and
+# the flags it bans -- and the compiler holds every call to both, granted or
+# not. A command that is safe can still be handed an argument that is not, so
+# the prompt shows exactly what was declared and a grant covers no more.
+env SNGL_GENCACHE=off
+
+# The declared prefix, granted: runs.
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh -c' ok.sngl
+grep 'said: ok' out/index.html
+
+# A grant broader than the declared prefix covers it; a narrower one does not.
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' ok.sngl
+! sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh -c echo' ok.sngl
+stderr 'may not run sh -c ''echo ok'': running it needs --allow-command="\./pc=sh -c"'
+
+# A command that does not begin with what the call declared is the plugin's
+# own error, whatever was granted.
+! sngl generate --lang=none --platform=html -o out --allow-all prefix.sngl
+stderr 'gen.exec: \[sh -c ''echo no''\] does not begin with its declared prefix \[bash\]'
+
+# A banned flag is refused in every spelling, granted or not.
+! sngl generate --lang=none --platform=html -o out --allow-all ban1.sngl
+stderr 'gen.exec: argument "-toolexec" is a flag the call bans \(-toolexec\)'
+! sngl generate --lang=none --platform=html -o out --allow-all ban2.sngl
+stderr 'gen.exec: argument "--toolexec" is a flag the call bans \(-toolexec\)'
+! sngl generate --lang=none --platform=html -o out --allow-all ban3.sngl
+stderr 'gen.exec: argument "-toolexec=x" is a flag the call bans \(-toolexec\)'
+! sngl generate --lang=none --platform=html -o out --allow-all ban4.sngl
+stderr 'gen.exec: argument "--toolexec=x" is a flag the call bans \(-toolexec\)'
+
+# A ban written with two dashes bans the one-dash spelling too.
+! sngl generate --lang=none --platform=html -o out --allow-all ban5.sngl
+stderr 'gen.exec: argument "-overlay" is a flag the call bans \(--overlay\)'
+
+# A flag that merely begins like a banned one is not it.
+sngl generate --lang=none --platform=html -o out --allow-all near.sngl
+grep 'said: -toolexecutor' out/index.html
+
+-- ok.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo ok"], ["sh", "-c"], [])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- prefix.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo no"], ["bash"], [])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- ban1.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "-toolexec"], ["sh"], ["-toolexec"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- ban2.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "--toolexec"], ["sh"], ["-toolexec"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- ban3.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "-toolexec=x"], ["sh"], ["-toolexec"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- ban4.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "--toolexec=x"], ["sh"], ["-toolexec"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- ban5.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "-overlay"], ["sh"], ["--overlay"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- near.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run(["sh", "-c", "echo $0", "-toolexecutor"], ["sh"], ["-toolexec"])
+
+ui.window(title="t") {
+    ui.text(value="said: {v}")
+}
+-- pc/pc.sngl --
+import gen "sngl:x/gen"
+
+// Runs cmd, declaring prefix and banFlags, and returns what it printed.
+const func run(cmd list<string>, prefix list<string>, banFlags list<string>) string {
+    var out = ""
+    var p = gen.exec(cmd=cmd, prefix=prefix, banFlags=banFlags)
+    for var line = p.stdout {
+        out = out + line
+    }
+    return out
+}

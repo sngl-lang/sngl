@@ -175,7 +175,9 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	}
 
 	if sym, ok := c.scope.Lookup(t.Name); ok {
-		if c.rejectUnexported(t.Pos, sym) {
+		// The export rule is the one between packages: a bare name declared
+		// in this one -- a library's own `_page` -- is its own to name.
+		if !c.inLibSource() && !c.resolvedInPackage(t.Name) && c.rejectUnexported(t.Pos, sym) {
 			return TypDyn
 		}
 		if typ := sym.SymType(); typ != nil {
@@ -184,12 +186,44 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyStructTypeArgs(t.Pos, typ, sd, t.TypeArgs)
 				}
 			}
+			if typ.Kind == ir.TypeComponent {
+				if comp, ok := typ.Decl.(*ir.Component); ok && len(comp.TypeParams) > 0 {
+					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
+				}
+			}
 			return typ
 		}
 	}
 
 	c.error(t.Pos, "unknown type %q%s", t.Name, c.stdlibHintFor(t.Name, hintType))
 	return TypDyn
+}
+
+// applyComponentTypeArgs is a component type carrying the type arguments it
+// was written with, `page<P>`: the instances whose call sites bound the
+// declaration's parameters that way. An argument list stopping short fills
+// from each parameter's default, as a struct type's does, so a bare `page` is
+// `page<struct {}>` -- and one with no default has to be written.
+func (c *checker) applyComponentTypeArgs(pos ast.Pos, base *ir.Type, comp *ir.Component, args []ast.TypeExpr) *ir.Type {
+	if len(args) > len(comp.TypeParams) {
+		c.error(pos, "%s takes %d type argument(s), got %d", comp.Name, len(comp.TypeParams), len(args))
+		return base
+	}
+	elems := make([]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		switch {
+		case i < len(args):
+			elems[i] = c.resolveType(args[i])
+		case tp.Default != nil:
+			elems[i] = tp.Default
+		default:
+			c.error(pos, "component type %s requires a type argument for %s, which has no default", comp.Name, tp.Name)
+			return base
+		}
+	}
+	cp := *base
+	cp.Elems = elems
+	return &cp
 }
 
 // applyStructTypeArgs produces a concrete *ir.Type for a parameterized struct
@@ -239,7 +273,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 		return dynFallback("type %s.%s comes from a native import with no package", pkg, name)
 	}
 	if tsym, ok := ns.Pkg.Symbols.LookupMemberType(name); ok {
-		if c.rejectUnexported(ast.Pos{}, tsym) {
+		if c.rejectUnexported(t.Pos, tsym) {
 			return TypDyn
 		}
 		typ := tsym.SymType()
@@ -267,6 +301,21 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			c.error(ast.Pos{}, "type %q in namespace %q takes no type arguments", name, pkg)
 		}
 		return typ
+	}
+	// A component names a type two ways: a family, in a return position or a
+	// slot saying which family, and any other component as the type of a
+	// handle to one of its instances -- `nav.page` for a page's value, as the
+	// bare `page` names it inside its own package.
+	if sym, ok := ns.Pkg.Symbols.LookupMember(name); ok {
+		if f, ok := sym.(*ir.Component); ok {
+			if c.rejectUnexported(t.Pos, sym) {
+				return TypDyn
+			}
+			if len(f.TypeParams) > 0 {
+				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
+			}
+			return f.SymType()
+		}
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
 	return TypDyn
@@ -722,7 +771,7 @@ func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t == nil || t.Kind == ir.TypeDyn {
 		return t
 	}
-	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.IsTree {
+	if ir.TypeFamily(t) != nil {
 		return t
 	}
 	// A type parameter is a tree the call site names: the wrapper that returns
@@ -731,7 +780,7 @@ func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t.Kind == ir.TypeTypeParam {
 		return t
 	}
-	c.error(pos, "a slot accepts a tree, and %s is not one", t)
+	c.error(pos, "a slot accepts a family, and %s is not one", t)
 	return nil
 }
 

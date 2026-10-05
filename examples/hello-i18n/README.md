@@ -16,7 +16,7 @@ becomes
 ## Run on `html` (browser)
 
 ```bash
-sngl generate --platform html --lang none --out out/web examples/hello-i18n/
+sngl generate --platform html --out out/web examples/hello-i18n/
 ```
 
 Outputs `out/web/index.html` with the JS runtime bundled inline. Open the HTML file in a browser. Locale picks up from `navigator.language` — change your browser language to `fr` or `es` to see the translations.
@@ -36,21 +36,16 @@ Locale follows `Locale.getDefault()` — change device language to French/Spanis
 
 ## What the app does
 
-- **Name** — plain input, two-way bound.
-- **Honorific** — radio over `female | male | other`. Drives the `select` arm of the sentence.
+- **Name** — a text input bound to `name`.
+- **Honorific** — three buttons over `female | male | other`. Drives the `select` arm of the sentence.
 - **Guests** — `+` / `-` buttons. Drives the `plural` arm with `=0`, `one`, `other` cases.
 - **Sentence** — single ICU template combining all three; translators get the full string and can re-order around grammar.
 - **Ticket price** — fixed `1234`, locale-formatted as currency (USD in en-US, EUR in fr-FR / es-ES).
+- **Party date** — a `time.date`, locale-formatted in long form.
 
 ## Source shape
 
-Every translatable string is wrapped in a `var` and reassigned from event handlers when its inputs change. This is the working idiom for the html platform today; direct `text(value=$"...")` is not yet wired through the reactive-text path.
-
-## Two issues fixed while building this example
-
-While verifying the example end-to-end, two unrelated html codegen issues surfaced and were fixed in the same branch:
-
-1. **State initializer self-reference.** Vars whose initializer referenced sibling state (e.g. `i18n.tr("...", {guests: state.guests})`) were emitted in a single `let state = {…}` literal — which fails at runtime since `state` isn't bound yet. Now those inits are emitted as `state.X = …;` statements after the literal, so siblings are readable.
-2. **`{x, number, currency}` style was stripped.** The ICU template builder in `internal/checker/i18n.go` emitted `Type` and `Cases` but skipped `Style`. Adding the missing emit preserves the third-arg style for `number` (currency/percent/scientific) and `date`/`time` (short/medium/long/full).
-
-Both fixes have full test coverage and no regressions.
+Every translatable string is a `$"..."` literal written directly where it is
+shown, such as `ui.text(value=$"Guests")`. A literal that reads state (`name`,
+`gender`, `guests`) re-renders when that state changes, like any other
+interpolation.

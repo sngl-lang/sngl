@@ -1,5 +1,5 @@
 import ui "sngl:ui"
-import tree "sngl:tree"
+import build "sngl:build"
 
 // The tree the inline pieces form. Declaring it here is what makes `span` a
 // name a component can resolve, so a misspelling is an unresolved name rather
@@ -10,8 +10,7 @@ import tree "sngl:tree"
 // orders are one flow of words. What it may not hold is a `node` -- a box
 // placed in the middle of a sentence has no line to sit on -- which is the
 // membership rule doing the work a content model would otherwise do in prose.
-#[tree.kind]
-struct span {}
+component span build.family
 
 // Shows one flow of rich text. Its rest slot accepts spans, so it hosts them
 // without being one, and the flow wraps as a whole: a line break falls

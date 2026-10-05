@@ -30,8 +30,8 @@ func skipWithoutGIR(t *testing.T) {
 
 // TestUnavailable_WithdrawsPackage pins the degradation contract: with no
 // usable GIR there is no widget set to generate declarations from, so the
-// platform contributes none — the checker never sees the gtk4.Gtk* references
-// in gtk4.sngl and compiles for every other platform are unaffected.
+// platform contributes none — the checker never sees the gtk.Gtk* references
+// in gtk4.sngl, and compiles for every other platform are unaffected.
 func TestUnavailable_WithdrawsPackage(t *testing.T) {
 	g := &Generator{}
 	if err := g.Configure(map[string]string{"gir": filepath.Join(t.TempDir(), "absent.gir")}); err != nil {
@@ -42,9 +42,6 @@ func TestUnavailable_WithdrawsPackage(t *testing.T) {
 	}
 	if docs := codegen.PlatformDocs(g); docs != nil {
 		t.Errorf("PlatformDocs = %d docs while unavailable; want none", len(docs))
-	}
-	if fsys := g.PackageFS(); fsys != nil {
-		t.Errorf("PackageFS = %v while unavailable; want nil", fsys)
 	}
 	// Targeting it anyway must fail loudly rather than emit an empty UI.
 	req := &codegen.Request{Pkg: &ir.Package{}, Lang: codegen.LookupLang("go"), Source: "t.sngl"}
@@ -60,17 +57,14 @@ func TestUnavailable_WithdrawsPackage(t *testing.T) {
 }
 
 // TestAvailable_ProvidesPackage is the mirror case: where the GIR file exists,
-// the platform contributes both halves of its package — the hand-written
-// overrides and the generated widget set.
+// the platform contributes its package -- lib/platform/gtk4, whose import of
+// gir:Gtk-4.0 brings the generated widget set.
 func TestAvailable_ProvidesPackage(t *testing.T) {
 	g := &Generator{}
 	if err := g.Unavailable(); err != nil {
 		t.Skipf("gtk4 metadata unavailable: %v", err)
 	}
 	if n := len(codegen.PlatformDocs(g)); n < 2 {
-		t.Errorf("PlatformDocs = %d docs while gtk4 is available; want the embedded source and the generated widgets", n)
-	}
-	if g.PackageFS() == nil {
-		t.Error("PackageFS = nil while gtk4 is available")
+		t.Errorf("PlatformDocs = %d docs while gtk4 is available; want doc.sngl and gtk4.sngl", n)
 	}
 }

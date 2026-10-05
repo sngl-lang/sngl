@@ -40,13 +40,12 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 	if root := req.Pkg.RootDecl(); root != nil {
 		ctx = ctx.ForComponent(root)
 	}
-	// And to the route's own window, which is where a root component's state is
-	// by the time a backend sees it (#215). ForWindow keeps the component scope
-	// rather than replacing it.
-	if r.Window != nil {
-		ctx = ctx.ForWindow(r.Window)
+	// And to the route's own document, whose params cell is the one name it
+	// binds. ForSurface keeps the component scope rather than replacing it.
+	if r.Surface != nil {
+		ctx = ctx.ForSurface(r.Surface)
 	}
-	// The window's route parameters resolve through that window scope, and
+	// The document's route parameters resolve through that scope, and
 	// they are bound per request rather than per session -- so left alone
 	// they would project onto `s.<Field>` of a State struct that has no such
 	// field. As a local the binding renders as the bare name
@@ -59,13 +58,13 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 }
 
 // routeParamsVar is the binding a route's path parameters arrive in: one
-// struct value, named and typed by the window's scoped slot. Nil for a route
-// whose window declared none.
+// struct value, named and typed by the page's scoped slot. Nil for a route
+// whose page declared none.
 func routeParamsVar(r codegen.HTTPRoute) *ir.Param {
-	if r.Window == nil {
+	if r.Surface == nil {
 		return nil
 	}
-	return r.Window.Params
+	return r.Surface.Params
 }
 
 // snglSessionTTL is the lazy eviction window emitted into the session store

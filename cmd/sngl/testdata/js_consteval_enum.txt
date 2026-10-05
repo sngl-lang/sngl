@@ -18,7 +18,7 @@
 [!node] skip
 env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 
-sngl generate --lang=none --platform=html --out=out app.sngl
+sngl generate --allow-eval=js:./lib --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The value is what proves the right member was picked: 1 could only have come

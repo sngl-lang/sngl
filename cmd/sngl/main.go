@@ -26,7 +26,6 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringP("directory", "C", "", "change to directory before running")
-	rootCmd.PersistentFlags().String("project", ".", "project root directory")
 	rootCmd.PersistentFlags().String("format", "text", "output format (text, json, sarif)")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress non-error output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output (info-level logging)")
@@ -56,7 +55,7 @@ func init() {
 			Level: level,
 		})))
 
-		return nil
+		return setupTrust(cmd)
 	}
 
 	rootCmd.AddCommand(generateCmd)

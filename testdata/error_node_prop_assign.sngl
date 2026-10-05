@@ -1,4 +1,4 @@
-// A node's prop may not be written.
+// A node's one-way prop may not be written.
 //
 // `ui.text(value=greeting)` says what the node shows for as long as it is
 // rendered, and reactivity re-evaluates it when `greeting` changes. A write
@@ -13,6 +13,10 @@
 // told about -- `label.Value` on fyne against a `widget.Label` that spells it
 // `Text`, and with no receiver at all.
 //
+// A two-way prop may be, because it is already a cell the host writes: see
+// node_prop_write_two_way.sngl. Through a handle or through a parameter the
+// handle was passed to, the rule is the same.
+//
 // What a *lowering* writes is untouched: passReactivity and passDeclarative
 // emit `__n0.text = expr` by the hundred, and those are how a prop reaches the
 // host. They are built after this check and never meet it.
@@ -23,13 +27,21 @@ ui.window #w(title="t") {
     var greeting = "hello"
 
     ui.text #label(value=greeting)
-    ui.checkbox #flag(checked=true)
+    ui.button #save(text="save", disabled=false)
 
     ui.button(text="write", @click {
         label.value = "bye" // ERROR(check) "cannot assign to label.value"
     })
 
     ui.button(text="toggle", @click {
-        flag.checked!! // ERROR(check) "cannot toggle flag.checked"
+        save.disabled!! // ERROR(check) "cannot toggle save.disabled"
     })
+
+    ui.button(text="rename", @click {
+        rename(w)
+    })
+}
+
+func rename(win ui.window) {
+    win.title = "renamed" // ERROR(check) "cannot assign to win.title"
 }

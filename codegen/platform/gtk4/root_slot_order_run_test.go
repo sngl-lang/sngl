@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -88,7 +89,7 @@ import (
 
 func rendered(m *Model) string {
 	var got []string
-	widgetTexts(unsafe.Pointer(m.__root), &got)
+	widgetTexts(unsafe.Pointer(CONTENT), &got)
 	return strings.Join(got, ",")
 }
 
@@ -130,7 +131,11 @@ func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
 			defer os.RemoveAll(tmp)
 			files["entry.go"] = "package main\n\nfunc main() {}\n"
 			files["probe.go"] = rootSlotOrderProbe
-			files["order_test.go"] = rootSlotOrderDriver
+			m := windowContentRE.FindStringSubmatch(files["model.go"])
+			if m == nil {
+				t.Fatalf("no window content in BuildUI:\n%s", files["model.go"])
+			}
+			files["order_test.go"] = strings.Replace(rootSlotOrderDriver, "CONTENT", m[1]+m[2], 1)
 			for name, src := range files {
 				if filepath.Ext(name) != ".go" {
 					continue
@@ -147,3 +152,7 @@ func TestRootSlotsKeepTheirPlaceRuns(t *testing.T) {
 		})
 	}
 }
+
+// windowContentRE finds the widget BuildUI hands its window, which is a box of
+// its own on the gtk4rt path and the Model's __root on the cgo one.
+var windowContentRE = regexp.MustCompile(`ToplevelWindow\(app, (m\.\w+)\)|gtk_window_set_child\([^,]+, \(\*C\.GtkWidget\)\(unsafe\.Pointer\((m\.\w+)\)\)\)`)

@@ -48,8 +48,16 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
-	// rootRenders are the calls written at the top of this scope's body that
-	// render a slot into __root; renderedRoot is that container once one has.
+	// appChildren are the nodes this scope attached to the application, in
+	// order.
+	appChildren []string
+	// rootRenders are the calls written directly in this scope's body that
+	// render a slot into the scope's own container; renderedRoot is that
+	// container once one has run. Every slot in a body renders into the one
+	// container, so the body's own widgets go into it too, in written order,
+	// or a widget between two slots lands after both. Empty in a scope whose
+	// root is decided some other way, which is every Model scope: the Model's
+	// own __root is the wrapper its BuildUI already returns.
 	rootRenders  map[ir.Stmt]bool
 	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
@@ -155,14 +163,14 @@ func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
 	return t
 }
 
-func (t *fyneTranslator) withSlotRoot(body []ir.Stmt) *fyneTranslator {
-	t.rootRenders = codegen.RootSlotRenders(body, slotRootVar)
+func (t *fyneTranslator) withSlotRoot(name string, body []ir.Stmt) *fyneTranslator {
+	t.rootRenders = codegen.RootSlotRenders(body, name)
 	return t
 }
 
 // addTopsTo places the top-level widgets written so far into root, ahead of
-// the slot render that follows: lowering finishes a node's subtree before
-// anything later, so every one of them is a finished root by then.
+// the slot render that follows: a slot's first render appends at the end of
+// its container, and lowering finishes a node's subtree before anything later.
 func (t *fyneTranslator) addTopsTo(root ir.Expr) []ir.Stmt {
 	stmts := make([]ir.Stmt, 0, len(t.topLevel))
 	for _, ref := range t.topLevel {
@@ -403,6 +411,9 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	if ir.IsAppParent(parent) {
+		return t.appAttach(child)
+	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
@@ -430,6 +441,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if ir.IsAppParent(parent) {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
+	// A render slot's container may be the application, which only the
+	// runtime can tell from the value it is handed.
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.Remove", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyParentExpr(parent), t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
@@ -637,6 +658,10 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
 		return nil
 	}
+	// A window that names no title is built with none.
+	if lit, ok := value.(*ir.Literal); ok && sp.toplevel && prop == "title" && lit.Value == "" {
+		return nil
+	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {
 		// The write is what a prop *is* by the time it reaches a platform:
@@ -660,7 +685,16 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return nil
 	}
 	nodeRef := t.nodeRefFor(bareID)
-	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}
+	set := &ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}
+	if cur := sp.Currents[prop]; cur != "" {
+		return []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Op: ast.BinNeq, Type: ir.TypBool,
+				Left:  &ir.Select{Operand: t.nodeRefFor(bareID), Field: cur, Type: value.ExprType()},
+				Right: value},
+			Body: []ir.Stmt{set},
+		}}
+	}
+	return []ir.Stmt{set}
 }
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -702,8 +736,7 @@ func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 	if t.rootRenders[stmt] {
 		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
-		placed := t.addTopsTo(t.renderedRoot)
-		return append(placed, t.translateDefault(stmt)...)
+		return append(t.addTopsTo(t.renderedRoot), t.translateDefault(stmt)...)
 	}
 	return t.translateDefault(stmt)
 }
@@ -713,6 +746,9 @@ func (t *fyneTranslator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if app := t.appSlotArg(n); app != nil {
+			return []ir.Stmt{app}
+		}
 		if boxed := t.boxedSlotRenderCall(n); boxed != nil {
 			return boxed
 		}
@@ -836,6 +872,14 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 			// so the handler's write-back of the bound var is a no-op there,
 			// while here it would set a new value and fire the callback again.
 			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
+			// A commit hands on text the entry already holds, since a user
+			// cannot submit what they have not typed. Put it there first
+			// without firing OnChanged, as gtk4's invoker does, or a
+			// binding's write-back setting it would fire @input.
+			if inv.Field == "OnSubmitted" && inv.ParamType == "string" {
+				fmt.Fprintf(b, "\tif oc := m.%s.OnChanged; m.%s.Text != %s {\n\t\tm.%s.OnChanged = nil\n\t\tm.%s.SetText(%s)\n\t\tm.%s.OnChanged = oc\n\t}\n",
+					target, target, inv.Param, target, target, inv.Param, target)
+			}
 			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
 				target, inv.Field, target, inv.Field, inv.Param, target, inv.Field)
 			continue

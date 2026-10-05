@@ -175,22 +175,11 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	c := call.Call
-	if c == nil || c.AST == nil || c.Event == "" {
-		return "", false
-	}
-	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	_, id, ok := codegen.EventTriggerTarget(c)
 	if !ok {
-		return "", false
-	}
-	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	if _, ok := innerSel.Operand.(*ast.IdentExpr); !ok {
 		return "", false
 	}
 	event := c.Event
-	id := innerSel.Field
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
@@ -617,6 +606,10 @@ type TestSurface struct {
 	// through the instance the test holds.
 	Pkg     *ir.Package
 	Members map[string]string
+	// Platform is the build's, which a platform's intrinsic emitters are
+	// keyed by: android answers sngl:ui/nav's `current` that way, read
+	// through the instance as MainScreen reads it.
+	Platform string
 
 	kt *KtIRContext
 }
@@ -651,7 +644,9 @@ func (surf TestSurface) forInstance(recv string, fn *ir.Func) TestSurface {
 		}
 		rewrites[name] = recv + strings.TrimPrefix(spelled, "state")
 	}
-	kc := NewIRContext(codegen.NewExprCtx(surf.Pkg))
+	ec := codegen.NewExprCtx(surf.Pkg)
+	ec.Platform = surf.Platform
+	kc := NewIRContext(ec)
 	kc.IdentRewrites = rewrites
 	surf.kt = kc
 	return surf

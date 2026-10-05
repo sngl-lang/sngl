@@ -33,8 +33,8 @@ type CommonAnalysis struct {
 // map is copied, including the LocalRefs a TimerInfo carries, which is what
 // makes "a map here is private to the caller that asked for it" true of the
 // whole structure rather than of the top level. The declaration slices are
-// not: Components, Structs, Enums and Units hold the package's own
-// declarations, which are the same for every generator reading them.
+// not: Components, Structs, Enums and Units hold declarations, which are the
+// same for every generator reading them.
 //
 // It exists so a caller emitting many documents from one package can derive
 // the analysis once -- it is a function of the package alone, and a full IR
@@ -128,7 +128,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 
 	// These sets are keyed by name, so only one component can contribute: a
 	// child component's `count` is not the root model's `count`. The package
-	// and the windows are unambiguous and always do.
+	// is unambiguous and always does.
 	for _, o := range ir.Owners(pkg) {
 		if o.Comp != nil && o.Comp.Name != pkg.RootComponent {
 			continue
@@ -137,13 +137,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 			a.ModelFields[v.Name] = true
 		}
 		for _, f := range o.Funcs {
-			// A window's *synthesized* funcs -- a canvas draw, the focus
-			// order's __focusNext -- are reached through CodegenCtx.AllFuncs
-			// and never named by an expression. A `func` written in a window
-			// body is named by one.
-			if o.Win != nil && f.Synthesized {
-				continue
-			}
 			a.FuncNames[f.Name] = true
 			if f.Receiver != "" {
 				a.FuncNames[f.Receiver+"."+f.Name] = true
@@ -175,9 +168,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		a.Structs = append(a.Structs, s)
 	}
 
-	for _, e := range pkg.Enums {
-		a.Enums = append(a.Enums, e)
-	}
+	a.Enums = collectUsedEnums(pkg)
 
 	// pkg.Units carries the units the *program* declares. A unit it merely
 	// uses -- `measurement`, declared in sngl:ui -- is not there, so a

@@ -26,9 +26,6 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 		}
 	}
 	st.canvasesUnderLoops(pkg.Body, false)
-	for _, w := range ir.AllWindows(pkg) {
-		st.canvasesUnderLoops(w.Children, false)
-	}
 	return nil
 }
 
@@ -51,9 +48,6 @@ func (st *slotChildSynth) canvasesUnderLoops(stmts []ir.Stmt, inLoop bool) {
 	for i, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if ir.IsWindowNode(n) {
-				continue
-			}
 			if inLoop && ir.IsShapeContainer(n) {
 				stmts[i] = st.synthesizeCanvas(n)
 				continue

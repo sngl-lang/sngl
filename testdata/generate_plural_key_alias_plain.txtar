@@ -37,7 +37,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
@@ -561,14 +561,14 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = { n__inst0: 2 };
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var state = { n__inst0: 2, visible__inst1: true };
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = i18n.getTranslator().plural(state.n__inst0, { ["one"]: "one item", ["other"]: "many items" });
+    __n1.textContent = i18n.getTranslator().plural(state.n__inst0, { ["one"]: "one item", ["other"]: "many items" });
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:45b54276d4fc874d33a35c85effcfafb
+pass sha256:9cdf1b3f75d1720a5488ae959eacfbec

@@ -58,9 +58,9 @@ func TestPromotingIntoAnOptionStoresACopy(t *testing.T) {
 	m := New()
 	m.BuildUI()
 
-	m.__n1.OnTapped() // wrap
-	m.__n2.OnTapped() // mutate
-	m.__n3.OnTapped() // read
+	m.__n2.OnTapped() // wrap
+	m.__n3.OnTapped() // mutate
+	m.__n4.OnTapped() // read
 
 	if m.b.Value != 99 {
 		t.Fatalf("b.Value = %d, want 99 -- the mutation did not happen", m.b.Value)

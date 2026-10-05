@@ -20,19 +20,24 @@ import (
 // numbers (from the selected androidtc.Combo) that drive tool discovery and
 // artifact downloads.
 type toolchain struct {
-	Kotlinc       string   // kotlinc binary
-	ComposePlugin string   // compose-compiler-plugin-embeddable.jar
-	AndroidJar    string   // android.jar
-	Aapt2         string   // aapt2 binary
-	D8            string   // d8.jar or d8 binary wrapper script
-	Zipalign      string   // zipalign binary
-	ComposeJars   []string // compose runtime + dependency JARs
-	KotlinLibs    []string // kotlin-stdlib etc.
-	CacheDir      string   // ~/.cache/sngl/android-toolchain
+	Kotlinc       string // kotlinc binary
+	ComposePlugin string // compose-compiler-plugin-embeddable.jar
+	// SerializationPlugin is kotlinx.serialization's compiler plugin, which
+	// a sngl:ui/nav stack's typed routes are written with.
+	SerializationPlugin string
+	AndroidJar          string   // android.jar
+	Aapt2               string   // aapt2 binary
+	D8                  string   // d8.jar or d8 binary wrapper script
+	Zipalign            string   // zipalign binary
+	ComposeJars         []string // compose runtime + dependency JARs
+	KotlinLibs          []string // kotlin-stdlib etc.
+	CacheDir            string   // ~/.cache/sngl/android-toolchain
 
 	// Versions from the selected combo.
 	cKotlin      string // e.g. "2.1.0"
 	cCompose     string // androidx.compose runtime/ui version
+	cNavigation  string // androidx.navigation version
+	cSerial      string // kotlinx.serialization version
 	cBuildTools  string // e.g. "35.0.0"
 	cPlatformAPI string // e.g. "35"
 	jdkMin       int    // JDK window this combo's build can use
@@ -49,6 +54,8 @@ func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 		CacheDir:     cacheDir,
 		cKotlin:      c.Kotlin,
 		cCompose:     c.ComposeRuntime,
+		cNavigation:  c.Navigation,
+		cSerial:      c.Serialization,
 		cBuildTools:  c.BuildTools,
 		cPlatformAPI: strconv.Itoa(c.CompileSdk),
 		jdkMin:       c.JDKMin,
@@ -67,11 +74,50 @@ func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
 	if err := tc.findComposePlugin(); err != nil {
 		return nil, err
 	}
+	if err := tc.findSerializationPlugin(); err != nil {
+		return nil, err
+	}
 	if err := tc.findComposeJars(); err != nil {
 		return nil, err
 	}
 
 	return tc, nil
+}
+
+// findSerializationPlugin is findComposePlugin for kotlinx.serialization: the
+// Kotlin distribution ships it beside the stdlib, and Maven Central has the
+// embeddable build where it does not.
+func (tc *toolchain) findSerializationPlugin() error {
+	kotlinHome := filepath.Dir(filepath.Dir(tc.Kotlinc))
+	candidates := []string{
+		filepath.Join(kotlinHome, "lib", "kotlinx-serialization-compiler-plugin.jar"),
+		filepath.Join(kotlinHome, "share", "kotlin", "lib", "kotlinx-serialization-compiler-plugin.jar"),
+	}
+	if len(tc.KotlinLibs) > 0 {
+		candidates = append(candidates, filepath.Join(filepath.Dir(tc.KotlinLibs[0]), "kotlinx-serialization-compiler-plugin.jar"))
+	}
+	for _, bundled := range candidates {
+		if fileExists(bundled) {
+			tc.SerializationPlugin = bundled
+			return nil
+		}
+	}
+	cached := filepath.Join(tc.CacheDir, "serialization-plugin",
+		fmt.Sprintf("kotlin-serialization-compiler-plugin-embeddable-%s.jar", tc.cKotlin))
+	if fileExists(cached) {
+		tc.SerializationPlugin = cached
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "sngl: downloading the kotlinx.serialization compiler plugin...\n")
+	url := fmt.Sprintf(
+		"https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-serialization-compiler-plugin-embeddable/%s/kotlin-serialization-compiler-plugin-embeddable-%s.jar",
+		tc.cKotlin, tc.cKotlin)
+	os.MkdirAll(filepath.Dir(cached), 0o755)
+	if err := downloadFile(url, cached); err != nil {
+		return fmt.Errorf("downloading the serialization plugin: %w", err)
+	}
+	tc.SerializationPlugin = cached
+	return nil
 }
 
 func (tc *toolchain) findAndroidJar() error {
@@ -312,6 +358,15 @@ func (tc *toolchain) downloadComposeArtifacts(cacheDir string) error {
 		{"androidx.collection", "collection-jvm", "1.4.5", false, true},
 		{"androidx.arch.core", "core-common", "2.2.0", false, true},
 		{"androidx.arch.core", "core-runtime", "2.2.0", false, false},
+		// Navigation, which a sngl:ui/nav stack is a NavHost of, and the
+		// serialization its typed routes are written with.
+		{"androidx.navigation", "navigation-compose", tc.cNavigation, false, false},
+		{"androidx.navigation", "navigation-runtime", tc.cNavigation, false, false},
+		{"androidx.navigation", "navigation-runtime-ktx", tc.cNavigation, false, false},
+		{"androidx.navigation", "navigation-common", tc.cNavigation, false, false},
+		{"androidx.navigation", "navigation-common-ktx", tc.cNavigation, false, false},
+		{"org.jetbrains.kotlinx", "kotlinx-serialization-core-jvm", tc.cSerial, false, true},
+		{"org.jetbrains.kotlinx", "kotlinx-serialization-json-jvm", tc.cSerial, false, true},
 		// Kotlinx
 		{"org.jetbrains.kotlinx", "kotlinx-coroutines-core-jvm", "1.9.0", false, true},
 		{"org.jetbrains.kotlinx", "kotlinx-coroutines-android", "1.9.0", false, true},

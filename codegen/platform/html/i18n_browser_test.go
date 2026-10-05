@@ -18,7 +18,6 @@ import (
 	rodproto "github.com/go-rod/rod/lib/proto"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // compileI18nHTML parses, checks, lowers, and generates HTML from src, then

@@ -228,11 +228,12 @@ func TestFindInLibrary(t *testing.T) {
 		pkg     string
 		ambient bool
 		kind    string
+		imp     string
 	}{
-		{"circle", "sngl:ui/draw", false, "component"},
-		{"button", "sngl:ui", false, "component"},
-		{"Style", "sngl:ui", false, "type"},
-		{"color", "sngl:builtin", true, "type"},
+		{"circle", "sngl:ui/draw", false, "component", `import draw "sngl:ui/draw"`},
+		{"button", "sngl:ui", false, "component", `import ui "sngl:ui"`},
+		{"Style", "sngl:ui", false, "type", `import ui "sngl:ui"`},
+		{"color", "sngl:builtin", true, "type", ""},
 	} {
 		got := lookup.FindInLibrary(tc.name)
 		if len(got) != 1 {
@@ -242,12 +243,8 @@ func TestFindInLibrary(t *testing.T) {
 		if got[0].Pkg != tc.pkg || got[0].Ambient != tc.ambient || got[0].Kind != tc.kind {
 			t.Errorf("%s: got %+v; want {%s %v %s}", tc.name, got[0], tc.pkg, tc.ambient, tc.kind)
 		}
-		wantImport := `import . "` + tc.pkg + `"`
-		if tc.ambient {
-			wantImport = ""
-		}
-		if got[0].ImportLine() != wantImport {
-			t.Errorf("%s: ImportLine = %q; want %q", tc.name, got[0].ImportLine(), wantImport)
+		if got[0].ImportLine() != tc.imp {
+			t.Errorf("%s: ImportLine = %q; want %q", tc.name, got[0].ImportLine(), tc.imp)
 		}
 	}
 	if got := lookup.FindInLibrary("StrUpper"); len(got) != 0 {

@@ -64,6 +64,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import us.duckfam.git.jonathan.sngl.i18n.I18n
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -78,14 +81,24 @@ fun MainScreen() {
     var __ctx_locale__inst0 by remember { mutableStateOf(I18n.defaultLocale()) }
     var count__inst0 by remember { mutableStateOf(1) }
     var label__inst0 by remember { mutableStateOf(I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = label__inst0, modifier = Modifier.safeDrawingPadding())
-        Button(onClick = {
-            count__inst0 = (count__inst0 + 1)
-            label__inst0 = I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "Add", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = label__inst0, modifier = Modifier.safeDrawingPadding())
+            Button(onClick = {
+                count__inst0 = (count__inst0 + 1)
+                label__inst0 = I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "Add", modifier = Modifier)
+            }
         }
     }
 }
@@ -575,4 +588,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:238fed43c7d166b604fe182c91a5d32a
+pass sha256:2179830ee4fb3f5d6df37ff2572927b4

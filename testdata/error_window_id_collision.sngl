@@ -1,9 +1,12 @@
+// A node's #id at the root of a file is the package's, so two windows writing
+// one are two declarations of one name, reported at the second.
+
 import . "sngl:ui"
 
-window #home(title="A", href="/a.html") {
+window #home(title="A") {
     text(value="A")
 }
 
-window #home(title="B", href="/b.html") { // ERROR(check) "duplicate window id \"home\""
+window #home(title="B") { // ERROR(check) "duplicate id \"home\""
     text(value="B")
 }

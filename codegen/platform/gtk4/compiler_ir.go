@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -122,14 +123,14 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	return nil
 }
 
+// mainBodyStmts is what buildWidgetTree builds: the package body, whose
+// parent is the application, or the body of a component a harness isolated as
+// the whole program.
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		return wins[0].Body
-	}
 	if main := ctx.RootDecl(); main != nil {
 		return main.Body
 	}
-	return nil
+	return ctx.Pkg.Body
 }
 
 // mainComponentLocalRefs is passNodeEscape's non-escaping widget-ref set for
@@ -142,9 +143,6 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 // a ref it created -- only some of those sites go through a qualifier that
 // knows about locals.
 func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		return nil
-	}
 	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
@@ -184,7 +182,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// iterating every component's vars would re-add the originals and collide
 	// their synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
-		// nil for a binding no declaration made: a window's route parameters,
+		// nil for a binding no declaration made: a document's route parameters,
 		// which the slot population declares and the request fills. The
 		// special cases below are all things a body or a pass declared, so
 		// they are asked only where there is a declaration to ask.
@@ -285,7 +283,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // a program is never half-wrapped.
 func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error) {
 	if !c.disableWrapped {
-		if m, cb, werr := c.emitIRMode(true); werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
+		m, cb, werr := c.emitIRMode(true)
+		if werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
 			return m, cb, nil
 		}
 	}
@@ -307,7 +306,12 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg)}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), toplevelTitles: map[string]ir.Expr{}}
+	if !wrapped {
+		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
+			c.shared.fail(err)
+		}
+	}
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
@@ -349,15 +353,16 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// lower.passPlatformExtensionBody is always on, so every platform override
 	// is already resolved to its body here.
 	bodyStmts := mainBodyStmts(c.ctx)
-	var topLevelRefs []string
+	var topLevelRefs, appChildren []string
 	var topLevelCType map[string]string
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
-			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).withSlotRoot(bodyStmts).
+			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
 			withInvokerSink(func(inv gtkEventInvoker) {
 				vc.eventInvokers = append(vc.eventInvokers, inv)
 			})
+		tr.building = true
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -367,7 +372,12 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		topLevelRefs = tr.topLevel
 		topLevelCType = tr.idCTypes
+		appChildren = tr.appChildren
 	}
+	// The root is the application unless a harness isolated a component: the
+	// package body is then what is built, and each node in it was attached to
+	// the application as it was.
+	appRoot := c.ctx.RootDecl() == nil
 
 	allFuncs := c.ctx.AllFuncs()
 	componentFuncs := gtk4ComponentFuncs(c.ctx.Pkg)
@@ -411,7 +421,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
-			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All())
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All(),
+				func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) },
+				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) })
 			continue
 		}
 		if createTargets[cc.Component] {
@@ -419,9 +431,23 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 	}
 
+	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
+	// the first one's box in the window BuildUI makes, as it did the one
+	// window it could build before a window was a node.
+	cgoTitle := ""
+	if appRoot && !c.wrapped {
+		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
+		if len(appChildren) > 0 {
+			if t := c.shared.toplevelTitles[appChildren[0]]; t != nil {
+				cgoTitle = gc.EvalExpr(t)
+			}
+		}
+	}
 	// The Model struct needs the __root field whenever emitBuildUI will emit
 	// the synthetic wrapper; needsRootWrapper mirrors its conditions.
-	if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
+	if appRoot && c.wrapped {
+		widgetFields = appendWidgetFieldOnce(widgetFields, widgetField{name: "__built", goType: "bool"})
+	} else if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
 		hasRoot := false
 		for _, wf := range widgetFields {
 			if wf.name == "__root" {
@@ -441,7 +467,15 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc), widgetFieldNames(widgetFields))
+	if appRoot && c.wrapped {
+		first := ""
+		if len(appChildren) > 0 {
+			first = appChildren[0]
+		}
+		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
+	} else {
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, widgetFieldNames(widgetFields))
+	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 && !c.wrapped {
@@ -485,7 +519,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg)
+		if err := emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg, appRoot && c.wrapped); err != nil {
+			c.shared.errs = append(c.shared.errs, err)
+		}
 	}
 
 	if len(c.shared.errs) > 0 {
@@ -733,7 +769,21 @@ func cgoGBoolean(getter, cType string, widgetRef ir.Expr) ir.Expr {
 // `lower.CreateNode` in the package. A promoted handler needs it to resolve
 // element refs created in a sibling Func.
 func collectNodeCTypes(pkg *ir.Package) map[string]string {
+	out, _ := collectNodeTags(pkg)
+	return out
+}
+
+// collectToplevels is every Toplevel id a `lower.CreateNode` in the package
+// makes, whichever scope makes it: a slot at the root of the package body
+// creates a window that a handler emitted before it shows and hides.
+func collectToplevels(pkg *ir.Package) map[string]bool {
+	_, tops := collectNodeTags(pkg)
+	return tops
+}
+
+func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 	out := map[string]string{}
+	tops := map[string]bool{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -746,6 +796,10 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 						// native widget name.
 						if strings.HasPrefix(tag, "Gtk") {
 							out[n.Name] = tag
+						}
+						if tag == toplevelTag {
+							out[n.Name] = "GtkBox"
+							tops[n.Name] = true
 						}
 					}
 				}
@@ -766,7 +820,7 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 		}
 	}
 	if pkg == nil {
-		return out
+		return out, tops
 	}
 	for _, comp := range pkg.Components {
 		walk(comp.Body)
@@ -776,15 +830,13 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			}
 		}
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Children)
-	}
+	walk(pkg.Body)
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
 			walk(fn.Block)
 		}
 	}
-	return out
+	return out, tops
 }
 
 // collectCreateComponentTargets returns the components instantiated via a
@@ -833,9 +885,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				walk(fn.Block)
 			}
 		}
-	}
-	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -1085,20 +1134,6 @@ func isWindowClass(cType string) bool {
 		return true
 	}
 	return false
-}
-
-// windowTitleGo is the Go expression for the window's `title` prop, or "" when
-// it declares none.
-func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
-	wins := ctx.Windows()
-	if len(wins) == 0 {
-		return ""
-	}
-	title := wins[0].Window.Prop(ir.WindowTitle)
-	if title == nil {
-		return ""
-	}
-	return gc.EvalExpr(title)
 }
 
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget. Top-level
@@ -1384,10 +1419,29 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
+	if app {
+		callee := ""
+		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
+			callee = golang.ModelCallee(pkg, pkg.Run, "m")
+		}
+		emitGTK4AppMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		return nil
+	}
+	if pkg != nil && pkg.Run != nil {
+		if !wrapped {
+			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
+		}
+		callee := ""
+		if len(pkg.Run.Block) > 0 {
+			callee = golang.ModelCallee(pkg, pkg.Run, "m")
+		}
+		emitGTK4RunMainWrapped(b, callee)
+		return nil
+	}
 	if wrapped {
 		emitGTK4MainWrapped(b)
-		return
+		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
 	if teardown {
@@ -1426,6 +1480,7 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package)
 	b.WriteString("\t\tos.Exit(int(status))\n")
 	b.WriteString("\t}\n")
 	b.WriteString("}\n")
+	return nil
 }
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {

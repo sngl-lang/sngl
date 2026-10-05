@@ -35,6 +35,8 @@ func emitComponentInstance(
 	shared *emitShared,
 	wrapped bool,
 	canvases []codegen.Canvas,
+	invokerSink func(gtkEventInvoker),
+	modelFieldSink func(widgetField),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -78,7 +80,13 @@ func emitComponentInstance(
 		return tr
 	}
 
-	tr := newTr(comp.LocalRefs).withSlotRoot(comp.Body)
+	// A widget the program named is one a test drives, and a record is built
+	// and destroyed while the program runs, so the record hands its widget to
+	// the Model as it is built: the invoker reaches whichever instance built
+	// it last, which is the one on screen.
+	var invokers []gtkEventInvoker
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
+		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder
@@ -91,6 +99,27 @@ func emitComponentInstance(
 		}
 	}
 	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
+	exposed := map[string]bool{}
+	for _, inv := range invokers {
+		var field *widgetField
+		for i := range fields {
+			if fields[i].name == inv.FieldName {
+				field = &fields[i]
+				break
+			}
+		}
+		if field == nil || invokerSink == nil {
+			continue
+		}
+		named := "__named_" + inv.FieldName
+		if !exposed[named] {
+			exposed[named] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, inv.FieldName)
+			modelFieldSink(widgetField{name: named, goType: field.goType})
+		}
+		inv.FieldName = named
+		invokerSink(inv)
+	}
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
 	// Methods after the body, because the walk is what discovers the widget
@@ -217,10 +246,10 @@ func rootRefLine(cFunc, rtFunc string, wrapped bool) string {
 	return fmt.Sprintf("C.%s(C.gpointer(unsafe.Pointer(%s)))", cFunc, root)
 }
 
-// instanceRootBinding assigns the widget the instance renders as: the box a
-// reactive slot at the top of its body renders into, when there is one, and
-// otherwise whatever the body left unattached, boxed when it left several,
-// because a parent holds one child per instance.
+// instanceRootBinding assigns the widget the instance renders as: the box its
+// reactive slots render into when the body has one, holding the body's own
+// widgets in written order, and otherwise whatever the body left unattached,
+// boxed when it left several, because a parent holds one child per instance.
 func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bool) string {
 	root := instanceReceiver + "." + golang.ComponentRootField
 	nodeRef := func(id string) ir.Expr {
@@ -335,7 +364,7 @@ func instanceVarGoType(v *ir.Var, wrapped bool) string {
 			return "[]" + gtk4rtHandleType
 		}
 		return "[]*C.GtkWidget"
-	case v.Synthesized && v.Name == slotRootVar:
+	case v.Synthesized && v.Name == instanceRootVar:
 		if wrapped {
 			return gtk4rtHandleType
 		}
@@ -354,7 +383,7 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
 	// the first render appended into nothing. These assignments are statements
 	// of the ctor rather than fields of a struct literal, which is what made
 	// the Model's reason for binding its own __root later not apply.
-	if v.Synthesized && v.Name == slotRootVar {
+	if v.Synthesized && v.Name == instanceRootVar {
 		if wrapped {
 			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
 		}
@@ -399,6 +428,6 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 	return false
 }
 
-// slotRootVar is the container a reactive slot at the top of a body renders
+// instanceRootVar is the container a reactive slot in a component body renders
 // into.
-const slotRootVar = "__root"
+const instanceRootVar = "__root"

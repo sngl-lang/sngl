@@ -31,7 +31,7 @@ component App() node {
     }
 }
 
-window(title="C", href="/index.html") { App() }
+window(title="C") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

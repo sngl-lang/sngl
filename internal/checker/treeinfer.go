@@ -76,6 +76,7 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 	case 1:
 		comp.Tree = found[0]
 		c.declPkg().NoteTreeKind(found[0])
+		c.checkFamilyMember(comp)
 		return true
 	}
 	c.error(compDeclPos(comp),
@@ -93,12 +94,15 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 // is what lets `component pages() { window … }` say what it does without
 // naming `root`.
 //
+// A node marked #[tree.crosses] is no evidence either: it says it stands in a
+// family it is not a member of.
+//
 // A slot insertion is no evidence: what a slot with no declared family accepts
 // is the family of the component declaring it, so reading one would be reading
 // the answer off the question. Its *fallback* is evidence, and the distinction
 // is who wrote the nodes: the insertion stands for the caller's, the fallback
 // is this component's own, rendered when the caller supplies none.
-func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.StructDef) ([]*ir.StructDef, bool) {
+func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.Component) ([]*ir.Component, bool) {
 	var unsettled bool
 	nested := func(blocks ...[]ir.Stmt) {
 		for _, b := range blocks {
@@ -107,7 +111,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			unsettled = unsettled || u
 		}
 	}
-	note := func(sd *ir.StructDef) {
+	note := func(sd *ir.Component) {
 		if sd != nil && !slices.Contains(found, sd) {
 			found = append(found, sd)
 		}
@@ -124,7 +128,9 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			nested(s.Children)
 		case *ir.NodeInst:
 			switch {
-			case s.Component == nil:
+			// A node crossing into this body says it is not of the family the
+			// body is, so it is no evidence of which that is.
+			case s.Component == nil, s.Crosses:
 			case s.Component.Tree != nil:
 				note(s.Component.Tree)
 			case pending[s.Component]:

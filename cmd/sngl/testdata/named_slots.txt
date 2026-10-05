@@ -63,7 +63,7 @@ component table(rows list<Row>, header component, cell component(Row), children 
     }
 }
 
-window #w(href="/index.html") {
+window #w() {
     table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
         component header {
             text(value="Rows")
@@ -88,7 +88,7 @@ component card(heading component, children ...component) node {
     }
 }
 
-window #w(href="/index.html") {
+window #w() {
     card() {
         text(value="ordinary")
     }
@@ -106,7 +106,7 @@ component card(caption string, heading component(string), children ...component)
     }
 }
 
-window #w(href="/index.html") {
+window #w() {
     card(caption="CAP") {
         component heading(c) {
             text(value=c)
@@ -140,7 +140,7 @@ component wrapper(start string, children ...component) node {
     }
 }
 
-window #w(href="/index.html") {
+window #w() {
     wrapper(start="AAA")
     wrapper(start="BBB")
 }

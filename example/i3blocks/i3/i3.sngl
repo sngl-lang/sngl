@@ -1,0 +1,40 @@
+import build "sngl:build"
+
+// A status line is a tree of these. The family is bodyless, so every target a
+// program reaches it on must say how it is generated -- `go.sngl` is the one
+// this package ships, and a build for any other language is refused at the
+// bar with a position.
+component block build.family
+
+// How a block's text is aligned inside its `minWidth`.
+enum Align { left, center, right }
+
+// One segment of the status line.
+//
+// `name` is what i3bar hands back in a click beside the block's position, so
+// it is how a handler reading the protocol tells blocks apart; the emitter
+// supplies the position.
+component text(
+    name string = "",
+    full string,
+    // Shown instead of `full` when the bar runs out of room.
+    short string = "",
+    // Transparent is "the bar's own": the protocol's field is left out.
+    color color = #00000000,
+    background color = #00000000,
+    urgent bool = false,
+    minWidth int = 0,
+    align Align = Align.left,
+    // Draw i3bar's separator after this block. The protocol's default is on.
+    separator bool = true,
+    @click(button int, x int, y int),
+) block
+
+// Space between two blocks, with no separator line drawn.
+component gap(width int = 9) block
+
+// The status line. Bodyless: its family's emitter answers it, reading the
+// blocks written inside it where they are written.
+//
+// One per process -- i3bar reads one status stream from one child.
+component bar(blocks ...component block) root

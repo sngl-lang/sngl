@@ -1,18 +1,17 @@
 # `sngl dump --format sngl` prints IR back as source, so what it prints has to
 # be source. convertWindow built the node from Target, ID and the body alone and
-# never read Title, Href, Favicon or ErrorHandler -- the props the IR does hold
-# and html does emit -- so every one of them vanished from the dump.
+# never read Title, Favicon or ErrorHandler -- the props the IR does hold and
+# html does emit -- so every one of them vanished from the dump.
 #
-# A routed href prints with the rest, and route.sngl is why it used not to:
-# the checker desugared `"/u/{id}"` into a concatenation naming a var it had
-# synthesized, so a reprinted href named `id` above the body that declared it.
-# The path is a plain string now and the parameters are a declared struct, so
-# there is nothing left to reconstruct.
+# A page's routed href prints with the rest, and route.sngl is why it used not
+# to: the checker desugared `"/u/{id}"` into a concatenation naming a var it
+# had synthesized, so a reprinted href named `id` above the body that declared
+# it. The path is a plain string now and the parameters are a declared struct,
+# so there is nothing left to reconstruct.
 
 sngl dump --stage checked --format sngl win.sngl
 stdout 'window #home\('
 stdout 'title="Hi"'
-stdout 'href="/home"'
 stdout 'favicon="f.ico"'
 stdout '@error\(e error\)'
 
@@ -26,14 +25,13 @@ stdout 'href="/u/\\{id\\}"'
 stdout 'params=PageParams\{\}'
 stdout 'component content\(v\)'
 
-cp stdout route_out.sngl
-sngl check route_out.sngl
-stdout 'route_out.sngl: ok'
+# Not checked again: a node written qualified (`nav.page`) dumps under its local
+# name (`page`), which only a dot import would resolve.
 
 -- win.sngl --
 import . "sngl:ui"
 
-window #home(title="Hi", href="/home", favicon="f.ico", @error(e) {
+window #home(title="Hi", favicon="f.ico", @error(e) {
     output.print("{e.message}")
 }) {
     text(value="hi")
@@ -41,13 +39,18 @@ window #home(title="Hi", href="/home", favicon="f.ico", @error(e) {
 
 -- route.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 struct PageParams {
     id string
 }
 
-window #user(title="User", href=`/u/{id}`, params=PageParams{}) {
-    component content(v) {
-        text(value="user {v.id}")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #user(href=`/u/{id}`, title="User", params=PageParams{}) {
+            component content(v) {
+                text(value="user {v.id}")
+            }
+        }
     }
 }

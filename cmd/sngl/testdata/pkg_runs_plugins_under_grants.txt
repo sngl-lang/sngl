@@ -1,0 +1,32 @@
+# `sngl pkg` fetches because it was asked to, and that is all it was asked.
+# The check that finds a program's imports runs every gen.scheme plugin it
+# reaches, so a plugin the repository declares is held to the invocation's
+# grants there as anywhere: a command it never asked for does not run.
+env SNGL_GENCACHE=off
+
+sngl pkg download app.sngl
+! exists ran
+
+# Granted, the same plugin runs.
+sngl pkg download --allow-command='./pc=sh' app.sngl
+exists ran
+
+-- app.sngl --
+import ui "sngl:ui"
+import x "run:x"
+import "./pc"
+
+ui.window(title="t") {
+    ui.text(value=x.line)
+}
+-- pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="run", @generate(out, importPath) {
+    var p = gen.exec(cmd=["sh", "-c", "touch ran && echo hi"])
+    var line = ""
+    for var l = p.stdout {
+        line = l
+    }
+    out.write("x.sngl", "const line = \"" + line + "\"\n")
+})

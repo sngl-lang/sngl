@@ -31,12 +31,10 @@ func runRun(cmd *cobra.Command, args []string) error {
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 
 	file := args[0]
+	// Cobra takes the `--` out of args, and says where it stood.
 	var progArgs []string
-	for i, a := range args {
-		if a == "--" {
-			progArgs = args[i+1:]
-			break
-		}
+	if at := cmd.ArgsLenAtDash(); at >= 0 {
+		progArgs = args[at:]
 	}
 
 	// Stable, key-derived build directory so repeated invocations reuse
@@ -67,13 +65,14 @@ func runRun(cmd *cobra.Command, args []string) error {
 					Headless: codegen.OptionString(target.Options, "host") == "mem",
 				})
 			}
-			plat := codegen.LookupPlatform(target.Platform)
-			runner, ok := plat.(codegen.Runner)
-			if !ok {
-				return fmt.Errorf("platform %q does not support direct execution", target.Platform)
+			if !build.HasCommand(target, ir.BuiltinGenRun) {
+				return fmt.Errorf("platform %q with language %q does not support direct execution", target.Platform, target.Lang)
 			}
-			codegen.SetOptionField(target.Options, "lang", target.Lang)
-			return runner.Run(outDir, target.Options, progArgs)
+			args := make([]any, len(progArgs))
+			for i, a := range progArgs {
+				args[i] = a
+			}
+			return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
 		},
 	})
 }

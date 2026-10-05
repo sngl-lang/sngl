@@ -1,0 +1,23 @@
+// Navigation, implemented for this platform.
+//
+// sngl:ui/nav's stack and page are a NavHost and its destinations, which
+// nav.go answers from the builtin nodes themselves. A link is the one member
+// with a body of its own -- a button that goes to its page -- and the body
+// names its page and not the stack holding it, which a NavHost can only
+// answer once it knows which controller that is. So the link is this
+// platform's own primitive, which nav.go draws as a button navigating the
+// controller of the stack its page is in.
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import . "sngl:internal/marks"
+
+// A link as a Compose button: `to` is the page's record and `params` what it
+// is handed, null for the page's own -- the route's default.
+#[intrinsic("android:Link")]
+component Link<P, Q>(to P, params Q, text string, style ui.Style, @click ui.ClickEvent) ui.node
+
+const component nav.link[platform] {
+    Link(to=to, params=params, text=text, style=style, @click {
+        click()
+    })
+}

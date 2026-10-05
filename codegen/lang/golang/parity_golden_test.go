@@ -21,7 +21,6 @@ import (
 	// generate --platform=html --lang=go` uses. The legacy CompileHTTP
 	// path (golang/http.go) is what produces server.go's POST handler.
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	htmlplat "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 

@@ -1,4 +1,4 @@
-import tree "sngl:tree"
+import build "sngl:build"
 import marks "sngl:internal/marks"
 
 // The family the widgets form: a button, a label and a layout box are members
@@ -17,6 +17,5 @@ import marks "sngl:internal/marks"
 // components, and every other family answers yes by existing. It names the
 // tree by the mark and not by the pair "sngl:ui" and "node", so renaming
 // either leaves the role where it was written.
-#[tree.kind]
 #[marks.builtin("treeNode")]
-struct node {}
+component node build.family

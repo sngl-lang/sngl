@@ -41,34 +41,34 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>check</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { scores__inst0: null, size__inst0: 0 };
+  var state = { scores__inst0: null, size__inst0: 0, visible__inst1: true };
   state.scores__inst0 = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.size__inst0 = state.scores__inst0.size;
-    __n0.textContent = String(state.size__inst0);
+    __n1.textContent = String(state.size__inst0);
   });
   $1.addEventListener("click", function() {
     state.size__inst0 = state.scores__inst0.has("alice") ? state.scores__inst0.get("alice") : 0;
-    __n0.textContent = String(state.size__inst0);
+    __n1.textContent = String(state.size__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.size__inst0);
+    __n1.textContent = String(state.size__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:11fe23e8c8154e337e0d8fb3536ea372
+pass sha256:91ed52baf250b377d0ee5f1863c84a13

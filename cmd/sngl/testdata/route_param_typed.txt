@@ -39,6 +39,7 @@ func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 import "go:typedparam/srv"
 import "sngl:platform/html"
 
@@ -49,9 +50,13 @@ struct PageParams {
 
 var hits = 0
 
-window #page(title="t", href=`/p/{slug}/{page}`, params=PageParams{}) {
-    component content(v) {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        html.span(innerText="{v.slug} {v.page + 1} {hits}")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #page(href=`/p/{slug}/{page}`, title="t", params=PageParams{}) {
+            component content(v) {
+                html.button(innerText="go", @click { hits = srv.Bump(hits) })
+                html.span(innerText="{v.slug} {v.page + 1} {hits}")
+            }
+        }
     }
 }

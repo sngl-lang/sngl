@@ -90,6 +90,17 @@ func IsErrorRaiseFunc(fn *Func) bool {
 // Each statement's AST field points back at the originating AST node whose Pos
 // is the position. Returns the zero Pos for statements with no AST origin
 // (e.g. lower-pass-synthesized statements).
+// NodePos is where the program wrote n: its Site where an override was
+// substituted for it, and its own position otherwise.
+func NodePos(n *NodeInst) ast.Pos {
+	if n != nil && n.Site != nil {
+		if p := n.Site.StmtPos(); p != nil {
+			return *p
+		}
+	}
+	return StmtPos(n)
+}
+
 func StmtPos(s Stmt) ast.Pos {
 	switch n := s.(type) {
 	case *Assign:
@@ -121,10 +132,6 @@ func StmtPos(s Stmt) ast.Pos {
 		// concrete node, which is why it was missing: a diagnostic about a
 		// node -- an effect in the wrong scope, a prop a backend cannot emit
 		// -- had nowhere to say where the node was written.
-		//
-		// Nil-checked because a window is one of these and a WindowCtx may
-		// carry none: CodegenCtx.Windows synthesizes one for a harness-isolated
-		// root component, and html asks that window where it was written.
 		if n != nil && n.AST != nil {
 			if p := n.AST.StmtPos(); p != nil {
 				return *p

@@ -11,7 +11,7 @@ var lspCmd = &cobra.Command{
 	Use:   "lsp",
 	Short: "Start the SNGL language server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		srv := lsp.New()
+		srv := lsp.NewWithTrust(cliTrust)
 		tcp, _ := cmd.Flags().GetString("tcp")
 		if tcp != "" {
 			fmt.Fprintf(cmd.ErrOrStderr(), "sngl lsp: listening on %s\n", tcp)

@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// routeFixture builds a checked-shape IR package + WindowCtx that mirrors the
+// routeFixture builds a checked-shape IR package + ViewCtx that mirrors the
 // route_post_action fixture AFTER native import resolution and reactivity
 // lowering: a `count` state var, a backend @click handler whose body is the
 // logical `count = api.Persist(count+1)` plus a lowered DOM-patch
@@ -20,7 +20,7 @@ import (
 // because native go: resolution requires the Go toolchain importer, which the
 // in-package parity harness intentionally omits — so a parsed fixture's go:
 // call never carries the Func.Foreign.Path linkage handlerPlacement keys on.
-func routeFixture() (*ir.Package, *codegen.WindowCtx) {
+func routeFixture() (*ir.Package, *codegen.ViewCtx) {
 	const importPath = "example.com/route-post/api"
 
 	persist := &ir.Func{Name: "Persist", Foreign: ir.Foreign{Path: importPath}}
@@ -81,7 +81,7 @@ func routeFixture() (*ir.Package, *codegen.WindowCtx) {
 	}
 	vbox := &ir.NodeInst{Name: "vbox", Children: []ir.Stmt{button, textNode}}
 
-	win := &codegen.WindowCtx{
+	win := &codegen.ViewCtx{
 		Name: "app",
 		Vars: []*ir.Var{countVar},
 		Body: []ir.Stmt{vbox},
@@ -216,7 +216,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 		Handlers: []ir.EventHandler{nodeHandler},
 	}
 	vbox := &ir.NodeInst{Name: "vbox", Children: []ir.Stmt{button}}
-	win := &codegen.WindowCtx{Name: "app", Vars: []*ir.Var{countVar}, Body: []ir.Stmt{vbox}}
+	win := &codegen.ViewCtx{Name: "app", Vars: []*ir.Var{countVar}, Body: []ir.Stmt{vbox}}
 
 	targets := buildNativeFuncMap(pkg, "go")
 	actions, actionIdx := collectActions(pkg, win, targets)

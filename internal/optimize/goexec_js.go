@@ -5,6 +5,7 @@ package optimize
 import (
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -30,6 +31,6 @@ func requestPureNativeFunc(ctx *evalCtx, scheme, importPath string, f *ir.Func, 
 	return nil, nativeFailed, fmt.Errorf("compile-time execution not available in WASM")
 }
 
-func runNativeRequests(cache *EvalCache, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
+func runNativeRequests(cache *EvalCache, policy *trust.Policy, dir string, types ir.NativeDecls, reqs []*nativeRequest) map[string]error {
 	return nil
 }

@@ -474,7 +474,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -1447,7 +1447,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:35cf82764ca6e58b3e5628b610ba20a7
 -- run/go/fyne --
-pass sha256:2ad6df1d5a9506f7378d56c7e4fadd60
+pass sha256:c48a243b071327926c68d981b227e50f
 -- run/go/gtk4 --
 pass sha256:b7f909c6ecedc2a5e7f2414fe7cd27fc
 -- run/kotlin/android --

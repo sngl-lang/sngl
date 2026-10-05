@@ -32,7 +32,7 @@ component App() node {
         badge(label=n)
     }
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -86,7 +86,7 @@ component App() node {
     }
     button(text="rename", @click { tag = "y" })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -124,7 +124,7 @@ component chain(depth int) node {
 component App() node {
     chain(depth=3)
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -163,7 +163,7 @@ component App() node {
     }
     button(text="grow", @click { names = ["a", "b", "c"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -217,7 +217,7 @@ component App() node {
     }
     button(text="prepend", @click { names = ["z", "a", "b"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -268,7 +268,7 @@ component App() node {
     }
     button(text="churn", @click { names = ["a", "a"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -324,7 +324,7 @@ component App() node {
         badge()
     }
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

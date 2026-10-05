@@ -75,6 +75,7 @@ type Model struct {
 	total               int
 	labels              []string
 	label__inst0        map[string]string
+	visible__inst1      bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -94,6 +95,7 @@ func New() Model {
 	m.total = m.start
 	m.labels = []string{"a", "b"}
 	m.label__inst0 = map[string]string{}
+	m.visible__inst1 = true
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
@@ -278,6 +280,21 @@ func SetLabel__inst0Cmd(v map[string]string) tea.Cmd {
 	return func() tea.Msg { return setLabel__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -295,13 +312,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLabels(msg.value)
 	case setLabel__inst0Msg:
 		m = m.SetLabel__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -327,40 +352,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	var part0Children []string
-	var part0_0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	var part0_0Items []string
-	for __copy0, l := range m.labels {
-		_ = __copy0
-		_ = l
-		var part0_0Item string
-		part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		part0_0ItemPrefix := " "
-		if part0_0ItemFocused {
-			part0_0ItemPrefix = ">"
-		}
-		part0_0Item = lipgloss.NewStyle().Render(part0_0ItemPrefix + " " + fmt.Sprint(((func() string {
-			if __v, __ok := m.label__inst0[fmt.Sprint(__copy0)]; __ok {
-				return __v
+	if m.visible__inst1 {
+		var part0Children []string
+		var part0_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		var part0_0Items []string
+		for __copy0, l := range m.labels {
+			_ = __copy0
+			_ = l
+			var part0_0Item string
+			part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			part0_0ItemPrefix := " "
+			if part0_0ItemFocused {
+				part0_0ItemPrefix = ">"
 			}
-			return (l + ":")
-		}() + " ") + fmt.Sprint(m.total))))
-		__focusPos0++
-		part0_0Items = append(part0_0Items, part0_0Item)
+			part0_0Item = lipgloss.NewStyle().Render(part0_0ItemPrefix + " " + fmt.Sprint(((func() string {
+				if __v, __ok := m.label__inst0[fmt.Sprint(__copy0)]; __ok {
+					return __v
+				}
+				return (l + ":")
+			}() + " ") + fmt.Sprint(m.total))))
+			__focusPos0++
+			part0_0Items = append(part0_0Items, part0_0Item)
+		}
+		part0_0 = strings.Join(part0_0Items, "\n")
+		if part0_0 != "" {
+			part0Children = append(part0Children, part0_0)
+		}
+		var part0_1 string
+		part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
+		part0Children = append(part0Children, part0_1)
+		var part0_2 string
+		part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(("from " + fmt.Sprint(m.start))))
+		part0Children = append(part0Children, part0_2)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	}
-	part0_0 = strings.Join(part0_0Items, "\n")
-	if part0_0 != "" {
-		part0Children = append(part0Children, part0_0)
-	}
-	var part0_1 string
-	part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
-	part0Children = append(part0Children, part0_1)
-	var part0_2 string
-	part0_2 = lipgloss.NewStyle().Render(fmt.Sprint(("from " + fmt.Sprint(m.start))))
-	part0Children = append(part0Children, part0_2)
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -401,16 +428,19 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	start        int
-	total        int
-	labels       []string
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*RowInstance
+	start          int
+	total          int
+	labels         []string
+	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*RowInstance
 
-	__n4 *fyne.Container
-	__n1 *widget.Label
-	__n2 *widget.Label
+	__n1    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	__n2    *widget.Label
+	__n3    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -419,6 +449,7 @@ func New() *Model {
 	m.start = 0
 	m.total = m.start
 	m.labels = []string{"a", "b"}
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
@@ -427,29 +458,29 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, l := range m.labels {
-		var __n3 *RowInstance
+		var __n4 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetName(l)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetName(l)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, l)
-			__n3 = __n3__new
+			__n4__new := newRowInstance(m, l)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -458,6 +489,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		}
 	}
 	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n1.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Start() int {
@@ -484,18 +523,35 @@ func (m *Model) SetLabels(v []string) {
 	m.labels = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
-	m.__renderSlot0(m.__n4)
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint(m.total))
-	m.__n4.Add(m.__n1)
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetVisible(m.visible__inst0)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n5 = container.NewVBox()
+	m.__renderSlot0(m.__n5)
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(("from " + fmt.Sprint(m.start)))
-	m.__n4.Add(m.__n2)
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	m.__n2.SetText(fmt.Sprint(m.total))
+	m.__n5.Add(m.__n2)
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(("from " + fmt.Sprint(m.start)))
+	m.__n5.Add(m.__n3)
+	m.__n1.Add(m.__n5)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
 
 // RowInstance is one live instance of the row component.
@@ -534,7 +590,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c.__n0.OnTapped = func() {
 		c.__model.total = (c.__model.total + 10)
 		c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
-		c.__model.__n1.SetText(fmt.Sprint(c.__model.total))
+		c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 	}
 	c.__effects0_settle()
 	c.Root = c.__n0
@@ -544,13 +600,13 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
-	c.__model.__n1.SetText(fmt.Sprint(c.__model.total))
+	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
 	c.__n0.SetText(((c.label + " ") + fmt.Sprint(c.__model.total)))
-	c.__model.__n1.SetText(fmt.Sprint(c.__model.total))
+	c.__model.__n2.SetText(fmt.Sprint(c.__model.total))
 }
 
 func (c *RowInstance) __effect0_down() {
@@ -624,11 +680,9 @@ func (c *RowInstance) SetName(__v string) {
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -639,9 +693,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -660,16 +715,18 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	start        int
-	total        int
-	labels       []string
-	__slot0      []gtk4rt.Handle
-	__slot0_at   gtk4rt.Handle
-	__inst0_live []*RowInstance
-	__n4         gtk4rt.Handle
-	__n1         gtk4rt.Handle
-	__n2         gtk4rt.Handle
-	__root       gtk4rt.Handle
+	start          int
+	total          int
+	labels         []string
+	visible__inst0 bool
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*RowInstance
+	__n1           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -679,6 +736,7 @@ func New() *Model {
 	m.start = 0
 	m.total = m.start
 	m.labels = []string{"a", "b"}
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
@@ -694,22 +752,22 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, l := range m.labels {
-		var __n3 *RowInstance
+		var __n4 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetName(l)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetName(l)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, l)
-			__n3 = __n3__new
+			__n4__new := newRowInstance(m, l)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n4__el := __n4.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n4__el)
+		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -718,6 +776,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		}
 	}
 	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 }
 
 // RowInstance is one live instance of the row component.
@@ -756,7 +822,7 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	gtk4rt.Connect(c.__n0, "clicked", func() {
 		c.__model.total = (c.__model.total + 10)
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
-		gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+		gtk4rt.LabelSetText(c.__model.__n2, fmt.Sprint(c.__model.total))
 	})
 	c.__effects0_settle()
 	c.Root = c.__n0
@@ -767,13 +833,13 @@ func newRowInstance(__model *Model, __a_name string) *RowInstance {
 func (c *RowInstance) __effect0_mount() {
 	c.__model.total = (c.__model.total + 1)
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
-	gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+	gtk4rt.LabelSetText(c.__model.__n2, fmt.Sprint(c.__model.total))
 }
 
 func (c *RowInstance) __effect0_unmount() {
 	c.__model.total = (c.__model.total - 1)
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.label + " ") + fmt.Sprint(c.__model.total)))
-	gtk4rt.LabelSetText(c.__model.__n1, fmt.Sprint(c.__model.total))
+	gtk4rt.LabelSetText(c.__model.__n2, fmt.Sprint(c.__model.total))
 }
 
 func (c *RowInstance) __effect0_down() {
@@ -880,31 +946,42 @@ func (m *Model) SetLabels(v []string) {
 	m.labels = v
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.__renderSlot0(m.__n4)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.total))
-	gtk4rt.BoxAppend(m.__n4, m.__n1)
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, ("from " + fmt.Sprint(m.start)))
-	gtk4rt.BoxAppend(m.__n4, m.__n2)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n1 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
+	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n5, 6)
+	m.__renderSlot0(m.__n5)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.total))
+	gtk4rt.BoxAppend(m.__n5, m.__n2)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, ("from " + fmt.Sprint(m.start)))
+	gtk4rt.BoxAppend(m.__n5, m.__n3)
+	gtk4rt.BoxAppend(m.__n1, m.__n5)
+	gtk4rt.AppAttach(m.__n1)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -931,6 +1008,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -947,13 +1027,23 @@ var total by mutableStateOf(start)
 @Composable
 fun MainScreen() {
     val labels = remember { mutableStateListOf("a", "b") }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        for (l in labels) {
-            Row(name = l)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Text(text = total.toString(), modifier = Modifier)
-        Text(text = ("from " + start.toString()), modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            for (l in labels) {
+                Row(name = l)
+            }
+            Text(text = total.toString(), modifier = Modifier)
+            Text(text = ("from " + start.toString()), modifier = Modifier)
+        }
     }
 }
 
@@ -986,18 +1076,18 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n4" data-sngl-id="__n4" style="display:flex;flex-direction:column">
+<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
-  <span id="__n1" data-sngl-id="__n1">
-  </span>
   <span id="__n2" data-sngl-id="__n2">
+  </span>
+  <span id="__n3" data-sngl-id="__n3">
   </span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { start: 0, total: null, labels: ["a", "b"] };
+  var state = { start: 0, total: null, labels: ["a", "b"], visible__inst0: true };
   state.total = state.start;
   function __cf_row(props) {
     const __root = document.createElement("div");
@@ -1015,12 +1105,12 @@ body { font-family: system-ui, sans-serif; }
     function __effect0_mount() {
       state.total = state.total + 1;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     }
     function __effect0_unmount() {
       state.total = state.total - 1;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     }
     function __effect0_down() {
       __effect0_desired = [];
@@ -1085,20 +1175,20 @@ body { font-family: system-ui, sans-serif; }
       __prop_name = __v;
       __effects0_settle();
     }
-    let __n5 = document.createElement("button");
-    __n5.disabled = false;
-    __n5.addEventListener("click", () => {
+    let __n6 = document.createElement("button");
+    __n6.disabled = false;
+    __n6.addEventListener("click", () => {
       state.total = state.total + 10;
       __n0.textContent = label + " " + String(state.total);
-      __n1.textContent = String(state.total);
+      __n2.textContent = String(state.total);
     });
-    __n5.addEventListener("contextmenu", () => {
+    __n6.addEventListener("contextmenu", () => {
     });
     let __n0 = document.createElement("span");
     __n0.textContent = label + " " + String(state.total);
-    __n5.appendChild(__n0);
+    __n6.appendChild(__n0);
     __effects0_settle();
-    __root.appendChild(__n5);
+    __root.appendChild(__n6);
     return {
       __root,
       __destroy() {
@@ -1116,30 +1206,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const l of state.labels) {
-      let __n3 = null;
+      let __n4 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n3 = __inst1_live[__inst1_i];
-        __n3.__set_name(l);
+        __n4 = __inst1_live[__inst1_i];
+        __n4.__set_name(l);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n3__new = __cf_row({ name: l });
-        __n3 = __n3__new;
+        let __n4__new = __cf_row({ name: l });
+        __n4 = __n4__new;
       }
-      __inst1_next.push(__n3);
+      __inst1_next.push(__n4);
       __inst1_i = __inst1_i + 1;
-      let __n3__el = __n3.__root;
+      let __n4__el = __n4.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n3__el) {
+      if (__place0_i_ref0 === __n4__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n3__el, __place0_i_ref0);
+        parent.insertBefore(__n4__el, __place0_i_ref0);
       }
-      __slot0.push(__n3__el);
+      __slot0.push(__n4__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1157,25 +1247,25 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
-    __n1.textContent = String(state.total);
-    __n2.textContent = "from " + String(state.start);
+    __n2.textContent = String(state.total);
+    __n3.textContent = "from " + String(state.start);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f9f54d2f75a8543cc87031a392219cd4
+pass sha256:192cbb3f026574a97c73b2dd286146ec
 -- run/go/fyne --
-pass sha256:37cd3df0e375dca95855f324ce26551a
+pass sha256:e759ca590ef15901d4e84965aa2146a9
 -- run/go/gtk4 --
-pass sha256:6524e8ce339786e24608ef34b84eb249
+pass sha256:17bca6bda0446f94293fc364d4ee80ea
 -- run/kotlin/android --
-pass sha256:4ffa09189aa41104afea7fb8a840eb20
+pass sha256:eb0cb6cc8c77a080cc48ffa002e7118b
 -- run/none/html --
-pass sha256:4c8fbc3f4893f5d2cc3962c51371b3e4
+pass sha256:12cab8b7b1d961811790cde0cc361022

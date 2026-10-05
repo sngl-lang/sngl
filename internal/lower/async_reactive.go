@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -86,10 +85,9 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 	if !ir.ExprHasAsyncCall(ret.Value) {
 		return false
 	}
-	// Accept if: (a) it's a synthetic hoist (no AST, name starts with "__hoist_"),
-	// or (b) it has AST.Body.
+	// Accept if: (a) it's a synthetic hoist, or (b) it has AST.Body.
 	if fn.AST == nil {
-		return strings.HasPrefix(fn.Name, "__hoist_")
+		return fn.AsyncHoist
 	}
 	return fn.AST.Body != nil
 }
@@ -108,10 +106,6 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 func hoistInlineAsyncReactive(pkg *ir.Package) error {
 	h := &hoister{pkg: pkg}
 	hoistInStmts(h, pkg.Body)
-	// Walk windows.
-	for _, w := range pkg.Windows {
-		hoistInStmts(h, w.Children)
-	}
 	// Walk components.
 	for _, comp := range pkg.Components {
 		hoistInStmts(h, comp.Body)
@@ -146,23 +140,20 @@ func hoistInStmt(h *hoister, s ir.Stmt) {
 		for i := range n.Props {
 			n.Props[i].Value = hoistExpr(h, n.Props[i].Value)
 		}
-		hoistInStmts(h, n.Children)
-	case *ir.If:
-		hoistInStmts(h, n.Body)
-		hoistInStmts(h, n.Else)
-	case *ir.For:
-		hoistInStmts(h, n.Body)
-		hoistInStmts(h, n.Else)
-	case *ir.SlotInst:
-		hoistInStmts(h, n.Children)
-	case *ir.ErrorBoundary:
-		hoistInStmts(h, n.Children)
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle,
 		*ir.Break, *ir.Continue:
 		// Hoister targets only NodeInst prop expressions; non-visual stmts
 		// don't host hoistable async subtrees.
+		return
 	default:
-		panic(fmt.Sprintf("hoistInStmt: unhandled %T", n))
+		if ir.ViewBlocks(s) == nil {
+			panic(fmt.Sprintf("hoistInStmt: unhandled %T", n))
+		}
+	}
+	// What the node or the construct around it holds: children, populations,
+	// a fallback, a provider's content.
+	for _, b := range ir.ViewBlocks(s) {
+		hoistInStmts(h, *b)
 	}
 }
 
@@ -188,9 +179,10 @@ func synthesizeHoist(h *hoister, e ir.Expr) ir.Expr {
 	name := h.freshHoistName()
 	retType := e.ExprType()
 	fn := &ir.Func{
-		Name:    name,
-		IsAsync: true,
-		Return:  retType,
+		Name:       name,
+		IsAsync:    true,
+		AsyncHoist: true,
+		Return:     retType,
 		Block: []ir.Stmt{
 			&ir.Return{Value: e},
 		},

@@ -60,7 +60,7 @@ func checkWithLanguages(t *testing.T, src string, target string, langs ...string
 	}
 	for _, name := range langs {
 		cfg.Languages = append(cfg.Languages, extStubLang{name: name})
-		cfg.LibSources["language/"+name] = []*ast.Document{ext}
+		cfg.LibSources["language/"+name] = []*ast.Document{ext, targetNodeDoc(t, "language/"+name)}
 	}
 	return checker.Check(doc, cfg)
 }

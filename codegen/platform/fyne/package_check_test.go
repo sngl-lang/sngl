@@ -9,7 +9,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// codegen/platform/fyne/fyne.sngl declares twelve intrinsics and thirty-four
+// lib/platform/fyne/fyne.sngl declares twelve intrinsics and thirty-four
 // overrides written against them, and no Go code in this package parses that
 // file. Importing the package is what loads and checks it, so this is the only
 // thing that keeps it type-correct.

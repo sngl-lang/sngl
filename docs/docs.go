@@ -21,11 +21,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
-//go:embed *.md learn reference
+//go:embed *.md learn learn/_tour.md reference
 var content embed.FS
 
 type Page struct {
@@ -45,7 +44,7 @@ func Pages() []Page {
 		if err != nil || d.IsDir() || filepath.Ext(path) != ".md" {
 			return nil
 		}
-		if path == "learn/tour.md" {
+		if path == "learn/_tour.md" {
 			return nil // rendered separately as the interactive tutorial
 		}
 		data, err := content.ReadFile(path)
@@ -407,7 +406,7 @@ func packageComponents(uri string, snapshots []string) []Component {
 			c.Examples = srcs
 			if len(srcs) > 0 {
 				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
-				c.PreviewHTML = buildPreviewSection(name, checker.ExampleProgram(checker.PackageExampleImports(path), srcs[0]), detectPlatforms(name, snapshots))
+				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name, snapshots))
 			}
 		}
 
@@ -482,9 +481,10 @@ func buildPreviewSection(name, program string, platforms []string) string {
 	return b.String()
 }
 
-// program is an example made buildable by checker.ExampleProgram.
-func compilePreview(program string) string {
-	doc, err := parser.Parse("example.sngl", []byte(program))
+// source is a complete program with one window, as checker.PackageExamples
+// returns.
+func compilePreview(source string) string {
+	doc, err := parser.Parse("example.sngl", []byte(source))
 	if err != nil {
 		return ""
 	}
