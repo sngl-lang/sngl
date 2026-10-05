@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
@@ -282,11 +283,6 @@ func (env *Env) exec(s ir.Stmt) error {
 		}
 		return &returnSignal{value: v}
 	case *ir.NodeInst:
-		// A window is a top-level construct; reaching one inside a statement
-		// stream means something nested it incorrectly.
-		if ir.IsWindowNode(n) {
-			panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
-		}
 		// Visual nodes don't execute in statement position in the headless
 		// interpreter (they're rendered elsewhere). Skipping preserves
 		// forward-compat with boundary/window structures appearing as
@@ -349,6 +345,9 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if m, ok := obj.(map[string]any); ok {
 			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
 			if err != nil {
+				return err
+			}
+			if err := writeThroughHandle(m, target.Field, nv); err != nil {
 				return err
 			}
 			m[target.Field] = nv
@@ -434,6 +433,19 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.Toggle(target.Field)
 		}
+		// A two-way prop through a node's handle: what it holds now, written
+		// back negated the way an assignment through the handle is.
+		if _, ok := obj.(map[string]any); ok {
+			cur, err := env.Eval(target)
+			if err != nil {
+				return err
+			}
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool %s", target.Field)
+			}
+			return env.execAssign(&ir.Assign{Target: target, Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(!b)}})
+		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)
 }
@@ -498,6 +510,8 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 		}
 		env.unbindLoopVars(s)
+	case *Stream:
+		return env.execStreamLoop(s, v)
 	default:
 		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
 		// of the two produced it, and neither is walked by building the other.
@@ -678,7 +692,7 @@ func numKindOfValue(v any) opeval.NumKind {
 
 // execCatch runs a catch block. Only lowered IR holds one -- `sngl test` runs
 // checked IR -- so this answers a caller that interprets after lowering, as the
-// optimizer does in optimize.Documents.
+// build-time Fold does (optimize.NewFold).
 func (env *Env) execCatch(s *ir.If) error {
 	for _, st := range s.Body {
 		err := env.Exec(st)
@@ -688,6 +702,45 @@ func (env *Env) execCatch(s *ir.If) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// writeThroughHandle writes a two-way prop of the node m is a handle to --
+// `w.visible = true` in `func window.open(w window)` -- where a write of the
+// prop lands: the var the call site bound, in the scope the node was written
+// in, or the instance's own cell where nothing is bound. A write of anything
+// else stays the handle's.
+func writeThroughHandle(m map[string]any, field string, val any) error {
+	inst, _ := m["__inst"].(*ir.NodeInst)
+	if inst == nil || inst.Component == nil {
+		return nil
+	}
+	var prop *ir.Prop
+	for _, p := range inst.Component.Props {
+		if p.Name == field && p.Bidirectional {
+			prop = p
+		}
+	}
+	if prop == nil {
+		return nil
+	}
+	for _, b := range inst.Bindings {
+		if b.PropName != field {
+			continue
+		}
+		owner, _ := m["__ownerEnv"].(*Env)
+		if owner == nil {
+			return nil
+		}
+		tmp := &ir.Param{Name: "__bound"}
+		owner.Set(tmp, val)
+		err := owner.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		delete(owner.vals, tmp)
+		return err
+	}
+	if ce, _ := m["__compEnv"].(*Env); ce != nil && prop.Sym != nil {
+		ce.Set(prop.Sym, val)
 	}
 	return nil
 }

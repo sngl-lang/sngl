@@ -128,7 +128,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 
 	// These sets are keyed by name, so only one component can contribute: a
 	// child component's `count` is not the root model's `count`. The package
-	// and the windows are unambiguous and always do.
+	// is unambiguous and always does.
 	for _, o := range ir.Owners(pkg) {
 		if o.Comp != nil && o.Comp.Name != pkg.RootComponent {
 			continue
@@ -137,13 +137,6 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 			a.ModelFields[v.Name] = true
 		}
 		for _, f := range o.Funcs {
-			// A window's *synthesized* funcs -- a canvas draw, the focus
-			// order's __focusNext -- are reached through CodegenCtx.AllFuncs
-			// and never named by an expression. A `func` written in a window
-			// body is named by one.
-			if o.Win != nil && f.Synthesized {
-				continue
-			}
 			a.FuncNames[f.Name] = true
 			if f.Receiver != "" {
 				a.FuncNames[f.Receiver+"."+f.Name] = true

@@ -348,7 +348,42 @@ func nodeMaps(nodes []*Node) []map[string]any {
 			delete(ctx, raiseScope)
 			m["__ownerContext"] = ctx
 		}
+		// The instance's own scope, which is where the cell of an unbound
+		// two-way prop is written: a third, and the frozen walk has no cells.
+		delete(m, "__compEnv")
+		// And the cell's value, which the node shows for a prop its call site
+		// neither bound nor gave: the walk had no cell to read it from.
+		if inst, _ := m["__inst"].(*ir.NodeInst); inst != nil {
+			for _, name := range unboundTwoWay(inst) {
+				delete(m, name)
+			}
+		}
+		// The node itself, which a component's event reaches through to
+		// what it renders: a fourth, and the walk had no nodes.
+		delete(m, "__node")
 		out = append(out, m)
+	}
+	return out
+}
+
+// unboundTwoWay is the two-way props of inst's component that its call site
+// neither binds nor gives a value.
+func unboundTwoWay(inst *ir.NodeInst) []string {
+	if inst.Component == nil {
+		return nil
+	}
+	var out []string
+	for _, p := range inst.Component.Props {
+		if !p.Bidirectional || inst.Prop(p.Name) != nil {
+			continue
+		}
+		bound := false
+		for _, b := range inst.Bindings {
+			bound = bound || b.PropName == p.Name
+		}
+		if !bound {
+			out = append(out, p.Name)
+		}
 	}
 	return out
 }

@@ -341,7 +341,7 @@ semicolon insertion so the decorated construct may begin on the following line.
 
 A macro is an ordinary declaration of a package, and none is ambient: the
 attribute names it through the file's import of that package, qualified by the
-import's alias like any other member — `#[tree.kind]` after
+import's alias like any other member — `#[tree.none]` after
 `import tree "sngl:tree"`, `#[macro.foreign(…)]` after
 `import macro "sngl:macro"`. A macro name that does not resolve is an error.
 
@@ -735,8 +735,9 @@ scope in every file implicitly and cannot be imported explicitly; it is the
 only implicit import in the language.
 
 `PLATFORM` and `LANGUAGE` name the target a build is producing. Their types are
-`platform` and `language`, which have no literal: a value of one is the identity
-constant a target's own package declares, so a platform is compared as
+`platform` and `language`, which have no literal: a value of one is the
+build-target node a target's own package declares, read as a value, so a
+platform is compared as
 `PLATFORM == html.platform` (after `import html "sngl:platform/html"`), and
 `PLATFORM == "html"` is a type error. The comparison folds at build time and
 the branch not taken is removed. See
@@ -791,8 +792,9 @@ so a top-level declaration named like a library entity takes precedence over it
 within the package.
 
 A library package may carry macros next to the declarations they apply to:
-`import tree "sngl:tree"` brings the `#[tree.kind]` mark that declares a new
-family (see [Trees and families](#trees-and-families)).
+`import tree "sngl:tree"` brings the `#[tree.none]` mark beside the
+`tree.one` count it qualifies slots with (see
+[Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
 intrinsics a backend implements natively and the marks that identify built-in
@@ -1567,7 +1569,12 @@ A component parameter is one of four kinds:
   written `const name Type` (see [the const prefix](#the-const-prefix));
 - a **binding parameter** — `:name Type` — a two-way bound property: the caller
   passes an lvalue with `:name = target`, and an assignment the component makes
-  to `name` is written back to that lvalue, so parent and child stay in sync;
+  to `name` is written back to that lvalue, so parent and child stay in sync.
+  Left unbound, it is a cell of the instance. Unlike a regular parameter it may
+  also be written from outside, through the node's `#id` or a parameter holding
+  that handle (`box.checked = true`): the write lands where the component's own
+  does, on the bound lvalue or the instance's cell. Writing a regular parameter
+  that way is an error, since what it shows is the expression the caller wrote;
 - an **event parameter** — `@name(a A, b B)` — an outgoing event the
   component fires by calling its name (`name(x, y)`) and the caller handles
   with `@name(a, b) { … }`. The list is a func type's, names optional;
@@ -1876,8 +1883,10 @@ ui.window {
 
 `boundary` is generic over the family of what it wraps: its content binds the
 family, and `failed` must belong to the same one, since it stands where the
-content stood. A window's `@error` is its outermost boundary. An error no
-boundary catches goes to the platform's default handler.
+content stood. A window's `@error` is its outermost boundary, and it catches
+whether or not the program handles it: a raise under a window whose call site
+wrote no `@error` is caught and dropped. An error no boundary catches goes to
+the platform's default handler.
 
 ## Trees and families
 
@@ -1886,17 +1895,18 @@ accepts members of its own family and nothing else. Widgets are one family
 (`ui.node`), the shapes a canvas draws are another (`draw.shape`), the windows
 and build directive at the root of a file a third (`root`, declared in `sngl:builtin` and so in scope everywhere).
 
-A family is declared by a struct carrying the `#[tree.kind]` mark. The struct
-holds nothing and no value of it exists; it *is* the family, identified by its
+A family is declared by a component that is a member of `build.family`, the
+family of families in `sngl:build`. It takes no parameters, has no body, holds
+nothing and is never placed in a tree; it *is* the family, identified by its
 declaration rather than its name, so two packages each declaring
-`struct item {}` declare two families.
+`component item build.family` declare two families. A family may be declared
+after the components that name it.
 
 ```sngl
-import tree "sngl:tree"
+import build "sngl:build"
 import ui "sngl:ui"
 
-#[tree.kind]
-struct item {}
+component item build.family
 
 component entry(label string) item {}
 
@@ -1913,7 +1923,8 @@ ui.window {
 The rules:
 
 - **The return position says what a component is.** `component entry(…) item`
-  is a member of `item`. Naming a type there that is not a family is an error.
+  is a member of `item`. Naming anything there that is not a family is an
+  error.
 - **A slot says what a component hosts.** A slot typed with a family accepts
   that family's members; a slot naming none accepts the family its component
   belongs to. A component that declares no slot hosts nothing.
@@ -1937,13 +1948,16 @@ family goes — `component boundary<T>(…, content ...component T, failed compo
 
 ## Programs
 
-A package is a **program** when it declares at least one window; a package that
-declares none is a library, which may be type-checked but has nothing to run.
+A package is a **program** when its body renders something; a package whose
+body renders nothing is a library, which may be type-checked but has nothing to
+run.
 
 The package body — the statements at the root of its files — is a slot that
-accepts the `root` family, whose members are `ui.window` and the `output`
-directive. A `ui.node` written at the root of a file is therefore a family
-error, while an `if` or `for` there is not a node and may hold windows. There is
+accepts the `root` family, whose members are `ui.window`, a component whose
+return position is `root`, and the `output` directive. A `ui.node` written at
+the root of a file is therefore a family error, while an `if` or `for` there is
+not a node and may hold windows. A window is an ordinary component of
+`sngl:ui`, which each target implements. There is
 no entry-point function or component: a component named `main` is an ordinary
 component. A component whose return position is `root` renders windows, and
 they reach the program when something at the root instantiates it.
@@ -1951,18 +1965,18 @@ they reach the program when something at the root instantiates it.
 ```sngl
 import ui "sngl:ui"
 
-ui.window #home(title="Home", href="/") {
+ui.window #home(title="Home") {
     var count = 0
     ui.button(text="Clicked {count} times", @click {
         count++
     })
 }
 
-ui.window #about(title="About", href="/about") {
+ui.window #about(title="About") {
     ui.text(value="A two-window program.")
 }
 
-output(entry=home) {
+output {
     none {
         html()
     }
@@ -1972,14 +1986,19 @@ output(entry=home) {
 }
 ```
 
-A window's props are `title`, `href` and `favicon`. A route with `{name}`
-placeholders hands its values to the window as one struct value in the
-`params` prop; the body that reads them is the population of the window's
-`content` slot, `component content(p) { … }`, and each placeholder must name a
-field of that struct.
+A window's props are `title` and `favicon`; a window is a surface, not a
+destination. The destinations a user moves between are the pages of a
+`sngl:ui/nav` stack the window holds, each with an `href`. A page whose href
+has `{name}` placeholders is handed their values as one struct value in its
+`params` prop; the body that reads them is the population of the page's
+`content` slot, `component content(p) { … }`, and every field of that struct is
+one of the href's placeholders.
 
 A window's body is its content; state it declares belongs to what holds the
-window (see [State and derivation](#state-and-derivation)). Where several
+window (see [State and derivation](#state-and-derivation)). A node's `#id` at
+the root of a file is the package's: every root statement, function and
+component body reaches it, a window's body hoists its ids as any node's does,
+and a second declaration of the name in the package is an error. Where several
 windows read one package-level variable, whether they share one value or each
 get a copy is the target's: windows that are one process share it, windows
 that are separate documents copy it.
@@ -1998,10 +2017,6 @@ node they belong to — `output(name = …)` for options every target shares,
 every value in the tree must be constant, since the directive is read before
 the program runs. A build that names its targets on the command line ignores
 the directive.
-
-`entry` names the window a build opens at, by its element reference. A program
-with one window needs it only for emphasis; past one, it says which window is
-the program's start.
 
 ## Modules
 
@@ -2077,9 +2092,9 @@ A program is written once for every target, and says where it differs in two
 ways.
 
 **A comparison against the target identity.** `PLATFORM` and `LANGUAGE` hold
-the target a build produces. Each target's package declares its identity
-constant — `html.platform`, `go.language` — and a comparison against one folds
-at build time, removing the branch not taken:
+the target a build produces. Each target's package declares its build-target
+node, named for its tier — `html.platform`, `go.language` — and a comparison
+against one folds at build time, removing the branch not taken:
 
 <!-- SNGL-component -->
 
@@ -2151,8 +2166,8 @@ The contract has these observable facts:
   manual; they do not change what a well-formed program means.
 - **Target packages contribute names.** Each platform and language serves a
   package of declarations reachable through a `sngl:platform/…` or
-  `sngl:language/…` import: its identity constant, its node in the `output`
-  tree, its raw elements (for example HTML tags), and its overrides of library
+  `sngl:language/…` import: its node in the `output` tree, which is also its
+  identity, its raw elements (for example HTML tags), and its overrides of library
   components.
 - **Some targets restrict programs.** A platform may support only certain
   languages, and a language may lack a capability that a program relies on; such

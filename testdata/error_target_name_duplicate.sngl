@@ -1,0 +1,24 @@
+// A build-target node's #[gen.name] is how the command line and an output
+// block find the target, so a name another node of the tier already carries is
+// refused: `--platform html` would otherwise mean whichever was found first.
+// A language and a platform may share one -- `none` is both.
+
+import build "sngl:build"
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+#[gen.name("bar")]
+component platform() build.platform
+
+#[gen.name("bar")] // ERROR(check) "platform \"bar\" is already declared at"
+component otherPlatform() build.platform
+
+// A program's node taking a shipped target's name is the one reported.
+#[gen.name("html")] // ERROR(check) "platform \"html\" is already declared at"
+component shadowHtml() build.platform
+
+#[gen.name("bar")]
+component language(platforms ...component build.platform) build.language
+
+ui.window {
+}

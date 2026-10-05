@@ -198,16 +198,34 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkProgressBar
-	__n2   *C.GtkProgressBar
-	__root *C.GtkBox
+	visible__inst0 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkProgressBar
+	__n3           *C.GtkProgressBar
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -215,16 +233,18 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.double(0.2))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.CString(""))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(false)))
-	m.__n2 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n2)), C.double(0.5))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n2)), C.CString(""))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(false)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.double(0.2))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.CString(""))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	m.__n3 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.double(0.5))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.CString(""))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -261,6 +281,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -272,13 +295,24 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column {
-        LinearProgressIndicator(progress = fun(): Float {
-            return 0.2f
-        }, modifier = Modifier.safeDrawingPadding())
-        LinearProgressIndicator(progress = fun(): Float {
-            return 0.5f
-        }, modifier = Modifier.safeDrawingPadding())
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            LinearProgressIndicator(progress = fun(): Float {
+                return 0.2f
+            }, modifier = Modifier.safeDrawingPadding())
+            LinearProgressIndicator(progress = fun(): Float {
+                return 0.5f
+            }, modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -303,13 +337,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:c5aa769f78c67aec94e83cb40930c084
+pass sha256:1c2c61b01597d2ca5845ba0fa1aeae07
 -- run/kotlin/android --
-pass sha256:7e616631a3f237b06ce76de9cdca24cd
+pass sha256:5cc7504e5516cfb0d100d02c1f7ccfe8
 -- run/none/html --
-pass sha256:a06b9b4ef7cee16de2f838bf52d9e5d6
+pass sha256:0879ff7e5cdd75bbcc289d54c8a7c1aa

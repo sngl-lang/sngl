@@ -117,6 +117,7 @@ type Model struct {
 	btTally__inst2     int
 	runs__inst0__inst2 int
 	runs__inst1__inst2 int
+	visible__inst3     bool
 	__focusID          int
 
 	width, height int
@@ -129,6 +130,7 @@ func New() Model {
 	m.btTally__inst2 = 0
 	m.runs__inst0__inst2 = 0
 	m.runs__inst1__inst2 = 0
+	m.visible__inst3 = true
 	m.__focusID = 0
 	return m
 }
@@ -227,6 +229,21 @@ func SetRuns__inst1__inst2Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setRuns__inst1__inst2Msg{value: v} }
 }
 
+func (m Model) Visible__inst3() bool {
+	return m.visible__inst3
+}
+
+func (m Model) SetVisible__inst3(v bool) Model {
+	m.visible__inst3 = v
+	return m
+}
+
+type setVisible__inst3Msg struct{ value bool }
+
+func SetVisible__inst3Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst3Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -244,13 +261,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRuns__inst0__inst2(msg.value)
 	case setRuns__inst1__inst2Msg:
 		m = m.SetRuns__inst1__inst2(msg.value)
+	case setVisible__inst3Msg:
+		m = m.SetVisible__inst3(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst3 {
+				m.visible__inst3 = false
+			}
+			if !(m.visible__inst3) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -270,38 +295,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst0__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
-	content_0Children = append(content_0Children, content_0_0)
-	var content_0_1 string
-	content_0_1Focused := (m.__focusID == 0)
-	content_0_1Prefix := " "
-	if content_0_1Focused {
-		content_0_1Prefix = ">"
+	if m.visible__inst3 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst0__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
+		content_0Children = append(content_0Children, content_0_0)
+		var content_0_1 string
+		content_0_1Focused := (m.__focusID == 0)
+		content_0_1Prefix := " "
+		if content_0_1Focused {
+			content_0_1Prefix = ">"
+		}
+		content_0_1 = lipgloss.NewStyle().Render(content_0_1Prefix + " " + fmt.Sprint("+"))
+		content_0Children = append(content_0Children, content_0_1)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst1__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		content_1_1Focused := (m.__focusID == 1)
+		content_1_1Prefix := " "
+		if content_1_1Focused {
+			content_1_1Prefix = ">"
+		}
+		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("+"))
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0_1 = lipgloss.NewStyle().Render(content_0_1Prefix + " " + fmt.Sprint("+"))
-	content_0Children = append(content_0Children, content_0_1)
-	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst1__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	content_1_1Focused := (m.__focusID == 1)
-	content_1_1Prefix := " "
-	if content_1_1Focused {
-		content_1_1Prefix = ">"
-	}
-	content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("+"))
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -330,14 +357,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column">
-    <span id="__n0" data-sngl-id="__n0">
+    <span id="__n1" data-sngl-id="__n1">
     </span>
     <button id="$2">
       <span>+</span>
     </button>
   </div>
   <div style="display:flex;flex-direction:column">
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
     <button id="$4">
       <span>+</span>
@@ -348,47 +375,47 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { base__inst2: 1, htmlTally__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0 };
+  var state = { base__inst2: 1, htmlTally__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0, visible__inst3: true };
   function fromBase__inst2() {
     return state.base__inst2 + 1;
   }
   function bump__inst2() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 100;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
   }
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
   var $4 = document.getElementById("$4");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 1;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
     bump__inst2();
   });
   $4.addEventListener("click", function() {
     state.htmlTally__inst2 = state.htmlTally__inst2 + 10;
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
     bump__inst2();
   });
   function __sngl_init() {
-    __n0.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
+    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:36c58f3d878b0eb3be64d1fe35872826
+pass sha256:803471d70bea0ff4cd1758e9f8540a02
 -- run/none/html --
-pass sha256:9b1dc71b7629ad945c003341d6fb726e
+pass sha256:b21c5504c6486e49d87190913191773c

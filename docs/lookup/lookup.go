@@ -327,7 +327,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	}
 
 	if scheme == "sngl" {
-		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
+		if !checker.HasPackage(uri) {
 			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(checker.Packages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
@@ -799,20 +799,6 @@ func isRegisteredTarget(tier, path string) bool {
 		return len(codegen.LangDocs(codegen.LookupLang(path))) > 0
 	}
 	return false
-}
-
-// providedPackageDocs is the source a registered target provides for its own
-// library package. A target carries its package rather than lib/ holding it, so
-// a package that exists only because a plugin is registered has to resolve
-// here the way it does in the checker.
-func providedPackageDocs(pkg string) []*ast.Document {
-	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
-		return checker.ProvidedDocs(codegen.LookupPlatform(name))
-	}
-	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
-		return checker.ProvidedDocs(codegen.LookupLang(name))
-	}
-	return nil
 }
 
 // packageProse is one package's own description. Only its

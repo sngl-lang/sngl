@@ -7,21 +7,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A window's `#id` binds the same *ir.Var every other node id binds.
-//
-// It used to bind the *ir.Window itself, which made ir.Window an ir.Symbol and
-// left "what does a node id name" with two answers. One of them has to go
-// before a window can be an ir.NodeInst, because a NodeInst is not a symbol --
-// its id binds through NodeInst.Handle, which is what this now mirrors.
+// A window's `#id` binds the same *ir.Var every other node id binds, and the
+// window is an ordinary node of the package body: what its id names is its
+// handle and nothing else.
 func TestWindowIDBindsANodeHandle(t *testing.T) {
 	src := `
-output(entry=home) {
-    none {
-        html
-    }
-}
-
-window #home(title="Home", href="/index.html") {
+window #home(title="Home") {
     text(value="{home.title}")
 }
 `
@@ -35,10 +26,13 @@ window #home(title="Home", href="/index.html") {
 			t.Fatalf("unexpected diag: %s", d.Msg)
 		}
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("got %d windows; want 1", len(pkg.Windows))
+	if len(pkg.Body) != 1 {
+		t.Fatalf("got %d root statements; want the window", len(pkg.Body))
 	}
-	w := pkg.Windows[0]
+	w, ok := pkg.Body[0].(*ir.NodeInst)
+	if !ok {
+		t.Fatalf("root statement is %T; want the window node", pkg.Body[0])
+	}
 
 	if w.Handle == nil {
 		t.Fatal("window #home declared no handle")
@@ -48,9 +42,6 @@ window #home(title="Home", href="/index.html") {
 	}
 	if w.Handle.Name != "home" {
 		t.Errorf("handle name = %q; want home", w.Handle.Name)
-	}
-	if got := ir.WindowHandles(pkg)[w.Handle]; got != w {
-		t.Errorf("WindowHandles did not map the handle back to its window")
 	}
 
 	// The read in the body resolves to the handle and to nothing else: a
@@ -70,32 +61,16 @@ window #home(title="Home", href="/index.html") {
 	if reads == 0 {
 		t.Error("no reference to `home` was found; the fixture no longer tests the read")
 	}
-
-	// The entry reference is the other half: it is resolved by handle, and
-	// resolving it at all is what a program depends on.
-	if pkg.EntryWindow != "home" {
-		t.Errorf("EntryWindow = %q; want home", pkg.EntryWindow)
-	}
 }
 
-// Inside a `for`, the id names the one window this iteration renders. The
-// enclosing scope holds the same name as the `list<window>` of every iteration
-// (hoistForLoopWindowIDs), so the per-iteration binding has to shadow it --
-// which is why the name is measured with LookupLocal. Measured against the
-// whole chain it finds the list, declines to bind, and the body's `page.title`
-// becomes a member read off a list of windows that no fold can answer.
-func TestLoopWindowIDShadowsTheHoistedList(t *testing.T) {
+// Inside a `for`, the id names the one window this iteration renders, and the
+// body's `page.title` reads that window's handle.
+func TestLoopWindowIDNamesItsIteration(t *testing.T) {
 	src := `
-output {
-    none {
-        html
-    }
-}
-
 const items list<string> = ["a", "b"]
 
 for var it = items {
-    window #page(title=it, href="/" + it + ".html") {
+    window #page(title=it) {
         text(value=page.title)
     }
 }
@@ -123,7 +98,7 @@ for var it = items {
 		case !isVar:
 			t.Errorf("`page` in the window body resolved to %T", id.Sym)
 		case !v.NodeHandle:
-			t.Error("`page` resolved to the hoisted list, not to this iteration's handle")
+			t.Error("`page` did not resolve to this iteration's handle")
 		}
 		return nil
 	})

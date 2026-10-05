@@ -1,0 +1,26 @@
+// #[tree.crosses] says a placement crosses a family, so it is written on a node
+// or a slot insertion in a view and nowhere else. On a declaration it would
+// say something about every placement of it, which is what the mark exists not
+// to do.
+
+import tree "sngl:tree"
+import ui "sngl:ui"
+
+#[tree.crosses] // ERROR(check) "#[tree.crosses] cannot mark a function; only a node or a slot insertion in a view is placed in a tree"
+func f() {}
+
+#[tree.crosses] // ERROR(check) "#[tree.crosses] cannot mark a component; only a node or a slot insertion in a view is placed in a tree"
+component c ui.node {
+    ui.text(value="c")
+}
+
+// A crossing node says it is not of the family its body is, so it is no
+// evidence of which family that is: a body of nothing else names none.
+component bare() { // ERROR(check) "component bare: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]"
+    #[tree.crosses]
+    ui.text(value="bare")
+}
+
+ui.window(title="t") {
+    c()
+}

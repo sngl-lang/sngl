@@ -539,7 +539,7 @@ output { none { html } }
 
 const PLATFORM = "zzz"
 
-window #w(href="/index.html") {
+window #w() {
     if PLATFORM == "html" {
         text(value="TARGET")
     }

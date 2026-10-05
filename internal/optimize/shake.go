@@ -34,9 +34,43 @@ func shakeUnused(pkg *ir.Package, documents bool) error {
 	pkg.Consts, pkg.BuildConsts = consts, buildConsts
 	pkg.Vars = filterVars(pkg.Vars, used)
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
+	dropDetachedHandlers(pkg)
 	pkg.Structs = filterStructs(pkg.Structs, used)
 	pkg.Enums = filterEnums(pkg.Enums, used)
 	return promoteForeignStructs(pkg)
+}
+
+// dropDetachedHandlers removes each handler passDeclarative promoted to a
+// func whose node a later fold removed: the AttachHandler naming it went with
+// the branch, so nothing attaches it, and emitted it names a widget no build
+// creates. A branch decided only once components are inlined is how that
+// happens -- `sngl:ui/markup`'s listItem renders its checkbox under
+// `if task == Task.none`, whose operands meet as constants after the splice.
+//
+// Asked of the package's funcs and every component's, because a root
+// component keeps its own, and only of promoted handlers: every other
+// synthesized func is reached through scaffolding this walk cannot read.
+func dropDetachedHandlers(pkg *ir.Package) {
+	named := map[*ir.Func]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if f, ok := id.Sym.(*ir.Func); ok {
+				named[f] = true
+			}
+		}
+		return nil
+	})
+	keep := func(fs []*ir.Func) []*ir.Func {
+		return slices.DeleteFunc(fs, func(f *ir.Func) bool {
+			return f != nil && f.LoweredFromNode != "" && !named[f]
+		})
+	}
+	pkg.Funcs = keep(pkg.Funcs)
+	for _, c := range pkg.Components {
+		if c != nil {
+			c.Funcs = keep(c.Funcs)
+		}
+	}
 }
 
 // promoteForeignStructs adds a library package's struct to this package's list
@@ -140,11 +174,32 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	visit := func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
+			// A node a `#id` names gets a test invoker per event it
+			// declares, whether or not the program subscribes; and a node
+			// with a two-way prop, bound or not, has its value written back
+			// from the event's payload with no handler written anywhere. The
+			// emitters prune what nothing reads.
+			if v.Component != nil && (v.Handle != nil || hasTwoWayProp(v.Component)) {
+				for _, e := range v.Component.Events {
+					if t := e.Payload(); t != nil {
+						out = append(out, t)
+					}
+				}
+			}
 			for _, h := range v.Handlers {
 				if h.Func != nil && !h.Func.Synthesized {
 					for _, p := range h.Func.Params {
 						out = append(out, p.Type)
 					}
+				}
+			}
+		case *ir.Lambda:
+			// A closure's parameter is in its signature, which a Go func
+			// type spells: a handler lifted out of a component built at run
+			// time travels in as one.
+			if v.Func != nil {
+				for _, p := range v.Func.Params {
+					out = append(out, p.Type)
 				}
 			}
 		case *ir.Call:
@@ -159,12 +214,33 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	for _, o := range ir.Owners(pkg) {
 		_ = ir.Walk(*o.Body, visit)
 	}
+	// And an event a component the package holds declares, since an
+	// instance record's constructor and setters name its type.
+	for _, c := range pkg.Components {
+		if c == nil {
+			continue
+		}
+		for _, e := range c.Events {
+			for _, p := range e.Params {
+				out = append(out, p.Type)
+			}
+		}
+	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil && fn.IsTest {
 			_ = ir.Walk(fn.Block, visit)
 		}
 	}
 	return out
+}
+
+func hasTwoWayProp(c *ir.Component) bool {
+	for _, p := range c.Props {
+		if p.Bidirectional {
+			return true
+		}
+	}
+	return false
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries
@@ -347,11 +423,6 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
-	// The window itself and not only its body: a window carries its route
-	// parameters and its @error, and neither is reachable from the children.
-	for _, w := range pkg.Windows {
-		view([]ir.Stmt{w})
-	}
 	// Test functions are roots, and so is every synthesized func, which
 	// filterFuncs keeps whether or not anything names it: kept and not
 	// walked, a focus helper outlived the __focusID it reads.
@@ -464,6 +535,9 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 			walkFunc(n.Handler.Func, used, walk)
 		}
 		walkStmts(n.Children, used, walk)
+		// The fallback renders once a raise reaches the boundary, and what it
+		// names is as used as what the content names.
+		walkStmts(n.Failed, used, walk)
 	case *ir.CanvasRedrawStmt:
 		// Carries only NodeInst/Func pointers already tracked by other walk paths.
 	case *ir.Break, *ir.Continue:
@@ -555,6 +629,13 @@ func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) 
 	for _, a := range call.Args {
 		walkExpr(a.Value, used, walk)
 	}
+	// A call's own @error is rendered at the call (catchAtCall), so what it
+	// names is used there. Missed, a var only the handler wrote was shaken
+	// while the handler kept writing it: `problem__inst2 = …` against a Model
+	// with no such field.
+	if call.ErrorHandler != nil {
+		walkFunc(call.ErrorHandler.Func, used, walk)
+	}
 }
 
 func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
@@ -594,7 +675,12 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 			walkViewStmts(n.Body, walk, buildWalk)
 			walkViewStmts(n.Else, walk, buildWalk)
 		case *ir.SlotInst:
+			// What an insertion hands its population, as walkStmt reads it.
+			for _, a := range n.Args {
+				walkExpr(a, nil, walk)
+			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkSlots(n.Slots, nil, walk)
 		case *ir.ContextProvider:
 			walkExpr(n.Value, nil, walk)
 			walkViewStmts(n.Children, walk, buildWalk)
@@ -603,6 +689,7 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 				walkFunc(n.Handler.Func, nil, walk)
 			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkViewStmts(n.Failed, walk, buildWalk)
 		default:
 			walkStmt(s, nil, walk)
 		}
@@ -626,9 +713,6 @@ func walkNode(n *ir.NodeInst, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	}
 	for _, h := range n.Handlers {
 		walkFunc(h.Func, used, walk)
-	}
-	if n.ErrorHandler != nil {
-		walkFunc(n.ErrorHandler.Func, used, walk)
 	}
 	// A window's route parameters name a struct the program may declare
 	// and never construct: the request fills the cell, and a target with

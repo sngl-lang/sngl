@@ -23,11 +23,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if pkg == nil {
 		return nil
 	}
-	// main is nil for every ordinary build: a window is the root, and the
-	// visual tree lives in pkg.Windows or in the package's own body. It is a
-	// component only where a harness made one the whole program.
+	// main is nil for every ordinary build: the visual tree lives in the
+	// package's own body. It is a component only where a harness made one the
+	// whole program.
 	main := rootComponent(pkg, opts)
-	if main == nil && len(pkg.Windows) == 0 && len(pkg.Body) == 0 {
+	if main == nil && len(pkg.Body) == 0 {
 		// No root to inline into. Every component is its own entry point, so
 		// there is nothing to flatten and nothing is unreachable -- running
 		// the pass anyway would retain an empty keep set and drop them all.
@@ -39,8 +39,15 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	cellOwners := implicitCellOwners(pkg)
 	if err := st.run(); err != nil {
+		return err
+	}
+	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
+		return err
+	}
+	if err := repointHandleCalls(pkg, st.methods); err != nil {
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
@@ -103,11 +110,6 @@ func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Compone
 				if h.Func != nil {
 					visit(h.Func.Block)
 				}
-			}
-		}
-		for _, h := range o.Handlers {
-			if h.Func != nil {
-				visit(h.Func.Block)
 			}
 		}
 	}
@@ -250,11 +252,11 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	return nil
 }
 
-// packageOwner is the owner that is neither a component nor a window, which is
-// the package itself. ir.Owners always yields one.
+// packageOwner is the owner that is not a component, which is the package
+// itself. ir.Owners always yields one.
 func packageOwner(owners []ir.Owner) ir.Owner {
 	for _, o := range owners {
-		if o.Comp == nil && o.Win == nil {
+		if o.Comp == nil {
 			return o
 		}
 	}
@@ -350,6 +352,12 @@ type inlineCompState struct {
 	// demoted is the clones dropReceiver made receiverless, so the call sites
 	// renameIdents repointed at them can give their receiver up too.
 	demoted map[*ir.Func]bool
+	// cells is each implicit cell (ir.Var.Cell) and the copies splicing its
+	// component made of it, for repointCellReads.
+	cells map[*ir.Var][]*ir.Var
+	// methods is, per node handle, each method of the component splicing that
+	// node cloned and the clones, for repointHandleCalls.
+	methods map[*ir.Var]map[*ir.Func][]*ir.Func
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -370,10 +378,9 @@ func componentHoist(c *ir.Component) hoistTarget {
 	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true}
 }
 
-func windowHoist(pkg *ir.Package) hoistTarget {
-	// A window's container, which is the package: a window is a rendering
-	// root and owns nothing, so what an inlined callee declares inside one
-	// belongs where the window's own declarations went.
+// packageHoist is the package's own declarations, where what a callee spliced
+// into the package body declares goes.
+func packageHoist(pkg *ir.Package) hoistTarget {
 	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
 }
 
@@ -427,27 +434,15 @@ func (st *inlineCompState) run() error {
 		// instantiated: `main()` at the top of a file is a NodeInst here and
 		// nowhere else, and its windows reach a backend only once it has been
 		// spliced in.
-		st.hoist = windowHoist(st.pkg)
+		st.hoist = packageHoist(st.pkg)
 		pbody, pch, err := st.inlineStmts(st.pkg.Body)
 		if err != nil {
 			return err
 		}
 		st.pkg.Body = pbody
-		// A window at the root of a file is on pkg.Windows rather than in
-		// pkg.Body, and what it instantiates must be inlined too.
-		anyWinCh := false
-		for _, w := range st.pkg.Windows {
-			st.hoist = windowHoist(st.pkg)
-			wbody, wch, err := st.inlineStmts(w.Children)
-			if err != nil {
-				return err
-			}
-			w.Children = wbody
-			anyWinCh = anyWinCh || wch
-		}
 		// A component that survives is a root the backend reads its body from,
 		// so what is inlinable *inside* that body has to be inlined too. Only
-		// main and the windows were walked -- every root a *program* declares,
+		// main and the package body were walked -- every root a *program* declares,
 		// and none of the ones this pass elects. An imported component is one:
 		// nothing inlines it, so it reached codegen holding the bodied callees
 		// its body wrote, and `sngl:ui/markup`'s `list` written there emitted a
@@ -485,7 +480,7 @@ func (st *inlineCompState) run() error {
 				anyKeptCh = anyKeptCh || fch
 			}
 		}
-		if !ch && !anyFuncCh && !anyWinCh && !pch && !anyKeptCh {
+		if !ch && !anyFuncCh && !pch && !anyKeptCh {
 			break
 		}
 	}
@@ -646,17 +641,6 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	for _, c := range pkg.Components {
 		edges[c] = map[*ir.Component]bool{}
 		collectCalleeEdges(c, edges[c])
-	}
-	// A window is a root and not a node in the component graph, so its edges
-	// belong to no component: a cycle among components is found from the
-	// components alone, or `window { c }` would read as c calling itself.
-	//
-	// A harness that made a component the root is the exception, and there the
-	// windows are gone.
-	if root := rootComponent(pkg, opts); root != nil {
-		for _, w := range pkg.Windows {
-			collectCalleeEdges(w, edges[root])
-		}
 	}
 	return tarjanCycles(edges)
 }
@@ -934,10 +918,17 @@ func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir
 func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		// A window is a rendering root, so what encloses it -- a loop over
-		// pages -- is not a position its body is repeated in.
 		childRC := rc
-		if ir.IsWindowNode(n) {
+		// A page a target answers itself is mounted and unmounted as its
+		// stack moves, which is what a reactive `if` does: what it renders is
+		// built per showing, so a component with state there starts again.
+		// Lowered by passNavigation, it already is an `if`.
+		if n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
+			childRC = reactiveCtx{in: true, repeated: rc.repeated, loops: rc.loops}
+		} else if n.Record != nil {
+			// A target's own primitive standing for a page, which it writes
+			// as a document or a route of its own (html): a rendering root,
+			// so a loop of pages is not a position its body is repeated in.
 			childRC = reactiveCtx{}
 		}
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
@@ -950,13 +941,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		chCh = chCh || slotsCh
-		// A window is a rendering root and instantiates nothing this pass may
-		// splice: it stays where it was written, with whatever its body held
-		// now inlined. Everything below asks what to do with a *component*
-		// instantiation, and a window is not one.
-		if ir.IsWindowNode(n) {
-			return []ir.Stmt{n}, chCh, nil
-		}
 		anyHandlerCh := false
 		for _, h := range n.Handlers {
 			if h.Func == nil {
@@ -996,6 +980,20 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// where the component is written instead, one cell per copy.
 		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
+		}
+		// A library declaration with no state of its own is spliced even here:
+		// nothing emits a library body as a component built at run time, and
+		// with nothing to keep per copy there is no instance to build. It
+		// reaches this position only when it could not be substituted earlier
+		// -- `ui.window`, whose methods keep passInlinePure off it, composed
+		// under a reactive `if` on bubbletea, where the implicit-state wrapper
+		// around it was spliced per copy.
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Stdlib && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			spliced, err := st.expandCall(n)
+			if err != nil {
+				return nil, false, err
+			}
+			return spliced, true, nil
 		}
 		// Left to the main walk: a capturing body cannot be the runtime
 		// instance this branch elects, and the pre-pass already refused it.
@@ -1197,6 +1195,9 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Init = deepCloneExpr(v.Init)
 		renames[v] = clone.Name
 		symRenames[v] = clone
+		if v.Cell && st.cells != nil {
+			st.cells[v] = append(st.cells[v], clone)
+		}
 		// The clone is as reactive as the original. st.reactive was computed
 		// once, before this pass created any of these, so a `for` iterating an
 		// inlined component's own state read as non-reactive -- and the
@@ -1223,6 +1224,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
+		if n.Handle != nil {
+			if st.methods[n.Handle] == nil {
+				st.methods[n.Handle] = map[*ir.Func][]*ir.Func{}
+			}
+			st.methods[n.Handle][f] = append(st.methods[n.Handle][f], clone)
+		}
 	}
 
 	// Apply renames to every hoisted block.
@@ -1298,7 +1305,20 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)
+	// A method fires the instance's events as the body does -- `open` writing
+	// a bound `visible` is an emit of it by now -- so the call site's handlers
+	// answer there too. Left as it was, the clone emitted an event nothing
+	// declared a handler for.
+	for i := funcStart; i < len(*hoist.funcs); i++ {
+		(*hoist.funcs)[i].Block = substituteEvents((*hoist.funcs)[i].Block, n.Handlers)
+	}
 	body = substituteSlots(body, n)
+	// A library body -- a builtin node this target composes, and the
+	// override it renders -- was written in the library, and a diagnostic
+	// about what it became belongs where the program wrote the node.
+	if comp.Stdlib {
+		ir.AttachNodeSite(body, n)
+	}
 
 	return body, nil
 }

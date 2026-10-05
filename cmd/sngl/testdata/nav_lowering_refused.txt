@@ -1,0 +1,46 @@
+# What passNavigation cannot lower is refused where it is written, on a target
+# that does not declare `navigation`, rather than emitted wrong.
+#
+# A stack written directly under a `for` would be one current page and one
+# history shared by every copy, since its state is the owner's; written in a
+# component the loop renders, each copy is an instance with its own.
+#
+# A `go` names its page by the page's own handle, which is what the lowering
+# turns into the page's record. A page handed in as a value names a page the
+# lowering cannot see from the call.
+
+! sngl generate --platform gtk4 --lang go -o out loop.sngl
+stderr 'loop.sngl:7:16: a nav.stack under a `for` would be one stack for every copy; write it in a component the loop renders'
+
+! sngl generate --platform gtk4 --lang go -o out value.sngl
+stderr 'value.sngl:9:25: pages.go names its page through a value; name the page''s own #id'
+
+-- loop.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+ui.window(title="Loop") {
+    ui.vbox {
+        for var i = [1, 2] {
+            nav.stack #pages {
+                nav.page #home(href="/", title="Home") {
+                    ui.text(value="{i}")
+                }
+            }
+        }
+    }
+}
+-- value.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+ui.window(title="Value") {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.button(text="Home", @click {
+                var p = home
+                pages.go(p)
+            })
+        }
+    }
+}

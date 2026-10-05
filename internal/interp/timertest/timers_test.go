@@ -5,7 +5,7 @@
 // schedule comes from `sngl:platform/none`'s override of it. Checking a program
 // that names one therefore needs the platform registered -- and interp's own
 // tests are internal (`package interp`), so importing the registry there closes
-// a cycle through codegen/platform/none/testrunner, which imports interp.
+// a cycle through internal/interp/testrunner, which imports interp.
 package timertest
 
 import (

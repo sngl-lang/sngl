@@ -137,13 +137,29 @@ func Mount(env *Env) (*View, error) {
 	if env.Comp != nil {
 		root = env.Comp.Name
 	}
-	m := &mounter{view: v, root: root}
+	m := &mounter{view: v, root: root, reached: map[childKey]bool{}, visited: map[*Env]bool{}}
 	nodes, err := m.stmts(env, env.BodyStmts, "")
 	if err != nil {
 		return nil, err
 	}
+	m.evictUnreached()
 	v.Roots = nodes
 	return v, nil
+}
+
+// evictUnreached drops the state of every instance a scope this mount
+// rendered into held and this mount did not render: a component under an
+// `if` that went false, a page its stack is no longer showing. Nothing about
+// an unmounted instance survives, which is what every compiled target does
+// with it, so mounting it again starts it from its initializers.
+func (m *mounter) evictUnreached() {
+	for env := range m.visited {
+		for key := range env.childEnvs {
+			if !m.reached[key] {
+				delete(env.childEnvs, key)
+			}
+		}
+	}
 }
 
 // Find returns the element nodes carrying the given #id, in mount order.
@@ -226,7 +242,39 @@ func (n *Node) Map() map[string]any {
 	if n.Inst != nil {
 		m["__inst"] = n.Inst
 	}
+	if n.CompEnv != nil {
+		m["__compEnv"] = n.CompEnv
+	}
+	m["__node"] = n
 	return m
+}
+
+// Handling is the first node the view rendered, in mount order, carrying a
+// handler for event, or nil.
+func (v *View) Handling(event string) *Node {
+	if v == nil {
+		return nil
+	}
+	root := &Node{Children: v.Roots}
+	return handlingDescendant(root, event)
+}
+
+// handlingDescendant is the first node under n, in mount order, carrying a
+// handler for event: where an event a component declares but its call site
+// did not handle comes from. A test clicking a `nav.link` clicks what the
+// link renders, as a user would.
+func handlingDescendant(n *Node, event string) *Node {
+	for _, k := range n.Children {
+		for _, h := range k.Handlers {
+			if h.Name == event {
+				return k
+			}
+		}
+		if d := handlingDescendant(k, event); d != nil {
+			return d
+		}
+	}
+	return nil
 }
 
 // mounter carries the mount-wide state: the view being filled and the root
@@ -241,6 +289,14 @@ type mounter struct {
 	// entries is the stack of insertions whose populations are being mounted,
 	// which is where an insertion of a component entry finds its content.
 	entries []entryFrame
+	// navs is the stack of navigators being mounted (nav.go), and byEnv the
+	// node each component instance mounted as, by its scope.
+	navs  []*navFrame
+	byEnv map[*Env]*Node
+	// reached is every instance this mount rendered, and visited every scope
+	// it rendered one into: what evictUnreached compares.
+	reached map[childKey]bool
+	visited map[*Env]bool
 }
 
 // slotFrame is one component expansion: the instantiation that supplied the
@@ -302,6 +358,18 @@ func (m *mounter) add(n *Node) {
 	}
 }
 
+// bindHandle makes a read of the node's `#id` in the scope it was written in
+// the node as it is now mounted: `box.checked` beside the checkbox reads what
+// the box shows, which for a two-way prop nobody bound is the instance's cell.
+//
+// A read written above the node in the same body reads what the previous
+// mount bound, since the mount is in order and the node is not there yet.
+func (m *mounter) bindHandle(env *Env, inst *ir.NodeInst, n *Node) {
+	if inst.Handle != nil && env != nil {
+		env.Set(inst.Handle, n.Map())
+	}
+}
+
 func (m *mounter) key(path string) Key { return Key{Comp: m.root, Path: path} }
 
 // stmts mounts a statement list, returning the nodes it rendered.
@@ -320,24 +388,16 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 		return prefix + "/" + s
 	}
 
+	// A `var` written in the list is state of the block: the list mounts in a
+	// scope of its own, kept across mounts by its path as a component's is,
+	// and dropped with it when a mount no longer reaches it.
+	if hasViewVar(stmts) {
+		env = m.blockEnv(env, stmts, join("block"))
+	}
+
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window renders no node of its own -- see the key walk, which
-			// has to agree with this one path for path.
-			if ir.IsWindowNode(n) {
-				restore := func() {}
-				if n.ErrorHandler != nil {
-					restore = env.pushRaiseScope(n.ErrorHandler)
-				}
-				nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("window@%d", next("window"))))
-				restore()
-				if err != nil {
-					return nil, err
-				}
-				out = append(out, nodes...)
-				continue
-			}
 			nodes, err := m.nodeInst(env, n, join(seg(n.Name, n.ID, next(n.Name))))
 			if err != nil {
 				return nil, err
@@ -449,6 +509,14 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 // do -- so a component instantiation is never addressable by #id, even when it
 // carries one.
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
+	if inst.Component != nil {
+		switch inst.Component.Intrinsic {
+		case navStackIntrinsic:
+			return m.navStack(env, inst, path)
+		case navPageIntrinsic:
+			return m.navPage(env, inst, path)
+		}
+	}
 	if e, isEffect := effectOf(inst, env, m.key(path)); isEffect {
 		m.view.Effects = append(m.view.Effects, e)
 		return nil, nil
@@ -477,9 +545,31 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		node.Handlers = handlersOf(inst)
 		m.add(node)
 
+		if m.reached != nil {
+			m.reached[childKey{inst, path}] = true
+			m.visited[env] = true
+		}
 		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
 		node.CompEnv = child
+		if m.byEnv == nil {
+			m.byEnv = map[*Env]*Node{}
+		}
+		m.byEnv[child] = node
+		// An unbound two-way prop shows the instance's cell rather than the
+		// argument, which only says where the cell started.
+		for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+			if p.Sym == nil {
+				continue
+			}
+			if v, ok := child.vals[p.Sym]; ok {
+				if _, had := node.Props[p.Name]; !had {
+					node.PropOrder = append(node.PropOrder, p.Name)
+				}
+				node.Props[p.Name] = v
+			}
+		}
+		m.bindHandle(env, inst, node)
 		if !node.Expanded {
 			// Nothing of its own to render, so it stands in the tree as the
 			// element does -- children included, which is what the element
@@ -522,6 +612,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 	node.Props, node.PropOrder = evalProps(env, inst.Props)
 	node.Handlers = handlersOf(inst)
 	m.add(node)
+	m.bindHandle(env, inst, node)
 
 	kids, err := m.stmts(env, inst.Children, path)
 	if err != nil {
@@ -810,4 +901,53 @@ func evalProps(env *Env, props []ir.Arg) (map[string]any, []string) {
 		out[p.Name] = v
 	}
 	return out, order
+}
+
+// hasViewVar reports whether a view's statement list declares a `var`.
+func hasViewVar(stmts []ir.Stmt) bool {
+	for _, s := range stmts {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// blockEnv is the scope a view's statement list mounts in when it declares a
+// `var`: the block's state, as a component's vars are an instance's. It is
+// cached by the list's path in the scope it is mounted from, so a re-mount
+// keeps what the block's handlers wrote, one per copy under a `for` (each
+// iteration's path is its own), and evictUnreached drops it once a mount does
+// not reach it -- under an `if` that went false, on a page left -- so the
+// block starts again from its initializers.
+func (m *mounter) blockEnv(env *Env, stmts []ir.Stmt, at string) *Env {
+	if env.childEnvs == nil {
+		env.childEnvs = map[childKey]*Env{}
+	}
+	key := childKey{at: at}
+	if m.reached != nil {
+		m.reached[key] = true
+		m.visited[env] = true
+	}
+	if cached, ok := env.childEnvs[key]; ok {
+		cached.ContextVals = capturedContext(env)
+		cached.parent = env
+		return cached
+	}
+	child := NewEnv()
+	child.Pkg = env.Pkg
+	child.handling = env.handling
+	child.Units = env.Units
+	child.Comp = env.Comp
+	child.parent = env
+	child.inst = env.inst
+	child.ContextVals = capturedContext(env)
+	child.RenderDepth = env.RenderDepth
+	for _, s := range stmts {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			child.Set(lv.Sym, evalInit(child, lv.Init))
+		}
+	}
+	env.childEnvs[key] = child
+	return child
 }

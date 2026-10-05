@@ -111,12 +111,13 @@ func mustParseDateTime(s string) time.Time {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	d__inst0  time.Time
-	t__inst0  time.Time
-	dt__inst0 time.Time
-	d__inst1  time.Time
-	t__inst1  time.Time
-	dt__inst1 time.Time
+	d__inst0       time.Time
+	t__inst0       time.Time
+	dt__inst0      time.Time
+	d__inst1       time.Time
+	t__inst1       time.Time
+	dt__inst1      time.Time
+	visible__inst2 bool
 
 	width, height int
 }
@@ -130,6 +131,7 @@ func New() Model {
 	m.d__inst1 = mustParseDate("2026-05-09")
 	m.t__inst1 = mustParseTime("14:30:00")
 	m.dt__inst1 = mustParseDateTime("2026-05-09T14:30:00")
+	m.visible__inst2 = true
 	return m
 }
 
@@ -229,6 +231,21 @@ func SetDt__inst1Cmd(v time.Time) tea.Cmd {
 	return func() tea.Msg { return setDt__inst1Msg{value: v} }
 }
 
+func (m Model) Visible__inst2() bool {
+	return m.visible__inst2
+}
+
+func (m Model) SetVisible__inst2(v bool) Model {
+	m.visible__inst2 = v
+	return m
+}
+
+type setVisible__inst2Msg struct{ value bool }
+
+func SetVisible__inst2Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -250,39 +267,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetT__inst1(msg.value)
 	case setDt__inst1Msg:
 		m = m.SetDt__inst1(msg.value)
+	case setVisible__inst2Msg:
+		m = m.SetVisible__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst2 {
+				m.visible__inst2 = false
+			}
+			if !(m.visible__inst2) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst0)))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst0)))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst0)))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst1)))
-	parts = append(parts, part3)
-	var part4 string
-	part4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst1)))
-	parts = append(parts, part4)
-	var part5 string
-	part5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst1)))
-	parts = append(parts, part5)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst2 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst0)))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst0)))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst0)))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst1)))
+		contentParts = append(contentParts, contentPart_3)
+		var contentPart_4 string
+		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst1)))
+		contentParts = append(contentParts, contentPart_4)
+		var contentPart_5 string
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst1)))
+		contentParts = append(contentParts, contentPart_5)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -321,6 +349,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -338,14 +369,24 @@ fun MainScreen() {
     var d__inst1 by remember { mutableStateOf("2026-05-09") }
     var t__inst1 by remember { mutableStateOf("14:30:00") }
     var dt__inst1 by remember { mutableStateOf("2026-05-09T14:30:00") }
+    var visible__inst2 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = d__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = t__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = dt__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = d__inst1.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = t__inst1.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = dt__inst1.toString(), modifier = Modifier.safeDrawingPadding())
+    if (visible__inst2) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst2 = false
+            if (!(visible__inst2)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = d__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = t__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = dt__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = d__inst1.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = t__inst1.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = dt__inst1.toString(), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -361,8 +402,6 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
@@ -373,35 +412,37 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n5" data-sngl-id="__n5">
 </span>
+<span id="__n6" data-sngl-id="__n6">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00" };
+  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00", visible__inst2: true };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   function __sngl_init() {
-    __n0.textContent = String(state.d__inst0);
-    __n1.textContent = String(state.t__inst0);
-    __n2.textContent = String(state.dt__inst0);
-    __n3.textContent = String(state.d__inst1);
-    __n4.textContent = String(state.t__inst1);
-    __n5.textContent = String(state.dt__inst1);
+    __n1.textContent = String(state.d__inst0);
+    __n2.textContent = String(state.t__inst0);
+    __n3.textContent = String(state.dt__inst0);
+    __n4.textContent = String(state.d__inst1);
+    __n5.textContent = String(state.t__inst1);
+    __n6.textContent = String(state.dt__inst1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7c6dc234e90ecff7f28c869322b86e0f
+pass sha256:8dc067f356bfa33459fe1232277dca93
 -- run/kotlin/android --
-pass sha256:bae1bf580eb76990213be2b1abfa5ece
+pass sha256:7ac28414c5de6a6c9e6a5f6bfabb7984
 -- run/none/html --
-pass sha256:59f8744fd15fea4c7653e3bf5a4374ec
+pass sha256:b6a95228874926af03ce12bb3ec071ae

@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -34,14 +35,30 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 	// read off that primitive. A mark written anywhere else resolves and is
 	// asked nothing, which is the failure the mark table exists to prevent.
 	if g := comp.Gen; g != nil {
-		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(treeStruct(named)) {
+		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.can], #[gen.cannot] and #[gen.wants] say what a target can do, and belong on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}
 		// A wildcard is a primitive too, and html is why: its widgets are one
 		// `element` every tag resolves to rather than a declaration each.
+		if g.TargetName != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
+			c.error(decl.Pos, "component %s: #[gen.name] names a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
+		if g.Native != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
+			c.error(decl.Pos, "component %s: #[gen.native] names the Go generator of a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
 		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
 			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
 		}
+	}
+
+	// The family of families is the one member of itself: every other family
+	// names it in the return position, and it has nothing to name.
+	if comp.Builtin == ir.BuiltinTreeFamily {
+		if named != nil {
+			c.error(decl.Pos, "component %s is the family of families, and a member of itself: it names no family in the return position", comp.Name)
+		}
+		comp.Tree = comp
+		return
 	}
 
 	if named == nil {
@@ -49,9 +66,10 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 			return
 		}
 		if c.inLibSource() {
-			// A library's declarations are a published contract, and only the
-			// target tiers have their bodies checked at all -- so there is
-			// nothing here to read an answer off, and every tier says it.
+			// A library's declarations are a published contract, which a body
+			// should not be quietly restating -- and a bodyless one, the common
+			// case in lib/, has nothing to read an answer off. Every tier says
+			// it.
 			c.error(decl.Pos, "component %s: name the tree it belongs to in the return position, or mark it #[tree.none]",
 				comp.Name)
 			return
@@ -65,19 +83,32 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		return
 	}
 
-	if sd := treeStruct(named); sd != nil {
-		comp.Tree = sd
-		pkg.NoteTreeKind(sd)
-		// A painted shape has nothing to raise an event from. This is drawing's
-		// rule rather than one about trees, and it sits here because membership
-		// is conferred here -- until a tree can carry rules of its own.
-		//
-		// A platform primitive is exempt, and in the opposite direction: its
-		// event is not the shape raising anything, it is the target calling in
-		// with the drawing context, which is how an override says what to
-		// paint. Only an #[intrinsic] declaration can be one.
-		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 && comp.Intrinsic == "" {
-			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
+	if f := ir.TypeFamily(named); f != nil {
+		comp.Tree = f
+		if !comp.IsFamily() {
+			comp.TreeArgs = familyArgsWritten(f, named.Elems)
+		}
+		pkg.NoteTreeKind(f)
+		if comp.IsFamily() {
+			c.checkFamilyDecl(decl, comp)
+			return
+		}
+		// What a family declares a member has to, and the family is
+		// registered ahead of it (familiesFirst) but the member's siblings
+		// are not all registered yet, so the check waits for the package.
+		if len(f.Props) > 0 {
+			c.familyMembers = append(c.familyMembers, comp)
+		}
+		// A build-target node is the target's identity as well as its option
+		// schema, and #[gen.name] is the half the world outside SNGL reads.
+		if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
+			c.error(decl.Pos, "component %s is a build-target node: say what the build calls it with #[gen.name(\"…\")]", comp.Name)
+		}
+		// A family that says its members raise nothing (#[tree.eventless]):
+		// a handler written for one would never run. A platform primitive is
+		// exempt, its event being the target calling in.
+		if f.Eventless && len(comp.Events) > 0 && comp.Intrinsic == "" {
+			c.error(decl.Pos, "component %s: a member of %s raises no events, so it declares none", comp.Name, f.Name)
 		}
 		return
 	}
@@ -86,8 +117,153 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		comp.TreeParam = named.ParamName
 		return
 	}
-	c.error(decl.Pos, "component %s: the return position names the tree a component belongs to, and %s is not one",
+	c.error(decl.Pos, "component %s: the return position names the family a component belongs to, and %s is not one",
 		comp.Name, named)
+}
+
+// checkFamilyDecl holds a family's declaration to the props its members
+// share. A value of a family is a record of those props, read off whichever
+// member it holds and never bound, so each is a name, a type and perhaps a
+// default for the members that omit it: a two-way or const prop, an event, a
+// slot would each be read by nobody. A type parameter is the members' to
+// bind, each in its return position: `page<T, M>` is a `_page<M>`, and a
+// value of the family is read at the type it was bound to. A body is where
+// how a family is generated will be written, and nothing reads one yet -- refused rather than dropped, so
+// that the first program to write one is not one whose body silently did
+// nothing.
+func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
+	refuse := func(what string) {
+		c.error(decl.Pos, "component %s is a family, which declares the props its members share and nothing else: %s", comp.Name, what)
+	}
+	for _, p := range decl.Props.Props {
+		switch pd := p.(type) {
+		case ast.Param:
+			switch {
+			case func() bool { _, _, isSlot := ast.SlotType(pd.Type); return isSlot }():
+				refuse(pd.Name + " is a slot")
+			case pd.Bidirectional:
+				refuse(fmt.Sprintf("%q is two-way", pd.Name))
+			case pd.Const:
+				refuse(fmt.Sprintf("%q is const", pd.Name))
+			}
+		case ast.EventDecl:
+			refuse("@" + pd.Name + " is an event")
+		}
+	}
+	if !comp.Bodyless {
+		c.error(decl.Pos, "component %s is a family, and a family has no body yet: remove the block", comp.Name)
+	}
+}
+
+// checkFamilyMember holds a member to declaring every prop its family
+// declares, by name and type. Those props are the whole of what a value of
+// the family reads, off whichever member it holds, so a member missing one
+// would hand the reader nothing. What the member does with the prop -- a
+// default, a two-way binding -- is its own business; a family value reads
+// what the prop holds.
+//
+// A family prop with a default may be omitted, and the member then has it
+// with that default and nothing else: a call site cannot set it
+// (refuseInheritedProps), since the member never said it takes one.
+//
+// A member declaring none of them is no value of the family
+// (ir.IsFamilyValue): it composes members rather than being one --
+// `component extras { nav.page… nav.page… }` -- and what it renders is what a
+// reader reaches, once it is inlined where the family's members are
+// collected.
+func (c *checker) checkFamilyMember(comp *ir.Component) {
+	f := comp.Tree
+	if comp.AST == nil || f == nil || comp.IsFamily() {
+		return
+	}
+	if len(f.Props) > 0 && !slices.ContainsFunc(f.Props, func(fp *ir.Prop) bool {
+		return slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Name == fp.Name })
+	}) {
+		return
+	}
+	for _, fp := range f.Props {
+		var mp *ir.Prop
+		for _, p := range comp.Props {
+			if p.Name == fp.Name {
+				mp = p
+				break
+			}
+		}
+		switch {
+		case mp == nil && familyPropDefaulted(f, fp):
+			inherited := &ir.Prop{Name: fp.Name, Type: familyPropType(f, comp, fp), Default: fp.Default}
+			comp.Props = append(comp.Props, inherited)
+			if c.inheritedProps == nil {
+				c.inheritedProps = map[*ir.Prop]*ir.Prop{}
+			}
+			c.inheritedProps[inherited] = fp
+		case mp == nil:
+			c.error(comp.AST.Pos, "component %s is a member of %s, which declares prop %q: declare %s %s",
+				comp.Name, f.Name, fp.Name, fp.Name, fp.Type)
+		case mp.Type == nil || fp.Type == nil || !mp.Type.Equal(familyPropType(f, comp, fp)):
+			c.error(comp.AST.Pos, "component %s declares prop %q as %s, and its family %s declares it %s",
+				comp.Name, fp.Name, mp.Type, familyName(f, comp), familyPropType(f, comp, fp))
+		}
+	}
+}
+
+// familyArgsWritten is the type arguments a return position hands a generic
+// family, its defaults filling those it leaves off. Nil for a family that
+// takes none.
+func familyArgsWritten(f *ir.Component, written []*ir.Type) []*ir.Type {
+	if len(f.TypeParams) == 0 {
+		return nil
+	}
+	out := make([]*ir.Type, len(f.TypeParams))
+	for i, tp := range f.TypeParams {
+		switch {
+		case i < len(written):
+			out[i] = written[i]
+		case tp.Default != nil:
+			out[i] = tp.Default
+		default:
+			out[i] = ir.TypDyn
+		}
+	}
+	return out
+}
+
+// familyPropType is the type a member must declare a family prop at: the
+// family's, with its type parameters bound as the member's return position
+// binds them.
+//
+// A member whose family was inferred from its body wrote no return position,
+// so the family's defaults bind it, as a written `_page` with no arguments
+// would.
+func familyPropType(f, member *ir.Component, fp *ir.Prop) *ir.Type {
+	if fp.Type == nil || len(f.TypeParams) == 0 {
+		return fp.Type
+	}
+	args := member.TreeArgs
+	if len(args) == 0 {
+		args = familyArgsWritten(f, nil)
+	}
+	return fp.Type.Substitute(familyBindings(f, args))
+}
+
+// familyBindings binds a generic family's type parameters to args.
+func familyBindings(f *ir.Component, args []*ir.Type) map[string]*ir.Type {
+	b := map[string]*ir.Type{}
+	for i, tp := range f.TypeParams {
+		if i < len(args) {
+			b[tp.Name] = args[i]
+		}
+	}
+	return b
+}
+
+// familyName spells the family a member's return position names, with the
+// type arguments it hands it.
+func familyName(f, member *ir.Component) string {
+	if len(member.TreeArgs) == 0 {
+		return f.Name
+	}
+	return (&ir.Type{Kind: ir.TypeComponent, Decl: f, Elems: member.TreeArgs}).String()
 }
 
 // treeOptional reports the declarations an omitted return position is still
@@ -161,8 +337,22 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 				}
 				continue
 			}
+			// A slot insertion puts what the slot takes where it stands, so a
+			// slot of widgets inserted here renders widgets as surely as a
+			// node would. Passed over, a tree-less wrapper carried them into
+			// any tree it was placed in.
+			if si, ok := st.(*ir.SlotInst); ok {
+				if got := c.insertedTree(comp, si); got != nil && !si.Crosses {
+					at := comp.AST.Pos
+					if si.AST != nil {
+						at = si.AST.Pos
+					}
+					c.error(at, "component %s names no tree, so it may not contain the %s slot %s", comp.Name, got.Name, si.Name)
+				}
+				continue
+			}
 			ni, ok := st.(*ir.NodeInst)
-			if !ok || ni.Component == nil || ni.Component.Tree == nil {
+			if !ok || ni.Crosses || ni.Component == nil || ni.Component.Tree == nil {
 				continue
 			}
 			at := comp.AST.Pos
@@ -174,4 +364,56 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 		}
 	}
 	walk(body)
+}
+
+// refuseInheritedProps reports a call site setting a prop its component took
+// from its family's default rather than declaring.
+func (c *checker) refuseInheritedProps(pos ast.Pos, comp *ir.Component, bound map[string]bool) {
+	if comp == nil || len(c.inheritedProps) == 0 {
+		return
+	}
+	for _, p := range comp.Props {
+		if fp, ok := c.inheritedProps[p]; ok && bound[p.Name] {
+			c.error(pos, "component %s takes %q from its family %s, which gives it a default and no call site a say: declare %s %s on %s to set it",
+				comp.Name, p.Name, comp.Tree.Name, fp.Name, fp.Type, comp.Name)
+		}
+	}
+}
+
+// inheritDefault hands a family prop's checked default to every member that
+// omitted the prop, which until now held what pass1 had.
+func (c *checker) inheritDefault(fp *ir.Prop) {
+	for inherited, from := range c.inheritedProps {
+		if from == fp {
+			inherited.Default = fp.Default
+		}
+	}
+}
+
+// checkFamilyMembersFrom checks the members this package's registration
+// recorded, from mark on. A lib package loads from inside a program's pass1
+// and registers its own, so each run drains only what it added.
+func (c *checker) checkFamilyMembersFrom(mark int) {
+	for _, comp := range c.familyMembers[mark:] {
+		c.checkFamilyMember(comp)
+	}
+	c.familyMembers = c.familyMembers[:mark]
+}
+
+// familyPropDefaulted reports whether a family's prop was written with a
+// default. A program's default is checked in pass2, after members register,
+// so the declaration is what is asked.
+func familyPropDefaulted(f *ir.Component, fp *ir.Prop) bool {
+	if fp.Default != nil {
+		return true
+	}
+	if f.AST == nil {
+		return false
+	}
+	for _, p := range f.AST.Props.Props {
+		if pd, ok := p.(ast.Param); ok && pd.Name == fp.Name {
+			return pd.Default != nil
+		}
+	}
+	return false
 }

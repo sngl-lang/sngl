@@ -12,7 +12,7 @@ type Config struct {
 	Description string
 	Version     string
 
-	// Lang globals (codegen/lang/golang/golang.sngl).
+	// Lang globals (lib/language/go/golang.sngl).
 	GoVersion  string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
 	GoModExtra string // Extra text appended to temp test-module go.mod (e.g. replace directive)
 

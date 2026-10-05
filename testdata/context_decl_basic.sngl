@@ -2,6 +2,6 @@ import . "sngl:ui"
 
 context #theme("light")
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="hello")
 }

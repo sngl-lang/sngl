@@ -60,9 +60,10 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	on__inst0     bool
-	caught__inst0 string
-	__focusID     int
+	on__inst0      bool
+	caught__inst0  string
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -72,6 +73,7 @@ func New() Model {
 	m := Model{}
 	m.on__inst0 = true
 	m.caught__inst0 = ""
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -140,6 +142,21 @@ func SetCaught__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setCaught__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -153,13 +170,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetOn__inst0(msg.value)
 	case setCaught__inst0Msg:
 		m = m.SetCaught__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -217,66 +242,65 @@ func (m *Model) cClick() {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	if m.on__inst0 {
-		var part0Parts []string
-		var part0Part_0 string
-		part0Part_0Focused := (m.__focusID == 0)
-		part0Part_0Prefix := " "
-		if part0Part_0Focused {
-			part0Part_0Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		if m.on__inst0 {
+			var contentPart_0Parts []string
+			var contentPart_0Part_0 string
+			contentPart_0Part_0Focused := (m.__focusID == 0)
+			contentPart_0Part_0Prefix := " "
+			if contentPart_0Part_0Focused {
+				contentPart_0Part_0Prefix = ">"
+			}
+			contentPart_0Part_0 = lipgloss.NewStyle().Render(contentPart_0Part_0Prefix + " " + fmt.Sprint("A"))
+			contentPart_0Parts = append(contentPart_0Parts, contentPart_0Part_0)
+			var contentPart_0Part_1 string
+			contentPart_0Part_1Focused := (m.__focusID == 1)
+			contentPart_0Part_1Prefix := " "
+			if contentPart_0Part_1Focused {
+				contentPart_0Part_1Prefix = ">"
+			}
+			contentPart_0Part_1 = lipgloss.NewStyle().Render(contentPart_0Part_1Prefix + " " + fmt.Sprint("B"))
+			contentPart_0Parts = append(contentPart_0Parts, contentPart_0Part_1)
+			contentPart_0 = lipgloss.JoinVertical(lipgloss.Left, contentPart_0Parts...)
 		}
-		part0Part_0 = lipgloss.NewStyle().Render(part0Part_0Prefix + " " + fmt.Sprint("A"))
-		part0Parts = append(part0Parts, part0Part_0)
-		var part0Part_1 string
-		part0Part_1Focused := (m.__focusID == 1)
-		part0Part_1Prefix := " "
-		if part0Part_1Focused {
-			part0Part_1Prefix = ">"
+		if contentPart_0 != "" {
+			contentParts = append(contentParts, contentPart_0)
 		}
-		part0Part_1 = lipgloss.NewStyle().Render(part0Part_1Prefix + " " + fmt.Sprint("B"))
-		part0Parts = append(part0Parts, part0Part_1)
-		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 2)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("C"))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
+		contentParts = append(contentParts, contentPart_2)
+		var contentPart_3 string
+		var contentPart_3Children []string
+		var contentPart_3_0 string
+		var contentPart_3_0Items []string
+		for _, n := range []string{"x", "y"} {
+			_ = n
+			var contentPart_3_0Item_0 string
+			contentPart_3_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
+			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_0)
+			var contentPart_3_0Item_1 string
+			contentPart_3_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
+			contentPart_3_0Items = append(contentPart_3_0Items, contentPart_3_0Item_1)
+		}
+		contentPart_3_0 = strings.Join(contentPart_3_0Items, "")
+		if contentPart_3_0 != "" {
+			contentPart_3Children = append(contentPart_3Children, contentPart_3_0)
+		}
+		contentPart_3 = lipgloss.JoinHorizontal(lipgloss.Top, contentPart_3Children...)
+		contentParts = append(contentParts, contentPart_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	if part0 != "" {
-		parts = append(parts, part0)
-	}
-	var part1 string
-	var part1Parts []string
-	var part1Part_0 string
-	part1Part_0Focused := (m.__focusID == 2)
-	part1Part_0Prefix := " "
-	if part1Part_0Focused {
-		part1Part_0Prefix = ">"
-	}
-	part1Part_0 = lipgloss.NewStyle().Render(part1Part_0Prefix + " " + fmt.Sprint("C"))
-	part1Parts = append(part1Parts, part1Part_0)
-	var part1Part_1 string
-	part1Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught__inst0))
-	part1Parts = append(part1Parts, part1Part_1)
-	part1 = lipgloss.JoinVertical(lipgloss.Left, part1Parts...)
-	parts = append(parts, part1)
-	var part2 string
-	var part2Children []string
-	var part2_0 string
-	var part2_0Items []string
-	for _, n := range []string{"x", "y"} {
-		_ = n
-		var part2_0Item_0 string
-		part2_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(n))
-		part2_0Items = append(part2_0Items, part2_0Item_0)
-		var part2_0Item_1 string
-		part2_0Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("|"))
-		part2_0Items = append(part2_0Items, part2_0Item_1)
-	}
-	part2_0 = strings.Join(part2_0Items, "")
-	if part2_0 != "" {
-		part2Children = append(part2Children, part2_0)
-	}
-	part2 = lipgloss.JoinHorizontal(lipgloss.Top, part2Children...)
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -291,4 +315,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:8764dc2d2b70dffba777e245e2b02cfe
+pass sha256:21a265c4cdc041bde25cac475a770b73

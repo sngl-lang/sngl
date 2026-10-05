@@ -1,0 +1,101 @@
+// A stack shows one page at a time and starts at the page whose href is "/".
+// `go` shows another and pushes the one it replaced, `back` returns to it,
+// and which page shows is the stack's own state, read through its handle as
+// `current`: a page's value, compared by identity and read for its title and
+// its meta.
+//
+// A page's `params` is where it starts: `go` with none shows the page with
+// it, and the params the page is showing reach its content's population and
+// nothing else. They travel with the entry, so `back` restores them, and a
+// page the stack is not showing is not mounted -- the counter on the home page
+// starts again at zero after a visit elsewhere.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+struct Meta {
+    label string
+}
+
+component counter ui.node {
+    var hits = 0
+    ui.text #count(value="hits {hits}")
+    ui.button #hit(text="Hit", @click { hits += 1 })
+}
+
+component site ui.node {
+    nav.stack #pages {
+        nav.page #about(href="/about", title="About", meta=Meta{label="about"}) {
+            ui.text(value="about")
+        }
+        nav.page #home(href="/", title="Home", meta=Meta{label="home"}) {
+            counter #tally
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", meta=Meta{label="pkg"}, params=Pkg{name="first"}) {
+            component content(p) {
+                ui.text #name(value=p.name)
+            }
+        }
+    }
+    ui.text #heading(value="Site - {pages.current.title}")
+    ui.text #label(value=pages.current.meta.label)
+    ui.button #toAbout(text="About", @click { pages.go(about) })
+    ui.button #toPkg(text="Pkg", @click { pages.go(pkg) })
+    ui.button #toOther(text="Other", @click { pages.go(pkg, Pkg{name="other"}) })
+    ui.button #back(text="Back", @click { pages.back() })
+    nav.link #aboutLink(to=about, text="about")
+    nav.link #otherLink(to=pkg, params=Pkg{name="linked"}, text="other")
+}
+
+func testAStackStartsAtTheRootPage(t Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.heading.value == "Site - Home")
+    t.assert(c.label.value == "home")
+}
+
+func testGoShowsThePageAndBackReturns(t Test, c site) {
+    c.toAbout.click()
+    t.assert(c.pages.current == c.about)
+    t.assert(c.heading.value == "Site - About")
+    t.assert(c.label.value == "about")
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+}
+
+func testParamsTravelWithTheEntry(t Test, c site) {
+    c.toPkg.click()
+    t.assert(c.pkg.name.value == "first")
+    c.toOther.click()
+    t.assert(c.pkg.name.value == "other")
+    c.back.click()
+    t.assert(c.pages.current == c.pkg)
+    t.assert(c.pkg.name.value == "first")
+}
+
+func testAPagesParamsAreWhereItStarts(t Test, c site) {
+    c.toOther.click()
+    t.assert(c.pkg.params.name == "first")
+}
+
+func testALinkGoesToItsPage(t Test, c site) {
+    c.aboutLink.click()
+    t.assert(c.pages.current == c.about)
+    c.otherLink.click()
+    t.assert(c.pages.current == c.pkg)
+    t.assert(c.pkg.name.value == "linked")
+}
+
+func testAPageNotShowingIsNotMounted(t Test, c site) {
+    c.tally.hit.click()
+    t.assert(c.tally.hits == 1)
+    c.toAbout.click()
+    c.back.click()
+    t.assert(c.tally.hits == 0)
+}

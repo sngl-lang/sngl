@@ -71,6 +71,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Glyph(
@@ -95,19 +98,29 @@ enum class Op(private val sngl: String) {
 fun MainScreen() {
     var op by remember { mutableStateOf(Op.ADD) }
     var g by remember { mutableStateOf(Glyph(a = true)) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = op.symbol(), modifier = Modifier)
-        Button(onClick = {
-            op = Op.SUB
-        }, modifier = Modifier) {
-            Text(text = "sub", modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Text(text = g.row(1), modifier = Modifier)
-        Button(onClick = {
-            g = Glyph(a = !g.a)
-        }, modifier = Modifier) {
-            Text(text = "flip", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = op.symbol(), modifier = Modifier)
+            Button(onClick = {
+                op = Op.SUB
+            }, modifier = Modifier) {
+                Text(text = "sub", modifier = Modifier)
+            }
+            Text(text = g.row(1), modifier = Modifier)
+            Button(onClick = {
+                g = Glyph(a = !g.a)
+            }, modifier = Modifier) {
+                Text(text = "flip", modifier = Modifier)
+            }
         }
     }
 }
@@ -126,4 +139,4 @@ fun Glyph.row(row: Int): String {
     return " "
 }
 -- run/kotlin/android --
-pass sha256:b89422e58cb7465ecaf31219d98b5237
+pass sha256:6bd81929b8d74fa1144a58a981fa2d53

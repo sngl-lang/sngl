@@ -828,11 +828,11 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameConst:
 		// A const is a file-scope name in a free function and a field of the
-		// receiver inside a method the Model dispatches through -- a window's
-		// as much as a component's. Asking about the component alone left a
-		// package const read as a bare name against the `m.blank` field the
-		// same build declared, once a window was the scope instead.
-		if gc.Ctx.Component != nil || gc.Ctx.Window != nil {
+		// receiver inside a method the Model dispatches through -- the
+		// package body's as much as a component's. Asking about the component
+		// alone left a package const read as a bare name against the `m.blank`
+		// field the same build declared, once the package body was the scope.
+		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name
@@ -850,6 +850,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// names: writeRouteFuncs renames each func before emitting, because
 		// there they are methods on a per-request State struct. Same split as
 		// MutTargetIdent makes for a state var.
+		//
+		// A func emitted free is named the way a call to it is, exported and
+		// with no receiver: handed as a value to a component's func-typed
+		// prop, `render=encode` came out `m.encode` beside `func Encode`.
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
+			return ExportName(name)
+		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return gc.recvFor(sym) + "." + ExportName(name)
@@ -993,7 +1000,18 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
-	return name + "(" + strings.Join(args, ", ") + ")", true
+	call := name + "(" + strings.Join(args, ", ") + ")"
+	// The other direction of wrapCArgs: a C function's number comes back as
+	// cgo's type for it, which a Go int or float64 is not assignable from.
+	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
+		switch n.Func.Return.Kind {
+		case ir.TypeInt:
+			call = "int(" + call + ")"
+		case ir.TypeFloat:
+			call = "float64(" + call + ")"
+		}
+	}
+	return call, true
 }
 
 // wrapCArgs converts each argument to the C type of the parameter it fills.

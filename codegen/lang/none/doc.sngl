@@ -1,7 +1,0 @@
-// The absence of a target language. `--lang none` emits no program: the html
-// platform builds a static site with inline JS, and the interpreter runs tests
-// without generating anything.
-//
-// It has a package for the same reason every other target does — so the answer
-// to "what does this target accept" is a declaration rather than a silence — and
-// the answer is nothing. There is no code generated for a language to configure.

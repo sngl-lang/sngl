@@ -17,12 +17,12 @@ not choose. That pass is gone and `main()` renders the component instead, so
 to one patch per binding.
 
 Both windows are patched, because both read `total` and the var is one cell on
-a single-Model target. Each is patched once.
+a single-Model target -- and on html, where B is a `<dialog>` in A's document.
+Each is patched once.
 
 deny * `(?i)\bmain_?add\b` -- the spliced func belongs to the body it was spliced into, so no target spells it as a method of the component it was written on
 deny out/go/fyne/model.go `m\.__n1\.SetText[^\n]*\n\tm\.__n0\.SetText` -- the updater block runs to __n1 and stops; a second block starting again at __n0 is the double injection this fixture is for
-deny out/none/html/index.html `__n1\.textContent[^\n]*\n\s*__n0\.textContent` -- as above, for the page's handler
-deny out/none/html/b.html `__n1\.textContent[^\n]*\n\s*__n0\.textContent` -- and for the second page, which carries the same func
+deny out/none/html/index.html `__n2\.textContent[^\n]*\n\s*__n0\.textContent` -- as above, for the page's handler, B's label being __n2 in the dialog
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -43,12 +43,12 @@ component main root {
         total = total + 1
     }
 
-    ui.window #a(title="A", href="/") {
+    ui.window #a(title="A") {
         ui.text(value="a {total}")
         ui.button(text="in", @click { add() })
     }
 
-    ui.window #b(title="B", href="/b.html") {
+    ui.window #b(title="B") {
         ui.text(value="b {total}")
     }
 }
@@ -63,26 +63,31 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	total__inst0 int
+	total__inst0   int
+	visible__inst1 bool
+	visible__inst2 bool
 
-	activeWindow string
-	windowABox   *fyne.Container
-	windowBBox   *fyne.Container
-	__n0         *widget.Label
-	__n1         *widget.Label
+	a       *fynelayout.Toplevel
+	__n0    *widget.Label
+	__n2    *widget.Button
+	b       *fynelayout.Toplevel
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.total__inst0 = 0
+	m.visible__inst1 = true
+	m.visible__inst2 = true
 	return m
 }
 
@@ -92,8 +97,56 @@ func (m *Model) add__inst0() {
 	m.__n1.SetText(("b " + fmt.Sprint(m.total__inst0)))
 }
 
+func (m *Model) a_closed_handler() {
+}
+
+func (m *Model) a_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.a.SetVisible(m.visible__inst1)
+}
+
 func (m *Model) __n2_click_handler() {
 	m.add__inst0()
+}
+
+func (m *Model) b_closed_handler() {
+}
+
+func (m *Model) b_visible_handler(__visible bool) {
+	m.visible__inst2 = __visible
+	m.b.SetVisible(m.visible__inst2)
+}
+
+// aClosed invokes the OnClosed callback on the #a widget; for tests.
+func (m *Model) aClosed() {
+	if m.a.OnClosed != nil {
+		m.a.OnClosed()
+	}
+}
+
+// aVisible invokes the OnVisible callback on the #a widget; for tests.
+func (m *Model) aVisible(__visible bool) {
+	if cb := m.a.OnVisible; cb != nil {
+		m.a.OnVisible = nil
+		cb(__visible)
+		m.a.OnVisible = cb
+	}
+}
+
+// bClosed invokes the OnClosed callback on the #b widget; for tests.
+func (m *Model) bClosed() {
+	if m.b.OnClosed != nil {
+		m.b.OnClosed()
+	}
+}
+
+// bVisible invokes the OnVisible callback on the #b widget; for tests.
+func (m *Model) bVisible(__visible bool) {
+	if cb := m.b.OnVisible; cb != nil {
+		m.b.OnVisible = nil
+		cb(__visible)
+		m.b.OnVisible = cb
+	}
 }
 
 func (m *Model) Total__inst0() int {
@@ -104,99 +157,60 @@ func (m *Model) SetTotal__inst0(v int) {
 	m.total__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+func (m *Model) Visible__inst2() bool {
+	return m.visible__inst2
+}
+
+func (m *Model) SetVisible__inst2(v bool) {
+	m.visible__inst2 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.activeWindow == "" {
-		m.activeWindow = "a"
+	if m.__built {
+		return m.a.Container
 	}
-	m.windowABox = container.NewStack(m.buildWindowA())
-	m.windowBBox = container.NewStack(m.buildWindowB())
-	if m.activeWindow != "a" {
-		m.windowABox.Hide()
-	}
-	if m.activeWindow != "b" {
-		m.windowBBox.Hide()
-	}
-	var windowObjects []fyne.CanvasObject
-	windowObjects = append(windowObjects, m.windowABox)
-	windowObjects = append(windowObjects, m.windowBBox)
-	return container.NewStack(windowObjects...)
-}
-
-func (m *Model) navigate(name string) {
-	m.activeWindow = name
-	m.windowABox.Hide()
-	m.windowBBox.Hide()
-	switch name {
-	case "a":
-		m.windowABox.Show()
-	case "b":
-		m.windowBBox.Show()
-	}
-}
-
-func (m *Model) buildWindowA() fyne.CanvasObject {
+	m.__built = true
+	m.a = fynelayout.NewToplevel()
+	m.a.SetTitle("A")
+	m.a.SetVisible(m.visible__inst1)
+	m.a.OnClosed = m.a_closed_handler
+	m.a.OnVisible = m.a_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(("a " + fmt.Sprint(m.total__inst0)))
-	__n2 := widget.NewButton("", nil)
-	__n2.SetText("in")
-	__n2.OnTapped = m.__n2_click_handler
-	return container.NewVBox(m.__n0, __n2)
-}
-
-func (m *Model) buildWindowB() fyne.CanvasObject {
+	m.a.Add(m.__n0)
+	m.__n2 = widget.NewButton("", nil)
+	m.__n2.SetText("in")
+	m.__n2.OnTapped = m.__n2_click_handler
+	m.a.Add(m.__n2)
+	fynelayout.AppAttach(m.a)
+	m.b = fynelayout.NewToplevel()
+	m.b.SetTitle("B")
+	m.b.SetVisible(m.visible__inst2)
+	m.b.OnClosed = m.b_closed_handler
+	m.b.OnVisible = m.b_visible_handler
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(("b " + fmt.Sprint(m.total__inst0)))
-	return m.__n1
+	m.b.Add(m.__n1)
+	fynelayout.AppAttach(m.b)
+	return m.a.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
--- out/none/html/b.html --
-<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
-
-<!DOCTYPE html>
-<html><head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>B</title>
-  <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: system-ui, sans-serif; }
-  </style>
-</head><body>
-
-<span id="__n1" data-sngl-id="__n1">
-</span>
-
-<script>
-(() => {
-  // sngl-entry.js
-  var state = { total__inst0: 0 };
-  function add__inst0() {
-    state.total__inst0 = state.total__inst0 + 1;
-    __n0.textContent = "a " + String(state.total__inst0);
-    __n1.textContent = "b " + String(state.total__inst0);
-  }
-  function String(v) {
-    return "" + v;
-  }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  function __sngl_init() {
-    __n1.textContent = "b " + String(state.total__inst0);
-  }
-  __sngl_init();
-})();
-</script>
-</body></html>
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
 
@@ -208,19 +222,30 @@ body { font-family: system-ui, sans-serif; }
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; }
+dialog { margin: auto; padding: 1em; }
   </style>
 </head><body>
 
 <span id="__n0" data-sngl-id="__n0">
 </span>
-<button id="$0">
+<button id="$1">
   <span>in</span>
 </button>
+<dialog id="$0" aria-label="B">
+  <header>
+    <span>B</span>
+    <button id="$2" aria-label="Close">
+      <span>×</span>
+    </button>
+  </header>
+  <span id="__n1" data-sngl-id="__n1">
+  </span>
+</dialog>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { total__inst0: 0 };
+  var state = { total__inst0: 0, visible__inst1: true, visible__inst2: true };
   function add__inst0() {
     state.total__inst0 = state.total__inst0 + 1;
     __n0.textContent = "a " + String(state.total__inst0);
@@ -230,19 +255,27 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
+  var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  $0.addEventListener("click", function() {
+  $1.addEventListener("click", function() {
     add__inst0();
+  });
+  $2.addEventListener("click", function() {
+    state.visible__inst2 = false;
+    $0.open = state.visible__inst2;
   });
   function __sngl_init() {
     __n0.textContent = "a " + String(state.total__inst0);
+    __n1.textContent = "b " + String(state.total__inst0);
+    $0.open = state.visible__inst2;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:7a1b6a97b5dacd0d6f522cf96333c462
+pass sha256:150b54e15c0b2a426c00062c0b7835a4
 -- run/none/html --
-pass sha256:9adfeaa2e23206909fd8ba1fe7ee1b5f
+pass sha256:fd34ccc2226e235ed78acf325a2724ed

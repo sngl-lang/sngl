@@ -21,11 +21,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
 
-//go:embed *.md learn reference
+//go:embed *.md learn learn/_tour.md reference
 var content embed.FS
 
 type Page struct {
@@ -45,7 +44,7 @@ func Pages() []Page {
 		if err != nil || d.IsDir() || filepath.Ext(path) != ".md" {
 			return nil
 		}
-		if path == "learn/tour.md" {
+		if path == "learn/_tour.md" {
 			return nil // rendered separately as the interactive tutorial
 		}
 		data, err := content.ReadFile(path)

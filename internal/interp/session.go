@@ -156,6 +156,13 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	if env == nil {
 		env = s.Env
 	}
+	if n.CompEnv.cellByEvent(n.Inst, event) && len(args) > 0 {
+		n.CompEnv.writeCells(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])})
+		if !boundByEvent(n.Inst, event) && !hasHandler(n.Handlers, event) {
+			s.Env.RebindFrom(env)
+			return s.Sync()
+		}
+	}
 	bound := boundByEvent(n.Inst, event)
 	if bound && len(args) > 0 {
 		if err := env.writeBindings(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])}); err != nil {
@@ -181,6 +188,15 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		return s.Sync()
 	}
 	return nil, fmt.Errorf("%s declares no @%s", key, event)
+}
+
+func hasHandler(hs []Handler, event string) bool {
+	for _, h := range hs {
+		if h.Name == event {
+			return true
+		}
+	}
+	return false
 }
 
 // Reload replaces the program with a freshly checked one and reports the

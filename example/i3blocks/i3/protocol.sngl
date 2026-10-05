@@ -1,0 +1,95 @@
+// The i3bar protocol (https://i3wm.org/docs/i3bar-protocol.html), in SNGL.
+//
+// A header line, `[`, then one JSON array of blocks per status line, each
+// followed by a comma. With `click_events` set, i3bar writes an endless JSON
+// array of click objects to stdin, one per line, each naming the block's
+// `name` and `instance`.
+
+// The header, written once before the first status line.
+const header = `{"version":1,"click_events":true}` + "\n[\n"
+
+// What one member of the family contributes: the block's fields, and the
+// handler a click on it runs.
+struct Entry {
+    name string
+    full string
+    short string
+    color color = #00000000
+    background color = #00000000
+    urgent bool
+    minWidth int
+    align Align
+    separator bool = true
+    // The space after the block, where it draws no separator; -1 is the
+    // protocol's own.
+    separatorWidth int = -1
+    click func(button int, x int, y int)
+}
+
+func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+func alignName(a Align) string {
+    if a == Align.center {
+        return "center"
+    }
+    if a == Align.right {
+        return "right"
+    }
+    return "left"
+}
+
+// One status line. A block's `instance` is its position in the list, which
+// is how a click finds its way back to the member that was written there.
+func encode(members list<Entry>) string {
+    var blocks list<string> = []
+    for var i, e = members {
+        var fs list<string> = []
+        fs.push("\"full_text\":" + quote(e.full))
+        fs.push("\"instance\":" + quote("{i}"))
+        if e.name != "" {
+            fs.push("\"name\":" + quote(e.name))
+        }
+        if e.short != "" {
+            fs.push("\"short_text\":" + quote(e.short))
+        }
+        if e.color.a > 0 {
+            fs.push("\"color\":" + quote(e.color.hex()))
+        }
+        if e.background.a > 0 {
+            fs.push("\"background\":" + quote(e.background.hex()))
+        }
+        if e.urgent {
+            fs.push("\"urgent\":true")
+        }
+        if e.minWidth > 0 {
+            fs.push("\"min_width\":{e.minWidth}")
+            fs.push("\"align\":" + quote(alignName(e.align)))
+        }
+        if !e.separator {
+            fs.push("\"separator\":false")
+        }
+        if e.separatorWidth >= 0 {
+            fs.push("\"separator_block_width\":{e.separatorWidth}")
+        }
+        blocks.push(`{` + fs.join(",") + `}`)
+    }
+    return "[" + blocks.join(",") + "],"
+}
+
+// The value of a scalar field of one click object, or "" where the line has
+// none -- the opening `[` of the array, for one.
+func clickField(line string, key string) string {
+    var at = line.indexOf("\"" + key + "\":")
+    if at < 0 {
+        return ""
+    }
+    var rest = line.substring(at + key.length + 3, line.length)
+    var end = rest.indexOf(",")
+    if end < 0 {
+        end = rest.indexOf("}")
+    }
+    if end < 0 {
+        end = rest.length
+    }
+    return rest.substring(0, end).trim().replace("\"", "")
+}

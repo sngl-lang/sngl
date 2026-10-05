@@ -46,20 +46,42 @@ func (env *Env) ResolveElementRef(id string) (any, error) {
 // this for the root component and nothing did it for a child, which is
 // invisible while an unbound prop only renders as an empty string and wrong
 // the moment one is tested.
-func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst) {
+//
+// A two-way prop the call site leaves unbound is the instance's own state
+// (ir.UnboundProps), which the host's reports write: its argument is only
+// where the cell starts. So it is bound on the first mount, from the argument,
+// the default or the type's zero, and skipped on every mount after -- where
+// rebinding it would put back what the call site wrote over what the user did.
+func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst, first bool) {
+	cells := map[string]bool{}
+	for _, p := range ir.UnboundProps(comp, inst.Bindings) {
+		cells[p.Name] = true
+		if first && p.Default == nil && p.Sym != nil {
+			if z := ir.DeclaredDefault(p.Type); z != nil {
+				child.Set(p.Sym, evalInit(child, z))
+			}
+		}
+	}
 	for _, p := range comp.Props {
-		if p.Default == nil {
+		if p.Default == nil || p.Sym == nil || !first && cells[p.Name] {
 			continue
 		}
 		child.Set(p.Sym, evalInit(child, p.Default))
 	}
 	for _, arg := range inst.Props {
-		if arg.Name == "" {
+		if arg.Name == "" || !first && cells[arg.Name] {
+			continue
+		}
+		// A declaration whose body was never checked -- a bodyless library
+		// component no override answered here -- has props with no symbol,
+		// and every one of them would bind the same nil key.
+		sym := propSym(comp, arg.Name)
+		if sym == nil {
 			continue
 		}
 		v, err := caller.Eval(arg.Value)
 		if err == nil {
-			child.Set(propSym(comp, arg.Name), v)
+			child.Set(sym, v)
 		}
 	}
 }
@@ -84,7 +106,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 		// bound once at first mount left a timer running after a test set
 		// `running` to false, because the branch testing it read the value the
 		// prop had when the tree was first built.
-		bindProps(env, cached, comp, inst)
+		bindProps(env, cached, comp, inst, false)
 		// And the contexts, for the same reason: they are inputs too, and the
 		// provider this instance is mounted under may be answering with a
 		// different value than it did last time.
@@ -107,7 +129,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	child.inst = inst
 	child.ContextVals = capturedContext(env)
 
-	bindProps(env, child, comp, inst)
+	bindProps(env, child, comp, inst, true)
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}

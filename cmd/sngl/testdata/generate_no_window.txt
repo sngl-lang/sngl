@@ -2,13 +2,13 @@
 # (#232). The per-unit skip stays at INFO; it is the whole invocation that has
 # to say so.
 ! sngl generate --lang=none --platform=html --out=out nowindow/
-stderr 'nothing to generate: no window declared in nowindow'
+stderr 'nothing to generate: nothing rendered at the root of a file in nowindow'
 ! exists out/index.html
 
 # Naming the file rather than the directory is the same failure from the other
 # side: naming it is the request, so it is emitted and internal/build reports it.
 ! sngl generate --lang=none --platform=html --out=out2 nowindow/lib.sngl
-stderr 'a program declares at least one window'
+stderr 'a program renders something at the root of a file'
 
 # One unit emitting is a successful build even though a sibling package skipped
 # -- which is examples/calculator, and what the rule above must not break.

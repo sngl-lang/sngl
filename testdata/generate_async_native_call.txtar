@@ -51,7 +51,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   async function loadAll() {
     await fetchHello("test");
   }
@@ -63,4 +63,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:920537ecf3aacce3597ae84057e924e2
+pass sha256:a5fd223a1ab3b731f626a3131f76dc56

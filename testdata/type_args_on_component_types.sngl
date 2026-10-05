@@ -1,0 +1,28 @@
+// A component type takes type arguments where it is written as a type, the
+// way a struct type does, and a node's handle is typed by what its call site
+// bound. So a func taking `box<T>` binds T from the handle it is handed, and
+// what goes beside the handle is held to that box's own type.
+//
+// Before, the arguments were dropped: `box<T>` resolved to `box`, T stayed
+// unbound, and any value at all passed beside any box.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component box<T = int>(item T) node {
+    text(value="box")
+}
+
+func same<T>(b box<T>, v T) => v
+
+component pair node {
+    box #words(item="a")
+    box #counts(item=1)
+    text #w(value=same(words, "b"))
+    text #n(value=string(same(counts, 2)))
+}
+
+func testAHandleBindsItsTypeArguments(t Test, c pair) {
+    t.assert(c.w.value == "b")
+    t.assert(c.n.value == "2")
+}

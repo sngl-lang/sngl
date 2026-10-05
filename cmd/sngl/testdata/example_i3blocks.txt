@@ -1,0 +1,45 @@
+# example/i3blocks builds for both of its hosts, and runs as a bar: i3bar
+# reads the header and a status line from stdout, and writes clicks to stdin.
+# Launched by i3 it is the bar alone; a click on the load block (instance 4)
+# brings its window up and a second takes it down, which on gtk4 the Wayland
+# log says reached the screen and left it.
+# When stdin closes, i3bar is gone and so is the program.
+#
+# Copied out of the checkout, so a change that breaks the example breaks this
+# rather than leaving it to rot.
+
+exec sh -c 'cp -r "${SNGL_HOST_GO_MOD%/go.mod}/example/i3blocks" .'
+
+sngl build --lang go --platform fyne --opt name=bar -o fyne i3blocks/bar.sngl
+[gtk4] sngl build --lang go --platform gtk4 --opt name=bar -o gtk4 i3blocks/bar.sngl
+
+[!headless] skip 'running the bar needs the headless compositor go tool verify provides'
+
+# No clicks: the header, a status line, and an exit when stdin closes.
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/bar </dev/null 2>wl.log'
+[gtk4] stdout '^\{"version":1,"click_events":true\}$'
+[gtk4] stdout '"name":"load"'
+[gtk4] exec sh -c 'grep -c "xdg_toplevel.*set_title(\"Load\")" wl.log || true'
+[gtk4] stdout '^0$'
+
+# A click on the load block creates the window, and a second destroys it:
+# `details` says whether it exists.
+[gtk4] exec sh -c '(echo "["; echo "{\"name\":\"load\",\"instance\":\"4\",\"button\":1,\"relative_x\":1,\"relative_y\":1}"; sleep 1) | WAYLAND_DEBUG=1 ./gtk4/bar 2>wl.log'
+[gtk4] exec sh -c 'grep -c "xdg_toplevel.*set_title(\"Load\")" wl.log || true'
+[gtk4] stdout '^1$'
+[gtk4] exec sh -c 'grep -c "xdg_toplevel#[0-9]*\.destroy()" wl.log || true'
+[gtk4] stdout '^0$'
+[gtk4] exec sh -c '(echo "["; echo "{\"name\":\"load\",\"instance\":\"4\",\"button\":1,\"relative_x\":1,\"relative_y\":1}"; sleep 1; echo ",{\"name\":\"load\",\"instance\":\"4\",\"button\":1,\"relative_x\":1,\"relative_y\":1}"; sleep 1) | WAYLAND_DEBUG=1 ./gtk4/bar 2>wl.log'
+[gtk4] exec sh -c 'grep -c "xdg_toplevel#[0-9]*\.destroy()" wl.log || true'
+[gtk4] stdout '^1$'
+
+# By hand, --window starts with the window on screen.
+[gtk4] exec sh -c '(echo "["; sleep 1) | WAYLAND_DEBUG=1 ./gtk4/bar --window 2>wl.log'
+[gtk4] exec sh -c 'grep -c "xdg_toplevel.*set_title(\"Load\")" wl.log || true'
+[gtk4] stdout '^1$'
+
+exec sh -c './fyne/bar </dev/null'
+stdout '^\{"version":1,"click_events":true\}$'
+stdout '"name":"load"'
+exec sh -c '(echo "["; echo "{\"name\":\"load\",\"instance\":\"4\",\"button\":1,\"relative_x\":1,\"relative_y\":1}"; sleep 1) | ./fyne/bar'
+stdout '"name":"load"'

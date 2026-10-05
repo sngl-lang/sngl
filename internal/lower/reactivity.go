@@ -44,6 +44,13 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
+	// reverseLive is the props of instances a slot body holds, each written
+	// to every instance the site holds when the var changes rather than by
+	// re-firing the slot (registerSlotBodyDeps).
+	reverseLive map[*ir.Var][]liveProp
+	// sites is the instance registry each slot-body instantiation keeps, by
+	// the site, so an updater and the render share one.
+	sites map[*ir.NodeInst]*slotInstance
 	// undriven are the slots no var re-fires: a loop over a const whose body
 	// holds a component built at run time. Rendered once, but a slot all the
 	// same, and reverseSlots has no key to list one under.
@@ -111,6 +118,19 @@ type reactiveSlot struct {
 	ParentRef ir.Expr // ident the source-position CallStmt uses; same ref re-used for splice updaters
 }
 
+// liveProp is one prop of an instantiation in a slot body whose value reads
+// nothing the slot binds, so one value is right for every instance the site
+// holds.
+type liveProp struct {
+	node   *ir.NodeInst
+	key    string
+	expr   ir.Expr
+	slotID string
+	// owner is the scope the slot belongs to, where the site's registry is
+	// declared whichever block first asks for it.
+	owner reactivityOwner
+}
+
 // cloneIdent shallow-copies an *ir.Ident so two splices do not alias the
 // same pointer. Non-Ident expressions pass through unchanged (parent refs
 // are always Idents today).
@@ -135,15 +155,17 @@ type compOwner struct{ c *ir.Component }
 func (o compOwner) addVar(v *ir.Var)   { o.c.Vars = append(o.c.Vars, v) }
 func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
 
-// A window owns nothing: what a pass synthesizes while walking one belongs to
-// the window's container, which for a root-only construct is the package.
-type windowOwner struct {
-	w   *ir.Window
+// pkgOwner is the package, whose body is the application's view.
+type pkgOwner struct {
 	pkg *ir.Package
+	// root is what the owner's top-level render slots are parented to when
+	// it is not `__root`: the application, ir.AppParent, for the package
+	// body.
+	root string
 }
 
-func (o windowOwner) addVar(v *ir.Var)   { o.pkg.Vars = append(o.pkg.Vars, v) }
-func (o windowOwner) addFunc(f *ir.Func) { o.pkg.Funcs = append(o.pkg.Funcs, f) }
+func (o pkgOwner) addVar(v *ir.Var)   { o.pkg.Vars = append(o.pkg.Vars, v) }
+func (o pkgOwner) addFunc(f *ir.Func) { o.pkg.Funcs = append(o.pkg.Funcs, f) }
 
 func (st *reactivityState) freshNodeID() string {
 	id := "__n" + strconv.Itoa(st.idCounter)
@@ -165,6 +187,8 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
+		reverseLive:  make(map[*ir.Var][]liveProp),
+		sites:        make(map[*ir.NodeInst]*slotInstance),
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
@@ -176,24 +200,23 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		for _, comp := range pkg.Components {
 			comp.Body = st.slotFlows(comp.Body)
 		}
-		for _, w := range ir.AllWindows(pkg) {
-			w.Children = st.slotFlows(w.Children)
-		}
+		pkg.Body = st.slotFlows(pkg.Body)
 	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
 		st.collectFromStmts(comp.Body)
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg}
-		st.collectFromStmts(w.Children)
-	}
+	// The package body is a view like the others, and its parent is the
+	// application: a reactive `if` there -- a window under `if details` --
+	// re-renders into it.
+	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
+	st.collectFromStmts(pkg.Body)
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
-	// One injection per func, whoever reaches it first. A func mounted on
-	// several windows is one body, and the updaters a walk adds are the whole
+	// One injection per func, whoever reaches it first. A func reached from
+	// several owners is one body, and the updaters a walk adds are the whole
 	// package's rather than that owner's -- so a second pass over it appends a
 	// second copy of the same patches.
 	injected := map[*ir.Func]bool{}
@@ -211,10 +234,8 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			st.owner = compOwner{comp}
 			st.synthesizeRemoteSettle()
 		}
-		for _, w := range ir.AllWindows(pkg) {
-			st.owner = windowOwner{w: w, pkg: pkg}
-			st.synthesizeRemoteSettle()
-		}
+		st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
+		st.synthesizeRemoteSettle()
 	}()
 
 	for _, comp := range pkg.Components {
@@ -235,13 +256,9 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		st.owner = windowOwner{w: w, pkg: pkg}
-		w.Children = st.rewriteAndInject(w.Children)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
-		}
-	}
+	// The package body, whose parent is the application.
+	st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
+	pkg.Body = st.rewriteAndInject(pkg.Body)
 	// Package-level funcs last, because the walks above are what create most
 	// of them. A reactive `if` or `for` in a window body is lifted into a
 	// synthesized `__renderSlotN` whose Block is the *uninjected* statements,
@@ -253,13 +270,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// picked` on fyne, gtk4 and html, and lost it silently: the handler still
 	// compiles and still writes the var, and nothing redraws.
 	//
-	// It used to be reached by the loop over a window's own Funcs, which ran
-	// after that window's body and so saw what the body had just added. A
-	// window owns nothing now, so the same funcs are the package's and the
-	// package's loop is where they have to be met.
-	//
-	// rewriteAndInject rather than injectIntoStmts, which is what the window
-	// loop did for the same reason: a lifted block may itself hold a reactive
+	// rewriteAndInject rather than injectIntoStmts: a lifted block may itself hold a reactive
 	// structure, and only the first of the two rewrites one. A genuinely
 	// top-level func is unaffected -- an `if` in an imperative body carries no
 	// LoweredSlotID, so there is nothing for the rewrite half to match.
@@ -267,6 +278,12 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// An owned func is skipped: the checker registers a component-body func in
 	// pkg.Funcs *as well*, and its owner's loop above has already injected.
 	owned := ownedFuncs(pkg)
+	// A package func is not handed the body's root to synthesize: `__root` is
+	// what it has always been given.
+	if o, ok := st.owner.(pkgOwner); ok {
+		o.root = ""
+		st.owner = o
+	}
 	for _, f := range pkg.Funcs {
 		if owned[f] || injected[f] {
 			continue
@@ -280,13 +297,13 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	return st.err
 }
 
-// ownedFuncs is every func a component or window owns, by pointer. The same
+// ownedFuncs is every func a component owns, by pointer. The same
 // *ir.Func may be owned twice over -- the checker registers a component-body
 // func in pkg.Funcs as well -- and is one entry either way.
 func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, o := range ir.Owners(pkg) {
-		if o.Comp == nil && o.Win == nil {
+		if o.Comp == nil {
 			continue
 		}
 		for _, f := range o.Funcs {
@@ -317,6 +334,21 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	// Build one slot var + Func per unique ID. Sort for deterministic
 	// codegen output: slot vars enter comp.Vars in this order and
 	// propagate downstream (e.g. JS state object field order).
+	// The package body's owner is walked last and holds only the slots
+	// written in it: a slot of a component is that owner's, and
+	// synthesized here too it declared a second `__slotN` on the package.
+	if o, ok := st.owner.(pkgOwner); ok && o.root == ir.AppParent {
+		own := map[string]bool{}
+		for id := range uniqueSlots {
+			if st.buildRenderSlotForProbe(id, stmts) {
+				own[id] = true
+			}
+		}
+		uniqueSlots = own
+		if len(own) == 0 {
+			return st.injectIntoStmts(st.rewriteReactiveStructures(stmts, nil))
+		}
+	}
 	slotIDs := make([]string, 0, len(uniqueSlots))
 	for id := range uniqueSlots {
 		slotIDs = append(slotIDs, id)
@@ -365,8 +397,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -378,8 +409,7 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			if n.LoweredSlotID != "" {
 				ref := parentRef
 				if ref == nil {
-					rootVar := st.findSlotVar("__root")
-					ref = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+					ref = st.rootRef()
 				}
 				st.recordSlotParent(n.LoweredSlotID, ref)
 				out = append(out, st.slotCall(n.LoweredSlotID, ref))
@@ -388,11 +418,19 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
 		case *ir.NodeInst:
-			// A window is driven as its own owner by lowerReactivity, like a
-			// top-level one: its slot vars and render funcs belong to it, so
-			// reaching it from the body it was written in would build them
-			// against the wrong owner.
-			if ir.IsWindowNode(n) {
+			// A surface is a rendering root rather than an element its slots
+			// render into -- html writes its document from one -- so what it
+			// holds is parented as an owner's top level is.
+			if n.Component != nil && ir.IsSurface(n.Component) {
+				if kids := ir.WidgetChildren(n); kids != nil {
+					n.Children = st.rewriteReactiveStructures(kids, &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true})
+				}
+				for _, h := range n.Handlers {
+					if h.Func != nil {
+						h.Func.Block = st.rewriteReactiveStructures(h.Func.Block, parentRef)
+					}
+				}
+				out = append(out, s)
 				continue
 			}
 			// If any direct child is a reactive If/For we need a stable
@@ -473,8 +511,8 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 	if parentRef == nil {
 		// Top-level reactive If/For: use the "__root" sentinel. Platforms
 		// translate this to their root container reference.
-		rootVar := st.findSlotVar("__root")
-		parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+		rootVar := st.findSlotVar(st.rootName())
+		parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 	}
 	// Find the synthesized Func on the current owner.
 	want := renderFuncName(slotID)
@@ -487,7 +525,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 				break
 			}
 		}
-	case windowOwner:
+	case pkgOwner:
 		for _, f := range o.pkg.Funcs {
 			if f.Name == want {
 				fn = f
@@ -533,15 +571,40 @@ func (st *reactivityState) slotIdent(slotID string) *ir.Ident {
 // if it doesn't exist yet. Idempotent. Marked Synthesized so codegen
 // can detect it.
 func (st *reactivityState) synthesizeRootVar() {
-	if existing := st.findSlotVar("__root"); existing != nil {
+	// The application is no var of the program's: every platform names it.
+	if st.rootName() == ir.AppParent {
+		return
+	}
+	if existing := st.findSlotVar(st.rootName()); existing != nil {
 		return
 	}
 	v := &ir.Var{
-		Name:        "__root",
+		Name:        st.rootName(),
 		Type:        ir.TypDyn,
 		Synthesized: true,
 	}
 	st.owner.addVar(v)
+}
+
+// rootName is the var the owner's top-level render slots are parented to: a
+// component's own `__root`, a window's, or the application for the package
+// body.
+func (st *reactivityState) rootName() string {
+	if o, ok := st.owner.(pkgOwner); ok && o.root != "" {
+		return o.root
+	}
+	return "__root"
+}
+
+// rootRef names the container the owner's top-level render slots are
+// parented to. The application is no var, so its name carries no symbol --
+// a nil *ir.Var in an ir.Symbol is not a nil symbol.
+func (st *reactivityState) rootRef() *ir.Ident {
+	ref := &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+	if v := st.findSlotVar(st.rootName()); v != nil {
+		ref.Sym = v
+	}
+	return ref
 }
 
 func (st *reactivityState) findSlotVar(name string) *ir.Var {
@@ -552,7 +615,7 @@ func (st *reactivityState) findSlotVar(name string) *ir.Var {
 				return v
 			}
 		}
-	case windowOwner:
+	case pkgOwner:
 		for _, v := range o.pkg.Vars {
 			if v.Name == name {
 				return v
@@ -587,11 +650,6 @@ func (st *reactivityState) collectFromStmts(stmts []ir.Stmt) {
 func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		// Not walked from here: lowerReactivity walks every window with itself
-		// as the owner, wherever it was written.
-		if ir.IsWindowNode(n) {
-			return
-		}
 		st.collectFromNode(n)
 	case *ir.If:
 		st.collectFromIf(n)
@@ -603,10 +661,9 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			// re-fire, so its bound props must not register standalone
 			// prop-updaters (those would reference per-slot element ids that
 			// only exist inside the slot func, leaking into outside handlers).
-			// Instead make the slot re-fire for every reactive var the body
-			// reads.
-			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
-			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+			// What the body reads reaches it through the instances it holds,
+			// or re-fires the slot where it cannot.
+			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
 	case *ir.For:
 		st.collectFromFor(n)
@@ -614,8 +671,7 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 			st.collectFromStmts(n.Body)
 			st.collectFromStmts(n.Else)
 		} else {
-			st.registerSlotBodyDeps(n.Body, n.LoweredSlotID)
-			st.registerSlotBodyDeps(n.Else, n.LoweredSlotID)
+			st.registerSlotBodyDeps(n, n.LoweredSlotID)
 		}
 	case *ir.SlotInst:
 		st.collectFromStmts(n.Children)
@@ -673,6 +729,12 @@ func (st *reactivityState) collectFromIf(n *ir.If) {
 }
 
 func (st *reactivityState) collectFromFor(n *ir.For) {
+	// A loop of a stack's pages, on a target that writes a document or a
+	// route per page, is decided per document: each holds one copy, and the
+	// loop is gone before anything renders it.
+	if loopsOverPages(n) {
+		return
+	}
 	deps := st.exprDeps(n.Iter)
 	// A loop over a const is a slot too when its body needs one, the way a loop
 	// over state is. Left standing, each copy's bound prop got an updater of
@@ -691,17 +753,182 @@ func (st *reactivityState) collectFromFor(n *ir.For) {
 	n.LoweredSlotID = slot.SlotID
 }
 
-// registerSlotBodyDeps makes the slot named slotID re-fire whenever any
-// reactive var read by a bound prop / nested cond / nested iter in stmts
-// mutates. Used for the body of a reactive If/For: the body re-renders
-// wholesale, so individual props don't get standalone updaters — instead the
-// whole slot re-fires for any var the body depends on. Deduped per var.
-func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) {
-	slotBodyExprs(stmts, func(e ir.Expr) {
+// registerSlotBodyDeps subscribes the body of the reactive If/For s, whose
+// slot is slotID, to the vars it reads.
+//
+// The slot re-renders on what its structure reads, and a prop of an instance
+// in the body is handed to the instances the site holds instead: a registry
+// updater writes each live one through its setter, so the widgets inside are
+// patched where they stand (passSlotChildInstances lifts every node that
+// reads state into such an instance). That needs one value to be right for
+// every copy, so a prop reading something the slot binds -- a loop variable,
+// a local -- re-fires the slot as before, and so does any other read the body
+// renders from: a plain node's prop, a nested condition or iterable, and a
+// #[construct] prop, which only a rebuild can answer. Deduped per var.
+func (st *reactivityState) registerSlotBodyDeps(s ir.Stmt, slotID string) {
+	bound := boundWithin(s)
+	var arms [][]ir.Stmt
+	switch n := s.(type) {
+	case *ir.If:
+		arms = [][]ir.Stmt{n.Body, n.Else}
+	case *ir.For:
+		arms = [][]ir.Stmt{n.Body, n.Else}
+	}
+	slotDeps := func(e ir.Expr) {
 		for v := range st.exprDeps(e) {
 			st.addSlotDep(v, slotID)
 		}
+	}
+	var walk func([]ir.Stmt)
+	walk = func(ss []ir.Stmt) {
+		for _, s := range ss {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				live := isInstanceNode(n)
+				for _, p := range n.Props {
+					if !live || p.Name == "" || !componentAbsorbs(n.Component, p.Name) || readsAny(p.Value, bound) {
+						slotDeps(p.Value)
+						continue
+					}
+					for v := range st.exprDeps(p.Value) {
+						st.addLiveDep(v, liveProp{node: n, key: p.Name, expr: p.Value, slotID: slotID, owner: st.owner})
+					}
+				}
+				walk(ir.WidgetChildren(n))
+			case *ir.If:
+				slotDeps(n.Cond)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.For:
+				slotDeps(n.Iter)
+				walk(n.Body)
+				walk(n.Else)
+			case *ir.SlotInst:
+				walk(n.Children)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			}
+		}
+	}
+	for _, arm := range arms {
+		walk(arm)
+	}
+}
+
+// boundWithin is every binding s declares for its own body: loop variables
+// and locals, its own and those of what it holds.
+func boundWithin(s ir.Stmt) map[ir.Symbol]bool {
+	out := map[ir.Symbol]bool{}
+	_ = ir.WalkStmts(s, func(x ir.Stmt) error {
+		switch n := x.(type) {
+		case *ir.For:
+			if n.KeySym != nil {
+				out[n.KeySym] = true
+			}
+			if n.ValueSym != nil {
+				out[n.ValueSym] = true
+			}
+		case *ir.LocalVar:
+			if n.Sym != nil {
+				out[n.Sym] = true
+			}
+		}
+		return nil
 	})
+	return out
+}
+
+// addLiveDep records that a write to v hands p's site its new value.
+func (st *reactivityState) addLiveDep(v *ir.Var, p liveProp) {
+	for _, q := range st.reverseLive[v] {
+		if q.node == p.node && q.key == p.key {
+			return
+		}
+	}
+	st.reverseLive[v] = append(st.reverseLive[v], p)
+}
+
+// siteInstance is the registry an instantiation in a slot body keeps, made
+// by whichever of the render and an updater asks first -- an updater in a
+// block walked before the slot's own -- and declared on the slot's owner.
+func (st *reactivityState) siteInstance(n *ir.NodeInst, owner reactivityOwner) *slotInstance {
+	if si := st.sites[n]; si != nil {
+		return si
+	}
+	saved := st.owner
+	st.owner = owner
+	si := st.newSlotInstance(n)
+	st.owner = saved
+	st.sites[n] = si
+	return si
+}
+
+// liveUpdaters hands every instance each site holds the new value of the
+// props that read the var, one loop per site. A site whose slot this update
+// re-renders is left to the render, which hands the value itself.
+//
+//	for <i>, _ = <live> {
+//	    lower.UpdateComponent(<live>[<i>], "<prop>", <expr>)
+//	}
+func (st *reactivityState) liveUpdaters(props []liveProp, slots []reactiveSlot, rewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
+	refired := map[string]bool{}
+	for _, s := range slots {
+		if s.GenFunc != nil {
+			refired[s.SlotID] = true
+		}
+	}
+	var order []*ir.NodeInst
+	bySite := map[*ir.NodeInst][]liveProp{}
+	for _, p := range props {
+		if refired[p.slotID] {
+			continue
+		}
+		if bySite[p.node] == nil {
+			order = append(order, p.node)
+		}
+		bySite[p.node] = append(bySite[p.node], p)
+	}
+	var out []ir.Stmt
+	for _, n := range order {
+		si := st.siteInstance(n, bySite[n][0].owner)
+		update := func(inst ir.Expr) []ir.Stmt {
+			var body []ir.Stmt
+			for _, p := range bySite[n] {
+				body = append(body, &ir.CallStmt{Call: &ir.Call{
+					Type:     ir.TypVoid,
+					Receiver: lowerNSIdent(),
+					Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+					Args: []ir.CallArg{
+						{Value: inst},
+						{Value: &ir.Literal{Type: ir.TypString, Value: p.key}},
+						{Value: rewriteIdentsToCaptures(deepCloneExpr(p.expr), rewrite)},
+					},
+				}})
+			}
+			return body
+		}
+		if si.keyed() {
+			k := &ir.LoopVar{Name: si.live.Name + "_uk", Type: ir.TypString}
+			v := &ir.LoopVar{Name: si.live.Name + "_uv", Type: si.elem}
+			out = append(out, &ir.For{
+				Key: k.Name, KeySym: k, Value: v.Name, ValueSym: v,
+				Iter: varRef(si.live), ElemType: si.elem,
+				Body: update(&ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true}),
+			})
+			continue
+		}
+		i := &ir.LoopVar{Name: si.live.Name + "_ui", Type: ir.TypInt}
+		out = append(out, &ir.For{
+			Key: i.Name, KeySym: i, Value: "_",
+			Iter: varRef(si.live), ElemType: si.elem,
+			Body: update(&ir.Index{
+				Type:    si.elem,
+				Operand: varRef(si.live),
+				Idx:     &ir.Ident{Name: i.Name, Type: ir.TypInt, Sym: i, Synthesized: true},
+			}),
+		})
+	}
+	return out
 }
 
 // bodyNeedsSlot reports whether a loop body renders anything a slot has to
@@ -721,8 +948,6 @@ func (st *reactivityState) bodyNeedsSlot(stmts []ir.Stmt) bool {
 			return ir.SkipAll
 		case !ok:
 			return nil
-		case ir.IsWindowNode(n):
-			return ir.SkipDir
 		case n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component):
 			found = true
 		}
@@ -739,11 +964,6 @@ func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 		for _, s := range ss {
 			switch n := s.(type) {
 			case *ir.NodeInst:
-				// A window renders a document of its own, so a loop over pages is
-				// not a slot for what a page reads.
-				if ir.IsWindowNode(n) {
-					continue
-				}
 				for _, p := range n.Props {
 					addDep(p.Value)
 				}
@@ -1040,10 +1260,6 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
 		case *ir.NodeInst:
-			// See rewriteReactiveStructures: driven as its own owner.
-			if ir.IsWindowNode(n) {
-				continue
-			}
 			if kids := ir.WidgetChildren(n); kids != nil {
 				n.Children = st.injectIntoStmts(kids)
 			}
@@ -1107,7 +1323,24 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	return st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
+	out := st.updaterStmts(st.reverseDeps[v], st.reverseSlots[v], fieldRewrite)
+	if live := st.liveUpdaters(st.reverseLive[v], st.reverseSlots[v], fieldRewrite); len(live) > 0 {
+		// Ahead of the slot re-fires, which a render reading a sibling
+		// instance's state would want settled first -- the order props and
+		// slots already keep.
+		n := len(out)
+		for n > 0 && isSlotRefire(out[n-1]) {
+			n--
+		}
+		out = append(out[:n:n], append(live, out[n:]...)...)
+	}
+	return out
+}
+
+// isSlotRefire reports whether s is a call of a slot's render function.
+func isSlotRefire(s ir.Stmt) bool {
+	c, ok := s.(*ir.CallStmt)
+	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.SlotRender
 }
 
 // updaterStmts is the body of an update: reassign every dependent prop from
@@ -1195,8 +1428,8 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}
 		parentRef := slot.ParentRef
 		if parentRef == nil {
-			rootVar := st.findSlotVar("__root")
-			parentRef = &ir.Ident{Name: "__root", Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
+			rootVar := st.findSlotVar(st.rootName())
+			parentRef = &ir.Ident{Name: st.rootName(), Type: ir.TypDyn, IsElementRef: true, Synthesized: true, Sym: rootVar}
 		}
 		out = append(out, &ir.CallStmt{Call: &ir.Call{
 			Type: ir.TypVoid,
@@ -1618,7 +1851,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	switch o := st.owner.(type) {
 	case compOwner:
 		ownerFuncs = &o.c.Funcs
-	case windowOwner:
+	case pkgOwner:
 		ownerFuncs = &o.pkg.Funcs
 	}
 	// The append target is the slot func's `parent` param; carry its Sym so
@@ -1642,7 +1875,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			if n.ID == "" {
 				n.ID = declSt.freshID()
 			}
-			si := st.newSlotInstance(n)
+			si := st.siteInstance(n, st.owner)
 			instances = append(instances, si)
 			sub = st.reuseOrCreate(si, n, declSt)
 			sub = append(sub, declSt.componentRootBinding(n)...)
@@ -1750,6 +1983,28 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 // buildRenderSlotFor walks stmts to find the If/For carrying slotID, then
 // constructs the corresponding __renderSlotN Func. Returns nil if no
 // matching node is present in stmts.
+// buildRenderSlotForProbe reports whether the reactive If/For carrying slotID
+// is written in stmts, where buildRenderSlotFor would find it.
+func (st *reactivityState) buildRenderSlotForProbe(slotID string, stmts []ir.Stmt) bool {
+	found := false
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		switch n := s.(type) {
+		case *ir.If:
+			if n.LoweredSlotID == slotID {
+				found = true
+				return ir.SkipAll
+			}
+		case *ir.For:
+			if n.LoweredSlotID == slotID {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
+}
+
 func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *ir.Func {
 	var fn *ir.Func
 	var walk func([]ir.Stmt)
@@ -1774,11 +2029,6 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Body)
 				walk(n.Else)
 			case *ir.NodeInst:
-				// A window is its own block; lowerReactivity builds that
-				// slot's Func with the window as the owner.
-				if ir.IsWindowNode(n) {
-					return
-				}
 				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {
 					if h.Func != nil {
@@ -1800,4 +2050,27 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 	}
 	walk(stmts)
 	return fn
+}
+
+// loopsOverPages reports whether a loop's body is pages, each node carrying a
+// page's record (ir.NodeInst.Record) -- what passNavigationHrefs leaves for a
+// target that serves each page on its own.
+func loopsOverPages(n *ir.For) bool {
+	var holds func(stmts []ir.Stmt) bool
+	holds = func(stmts []ir.Stmt) bool {
+		for _, s := range stmts {
+			switch x := s.(type) {
+			case *ir.NodeInst:
+				if x.Record != nil {
+					return true
+				}
+			case *ir.If:
+				if holds(x.Body) || holds(x.Else) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return holds(n.Body)
 }

@@ -18,7 +18,7 @@ func check(s string) {
 var caught = "none"
 var n = 0
 
-window #home(title="raise", href="/index.html", @error(e) {
+window #home(title="raise", @error(e) {
     caught = "window: " + e.message
     if n > 3 {
         return
@@ -67,9 +67,10 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	caught    string
-	n         int
-	__focusID int
+	caught         string
+	n              int
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -79,6 +80,7 @@ func New() Model {
 	m := Model{}
 	m.caught = "none"
 	m.n = 0
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -137,6 +139,21 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -150,13 +167,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetCaught(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -189,19 +214,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("go"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("go"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -225,6 +252,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -235,12 +263,15 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	caught string
-	n      int
+	caught         string
+	n              int
+	visible__inst0 bool
 
-	__n1 *fyne.Container
-	__n2 *widget.Button
-	__n0 *widget.Label
+	home    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Button
+	__n0    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -248,6 +279,7 @@ func New() *Model {
 	m := &Model{}
 	m.caught = "none"
 	m.n = 0
+	m.visible__inst0 = true
 	return m
 }
 
@@ -255,6 +287,14 @@ func Check(s string) {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "empty", Kind: "validation"})
 	}
+}
+
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n2_click_handler() {
@@ -281,6 +321,22 @@ func (m *Model) __n2_click_handler() {
 	}()
 }
 
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
+}
+
 func (m *Model) Caught() string {
 	return m.caught
 }
@@ -297,8 +353,25 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("raise")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = container.NewVBox()
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("go")
@@ -307,17 +380,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.caught)
 	m.__n1.Add(m.__n0)
-	content := fyne.CanvasObject(m.__n1)
-	return content
+	m.home.Add(m.__n1)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -328,9 +400,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -348,12 +421,14 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	caught string
-	n      int
-	__n1   gtk4rt.Handle
-	__n2   gtk4rt.Handle
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	caught         string
+	n              int
+	visible__inst0 bool
+	home           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -362,6 +437,7 @@ func New() *Model {
 	m := &Model{}
 	m.caught = "none"
 	m.n = 0
+	m.visible__inst0 = true
 	return m
 }
 
@@ -369,6 +445,14 @@ func Check(s string) {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "empty", Kind: "validation"})
 	}
+}
+
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -411,11 +495,24 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "raise")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n1, 6)
@@ -426,17 +523,15 @@ func (m *Model) buildWidgetTree() {
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, m.caught)
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n1)
+	gtk4rt.BoxAppend(m.home, m.__n1)
+	gtk4rt.AppAttach(m.home)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "raise")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/go/html/server.go --
 package main
@@ -448,13 +543,13 @@ import (
 // Handler returns an http.Handler wired with every route.
 func Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /index.html", handleHome)
+	mux.HandleFunc("GET /", handleHome)
 	return mux
 }
 
 func handleHome(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>raise</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <button id=\"$1\">\n    <span>go</span>\n  </button>\n  <span id=\"__n0\" data-sngl-id=\"__n0\">\n  </span>\n</div>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"none\", n: 0 };\n  function check(s) {\n    if (s.length === 0) {\n      ;\n      throw Object.assign(new Error(\"empty\"), { kind: \"validation\" });\n    }\n    ;\n  }\n  var $1 = document.getElementById(\"$1\");\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      check(\"\");\n      state.n = 2;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      (() => {\n        ;\n        state.caught = \"window: \" + e.message;\n        __n0.textContent = state.caught;\n        if (state.n > 3) {\n          ;\n          return;\n        }\n        ;\n        state.n = state.n + 1;\n      })();\n    }\n    ;\n  });\n  function __sngl_init() {\n    __n0.textContent = state.caught;\n  }\n  __sngl_init();\n})();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>raise</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <button id=\"$1\">\n    <span>go</span>\n  </button>\n  <span id=\"__n0\" data-sngl-id=\"__n0\">\n  </span>\n</div>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"none\", n: 0, visible__inst0: true };\n  function check(s) {\n    if (s.length === 0) {\n      ;\n      throw Object.assign(new Error(\"empty\"), { kind: \"validation\" });\n    }\n    ;\n  }\n  var $1 = document.getElementById(\"$1\");\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      check(\"\");\n      state.n = 2;\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      (() => {\n        ;\n        state.caught = \"window: \" + e.message;\n        __n0.textContent = state.caught;\n        if (state.n > 3) {\n          ;\n          return;\n        }\n        ;\n        state.n = state.n + 1;\n      })();\n    }\n    ;\n  });\n  function __sngl_init() {\n    __n0.textContent = state.caught;\n  }\n  __sngl_init();\n})();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -485,6 +580,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -502,27 +600,37 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var caught by remember { mutableStateOf("none") }
     var n by remember { mutableStateOf(0) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            try {
-            	check("")
-            	n = 2
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	fun __onError() {
-            		caught = ("window: " + e.message)
-            		if ((n > 3)) {
-            			return
-            		}
-            		n = (n + 1)
-            	}
-            	__onError()
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier) {
-            Text(text = "go", modifier = Modifier)
         }
-        Text(text = caught, modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                try {
+                	check("")
+                	n = 2
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	fun __onError() {
+                		caught = ("window: " + e.message)
+                		if ((n > 3)) {
+                			return
+                		}
+                		n = (n + 1)
+                	}
+                	__onError()
+                }
+            }, modifier = Modifier) {
+                Text(text = "go", modifier = Modifier)
+            }
+            Text(text = caught, modifier = Modifier)
+        }
     }
 }
 
@@ -556,7 +664,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { caught: "none", n: 0 };
+  var state = { caught: "none", n: 0, visible__inst0: true };
   function check(s) {
     if (s.length === 0) {
       ;
@@ -599,14 +707,14 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:66317a69fec1018501c02414bb64bd51
+pass sha256:65bd69c3a902caa5920f053c5d2aaaf5
 -- run/go/fyne --
-pass sha256:e43f923cf2550af7ae20d4641b46a92d
+pass sha256:acf106e30591882e1109a35b2e8ab219
 -- run/go/gtk4 --
-pass sha256:764add8094b429f8cc3ccb6fc1fd10be
+pass sha256:133d95eac8be687e1e9c165752c122b3
 -- run/go/html --
-pass sha256:59018dd30db3198aa186be8954dabc52
+pass sha256:602b055663a5f1063a488f3694fc751e
 -- run/kotlin/android --
-pass sha256:28440576d9db73ef51a3688cce247bb6
+pass sha256:f9f954940226329dd65c59d9ce06e0f0
 -- run/none/html --
-pass sha256:3aabb7dd58ab5cf8777c3a3d7c1d9dfd
+pass sha256:a6b6bbaaa6850a2781f0628550f4db8a

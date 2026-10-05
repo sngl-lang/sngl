@@ -60,8 +60,9 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	caught    string
-	__focusID int
+	caught         string
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -70,6 +71,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.caught = ""
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -122,6 +124,21 @@ func SetCaughtCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setCaughtMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -133,13 +150,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCaughtMsg:
 		m = m.SetCaught(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -200,27 +225,30 @@ func (m *Model) directClick() {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Call"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 1)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("Raise"))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
+		contentParts = append(contentParts, contentPart_2)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("Call"))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 1)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
-	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("Raise"))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(m.caught))
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -242,8 +270,8 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -254,17 +282,21 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	caught string
+	caught         string
+	visible__inst0 bool
 
-	call   *widget.Button
-	direct *widget.Button
-	__n0   *widget.Label
+	__n0    *fynelayout.Toplevel
+	call    *widget.Button
+	direct  *widget.Button
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.caught = ""
+	m.visible__inst0 = true
 	return m
 }
 
@@ -273,6 +305,14 @@ func Risky(n int) int {
 		panic(ErrorEvent{Message: "too big", Kind: "range"})
 	}
 	return (n * 10)
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) call_click_handler() {
@@ -288,7 +328,7 @@ func (m *Model) call_click_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			m.__n0.SetText(m.caught)
+			m.__n1.SetText(m.caught)
 		}()
 		Risky(5)
 	}()
@@ -307,7 +347,7 @@ func (m *Model) direct_click_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			m.__n0.SetText(m.caught)
+			m.__n1.SetText(m.caught)
 		}()
 		panic(ErrorEvent{Message: "direct", Kind: ""})
 	}()
@@ -335,30 +375,44 @@ func (m *Model) SetCaught(v string) {
 	m.caught = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
 	m.call = widget.NewButton("", nil)
 	m.call.SetText("Call")
 	m.call.OnTapped = m.call_click_handler
+	m.__n0.Add(m.call)
 	m.direct = widget.NewButton("", nil)
 	m.direct.SetText("Raise")
 	m.direct.OnTapped = m.direct_click_handler
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(m.caught)
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.call)
-	parts = append(parts, m.direct)
-	parts = append(parts, m.__n0)
-	return container.NewVBox(parts...)
+	m.__n0.Add(m.direct)
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(m.caught)
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -369,9 +423,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from window.sngl; DO NOT EDIT.
@@ -389,11 +444,13 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	caught string
-	call   gtk4rt.Handle
-	direct gtk4rt.Handle
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	caught         string
+	visible__inst0 bool
+	__n0           gtk4rt.Handle
+	call           gtk4rt.Handle
+	direct         gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -401,6 +458,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.caught = ""
+	m.visible__inst0 = true
 	return m
 }
 
@@ -409,6 +467,14 @@ func Risky(n int) int {
 		panic(ErrorEvent{Message: "too big", Kind: "range"})
 	}
 	return (n * 10)
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 func (m *Model) call_clicked_handler() {
@@ -424,7 +490,7 @@ func (m *Model) call_clicked_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			gtk4rt.LabelSetText(m.__n0, m.caught)
+			gtk4rt.LabelSetText(m.__n1, m.caught)
 		}()
 		Risky(5)
 	}()
@@ -443,7 +509,7 @@ func (m *Model) direct_clicked_handler() {
 			}
 			_ = e
 			m.caught = e.Message
-			gtk4rt.LabelSetText(m.__n0, m.caught)
+			gtk4rt.LabelSetText(m.__n1, m.caught)
 		}()
 		panic(ErrorEvent{Message: "direct", Kind: ""})
 	}()
@@ -457,31 +523,42 @@ func (m *Model) SetCaught(v string) {
 	m.caught = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.call = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.call, "Call")
 	gtk4rt.Connect(m.call, "clicked", m.call_clicked_handler)
+	gtk4rt.BoxAppend(m.__n0, m.call)
 	m.direct = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.direct, "Raise")
 	gtk4rt.Connect(m.direct, "clicked", m.direct_clicked_handler)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.caught)
-	gtk4rt.BoxAppend(m.__root, m.call)
-	gtk4rt.BoxAppend(m.__root, m.direct)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(m.__n0, m.direct)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, m.caught)
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
+	gtk4rt.AppAttach(m.__n0)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 
 // callClick fires the "clicked" signal on the #call widget; for tests.
@@ -509,7 +586,7 @@ func Handler() http.Handler {
 
 func handleIndex(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from window.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<button id=\"$0\">\n  <span>Call</span>\n</button>\n<button id=\"$1\">\n  <span>Raise</span>\n</button>\n<span id=\"__n0\" data-sngl-id=\"__n0\">\n</span>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"\" };\n  function risky(n) {\n    if (n > 1) {\n      ;\n      throw Object.assign(new Error(\"too big\"), { kind: \"range\" });\n    }\n    ;\n    return n * 10;\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  var __n0 = document.querySelector('[data-sngl-id=\"__n0\"]');\n  $0.addEventListener(\"click\", function() {\n    try {\n      ;\n      risky(5);\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n0.textContent = state.caught;\n    }\n    ;\n  });\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      throw Object.assign(new Error(\"direct\"), { kind: \"\" });\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n0.textContent = state.caught;\n    }\n    ;\n  });\n  function __sngl_init() {\n    __n0.textContent = state.caught;\n  }\n  __sngl_init();\n})();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from window.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<button id=\"$0\">\n  <span>Call</span>\n</button>\n<button id=\"$1\">\n  <span>Raise</span>\n</button>\n<span id=\"__n1\" data-sngl-id=\"__n1\">\n</span>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { caught: \"\", visible__inst0: true };\n  function risky(n) {\n    if (n > 1) {\n      ;\n      throw Object.assign(new Error(\"too big\"), { kind: \"range\" });\n    }\n    ;\n    return n * 10;\n  }\n  var $0 = document.getElementById(\"$0\");\n  var $1 = document.getElementById(\"$1\");\n  var __n1 = document.querySelector('[data-sngl-id=\"__n1\"]');\n  $0.addEventListener(\"click\", function() {\n    try {\n      ;\n      risky(5);\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n1.textContent = state.caught;\n    }\n    ;\n  });\n  $1.addEventListener(\"click\", function() {\n    try {\n      ;\n      throw Object.assign(new Error(\"direct\"), { kind: \"\" });\n    } catch (__e) {\n      ;\n      if (__e?.kind === void 0) throw __e;\n      ;\n      let e = { message: __e.message, kind: __e.kind };\n      void e;\n      state.caught = e.message;\n      __n1.textContent = state.caught;\n    }\n    ;\n  });\n  function __sngl_init() {\n    __n1.textContent = state.caught;\n  }\n  __sngl_init();\n})();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -540,6 +617,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -556,29 +636,39 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var caught by remember { mutableStateOf("") }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            try {
-            	risky(5)
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	caught = e.message
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
-            Text(text = "Call", modifier = Modifier)
         }
-        Button(onClick = {
-            try {
-            	throw SnglRaise(ErrorEvent("direct", ""))
-            } catch (__e: SnglRaise) {
-            	val e = __e.event
-            	caught = e.message
+        Column {
+            Button(onClick = {
+                try {
+                	risky(5)
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	caught = e.message
+                }
+            }, modifier = Modifier.testTag("call").safeDrawingPadding()) {
+                Text(text = "Call", modifier = Modifier)
             }
-        }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
-            Text(text = "Raise", modifier = Modifier)
+            Button(onClick = {
+                try {
+                	throw SnglRaise(ErrorEvent("direct", ""))
+                } catch (__e: SnglRaise) {
+                	val e = __e.event
+                	caught = e.message
+                }
+            }, modifier = Modifier.testTag("direct").safeDrawingPadding()) {
+                Text(text = "Raise", modifier = Modifier)
+            }
+            Text(text = caught, modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = caught, modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -607,13 +697,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>Raise</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { caught: "" };
+  var state = { caught: "", visible__inst0: true };
   function risky(n) {
     if (n > 1) {
       ;
@@ -624,7 +714,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     try {
       ;
@@ -636,7 +726,7 @@ body { font-family: system-ui, sans-serif; }
       let e = { message: __e.message, kind: __e.kind };
       void e;
       state.caught = e.message;
-      __n0.textContent = state.caught;
+      __n1.textContent = state.caught;
     }
     ;
   });
@@ -651,26 +741,26 @@ body { font-family: system-ui, sans-serif; }
       let e = { message: __e.message, kind: __e.kind };
       void e;
       state.caught = e.message;
-      __n0.textContent = state.caught;
+      __n1.textContent = state.caught;
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = state.caught;
+    __n1.textContent = state.caught;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a548db9f682a705ddf92e1b0ae2c37b0
+pass sha256:0b020ad03655c74dab5ad08e042a2c54
 -- run/go/fyne --
-pass sha256:ff96c6737bb111b5d5e03e482d62097a
+pass sha256:394712a937039c5381ea8a05b2ad0691
 -- run/go/gtk4 --
-pass sha256:6d27d7d6f39aa10befac6f3828b06b71
+pass sha256:3a3ac41f720029a3ef49cf9bd3f23d8a
 -- run/go/html --
-pass sha256:559e2ed49f91957d76ce31e67dff04c4
+pass sha256:731ec4f5ee8344a995beb5f57b66abac
 -- run/kotlin/android --
-pass sha256:3d4094ccdfd044190381815e4d45c3d0
+pass sha256:bf603d1a75c1c8e82d17151e7f841782
 -- run/none/html --
-pass sha256:2a778a6359fadf96b7b825f0807f5d07
+pass sha256:f875f6c669a8bf464ecb11916209b395

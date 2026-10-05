@@ -11,6 +11,7 @@ deny out/none/html/two.html `__slotAnchor_0` -- two.html places no slot, so it b
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
 output {
     none {
@@ -30,11 +31,15 @@ component Toggle() ui.node {
 }
 
 component site() root {
-    ui.window(title="one", href="/one.html") {
-        Toggle
-    }
-    ui.window(title="two", href="/two.html") {
-        ui.text(value="plain")
+    ui.window(title=pages.current.title) {
+        nav.stack #pages {
+            nav.page(href="/one.html", title="one") {
+                Toggle
+            }
+            nav.page(href="/two.html", title="two") {
+                ui.text(value="plain")
+            }
+        }
     }
 }
 
@@ -53,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n1" data-sngl-id="__n1" style="display:flex;flex-direction:column">
+<div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>flip</span>
   </button>
@@ -63,25 +68,25 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { on__inst0: false };
+  var state = { on__inst0: false, visible__inst1: true };
   var __slot0 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
     if (state.on__inst0) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = "on";
+      let __n1 = document.createElement("span");
+      __n1.textContent = "on";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n1) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n1, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n1);
     }
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
@@ -118,9 +123,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { on__inst0: false };
+  var state = { on__inst0: false, visible__inst1: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:94fb94c5c3e6206b8e9e5e998247d0fe
+pass sha256:faba769d61b8aef4ee3352a6d7da7b93

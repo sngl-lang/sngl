@@ -5,23 +5,19 @@
 # prop standing and html wrote no <title> for it, silently, which CLAUDE.md
 # recorded as the survivable answer rather than the right one. This is the
 # right one for the half a node's id covers. `const a int = a` is the same
-# shape one layer down and is a scope of its own, still accepted by `sngl
-# check` and still guarded in consteval (const_reads_itself.txt).
+# shape one layer down, and the checker's cycle rule refuses it
+# (const_reads_itself.txt).
 ! sngl check selfref.sngl
 stderr 'names the node this argument list declares'
 ! sngl generate --lang none --platform html --out out selfref.sngl
 
-# Mutual reference is not reached by that rule and is not meant to be: neither
-# window reads its own id, so what the two name is each other and there is no
-# single declaration to blame. It reaches the fold's guard by a second key
-# rather than by the first one twice, which is the path a self-reference never
-# took, and it is still left standing -- the page comes out with content and no
-# <title>. The general rule the language has not made is this one.
-sngl generate --lang none --platform html --out out2 mutual.sngl
-grep '<span>a</span>' out2/a.html
-grep '<span>b</span>' out2/b.html
-! grep '<title>' out2/a.html
-! grep '<title>' out2/b.html
+# Mutual reference is refused too, by the checker's cycle rule rather than this
+# one: neither page reads its own id, so what the two name is each other, and
+# the rule is about a declaration that reads itself however many hops round.
+# html used to write two windows of this shape with no <title>, silently, and
+# fyne a name nothing declared.
+! sngl check mutual.sngl
+stderr 'mutual.sngl:12:43: a cycle: a.title reads b.title, b.title reads a.title'
 
 -- selfref.sngl --
 import . "sngl:ui"
@@ -32,11 +28,12 @@ output {
     }
 }
 
-window #home(title=home.title, href="/index.html") {
+window #home(title=home.title) {
     text(value="hi")
 }
 -- mutual.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 output {
     none {
@@ -44,13 +41,13 @@ output {
     }
 }
 
-component pages root {
-    window #a(title=b.title, href="/a.html") {
-        text(value="a")
-    }
-    window #b(title=a.title, href="/b.html") {
-        text(value="b")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #a(href="/a.html", title=b.title) {
+            text(value="a")
+        }
+        nav.page #b(href="/b.html", title=a.title) {
+            text(value="b")
+        }
     }
 }
-
-pages()

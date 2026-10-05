@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -49,9 +47,10 @@ const testInstanceVar = "__snglTestComponent"
 //
 // `pkg` is accepted for symmetry with the Go/Kotlin LowerTestFile
 // signatures but is unused in JS — ES modules have no package
-// declaration.
+// declaration. `platform` is the build's, which a platform's intrinsic
+// emitters are keyed by: html answers sngl:ui/nav's `current` that way.
 func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string,
-	methodFields map[string]bool, mode TestEmitMode) string {
+	methodFields map[string]bool, mode TestEmitMode, platform string) string {
 
 	if mode == TestEmitNative {
 		return "// native-mode html test emission is not supported.\n" +
@@ -77,7 +76,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 		if recv := codegen.TestComponentParam(fn); recv != "" {
 			fmt.Fprintf(&b, "\tconst %s = %s;\n", recv, testInstanceVar)
 		}
-		for _, line := range lowerTestBody(irPkg, fn, methodFields) {
+		for _, line := range lowerTestBody(irPkg, fn, methodFields, platform) {
 			fmt.Fprintf(&b, "\t%s\n", line)
 		}
 		b.WriteString("}\n\n")
@@ -97,7 +96,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 // tests address widgets via DOM tags, not via the model field gate
 // the Kotlin/Go lowerers consult — but accepted in the signature for
 // symmetry and future use.
-func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) []string {
+func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool, platform string) []string {
 	// The test module is bundled with the emitted program, so it has to name
 	// things the way the emitter named them: a method on a user type as the
 	// free `Calc_digit(…)`. Over an empty package it knew none of them and
@@ -106,6 +105,12 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	// The component under test is the state a read names: a cell the
+	// lowering repointed a test's `c.box.checked` at is one of its vars.
+	if root := irPkg.RootDecl(); root != nil {
+		ctx = ctx.ForComponent(root)
+	}
+	ctx.Platform = platform
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields
@@ -206,19 +211,7 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 		return "", false
 	}
 	c := call.Call
-	if c.AST == nil || c.Event == "" {
-		return "", false
-	}
-	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	// outerSel.Operand is `c.inc` -- another SelectExpr Operand:Ident{c}, Field:"inc".
-	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	recv, ok := innerSel.Operand.(*ast.IdentExpr)
+	recv, id, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
@@ -226,7 +219,7 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	for i, a := range c.Args {
 		args[i] = jc.EvalExpr(a.Value)
 	}
-	return fmt.Sprintf("%s.%s%s(%s);", recv.Name, innerSel.Field, exportEventName(c.Event), strings.Join(args, ", ")), true
+	return fmt.Sprintf("%s.%s%s(%s);", recv, id, exportEventName(c.Event), strings.Join(args, ", ")), true
 }
 
 // exportEventName upper-cases the first letter, matching the name the platform

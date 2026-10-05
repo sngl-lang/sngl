@@ -1,6 +1,7 @@
 package html
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -42,11 +43,12 @@ window {
 	if i := strings.Index(handler, "});"); i >= 0 {
 		handler = handler[:i]
 	}
-	if !strings.Contains(handler, `__n0.value = String(state.volume)`) {
+	write := regexp.MustCompile(`__n\d+\.value = String\(state\.volume\)`)
+	if !write.MatchString(handler) {
 		t.Errorf("click handler does not update the progress value after mutating volume:\n%s", handler)
 	}
 	// The same spelling at init, which is the half that used to disagree.
-	if !strings.Contains(out, `__n0.value = String(state.volume)`) {
+	if !write.MatchString(out) {
 		t.Errorf("the initial render writes the progress value differently from the handler:\n%s", out)
 	}
 }

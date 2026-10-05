@@ -1,0 +1,33 @@
+// #[tree.crosses] on a placement lifts the one check a family makes of it:
+// that the node, or the slot inserted, belongs to the family the position
+// accepts. Nothing else about the node is relaxed -- its own body, its slots
+// and its children are checked as ever -- and the mark reaches no further
+// than the node it is written on.
+//
+// A program's own family is the case: `slide` is a member of `deck` and
+// shows a widget, and `show` is a widget that lays its deck out in a box.
+
+import build "sngl:build"
+import tree "sngl:tree"
+import ui "sngl:ui"
+
+component deck build.family
+
+component slide(caption string) deck {
+    #[tree.crosses]
+    ui.text(value=caption)
+}
+
+component show(slides ...component deck) ui.node {
+    ui.vbox {
+        #[tree.crosses]
+        slides
+    }
+}
+
+ui.window(title="Deck") {
+    show {
+        slide(caption="one")
+        slide(caption="two")
+    }
+}

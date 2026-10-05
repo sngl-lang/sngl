@@ -205,6 +205,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			cp.Value = v
 			return []ir.Stmt{&cp}
 		}
+	case *ir.Return:
+		// `return func() { … }` hands the callback to whoever called.
+		if v, changed := walkExprLambdas(ctx, n.Value, t); changed {
+			cp := *n
+			cp.Value = v
+			return []ir.Stmt{&cp}
+		}
 	case *ir.For:
 		iterExpr := t.OnIter(ctx, n.Iter)
 		body := WalkLowered(ctx, n.Body, t)
@@ -279,11 +286,17 @@ func walkCallLambdas(ctx context.Context, call *ir.Call, t IntrinsicTranslator) 
 			changed = true
 		}
 	}
-	if !changed {
+	// A lambda called where it is written, `func(b int) { … }(x)`, is how a
+	// handler runs where an event is fired from inside a value.
+	callee, movedCallee := walkExprLambdas(ctx, call.Callee, t)
+	if !changed && !movedCallee {
 		return call, false
 	}
 	cp := *call
 	cp.Args = args
+	if movedCallee {
+		cp.Callee = callee
+	}
 	return &cp, true
 }
 
@@ -316,6 +329,36 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 		if changed {
 			cp := *x
 			cp.Elems = elems
+			return &cp, true
+		}
+	case *ir.StructLit:
+		// A record holding its own callback -- `Entry{click = func() { … }}`
+		// -- is how a value hands over the handler that belongs to it.
+		changed := false
+		fields := append([]ir.FieldInit(nil), x.Fields...)
+		for i := range fields {
+			if v, moved := walkExprLambdas(ctx, fields[i].Value, t); moved {
+				fields[i].Value = v
+				changed = true
+			}
+		}
+		if changed {
+			cp := *x
+			cp.Fields = fields
+			return &cp, true
+		}
+	case *ir.MapLitIR:
+		changed := false
+		entries := append([]ir.MapEntry(nil), x.Entries...)
+		for i := range entries {
+			if v, moved := walkExprLambdas(ctx, entries[i].Value, t); moved {
+				entries[i].Value = v
+				changed = true
+			}
+		}
+		if changed {
+			cp := *x
+			cp.Entries = entries
 			return &cp, true
 		}
 	}

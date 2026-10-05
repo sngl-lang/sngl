@@ -16,8 +16,10 @@ var (
 	platforms = map[string]PlatformGenerator{}
 )
 
-// RegisterLang registers a language translator. Panics on duplicate.
-func RegisterLang(l LangTranslator) {
+// registerLang registers a language: every one is a lib/ directory
+// (declared.go), and Go behind it registers by key with RegisterNative.
+// Panics on duplicate.
+func registerLang(l LangTranslator) {
 	langMu.Lock()
 	defer langMu.Unlock()
 	name := l.LanguageIdentifier()
@@ -28,8 +30,8 @@ func RegisterLang(l LangTranslator) {
 	checker.RegisterTargetPackage("language/"+name, l)
 }
 
-// RegisterPlatform registers a platform generator. Panics on duplicate.
-func RegisterPlatform(p PlatformGenerator) {
+// registerPlatform registers a platform, as registerLang does a language.
+func registerPlatform(p PlatformGenerator) {
 	platMu.Lock()
 	defer platMu.Unlock()
 	name := p.PlatformIdentifier()
@@ -77,18 +79,30 @@ func CollectLangs() []ir.Language {
 	return out
 }
 
-// LookupLang returns the translator for the given language, or nil.
+// LookupLang returns the translator for the given language, or nil. A
+// language whose package is in lib/ is the Go translator its node names with
+// #[gen.native], or the declared language when it names none.
 func LookupLang(lang string) LangTranslator {
 	langMu.RLock()
-	defer langMu.RUnlock()
-	return langs[lang]
+	l := langs[lang]
+	langMu.RUnlock()
+	if d, ok := l.(*DeclaredLang); ok {
+		return d.resolve()
+	}
+	return l
 }
 
-// LookupPlatform returns the generator for the given platform, or nil.
+// LookupPlatform returns the generator for the given platform, or nil. A
+// platform whose package is in lib/ is the Go generator its node names with
+// #[gen.native], or the declared platform when it names none.
 func LookupPlatform(platform string) PlatformGenerator {
 	platMu.RLock()
-	defer platMu.RUnlock()
-	return platforms[platform]
+	p := platforms[platform]
+	platMu.RUnlock()
+	if d, ok := p.(*DeclaredPlatform); ok {
+		return d.resolve()
+	}
+	return p
 }
 
 // Langs returns the names of all registered languages, sorted.
@@ -117,14 +131,11 @@ func Platforms() []string {
 
 // PlatformsForLang returns the platform names that support the given language, sorted.
 func PlatformsForLang(lang string) []string {
-	platMu.RLock()
-	defer platMu.RUnlock()
 	var names []string
-	for name, p := range platforms {
-		if slices.Contains(p.SupportedLangs(), lang) {
+	for _, name := range Platforms() {
+		if slices.Contains(LookupPlatform(name).SupportedLangs(), lang) {
 			names = append(names, name)
 		}
 	}
-	sort.Strings(names)
 	return names
 }

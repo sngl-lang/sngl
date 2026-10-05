@@ -24,6 +24,6 @@ component rows(items list<string>) ui.node {
     }
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     rows(items=["a", "b"])
 }

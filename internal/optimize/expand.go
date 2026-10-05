@@ -65,23 +65,6 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	return result
 }
 
-// windowStructValue produces the const-eval shape (map[string]any) for an
-// unrolled window: each prop literal-folded to a Go value, when available.
-// Non-foldable expressions are omitted.
-func windowStructValue(w *ir.Window) any {
-	m := map[string]any{}
-	for _, p := range w.Props {
-		lit, ok := p.Value.(*ir.Literal)
-		if !ok {
-			continue
-		}
-		if v := parseLiteral(lit); v != nil {
-			m[p.Name] = v
-		}
-	}
-	return m
-}
-
 // loopVars is the symbols a loop binds. The checker records them on the loop;
 // a loop built without them is searched for, which misses a variable read only
 // in a handler.
@@ -104,66 +87,15 @@ func findLoopVar(fs *ir.For, name string) *ir.LoopVar {
 		return nil
 	}
 	var found *ir.LoopVar
-	walkForBody(fs.Body, func(e ir.Expr) {
+	_ = ir.WalkExprs(fs.Body, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok {
 			if lv, ok := id.Sym.(*ir.LoopVar); ok && lv.Name == name {
 				found = lv
 			}
 		}
+		return nil
 	})
 	return found
-}
-
-func walkForBody(stmts []ir.Stmt, visit func(ir.Expr)) {
-	for _, s := range stmts {
-		walkStmtExprs(s, visit)
-	}
-}
-
-func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		for _, p := range n.Props {
-			walkAllExprs(p.Value, visit)
-		}
-		for _, s := range n.Children {
-			walkStmtExprs(s, visit)
-		}
-	case *ir.If:
-		walkAllExprs(n.Cond, visit)
-		walkForBody(n.Body, visit)
-		walkForBody(n.Else, visit)
-	case *ir.For:
-		walkAllExprs(n.Iter, visit)
-		walkForBody(n.Body, visit)
-	case *ir.Assign:
-		walkAllExprs(n.Value, visit)
-	case *ir.Return:
-		walkAllExprs(n.Value, visit)
-	case *ir.LocalVar:
-		walkAllExprs(n.Init, visit)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			walkAllExprs(n.Call, visit)
-		}
-	case *ir.SlotInst:
-		walkForBody(n.Children, visit)
-	case *ir.ContextProvider:
-		walkAllExprs(n.Value, visit)
-		walkForBody(n.Children, visit)
-	case *ir.ErrorBoundary:
-		walkForBody(n.Children, visit)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			walkAllExprs(a.Value, visit)
-		}
-	case *ir.Toggle:
-		walkAllExprs(n.Target, visit)
-	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
-		// No expressions.
-	default:
-		panic(fmt.Sprintf("walkStmtExprs: unhandled stmt %T", n))
-	}
 }
 
 func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {

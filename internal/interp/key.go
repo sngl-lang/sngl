@@ -88,14 +88,6 @@ func (w *keyWalk) stmts(stmts []ir.Stmt, prefix string) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window renders no node of its own: it is the page its children
-			// are laid out on, so the path it contributes is a scope and not a
-			// widget, and the widgets inside it keep the numbering a top-level
-			// body would have given them.
-			if ir.IsWindowNode(n) {
-				w.stmts(n.Children, join(fmt.Sprintf("window@%d", next("window"))))
-				continue
-			}
 			p := join(seg(n.Name, n.ID, next(n.Name)))
 			w.emit(p)
 			w.stmts(n.Children, p)

@@ -29,9 +29,6 @@ func lowerErrorScope(pkg *ir.Package, _ Features, _ Options) error {
 		return nil
 	}
 	st := &errorScopeState{escapes: map[*ir.Component]bool{}}
-	for _, w := range pkg.Windows {
-		st.stmts([]ir.Stmt{w}, nil)
-	}
 	st.stmts(pkg.Body, nil)
 	for _, c := range pkg.Components {
 		st.stmts(c.Body, nil)
@@ -63,10 +60,6 @@ func (st *errorScopeState) stmts(stmts []ir.Stmt, scope []*ir.EventHandler) {
 				resolveEscapes(p.Value, scope)
 			}
 			inner := scope
-			if ir.IsWindowNode(n) && n.ErrorHandler != nil {
-				resolveHandlerEscapes(n.ErrorHandler, scope)
-				inner = append([]*ir.EventHandler{n.ErrorHandler}, scope...)
-			}
 			if len(inner) > 0 && n.Component != nil && n.Component.RuntimeInstance && st.componentEscapes(n.Component) && st.err == nil {
 				st.err = fmt.Errorf("%s: a raise in %s cannot reach the @error around this instance: %s is built at run time here, so its body is shared by every instance and answers only to the boundaries it writes itself", ir.StmtPos(n), n.Component.Name, n.Component.Name)
 			}

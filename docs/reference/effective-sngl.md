@@ -40,23 +40,32 @@ ui.window(title="Counter") {
 
 A package with no window is a library: it declares structs, enums, functions and components for other packages to import. A file of components on its own type-checks perfectly well; it just has nowhere to draw until something puts it in a window.
 
-A program may declare several windows. Give each an `#id`, name the one the build opens at with `output(entry = ...)`, and give each an `href` -- on `html` every window is a page served at its route:
+A program's pages -- the destinations a user moves between -- are the pages of a `nav.stack` in one window, and the window around the stack is the chrome every page shares. Give each page an `#id` and an `href`; on `html` every page is a document or a route served at its href, and a stack starts at the page at `/`, or its first:
 
 ```sngl
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
-ui.window #home(title="Home", href="/") {
-    ui.text(value="Welcome")
+ui.window(title="App - {pages.current.title}") {
+    ui.vbox {
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="Welcome")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="About this app")
+            }
+        }
+        ui.button(text="About", @click { pages.go(about) })
+    }
 }
 
-ui.window #about(title="About", href="/about") {
-    ui.text(value="About this app")
-}
-
-output(entry=home) {
+output {
     none { html }
 }
 ```
+
+A second window is a second surface, which a desktop target opens beside the first and html shows as a `<dialog>` in the first one's page.
 
 ### Imports
 
@@ -844,6 +853,17 @@ ui.window {
 ```
 
 When the child assigns `count += 1`, the parent variable `steps` automatically updates. The binding works transparently across component boundaries.
+
+A two-way prop the caller leaves unbound is state of the instance, as if the component had declared a `var` for it. An unbound checkbox keeps what it is clicked to. A one-way value is only where that state starts: after `ui.checkbox(checked=done)`, a later write to `done` does not reach the box, so bind it with `:checked=done` when it should. Read the state off the node's `#id`:
+
+<!-- SNGL-component -->
+
+```sngl
+ui.checkbox #remember(label="Remember me")
+ui.text(value=remember.checked ? "remembered" : "forgotten")
+```
+
+A `const` component keeps no state of its own, so a two-way prop of one must be bound.
 
 ### Inline styles
 

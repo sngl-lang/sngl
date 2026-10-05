@@ -196,6 +196,7 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 		}
 
 		results, err := snapshot.Generate(snapshot.Config{
+			Trust:      cliTrust,
 			SourceFile: tmpFile,
 			Platforms:  platforms,
 			Width:      width,

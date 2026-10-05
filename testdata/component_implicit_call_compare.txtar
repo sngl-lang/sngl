@@ -256,7 +256,6 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	n      int
-	__n0   gtk4rt.Handle
 	__root gtk4rt.Handle
 }
 
@@ -291,9 +290,9 @@ func (m *Model) buildWidgetTree() {
 	} else {
 		__lt0 = "none"
 	}
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, __lt0)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	__n0 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n0, __lt0)
+	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -436,7 +435,7 @@ pass sha256:78d62257c34ff1eb15124ef6819b778f
 -- run/go/fyne --
 pass sha256:4884bde89effcb938aad265b2ab11bc3
 -- run/go/gtk4 --
-pass sha256:6d68d9192c5c0ee56ddde28f6c8a69aa
+pass sha256:62c977d17f47523c6508804678a5f24c
 -- run/kotlin/android --
 pass sha256:2eacbb5fec4ec4d62e4013be3cf6dc73
 -- run/none/html --

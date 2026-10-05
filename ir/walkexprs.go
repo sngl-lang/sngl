@@ -57,6 +57,8 @@ var (
 //   - StructLit.Def — the struct being constructed, owned by pkg.Structs.
 //   - Component.Methods, StructDef/EnumDef/UnitDef.Methods — the same *Funcs
 //     already reached through their owning slice.
+//   - Component.DeclaredBody — the declaration's own body, set aside when an
+//     override was swapped in; a node rendering it is handed a deep clone.
 //   - Func.Reads, Func.Writes — analysis results naming Vars owned by a scope.
 //   - Package.Symbols, Import.Pkg, Context/ContextRead.Ref — tables and
 //     cross-package or cross-declaration links.
@@ -216,11 +218,10 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 				w.fn(h.Func)
 			}
 		}
-		if n.ErrorHandler != nil {
-			w.fn(n.ErrorHandler.Func)
-		}
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
+		n.Record = w.expr(n.Record)
+		n.Start = w.expr(n.Start)
 		n.Children = w.stmts(n.Children)
 		w.slots(n.Slots)
 	case *CallStmt:
@@ -390,9 +391,6 @@ func (w *rewriter) pkg(pkg *Package) {
 	}
 	for _, c := range pkg.Components {
 		w.component(c)
-	}
-	for _, win := range pkg.Windows {
-		w.stmt(win)
 	}
 	// The package's own body, last, so a walk sees declarations before what
 	// renders them -- the same order this walk visits a component in.

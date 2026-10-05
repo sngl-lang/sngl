@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/internal/build"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -163,7 +162,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 				slog.Info("exists", "path", filepath.Join(effectiveOutDir, basename+"_"+plat+".png"))
 			}
 		} else {
-			docs = append(docs, snapshot.DocEntry{ID: basename, SourceFile: path, Doc: doc, Dir: u.dir, Resolver: build.NewResolver(u.dir)})
+			docs = append(docs, snapshot.DocEntry{ID: basename, SourceFile: path, Doc: doc, Dir: u.dir, Resolver: cliResolver(u.dir)})
 		}
 	}
 
@@ -172,6 +171,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 	}
 
 	results, err := snapshot.GenerateBatch(snapshot.BatchConfig{
+		Trust:     cliTrust,
 		Docs:      docs,
 		Platforms: platforms,
 		Width:     width,

@@ -1,0 +1,96 @@
+// SKIP(codegen) "a platform harness compiles these components with nothing instantiating them, which a build never does; every target's code is view_block_state.txtar"
+// A `var` written in a block of a view -- a node's children, a loop's body, a
+// branch, a page -- is state of that block, as a component's `var` is state of
+// the component. It lives as long as the block is rendered: once where the
+// block is rendered once, one per copy under a `for`, and from the start again
+// each time an `if` over state or a page brings the block back.
+//
+// A window's body is a block like any other, which is the rule that used to be
+// a window's alone.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+const items list<string> = ["a", "b"]
+
+component panel ui.node {
+    ui.vbox {
+        var opened = 0
+        ui.button #open(text="open", @click { opened += 1 })
+        ui.text #shown(value="opened {opened}")
+    }
+}
+
+func testABlockVarIsState(t Test, c panel) {
+    c.open.click()
+    c.open.click()
+    t.assert(c.shown.value == "opened 2")
+}
+
+component rows ui.node {
+    var total = 0
+    for var it = items {
+        ui.hbox {
+            var n = 0
+            ui.button #bump(text=it, @click {
+                n += 1
+                total += 1
+            })
+            ui.text #row(value="{it} {n}")
+        }
+    }
+    ui.text #sum(value="total {total}")
+}
+
+func testEachCopyHasItsOwn(t Test, c rows) {
+    c.bump[1].click()
+    c.bump[1].click()
+    c.bump[0].click()
+    t.assert(c.row[0].value == "a 1")
+    t.assert(c.row[1].value == "b 2")
+    t.assert(c.sum.value == "total 3")
+}
+
+component toggled ui.node {
+    var shown = true
+    ui.button #flip(text="flip", @click { shown = !shown })
+    if shown {
+        ui.vbox {
+            var hits = 0
+            ui.button #hit(text="hit", @click { hits += 1 })
+            ui.text #hits(value="hits {hits}")
+        }
+    }
+}
+
+func testABranchStartsAgain(t Test, c toggled) {
+    c.hit.click()
+    t.assert(c.hits.value == "hits 1")
+    c.flip.click()
+    c.flip.click()
+    t.assert(c.hits.value == "hits 0")
+}
+
+component paged ui.node {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            var visits = 0
+            ui.button #visit(text="visit", @click { visits += 1 })
+            ui.text #visits(value="visits {visits}")
+        }
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+    }
+    ui.button #toAbout(text="about", @click { pages.go(about) })
+    ui.button #back(text="back", @click { pages.back() })
+}
+
+func testAPageStartsAgain(t Test, c paged) {
+    c.visit.click()
+    t.assert(c.visits.value == "visits 1")
+    c.toAbout.click()
+    c.back.click()
+    t.assert(c.visits.value == "visits 0")
+}

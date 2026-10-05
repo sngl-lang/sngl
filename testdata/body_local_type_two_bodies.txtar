@@ -152,13 +152,14 @@ type Local__pick struct {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	seed__inst0    int
-	here__inst1    Local
-	p__inst1       string
-	elapsed__inst1 Tick
-	here__inst2    Local__second
-	rows__inst2    []Local__second
+	visible__inst1 bool
+	here__inst2    Local
 	p__inst2       string
-	elapsed__inst2 Tick__second
+	elapsed__inst2 Tick
+	here__inst3    Local__second
+	rows__inst3    []Local__second
+	p__inst3       string
+	elapsed__inst3 Tick__second
 
 	width, height int
 }
@@ -167,13 +168,14 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.seed__inst0 = 2
-	m.here__inst1 = Local{A: 1}
-	m.p__inst1 = "done"
-	m.elapsed__inst1 = Tick(3)
-	m.here__inst2 = Local__second{BField: "two"}
-	m.rows__inst2 = []Local__second{}
-	m.p__inst2 = "ready"
-	m.elapsed__inst2 = Tick__second(5)
+	m.visible__inst1 = true
+	m.here__inst2 = Local{A: 1}
+	m.p__inst2 = "done"
+	m.elapsed__inst2 = Tick(3)
+	m.here__inst3 = Local__second{BField: "two"}
+	m.rows__inst3 = []Local__second{}
+	m.p__inst3 = "ready"
+	m.elapsed__inst3 = Tick__second(5)
 	return m
 }
 
@@ -210,79 +212,34 @@ func SetSeed__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setSeed__inst0Msg{value: v} }
 }
 
-func (m Model) Here__inst1() Local {
-	return m.here__inst1
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m Model) SetHere__inst1(v Local) Model {
-	m.here__inst1 = v
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
 	return m
 }
 
-type setHere__inst1Msg struct{ value Local }
+type setVisible__inst1Msg struct{ value bool }
 
-func SetHere__inst1Cmd(v Local) tea.Cmd {
-	return func() tea.Msg { return setHere__inst1Msg{value: v} }
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
 }
 
-func (m Model) P__inst1() string {
-	return m.p__inst1
-}
-
-func (m Model) SetP__inst1(v string) Model {
-	m.p__inst1 = v
-	return m
-}
-
-type setP__inst1Msg struct{ value string }
-
-func SetP__inst1Cmd(v string) tea.Cmd {
-	return func() tea.Msg { return setP__inst1Msg{value: v} }
-}
-
-func (m Model) Elapsed__inst1() Tick {
-	return m.elapsed__inst1
-}
-
-func (m Model) SetElapsed__inst1(v Tick) Model {
-	m.elapsed__inst1 = v
-	return m
-}
-
-type setElapsed__inst1Msg struct{ value Tick }
-
-func SetElapsed__inst1Cmd(v Tick) tea.Cmd {
-	return func() tea.Msg { return setElapsed__inst1Msg{value: v} }
-}
-
-func (m Model) Here__inst2() Local__second {
+func (m Model) Here__inst2() Local {
 	return m.here__inst2
 }
 
-func (m Model) SetHere__inst2(v Local__second) Model {
+func (m Model) SetHere__inst2(v Local) Model {
 	m.here__inst2 = v
 	return m
 }
 
-type setHere__inst2Msg struct{ value Local__second }
+type setHere__inst2Msg struct{ value Local }
 
-func SetHere__inst2Cmd(v Local__second) tea.Cmd {
+func SetHere__inst2Cmd(v Local) tea.Cmd {
 	return func() tea.Msg { return setHere__inst2Msg{value: v} }
-}
-
-func (m Model) Rows__inst2() []Local__second {
-	return m.rows__inst2
-}
-
-func (m Model) SetRows__inst2(v []Local__second) Model {
-	m.rows__inst2 = v
-	return m
-}
-
-type setRows__inst2Msg struct{ value []Local__second }
-
-func SetRows__inst2Cmd(v []Local__second) tea.Cmd {
-	return func() tea.Msg { return setRows__inst2Msg{value: v} }
 }
 
 func (m Model) P__inst2() string {
@@ -300,19 +257,79 @@ func SetP__inst2Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setP__inst2Msg{value: v} }
 }
 
-func (m Model) Elapsed__inst2() Tick__second {
+func (m Model) Elapsed__inst2() Tick {
 	return m.elapsed__inst2
 }
 
-func (m Model) SetElapsed__inst2(v Tick__second) Model {
+func (m Model) SetElapsed__inst2(v Tick) Model {
 	m.elapsed__inst2 = v
 	return m
 }
 
-type setElapsed__inst2Msg struct{ value Tick__second }
+type setElapsed__inst2Msg struct{ value Tick }
 
-func SetElapsed__inst2Cmd(v Tick__second) tea.Cmd {
+func SetElapsed__inst2Cmd(v Tick) tea.Cmd {
 	return func() tea.Msg { return setElapsed__inst2Msg{value: v} }
+}
+
+func (m Model) Here__inst3() Local__second {
+	return m.here__inst3
+}
+
+func (m Model) SetHere__inst3(v Local__second) Model {
+	m.here__inst3 = v
+	return m
+}
+
+type setHere__inst3Msg struct{ value Local__second }
+
+func SetHere__inst3Cmd(v Local__second) tea.Cmd {
+	return func() tea.Msg { return setHere__inst3Msg{value: v} }
+}
+
+func (m Model) Rows__inst3() []Local__second {
+	return m.rows__inst3
+}
+
+func (m Model) SetRows__inst3(v []Local__second) Model {
+	m.rows__inst3 = v
+	return m
+}
+
+type setRows__inst3Msg struct{ value []Local__second }
+
+func SetRows__inst3Cmd(v []Local__second) tea.Cmd {
+	return func() tea.Msg { return setRows__inst3Msg{value: v} }
+}
+
+func (m Model) P__inst3() string {
+	return m.p__inst3
+}
+
+func (m Model) SetP__inst3(v string) Model {
+	m.p__inst3 = v
+	return m
+}
+
+type setP__inst3Msg struct{ value string }
+
+func SetP__inst3Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setP__inst3Msg{value: v} }
+}
+
+func (m Model) Elapsed__inst3() Tick__second {
+	return m.elapsed__inst3
+}
+
+func (m Model) SetElapsed__inst3(v Tick__second) Model {
+	m.elapsed__inst3 = v
+	return m
+}
+
+type setElapsed__inst3Msg struct{ value Tick__second }
+
+func SetElapsed__inst3Cmd(v Tick__second) tea.Cmd {
+	return func() tea.Msg { return setElapsed__inst3Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -326,67 +343,78 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setSeed__inst0Msg:
 		m = m.SetSeed__inst0(msg.value)
-	case setHere__inst1Msg:
-		m = m.SetHere__inst1(msg.value)
-	case setP__inst1Msg:
-		m = m.SetP__inst1(msg.value)
-	case setElapsed__inst1Msg:
-		m = m.SetElapsed__inst1(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case setHere__inst2Msg:
 		m = m.SetHere__inst2(msg.value)
-	case setRows__inst2Msg:
-		m = m.SetRows__inst2(msg.value)
 	case setP__inst2Msg:
 		m = m.SetP__inst2(msg.value)
 	case setElapsed__inst2Msg:
 		m = m.SetElapsed__inst2(msg.value)
+	case setHere__inst3Msg:
+		m = m.SetHere__inst3(msg.value)
+	case setRows__inst3Msg:
+		m = m.SetRows__inst3(msg.value)
+	case setP__inst3Msg:
+		m = m.SetP__inst3(msg.value)
+	case setElapsed__inst3Msg:
+		m = m.SetElapsed__inst3(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.here__inst1.A * 2))))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst1))))
-	parts = append(parts, part1)
-	var part2 string
-	if m.p__inst1 == "done" {
-		part2 = lipgloss.NewStyle().Render(fmt.Sprint("first done"))
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.here__inst2.A * 2))))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst2))))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		if m.p__inst2 == "done" {
+			contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint("first done"))
+		}
+		if contentPart_2 != "" {
+			contentParts = append(contentParts, contentPart_2)
+		}
+		var contentPart_3 string
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(Local__secondShout(m.here__inst3, 2)))
+		contentParts = append(contentParts, contentPart_3)
+		var contentPart_4 string
+		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.rows__inst3))))
+		contentParts = append(contentParts, contentPart_4)
+		var contentPart_5 string
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst3))))
+		contentParts = append(contentParts, contentPart_5)
+		var contentPart_6 string
+		if m.p__inst3 == "ready" {
+			contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint("second ready"))
+		}
+		if contentPart_6 != "" {
+			contentParts = append(contentParts, contentPart_6)
+		}
+		var contentPart_7 string
+		contentPart_7 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(Pick(m.seed__inst0))))
+		contentParts = append(contentParts, contentPart_7)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	if part2 != "" {
-		parts = append(parts, part2)
-	}
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(Local__secondShout(m.here__inst2, 2)))
-	parts = append(parts, part3)
-	var part4 string
-	part4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.rows__inst2))))
-	parts = append(parts, part4)
-	var part5 string
-	part5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst2))))
-	parts = append(parts, part5)
-	var part6 string
-	if m.p__inst2 == "ready" {
-		part6 = lipgloss.NewStyle().Render(fmt.Sprint("second ready"))
-	}
-	if part6 != "" {
-		parts = append(parts, part6)
-	}
-	var part7 string
-	part7 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(Pick(m.seed__inst0))))
-	parts = append(parts, part7)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -425,6 +453,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Local(
@@ -462,27 +493,37 @@ enum class Phase__second(private val sngl: String) {
 @Composable
 fun MainScreen() {
     var seed__inst0 by remember { mutableStateOf(2) }
-    var here__inst1 by remember { mutableStateOf(Local(a = 1)) }
-    var p__inst1 by remember { mutableStateOf(Phase.DONE) }
-    var elapsed__inst1 by remember { mutableStateOf(3.0) }
-    var here__inst2 by remember { mutableStateOf(Local__second(bField = "two")) }
-    val rows__inst2 = remember { mutableStateListOf<Local__second>() }
-    var p__inst2 by remember { mutableStateOf(Phase__second.READY) }
-    var elapsed__inst2 by remember { mutableStateOf(5.0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
+    var here__inst2 by remember { mutableStateOf(Local(a = 1)) }
+    var p__inst2 by remember { mutableStateOf(Phase.DONE) }
+    var elapsed__inst2 by remember { mutableStateOf(3.0) }
+    var here__inst3 by remember { mutableStateOf(Local__second(bField = "two")) }
+    val rows__inst3 = remember { mutableStateListOf<Local__second>() }
+    var p__inst3 by remember { mutableStateOf(Phase__second.READY) }
+    var elapsed__inst3 by remember { mutableStateOf(5.0) }
 
-    Column {
-        Text(text = (here__inst1.a * 2).toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = elapsed__inst1.toInt().toString(), modifier = Modifier.safeDrawingPadding())
-        if ((p__inst1 == Phase.DONE)) {
-            Text(text = "first done", modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
         }
-        Text(text = here__inst2.shout(2), modifier = Modifier.safeDrawingPadding())
-        Text(text = rows__inst2.size.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = elapsed__inst2.toInt().toString(), modifier = Modifier.safeDrawingPadding())
-        if ((p__inst2 == Phase__second.READY)) {
-            Text(text = "second ready", modifier = Modifier.safeDrawingPadding())
+        Column {
+            Text(text = (here__inst2.a * 2).toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = elapsed__inst2.toInt().toString(), modifier = Modifier.safeDrawingPadding())
+            if ((p__inst2 == Phase.DONE)) {
+                Text(text = "first done", modifier = Modifier.safeDrawingPadding())
+            }
+            Text(text = here__inst3.shout(2), modifier = Modifier.safeDrawingPadding())
+            Text(text = rows__inst3.size.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = elapsed__inst3.toInt().toString(), modifier = Modifier.safeDrawingPadding())
+            if ((p__inst3 == Phase__second.READY)) {
+                Text(text = "second ready", modifier = Modifier.safeDrawingPadding())
+            }
+            Text(text = pick(seed__inst0).toString(), modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = pick(seed__inst0).toString(), modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -510,29 +551,29 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
-<span data-sngl-slot="0" style="display:contents"></span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
+<span data-sngl-slot="0" style="display:contents"></span>
 <span id="__n3" data-sngl-id="__n3">
 </span>
 <span id="__n4" data-sngl-id="__n4">
 </span>
-<span data-sngl-slot="1" style="display:contents"></span>
 <span id="__n5" data-sngl-id="__n5">
+</span>
+<span data-sngl-slot="1" style="display:contents"></span>
+<span id="__n6" data-sngl-id="__n6">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seed__inst0: 2, here__inst1: null, p__inst1: null, elapsed__inst1: 3, here__inst2: null, rows__inst2: [], p__inst2: null, elapsed__inst2: 5 };
-  state.here__inst1 = { a: 1 };
-  state.p__inst1 = "done";
-  state.here__inst2 = { bField: "two" };
-  state.p__inst2 = "ready";
+  var state = { seed__inst0: 2, visible__inst1: true, here__inst2: null, p__inst2: null, elapsed__inst2: 3, here__inst3: null, rows__inst3: [], p__inst3: null, elapsed__inst3: 5 };
+  state.here__inst2 = { a: 1 };
+  state.p__inst2 = "done";
+  state.here__inst3 = { bField: "two" };
+  state.p__inst3 = "ready";
   function Local__second_shout(state2, n) {
     if (n <= 0) {
       ;
@@ -551,19 +592,19 @@ body { font-family: system-ui, sans-serif; }
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    if (state.p__inst1 === "done") {
-      let __n6 = document.createElement("span");
-      __n6.textContent = "first done";
+    if (state.p__inst2 === "done") {
+      let __n7 = document.createElement("span");
+      __n7.textContent = "first done";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n6) {
+      if (__place0_i_ref0 === __n7) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n6, __place0_i_ref0);
+        parent.insertBefore(__n7, __place0_i_ref0);
       }
-      __slot0.push(__n6);
+      __slot0.push(__n7);
     }
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
@@ -575,19 +616,19 @@ body { font-family: system-ui, sans-serif; }
     let __place1_prev = __slot1;
     let __place1_i = 0;
     __slot1 = [];
-    if (state.p__inst2 === "ready") {
-      let __n7 = document.createElement("span");
-      __n7.textContent = "second ready";
+    if (state.p__inst3 === "ready") {
+      let __n8 = document.createElement("span");
+      __n8.textContent = "second ready";
       let __place1_i_ref0 = null;
       if (__place1_i < __place1_prev.length) {
         __place1_i_ref0 = __place1_prev[__place1_i];
       }
-      if (__place1_i_ref0 === __n7) {
+      if (__place1_i_ref0 === __n8) {
         __place1_i = __place1_i + 1;
       } else {
-        parent.insertBefore(__n7, __place1_i_ref0);
+        parent.insertBefore(__n8, __place1_i_ref0);
       }
-      __slot1.push(__n7);
+      __slot1.push(__n8);
     }
     for (const __place1_prev_e of __place1_prev) {
       if (__slot1.indexOf(__place1_prev_e) < 0) {
@@ -598,31 +639,31 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
   __renderSlot1(__slotAnchor_1);
   function __sngl_init() {
-    __n0.textContent = String(state.here__inst1.a * 2);
-    __n1.textContent = String(Math.trunc(state.elapsed__inst1));
-    __n2.textContent = Local__second_shout(state.here__inst2, 2);
-    __n3.textContent = String(state.rows__inst2.length);
-    __n4.textContent = String(Math.trunc(state.elapsed__inst2));
-    __n5.textContent = String(pick(state.seed__inst0));
+    __n1.textContent = String(state.here__inst2.a * 2);
+    __n2.textContent = String(Math.trunc(state.elapsed__inst2));
+    __n3.textContent = Local__second_shout(state.here__inst3, 2);
+    __n4.textContent = String(state.rows__inst3.length);
+    __n5.textContent = String(Math.trunc(state.elapsed__inst3));
+    __n6.textContent = String(pick(state.seed__inst0));
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1c4e25454f8e7a02109cd6be26d6e515
+pass sha256:3fbdeadd14e40a240048dbeaa4c57558
 -- run/kotlin/android --
-pass sha256:3e0e0e66517946d6cb63f0fa1205ec16
+pass sha256:ed3592d7e2b92f9e24c1456414be936c
 -- run/none/html --
-pass sha256:f225ea04bc516a2b1e3dd18fe9ab713b
+pass sha256:c790d97c513776a27f60f9e9f41a8644

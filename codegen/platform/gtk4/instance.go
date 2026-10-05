@@ -35,6 +35,8 @@ func emitComponentInstance(
 	shared *emitShared,
 	wrapped bool,
 	canvases []codegen.Canvas,
+	invokerSink func(gtkEventInvoker),
+	modelFieldSink func(widgetField),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -78,7 +80,13 @@ func emitComponentInstance(
 		return tr
 	}
 
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar)
+	// A widget the program named is one a test drives, and a record is built
+	// and destroyed while the program runs, so the record hands its widget to
+	// the Model as it is built: the invoker reaches whichever instance built
+	// it last, which is the one on screen.
+	var invokers []gtkEventInvoker
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar).
+		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder
@@ -91,6 +99,27 @@ func emitComponentInstance(
 		}
 	}
 	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
+	exposed := map[string]bool{}
+	for _, inv := range invokers {
+		var field *widgetField
+		for i := range fields {
+			if fields[i].name == inv.FieldName {
+				field = &fields[i]
+				break
+			}
+		}
+		if field == nil || invokerSink == nil {
+			continue
+		}
+		named := "__named_" + inv.FieldName
+		if !exposed[named] {
+			exposed[named] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, inv.FieldName)
+			modelFieldSink(widgetField{name: named, goType: field.goType})
+		}
+		inv.FieldName = named
+		invokerSink(inv)
+	}
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
 	// Methods after the body, because the walk is what discovers the widget

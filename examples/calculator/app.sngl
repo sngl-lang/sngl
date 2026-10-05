@@ -51,6 +51,6 @@ component Calculator ui.node {
     }
 }
 
-ui.window #calculator(title="Calculator", href="/") {
+ui.window #calculator(title="Calculator") {
     Calculator()
 }

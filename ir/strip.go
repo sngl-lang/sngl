@@ -97,9 +97,6 @@ func (s *stripper) stripPackage(pkg *Package) {
 	if pkg.Components == nil {
 		pkg.Components = []*Component{}
 	}
-	if pkg.Windows == nil {
-		pkg.Windows = []*Window{}
-	}
 	if pkg.Outputs == nil {
 		pkg.Outputs = []*Output{}
 	}
@@ -129,9 +126,6 @@ func (s *stripper) stripPackage(pkg *Package) {
 	}
 	for _, c := range pkg.Components {
 		s.stripComponent(c)
-	}
-	for _, w := range pkg.Windows {
-		s.stripStmt(w)
 	}
 	s.stripStmts(pkg.Body)
 	for _, o := range pkg.Outputs {

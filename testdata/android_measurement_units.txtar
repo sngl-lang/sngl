@@ -53,6 +53,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -73,13 +76,24 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column(modifier = Modifier.padding(8.dp).safeDrawingPadding()) {
-        Text(text = "with units", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
-        Text(text = "bare", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
-        Button(onClick = {}, modifier = Modifier.width(100.dp).height(40.dp), shape = RoundedCornerShape(12.dp)) {
-            Text(text = "rounded", modifier = Modifier)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.padding(8.dp).safeDrawingPadding()) {
+            Text(text = "with units", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
+            Text(text = "bare", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
+            Button(onClick = {}, modifier = Modifier.width(100.dp).height(40.dp), shape = RoundedCornerShape(12.dp)) {
+                Text(text = "rounded", modifier = Modifier)
+            }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:3d1675651dadd2ef2668a3e7defce28a
+pass sha256:5b3eb58b50904e6150a1d027d0eae1a4

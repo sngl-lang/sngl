@@ -4,11 +4,12 @@
 // packages do not re-export a dot import, and neither should this one.
 import ui "sngl:ui"
 
-// `#[tree.kind]` is what marks the shape struct below as naming a tree, and
-// `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
-import tree "sngl:tree"
+// `shape` below is a family because it is a member of `build.family`, and
+// `#[marks.builtin("treeShape")]` is how the compiler names that one family.
+import build "sngl:build"
 import math "sngl:math"
 import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
@@ -45,11 +46,13 @@ struct PathCmd {
 // The builtin mark is the one thing this family has that an ordinary one does
 // not: passShapeDraw turns a canvas's children into the calls that paint them,
 // so the compiler has to name the tree those rules are about. It names it by the mark rather than by
-// the pair "sngl:ui/draw" and "shape", so a program declaring `struct shape`
-// of its own is a different family and is not painted.
-#[tree.kind]
+// the pair "sngl:ui/draw" and "shape", so a program declaring a `shape` family
+// of its own is a different one and is not painted. `#[tree.eventless]` is
+// what a painted shape cannot do -- raise an event -- said by the family, so
+// the checker holds its members to it without knowing what drawing is.
 #[marks.builtin("treeShape")]
-struct shape {}
+#[tree.eventless]
+component shape build.family
 
 // How a canvas is shown when the room it is given is not the size it draws at.
 // `width` and `height` are the coordinate space the shapes are placed in;

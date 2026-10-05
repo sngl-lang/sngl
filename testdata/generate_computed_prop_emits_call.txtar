@@ -36,26 +36,26 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 2 };
+  var state = { count__inst0: 2, visible__inst1: true };
   function doubled__inst0() {
     return state.count__inst0 * 2;
   }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = String(doubled__inst0());
+    __n1.textContent = String(doubled__inst0());
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2cec6548651e8f8b32c246fb7e915388
+pass sha256:16a6a48c818a43274105e5b104780711

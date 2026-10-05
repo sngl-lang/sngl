@@ -68,6 +68,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	widget0 progress.Model
 	widget1 progress.Model
 
@@ -77,6 +79,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	m.widget0 = progress.New()
 	m.widget1 = progress.New()
 	m.resizeWidgets()
@@ -96,6 +99,21 @@ func (m *Model) resizeWidgets() {
 	m.widget1.SetWidth(tui.WidgetWidth(m.width))
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -105,6 +123,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -112,21 +132,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = m.widget0.ViewAs(tui.Percent(float64(2.0), float64(10.0)))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = m.widget1.ViewAs(tui.Percent(float64(0.0), float64(1.0)))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = m.widget0.ViewAs(tui.Percent(float64(2.0), float64(10.0)))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = m.widget1.ViewAs(tui.Percent(float64(0.0), float64(1.0)))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -148,42 +177,70 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *widget.Label
-	__n3 *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__n4    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText("2")
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("working")
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n3)
-	return container.NewVBox(parts...)
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("t")
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText("2")
+	m.__n0.Add(m.__n1)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("working")
+	m.__n0.Add(m.__n4)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -345,16 +402,34 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkProgressBar
-	__n3   *C.GtkProgressBar
-	__root *C.GtkBox
+	visible__inst0 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkProgressBar
+	__n4           *C.GtkProgressBar
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -362,16 +437,18 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.double(0.2))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.CString(""))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(false)))
-	m.__n3 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.double(0.0))
-	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.CString("working"))
-	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(false)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.double(0.2))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.CString(""))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	m.__n4 = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.double(0.0))
+	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.CString("working"))
+	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(m.__n4)), C.gboolean(boolToInt(false)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -408,6 +485,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -419,11 +499,22 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column {
-        LinearProgressIndicator(progress = fun(): Float {
-            return 0.2f
-        }, modifier = Modifier.safeDrawingPadding())
-        LinearProgressIndicator(modifier = Modifier.safeDrawingPadding())
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            LinearProgressIndicator(progress = fun(): Float {
+                return 0.2f
+            }, modifier = Modifier.safeDrawingPadding())
+            LinearProgressIndicator(modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -448,17 +539,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5018d2986abdb352db176382de6fb7f7
+pass sha256:9ebbe40623d075fcfe558cfbd7d2003c
 -- run/go/fyne --
-pass sha256:b2960d9af7a8e20c744c073493559ee2
+pass sha256:63242e1dc2100b63689396f06e92bc9d
 -- run/go/gtk4 --
-pass sha256:b1ff1fb197c3b6b48580228568511882
+pass sha256:dc345a1aeadcf8dec3804fd60122fd0b
 -- run/kotlin/android --
-pass sha256:8c3f82e3a48df8422faf79bfdd79658d
+pass sha256:8176d6c8217526d9acdf7fdcf35e48a4
 -- run/none/html --
-pass sha256:ee194ea111769b237772d83b70bf8d7e
+pass sha256:c95b5bab246a9e2d15d850386fa75775

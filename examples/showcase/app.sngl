@@ -357,7 +357,7 @@ component Tour ui.node {
                 label="Dark mode",
                 @change { darkMode!! },
             )
-            ui.toggle(checked=toggleOn, label="Notifications")
+            ui.toggle(:checked=toggleOn, label="Notifications")
             ui.radio(
                 direction="horizontal",
                 options=["small", "medium", "large"],
@@ -577,7 +577,7 @@ component Tour ui.node {
 // A window at the root of the file is what a build renders; a component
 // is not one. `href` is the route the html target serves it at.
 
-ui.window #tour(title=APP_NAME, href="/") {
+ui.window #tour(title=APP_NAME) {
     Tour()
 }
 

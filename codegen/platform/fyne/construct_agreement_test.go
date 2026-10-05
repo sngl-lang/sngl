@@ -1,6 +1,7 @@
 package fyne
 
 import (
+	"git.duckfam.us/jonathan/sngl/lib"
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ import (
 // mark reappearing on a list-valued prop would not be a drift to notice later
 // but a package that stops checking.
 func TestNoWidgetPropIsConstructOnly(t *testing.T) {
-	src, err := snglsrc.ReadFile("fyne.sngl")
+	src, err := lib.FS.ReadFile("platform/fyne/fyne.sngl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +56,13 @@ func TestNoWidgetPropIsConstructOnly(t *testing.T) {
 // says which half it broke.
 func TestSelectAssignsOptionsBeforeSelected(t *testing.T) {
 	model := generateFyneModelBuilt(t, selectOptionsSrc)
+	// The build, where the two are first written. The change handler above
+	// it re-syncs the selection a binding wrote, which is no initial one.
+	build := strings.Index(model, "func (m *Model) BuildUI(")
+	if build < 0 {
+		t.Fatal("generated model has no BuildUI")
+	}
+	model = model[build:]
 	opts := strings.Index(model, ".SetOptions(")
 	sel := strings.Index(model, ".SetSelected(")
 	if opts < 0 || sel < 0 {

@@ -48,6 +48,9 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
+	// appChildren are the nodes this scope attached to the application, in
+	// order.
+	appChildren []string
 	// slotRoot is the container a reactive slot in this scope's body renders
 	// into, when this scope owns one. A call to that slot's renderer holds a
 	// place in the tree exactly as a created widget does -- the subtree is
@@ -409,6 +412,9 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	if ir.IsAppParent(parent) {
+		return t.appAttach(child)
+	}
 	// Single-child containers (e.g. *container.Scroll) have no Add method;
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
@@ -436,6 +442,16 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	if ir.IsAppParent(parent) {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.AppDetach", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
+	// A render slot's container may be the application, which only the
+	// runtime can tell from the value it is handed.
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.Remove", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyParentExpr(parent), t.qualifyChildExpr(child)}, ir.TypVoid)}}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.qualifyChildExpr(child)
 	return []ir.Stmt{&ir.CallStmt{Call: methodCall(parent, "Remove", []ir.Expr{child}, ir.TypVoid)}}
@@ -643,6 +659,10 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
 		return nil
 	}
+	// A window that names no title is built with none.
+	if lit, ok := value.(*ir.Literal); ok && sp.toplevel && prop == "title" && lit.Value == "" {
+		return nil
+	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {
 		// The write is what a prop *is* by the time it reaches a platform:
@@ -666,7 +686,16 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return nil
 	}
 	nodeRef := t.nodeRefFor(bareID)
-	return []ir.Stmt{&ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}}
+	set := &ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}
+	if cur := sp.Currents[prop]; cur != "" {
+		return []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Op: ast.BinNeq, Type: ir.TypBool,
+				Left:  &ir.Select{Operand: t.nodeRefFor(bareID), Field: cur, Type: value.ExprType()},
+				Right: value},
+			Body: []ir.Stmt{set},
+		}}
+	}
+	return []ir.Stmt{set}
 }
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
@@ -713,6 +742,9 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if app := t.appSlotArg(n); app != nil {
+			return []ir.Stmt{app}
+		}
 		if boxed := t.boxedSlotRenderCall(n); boxed != nil {
 			return boxed
 		}
@@ -836,6 +868,14 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 			// so the handler's write-back of the bound var is a no-op there,
 			// while here it would set a new value and fire the callback again.
 			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
+			// A commit hands on text the entry already holds, since a user
+			// cannot submit what they have not typed. Put it there first
+			// without firing OnChanged, as gtk4's invoker does, or a
+			// binding's write-back setting it would fire @input.
+			if inv.Field == "OnSubmitted" && inv.ParamType == "string" {
+				fmt.Fprintf(b, "\tif oc := m.%s.OnChanged; m.%s.Text != %s {\n\t\tm.%s.OnChanged = nil\n\t\tm.%s.SetText(%s)\n\t\tm.%s.OnChanged = oc\n\t}\n",
+					target, target, inv.Param, target, target, inv.Param, target)
+			}
 			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
 				target, inv.Field, target, inv.Field, inv.Param, target, inv.Field)
 			continue

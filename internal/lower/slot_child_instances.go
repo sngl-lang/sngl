@@ -39,12 +39,10 @@ import (
 // into the props the render re-points.
 var passSlotChildInstances = pass{
 	name: "SlotChildInstances",
-	// InsertBefore is what makes this worth doing: without it a slot tears its
-	// children down and appends them all back, so an identity across renders is
-	// one nothing asks about, and the registry that maintains it would be pure
-	// overhead. A synthesized row holds no state of its own -- retention buys
-	// exactly the placement match and nothing else.
-	enabled: func(c Features) bool { return hasInstanceRuntime(c) && c.InsertBefore },
+	// Every target with an instance runtime lifts a slot body that reads
+	// state (liftSlotBodies); only one that can place a child also converts
+	// the rows that read none, for the reason convertChildren gives.
+	enabled: hasInstanceRuntime,
 	apply:   lowerSlotChildInstances,
 }
 
@@ -53,28 +51,51 @@ var passSlotChildInstances = pass{
 type slotChildSynth struct {
 	pkg      *ir.Package
 	reactive map[*ir.Var]bool
-	n        int
+	// cells is what a view body re-renders from beyond the package's and the
+	// components' vars: the props of a component built at run time, which
+	// passComponentProps promotes to cells after this pass -- the props of
+	// the components this pass synthesizes among them.
+	cells map[ir.Symbol]bool
+	// readHandles is every node handle something reads, which no lift may
+	// move behind a component boundary.
+	readHandles map[ir.Symbol]bool
+	n           int
 }
 
-func lowerSlotChildInstances(pkg *ir.Package, _ Features, _ Options) error {
+func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
+	st.cells = runtimeProps(pkg, rootComponent(pkg, opts))
+	st.readHandles = readNodeHandles(pkg)
 	// Rooted at the bodies a visual tree is written in. Reaching an
 	// imperative body under one costs nothing: only a view body holds a
 	// NodeInst, so a `for` in a handler has no top-level node to convert.
+	//
+	// By index, because lifting appends the components it synthesizes and
+	// each of their bodies is a view body with slots of its own.
+	for i := 0; i < len(pkg.Components); i++ {
+		if c := pkg.Components[i]; c != nil {
+			st.liftSlotBodies(c.Body)
+		}
+	}
+	st.liftSlotBodies(pkg.Body)
+	if !caps.InsertBefore {
+		return nil
+	}
+	// InsertBefore is what makes converting the rest worth doing: without it
+	// a slot tears its children down and appends them all back, so an
+	// identity across renders is one nothing asks about, and the registry
+	// that maintains it would be pure overhead. A synthesized row holds no
+	// state of its own -- retention buys exactly the placement match and
+	// nothing else.
 	for _, c := range pkg.Components {
 		if c != nil {
 			st.walk(c.Body)
 		}
 	}
 	st.walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		if w != nil {
-			st.walk(w.Children)
-		}
-	}
 	return nil
 }
 
@@ -160,6 +181,9 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
 	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
+	for _, p := range comp.Props {
+		st.cells[p.Sym] = true
+	}
 
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
@@ -174,8 +198,18 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // scoped slot's parameters) the body reads.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 	_ = ir.Walk(n, func(node ir.Node) error {
-		if host, ok := node.(*ir.NodeInst); ok && !isDrawShape(host) {
-			liftNodeHandlers(host, l, bound)
+		switch x := node.(type) {
+		case *ir.NodeInst:
+			if !isDrawShape(x) {
+				liftNodeHandlers(x, l, bound)
+			}
+		case *ir.ErrorBoundary:
+			// A boundary's handler is a body written at the site like a
+			// node's, and a raise reaches it through Call.ResolvedHandler,
+			// which still names this handler once its body is the relay.
+			if x.Handler != nil {
+				liftHandler(x.Handler, l, bound)
+			}
 		}
 		return nil
 	})
@@ -190,15 +224,21 @@ func isDrawShape(n *ir.NodeInst) bool {
 // handlerParams is the parameters of every handler under n, which no lifting
 // may make a prop of: nothing outside the handler binds them.
 func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
-	_ = ir.Walk(n, func(node ir.Node) error {
-		if host, ok := node.(*ir.NodeInst); ok {
-			for _, h := range host.Handlers {
-				if h.Func != nil {
-					for _, p := range h.Func.Params {
-						into[p] = true
-					}
-				}
+	add := func(h *ir.EventHandler) {
+		if h != nil && h.Func != nil {
+			for _, p := range h.Func.Params {
+				into[p] = true
 			}
+		}
+	}
+	_ = ir.Walk(n, func(node ir.Node) error {
+		switch x := node.(type) {
+		case *ir.NodeInst:
+			for i := range x.Handlers {
+				add(&x.Handlers[i])
+			}
+		case *ir.ErrorBoundary:
+			add(x.Handler)
 		}
 		return nil
 	})
@@ -208,40 +248,45 @@ func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
 // liftNodeHandlers is liftHandlers for host's own handlers alone.
 func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param) {
 	for i := range host.Handlers {
-		h := &host.Handlers[i]
-		if h.Func == nil || len(h.Func.Block) == 0 {
-			continue
-		}
-		name := "__on" + strconv.Itoa(l.events)
-		l.events++
-		reads := paramsRead(h.Func.Block, bound)
-		emit := &ir.Emit{Name: name}
-		relay := &ir.Func{Block: []ir.Stmt{emit}}
-		// Renamed, so a scoped slot's parameter of the same name is not
-		// what the splice binds in their place.
-		for j, p := range h.Func.Params {
-			fresh := &ir.Param{Name: name + "_" + strconv.Itoa(j), Type: p.Type}
-			relay.Params = append(relay.Params, fresh)
-			l.relayed[fresh] = true
-			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fresh.Name, Type: fresh.Type, Sym: fresh}})
-		}
-		for _, p := range reads {
-			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
-		}
-		decl := &ir.EventDecl{Name: name}
-		lifted := h.Func
-		if len(emit.Args) > 0 {
-			moved := *h.Func
-			moved.Params = append(slices.Clip(h.Func.Params), reads...)
-			lifted = &moved
-			decl.Params = moved.Params
-		}
-		l.comp.Events = append(l.comp.Events, decl)
-		l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: lifted})
-		// What is left on the node inside the component is the emit: the
-		// host event still fires, and firing it is what calls out.
-		h.Func = relay
+		liftHandler(&host.Handlers[i], l, bound)
 	}
+}
+
+// liftHandler makes h an event the component declares, the body staying at the
+// site, and leaves the relay that fires it in h's place.
+func liftHandler(h *ir.EventHandler, l *lift, bound []*ir.Param) {
+	if h.Func == nil || len(h.Func.Block) == 0 {
+		return
+	}
+	name := "__on" + strconv.Itoa(l.events)
+	l.events++
+	reads := paramsRead(h.Func.Block, bound)
+	emit := &ir.Emit{Name: name}
+	relay := &ir.Func{Block: []ir.Stmt{emit}}
+	// Renamed, so a scoped slot's parameter of the same name is not
+	// what the splice binds in their place.
+	for j, p := range h.Func.Params {
+		fresh := &ir.Param{Name: name + "_" + strconv.Itoa(j), Type: p.Type}
+		relay.Params = append(relay.Params, fresh)
+		l.relayed[fresh] = true
+		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fresh.Name, Type: fresh.Type, Sym: fresh}})
+	}
+	for _, p := range reads {
+		emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
+	}
+	decl := &ir.EventDecl{Name: name}
+	lifted := h.Func
+	if len(emit.Args) > 0 {
+		moved := *h.Func
+		moved.Params = append(slices.Clip(h.Func.Params), reads...)
+		lifted = &moved
+		decl.Params = moved.Params
+	}
+	l.comp.Events = append(l.comp.Events, decl)
+	l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: lifted})
+	// What is left on the node inside the component is the emit: the
+	// host event still fires, and firing it is what calls out.
+	h.Func = relay
 }
 
 // paramsRead is each of params that stmts reads, in params' order.
@@ -268,9 +313,10 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // liftValues turns every free value the subtree reads into a prop.
 //
 // Free means declared outside the node: the loop variable, and any of the
-// owner's state the body names. Both are safe to read through a cell, because
-// a slot re-renders whenever anything its body reads changes -- not only when
-// the iterable does -- so the render is always the one pushing the new value.
+// owner's state the body names. Both are safe to read through a cell: a slot
+// re-renders when what its structure reads changes, which is the only way a
+// loop variable changes, and a write to the owner's state hands every live
+// instance its new value (passReactivity's registry updaters).
 //
 // A call is a free value too, and the reason is not obvious: `decorate()`
 // names none of the owner's state and still reads it, through the body of the
@@ -281,8 +327,9 @@ func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
 // owner's scope. Lifting the call restores the property the whole synthesis
 // rests on: the child's subtree reads nothing but its own props. That is also
 // what makes registerSlotBodyDeps enough on its own -- the call is a prop
-// expression in the slot body now, so the slot re-fires when the func's reads
-// change, and no second guard is needed for this boundary.
+// expression in the slot body now, so the live instances are handed its value
+// when the func's reads change, and no second guard is needed for this
+// boundary.
 //
 // A call reading one of local stays where it is, its reads lifted one by one:
 // its arguments name bindings the site does not have.
