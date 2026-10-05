@@ -43,7 +43,7 @@ func PackageSource(name string) []*ast.Document {
 	if docs, ok := packageSourceCache[name]; ok {
 		return docs
 	}
-	docs := append(PackageDocsFor(name), ProvidedDocs(registeredTarget(name))...)
+	docs := PackageDocsFor(name)
 	packageSourceCache[name] = docs
 	return docs
 }
@@ -205,9 +205,9 @@ func (c *checker) adoptAmbient(pkg *ir.Package) {
 	}
 }
 
-// libDocs returns the parsed source of lib package name: what lib/ embeds,
-// plus what the target of that name synthesizes (providedDocs). Config.LibSources
-// substitutes the whole package instead, for the in-test stubs.
+// libDocs returns the parsed source of lib package name: what lib/ embeds.
+// Config.LibSources substitutes the whole package instead, for the in-test
+// stubs.
 func (c *checker) libDocs(name string) []*ast.Document {
 	var docs []*ast.Document
 	if c.cfg != nil {
@@ -216,49 +216,9 @@ func (c *checker) libDocs(name string) []*ast.Document {
 		}
 	}
 	if docs == nil {
-		docs = append(PackageDocsFor(name), c.providedDocs(name)...)
+		docs = PackageDocsFor(name)
 	}
 	return docs
-}
-
-// providedDocs is the source the registered target of this package name
-// provides, or nil for any other package.
-func (c *checker) providedDocs(name string) []*ast.Document {
-	if c.cfg == nil {
-		return nil
-	}
-	// Both tiers: a language declares its foreign-type surface the way a
-	// platform declares its widgets. Within its own tier, though -- a language
-	// asked for its platform package answers with itself, and the package then
-	// exists under a name no target has.
-	target, kind, ok := targetTierName(name)
-	if !ok {
-		return nil
-	}
-	// This config's targets and no others. A check is defined by the targets
-	// it was configured with, so a target absent from them contributes
-	// nothing here even when it is registered process-wide -- PackageSource is
-	// where the registry answers, for readers that have no config to carry.
-	//
-	// Memoized for the life of this checker and no longer. ProvidedDocs
-	// re-reads the target's files on every call (the parse behind them is
-	// shared, parseProvided), and one check asks about the same package
-	// around 26 times -- hasLibPkg on each lookup, targetPkgScope, libDocs,
-	// libPkg, mergeTargetExtensions.
-	//
-	// Per-checker because a target may be reconfigured between checks, and a
-	// check must see one answer throughout: the callers are meant to see the
-	// same ASTs -- they previously got a different *ast.Document for the same
-	// package depending on which of them asked.
-	if docs, ok := c.providedCache[name]; ok {
-		return slices.Clone(docs)
-	}
-	docs := ProvidedDocs(c.lookupTargetIn(target, kind))
-	if c.providedCache == nil {
-		c.providedCache = map[string][]*ast.Document{}
-	}
-	c.providedCache[name] = docs
-	return slices.Clone(docs)
 }
 
 // Targets that serve a library package, keyed by its `sngl:<uri>`. A
@@ -305,92 +265,13 @@ func registeredTarget(uri string) any {
 	return targetPkgs[uri]
 }
 
-// ProvidedDocs parses the .sngl source a target synthesizes for its own
-// library package, which it provides as an fs.FS the way lib.FS is one.
-//
-// A target whose declarations are derived from the host cannot embed them:
-// gtk4's widget set is whatever the GTK introspection data installed here
-// describes. The interface is matched structurally, as PlatformAvailability is,
-// because codegen imports this package.
-func ProvidedDocs(t any) []*ast.Document {
-	p, ok := t.(interface{ PackageFS() fs.FS })
-	if !ok {
-		return nil
-	}
-	// The package a file's name is qualified by, from the target's own
-	// identity: `ProvidedDocs` is handed the target and not its URI.
-	prefix := "target"
-	switch id := t.(type) {
-	case ir.Platform:
-		prefix = "platform/" + id.PlatformIdentifier()
-	case ir.Language:
-		prefix = "language/" + id.LanguageIdentifier()
-	}
-	fsys := p.PackageFS()
-	if fsys == nil {
-		return nil
-	}
-	entries, err := fs.ReadDir(fsys, ".")
-	if err != nil {
-		panic(fmt.Sprintf("sngl: reading target-provided source: %v", err))
-	}
-	var docs []*ast.Document
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-			continue
-		}
-		data, err := fs.ReadFile(fsys, e.Name())
-		if err != nil {
-			panic(fmt.Sprintf("sngl: reading target-provided file %q: %v", e.Name(), err))
-		}
-		// Qualified for the reason the embedded tiers are: a target's own
-		// source must not share a file name with the program's.
-		docs = append(docs, parseProvided(prefix+"/"+e.Name(), data))
-	}
-	return docs
-}
-
-// providedParses memoizes parseProvided for the life of the process.
-var (
-	providedParseMu sync.Mutex
-	providedParses  = map[providedKey]*ast.Document{}
-)
-
-// providedKey is a file by name and content. The content is part of the key
-// because a target can be reconfigured to serve a different package -- gtk4
-// against another GIR generates another widget file under the same name --
-// and that has to be a new parse, while the same bytes are the same AST.
-type providedKey struct{ name, data string }
-
-// parseProvided parses one file of a target's package, once per content.
-//
-// Shared across checks the way the embedded tiers (parseStdlibDocs) always
-// have been: nothing downstream of the parser writes to an AST, which
-// TestProvidedDocsSurviveChecks holds it to. Re-parsing was a tenth of the
-// bytes a build allocated -- html.sngl alone is 31KB of source, read again by
-// every check that targets html.
-func parseProvided(name string, data []byte) *ast.Document {
-	key := providedKey{name, string(data)}
-	providedParseMu.Lock()
-	defer providedParseMu.Unlock()
-	if doc, ok := providedParses[key]; ok {
-		return doc
-	}
-	doc, err := parser.Parse(name, data)
-	if err != nil {
-		panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", name, err))
-	}
-	providedParses[key] = doc
-	return doc
-}
-
 func (c *checker) hasLibPkg(name string) bool {
 	if c.cfg != nil {
 		if _, ok := c.cfg.LibSources[name]; ok {
 			return true
 		}
 	}
-	return len(PackageDocsFor(name)) > 0 || len(c.providedDocs(name)) > 0
+	return len(PackageDocsFor(name)) > 0
 }
 
 // targetUnavailable reports why a platform cannot be used in this

@@ -497,12 +497,12 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 
 ### Codegen Plugin System
 
-Languages and platforms register via `init()` and are looked up by name at runtime:
+Every target is a `lib/` directory registered from the layout; its Go generator registers by key in `init()`, and both are looked up by name at runtime:
 
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
-- **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
-- **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html), each registers in `init()`. A moved target's package is a `lib/` directory instead, and its Go registers by key (`codegen.RegisterNative`) -- see *A target is its library package*
+- **`codegen/registry.go`** and **`codegen/declared.go`** — the registry: a `DeclaredPlatform`/`DeclaredLang` per lib target, resolved to the Go generator `RegisterNative` registered under the key its node names
+- **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registering with `RegisterNative` in `init()`
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html), each registering with `RegisterNative` in `init()`; the packages are `lib/platform/<name>` -- see *A target is its library package*
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -637,9 +637,9 @@ under.
 
 **A target is its build-target node.** A platform package declares `#[gen.name("html")] component platform(…) build.platform`, a language package `component language(…) build.language`: the node is named for its tier by convention only -- it is found by its family and its mark (`ir.TargetNodeOf`) -- and `#[gen.name]` is the string the CLI, the Go registry and an `output` block's bare `html` match on (`ir.TargetNode`, `GenCaps.TargetName`). The same declaration is the option schema, carries the `#[gen.can]` marks and is the identity: `[platform]` and `[html.platform]` resolve to it (`resolveTargetIndex`), and read as a value it has sngl:builtin's `platform` type (`targetValueType`), folding to its name in the optimizer and the interpreter, so `PLATFORM == html.platform` is unchanged. There used to be a generated `const platform = "html"` mounted into every target package (`identityDoc`, `#[macro.identity]`), a second declaration that could disagree with the first. A build-target node without the mark is an error, as is the mark anywhere else, and so is a name another node of the same tier carries (`reportTargetNames`, run last over every loaded package, library nodes ahead of the program's so the program's is the one reported) or a target package's node naming anything but its own package: `none` may be both a language and a platform, and nothing else may be two things. Diagnostics name a node by `Component.DisplayName`, its target name, since every platform's node is called `platform`.
 
-**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host. `RegisterPlatform` and `PackageFS() fs.FS` (read by `ProvidedDocs`) remain for a plugin that serves its own package, which no target in this repository does.
+**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
 
-The point is that the checker does not know where a package comes from: a lib/ directory, a plugin's `PackageFS`, or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
+The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
 
 A target that is unavailable contributes no package, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform loading overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 is unavailable when `--opt gir=` names a file it cannot read; `DeclaredPlatform.Unavailable` asks the generator its node names.
 
@@ -3489,11 +3489,10 @@ targets in parallel) is not a saving.
   `build.Check` → `build.Emit`, slog discarded) gives the warm per-phase
   numbers a one-shot CLI profile is too short to show.
 - **An AST is immutable once parsed.** Nothing after the parser writes to one,
-  which is what lets the embedded library tiers (`parseStdlibDocs`) and a
-  target's served package (`parseProvided`, keyed by file name and content)
-  be parsed once per process and shared by every check.
+  which is what lets the embedded library tiers (`parseStdlibDocs`), target
+  packages included, be parsed once per process and shared by every check.
   `TestProvidedDocsSurviveBuilds` builds every golden fixture and then compares
-  each shared document with a fresh parse; a phase that needs a modified tree
+  each target package's shared document with a fresh parse; a phase that needs a modified tree
   builds IR or a new node, never an edit.
 - **A library package is loaded against the targets it belongs to.**
   `CheckLibPackage` selects a target package's own target (`ownTarget`);

@@ -12,22 +12,19 @@ import (
 	"git.duckfam.us/jonathan/sngl/lib"
 )
 
-// A target is its package. One served by a Go plugin registers itself; one
-// whose package is a lib/ directory -- `lib/platform/<name>`,
-// `lib/language/<name>` -- needs no Go at all, and is registered here by the
-// layout, as a library scheme plugin is. Such a target generates nothing:
-// what it is built for is answered by the compiler, which for `none` is the
-// interpreter (build.IsInterpreted).
-//
-// A Go plugin registering a name lib/ already serves is the duplicate it
-// would be against another plugin, since a target has one package.
+// A target is its package: a lib/ directory -- `lib/platform/<name>`,
+// `lib/language/<name>` -- registered here by the layout, as a library scheme
+// plugin is. Go behind a target registers by key (RegisterNative) and the
+// node names it with #[gen.native]; a target naming none generates nothing,
+// and what it is built for is answered by the compiler, which for `none` is
+// the interpreter.
 func init() {
 	for _, pkg := range lib.Packages() {
 		if name, ok := strings.CutPrefix(pkg, "platform/"); ok && !strings.Contains(name, "/") {
-			RegisterPlatform(&DeclaredPlatform{name: name})
+			registerPlatform(&DeclaredPlatform{name: name})
 		}
 		if name, ok := strings.CutPrefix(pkg, "language/"); ok && !strings.Contains(name, "/") {
-			RegisterLang(&DeclaredLang{name: name})
+			registerLang(&DeclaredLang{name: name})
 		}
 	}
 	// The interpreter answers navigation itself (internal/interp/nav.go):

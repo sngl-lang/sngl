@@ -64,8 +64,7 @@ type Config struct {
 	// LibSources substitutes the source of a library package, keyed by lib
 	// path ("platform/teststub"). It exists for the in-test platform stubs,
 	// which register a plugin with no lib/ directory behind it; production
-	// callers leave it nil. A substitution replaces the package, where the
-	// source a target provides (ProvidedDocs) adds to it.
+	// callers leave it nil.
 	LibSources map[string][]*ast.Document
 	// libs is the library-package cache this check shares with the nested
 	// checks its imports start. Unexported: it is the compiler's own
@@ -618,10 +617,6 @@ type checker struct {
 	// the full user scope chain). Each entry produces one
 	// stdComp.PlatformOverrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
-
-	// providedCache memoizes providedDocs for the life of this checker; see
-	// the comment there for why the scope is exactly one check.
-	providedCache map[string][]*ast.Document
 
 	// Flow narrowing of option<T> after a null test. narrowed holds the facts
 	// current at the statement being checked, narrowUsed says which of them a

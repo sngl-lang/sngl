@@ -56,19 +56,10 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 			return nil
 		})
 	}
+	// Every target's package is in lib/ too, and a target declares its own
+	// primitives: those are the component intrinsics.
 	if err := walk(lib.FS); err != nil {
 		t.Fatal(err)
-	}
-	// Every source the compiler reads, not just the embedded library: a target
-	// declares its own primitives, and those are the component intrinsics.
-	for _, target := range targetsWithPackages() {
-		fsys, ok := target.(interface{ PackageFS() fs.FS })
-		if !ok || fsys.PackageFS() == nil {
-			continue
-		}
-		if err := walk(fsys.PackageFS()); err != nil {
-			t.Fatal(err)
-		}
 	}
 	if len(marked) == 0 {
 		t.Fatal("no #[intrinsic] marks found in lib/")
@@ -126,8 +117,8 @@ func TestExportedComponentsAreDocumented(t *testing.T) {
 	}
 }
 
-// loadEveryPackage checks every library and target package, which is what
-// populates the intrinsic registry.
+// loadEveryPackage checks every library package, target packages included,
+// which is what populates the intrinsic registry.
 func loadEveryPackage(t *testing.T) {
 	t.Helper()
 	for _, name := range lib.Packages() {
@@ -135,29 +126,6 @@ func loadEveryPackage(t *testing.T) {
 			t.Errorf("library package %q did not load", name)
 		}
 	}
-	for _, p := range codegen.CollectPlatforms() {
-		fsys, ok := p.(interface{ PackageFS() fs.FS })
-		if !ok || fsys.PackageFS() == nil {
-			continue
-		}
-		checker.LibPackage("platform/" + p.PlatformIdentifier())
-	}
-	for _, name := range codegen.Langs() {
-		checker.LibPackage("language/" + name)
-	}
-}
-
-// targetsWithPackages is every registered platform and language, which is where
-// a target's own library package lives.
-func targetsWithPackages() []any {
-	var out []any
-	for _, p := range codegen.CollectPlatforms() {
-		out = append(out, p)
-	}
-	for _, name := range codegen.Langs() {
-		out = append(out, codegen.LookupLang(name))
-	}
-	return out
 }
 
 // A declaration marked #[intrinsic] is a signature whose result comes from the

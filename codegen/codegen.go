@@ -225,12 +225,11 @@ func PlatformRendersViewStatically(platform, language string) bool {
 	return !f.ViewStatements
 }
 
-// PlatformDocs returns the SNGL declarations p contributes — the source of its
-// `sngl:platform/<id>` package, both what lib/ embeds and what p
-// synthesizes — or nil when it declares none or cannot be used here. gtk4
-// without a GIR file has no widget set to declare and its overrides are
-// written against that set, so it contributes nothing rather than declarations
-// no one can check.
+// PlatformDocs returns the SNGL declarations p contributes -- the source of
+// its `sngl:platform/<id>` package -- or nil when it declares none or cannot
+// be used here. gtk4 with a GIR it cannot read has no widget set for its
+// overrides to be written against, so it contributes nothing rather than
+// declarations no one can check.
 func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if p == nil {
 		return nil
@@ -238,20 +237,17 @@ func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("platform/"+p.PlatformIdentifier()),
-		checker.ProvidedDocs(p)...)
+	return checker.PackageDocsFor("platform/" + p.PlatformIdentifier())
 }
 
 // LangDocs returns the SNGL declarations l contributes -- the source of its
-// `sngl:language/<id>` package, both what lib/ embeds and what l serves
-// itself -- or nil when it declares none. The path is keyed by the language's
+// `sngl:language/<id>` package -- or nil when it declares none. The path is keyed by the language's
 // own identifier, so Go's package is language/go.
 func LangDocs(l LangTranslator) []*ast.Document {
 	if l == nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("language/"+l.LanguageIdentifier()),
-		checker.ProvidedDocs(l)...)
+	return checker.PackageDocsFor("language/" + l.LanguageIdentifier())
 }
 
 // TestRunner is optionally implemented by PlatformGenerators that provide

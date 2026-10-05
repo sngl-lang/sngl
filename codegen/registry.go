@@ -16,8 +16,10 @@ var (
 	platforms = map[string]PlatformGenerator{}
 )
 
-// RegisterLang registers a language translator. Panics on duplicate.
-func RegisterLang(l LangTranslator) {
+// registerLang registers a language: every one is a lib/ directory
+// (declared.go), and Go behind it registers by key with RegisterNative.
+// Panics on duplicate.
+func registerLang(l LangTranslator) {
 	langMu.Lock()
 	defer langMu.Unlock()
 	name := l.LanguageIdentifier()
@@ -28,8 +30,8 @@ func RegisterLang(l LangTranslator) {
 	checker.RegisterTargetPackage("language/"+name, l)
 }
 
-// RegisterPlatform registers a platform generator. Panics on duplicate.
-func RegisterPlatform(p PlatformGenerator) {
+// registerPlatform registers a platform, as registerLang does a language.
+func registerPlatform(p PlatformGenerator) {
 	platMu.Lock()
 	defer platMu.Unlock()
 	name := p.PlatformIdentifier()

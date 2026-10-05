@@ -1,7 +1,6 @@
 package codegen_test
 
 import (
-	"io/fs"
 	"strings"
 	"testing"
 
@@ -74,9 +73,6 @@ func TestNativeTargetFoundThroughItsMark(t *testing.T) {
 		if f := fileOf(d); !strings.HasPrefix(f, "platform/html/") {
 			t.Errorf("file %s is not served from lib/platform/html", f)
 		}
-	}
-	if _, ok := any(&html.Generator{}).(interface{ PackageFS() fs.FS }); ok {
-		t.Errorf("html's generator still serves a package")
 	}
 }
 
