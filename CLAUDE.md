@@ -557,8 +557,7 @@ context value and a spread field all go through `coerce` (`assign.go`), or
 `checkExprAs`, which is `checkExprExpecting` followed by it; the expected type
 may be nil. A value goes in when it is assignable, when it is the literal `0`
 and a unit is wanted, or when it is a zero-argument function whose result is
-assignable to what is wanted, which is then called (`var x int = five`; `var
-y = five` is the function). A colour or date literal is validated wherever it
+assignable to what is wanted, which is then called (`var x int = five`; `var y = five` is the function). A colour or date literal is validated wherever it
 is written. A `slot` says only what is particular to a position -- the wording
 and place of a mismatch, a struct field's kept shape, ref coercion for an
 argument. Each position used to restate the rule, and each restatement had
