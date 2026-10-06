@@ -168,7 +168,7 @@ func TestCollectActionsLogicalMutations(t *testing.T) {
 		t.Fatalf("logical mutation target want Ident(count), got %s", debugExpr(a.Target))
 	}
 	for _, s := range logical {
-		if isDOMPatchStmt(s) {
+		if codegen.IsDOMPatchStmt(s) {
 			t.Fatalf("DOM-patch statement leaked into LogicalMutations")
 		}
 	}

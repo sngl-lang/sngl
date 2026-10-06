@@ -79,7 +79,16 @@ func exprPlacement(pkg *ir.Package, e ir.Expr) Placement {
 // exprIsBackendByDefault reports whether e (or any subexpression) calls a
 // non-js: native func, ignoring directive wrappers (a directive pins its own
 // subtree, so we do not descend into it for the default rule).
+//
+// A call to a function the program declares is classified by that function's
+// body, transitively: a handler calling `bump()`, whose body calls a go:
+// function, needs the server as much as one making that call itself, and the
+// browser has no `strings.ToUpper` to call.
 func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
+	return exprReachesBackend(pkg, e, map[*ir.Func]bool{})
+}
+
+func exprReachesBackend(pkg *ir.Package, e ir.Expr, seen map[*ir.Func]bool) bool {
 	found := false
 	ir.WalkExprs(e, func(x ir.Expr) error {
 		c, ok := x.(*ir.Call)
@@ -96,8 +105,31 @@ func exprIsBackendByDefault(pkg *ir.Package, e ir.Expr) bool {
 				found = true
 				return ir.SkipDir
 			}
+			if blockReachesBackend(pkg, c.Func, seen) {
+				found = true
+				return ir.SkipDir
+			}
 		}
 		return nil
+	})
+	return found
+}
+
+// blockReachesBackend reports whether a declared function's body calls a
+// non-js: native, directly or through another declared function. A native
+// has no body to read, and a function already on the way is answered by the
+// call that reached it first.
+func blockReachesBackend(pkg *ir.Package, fn *ir.Func, seen map[*ir.Func]bool) bool {
+	if fn.Foreign.Path != "" || seen[fn] {
+		return false
+	}
+	seen[fn] = true
+	found := false
+	ir.WalkExprs(fn.Block, func(x ir.Expr) error {
+		if exprReachesBackend(pkg, x, seen) {
+			found = true
+		}
+		return ir.SkipDir
 	})
 	return found
 }

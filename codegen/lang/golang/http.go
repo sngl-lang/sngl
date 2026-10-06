@@ -154,6 +154,9 @@ func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	for _, fn := range fns {
 		fnCopy := *fn
 		fnCopy.Name = ExportName(fn.Name)
+		// The page's lowering put its DOM patches in the body too, and a
+		// server holds no node for one to name, as an action's body does not.
+		fnCopy.Block = codegen.LogicalMutations(fn.Block)
 		fmt.Fprintln(b)
 		for _, line := range gc.EmitFuncDef(&fnCopy) {
 			fmt.Fprintln(b, line)
