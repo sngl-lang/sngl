@@ -230,7 +230,7 @@ const component ui.input[platform] {
 }
 
 const component ui.checkbox[platform] {
-    html.label(style={display=inlineFlex, alignItems=center, gap=4, ...style}) {
+    html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
         html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
@@ -239,9 +239,9 @@ const component ui.checkbox[platform] {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform] {
-    html.fieldset(style={display=flex, flexDirection=(direction == "horizontal" ? row : column), gap=8, border="none", padding=0, ...style}) {
+    html.fieldset(style={display=flex, flexDirection=(direction == "horizontal" ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
-            html.label(style={display=inlineFlex, alignItems=center, gap=4}) {
+            html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
                 html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
                 html.span(textContent=opt)
             }
@@ -250,7 +250,7 @@ const component ui.radio[platform] {
 }
 
 const component ui.toggle[platform] {
-    html.label(style={display=inlineFlex, alignItems=center, gap=8, ...style}) {
+    html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
         html.span(textContent=label) {}
     }
@@ -286,21 +286,21 @@ const component ui.progress[platform] {
 }
 
 const component ui.spinner[platform] {
-    html.span(style={display=inlineFlex, alignItems=center, gap=8, ...style}) {
+    html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.span(class="sngl-spinner") {}
         html.span(textContent=label) {}
     }
 }
 
 const component ui.badge[platform] {
-    html.span(style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12, ...style}) {
+    html.span(style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style}) {
         html.span(textContent=value) {}
     }
 }
 
 const component ui.tabs[platform] {
     html.div(style={...style, display=flex, flexDirection=column}) {
-        html.div(role="tablist", style={display=flex, gap=4, borderBottom="1px solid #ccc"}) {
+        html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
             for var label = items {
                 html.button(role="tab", textContent=label, style={paddingY=8px, paddingX=16px, border="none", background=#00000000, cursor="pointer"})
             }
@@ -355,7 +355,7 @@ const component ui.window[platform] {
 
 const component ui.modal[platform] {
     html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, width=100pct, height=100pct, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
-        html.div(class="modal-content", style={background="#fff", borderRadius=8, padding=24}) {
+        html.div(class="modal-content", style={background="#fff", borderRadius=8px, padding=24px}) {
             if title != "" {
                 html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
             }
@@ -395,7 +395,7 @@ const component ui.table[platform] {
         html.thead {
             html.tr {
                 for var col = columns {
-                    html.th(textContent=col, style={textAlign=left, padding=8, borderBottom="2px solid #ddd"})
+                    html.th(textContent=col, style={textAlign=left, padding=8px, borderBottom="2px solid #ddd"})
                 }
             }
         }
@@ -403,7 +403,7 @@ const component ui.table[platform] {
             for var row = rows {
                 html.tr {
                     for var cell = row {
-                        html.td(textContent=cell, style={padding=8, borderBottom="1px solid #eee"})
+                        html.td(textContent=cell, style={padding=8px, borderBottom="1px solid #eee"})
                     }
                 }
             }
@@ -412,7 +412,7 @@ const component ui.table[platform] {
 }
 
 const component ui.tree[platform] {
-    html.ul(style={listStyleType=none, paddingLeft=16, ...style}) {
+    html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
         for var item = items {
             html.li(textContent=item)
         }
@@ -420,17 +420,17 @@ const component ui.tree[platform] {
 }
 
 const component ui.menu[platform] {
-    html.div(style={...style, position=absolute, background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
+    html.div(style={...style, position=absolute, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
     }
 }
 
 const component ui.menubar[platform] {
-    html.nav(style={...style, display=flex, gap=4}) {
+    html.nav(style={...style, display=flex, gap=4px}) {
     }
 }
 
 const component ui.toolbar[platform] {
-    html.div(style={...style, display=flex, gap=4, alignItems=center}) {
+    html.div(style={...style, display=flex, gap=4px, alignItems=center}) {
         controls
     }
 }
@@ -451,19 +451,19 @@ const component ui.datepicker[platform] {
 }
 
 const component ui.chip[platform] {
-    html.span(style={display=inlineFlex, alignItems=center, paddingY=4px, paddingX=12px, borderRadius=16, border="1px solid #ccc", ...style}) {
+    html.span(style={display=inlineFlex, alignItems=center, paddingY=4px, paddingX=12px, borderRadius=16px, border="1px solid #ccc", ...style}) {
         html.span(textContent=label) {}
     }
 }
 
 const component ui.avatar[platform] {
-    html.div(style={display=inlineFlex, alignItems=center, justifyContent=center, borderRadius=50pct, width=40, height=40, background="#ccc", overflow=hidden, ...style}) {
+    html.div(style={display=inlineFlex, alignItems=center, justifyContent=center, borderRadius=50pct, width=40px, height=40px, background="#ccc", overflow=hidden, ...style}) {
         html.span(textContent=initials) {}
     }
 }
 
 const component ui.card[platform] {
-    html.div(style={borderRadius=8, padding=16, ...style}) {
+    html.div(style={borderRadius=8px, padding=16px, ...style}) {
         content
     }
 }

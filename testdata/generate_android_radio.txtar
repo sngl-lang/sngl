@@ -34,13 +34,13 @@ component main node {
 
     vbox {
         radio(
-            style={padding=4},
+            style={padding=4px},
             direction="horizontal",
             options=["small", "medium", "large"],
             value=pick,
             @change(e) { chosen = e.value },
         )
-        radio(style={padding=5}, options=["one", "two"], value=pick)
+        radio(style={padding=5px}, options=["one", "two"], value=pick)
         radio(options=more, value=pick)
     }
 }

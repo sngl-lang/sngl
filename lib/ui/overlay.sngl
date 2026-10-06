@@ -17,7 +17,7 @@ component modal(
 
 component _example_modal node {
     var showModal = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         button(text="Open Modal", @click { showModal = true })
         modal(open=showModal, title="Example Modal", closable=true) {
             text(value="Modal content goes here.")
@@ -41,10 +41,10 @@ component drawer(
 
 component _example_drawer node {
     var showDrawer = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         button(text="Open Drawer", @click { showDrawer = true })
         drawer(open=showDrawer, side="right") {
-            vbox(style={gap=8, padding=16}) {
+            vbox(style={gap=8px, padding=16px}) {
                 text(value="Drawer Content", style={fontWeight=bold})
                 button(text="Close", @click { showDrawer = false })
             }
@@ -65,7 +65,7 @@ component tooltip(
 ) node {}
 
 component _example_tooltip node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
         }
@@ -88,7 +88,7 @@ component popover(
 
 component _example_popover node {
     var showPop = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         popover(open=showPop, position="bottom", openOn="click") {
             button(text="Toggle", @click { showPop!! })
         }

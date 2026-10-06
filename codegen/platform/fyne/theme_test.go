@@ -15,8 +15,8 @@ import . "sngl:ui"
 output { go { fyne } }
 window {
     hbox {
-        button(text="a", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight=bold, borderRadius=8})
-        button(text="b", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight=bold, borderRadius=8})
+        button(text="a", style={background=#2c2f36, color=#f5f7fa, fontSize=22px, fontWeight=bold, borderRadius=8px})
+        button(text="b", style={background=#2c2f36, color=#f5f7fa, fontSize=22px, fontWeight=bold, borderRadius=8px})
         button(text="c", style={background=#f59e0b})
     }
 }
@@ -51,7 +51,7 @@ func TestUnstyledWidgetsAreNotWrapped(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    hbox(style={gap=4}) {
+    hbox(style={gap=4px}) {
         button(text="a")
         text(value="b")
     }
@@ -73,8 +73,8 @@ func TestLayoutOnlyStyleDeclaresNoTheme(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    hbox(style={gap=4, padding=6}) {
-        text(value="a", style={flex=1, margin=3})
+    hbox(style={gap=4px, padding=6px}) {
+        text(value="a", style={flex=1, margin=3px})
     }
 }
 `)

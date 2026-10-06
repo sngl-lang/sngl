@@ -347,8 +347,8 @@ func TestAContainerCarriesItsChildrensFlex(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component main node {
-    hbox #row(style={gap=4, padding=6}) {
-        button(text="a", style={flex=1, margin=3})
+    hbox #row(style={gap=4px, padding=6px}) {
+        button(text="a", style={flex=1, margin=3px})
         button(text="b", style={flex=2})
     }
 }
@@ -400,7 +400,7 @@ func TestPaintStylesReachATheme(t *testing.T) {
 component main node {
     vbox {
         button #plain(text="plain")
-        button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22})
+        button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22px})
     }
 }
 `

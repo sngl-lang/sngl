@@ -7,10 +7,10 @@ import "sngl:platform/html"
 component SearchBox(entries list<docs.SearchEntry> = []) node {
     var query = ""
 
-    vbox(style={gap=4, padding=4}) {
+    vbox(style={gap=4px, padding=4px}) {
         input(:value=query, placeholder="Search docs…", type="search")
         if query != "" {
-            vbox(style={gap=2}) {
+            vbox(style={gap=2px}) {
                 for var entry = entries {
                     SearchHit(entry=entry, query=query)
                 }
@@ -63,13 +63,13 @@ component SearchHit(entry docs.SearchEntry, query = "") node {
             }
         }
     } else {
-        vbox(style={gap=2, padding=4, display=matches ? flex : none}) {
+        vbox(style={gap=2px, padding=4px, display=matches ? flex : none}) {
             text(value=entry.title, style={fontWeight=bold})
             if entry.crumb != "" {
-                text(value=entry.crumb, style={color="#888", fontSize=12})
+                text(value=entry.crumb, style={color="#888", fontSize=12px})
             }
             if entry.blurb != "" {
-                text(value=entry.blurb, style={color="#aaa", fontSize=12})
+                text(value=entry.blurb, style={color="#aaa", fontSize=12px})
             }
         }
     }

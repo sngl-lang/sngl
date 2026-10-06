@@ -53,7 +53,7 @@ component main root {
     var n int = 0
 
     window #app(title = "t") {
-        html.div(role = "main", style = { display = Display.inlineBlock, minWidth = 40 }) {
+        html.div(role = "main", style = { display = Display.inlineBlock, minWidth = 40px }) {
             html.details(open = false) {
                 html.button(textContent = "go", @click { n = api.Bump(n) })
             }

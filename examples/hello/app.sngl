@@ -7,9 +7,9 @@ output {
 ui.window {
     var name = "World"
 
-    ui.vbox(style={gap=12, padding=16}) {
-        ui.text(value="Hello, {name}!", style={fontSize=24, fontWeight=bold})
-        ui.hbox(style={gap=8, alignItems=center}) {
+    ui.vbox(style={gap=12px, padding=16px}) {
+        ui.text(value="Hello, {name}!", style={fontSize=24px, fontWeight=bold})
+        ui.hbox(style={gap=8px, alignItems=center}) {
             ui.input(:value=name, placeholder="Enter your name")
         }
     }

@@ -43,7 +43,7 @@ component main node {
             text(value=string(item), key=string(i))
         }
         if flag {
-            text(value=string(total), style={color=#ff0000, padding=8})
+            text(value=string(total), style={color=#ff0000, padding=8px})
         }
         text(value=desc)
     }

@@ -338,7 +338,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="background-color:#fff;bottom:0px;position:fixed;top:0px;z-index:1000">
+<div style="background-color:#fff;position:fixed;z-index:1000">
   <span>drawer content</span>
 </div>
 
@@ -370,6 +370,12 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testDrawerOpenToggles });
   }
+  function _snglStyleLength(v) {
+    if (typeof v === "number") return v + "px";
+    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + (k === "pct" ? "%" : k));
+    if (t.length === 0) return "0px";
+    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
+  }
 })();
 };
 window.__sngl_boot();
@@ -382,4 +388,4 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:1d5886f2039d964d297fa6265cb5f55e
 -- run/none/html --
-pass sha256:fd99829b910ef5c63256436878eb45c7
+pass sha256:5c7b0e8ae5ddd1d0ae6c442cf79238a0

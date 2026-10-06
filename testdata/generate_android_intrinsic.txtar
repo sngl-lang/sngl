@@ -28,17 +28,17 @@ output {
 
 component main node {
     android.Column(chain=["fillMaxSize()"]) {
-        android.Row #bar(modifier={padding=4}) {
-            android.Spacer(modifier={height=8})
-            android.Text(text="hi", modifier={padding=1}, style={fontSize=20})
+        android.Row #bar(modifier={padding=4px}) {
+            android.Spacer(modifier={height=8px})
+            android.Text(text="hi", modifier={padding=1px}, style={fontSize=20px})
         }
-        hbox(style={padding=2}) {
+        hbox(style={padding=2px}) {
             text(value="wrapped")
         }
         scroll {
             text(value="scrolled")
         }
-        stack(style={padding=3}) {
+        stack(style={padding=3px}) {
             text(value="layered")
         }
     }

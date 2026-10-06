@@ -3,7 +3,7 @@ import . "sngl:ui"
 const primary = Style{
     color = #0000ff,
     fontWeight = bold,
-    fontSize = 16,
+    fontSize = 16px,
 }
 
 const secondary = Style{

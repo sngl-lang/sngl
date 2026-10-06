@@ -20,8 +20,8 @@ component main node {
     func greeting() => "Hello, " + name
     func doubled() => count * 2
 
-    vbox(style={padding=16, gap=12}) {
-        text(value=greeting, style={fontSize=24, fontWeight=bold})
+    vbox(style={padding=16px, gap=12px}) {
+        text(value=greeting, style={fontSize=24px, fontWeight=bold})
         if active {
             text(value="Active", style={color=#007700})
         }

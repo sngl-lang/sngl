@@ -456,7 +456,7 @@ enum Task { none, todo, done }
 // wrapped the slot in.
 component list(ordered bool = false, start int = 1, items ...component) ui.node {
     listDepth(listDepth + 1) {
-        ui.vbox(style={gap=4, paddingLeft=20px}) {
+        ui.vbox(style={gap=4px, paddingLeft=20px}) {
             items
         }
     }
@@ -482,7 +482,7 @@ component listItem(
     task Task = Task.none,
     content ...component,
 ) ui.node {
-    ui.hbox(style={gap=8, alignItems=ui.Alignment.start}) {
+    ui.hbox(style={gap=8px, alignItems=ui.Alignment.start}) {
         if task == Task.none {
             ui.text(value=marker == "" ? bulletAt(listDepth) : marker)
         } else {

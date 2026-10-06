@@ -3,12 +3,11 @@ A style field written with its unit, on android.
 `8px` is a unit value, and Kotlin spells one as the `Measurement` data class
 this target emits. Every place a Style field lands on Compose appends `.dp` or
 `.sp` to it, so the field came out as `Measurement(px = 8.0).dp` -- an
-extension nothing declares, and a file that does not compile. The same numbers
-written bare worked, which is why nothing had caught it: the harness compiles
-what the fixtures write, and the fixtures wrote `padding=8`.
+extension nothing declares, and a file that does not compile. Nothing caught
+it while a bare number was accepted for a length, since the fixtures wrote
+`padding=8`; a length now says its unit, so every one is this case.
 
-Both spellings are below and both are the same number, which is the claim: a
-measurement reaching a Compose argument is its magnitude in px, as it is
+A measurement reaching a Compose argument is its magnitude in px, as it is
 everywhere else this platform answers one.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `Measurement\(px` -- a measurement reaching a Compose argument is reduced to its magnitude, not spelled as the data class
@@ -24,7 +23,6 @@ output {
 window #home(title="units") {
     vbox(style={padding=8px, gap=4px}) {
         text(value="with units", style={fontSize=32px})
-        text(value="bare", style={fontSize=32})
         button(text="rounded", style={borderRadius=12px, width=100px, height=40px})
     }
 }
@@ -88,7 +86,6 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.padding(8.dp).safeDrawingPadding()) {
             Text(text = "with units", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
-            Text(text = "bare", modifier = Modifier, style = TextStyle(fontSize = 32.sp))
             Button(onClick = {}, modifier = Modifier.width(100.dp).height(40.dp), shape = RoundedCornerShape(12.dp)) {
                 Text(text = "rounded", modifier = Modifier)
             }
@@ -96,4 +93,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:5b3eb58b50904e6150a1d027d0eae1a4
+pass sha256:f7d8fd99451320ea152b2466df1ff176

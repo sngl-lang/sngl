@@ -41,10 +41,10 @@ if PLATFORM == html.platform {
                             docui.NavItem(text=p.title, href="/p/" + p.path)
                         }
                     }
-                    vbox(style={padding=24, flex=1}) {
+                    vbox(style={padding=24px, flex=1}) {
                         text(
                             value="SNGL Documentation",
-                            style={fontSize=28, fontWeight=bold},
+                            style={fontSize=28px, fontWeight=bold},
                         )
                         docui.EntryView(path="sngl")
                     }
@@ -63,7 +63,7 @@ if PLATFORM == html.platform {
                                 )
                             }
                         }
-                        vbox(style={padding=24, flex=1}) {
+                        vbox(style={padding=24px, flex=1}) {
                             docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
                         }
                     }
@@ -82,7 +82,7 @@ if PLATFORM == html.platform {
                                 )
                             }
                         }
-                        vbox(style={padding=24, flex=1}) {
+                        vbox(style={padding=24px, flex=1}) {
                             docui.EntryView(
                                 path=v.pkg,
                                 ident1=v.name,
@@ -100,8 +100,8 @@ if PLATFORM == html.platform {
         // TUI body — single full-width page. The top row is the navigation bar
         // (three bound inputs); below it we render whatever the current Entry
         // resolves to. No sidebar.
-        vbox(style={padding=1}) {
-            hbox(style={gap=1}) {
+        vbox(style={padding=1px}) {
+            hbox(style={gap=1px}) {
                 input(:value=path, placeholder="import path")
                 input(:value=ident1, placeholder="decl")
                 input(:value=ident2, placeholder="field/prop")

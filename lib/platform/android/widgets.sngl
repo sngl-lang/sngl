@@ -263,7 +263,7 @@ const component ui.modal[platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
             Surface(args=["shape = MaterialTheme.shapes.medium"]) {
-                Column(modifier={padding=16}) {
+                Column(modifier={padding=16px}) {
                     if title != "" {
                         Text(text=title) {}
                     }

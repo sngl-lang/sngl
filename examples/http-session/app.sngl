@@ -16,24 +16,24 @@ ui.window(title=pages.current.title) {
         nav.page #home(href="/", title="Dashboard") {
             ui.hbox {
                 if sidebarOpen {
-                    ui.vbox(style={padding=16, gap=8, background=#f0f0f0, width=200}) {
+                    ui.vbox(style={padding=16px, gap=8px, background=#f0f0f0, width=200px}) {
                         ui.text(value="Navigation", style={fontWeight=bold})
                         ui.link(text="Dashboard", href="/")
                         ui.link(text="About", href="/about")
                     }
                 }
-                ui.vbox(style={padding=24, gap=16, flex=1}) {
-                    ui.hbox(style={gap=12, alignItems=center}) {
+                ui.vbox(style={padding=24px, gap=16px, flex=1}) {
+                    ui.hbox(style={gap=12px, alignItems=center}) {
                         ui.button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click { sidebarOpen!! })
-                        ui.text(value=session.Greeting("World"), style={fontSize=20, fontWeight=bold})
+                        ui.text(value=session.Greeting("World"), style={fontSize=20px, fontWeight=bold})
                     }
                     ui.text(value="Welcome to the dashboard!")
                 }
             }
         }
         nav.page #about(href="/about", title="About") {
-            ui.vbox(style={padding=24, gap=12}) {
-                ui.text(value="About", style={fontSize=24, fontWeight=bold})
+            ui.vbox(style={padding=24px, gap=12px}) {
+                ui.text(value="About", style={fontSize=24px, fontWeight=bold})
                 ui.text(value="This is a server-rendered SNGL app.")
                 ui.link(text="Back to Dashboard", href="/")
             }

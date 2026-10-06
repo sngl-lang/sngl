@@ -25,16 +25,16 @@ ui.window(title="Todos") {
     )
     func status() => "Todo List ({todos.length} items)"
 
-    ui.vbox(style={gap=12, padding=16}) {
-        ui.text(value=status, style={fontWeight=bold, fontSize=24})
-        ui.hbox(style={gap=8, alignItems=center}) {
+    ui.vbox(style={gap=12px, padding=16px}) {
+        ui.text(value=status, style={fontWeight=bold, fontSize=24px})
+        ui.hbox(style={gap=8px, alignItems=center}) {
             ui.input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             ui.button(text="Add", @click {
                 todos.push(Todo{text=newTodo})
                 newTodo = ""
             })
         }
-        ui.vbox(style={gap=4}) {
+        ui.vbox(style={gap=4px}) {
             for var index, item = todos {
                 ui.checkbox(checked=item.done, label=item.text, @change { todos[index].done!! })
             }

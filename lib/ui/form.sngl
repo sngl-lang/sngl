@@ -17,8 +17,8 @@ component button(
 
 component _example_button node {
     var count = 0
-    vbox(style={gap=8, padding=16}) {
-        hbox(style={gap=8}) {
+    vbox(style={gap=8px, padding=16px}) {
+        hbox(style={gap=8px}) {
             button(text="Click me", @click { count += 1 })
             button(text="Reset", @click { count = 0 })
             button(text="Disabled", disabled=true)
@@ -52,7 +52,7 @@ component input(
 
 component _example_input node {
     var name = ""
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         input(placeholder="Enter your name", :value=name)
         input(placeholder="Password", type="password")
         input(placeholder="Search...", type="search")
@@ -81,7 +81,7 @@ component textarea(
 
 component _example_textarea node {
     var notes = ""
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         textarea(placeholder="Write some notes...", rows=4, :value=notes)
         text(value="Length: " + string(notes.length()))
     }
@@ -104,7 +104,7 @@ component checkbox(
 
 component _example_checkbox node {
     var darkMode = false
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         checkbox(:checked=darkMode, label="Dark mode")
         text(value=darkMode ? "Dark mode on" : "Dark mode off")
     }
@@ -126,7 +126,7 @@ component radio(
 
 component _example_radio node {
     var size = "medium"
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         radio(options=["small", "medium", "large"], :value=size, direction="horizontal")
         text(value="Selected: " + size)
     }
@@ -146,7 +146,7 @@ component toggle(
 
 component _example_toggle node {
     var notifications = false
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         toggle(:checked=notifications, label="Notifications")
         text(value=notifications ? "Enabled" : "Disabled")
     }
@@ -171,7 +171,7 @@ component select(
 
 component _example_select node {
     var fruit = ""
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", :value=fruit)
         text(value="Selected: " + fruit)
     }
@@ -198,7 +198,7 @@ component datepicker(
 ) node {}
 
 component _example_datepicker node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         datepicker(placeholder="Select a date")
     }
 }

@@ -13,7 +13,7 @@ var embedTarget = "html"
 
 component whenSelected(selected string, value string, content ...component ui.node) ui.node {
     if selected == value {
-        ui.vbox(style={gap=12}) {
+        ui.vbox(style={gap=12px}) {
             content
         }
     }
@@ -55,7 +55,7 @@ import "sngl:ui"
 ui.window(title="Hello") {
     var name = "World"
     func greeting() => "Hello, {name}!"
-    ui.vbox(style={gap=8, padding=16}) {
+    ui.vbox(style={gap=8px, padding=16px}) {
         ui.text(value=greeting)
         ui.input(:value=name)
     }
@@ -72,7 +72,7 @@ Pick a target. The same source compiles to all of them:
 ```sngl mode=island
 import "sngl:ui"
 
-ui.hbox(style={gap=8}) {
+ui.hbox(style={gap=8px}) {
     ui.button(text="HTML", @click { runPlatform = "html" })
     ui.button(text="BubbleTea (TUI)", @click { runPlatform = "bubbletea" })
     ui.button(text="Fyne (Desktop)", @click { runPlatform = "fyne" })
@@ -163,7 +163,7 @@ stops. Pick a target:
 ```sngl mode=island
 import "sngl:ui"
 
-ui.hbox(style={gap=8}) {
+ui.hbox(style={gap=8px}) {
     ui.button(text="Static HTML", @click { generateTarget = "html" })
     ui.button(text="Go web server", @click { generateTarget = "gohtml" })
     ui.button(text="Go desktop / TUI", @click { generateTarget = "go" })
@@ -321,16 +321,16 @@ ui.window(title="Todos") {
     )
     func status() => "Todo List ({todos.length} items)"
 
-    ui.vbox(style={gap=12, padding=16}) {
-        ui.text(value=status, style={fontWeight=bold, fontSize=24})
-        ui.hbox(style={gap=8, alignItems=center}) {
+    ui.vbox(style={gap=12px, padding=16px}) {
+        ui.text(value=status, style={fontWeight=bold, fontSize=24px})
+        ui.hbox(style={gap=8px, alignItems=center}) {
             ui.input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             ui.button(text="Add", @click {
                 todos.push(Todo{text=newTodo})
                 newTodo = ""
             })
         }
-        ui.vbox(style={gap=4}) {
+        ui.vbox(style={gap=4px}) {
             for var &item = todos {
                 ui.checkbox(:checked=item.done, label=item.text)
             } else {
@@ -383,7 +383,7 @@ code drops into a program you already have. Pick a host:
 ```sngl mode=island
 import "sngl:ui"
 
-ui.hbox(style={gap=8}) {
+ui.hbox(style={gap=8px}) {
     ui.button(text="Go web server", @click { embedTarget = "html" })
     ui.button(text="Fyne", @click { embedTarget = "fyne" })
     ui.button(text="Android", @click { embedTarget = "kotlin" })

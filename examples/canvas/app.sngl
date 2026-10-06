@@ -29,8 +29,8 @@ ui.window {
         fontFamily = "sans-serif",
     }
 
-    ui.vbox(style={gap=16, padding=20}) {
-        ui.text(value="Canvas2D Demo", style={fontSize=22, fontWeight=bold})
+    ui.vbox(style={gap=16px, padding=20px}) {
+        ui.text(value="Canvas2D Demo", style={fontSize=22px, fontWeight=bold})
 
         draw.canvas(width=400px, height=280px) {
             draw.rect(x=0.0, y=0.0, w=400.0, h=280.0, style=bgStyle)
@@ -48,14 +48,14 @@ ui.window {
             )
         }
 
-        ui.hbox(style={gap=8}) {
+        ui.hbox(style={gap=8px}) {
             ui.button(text="Grow", @click { radius = radius + 10.0 })
             ui.button(text="Shrink", @click { radius = radius > 10.0 ? radius - 10.0 : radius })
         }
 
         ui.text(value="radius: {string(int(radius))}")
 
-        ui.text(value="Shapes:", style={fontWeight=bold, marginTop=8})
+        ui.text(value="Shapes:", style={fontWeight=bold, marginTop=8px})
 
         draw.canvas(width=400px, height=120px) {
             draw.rect(x=0.0, y=0.0, w=400.0, h=120.0, style=bgStyle)

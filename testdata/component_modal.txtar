@@ -352,9 +352,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;height:100%;justify-content:center;left:0px;position:fixed;top:0px;width:100%;z-index:1000" class="modal-overlay">
+<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;height:100%;justify-content:center;position:fixed;width:100%;z-index:1000" class="modal-overlay">
   <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
-    <h3 style="margin-bottom:16px;margin-left:0px;margin-right:0px;margin-top:0px">Hello</h3>
+    <h3 style="margin-bottom:16px">Hello</h3>
     <span>body</span>
   </div>
 </div>
@@ -387,9 +387,17 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testModalOpenToggles });
   }
+  function _snglStyleLength(v) {
+    if (typeof v === "number") return v + "px";
+    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + (k === "pct" ? "%" : k));
+    if (t.length === 0) return "0px";
+    return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
+  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.hidden = state.open === false;
+    __n0.style.setProperty("top", _snglStyleLength(0));
+    __n0.style.setProperty("left", _snglStyleLength(0));
   }
   __sngl_init();
 })();
@@ -404,4 +412,4 @@ pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
 pass sha256:663f0a0de407b7547029eb2593a0fb44
 -- run/none/html --
-pass sha256:c02a135c1f69a04d4d23101bd43e736b
+pass sha256:632fb5da78d6ef891b9fc87be76e5acf

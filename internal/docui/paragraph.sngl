@@ -8,6 +8,6 @@ component Paragraph(value = "") node {
     if PLATFORM == html.platform {
         html.p(innerText=value)
     } else {
-        text(value=value, style={paddingTop=4, paddingBottom=4})
+        text(value=value, style={paddingTop=4px, paddingBottom=4px})
     }
 }

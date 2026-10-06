@@ -112,7 +112,7 @@ func makeBadge(b struct {
 component LabeledCounter(label = "Clicks", start = 0, @changed int) ui.node {
     var n = start
 
-    ui.hbox(style={gap=8, alignItems=center}) {
+    ui.hbox(style={gap=8px, alignItems=center}) {
         ui.text(value="{label}: {n}")
         ui.button(text="+1", @click {
             n += 1
@@ -131,7 +131,7 @@ struct TreeNode {
 }
 
 component TreeView(node dyn = null) ui.node {
-    ui.vbox(style={paddingLeft=12, gap=2}) {
+    ui.vbox(style={paddingLeft=12px, gap=2px}) {
         ui.text(value=string(node.value))
         if node.left != null {
             TreeView(node=node.left)
@@ -163,7 +163,7 @@ component I18nDemo ui.node {
     var price = 1234
     var party time.date = time.date("2026-05-09")
 
-    ui.vbox(style={gap=4}) {
+    ui.vbox(style={gap=4px}) {
         ui.text(value=$"Welcome, {who}!")
         ui.text(value=$"You have {unread, plural,
             =0{no new messages}
@@ -195,12 +195,12 @@ component I18nDemo ui.node {
 context #theme("light")
 
 component ThemedBox(label = "") ui.node {
-    ui.text(value="{label}: {theme}", style={padding=8})
+    ui.text(value="{label}: {theme}", style={padding=8px})
 }
 
 component ContextDemo ui.node {
     var dark = false
-    ui.vbox(style={gap=4}) {
+    ui.vbox(style={gap=4px}) {
         ui.button(text="toggle theme", @click { dark = !dark })
         theme(dark ? "dark" : "light") {
             ThemedBox(label="outer")
@@ -303,10 +303,10 @@ component Tour ui.node {
         scroll=true,
         refreshing=false,
         @refresh { dialog.Alert.toast("Refreshed!", "info") },
-        style={gap=24, maxWidth=900, padding=24},
+        style={gap=24px, maxWidth=900px, padding=24px},
     ) {
         // --- Heading ---------------------------------------------
-        ui.text(value=APP_NAME, style={fontSize=32, fontWeight=bold})
+        ui.text(value=APP_NAME, style={fontSize=32px, fontWeight=bold})
         ui.text(
             value="Every stdlib component + every language feature, one file.",
             style={color=#666666},
@@ -314,9 +314,9 @@ component Tour ui.node {
         ui.divider
 
         // --- Text + button + derived value (`greeting` reads `name`) ---
-        ui.text(value="Text & Button", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={alignItems=center, gap=12}) {
-            ui.text(value=greeting, style={fontSize=18})
+        ui.text(value="Text & Button", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={alignItems=center, gap=12px}) {
+            ui.text(value=greeting, style={fontSize=18px})
             ui.button(text="Increment", @click { count += 1 })
             ui.button(text="Reset", @click {
                 count = 0
@@ -327,8 +327,8 @@ component Tour ui.node {
         ui.divider
 
         // --- Input -----------------------------------------------
-        ui.text(value="Input", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={gap=12}) {
+        ui.text(value="Input", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={gap=12px}) {
             ui.input(
                 placeholder="Enter your name",
                 value=name,
@@ -337,7 +337,7 @@ component Tour ui.node {
             ui.input(placeholder="Password", type="password")
             ui.input(placeholder="Search...", type="search")
         }
-        ui.text(value="Textarea", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Textarea", style={fontSize=20px, fontWeight=bold})
         ui.textarea(
             placeholder="Write some notes...",
             rows=4,
@@ -349,9 +349,9 @@ component Tour ui.node {
         // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
         ui.text(
             value="Checkbox, Toggle & Radio",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
-        ui.hbox(style={gap=24}) {
+        ui.hbox(style={gap=24px}) {
             ui.checkbox(
                 checked=darkMode,
                 label="Dark mode",
@@ -364,7 +364,7 @@ component Tour ui.node {
                 value=selectedRadio,
             )
         }
-        ui.text(value="Select", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Select", style={fontSize=20px, fontWeight=bold})
         ui.select(
             options=["Apple", "Banana", "Cherry", "Date"],
             placeholder="Pick a fruit",
@@ -375,13 +375,13 @@ component Tour ui.node {
         // --- Progress / Spinner / Tabs ---------------------------
         ui.text(
             value="Progress & Spinner",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
-        ui.hbox(style={alignItems=center, gap=24}) {
+        ui.hbox(style={alignItems=center, gap=24px}) {
             ui.progress(max=1, value=sliderVal)
             ui.spinner(label="Loading...")
         }
-        ui.text(value="Tabs", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Tabs", style={fontSize=20px, fontWeight=bold})
         ui.tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
             ui.text(value="This is the overview content.")
             ui.text(value="Here are the details.")
@@ -390,15 +390,15 @@ component Tour ui.node {
         ui.divider
 
         // --- Link / Chip / Avatar --------------------------------
-        ui.text(value="Link & Chip", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={alignItems=center, gap=8}) {
+        ui.text(value="Link & Chip", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={alignItems=center, gap=8px}) {
             ui.link(href="https://git.duckfam.us/jonathan/sngl", text="SNGL Source")
             ui.chip(label="Tag")
             ui.chip(label="Removable", removable=true)
             ui.chip(label="Success", variant="success")
         }
-        ui.text(value="Avatar", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={gap=8}) {
+        ui.text(value="Avatar", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={gap=8px}) {
             ui.avatar(initials="JD")
             ui.avatar(initials="AB", variant="square")
             ui.avatar(alt="User")
@@ -406,8 +406,8 @@ component Tour ui.node {
         ui.divider
 
         // --- Card ------------------------------------------------
-        ui.text(value="Card", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={gap=16}) {
+        ui.text(value="Card", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={gap=16px}) {
             ui.card(variant="outlined") {
                 ui.text(value="Outlined Card", style={fontWeight=bold})
                 ui.text(value="With a border")
@@ -424,8 +424,8 @@ component Tour ui.node {
         ui.divider
 
         // --- Modal / Drawer / Toast ------------------------------
-        ui.text(value="Modal & Drawer", style={fontSize=20, fontWeight=bold})
-        ui.hbox(style={gap=12}) {
+        ui.text(value="Modal & Drawer", style={fontSize=20px, fontWeight=bold})
+        ui.hbox(style={gap=12px}) {
             ui.button(text="Open Modal", @click { showModal = true })
             ui.button(text="Open Drawer", @click { showDrawer = true })
             ui.button(
@@ -438,7 +438,7 @@ component Tour ui.node {
             ui.button(text="Close", @click { showModal = false })
         }
         ui.drawer(open=showDrawer, side="right") {
-            ui.vbox(style={gap=12, padding=16}) {
+            ui.vbox(style={gap=12px, padding=16px}) {
                 ui.text(value="Drawer Content", style={fontWeight=bold})
                 ui.text(value="Slide-out panel")
                 ui.button(text="Close", @click { showDrawer = false })
@@ -447,32 +447,32 @@ component Tour ui.node {
         ui.divider
 
         // --- Tooltip / Split / Table / Tree ----------------------
-        ui.text(value="Tooltip", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Tooltip", style={fontSize=20px, fontWeight=bold})
         ui.tooltip(text="This is a tooltip") {
             ui.button(text="Hover me")
         }
-        ui.text(value="Split View", style={fontSize=20, fontWeight=bold})
-        ui.splitview(direction="horizontal", style={height=120}) {
-            ui.vbox(style={padding=12}) {
+        ui.text(value="Split View", style={fontSize=20px, fontWeight=bold})
+        ui.splitview(direction="horizontal", style={height=120px}) {
+            ui.vbox(style={padding=12px}) {
                 ui.text(value="Left pane")
                 ui.text(value="Resizable split")
             }
-            ui.vbox(style={padding=12}) {
+            ui.vbox(style={padding=12px}) {
                 ui.text(value="Right pane")
                 ui.text(value="Side by side")
             }
         }
         ui.divider
-        ui.text(value="Table", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Table", style={fontSize=20px, fontWeight=bold})
         ui.table(columns=["Name", "Role", "Status"])
-        ui.text(value="Tree", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Tree", style={fontSize=20px, fontWeight=bold})
         ui.tree(items=["Documents", "Photos", "Music", "Videos"])
         ui.divider
 
         // --- Menubar / Toolbar / DatePicker ----------------------
-        ui.text(value="Menubar", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Menubar", style={fontSize=20px, fontWeight=bold})
         ui.menubar(items=["File", "Edit", "View", "Help"])
-        ui.text(value="Toolbar", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Toolbar", style={fontSize=20px, fontWeight=bold})
         ui.toolbar {
             ui.button(text="New")
             ui.button(text="Open")
@@ -481,14 +481,14 @@ component Tour ui.node {
             ui.button(text="Settings")
         }
         ui.divider
-        ui.text(value="Date Picker", style={fontSize=20, fontWeight=bold})
+        ui.text(value="Date Picker", style={fontSize=20px, fontWeight=bold})
         ui.datepicker(placeholder="Select birthday", value=birthday)
         ui.divider
 
         // --- Composition: child component + event sink (§9) -----
         ui.text(
             value="Composition (child component emits event upward)",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
         LabeledCounter(
             label="Clicks",
@@ -501,7 +501,7 @@ component Tour ui.node {
         // --- Recursive component (§10) --------------------------
         ui.text(
             value="Recursive component (TreeView calls itself)",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
         TreeView(node=tree)
         ui.divider
@@ -509,9 +509,9 @@ component Tour ui.node {
         // --- For-loops, if, list/map iteration ------------------
         ui.text(
             value="For-loops & if",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
-        ui.vbox(style={gap=4}) {
+        ui.vbox(style={gap=4px}) {
             // for with index + nested if-else (loop var deps only,
             // so the inner if doesn't allocate its own reactive slot).
             for var idx, n = nums {
@@ -539,7 +539,7 @@ component Tour ui.node {
         // --- Top-level if at component scope -------------------
         ui.text(
             value="If statement",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
         if count > 0 {
             ui.text(value="count is positive: {count}")
@@ -551,7 +551,7 @@ component Tour ui.node {
         // --- Computed values pulling list methods (§ — generics) ---
         ui.text(
             value="Computed (filter/map/total)",
-            style={fontSize=20, fontWeight=bold},
+            style={fontSize=20px, fontWeight=bold},
         )
         ui.text(value="nums   = {nums}")
         ui.text(value="evens  = {evens}")
@@ -560,13 +560,13 @@ component Tour ui.node {
         ui.divider
 
         // --- i18n showcase (§11) --------------------------------
-        ui.text(value="i18n", style={fontSize=20, fontWeight=bold})
+        ui.text(value="i18n", style={fontSize=20px, fontWeight=bold})
         I18nDemo
 
         ui.divider
 
         // --- Reactive context (§12) -----------------------------
-        ui.text(value="reactive context", style={fontSize=20, fontWeight=bold})
+        ui.text(value="reactive context", style={fontSize=20px, fontWeight=bold})
         ContextDemo
 
         ui.divider(label="End of Tour")

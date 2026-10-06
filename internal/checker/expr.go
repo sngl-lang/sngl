@@ -2448,9 +2448,6 @@ func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.Struc
 		return val
 	}
 	got := exprType(val)
-	if mag, ok := bareMagnitude(val, want); ok {
-		return mag
-	}
 	// A Go nil slice or map encodes as null, and is the empty collection.
 	nilCollection := c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
 	if propTypeMismatch(got, want) && !nilCollection {
@@ -2480,27 +2477,6 @@ func (c *checker) boundFieldType(field *ir.StructField, sd *ir.StructDef) *ir.Ty
 		bindings[tp.Name] = c.expected.Elems[i]
 	}
 	return field.Type.Substitute(bindings)
-}
-
-// bareMagnitude rewrites a number literal written for a unit-typed field as
-// that unit's first base (`padding=16` is 16px), which is how lib/ and the
-// examples write a length. It is a literal rewrite rather than an assignment
-// rule so every backend spells a unit value it already knows. A built-in unit
-// is excluded: duration has a host representation, where a bare 5 would be
-// five nanoseconds.
-func bareMagnitude(val ir.Expr, want *ir.Type) (ir.Expr, bool) {
-	if want.Kind != ir.TypeUnit {
-		return nil, false
-	}
-	u, _ := want.Decl.(*ir.UnitDef)
-	if u == nil || u.Builtin != ir.BuiltinNone || len(u.Bases()) == 0 {
-		return nil, false
-	}
-	lit, _ := val.(*ir.Literal)
-	if lit == nil || lit.Suffix != "" || lit.Type == nil || (lit.Type.Kind != ir.TypeInt && lit.Type.Kind != ir.TypeFloat) {
-		return nil, false
-	}
-	return &ir.Literal{AST: lit.AST, Type: want, Value: lit.Value, Suffix: u.Bases()[0].Name}, true
 }
 
 // reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR

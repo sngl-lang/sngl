@@ -25,8 +25,8 @@ component main node {
     func greeting() => "Hello, " + user.name + "!"
     func isAdult() => user.age >= 18
 
-    vbox(style={gap=12, padding=16}) {
-        text(value=greeting, style={fontSize=24, fontWeight=bold})
+    vbox(style={gap=12px, padding=16px}) {
+        text(value=greeting, style={fontSize=24px, fontWeight=bold})
         if isAdult {
             text(value="(Adult)", style={color=#007700})
         }

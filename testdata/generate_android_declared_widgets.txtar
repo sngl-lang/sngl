@@ -37,13 +37,13 @@ component main node {
     var n = 0
 
     vbox {
-        button(style={padding=4}, text="bump", @click { n += 1 })
+        button(style={padding=4px}, text="bump", @click { n += 1 })
         button(text="quiet")
-        badge(style={padding=6}, value="7")
+        badge(style={padding=6px}, value="7")
         link(href="/", text="Home")
         image(src="/logo.png", alt="logo")
         chip(label="Tag")
-        toolbar(style={padding=9}) {
+        toolbar(style={padding=9px}) {
             button(text="New")
         }
         menubar(items=["File"])

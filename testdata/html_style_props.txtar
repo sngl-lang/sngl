@@ -38,7 +38,7 @@ window {
         flexDirection = FlexDirection.rowReverse,
         justifyContent = Justification.spaceBetween,
         alignItems = Alignment.stretch,
-        minWidth = 120,
+        minWidth = 120px,
         fontFamily = "Iosevka, monospace",
         borderBottom = "1px solid #ccc",
         borderLeft = "2px solid #000",

@@ -14,8 +14,8 @@ const minifySource = `output {
 component main node {
     var name = "World"
 
-    vbox(style={gap=12, padding=16}) {
-        text(value="Hello, {name}!", style={fontSize=24, fontWeight=bold})
+    vbox(style={gap=12px, padding=16px}) {
+        text(value="Hello, {name}!", style={fontSize=24px, fontWeight=bold})
     }
 }
 `
