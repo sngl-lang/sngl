@@ -2738,7 +2738,12 @@ package, so a bad import can be dumped and read and a round-trip is assertable.
 The document is read through the filesystem the program is checked against
 (`codegen.ProjectFSScheme`), because it is a file of the project and an
 in-memory package has no other. It parses with the same goldmark configuration
-the doc site uses, so two readings of one document cannot differ.
+the doc site uses, so two readings of one document cannot differ -- heading
+ids included: a heading is written with the `anchor` goldmark's
+`WithAutoHeadingID` gave it, repeats numbered per document, so an in-page `#`
+link resolves (`anchor_test.go` holds it to the doc site's rendering). The
+anchor is `richText`'s; html writes it as the element's `id`, an empty one
+writing none, and the other targets have nothing a link could land on.
 
 - **A file**, `import doc "md:./guide.md"`, is a package holding one component,
   **`document`**, whatever the file is called: a name derived from the path

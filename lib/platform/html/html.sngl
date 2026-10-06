@@ -496,6 +496,9 @@ const component ui.card[platform] {
 component flow(
     tag string,
     style ui.Style,
+    // The element's id, for an in-page link. Empty writes none: an id
+    // attribute may not be empty.
+    id string,
     class string,
     // The rule `class` stands for, as on `inline`.
     classStyle ui.Style,
@@ -556,7 +559,7 @@ const func roleTag(role markup.Role) string {
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
 const component markup.richText[platform] {
-    flow(tag=roleTag(role), style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
+    flow(tag=roleTag(role), id=anchor, style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
         content
     }
 }

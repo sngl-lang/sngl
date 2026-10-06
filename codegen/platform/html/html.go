@@ -1908,6 +1908,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if name == "scalingMode" || name == spanStyleProp || name == classStyleProp || name == classStyleDarkProp {
 			continue
 		}
+		if isEmptyIDProp(name, expr) {
+			continue
+		}
 		if codegen.IRIsReactive(expr) {
 			if val := g.evalInitialString(expr); val != "" {
 				switch name {

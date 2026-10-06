@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="overflow:auto">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
     <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap"><span>Quoted.</span></blockquote>
     <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
@@ -170,4 +170,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0f137f404fd3001f87432d0cff78e2de
+pass sha256:9de3768674cb1696ca4db78a1ce8ded5
