@@ -41,21 +41,45 @@ const (
 )
 
 // decoration is the underline and strikethrough a run has been told about by
-// the flow it sits in and every span between.
-type decoration struct{ underline, strike bool }
+// the flow it sits in and every span between. Each is a Kotlin Boolean
+// expression, "" for off and "true" for on.
+type decoration struct{ underline, strike string }
+
+func orBool(a, b string) string {
+	switch {
+	case a == "" || b == "true":
+		return b
+	case b == "" || a == "true":
+		return a
+	}
+	return "(" + a + " || " + b + ")"
+}
 
 // textDecoration renders the accumulated set as the Compose value, or "" for
 // no decoration at all.
 func (d decoration) textDecoration() string {
-	switch {
-	case d.underline && d.strike:
-		return "TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough))"
-	case d.underline:
-		return "TextDecoration.Underline"
-	case d.strike:
-		return "TextDecoration.LineThrough"
+	type line struct{ on, value string }
+	lines := []line{{d.underline, "TextDecoration.Underline"}, {d.strike, "TextDecoration.LineThrough"}}
+	var fixed, terms []string
+	for _, l := range lines {
+		switch l.on {
+		case "":
+		case "true":
+			fixed = append(fixed, l.value)
+			terms = append(terms, l.value)
+		default:
+			terms = append(terms, fmt.Sprintf("if (%s) %s else null", l.on, l.value))
+		}
 	}
-	return ""
+	switch {
+	case len(terms) == 0:
+		return ""
+	case len(terms) > len(fixed):
+		return "TextDecoration.combine(listOfNotNull(" + strings.Join(terms, ", ") + "))"
+	case len(fixed) == 1:
+		return fixed[0]
+	}
+	return "TextDecoration.combine(listOf(" + strings.Join(fixed, ", ") + "))"
 }
 
 // renderFlow emits one flow of rich text as the single `Text` it is.
@@ -220,7 +244,7 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 			parts = append(parts, "color = "+themed)
 		}
 	case codegen.SpanStyleKnownColor(pal):
-		parts = append(parts, "color = "+composeColorExpr(cc.kc.EvalExpr(pal)))
+		parts = append(parts, "color = "+cc.colorExpr(pal))
 	default:
 		if themed == "" {
 			themed = "ComposeColor.Unspecified"
@@ -236,9 +260,14 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 				if codegen.SpanStyleUnsetColor(f.Value) {
 					continue
 				}
-				parts = append(parts, "color = "+composeColorExpr(cc.kc.EvalExpr(f.Value)))
+				parts = append(parts, "color = "+cc.spanColorExpr(f.Value))
 			case "fontSize":
-				if v := cc.styleValue(f.Value); v != "" && v != "0" && v != "0.0" {
+				if _, isLit := f.Value.(*ir.Literal); !isLit {
+					// 0px is the declaration's "unset", which a read of state can
+					// arrive at too, and 0.sp would draw the words at no size.
+					cc.kc.RequireImport("androidx.compose.ui.unit.TextUnit")
+					parts = append(parts, fmt.Sprintf("fontSize = (%s).let { if (it > 0) it.sp else TextUnit.Unspecified }", cc.styleValue(f.Value)))
+				} else if v := cc.styleValue(f.Value); v != "" && v != "0" && v != "0.0" {
 					parts = append(parts, "fontSize = "+v+".sp")
 				}
 			case "fontFamily":
@@ -247,31 +276,27 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 					cc.kc.RequireImport("androidx.compose.ui.text.font.FontFamily")
 				}
 			case "fontWeight":
-				if w := composeWeight(enumMember(f.Value)); w != "" {
+				if w := cc.composeEnum(f.Value, composeWeight); w != "" {
 					parts = append(parts, "fontWeight = "+w)
 				}
 			case "fontStyle":
-				if st := composeSlant(enumMember(f.Value)); st != "" {
+				if st := cc.composeEnum(f.Value, composeSlant); st != "" {
 					parts = append(parts, "fontStyle = "+st)
 					cc.kc.RequireImport("androidx.compose.ui.text.font.FontStyle")
 				}
 			case "underline":
-				if v, ok := codegen.IRLiteralBool(f.Value); ok && v {
-					own.underline = true
-				}
+				own.underline = cc.boolFlag(f.Value)
 			case "strike":
-				if v, ok := codegen.IRLiteralBool(f.Value); ok && v {
-					own.strike = true
-				}
+				own.strike = cc.boolFlag(f.Value)
 			}
 		}
 	}
 	// A run that names a decoration writes the whole accumulated set, since
 	// the one it names would otherwise turn the enclosing one off; a run that
 	// names none writes nothing and leaves the enclosing span's standing.
-	if own.underline || own.strike {
-		dec.underline = dec.underline || own.underline
-		dec.strike = dec.strike || own.strike
+	if own.underline != "" || own.strike != "" {
+		dec.underline = orBool(dec.underline, own.underline)
+		dec.strike = orBool(dec.strike, own.strike)
 		parts = append(parts, "textDecoration = "+dec.textDecoration())
 		cc.kc.RequireImport("androidx.compose.ui.text.style.TextDecoration")
 	}
@@ -363,4 +388,54 @@ func enumMember(e ir.Expr) string {
 	}
 	s, _ := codegen.IRLiteralString(e)
 	return s
+}
+
+// boolFlag is a Bool field as a decoration expression: "" for a literal false,
+// "true" for a literal true, and the Kotlin expression when it reads state.
+func (cc *irComposeContext) boolFlag(e ir.Expr) string {
+	if v, ok := codegen.IRLiteralBool(e); ok {
+		if v {
+			return "true"
+		}
+		return ""
+	}
+	return cc.kc.EvalExpr(e)
+}
+
+// composeEnum is an enum-valued style field as the Compose value toCompose
+// maps its members to, or "" when it says nothing.
+//
+// A value that reads state is a ternary here -- Kotlin keeps them -- and each
+// branch is mapped rather than the whole evaluated: the stdlib's enums are not
+// declared on this target, and `FontWeight` is Compose's own name. A member
+// the mapping has no answer for is `null` inside a branch, which is what an
+// `inherit` means to a SpanStyle.
+func (cc *irComposeContext) composeEnum(e ir.Expr, toCompose func(string) string) string {
+	t, ok := e.(*ir.Ternary)
+	if !ok {
+		return toCompose(enumMember(e))
+	}
+	then, els := cc.composeEnum(t.Then, toCompose), cc.composeEnum(t.Else, toCompose)
+	if then == "" && els == "" {
+		return ""
+	}
+	if then == "" {
+		then = "null"
+	}
+	if els == "" {
+		els = "null"
+	}
+	return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), then, els)
+}
+
+// spanColorExpr is colorExpr for a run, where a branch holding the unset color
+// is the run saying nothing -- the enclosing color, not a transparent one.
+func (cc *irComposeContext) spanColorExpr(e ir.Expr) string {
+	if t, ok := e.(*ir.Ternary); ok {
+		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.spanColorExpr(t.Then), cc.spanColorExpr(t.Else))
+	}
+	if codegen.SpanStyleUnsetColor(e) {
+		return "ComposeColor.Unspecified"
+	}
+	return cc.colorExpr(e)
 }

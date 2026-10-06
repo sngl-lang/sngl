@@ -243,3 +243,11 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 	}
 	return IRLiteralToGo(v.Init)
 }
+
+func isIntVar(e ir.Expr) bool {
+	if _, lit := e.(*ir.Literal); lit {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeInt
+}
