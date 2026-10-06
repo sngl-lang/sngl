@@ -31,19 +31,19 @@ func CapsFor(language, platform string) (lower.Features, error) {
 }
 
 // buildNode finds the component a target package declares for the build tree.
-// It is named for the target, which is how a build directive reaches it, so
-// the identifier the plugin registered under is the name to look up.
+// Its #[gen.name] is the identifier the plugin registered under, which is how
+// a build directive reaches it; the component itself is named for its tier.
 func buildNode(pkg, name string) (*ir.Component, error) {
 	p := checker.LibPackage(pkg)
 	if p == nil {
 		return nil, fmt.Errorf("no package sngl:%s", pkg)
 	}
 	for _, c := range p.Components {
-		if c.Name == name {
+		if _, got, ok := ir.TargetNode(c); ok && got == name {
 			return c, nil
 		}
 	}
-	return nil, fmt.Errorf("sngl:%s declares no component %q, so the target says nothing about what it generates", pkg, name)
+	return nil, fmt.Errorf("sngl:%s declares no build-target node named %q, so the target says nothing about what it generates", pkg, name)
 }
 
 // CapsOrNone is CapsFor for a caller with nowhere to put an error, which after

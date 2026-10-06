@@ -3,8 +3,9 @@
 # this, so both halves could be reverted to the old ambient lookup with a green
 # suite.
 #
-# `tree.kind` is the macro under test — sngl:ui/draw declares none now that
-# membership is the return position.
+# `tree.none` is the macro under test — sngl:ui/draw declares none now that
+# membership is the return position, and sngl:tree no longer declares `kind`
+# now that a family is a component.
 
 # A qualified macro needs its package imported.
 ! sngl check no_import.sngl
@@ -18,7 +19,7 @@ stdout 'qualified.sngl: ok'
 stderr 'unknown macro "builtin": nothing in scope declares it'
 
 # A lib package carries its macros alongside its declarations, so importing
-# sngl:tree brings both the default tree and the mark that declares new ones.
+# sngl:tree brings both the count wrappers and the mark beside them.
 sngl check with_std.sngl
 stdout 'with_std.sngl: ok'
 
@@ -30,24 +31,26 @@ stdout 'aliased.sngl: ok'
 # package does not declare says exactly that. sngl:i18n declares no macros at
 # all; tree, which does, is one import line away.
 ! sngl check no_macros.sngl
-stderr 'unknown macro "kind": package "sngl:i18n" declares none of that name'
+stderr 'unknown macro "none": package "sngl:i18n" declares none of that name'
 
 -- no_import.sngl --
 import ui "sngl:ui"
 
-#[tree.kind]
-struct block {}
+#[tree.none]
+component quiet() {}
 
 ui.window {
+    quiet()
 }
 -- qualified.sngl --
 import "sngl:tree"
 import ui "sngl:ui"
 
-#[tree.kind]
-struct block {}
+#[tree.none]
+component quiet() {}
 
 ui.window {
+    quiet()
 }
 -- bare_builtin.sngl --
 import ui "sngl:ui"
@@ -63,15 +66,13 @@ ui.window {
 import . "sngl:ui"
 import tr "sngl:tree"
 
-#[tr.kind]
-struct block {}
-
-component para(children ...component block) node {}
-component bold(weight int) block {}
+#[tr.none]
+component quiet() {}
 
 component main node {
-    para() {
-        bold(weight=700)
+    vbox() {
+        quiet()
+        text(value="beside a widget")
     }
 }
 
@@ -82,27 +83,19 @@ window {
 import . "sngl:ui"
 import whatever "sngl:tree"
 
-#[whatever.kind]
-struct block {}
-
-component para(children ...component block) node {}
-component bold(weight int) block {}
-
-component main node {
-    para() {
-        bold(weight=700)
-    }
-}
+#[whatever.none]
+component quiet() {}
 
 window {
-    main
+    quiet()
 }
 -- no_macros.sngl --
 import b "sngl:i18n"
 import ui "sngl:ui"
 
-#[b.kind]
-struct block {}
+#[b.none]
+component quiet() {}
 
 ui.window {
+    quiet()
 }

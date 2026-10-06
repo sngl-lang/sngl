@@ -53,6 +53,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
@@ -88,13 +89,18 @@ type CanvasStyle struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
+	w       *fynelayout.Toplevel
 	__n0    *canvas.Image
 	__n0Ctx *snglcanvas.Context
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -106,6 +112,14 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
+func (m *Model) w_closed_handler() {
+}
+
+func (m *Model) w_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.w.SetVisible(m.visible__inst0)
+}
+
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
@@ -113,24 +127,55 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+// wClosed invokes the OnClosed callback on the #w widget; for tests.
+func (m *Model) wClosed() {
+	if m.w.OnClosed != nil {
+		m.w.OnClosed()
+	}
+}
+
+// wVisible invokes the OnVisible callback on the #w widget; for tests.
+func (m *Model) wVisible(__visible bool) {
+	if cb := m.w.OnVisible; cb != nil {
+		m.w.OnVisible = nil
+		cb(__visible)
+		m.w.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.w.Container
+	}
+	m.__built = true
+	m.w = fynelayout.NewToplevel()
+	m.w.SetVisible(m.visible__inst0)
+	m.w.OnClosed = m.w_closed_handler
+	m.w.OnVisible = m.w_visible_handler
 	m.__n0Ctx = snglcanvas.New(200, 100)
 	m._canvasDraw0(m.__n0Ctx)
 	m.__n0 = canvas.NewImageFromImage(m.__n0Ctx.Result())
 	m.__n0.FillMode = canvas.ImageFillOriginal
 	m.__n0.SetMinSize(fyne.NewSize(200, 100))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.w.Add(m.__n0)
+	fynelayout.AppAttach(m.w)
+	return m.w.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -394,14 +439,17 @@ type Color struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkDrawingArea
-	__root *C.GtkBox
+	visible__inst0 bool
+	w              *C.GtkBox
+	__n0           *C.GtkDrawingArea
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -447,6 +495,13 @@ func LineJoin(name string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
+func (m *Model) w_closed_handler() {
+}
+
+func (m *Model) w_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_rectangle(ctx, C.double(0.0), C.double(0.0), C.double(200.0), C.double(100.0))
@@ -454,17 +509,27 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_restore(ctx)
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.w = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	m.__n0 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.__n0, C.int(200))
 	C.gtk_drawing_area_set_content_height(m.__n0, C.int(100))
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 200, 100, ""); m._canvasDraw0(cr) })
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n0), C.int((len(snglDrawFuncs) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.w)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.w)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -500,6 +565,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -583,8 +651,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Canvas(modifier = Modifier.size(200.dp, 100.dp)) {
-        drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Canvas(modifier = Modifier.size(200.dp, 100.dp)) {
+            drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+        }
     }
 }
 -- out/none/html/index.html --
@@ -606,7 +685,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(51,102,204,1)";
@@ -657,10 +736,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e0df7a36541475947f49269210651596
+pass sha256:46c05962a62e05989b30d4f9c2107ff5
 -- run/go/gtk4 --
-pass sha256:233b867f1a37e2f2ee405210e26f747d
+pass sha256:e950878f852bdd4a0bb9cbc6d9cc5725
 -- run/kotlin/android --
-pass sha256:ae61e9928cec87ddb6b10d1ca658d49e
+pass sha256:4d794c5cc5a61b0d89884de7b02342a2
 -- run/none/html --
-pass sha256:8e746f36e2ffd5a497746a3afaa51c2f
+pass sha256:7e3af92a86fa381ade6ac4f0c8288783

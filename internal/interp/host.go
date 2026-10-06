@@ -56,6 +56,10 @@ func wireValue(v any) any {
 			out[k] = wireValue(el)
 		}
 		return out
+	case unitValue:
+		// A host reads a measurement as its number; the unit table is the
+		// interpreter's and does not cross.
+		return x.magnitude()
 	}
 	return v
 }

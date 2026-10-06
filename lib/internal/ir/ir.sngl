@@ -21,8 +21,11 @@ struct Macro {}
 // folded either, though the call has no effect of its own; it contradicts
 // `mutates`. `mutatesReceiver` says the first argument is modified in place,
 // which is what reactivity needs to treat a statement-level call as a write to
-// the receiver's variable.
-enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
+// the receiver's variable. `build` says only the build's evaluator answers the
+// id: no target emits a call to it, so one the build could not fold is an
+// error rather than a call to nothing -- sngl:x/gen's host API, which reads the
+// machine the build runs on.
+enum IntrinsicFlag { mutates, readonly, mutatesReceiver, build }
 
 // What a call to a foreign function costs. Written as bare identifiers after
 // the name: `#[foreign("go:example.com/api", "Get", async)]`.

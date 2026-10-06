@@ -130,7 +130,7 @@ import . "widgets"
 
 func Greet(who string) => "MINE " + who
 
-window #w(href="/index.html") {
+window #w() {
     text(value=Greet("x"))
 }
 -- std.sngl --

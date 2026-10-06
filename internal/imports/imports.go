@@ -26,15 +26,15 @@ type ImportRef struct {
 // directory import and comes back as ("", path).
 func ParseScheme(path string) (scheme, uri string) {
 	before, after, ok := strings.Cut(path, ":")
-	if !ok || !isSchemeName(before) {
+	if !ok || !IsSchemeName(before) {
 		return "", path
 	}
 	return before, after
 }
 
-// isSchemeName reports whether s is a URI scheme name (RFC 3986): a letter
+// IsSchemeName reports whether s is a URI scheme name (RFC 3986): a letter
 // followed by letters, digits, "+", "-" or ".".
-func isSchemeName(s string) bool {
+func IsSchemeName(s string) bool {
 	if s == "" {
 		return false
 	}

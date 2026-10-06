@@ -34,11 +34,11 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		destroyBuiltInstances(comp, st)
 	}
-	pkg.Body = st.processStmts(pkg.Body, &pkg.Funcs)
-	for _, w := range pkg.Windows {
-		w.Children = st.processStmts(w.Children, &pkg.Funcs)
-	}
+	// The package body's parent is the application: each node there is
+	// attached to it (ir.AppParent), and what that means is the platform's.
+	pkg.Body = st.processStmtsForParent(pkg.Body, &pkg.Funcs, ir.AppParent)
 	return nil
 }
 
@@ -207,14 +207,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			// A window is a rendering root, not a widget to flatten: what it
-			// holds is lowered, and the window itself stays where it was
-			// written for codegen to read as the page it is.
-			if ir.IsWindowNode(n) {
-				n.Children = st.processStmts(n.Children, funcs)
-				out = append(out, n)
-				continue
-			}
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 			if parentID != "" {
 				out = append(out, &ir.CallStmt{
@@ -242,6 +234,9 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			out = append(out, n)
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
+			// Kept: what a boundary holds is flat now, and the boundary itself
+			// stays until passBoundaryPassthrough, because its handler is
+			// reached through it by every pass that still reads one.
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
@@ -353,6 +348,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		}
 
 		var handlerArg ir.Expr
+		// Whichever form it takes: a closure is what a handler inside a
+		// component instance becomes, and a test names it by this too.
+		h.Func.LoweredFromComponentEvent = h.ComponentEvent
 		captures := analyzeCaptures(h.Func.Block, h.Func.Params)
 		switch {
 		case st.liftHandlers && len(captures) > 0:
@@ -375,7 +373,6 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			h.Func.Name = handlerName
 			h.Func.LoweredFromTag = n.Name
 			h.Func.LoweredFromEvent = h.Name
-			h.Func.LoweredFromComponentEvent = h.ComponentEvent
 			h.Func.LoweredFromNode = id
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
@@ -596,4 +593,63 @@ func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeStat
 	// other slot in the package.
 	st.seedCounter(pkg)
 	return st
+}
+
+// destroyBuiltInstances gives an instance built at run time the teardown of
+// the instances its own build creates: a component rendered in its body is
+// an instance of its own, and ends when the one around it does. Without it a
+// window under `if details` was destroyed while an effect in a component it
+// rendered stayed mounted, since nothing but the slot that built the window
+// held the window, and nothing held what the window's build made.
+//
+// Only the build's own top level: an instance a render slot creates is held
+// by that slot's registry, which destroyHeld already empties.
+func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
+	if comp == nil || !comp.RuntimeInstance {
+		return
+	}
+	var destroys []ir.Stmt
+	// Through a boundary, which is no level of its own: a window's content
+	// is under the one its @error is.
+	var top func(stmts []ir.Stmt) []ir.Stmt
+	top = func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		for _, s := range stmts {
+			if b, ok := s.(*ir.ErrorBoundary); ok {
+				out = append(out, top(b.Children)...)
+				continue
+			}
+			out = append(out, s)
+		}
+		return out
+	}
+	for _, s := range top(comp.Body) {
+		lv, ok := s.(*ir.LocalVar)
+		if !ok {
+			continue
+		}
+		call, ok := lv.Init.(*ir.Call)
+		if !ok || call.Func == nil || call.Func.Intrinsic != ir.NodeOpCreateComponent {
+			continue
+		}
+		destroys = append([]ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+			Args:     []ir.CallArg{{Value: &ir.Ident{Name: lv.Name, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}}},
+		}}}, destroys...)
+	}
+	if len(destroys) == 0 {
+		return
+	}
+	if fn := funcNamed(comp.Funcs, TeardownFunc); fn != nil {
+		fn.Block = append(fn.Block, destroys...)
+		return
+	}
+	comp.Funcs = append(comp.Funcs, &ir.Func{
+		Name:   TeardownFunc,
+		Return: ir.TypVoid,
+		Purity: ir.PurityMutates,
+		Block:  destroys,
+	})
 }

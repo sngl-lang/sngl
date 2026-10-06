@@ -26,24 +26,24 @@ import (
 // `sngl test` never lowers, and passEffect does not run for a platform that
 // brackets a lifetime natively, so a rule stated there would be one two of the
 // three ways of running a program never applied.
-func (c *checker) checkEffectSelfRekey() {
-	if c.pkg == nil {
+func (c *checker) checkEffectSelfRekey(pkg *ir.Package) {
+	if pkg == nil {
 		return
 	}
-	pkgVars := make(map[*ir.Var]struct{}, len(c.pkg.Vars))
-	for _, v := range c.pkg.Vars {
+	pkgVars := make(map[*ir.Var]struct{}, len(pkg.Vars))
+	for _, v := range pkg.Vars {
 		pkgVars[v] = struct{}{}
 	}
 	analyzed := map[*ir.Func]bool{}
-	for _, fn := range c.pkg.Funcs {
+	for _, fn := range pkg.Funcs {
 		analyzed[fn] = true
 	}
-	for _, comp := range c.pkg.Components {
+	for _, comp := range pkg.Components {
 		for _, fn := range comp.Funcs {
 			analyzed[fn] = true
 		}
 	}
-	for _, o := range ir.Owners(c.pkg) {
+	for _, o := range ir.Owners(pkg) {
 		scope := maps.Clone(pkgVars)
 		for _, v := range o.Vars {
 			scope[v] = struct{}{}
@@ -53,7 +53,7 @@ func (c *checker) checkEffectSelfRekey() {
 			if !isNode || inst.Component == nil || inst.Component.Builtin != ir.BuiltinEffect {
 				return nil
 			}
-			c.reportSelfRekey(inst, scope, analyzed)
+			c.reportSelfRekey(pkg, inst, scope, analyzed)
 			return nil
 		})
 	}
@@ -63,7 +63,7 @@ func (c *checker) checkEffectSelfRekey() {
 //
 // First rather than all: the two handlers of one bracket are one mistake, and a
 // program with three of them has one thing to change per bracket.
-func (c *checker) reportSelfRekey(inst *ir.NodeInst, scope map[*ir.Var]struct{}, analyzed map[*ir.Func]bool) {
+func (c *checker) reportSelfRekey(pkg *ir.Package, inst *ir.NodeInst, scope map[*ir.Var]struct{}, analyzed map[*ir.Func]bool) {
 	var key ir.Expr
 	for _, p := range inst.Props {
 		if p.Name == "on" {
@@ -86,7 +86,7 @@ func (c *checker) reportSelfRekey(inst *ir.NodeInst, scope map[*ir.Var]struct{},
 		}
 		writes := map[*ir.Var]bool{}
 		c.varsWritten(h.Func, scope, analyzed, writes, map[*ir.Func]bool{})
-		for _, v := range c.pkg.Vars {
+		for _, v := range pkg.Vars {
 			if reads[v] && writes[v] {
 				c.reportRekey(inst, h, v.Name)
 				return

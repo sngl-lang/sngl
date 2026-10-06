@@ -23,8 +23,8 @@ const InterpreterPlatform = "none"
 // tickIntervalProp and tickEvent are the primitive's two members, named here
 // so a change to the declaration fails in one place.
 const (
-	tickIntervalProp = "interval"
-	tickEvent        = "tick"
+	tickIntervalProp = ir.TimerIntervalProp
+	tickEvent        = ir.TimerTickEvent
 )
 
 // MountedTimer is one recurring deadline the tree holds. Not among the View's

@@ -45,21 +45,21 @@ import (
 
 func started() Model {
 	m := New()
-	m.__loopTimer0Sync()
+	m.__timer0Sync()
 	return m
 }
 
 func TestEveryCopyIsScheduled(t *testing.T) {
 	m := started()
-	if len(m.__loopTimer0) != 2 {
-		t.Fatalf("want a schedule per element, have %v", m.__loopTimer0)
+	if len(m.__timer0) != 2 {
+		t.Fatalf("want a schedule per element, have %v", m.__timer0)
 	}
 }
 
 // A tick runs its own copy's handler, against its own copy's cell.
 func TestATickRunsOnlyItsCopy(t *testing.T) {
 	m := started()
-	next, cmd := m.Update(loopTimerTickMsg0{key: "1", gen: m.__loopTimer0["1"]})
+	next, cmd := m.Update(timerTickMsg0{key: "1", gen: m.__timer0["1"]})
 	m = next.(Model)
 	if m.ticks__inst0["1"] != 1 || m.ticks__inst0["0"] != 0 {
 		t.Fatalf("a tick for the second copy left the cells at %v", m.ticks__inst0)
@@ -73,7 +73,7 @@ func TestATickRunsOnlyItsCopy(t *testing.T) {
 // schedule for it.
 func TestAStaleTickIsIgnored(t *testing.T) {
 	m := started()
-	next, _ := m.Update(loopTimerTickMsg0{key: "0", gen: m.__loopTimer0["0"] + 1})
+	next, _ := m.Update(timerTickMsg0{key: "0", gen: m.__timer0["0"] + 1})
 	m = next.(Model)
 	if m.ticks__inst0["0"] != 0 {
 		t.Fatalf("a stale tick ran: %v", m.ticks__inst0)
@@ -83,14 +83,14 @@ func TestAStaleTickIsIgnored(t *testing.T) {
 // A copy the loop stops producing stops ticking.
 func TestARemovedCopyStops(t *testing.T) {
 	m := started()
-	gen := m.__loopTimer0["1"]
+	gen := m.__timer0["1"]
 	m = m.SetPeriods([]time.Duration{10 * time.Millisecond})
 	next, _ := m.Update(struct{}{})
 	m = next.(Model)
-	if _, live := m.__loopTimer0["1"]; live {
-		t.Fatalf("the removed copy is still scheduled: %v", m.__loopTimer0)
+	if _, live := m.__timer0["1"]; live {
+		t.Fatalf("the removed copy is still scheduled: %v", m.__timer0)
 	}
-	next, _ = m.Update(loopTimerTickMsg0{key: "1", gen: gen})
+	next, _ = m.Update(timerTickMsg0{key: "1", gen: gen})
 	m = next.(Model)
 	if m.ticks__inst0["1"] != 0 {
 		t.Fatalf("the removed copy ticked: %v", m.ticks__inst0)

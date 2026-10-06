@@ -2,10 +2,10 @@ package lsp
 
 import (
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
 )
 
@@ -15,7 +15,11 @@ func (s *Server) analyze(fs *fileState) []Diagnostic {
 	filename := uriToPath(uri)
 	dir := filepath.Dir(filename)
 
-	doc, coreDiags := lspcore.Analyze(fs.Content, filename, os.DirFS(dir), dir, nil)
+	// Imports resolve as a build's do, so a plugin's handler runs here too --
+	// under the server's grants, never prompting.
+	resolver := build.NewResolver(dir)
+	resolver.Trust = s.trust
+	doc, coreDiags := lspcore.Analyze(fs.Content, filename, build.ProjectFS(dir), dir, resolver)
 	if doc != nil {
 		fs.Doc = doc
 	}

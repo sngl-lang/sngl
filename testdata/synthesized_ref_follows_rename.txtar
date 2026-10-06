@@ -585,7 +585,7 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = {};
+  var state = { visible__inst1: true };
   var __ctx_depth__inst0 = i18n.defaultLocale();
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
@@ -596,4 +596,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b9ec7911e391660d4f2381ad570fdf8d
+pass sha256:29a36b0923f7b2415b7ca7ebd139e9d3

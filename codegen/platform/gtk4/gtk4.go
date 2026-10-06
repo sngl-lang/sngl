@@ -4,7 +4,6 @@ package gtk4
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -60,18 +59,24 @@ var girAutoPaths = []string{
 }
 
 func init() {
-	codegen.RegisterPlatform(&Generator{})
+	g := &Generator{}
+	codegen.RegisterNative(platformName, g)
+	registerGIRScheme(g)
 }
 
 // Generator implements codegen.PlatformGenerator for GTK4.
 type Generator struct {
-	once     sync.Once
+	// mu guards everything below it but store: the generator is one value
+	// shared by every check and build in the process, and the option is read
+	// by the gir: scheme's setting and intrinsic while Configure and a build's
+	// own option write it.
+	mu       sync.Mutex
+	loaded   bool // registry, minimal and initErr answer girOpt
 	registry *gir.TypeRegistry
 	initErr  error // set if autodetect GIR load fails
 	minimal  bool  // registry is the bundled subset, not the host's GIR
 	girOpt   string
-	fsOnce   sync.Once
-	pkgFS    fs.FS
+	fsLoaded bool // fsErr answers girOpt
 	fsErr    error
 	// store is where the registry and the declarations derived from it are
 	// kept between builds. Nil means the process's default store.
@@ -86,18 +91,23 @@ func (g *Generator) genStore() *gencache.Store {
 }
 
 // Configure implements codegen.OptionConfigurable. Reads the "gir" option so
-// PackageFS (called during type-check, before code generation) can honor the
-// CLI-supplied GIR path. Resets the cached registry and the source built from
-// it so both re-load against the new path.
+// the gir: import sngl:platform/gtk4 makes (resolved during type-check, before
+// code generation) can honor the CLI-supplied GIR path. Resets the cached
+// registry and the declarations built from it so both re-load against the new
+// path.
 func (g *Generator) Configure(opts map[string]string) error {
-	g.girOpt = opts["gir"]
-	g.once = sync.Once{}
-	g.fsOnce = sync.Once{}
-	g.registry = nil
-	g.initErr = nil
-	g.pkgFS = nil
-	g.fsErr = nil
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.setGIROpt(opts["gir"])
 	return nil
+}
+
+// setGIROpt selects the GIR and forgets everything loaded from the last one.
+// The caller holds mu.
+func (g *Generator) setGIROpt(opt string) {
+	g.girOpt = opt
+	g.loaded, g.fsLoaded = false, false
+	g.registry, g.initErr, g.fsErr = nil, nil, nil
 }
 
 // platformName is this platform's registry identifier, and the name a
@@ -115,6 +125,8 @@ func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 // registered platform on every build, and the declarations are what such a
 // build reads anyway.
 func (g *Generator) Unavailable() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.widgets()
 	return g.fsErr
 }
@@ -122,9 +134,16 @@ func (g *Generator) Unavailable() error {
 // gir lazy-loads the widget registry, caching both the registry and the
 // failure. Configure resets the cache when --opt gir= changes.
 func (g *Generator) gir() (*gir.TypeRegistry, error) {
-	g.once.Do(func() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.girLocked()
+}
+
+func (g *Generator) girLocked() (*gir.TypeRegistry, error) {
+	if !g.loaded {
 		g.registry, g.minimal, g.initErr = girRegistryIn(g.genStore(), g.girOpt)
-	})
+		g.loaded = true
+	}
 	return g.registry, g.initErr
 }
 
@@ -141,15 +160,14 @@ func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
 		reg, _, err := girRegistry(opt)
 		return reg, err
 	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if opt != "" && opt != g.girOpt {
 		// A Config naming a GIR the generator was not configured with wins, and
 		// re-arms the cache so every later reader agrees with it.
-		g.girOpt = opt
-		g.once = sync.Once{}
-		g.fsOnce = sync.Once{}
-		g.registry, g.initErr, g.pkgFS, g.fsErr = nil, nil, nil, nil
+		g.setGIROpt(opt)
 	}
-	return g.gir()
+	return g.girLocked()
 }
 
 // girRegistry resolves the "gir" option to a widget registry, and reports
@@ -186,7 +204,9 @@ func girRegistryIn(store *gencache.Store, opt string) (*gir.TypeRegistry, bool, 
 // usingMinimalGIR reports whether the registry is the bundled subset, which
 // is what a test naming host-only vocabulary skips on.
 func (g *Generator) usingMinimalGIR() bool {
-	_, _ = g.gir()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	_, _ = g.girLocked()
 	return g.minimal
 }
 

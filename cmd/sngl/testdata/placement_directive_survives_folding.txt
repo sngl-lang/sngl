@@ -23,6 +23,6 @@ component App node {
     }
 }
 
-window #main(title="t", href="/") {
+window #main(title="t") {
     App()
 }

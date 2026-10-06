@@ -117,7 +117,7 @@ func FindAnnotation(lines []string, fenceLine int) (annotation, prelude string) 
 	return "", ""
 }
 
-// UnwrapComponent extracts the inner body from a formatted "component main { ... }"
+// UnwrapComponent extracts the inner body from a formatted "component snippet { ... }"
 // and un-indents by one level (4 spaces).
 func UnwrapComponent(formatted, prelude string) string {
 	src := formatted
@@ -135,7 +135,7 @@ func UnwrapComponent(formatted, prelude string) string {
 	depth := 0
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if start == -1 && strings.HasPrefix(trimmed, "component main") && strings.HasSuffix(trimmed, "{") {
+		if start == -1 && strings.HasPrefix(trimmed, "component snippet") && strings.HasSuffix(trimmed, "{") {
 			start = i + 1
 			depth = 1
 			continue

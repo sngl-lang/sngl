@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // handleExecuteCommand routes workspace/executeCommand to the appropriate
@@ -43,12 +44,13 @@ func (s *Server) cmdOpenPreview(id json.RawMessage, args []json.RawMessage) {
 		return
 	}
 	pkg, err := s.checkForPreview(fs)
-	if err != nil || pkg == nil || len(pkg.Windows) == 0 {
-		s.sendError(id, -32603, "no windows in document")
+	if err != nil || pkg == nil || !pkg.IsProgram() {
+		s.sendError(id, -32603, "the document renders nothing at the root of the file")
 		return
 	}
-	// For now, return the first window. (TODO: enclosing-window-at-position.)
-	windowName := pkg.Windows[0].ID
+	// For now, the first node the package body renders. (TODO: the one
+	// enclosing the position.)
+	windowName := firstRootID(pkg)
 
 	port := s.preview.Port()
 	if port == 0 {
@@ -58,4 +60,15 @@ func (s *Server) cmdOpenPreview(id json.RawMessage, args []json.RawMessage) {
 	url := fmt.Sprintf("http://127.0.0.1:%d/preview/%s/%s",
 		port, base64.RawURLEncoding.EncodeToString([]byte(first.URI)), windowName)
 	s.sendResult(id, map[string]string{"url": url})
+}
+
+// firstRootID is the `#id` of the first node the package body renders, "" when
+// it wrote none.
+func firstRootID(pkg *ir.Package) string {
+	for _, s := range pkg.Body {
+		if n, ok := s.(*ir.NodeInst); ok {
+			return n.ID
+		}
+	}
+	return ""
 }

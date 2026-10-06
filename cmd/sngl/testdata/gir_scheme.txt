@@ -1,0 +1,32 @@
+# gtk4's widget declarations are the gir: scheme's package -- a library
+# plugin, lib/x/scheme/gir -- and sngl:platform/gtk4's wrappers import it. A
+# program naming a widget directly imports it the same way.
+
+# The platform package checks on its own, where nothing but the library
+# resolves its import.
+sngl check sngl:platform/gtk4
+
+# A program reaches a widget, and a GIR action on it, through the import.
+sngl generate --platform=gtk4 --lang=go --opt gir=builtin --out=out app.sngl
+grep 'gtk_progress_bar_pulse' out/model.go
+
+# The widgets are no longer sngl:platform/gtk4's.
+! sngl generate --platform=gtk4 --lang=go --opt gir=builtin --out=old old.sngl
+stderr 'GtkProgressBar'
+
+-- app.sngl --
+import gtk "gir:Gtk-4.0"
+import ui "sngl:ui"
+import time "sngl:time"
+
+ui.window {
+    gtk.GtkProgressBar #bar(fraction=0.0) {}
+    time.timer(interval=100ms, @tick { bar.pulse() })
+}
+-- old.sngl --
+import "sngl:platform/gtk4"
+import ui "sngl:ui"
+
+ui.window {
+    gtk4.GtkProgressBar(fraction=0.0) {}
+}

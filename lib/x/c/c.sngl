@@ -1,0 +1,11 @@
+import marks "sngl:internal/marks"
+
+// A header a target's C preamble includes, and the flags compiling and
+// linking against it needs. Written at the root of a file, once per header; a
+// package importing this one, directly or not, includes it.
+//
+// `include` is the header as an #include names it, and `system` says it is
+// found on the include path (`<gtk/gtk.h>`) rather than beside the program
+// (`"lib/math.h"`).
+#[marks.builtin("cLink")]
+component link(const include string, const system bool = false, const cflags list<string> = [], const ldflags list<string> = []) root {}

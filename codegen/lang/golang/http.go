@@ -57,6 +57,11 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	}
 
 	var routeBody bytes.Buffer
+	// An action a raise may leave is a catch block recovering the payload,
+	// which is the one place the server names it.
+	if actionsCatch(req) {
+		routeBody.WriteString(ErrorEventDecl)
+	}
 	writeHandler(&routeBody, req)
 	writeRouteParamTypes(&routeBody, req)
 	if hasActions {
@@ -451,11 +456,29 @@ func routeParamString(pv *ir.Param, name string, gc *GoIRContext) string {
 func writeClientRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute) {
 	var page string
 	if req.RenderHTML != nil {
-		page = req.RenderHTML(r.WindowIdx)
+		page = req.RenderHTML(r.DocIdx)
 	}
 	fmt.Fprintf(b, "func %s(%s http.ResponseWriter, _ *http.Request) {\n", r.Name, routeWriterVar)
 	fmt.Fprintf(b, "\t%s.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n", routeWriterVar)
 	fmt.Fprintf(b, "\t%s.Write([]byte(%s))\n", routeWriterVar, strconv.Quote(page))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
+}
+
+// actionsCatch reports whether a route's server action runs a catch block: a
+// handler the window's boundary, or one around it, resolves a raise to.
+func actionsCatch(req *codegen.HTTPRequest) bool {
+	found := false
+	for _, r := range req.Routes {
+		for _, a := range r.Actions {
+			_ = ir.WalkStmts(a.LogicalMutations, func(s ir.Stmt) error {
+				if x, ok := s.(*ir.If); ok && x.Catch != nil {
+					found = true
+					return ir.SkipAll
+				}
+				return nil
+			})
+		}
+	}
+	return found
 }

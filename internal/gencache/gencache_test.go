@@ -328,3 +328,46 @@ func TestUsedReportsWhatGetHandedOut(t *testing.T) {
 		t.Errorf("ParseInputs(Used()) = %v, %v; want %v", back, err, used)
 	}
 }
+
+// TestEnvRecordsNoValue holds Env to recording a variable by its digest: the
+// store is a directory on disk that outlives the build, and a variable may
+// hold a token.
+func TestEnvRecordsNoValue(t *testing.T) {
+	t.Setenv("SNGL_GENCACHE_TEST_SECRET", "hunter2")
+	in := Env("SNGL_GENCACHE_TEST_SECRET")
+	for _, p := range in.Props {
+		if p.Value == "hunter2" {
+			t.Fatalf("Env recorded the value itself: %+v", in)
+		}
+	}
+	if in.Get("sha256") == "" {
+		t.Fatalf("Env recorded no digest: %+v", in)
+	}
+}
+
+// A setting invalidates what recorded it when it changes, and a store that
+// outlives the change -- a batch producer looking one request up twice, as
+// the plugin runner does -- asks it again rather than remembering the first
+// answer.
+func TestSettingInvalidatesWithinOneStore(t *testing.T) {
+	val := "a"
+	name := "test.setting." + t.Name()
+	RegisterSetting(name, func() string { return val })
+	in, err := Setting(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := Open(t.TempDir())
+	req := Request{Producer: "test.setting", Params: []string{"q"}}
+	s.Put(req, Output{Inputs: []Input{in}, Body: []byte("const v = 1\n")})
+	if _, ok := s.Lookup(req); !ok {
+		t.Fatal("lookup missed with the setting unchanged")
+	}
+	val = "b"
+	if _, ok := s.Lookup(req); ok {
+		t.Error("lookup hit after the setting changed")
+	}
+	if _, err := Setting("test.setting.nobody"); err == nil {
+		t.Error("Setting of an unregistered name succeeded")
+	}
+}

@@ -79,7 +79,7 @@ component main node {
     bracket #plain()
     bracket #keyed(on=7)
 
-    grid(seed=2) {
+    grid #g(seed=2) {
         component cell(v) {
             text #cell(value=string(v + 1))
         }
@@ -91,7 +91,7 @@ component main node {
 // codegen/platform/gtk4/component_event_param_test.go names for `job`'s
 // handler in `main`.
 component stateful node {
-    holder(on=7) {
+    holder #h(on=7) {
         component shown(v) {
             text #held(value=string(v))
         }
@@ -109,11 +109,11 @@ func testAnUnpinnedParameterTakesItsDefault(t Test, c main) {
 }
 
 func testASlotIsCheckedAgainstTheSpecialization(t Test, c main) {
-    t.assert(c.cell.value == "3")
+    t.assert(c.g.cell.value == "3")
 }
 
 func testAGenericComponentHoldsStateOfItsOwnParameter(t Test, c stateful) {
-    t.assert(c.held.value == "7")
+    t.assert(c.h.held.value == "7")
 }
 
 window {

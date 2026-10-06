@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -131,11 +132,15 @@ func (c *checker) bindSpreadField(s *spreadArg, f spreadField, want *ir.Type, wh
 	if want == nil {
 		return f.value, true
 	}
-	if f.typ.Kind != ir.TypeDyn && want.Kind != ir.TypeDyn && !f.typ.IsAssignableTo(want) {
-		c.error(s.ast.Pos, "cannot use field %q (%s) as %s (%s)", f.name, f.typ, what, want)
+	ok := true
+	val := c.coerce(nil, f.value, want, slot{pos: s.ast.Pos, mismatch: func(wantS, got string) string {
+		ok = false
+		return fmt.Sprintf("cannot use field %q (%s) as %s (%s)", f.name, got, what, wantS)
+	}})
+	if !ok {
 		return nil, false
 	}
-	return wrapIfNeeded(f.value, want), true
+	return val, true
 }
 
 // spreadProps binds a spread written in a component call's arguments to the

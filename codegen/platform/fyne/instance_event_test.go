@@ -56,7 +56,7 @@ func TestTheParentHandlerRepaintsTheModelsWidget(t *testing.T) {
 	if m.picked != "b" {
 		t.Errorf("picked = %q, want %q", m.picked, "b")
 	}
-	if got := m.__n1.Text; got != "b" {
+	if got := m.__n2.Text; got != "b" {
 		t.Errorf("the Model's label = %q, want %q", got, "b")
 	}
 }

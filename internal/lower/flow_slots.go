@@ -9,9 +9,6 @@ func (st *reactivityState) slotFlows(stmts []ir.Stmt) []ir.Stmt {
 	for i, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if ir.IsWindowNode(n) {
-				continue
-			}
 			if st.hostsReactiveSpans(n) {
 				stmts[i] = flowSlot(n)
 				continue

@@ -29,6 +29,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func main() {
@@ -312,10 +314,14 @@ func precedenceTable() string {
 }
 
 func keywordsBlock() string {
+	kws := parser.Keywords()
+	for i, k := range kws {
+		kws[i] = "`" + k + "`"
+	}
 	return strings.Join([]string{
-		"`break` `component` `const` `continue` `else` `enum` `for` `func` `if` `import` `platform` `return` `struct` `unit` `var`",
+		strings.Join(kws, " "),
 		"",
-		"The following names are **predeclared identifiers**, not keywords: `true`, `false`, `null`, `output`, `timer`, `window`, `style`. They have meaning in context but may be shadowed by user declarations.",
+		"`true`, `false` and `null` are **predeclared identifiers**, not keywords, and may be shadowed by user declarations. Every other name a program uses without importing it — `int`, `string`, `list`, `output`, `effect`, `boundary` — is declared in `sngl:builtin`.",
 	}, "\n")
 }
 

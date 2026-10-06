@@ -333,6 +333,7 @@ func rootForTests(pkg *ir.Package, comp string) {
 // statement positions only) and the post-lower optimize folds away.
 func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang codegen.LangTranslator, root string) error {
 	optCfg := &optimize.Config{
+		Trust:    cliTrust,
 		Platform: plat.PlatformIdentifier(),
 		Language: langIdent(lang),
 	}

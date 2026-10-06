@@ -123,7 +123,7 @@ func TestIntrinsicMarkRejectsAnUnknownFlag(t *testing.T) {
 #[intrinsic("markstub.shout", nosuch)]
 func shout(s string) => s
 `)
-	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver)`)
+	wantMarkErr(t, errs, `unknown value "nosuch" (want one of: mutates, readonly, mutatesReceiver, build)`)
 }
 
 func TestIntrinsicMarkRejectsContradictoryFlags(t *testing.T) {
@@ -151,52 +151,31 @@ struct Tiny {}
 	wantMarkErr(t, errs, `#[intrinsic("markstub.shout")] cannot mark`)
 }
 
-// The alias is the file's, and the mark follows it like any other qualified
-// name.
-func TestTreeMarksFollowTheImportAlias(t *testing.T) {
-	pkg, errs := checkMarkStub(t, `import t "sngl:tree"
-
-#[t.kind]
-struct block {}
+// A family is named through the file's alias like any other qualified name,
+// and a member's Tree is the family's declaration.
+func TestFamilyFollowsTheImportAlias(t *testing.T) {
+	pkg, errs := checkMarkStub(t, `import b "sngl:build"
 
 component para() block {}
+
+component block b.family
 `)
 	wantNoMarkErrs(t, errs)
-	var tree *ir.StructDef
-	for _, sd := range pkg.Structs {
-		if sd.Name == "block" {
-			tree = sd
+	var family, para *ir.Component
+	for _, c := range pkg.Components {
+		switch c.Name {
+		case "block":
+			family = c
+		case "para":
+			para = c
 		}
 	}
-	if tree == nil || !tree.IsTree {
-		t.Fatalf("block was not marked as a tree")
+	if !family.IsFamily() {
+		t.Fatalf("block is not a family")
 	}
-	if pkg.Components[0].Tree != tree {
-		t.Errorf("para.Tree = %v, want the block declaration", pkg.Components[0].Tree)
+	if para.Tree != family {
+		t.Errorf("para.Tree = %v, want the block declaration", para.Tree)
 	}
-}
-
-// A tree is named by a struct: the declaration is the identity, so there is
-// nothing for a component to carry the mark for.
-func TestTreeKindCannotMarkAComponent(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl:tree"
-
-#[t.kind]
-component para() {}
-`)
-	wantMarkErr(t, errs, "a tree is named by a struct")
-}
-
-// The struct is the tree and holds nothing; fields would suggest a value.
-func TestTreeKindRefusesFields(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl:tree"
-
-#[t.kind]
-struct block {
-    n int
-}
-`)
-	wantMarkErr(t, errs, "a tree struct holds nothing")
 }
 
 // A misspelled tree is an unresolved name where it is written, which is the

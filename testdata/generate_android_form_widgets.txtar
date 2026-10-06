@@ -70,7 +70,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
+
+class FocusEvent {
+    override fun equals(other: Any?) = other is FocusEvent
+    override fun hashCode() = 0
+    override fun toString() = "FocusEvent()"
+}
 
 data class SnglInputEvent(val value: String)
 
@@ -87,37 +96,54 @@ fun MainScreen() {
     var fruit by remember { mutableStateOf("") }
     var plain by remember { mutableStateOf("") }
     var birthday by remember { mutableStateOf<String?>(null) }
+    var value__inst0 by remember { mutableStateOf(name) }
+    var value__inst1 by remember { mutableStateOf(plain) }
+    var value__inst2 by remember { mutableStateOf(fruit) }
+    var visible__inst3 by remember { mutableStateOf(true) }
 
-    Column {
-        OutlinedTextField(value = name, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-            val e = SnglInputEvent(newValue)
-            name = e.value
-        }, label = {
-            Text(text = "Name", modifier = Modifier)
-        })
-        OutlinedTextField(value = plain, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
-        var expanded1 by remember { mutableStateOf(false) }
-        Box(modifier = Modifier) {
-            OutlinedButton(onClick = { expanded1 = true }) {
-                Text(if (fruit.isNotEmpty()) fruit else "Pick")
-            }
-            DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
-                listOf("Apple", "Banana").forEach { opt ->
-                    DropdownMenuItem(text = { Text(opt) }, onClick = {
-                        fruit = opt
-                        expanded1 = false
-                    })
-                }
+    if (visible__inst3) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst3 = false
+            if (!(visible__inst3)) {
+                __activity?.finish()
             }
         }
-        LinearProgressIndicator(progress = fun(): Float {
-            return 0.2f
-        }, modifier = Modifier.safeDrawingPadding())
-        OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
-            Text(text = "Birthday", modifier = Modifier)
-        })
-        OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+        Column {
+            OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+                val e = SnglInputEvent(newValue)
+                value__inst0 = e.value
+                name = e.value
+            }, label = {
+                Text(text = "Name", modifier = Modifier)
+            })
+            OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
+                val e = SnglInputEvent(newValue)
+                value__inst1 = e.value
+            })
+            var expanded1 by remember { mutableStateOf(false) }
+            Box(modifier = Modifier) {
+                OutlinedButton(onClick = { expanded1 = true }) {
+                    Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
+                }
+                DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
+                    listOf("Apple", "Banana").forEach { opt ->
+                        DropdownMenuItem(text = { Text(opt) }, onClick = {
+                            value__inst2 = opt
+                            expanded1 = false
+                        })
+                    }
+                }
+            }
+            LinearProgressIndicator(progress = fun(): Float {
+                return 0.2f
+            }, modifier = Modifier.safeDrawingPadding())
+            OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
+                Text(text = "Birthday", modifier = Modifier)
+            })
+            OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+        }
     }
 }
 -- run/kotlin/android --
-pass sha256:522d7168e0a47260c2c8163f772444b7
+pass sha256:fb6e5ef0e43a47e5c9c962227d62940f

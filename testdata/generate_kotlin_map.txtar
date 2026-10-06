@@ -49,6 +49,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -62,20 +65,30 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var scores__inst0 by remember { mutableStateOf(mapOf("alice" to 10, "bob" to 20)) }
     var size__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            size__inst0 = scores__inst0.size
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "count", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
         }
-        Button(onClick = {
-            size__inst0 = scores__inst0.getOrDefault("alice", 0)
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "check", modifier = Modifier)
+        Column {
+            Button(onClick = {
+                size__inst0 = scores__inst0.size
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "count", modifier = Modifier)
+            }
+            Button(onClick = {
+                size__inst0 = scores__inst0.getOrDefault("alice", 0)
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "check", modifier = Modifier)
+            }
+            Text(text = size__inst0.toString(), modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = size__inst0.toString(), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- run/kotlin/android --
-pass sha256:1002bb5146a81a45e7c2bc0f05f38fcb
+pass sha256:5e1e4acd6f308b76508d8058c1d67b18

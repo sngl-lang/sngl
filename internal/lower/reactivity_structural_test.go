@@ -367,7 +367,7 @@ func TestSlotParentRefMatchesEnclosingNode(t *testing.T) {
 	src := `
 component main node {
     var visible bool = true
-    vbox(style={gap=4}) {
+    vbox(style={gap=4px}) {
         button(@click { visible = !visible })
         if visible {
             text(value="hi")

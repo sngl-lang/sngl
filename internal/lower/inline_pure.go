@@ -70,14 +70,6 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 		return err
 	}
 	pkg.Body = body
-	for _, w := range pkg.Windows {
-		st.hoist = &pkg.Vars
-		wbody, err := st.inlineStmts(w.Children)
-		if err != nil {
-			return err
-		}
-		w.Children = wbody
-	}
 	return nil
 }
 
@@ -281,17 +273,6 @@ func (st *inlinePureState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, error) {
 func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		// A window instantiates a primitive nothing inlines, and the pass has
-		// no prop or handler of its own to substitute into one: what it holds
-		// is all there is to do.
-		if ir.IsWindowNode(n) {
-			body, err := st.inlineStmts(n.Children)
-			if err != nil {
-				return nil, err
-			}
-			n.Children = body
-			return []ir.Stmt{n}, nil
-		}
 		return st.inlineNodeInst(n)
 	case *ir.If:
 		body, err := st.inlineStmts(n.Body)
@@ -682,6 +663,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	if callsite.ID != "" {
 		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
 	}
+	// Where the program wrote it travels to the same node, for a platform's
+	// diagnostic about the primitive it became.
+	ir.AttachNodeSite(body, callsite)
 
 	// Event-handler transfer (platform-independent rule): any pure wrapper
 	// that declares its events purely as metadata — rather than emitting
@@ -748,6 +732,12 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				visit(n.Children)
 			case *ir.ErrorBoundary:
 				visit(n.Children)
+				visit(n.Failed)
+				// A window's `boundary(@error(e) { error(e) })` emits from
+				// the boundary's own handler.
+				if n.Handler != nil && n.Handler.Func != nil {
+					visit(n.Handler.Func.Block)
+				}
 			case *ir.ContextProvider:
 				visit(n.Children)
 			}
@@ -869,6 +859,14 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+			n.Failed = substituteEventsUnder(n.Failed, handlers, enclosing, under)
+			// The boundary's own handler is the override's code as much as its
+			// children are: a window's `boundary(@error(e) { error(e) })`
+			// forwards to the window's @error, and the caller's handler for it
+			// is what runs -- or nothing, where the caller wrote none.
+			if h := n.Handler; h != nil && h.Func != nil {
+				h.Func.Block = substituteEventsUnder(h.Func.Block, handlers, h.Func, under)
+			}
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
@@ -1192,6 +1190,22 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.ErrorBoundary:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
+		clone.Failed = deepCloneStmts(n.Failed)
+		// The handler is the boundary's own code, rewritten per clone like its
+		// children -- a window's `boundary(@error(e) { error(e) })` forwards to
+		// the @error its call site wrote. Shared, every window rendered the
+		// first one's.
+		if h := n.Handler; h != nil {
+			hc := *h
+			if h.Func != nil {
+				fc := *h.Func
+				fc.Block = deepCloneStmts(h.Func.Block)
+				hc.Func = &fc
+			}
+			clone.Handler = &hc
+			ir.RepointHandler(clone.Children, h, &hc)
+			ir.RepointHandler(clone.Failed, h, &hc)
+		}
 		return &clone
 	case *ir.ContextProvider:
 		clone := *n

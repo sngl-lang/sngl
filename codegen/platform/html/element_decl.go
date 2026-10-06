@@ -121,6 +121,10 @@ var domPropNames = map[string]string{
 // `open="false"`, which leaves a <details> open — so it is always a property
 // write. Everything else is an attribute unless no attribute spells it.
 func domPropForProp(comp *ir.Component, prop string) (string, bool) {
+	// A Window shown as a `<dialog>` is on screen when the dialog is open.
+	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
+		return "open", true
+	}
 	if domOnlyProps[prop] {
 		return domName(prop), true
 	}

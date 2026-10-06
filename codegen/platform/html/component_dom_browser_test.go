@@ -16,8 +16,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
-
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // componentDOMCase is one stdlib component rendered in isolation, with
@@ -40,7 +38,7 @@ ui.window { vbox { text(value="A") text(value="B") } }`, []string{"flex-directio
 	// `#hex` color literal must render as a CSS color (colorStructToCSS).
 	{"vbox-style", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+ui.window { vbox(style={gap=8px, background=#ff0000}) { text(value="A") } }`,
 		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
 	{"text-color", `import . "sngl:ui"
 import ui "sngl:ui"

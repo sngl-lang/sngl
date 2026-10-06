@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"iter"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -170,6 +168,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
+			Trust:    cliTrust,
 			Platform: target.Platform,
 			Language: target.Lang,
 			Dir:      dir,
@@ -201,6 +200,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
+			Trust:    cliTrust,
 			Platform: target.Platform,
 			Language: target.Lang,
 			Dir:      dir,
@@ -266,6 +266,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	start := time.Now()
 	if err := optimize.Optimize(pkg, &optimize.Config{
+		Trust:    cliTrust,
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,
@@ -314,6 +315,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 
 	optCfg := &optimize.Config{
+		Trust:    cliTrust,
 		Platform: target.Platform,
 		Language: target.Lang,
 		Dir:      dir,
@@ -356,9 +358,9 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		Options:    target.Options,
 		Source:     filepath.Base(dir),
 		FileAssets: fileAssets,
-		ProjectFS:  os.DirFS(dir),
+		ProjectFS:  build.ProjectFS(dir),
 	}
-	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
+	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	start = time.Now()
 	if err := plat.Generate(req, mem); err != nil {

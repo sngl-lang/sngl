@@ -34,7 +34,20 @@ func SubstituteEventPayload(stmts []ir.Stmt, params []*ir.Param, value func(fiel
 			if !ok || !(id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name)) {
 				return e, nil
 			}
-			return ir.CloneExprSharingDecls(repl), nil
+			return ir.CloneExprSharingDecls(repl), ir.SkipDir
+		})
+		// The payload handed on whole -- a lifted handler relaying its event
+		// out of a component built at run time -- is the struct the widget's
+		// state makes, when that state is the whole of it.
+		if len(def.Fields) != 1 {
+			continue
+		}
+		_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+			id, ok := e.(*ir.Ident)
+			if !ok || !(id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name)) {
+				return e, nil
+			}
+			return &ir.StructLit{Type: p.Type, Def: def, Fields: []ir.FieldInit{{Name: field.Name, Value: ir.CloneExprSharingDecls(repl)}}}, ir.SkipDir
 		})
 	}
 	return stmts

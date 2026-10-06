@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import . "sngl:time"
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     const c = #ff8040
 
     // Legal: to and from the canonical string form, and identity.

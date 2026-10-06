@@ -239,7 +239,8 @@ func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelR
 		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {\n")
-		b.WriteString("\treturn gtk4rt.ApplicationWindowNew(app)\n")
+		b.WriteString("\twin := gtk4rt.ApplicationWindowNew(app)\n")
+		b.WriteString("\treturn win\n")
 		b.WriteString("}\n\n")
 		return
 	}
@@ -346,6 +347,35 @@ func init() {
 	})
 }
 `)
+}
+
+// emitGTK4RunMainWrapped is the entry point for a program that wrote `@run`.
+// The tree is built first -- its first settle included -- so a write the
+// handler makes is an ordinary update of widgets that exist; `run` then
+// presents the window and runs the loop, and a handler that never calls it
+// gets the loop with the window hidden.
+//
+// run is the call's spelling of the handler's function, receiver included.
+// An empty handler is emitted as no function at all, and never calls run.
+func emitGTK4RunMainWrapped(b *strings.Builder, run string) {
+	b.WriteString("\nfunc main() {\n")
+	b.WriteString("\tgtk4rt.Init()\n")
+	b.WriteString("\tm := New()\n")
+	b.WriteString("\tm.buildWidgetTree()\n")
+	if run == "" {
+		b.WriteString("\tgtk4rt.RunHidden(m.BuildUI)\n")
+		b.WriteString("}\n")
+		return
+	}
+	b.WriteString("\tran := false\n")
+	fmt.Fprintf(b, "\t%s(gtk4rt.Args(), func() {\n", run)
+	b.WriteString("\t\tran = true\n")
+	b.WriteString("\t\tgtk4rt.Run(m.BuildUI)\n")
+	b.WriteString("\t})\n")
+	b.WriteString("\tif !ran {\n")
+	b.WriteString("\t\tgtk4rt.RunHidden(m.BuildUI)\n")
+	b.WriteString("\t}\n")
+	b.WriteString("}\n")
 }
 
 // emitGTK4MainWrapped emits the wrapped-mode program entry point. All GTK

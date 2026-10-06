@@ -1,0 +1,22 @@
+// A two-way prop the caller leaves unbound is state of the instance, and a
+// const component keeps none: its render depends only on its props. So a
+// `:prop` of a const component must be bound, and a one-way value -- which
+// only says where the cell would start -- is no binding.
+import ui "sngl:ui"
+
+const component flag(:on bool = false, label string) ui.node {
+    ui.checkbox(:checked=on, label=label)
+}
+
+component main ui.node {
+    var x = false
+    ui.vbox {
+        flag(:on=x, label="bound")
+        flag(label="unbound")          // ERROR(check) "flag is const, so it keeps no state of its own: bind :on"
+        flag(on=true, label="one-way") // ERROR(check) "flag is const, so it keeps no state of its own: bind :on"
+    }
+}
+
+ui.window {
+    main
+}

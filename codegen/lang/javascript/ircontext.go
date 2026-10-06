@@ -231,8 +231,27 @@ func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := jc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := jc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{jc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's exception into a raise, so the
+// catch block around it takes it for one.
+func (jc *JsIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	return []string{
+		"try {",
+		"\t" + jc.EvalExpr(call),
+		"} catch (__err) {",
+		"\tif (__err?.kind !== undefined) throw __err;",
+		"\tthrow Object.assign(new Error(__err?.message ?? String(__err)), {kind: \"\"});",
+		"}",
+	}
 }
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
@@ -432,14 +451,13 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	}
 	evt := fmt.Sprintf("{message: %s, kind: %s}", msg, kind)
 
+	throw := "throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble has no fallible-signature lowering; throw so the
-		// enclosing scope surfaces the error natively.
-		return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+		return []string{throw}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
-			return []string{"throw Object.assign(new Error(" + msg + "), {kind: " + kind + "})"}
+			return []string{throw}
 		}
 		return jc.emitHandlerInvoke(evt, call.ResolvedHandler)
 	case ir.ErrorPerCall:
@@ -451,8 +469,31 @@ func (jc *JsIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
-// emitHandlerInvoke inlines the handler body in a JS block scope. It emits no
-// terminate, as in the Go translator.
+// Catch renders a catch block as try/catch. Only a raise is caught, which is
+// what carries a `kind`: a host exception is a bug in the program or the
+// runtime, not an error the program raised.
+func (jc *JsIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	lines := []string{"try {"}
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines,
+		"} catch (__e) {",
+		"\tif (__e?.kind === undefined) throw __e;",
+	)
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		p := h.Func.Params[0].Name
+		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __e.message, kind: __e.kind}", p), "\tvoid "+p)
+	}
+	if h.Func != nil {
+		lines = append(lines, jc.handlerBody(h)...)
+	}
+	return append(lines, "}")
+}
+
+// emitHandlerInvoke inlines the handler body in a JS block scope, for a raise
+// no catch block covers; see the Go translator's.
 func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {

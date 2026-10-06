@@ -5,7 +5,7 @@ import . "sngl:ui"
 
 component main node {
     var n int = 1
-    text(value=$"hi {n}") // ERROR(check) "is a call to i18n.tr, and sngl:i18n is not imported"
+    text(value=$"hi {n}") // ERROR(check) "is a call to i18n.tr, and sngl:i18n is not imported: add import i18n \"sngl:i18n\""
 }
 
 window {

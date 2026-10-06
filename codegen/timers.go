@@ -94,9 +94,6 @@ func collectLoopTimers(stmts []ir.Stmt, gates []ir.Expr, loops []*ir.For, out *[
 				}
 				continue
 			}
-			if ir.IsWindowNode(n) {
-				continue
-			}
 			collectLoopTimers(n.Children, gates, loops, out)
 		case *ir.For:
 			collectLoopTimers(n.Body, gates, append(loops[:len(loops):len(loops)], n), out)

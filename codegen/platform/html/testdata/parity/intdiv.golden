@@ -9,7 +9,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
     <span>+a</span>
@@ -22,7 +22,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a: 10, b: 3 };
+  var state = { a: 10, b: 3, visible__inst0: true };
   function quotient() {
     return Math.trunc(state.a / state.b);
   }
@@ -31,17 +31,17 @@ body { font-family: system-ui, sans-serif; }
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.a = state.a + 1;
-    __n0.textContent = String(quotient());
+    __n1.textContent = String(quotient());
   });
   $2.addEventListener("click", function() {
     state.b = state.b + 1;
-    __n0.textContent = String(quotient());
+    __n1.textContent = String(quotient());
   });
   function __sngl_init() {
-    __n0.textContent = String(quotient());
+    __n1.textContent = String(quotient());
   }
   __sngl_init();
 })();

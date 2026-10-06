@@ -75,9 +75,10 @@ type Step__mark struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	n__inst0    int
-	keep__inst0 Step__mark
-	__focusID   int
+	n__inst0       int
+	keep__inst0    Step__mark
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -87,6 +88,7 @@ func New() Model {
 	m := Model{}
 	m.n__inst0 = 0
 	m.keep__inst0 = Step__mark{A: 1}
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -146,6 +148,21 @@ func SetKeep__inst0Cmd(v Step__mark) tea.Cmd {
 	return func() tea.Msg { return setKeep__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -159,13 +176,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN__inst0(msg.value)
 	case setKeep__inst0Msg:
 		m = m.SetKeep__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -178,19 +203,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.n__inst0) + fmt.Sprint(m.keep__inst0.A))))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 0)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.n__inst0) + fmt.Sprint(m.keep__inst0.A))))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 0)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("go"))
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("go"))
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -205,4 +233,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:71c9f587714a660cf1e65e8da08b1dff
+pass sha256:8819fea3b5c3e4f152781d1f00417082

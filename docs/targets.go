@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 
@@ -115,6 +116,16 @@ type platformProbe struct {
 	eval func(codegen.PlatformGenerator) string
 }
 
+// hasCommand is whether the platform, built with its first language, holds a
+// command of the given kind: its own node's, or its language's.
+func hasCommand(p codegen.PlatformGenerator, kind ir.BuiltinKind) bool {
+	langs := p.SupportedLangs()
+	if len(langs) == 0 {
+		return false
+	}
+	return build.HasCommand(build.Target{Platform: p.PlatformIdentifier(), Lang: langs[0]}, kind)
+}
+
 func check(ok bool) string {
 	if ok {
 		return "✓"
@@ -124,9 +135,9 @@ func check(ok bool) string {
 
 var platformProbes = []platformProbe{
 	{"Run", "Execute generated output in place (sngl run).",
-		func(p codegen.PlatformGenerator) string { _, ok := p.(codegen.Runner); return check(ok) }},
+		func(p codegen.PlatformGenerator) string { return check(hasCommand(p, ir.BuiltinGenRun)) }},
 	{"Build", "Produce a distributable artifact (e.g. APK).",
-		func(p codegen.PlatformGenerator) string { _, ok := p.(codegen.Builder); return check(ok) }},
+		func(p codegen.PlatformGenerator) string { return check(hasCommand(p, ir.BuiltinGenBuild)) }},
 	{"Snapshot", "Capture a screenshot of the rendered output (PNG or ANSI text).",
 		func(p codegen.PlatformGenerator) string {
 			switch p.(type) {

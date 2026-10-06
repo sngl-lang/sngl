@@ -17,6 +17,10 @@ import (
 // A container built again holds none of the old one's objects, and gets a new
 // anchor the same way.
 func SlotAnchor(c *fyne.Container, a fyne.CanvasObject) fyne.CanvasObject {
+	// The application's children are in no order a window shows.
+	if c == App {
+		return nil
+	}
 	if a != nil && slices.Contains(c.Objects, a) {
 		return a
 	}
@@ -38,6 +42,10 @@ func SlotBox(b *fyne.Container) *fyne.Container {
 // InsertBefore puts o into c immediately before anchor, or at the end of c
 // when c does not hold anchor.
 func InsertBefore(c *fyne.Container, anchor, o fyne.CanvasObject) {
+	if c == App {
+		AppAttach(o)
+		return
+	}
 	i := slices.Index(c.Objects, anchor)
 	if i < 0 {
 		c.Add(o)

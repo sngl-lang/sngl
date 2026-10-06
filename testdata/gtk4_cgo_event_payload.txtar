@@ -69,18 +69,20 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	last         string
-	on           bool
-	rows         []string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__inst0_live []*RowInstance
+	last           string
+	on             bool
+	rows           []string
+	value__inst0   string
+	checked__inst1 bool
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*RowInstance
 
-	__n5 *fyne.Container
+	__n6 *fyne.Container
 	box  *widget.Entry
-	__n2 *widget.Check
-	__n3 *widget.Label
+	__n3 *widget.Check
+	__n4 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -89,6 +91,8 @@ func New() *Model {
 	m.last = ""
 	m.on = false
 	m.rows = []string{"a", "b"}
+	m.value__inst0 = ""
+	m.checked__inst1 = m.on
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -98,29 +102,29 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, r := range m.rows {
-		var __n4 *RowInstance
+		var __n5 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(r)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.SetLabel(r)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := newRowInstance(m, r)
-			__n4 = __n4__new
+			__n5__new := newRowInstance(m, r)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
-		m.__slot0 = append(m.__slot0, __n4__el)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -132,14 +136,20 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 }
 
 func (m *Model) box_input_handler(s string) {
+	m.value__inst0 = s
+	m.box.SetText(m.value__inst0)
 }
 
 func (m *Model) box_change_handler(s string) {
+	m.value__inst0 = s
+	m.box.SetText(m.value__inst0)
 	m.last = ("got " + s)
-	m.__n3.SetText(m.last)
+	m.__n4.SetText(m.last)
 }
 
-func (m *Model) __n2_change_handler(b bool) {
+func (m *Model) __n3_change_handler(b bool) {
+	m.checked__inst1 = b
+	m.__n3.SetChecked(m.checked__inst1)
 }
 
 // boxInput invokes the OnChanged callback on the #box widget; for tests.
@@ -153,6 +163,11 @@ func (m *Model) boxInput(s string) {
 
 // boxChange invokes the OnSubmitted callback on the #box widget; for tests.
 func (m *Model) boxChange(s string) {
+	if oc := m.box.OnChanged; m.box.Text != s {
+		m.box.OnChanged = nil
+		m.box.SetText(s)
+		m.box.OnChanged = oc
+	}
 	if cb := m.box.OnSubmitted; cb != nil {
 		m.box.OnSubmitted = nil
 		cb(s)
@@ -184,39 +199,58 @@ func (m *Model) SetRows(v []string) {
 	m.rows = v
 }
 
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
+func (m *Model) Checked__inst1() bool {
+	return m.checked__inst1
+}
+
+func (m *Model) SetChecked__inst1(v bool) {
+	m.checked__inst1 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n5 = container.NewVBox()
+	m.__n6 = container.NewVBox()
 	m.box = widget.NewEntry()
-	m.box.SetText("")
+	m.box.SetText(m.value__inst0)
 	m.box.SetPlaceHolder("")
 	m.box.OnChanged = m.box_input_handler
 	m.box.OnSubmitted = m.box_change_handler
-	m.__n5.Add(m.box)
-	m.__n2 = widget.NewCheck("", nil)
-	m.__n2.SetText("")
-	m.__n2.SetChecked(m.on)
-	m.__n2.OnChanged = m.__n2_change_handler
-	m.__n5.Add(m.__n2)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(m.last)
-	m.__n5.Add(m.__n3)
-	m.__renderSlot0(m.__n5)
-	content := fyne.CanvasObject(m.__n5)
+	m.__n6.Add(m.box)
+	m.__n3 = widget.NewCheck("", nil)
+	m.__n3.SetText("")
+	m.__n3.SetChecked(m.checked__inst1)
+	m.__n3.OnChanged = m.__n3_change_handler
+	m.__n6.Add(m.__n3)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText(m.last)
+	m.__n6.Add(m.__n4)
+	m.__renderSlot0(m.__n6)
+	content := fyne.CanvasObject(m.__n6)
 	return content
 }
 
 // RowInstance is one live instance of the row component.
 type RowInstance struct {
-	Root         fyne.CanvasObject
-	__model      *Model
-	__prop_label string
-	got          string
-	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
-	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Check
-	__n1         *widget.Label
+	Root           fyne.CanvasObject
+	__model        *Model
+	__prop_label   string
+	got            string
+	value__inst2   string
+	checked__inst3 bool
+	__root         *fyne.Container
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__n0           *widget.Entry
+	__n1           *widget.Check
+	__n2           *widget.Label
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -224,30 +258,37 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.got = ""
+	c.value__inst2 = ""
+	c.checked__inst3 = (c.got != "")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n6 := container.NewHBox()
-	__n7 := widget.NewEntry()
-	__n7.SetText("")
-	__n7.SetPlaceHolder("")
-	__n7.OnChanged = func(s string) {
+	__n7 := container.NewHBox()
+	c.__n0 = widget.NewEntry()
+	c.__n0.SetText(c.value__inst2)
+	c.__n0.SetPlaceHolder("")
+	c.__n0.OnChanged = func(s string) {
+		c.value__inst2 = s
+		c.__n0.SetText(c.value__inst2)
 	}
-	__n7.OnSubmitted = func(s string) {
+	c.__n0.OnSubmitted = func(s string) {
+		c.value__inst2 = s
+		c.__n0.SetText(c.value__inst2)
 		c.got = ((c.__prop_label + " ") + s)
-		c.__n0.SetChecked((c.got != ""))
-		c.__n1.SetText(c.got)
+		c.__n2.SetText(c.got)
 	}
-	__n6.Add(__n7)
-	c.__n0 = widget.NewCheck("", nil)
-	c.__n0.SetText("")
-	c.__n0.SetChecked((c.got != ""))
-	c.__n0.OnChanged = func(b bool) {
+	__n7.Add(c.__n0)
+	c.__n1 = widget.NewCheck("", nil)
+	c.__n1.SetText("")
+	c.__n1.SetChecked(c.checked__inst3)
+	c.__n1.OnChanged = func(b bool) {
+		c.checked__inst3 = b
+		c.__n1.SetChecked(c.checked__inst3)
 	}
-	__n6.Add(c.__n0)
-	c.__n1 = widget.NewLabel("")
-	c.__n1.SetText(c.got)
-	__n6.Add(c.__n1)
-	c.Root = __n6
+	__n7.Add(c.__n1)
+	c.__n2 = widget.NewLabel("")
+	c.__n2.SetText(c.got)
+	__n7.Add(c.__n2)
+	c.Root = __n7
 	return c
 }
 
@@ -471,17 +512,18 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	last         string
-	on           bool
-	rows         []string
-	__root       *C.GtkBox
-	__slot0      []*C.GtkWidget
-	__slot0_at   *C.GtkWidget
-	__inst0_live []*RowInstance
-	__n5         *C.GtkBox
-	box          *C.GtkEntry
-	__n2         *C.GtkSwitch
-	__n3         *C.GtkLabel
+	last           string
+	on             bool
+	rows           []string
+	value__inst0   string
+	checked__inst1 bool
+	__root         *C.GtkBox
+	__slot0        []*C.GtkWidget
+	__slot0_at     *C.GtkWidget
+	__inst0_live   []*RowInstance
+	box            *C.GtkEntry
+	__n3           *C.GtkSwitch
+	__n4           *C.GtkLabel
 }
 
 // New creates a Model with default values. Binds initialize
@@ -491,6 +533,8 @@ func New() *Model {
 	m.last = ""
 	m.on = false
 	m.rows = []string{"a", "b"}
+	m.value__inst0 = ""
+	m.checked__inst1 = m.on
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -507,22 +551,22 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, r := range m.rows {
-		var __n4 *RowInstance
+		var __n5 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n4 = m.__inst0_live[__inst0_i]
-			__n4.SetLabel(r)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.SetLabel(r)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n4__new := newRowInstance(m, r)
-			__n4 = __n4__new
+			__n5__new := newRowInstance(m, r)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n4)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n4__el := __n4.Root
-		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
-		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+		__n5__el := __n5.Root
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
+		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n5__el)))
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -534,27 +578,33 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 }
 
 func (m *Model) box_changed_handler() {
+	m.value__inst0 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box))))
 }
 
 func (m *Model) box_activate_handler() {
+	m.value__inst0 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box))))
 	m.last = ("got " + C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(m.box)))))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
 }
 
-func (m *Model) __n2_notifyActive_handler() {
+func (m *Model) __n3_notifyActive_handler() {
+	m.checked__inst1 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n3))) != 0)
 }
 
 // RowInstance is one live instance of the row component.
 type RowInstance struct {
-	Root         *C.GtkWidget
-	__model      *Model
-	__prop_label string
-	got          string
-	__root       *C.GtkBox
-	__slot0      []*C.GtkWidget
-	__slot0_at   *C.GtkWidget
-	__n0         *C.GtkSwitch
-	__n1         *C.GtkLabel
+	Root           *C.GtkWidget
+	__model        *Model
+	__prop_label   string
+	got            string
+	value__inst2   string
+	checked__inst3 bool
+	__root         *C.GtkBox
+	__slot0        []*C.GtkWidget
+	__slot0_at     *C.GtkWidget
+	__n0           *C.GtkEntry
+	__n1           *C.GtkSwitch
+	__n2           *C.GtkLabel
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -562,34 +612,41 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.got = ""
+	c.value__inst2 = ""
+	c.checked__inst3 = (c.got != "")
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
-	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n6)), C.int(6))
-	__n7 := (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(__n7)), C.CString(""))
+	__n7 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n7)), C.GTK_ORIENTATION_HORIZONTAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n7)), C.int(6))
+	c.__n0 = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
+	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(c.__n0)), C.CString(c.value__inst2))
 	snglCallbacks = append(snglCallbacks, func() {
+		c.value__inst2 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.__n0))))
+		C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(c.__n0)), C.CString(c.value__inst2))
 	})
-	C.sngl_connect(unsafe.Pointer(__n7), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
+	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
-		c.got = ((c.__prop_label + " ") + C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(__n7)))))
-		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.got != ""))))
-		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(c.got))
+		c.value__inst2 = C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.__n0))))
+		C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(c.__n0)), C.CString(c.value__inst2))
+		c.got = ((c.__prop_label + " ") + C.GoString(C.gtk_editable_get_text((*C.GtkEditable)(unsafe.Pointer(c.__n0)))))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
 	})
-	C.sngl_connect(unsafe.Pointer(__n7), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(__n7)))
-	c.__n0 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
-	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.got != ""))))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt(true)))
+	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
+	c.__n1 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
+	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n1)), C.gboolean(boolToInt(c.checked__inst3)))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(c.__n1)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, func() {
+		c.checked__inst3 = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(c.__n1))) != 0)
+		C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(c.__n1)), C.gboolean(boolToInt(c.checked__inst3)))
 	})
-	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
-	c.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n1)), C.CString(c.got))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(c.__n1)))
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n6))
+	C.sngl_connect(unsafe.Pointer(c.__n1), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n1)))
+	c.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(c.__n2)), C.CString(c.got))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n7)), (*C.GtkWidget)(unsafe.Pointer(c.__n2)))
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(__n7))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
 }
@@ -632,32 +689,48 @@ func (m *Model) SetRows(v []string) {
 	m.rows = v
 }
 
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
+func (m *Model) Checked__inst1() bool {
+	return m.checked__inst1
+}
+
+func (m *Model) SetChecked__inst1(v bool) {
+	m.checked__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n5 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n5)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n5)), C.int(6))
+	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n6)), C.int(6))
 	m.box = (*C.GtkEntry)(unsafe.Pointer(C.gtk_entry_new()))
-	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.box)), C.CString(""))
+	C.gtk_editable_set_text((*C.GtkEditable)(unsafe.Pointer(m.box)), C.CString(m.value__inst0))
 	snglCallbacks = append(snglCallbacks, m.box_changed_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("changed"), C.int((len(snglCallbacks) - 1)))
 	snglCallbacks = append(snglCallbacks, m.box_activate_handler)
 	C.sngl_connect(unsafe.Pointer(m.box), C.CString("activate"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
-	m.__n2 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
-	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(m.on)))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.__n2_notifyActive_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString(m.last))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n5)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
-	m.__renderSlot0(m.__n5)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n5)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.box)))
+	m.__n3 = (*C.GtkSwitch)(unsafe.Pointer(C.gtk_switch_new()))
+	C.gtk_switch_set_active((*C.GtkSwitch)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(m.checked__inst1)))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, m.__n3_notifyActive_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("notify::active"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString(m.last))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	m.__renderSlot0(__n6)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -689,6 +762,6 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:8952fdcc60c8afde87486c13bedda2c8
+pass sha256:c22ba7f8c15e17586df82e5fcf37fbc2
 -- run/go/gtk4 --
-pass sha256:05038bd63e7cdc1b2da80df1973b9363
+pass sha256:5496095a7990ed4ef423eb24479b625f

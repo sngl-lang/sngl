@@ -1,0 +1,60 @@
+// A struct literal's field value is held to the field's type, as an
+// initializer of that type is: named, expected-type and prop-position
+// literals alike. A string is not an enum member, and a bool is not a length.
+//
+// An int still widens to a float, and the literal `0` is still any unit's
+// zero. Any other number is not a unit value: a length says which unit it is
+// in, `16px` and not `16`, in a field as in `var l len = 16`.
+
+import . "sngl:ui"
+import "sngl:time"
+
+enum W { a, b }
+
+unit len { px, em }
+
+struct S {
+    w W
+    n int
+    f float = 0.0
+    o option<int>
+    l len = 0px
+}
+
+struct Box<T> {
+    v T
+    o option<T>
+    xs list<T>
+}
+
+struct Out {
+    items list<S>
+}
+
+struct Wait {
+    d time.duration
+}
+
+const ok = S{w=b, n=1, f=2, l=4px}
+const zero = S{w=b, n=1, l=0}
+const bare = S{w=a, n=1, l=4}                        // ERROR(check) "cannot use int as len for field \"l\" of S"
+const named = S{w="bold", n=1}                       // ERROR(check) "cannot use string as W for field \"w\" of S"
+const count = S{w=a, n="x"}                          // ERROR(check) "cannot use string as int for field \"n\" of S"
+const anon S = {w=a, n=true}                         // ERROR(check) "cannot use bool as int for field \"n\" of S"
+const opt = S{w=a, n=1, o="x"}                       // ERROR(check) "cannot use string as option<int> for field \"o\" of S"
+const nested = Out{items=[{w=a, n=1}, {w=a, n="y"}]} // ERROR(check) "cannot use string as int for field \"n\" of S"
+const wait = Wait{d=5}                               // ERROR(check) "cannot use int as duration for field \"d\" of Wait"
+const box Box<int> = {v=1, o=3, xs=[1]}
+const badBox Box<int> = {v=1, o=3, xs=["a"]} // ERROR(check) "cannot use list<string> as list<int> for field \"xs\" of Box"
+
+var x = 3
+var held = S{w=a, n=1, l=x} // ERROR(check) "cannot use int as len for field \"l\" of S"
+
+window {
+    text(value="x", style={fontWeight=42}) // ERROR(check) "cannot use int as FontWeight for field \"fontWeight\" of Style"
+    text(value="y", style={gap=true})      // ERROR(check) "cannot use bool as measurement for field \"gap\" of Style"
+    text(value="z", style={color="teal"})  // ERROR(check) "invalid color literal \"teal\""
+    text(value="w", style={padding=16})    // ERROR(check) "cannot use int as measurement for field \"padding\" of Style"
+    text(value=string(ok.n), style={padding=16px, fontWeight=bold})
+    text(value=string(box.v))
+}

@@ -29,7 +29,7 @@ component show ui.node {
     ui.text(value=label)
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     var on = false
     var n = 0
     var greeting = on ? "b" : (n > 1 ? "c" : "d")
@@ -56,10 +56,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	on        bool
-	n         int
-	greeting  string
-	__focusID int
+	on             bool
+	n              int
+	greeting       string
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -82,6 +83,7 @@ func New() Model {
 			return __lt0
 		}
 	}()
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -149,6 +151,21 @@ func SetGreetingCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setGreetingMsg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -164,13 +181,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN(msg.value)
 	case setGreetingMsg:
 		m = m.SetGreeting(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -184,28 +209,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("flip"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.greeting))
+		contentChildren = append(contentChildren, content_1)
+		var __lt1 string
+		if m.on {
+			__lt1 = "x"
+		} else {
+			__lt1 = "y"
+		}
+		var content_4 string
+		content_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		contentChildren = append(contentChildren, content_4)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("flip"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.greeting))
-	contentChildren = append(contentChildren, content_1)
-	var __lt1 string
-	if m.on {
-		__lt1 = "x"
-	} else {
-		__lt1 = "y"
-	}
-	var content_4 string
-	content_4 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
-	contentChildren = append(contentChildren, content_4)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -229,19 +256,23 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	on       bool
-	n        int
-	greeting string
+	on             bool
+	n              int
+	greeting       string
+	visible__inst1 bool
 
-	__n2 *fyne.Container
-	__n3 *widget.Button
-	__n0 *widget.Label
-	__n1 *widget.Label
+	home    *fynelayout.Toplevel
+	__n2    *fyne.Container
+	__n3    *widget.Button
+	__n0    *widget.Label
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -262,7 +293,16 @@ func New() *Model {
 			return __lt0
 		}
 	}()
+	m.visible__inst1 = true
 	return m
+}
+
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.home.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) __n3_click_handler() {
@@ -274,6 +314,22 @@ func (m *Model) __n3_click_handler() {
 		__lt1 = "y"
 	}
 	m.__n1.SetText(__lt1)
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
 }
 
 func (m *Model) On() bool {
@@ -300,8 +356,25 @@ func (m *Model) SetGreeting(v string) {
 	m.greeting = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst1)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n2 = container.NewVBox()
 	m.__n3 = widget.NewButton("", nil)
 	m.__n3.SetText("flip")
@@ -319,17 +392,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText(__lt2)
 	m.__n2.Add(m.__n1)
-	content := fyne.CanvasObject(m.__n2)
-	return content
+	m.home.Add(m.__n2)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -340,9 +412,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from main.sngl; DO NOT EDIT.
@@ -355,14 +428,16 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	on       bool
-	n        int
-	greeting string
-	__n2     gtk4rt.Handle
-	__n3     gtk4rt.Handle
-	__n0     gtk4rt.Handle
-	__n1     gtk4rt.Handle
-	__root   gtk4rt.Handle
+	on             bool
+	n              int
+	greeting       string
+	visible__inst1 bool
+	home           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -384,7 +459,16 @@ func New() *Model {
 			return __lt0
 		}
 	}()
+	m.visible__inst1 = true
 	return m
+}
+
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst1)
 }
 
 func (m *Model) __n3_clicked_handler() {
@@ -422,11 +506,24 @@ func (m *Model) SetGreeting(v string) {
 	m.greeting = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "t")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
@@ -446,21 +543,19 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, __lt2)
 	gtk4rt.BoxAppend(m.__n2, m.__n1)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(m.home, m.__n2)
+	gtk4rt.AppAttach(m.home)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "t")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- run/go/bubbletea --
-pass sha256:da94659dcd8d10b8f896ee50f7951876
+pass sha256:63ef918482b8696b140f6cb97eac1e9b
 -- run/go/fyne --
-pass sha256:50ddb7638a8dec8534cd548ab779602b
+pass sha256:f08830608d25987ef01c0ff7c01464e1
 -- run/go/gtk4 --
-pass sha256:cd1297f6c72a32774e2b8ed561baedf5
+pass sha256:68b8d1ff6794daa0e67b7c5950b595b5

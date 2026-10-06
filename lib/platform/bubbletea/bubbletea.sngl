@@ -1,0 +1,606 @@
+import ui "sngl:ui"
+import time "sngl:time"
+import markup "sngl:ui/markup"
+import . "sngl:macro"
+import . "sngl:internal/marks"
+import tree "sngl:tree"
+import build "sngl:build"
+import gen "sngl:x/gen"
+
+// The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
+// focusOrder: a TUI draws its own widgets, so nothing else tracks which one has
+// the keyboard. No reactiveCanvas: View() re-runs on every update and
+// re-rasterises with it, so an explicit redraw would be the second of two.
+#[gen.cannot(inlineComponents, implicitRecv, structSpread)]
+#[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
+#[gen.name("bubbletea")]
+#[gen.native("bubbletea")]
+component platform(
+    // Go package name for the generated files.
+    const package string,
+    // Emit a standalone main() or a library-style module.
+    const main bool,
+    // Emit companion test files (default: true; set "false" to skip).
+    const tests bool,
+) build.platform
+
+// --- Blueprint vocabulary ---
+//
+// Blueprint records describe how a stdlib component renders through one of the
+// three inlined platform primitives (Layout, Styled, Widget). The Go extractor
+// in blueprint.go reads these off the inlined NodeInst.
+
+enum JoinDir { vertical, horizontal }
+
+struct Model {
+    type string
+    new string
+    view string
+    update string
+    init string
+    pkg string
+    // resize is an optional method-chain template applied to the widget field
+    // whenever the terminal size changes (e.g. ".SetWidth($\{w\})" or
+    // ".SetSize($\{w\}, $\{h\})"). It is emitted as `m.<field><resize>` from a
+    // generated resizeWidgets() helper, which the WindowSizeMsg case and
+    // SetTerminalSize both call. The $\{w\}/$\{h\} tokens resolve to the inset,
+    // clamped terminal width/height (see tui.WidgetWidth/WidgetHeight). Empty
+    // means the widget has no size (e.g. spinner).
+    resize string
+}
+
+struct Focus {
+    enabled bool
+}
+
+struct Bind {
+    prop string
+    get string
+    set string
+}
+
+struct Event {
+    on string
+    key string
+}
+
+// --- The primitives ---
+//
+// Every body below renders through exactly one of these. Their props are the
+// blueprint: extractBlueprint reads them off the inlined NodeInst by the names
+// declared here, so a rename here is a rename in blueprint.go.
+//
+// #[intrinsic] is what says these are the primitives rather than wrappers over
+// one: they carry no body, and the id is what the view renderer recognises them
+// by instead of their names.
+
+#[gen.renders(identity)]
+#[intrinsic("bubbletea:Layout")]
+component Layout(
+    const join JoinDir,
+    style ui.Style,
+    // Body text revealed, dim, under the focused trigger this Layout wraps.
+    tooltip string,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("bubbletea:Styled")]
+component Styled(
+    content string,
+    focus Focus,
+    const events list<Event>,
+    style ui.Style,
+    // Fired by the key an `events` record maps "change" to. A key press
+    // carries nothing, so the override builds its component's payload here.
+    @change,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("bubbletea:Widget")]
+component Widget(
+    const model Model,
+    focus Focus,
+    const binds list<Bind>,
+    placeholder string,
+    style ui.Style,
+
+    // Operands for the `$\{name\}` tokens in this widget's Model strings. A
+    // token names one of these props, so the set grows with the templates
+    // rather than with the widget count.
+    options list<string>,
+    items list<string>,
+    columns list<string>,
+    rows list<list<string>>,
+    value float,
+    max float,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("bubbletea:Overlay")]
+component Overlay(
+    placement string,
+    dim bool,
+    style ui.Style,
+    children ...component,
+) ui.node
+
+// --- The window ---
+
+// The screen: what a `ui.window` is on a terminal, which shows one. The
+// package body holds it, and View draws its content; a program declares one
+// window here, and a second is refused where it is written.
+//
+// A hidden screen draws nothing, and what it holds stays: its timers tick and
+// its effects stay mounted, since hiding a window is not destroying it.
+//
+// ctrl+c is the window's close, the terminal's counterpart of a window
+// manager's: it fires `@closed`, which the override reports as
+// `visible = false` before the window's own handler runs, and the program
+// ends when no screen is drawn after it.
+#[intrinsic("bubbletea:Screen")]
+component Screen(
+    visible bool = true,
+    @closed(),
+    content ...component ui.node,
+) root
+
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
+const component ui.window[platform] {
+    Screen(visible=visible, @closed {
+        visible = false
+        closed()
+    }) {
+        boundary(@error(e) { error(e) }) {
+            content
+        }
+    }
+}
+
+// --- Core Layout ---
+
+const component ui.vbox[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        children
+    }
+}
+
+const component ui.hbox[platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        children
+    }
+}
+
+const component ui.stack[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        layers
+    }
+}
+
+const component ui.spacer[platform] {
+    Styled(content="", style={...style}) {}
+}
+
+const component ui.scroll[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        content
+    }
+}
+
+// --- Core Text & Media ---
+
+const component ui.text[platform] {
+    Styled(content=value, style={...style}) {}
+}
+
+const component ui.button[platform] {
+    Styled(
+        content=text,
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
+        style={...style},
+    ) {}
+}
+
+const component ui.image[platform] {
+    Styled(content="[image]", style={...style}) {}
+}
+
+const component ui.input[platform] {
+    Widget(
+        model=Model{
+            type = "textinput.Model",
+            new = "textinput.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            init = "textinput.Blink",
+            pkg = "charm.land/bubbles/v2/textinput",
+            resize = ".SetWidth($\{w\})",
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
+        placeholder=placeholder,
+        style={...style},
+    ) {}
+}
+
+const component ui.checkbox[platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
+        style={...style},
+        @change { change({checked=!checked}) },
+    ) {}
+}
+
+// --- Tier 1: Core Input ---
+
+const component ui.radio[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+    }
+}
+
+const component ui.toggle[platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="change", key="space"}],
+        style={...style},
+        @change { change({checked=!checked}) },
+    ) {}
+}
+
+const component ui.select[platform] {
+    Widget(
+        model=Model{
+            type = "list.Model",
+            new = "tui.NewList(tui.StringItems($\{options\}), 40, 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/list",
+            resize = ".SetSize($\{w\}, $\{h\})",
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get="tui.SelectedString"}],
+        options=options,
+        style={...style},
+    ) {}
+}
+
+const component ui.textarea[platform] {
+    Widget(
+        model=Model{
+            type = "textarea.Model",
+            new = "textarea.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/textarea",
+            resize = ".SetWidth($\{w\})",
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="value", get=".Value()", set=".SetValue"}],
+        style={...style},
+    ) {}
+}
+
+// An unpicked date has nothing to show, so the field falls back to its
+// placeholder rather than to the zero date.
+const component ui.datepicker[platform] {
+    if value != null {
+        Styled(content=string(value), style={...style}) {}
+    } else {
+        Styled(content=placeholder, style={...style}) {}
+    }
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+// bubbles' progress is a fraction and has no indeterminate mode, so a bar
+// given no value is an empty one; `spinner` is the widget that says "working"
+// here. Written as two calls rather than one carrying a ternary: Go has no
+// conditional expression, so a ternary is lowered to a temporary, and that
+// happens before the fold that would have settled it -- leaving `${value}` to
+// interpolate a name the blueprint extractor cannot read a number off.
+const component ui.progress[platform] {
+    if value != null {
+        Widget(
+            model=Model{
+                type = "progress.Model",
+                new = "progress.New()",
+                view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+                pkg = "charm.land/bubbles/v2/progress",
+                resize = ".SetWidth($\{w\})",
+            },
+            value=value,
+            max=max,
+            style={...style},
+        ) {}
+    } else {
+        Widget(
+            model=Model{
+                type = "progress.Model",
+                new = "progress.New()",
+                view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+                pkg = "charm.land/bubbles/v2/progress",
+                resize = ".SetWidth($\{w\})",
+            },
+            value=0.0,
+            max=max,
+            style={...style},
+        ) {}
+    }
+}
+
+const component ui.spinner[platform] {
+    Widget(
+        model=Model{
+            type = "spinner.Model",
+            new = "spinner.New()",
+            view = ".View()",
+            update = ".Update(msg)",
+            init = "$\{self\}.Tick",
+            pkg = "charm.land/bubbles/v2/spinner",
+        },
+        style={...style},
+    ) {}
+}
+
+const component ui.badge[platform] {
+    Styled(content=value, style={...style}) {}
+}
+
+const component ui.divider[platform] {
+    Styled(content="─", style={...style}) {}
+}
+
+const component ui.card[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        content
+    }
+}
+
+const component ui.chip[platform] {
+    Styled(
+        content=label,
+        focus=Focus{enabled=true},
+        events=[Event{on="click", key="enter"}],
+        style={...style},
+    ) {}
+}
+
+const component ui.link[platform] {
+    Styled(content=text, style={...style}) {}
+}
+
+const component ui.tabs[platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        panels
+    }
+}
+
+const component ui.modal[platform] {
+    if open {
+        Overlay(placement="center", dim=true, style={...style}) {
+            content
+        }
+    }
+}
+
+const component ui.drawer[platform] {
+    if open {
+        Overlay(placement=side, dim=true, style={...style}) {
+            content
+        }
+    }
+}
+
+const component ui.tooltip[platform] {
+    // Render the trigger child, then reveal `text` (dim, below) only while
+    // the wrapped trigger is focused. The `tooltip` prop carries the body
+    // text to the Layout renderer, which appends it gated on the focusable
+    // descendant's focus expression (see renderBlueprint in view_ir.go).
+    Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
+        trigger
+    }
+}
+
+const component ui.popover[platform] {
+    Layout(join=JoinDir.vertical, style={...style}) {
+        content
+    }
+}
+
+const component ui.splitview[platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        panes
+    }
+}
+
+const component ui.table[platform] {
+    Widget(
+        model=Model{
+            type = "table.Model",
+            new = "tui.NewTable(tui.Columns($\{columns\}), tui.Rows($\{rows\}), 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/table",
+            resize = ".SetWidth($\{w\})",
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.Cursor"}],
+        columns=columns,
+        rows=rows,
+        style={...style},
+    ) {}
+}
+
+const component ui.tree[platform] {
+    Widget(
+        model=Model{
+            type = "list.Model",
+            new = "tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+            view = ".View()",
+            update = ".Update(msg)",
+            pkg = "charm.land/bubbles/v2/list",
+            resize = ".SetSize($\{w\}, $\{h\})",
+        },
+        focus=Focus{enabled=true},
+        binds=[Bind{prop="selected", get="tui.SelectedString"}],
+        items=items,
+        style={...style},
+    ) {}
+}
+
+const component ui.menu[platform] {
+    if open {
+        // menu surfaces selection via @select only — its stdlib signature
+        // has no `selected` prop, so there's no two-way selection var to
+        // bind. (Read-back would be inert: findBidiProp finds nothing.)
+        Widget(
+            model=Model{
+                type = "list.Model",
+                new = "tui.NewList(tui.StringItems($\{items\}), 40, 10)",
+                view = ".View()",
+                update = ".Update(msg)",
+                pkg = "charm.land/bubbles/v2/list",
+                resize = ".SetSize($\{w\}, $\{h\})",
+            },
+            focus=Focus{enabled=true},
+            items=items,
+            style={...style},
+        ) {}
+    }
+}
+
+const component ui.menubar[platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+    }
+}
+
+const component ui.toolbar[platform] {
+    Layout(join=JoinDir.horizontal, style={...style}) {
+        controls
+    }
+}
+
+const component ui.avatar[platform] {
+    Styled(content=initials, style={...style}) {}
+}
+
+// A recurring deadline. Not a blueprint primitive: a timer renders nothing, so
+// it carries no Kind and never reaches the view. compiler_ir.go collects it and
+// emits the tea.Tick / Msg pair the Elm architecture schedules with.
+//
+// html, fyne and gtk4 all schedule with an `effect` over a start/stop pair of
+// host natives instead, and this platform cannot: an effect's `@mount` hands
+// over a *closure*, and in Elm nothing outside Update may touch the model. The
+// closure would capture whichever local it was settled on -- New's, which is
+// copied out on return -- so the emitted program arms its ticker, increments a
+// field of an orphaned copy, and renders the same screen forever. Tried and
+// measured rather than assumed: the model still read 0 after three ticks, and
+// Init returned nil because nothing in the effect lowering is a schedule the
+// emitter can describe.
+//
+// What Init needs back is a command, and a command needs the period and a body
+// Update can run against its own live Model -- which is exactly what ir.Timer
+// carries and what a closure cannot supply. Emitting a *Model receiver would
+// not rescue it either: it turns the silent no-op into a data race with the
+// Update goroutine, which is the rule the architecture exists to enforce.
+//
+// The gate is a prop rather than the position the node is written at, because
+// arming happens in Init and Update, outside the view the position describes.
+#[tree.none]
+#[intrinsic("bubbletea:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+)
+
+const component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}
+
+// --- Rich text ---
+//
+// The span family, implemented the way every other family here is: two
+// primitives and a table of overrides. lipgloss has no inheritance -- a style
+// is applied to a string and the result is a string -- so the cascade an
+// author wrote is resolved in the emitter, one leaf at a time, and each run of
+// words is rendered exactly once with the style it ends up with. Rendering a
+// joined flow a second time would not work even if it were tidier: the inner
+// runs have left their reset sequences in the string, and an outer color would
+// stop at the first of them.
+//
+// A terminal has one face and one size, so `fontFamily` and `fontSize` say
+// nothing here -- which is also why `monospace` needs no override of its own:
+// the `run` the stdlib body wraps it in already reaches `Span`, and its
+// `fontFamily` is a field the emitter has nothing to do with.
+
+// A flow of spans, as a node. `richText` cannot insert its own content -- the
+// component is a `ui.node` and its slot is the span family -- so something has
+// to join the widget family and host the span one.
+//
+// `role` is not taken. A terminal has the styling and none of the semantics,
+// which `markup.Role`'s own documentation says; what a heading looks like
+// arrives in `style`, and that is the whole of what this target can show.
+#[intrinsic("bubbletea:Flow")]
+component Flow(
+    style ui.Style,
+    content ...component markup.span,
+) ui.node
+
+// One run of words. `text` is the literal a leaf carries, `spanStyle` what
+// this run says about its own appearance, and `kind` what a `token` says it
+// is -- read by the emitter, which maps it to one of the terminal's own
+// sixteen colors rather than to a value a document chose. `color` is what a
+// palette the program set says instead, and wins where it says anything.
+#[intrinsic("bubbletea:Span")]
+component Span(
+    text string,
+    spanStyle markup.SpanStyle,
+    kind markup.Token,
+    color color,
+    content ...component markup.span,
+) markup.span
+
+const component markup.richText[platform] {
+    Flow(style={...style}) {
+        content
+    }
+}
+
+const component markup.text[platform] {
+    Span(text=value) {}
+}
+
+const component markup.run[platform] {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// A terminal cannot follow a link, so the URL is dropped and the words are
+// underlined -- which is how a link reads in one, and is the same trade
+// `ui.link` above already makes. Written as a style rather than as a prop the
+// emitter reads, because the family's own vocabulary already says it.
+const component markup.link[platform] {
+    Span(spanStyle={underline=true}) {
+        content
+    }
+}
+
+const component markup.token[platform] {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
+        content
+    }
+}
+
+// Nothing here can draw, so the description is what an image is: the words
+// between the brackets, in brackets, which is the form `ui.image` renders its
+// own placeholder in.
+const component markup.image[platform] {
+    Span(text="[{alt}]") {}
+}

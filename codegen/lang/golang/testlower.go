@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -29,6 +28,11 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool,
 		irPkg = &ir.Package{}
 	}
 	ctx := codegen.NewExprCtx(irPkg)
+	// The component under test is the state a read names: a cell the
+	// lowering repointed a test's `c.box.checked` at is one of its vars.
+	if root := irPkg.RootDecl(); root != nil {
+		ctx = ctx.ForComponent(root)
+	}
 	ctx.FreeFuncs = ModelFreeFuncs(irPkg)
 	ctx.RawFieldAccess = map[string]bool{}
 	ctx.MethodFields = methodFields
@@ -240,23 +244,11 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 // widget signal / event so the test exercises the real bridge.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
-	if c == nil || c.AST == nil || c.Event == "" {
-		return "", false
-	}
-	outerSel, ok := c.AST.Func.(*ast.SelectExpr)
+	recv, id, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	// outerSel.Operand is `c.inc` — another SelectExpr Operand:Ident{c},Field:"inc".
-	innerSel, ok := outerSel.Operand.(*ast.SelectExpr)
-	if !ok {
-		return "", false
-	}
-	recvIdent, ok := innerSel.Operand.(*ast.IdentExpr)
-	if !ok {
-		return "", false
-	}
-	methodName := innerSel.Field + ExportName(c.Event)
+	methodName := id + ExportName(c.Event)
 	var args []string
 	for _, a := range c.Args {
 		// A payload with no fields says nothing, and a test may leave it out,
@@ -267,7 +259,7 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 		}
 		args = append(args, eventPayloadArg(a.Value, gc))
 	}
-	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
+	return fmt.Sprintf("%s.%s(%s)", recv, methodName, strings.Join(args, ", ")), true
 }
 
 // eventPayloadArg is what an invoker is handed for an event's payload: the

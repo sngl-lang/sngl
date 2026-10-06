@@ -93,7 +93,7 @@ func (e *emitter) decls() {
 // component writes one page's component around blocks rendered by page.
 func (e *emitter) component(name, blocks string) {
 	e.line("component " + name + " ui.node {")
-	e.line("    ui.vbox(style={gap=12}) {")
+	e.line("    ui.vbox(style={gap=12px}) {")
 	e.b.WriteString(blocks)
 	e.line("    }")
 	e.line("}")

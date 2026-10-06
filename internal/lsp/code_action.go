@@ -19,7 +19,7 @@ func (s *Server) handleCodeAction(id json.RawMessage, params json.RawMessage) {
 
 	fs := s.ws.get(p.TextDocument.URI)
 	if fs != nil && fs.Doc != nil {
-		if pkg, err := s.checkForPreview(fs); err == nil && pkg != nil && len(pkg.Windows) > 0 {
+		if pkg, err := s.checkForPreview(fs); err == nil && pkg != nil && pkg.IsProgram() {
 			actions = append(actions, CodeAction{
 				Title: "Preview in browser",
 				Kind:  CodeActionKindSource,

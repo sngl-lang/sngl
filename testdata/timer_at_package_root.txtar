@@ -53,19 +53,28 @@ import (
 	"time"
 )
 
-type timerTickMsg0 struct{}
+type timerTickMsg0 struct {
+	key string
+	gen int
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	ticks int
+	ticks          int
+	visible__inst0 bool
 
+	__timer0      map[string]int
+	__timer0Seq   map[string]int
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.__timer0 = map[string]int{}
+	m.__timer0Seq = map[string]int{}
 	m.ticks = 0
+	m.visible__inst0 = true
 	return m
 }
 
@@ -90,9 +99,24 @@ func SetTicksCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTicksMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, tea.Tick(1000*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+	cmds = append(cmds, m.__timer0Sync()...)
 	return tea.Batch(cmds...)
 }
 
@@ -103,24 +127,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setTicksMsg:
 		m = m.SetTicks(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case timerTickMsg0:
-		m.ticks = (m.ticks + 1)
-		cmds = append(cmds, tea.Tick(1000*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+		if m.__timer0[msg.key] == msg.gen && true {
+			m.ticks = (m.ticks + 1)
+			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
+	cmds = append(cmds, m.__timer0Sync()...)
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __timer0Sync() []tea.Cmd {
+	var cmds []tea.Cmd
+	seen := map[string]bool{}
+	key := ""
+	if true {
+		seen[key] = true
+		if _, ok := m.__timer0[key]; !ok {
+			m.__timer0Seq[key]++
+			gen := m.__timer0Seq[key]
+			m.__timer0[key] = gen
+			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+		}
+	}
+	for key := range m.__timer0 {
+		if !seen[key] {
+			delete(m.__timer0, key)
+		}
+	}
+	return cmds
 }
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.ticks)))
+	if m.visible__inst0 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.ticks)))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -144,6 +202,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -160,6 +219,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
+	visible__inst1      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -167,7 +227,9 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
-	__n0 *widget.Label
+	w       *fynelayout.Toplevel
+	__n0    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -178,6 +240,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
+	m.visible__inst1 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -288,6 +351,30 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
+func (m *Model) w_closed_handler() {
+}
+
+func (m *Model) w_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.w.SetVisible(m.visible__inst1)
+}
+
+// wClosed invokes the OnClosed callback on the #w widget; for tests.
+func (m *Model) wClosed() {
+	if m.w.OnClosed != nil {
+		m.w.OnClosed()
+	}
+}
+
+// wVisible invokes the OnVisible callback on the #w widget; for tests.
+func (m *Model) wVisible(__visible bool) {
+	if cb := m.w.OnVisible; cb != nil {
+		m.w.OnVisible = nil
+		cb(__visible)
+		m.w.OnVisible = cb
+	}
+}
+
 func (m *Model) Ticks() int {
 	return m.ticks
 }
@@ -328,21 +415,38 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.w.Container
+	}
+	m.__built = true
+	m.w = fynelayout.NewToplevel()
+	m.w.SetTitle("t")
+	m.w.SetVisible(m.visible__inst1)
+	m.w.OnClosed = m.w_closed_handler
+	m.w.OnVisible = m.w_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.ticks))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.w.Add(m.__n0)
+	fynelayout.AppAttach(m.w)
+	m.__effects0_settle()
+	return m.w.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	m.__snglTeardown()
 	_ = os.Stderr
 }
@@ -366,7 +470,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks: 0, handle__inst0: 0 };
+  var state = { ticks: 0, handle__inst0: 0, visible__inst1: true };
   function __effect0_mount() {
     state.handle__inst0 = setInterval(() => {
       state.ticks = state.ticks + 1;
@@ -455,8 +559,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:772aa81d95f67f58f787f63bb86bd7b6
+pass sha256:e91f5b00ce8cc5058bfe1a9ee04e7b60
 -- run/go/fyne --
-pass sha256:1cac723386e9d4f9a48fcb2b4a8d3092
+pass sha256:1d4c3e86af6c03df8ed5689b25ef1520
 -- run/none/html --
-pass sha256:6f7b5f7b828f12f594dfd5138f8774a0
+pass sha256:dd8d72f64b314c723e108ef72a6e1c1d

@@ -197,7 +197,7 @@ func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
 }
 
 // LowerBindInit is LowerVarInit for a binding that is not a declaration: a
-// window's route parameters are the *ir.Param its slot population declares,
+// a document's route parameters are the *ir.Param its slot population declares,
 // and a target with no request stores them as a Model field like any other,
 // initialised to the zero of their type because nothing in the program writes
 // one.
@@ -242,4 +242,12 @@ func LowerBindInit(t *ir.Type, init ir.Expr, gc *GoIRContext) string {
 
 	}
 	return IRLiteralToGo(v.Init)
+}
+
+func isIntVar(e ir.Expr) bool {
+	if _, lit := e.(*ir.Literal); lit {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeInt
 }

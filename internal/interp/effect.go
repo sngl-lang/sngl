@@ -261,7 +261,7 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 	if len(fn.Params) > 0 {
 		args = []any{e.On}
 	}
-	if _, err := env.underContext(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
+	if _, err := env.underHandler(e.Context, func() (any, error) { return env.runEventHandlerValues(fn, args) }); err != nil {
 		return err
 	}
 	if root != nil && env != root {

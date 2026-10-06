@@ -20,6 +20,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/js/consteval"
 )
@@ -155,7 +156,7 @@ func runJSConstEval(node, dir, mainPath, resultPath string) error {
 	defer cancel()
 	run := exec.CommandContext(ctx, node, mainPath)
 	run.Dir = dir
-	run.Env = append(os.Environ(), consteval.OutEnv+"="+resultPath)
+	run.Env = append(buildhost.ChildEnv(), consteval.OutEnv+"="+resultPath)
 	// Anything an evaluated function prints goes to stderr: results travel in
 	// the file, so stdout carries nothing we need.
 	run.Stdout = os.Stderr

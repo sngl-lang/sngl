@@ -20,7 +20,7 @@ func envFor(t *testing.T, src, comp string) (*Env, *ir.Package) {
 // comes from sngl:platform/none's override of `sngl:time`'s `timer`, so a
 // program that names one has to be checked with that platform registered --
 // and importing the registry from an internal test here closes a cycle through
-// codegen/platform/none/testrunner.
+// internal/interp/testrunner.
 
 // TestVirtualClockStartsAtAFixedEpoch: a snapshot that interpolates a date must
 // not depend on when the suite ran.

@@ -155,7 +155,7 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -635,7 +635,6 @@ type Model struct {
 	__slot0      []*C.GtkWidget
 	__slot0_at   *C.GtkWidget
 	__inst0_live []*__canvas0Instance
-	__n2         *C.GtkBox
 	__n0         *C.GtkLabel
 	board        *C.GtkDrawingArea
 	boardGesture *C.GtkGesture
@@ -833,12 +832,12 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n2)), C.int(6))
+	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(6))
 	m.__n0 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 	m.board = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	C.gtk_drawing_area_set_content_width(m.board, C.int(40))
 	C.gtk_drawing_area_set_content_height(m.board, C.int(40))
@@ -846,9 +845,9 @@ func (m *Model) buildWidgetTree() {
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.board), C.int((len(snglDrawFuncs) - 1)))
 	snglCallbacks = append(snglCallbacks, func() { m.board_click_handler(ClickEvent{}) })
 	m.boardGesture = C.sngl_connect_click(unsafe.Pointer(m.board), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.board)))
-	m.__renderSlot0(m.__n2)
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.board)))
+	m.__renderSlot0(__n2)
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n2)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1082,8 +1081,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:19349c8904bbac96cec255cd5570aa9a
+pass sha256:41368d3e3774f847b706c9387eff014c
 -- run/go/gtk4 --
-pass sha256:71f40539eda9b06ac978d46e32d68344
+pass sha256:669173e58010e9c201fbefa5f3a7ba2e
 -- run/none/html --
 pass sha256:32adce2982b59b6f3d22c40c9c6aa352

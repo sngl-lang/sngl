@@ -67,6 +67,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -152,17 +155,27 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var lit by remember { mutableStateOf(false) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column {
-        Canvas(modifier = Modifier.size(100.dp, 100.dp)) {
-            if ((bgOf(lit).a > 0)) {
-                drawRect(color = androidx.compose.ui.graphics.Color(red = bgOf(lit).r.toInt(), green = bgOf(lit).g.toInt(), blue = bgOf(lit).b.toInt(), alpha = bgOf(lit).a.toInt()), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(50.0.toFloat(), 50.0.toFloat()))
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
             }
         }
-        Button(onClick = {
-            lit = !lit
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "toggle", modifier = Modifier)
+        Column {
+            Canvas(modifier = Modifier.size(100.dp, 100.dp)) {
+                if ((bgOf(lit).a > 0)) {
+                    drawRect(color = androidx.compose.ui.graphics.Color(red = bgOf(lit).r.toInt(), green = bgOf(lit).g.toInt(), blue = bgOf(lit).b.toInt(), alpha = bgOf(lit).a.toInt()), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(50.0.toFloat(), 50.0.toFloat()))
+                }
+            }
+            Button(onClick = {
+                lit = !lit
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "toggle", modifier = Modifier)
+            }
         }
     }
 }
@@ -174,4 +187,4 @@ fun bgOf(on: Boolean): Color {
     return Color(r = 24, g = 60, b = 52, a = 255)
 }
 -- run/kotlin/android --
-pass sha256:8f0851bdbef87d75d5adfc5f2530bec8
+pass sha256:ba4d907e9b0cdfff544a9bcb6c565de0

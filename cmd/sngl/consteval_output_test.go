@@ -47,7 +47,7 @@ window #app(title="t") {
 
 	out := filepath.Join(dir, "out")
 	resetFlags(rootCmd)
-	rootCmd.SetArgs([]string{"generate", "--platform=bubbletea", "--lang=go", "--out=" + out, app})
+	rootCmd.SetArgs([]string{"generate", "--allow-eval=go:" + purepkgPath, "--platform=bubbletea", "--lang=go", "--out=" + out, app})
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
 	if err := rootCmd.Execute(); err != nil {
@@ -121,7 +121,7 @@ window #app(title="t") {
 		t.Run(platform, func(t *testing.T) {
 			out := filepath.Join(dir, "out-"+platform)
 			resetFlags(rootCmd)
-			rootCmd.SetArgs([]string{"generate", "--platform=" + platform, "--lang=go", "--out=" + out, app})
+			rootCmd.SetArgs([]string{"generate", "--allow-eval=go:" + purepkgPath, "--platform=" + platform, "--lang=go", "--out=" + out, app})
 			rootCmd.SilenceUsage = true
 			rootCmd.SilenceErrors = true
 			if err := rootCmd.Execute(); err != nil {

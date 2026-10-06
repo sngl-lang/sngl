@@ -7,16 +7,17 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/goldentest"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/lib"
 )
 
 // TestProvidedDocsSurviveBuilds holds the compiler to what sharing a target's
 // parsed source across checks depends on: nothing after the parser writes to
-// an AST. checker.ProvidedDocs hands every check the same documents, so a
-// write made while building one program would be read back by the next.
+// an AST. A target's package is parsed once per process (checker.PackageSource)
+// and handed to every check, so a write made while building one program would
+// be read back by the next.
 //
 // Every golden fixture is built first, through every target it declares --
 // check, optimize, lower and codegen, since IR keeps its AST and any phase
@@ -25,28 +26,16 @@ import (
 func TestProvidedDocsSurviveBuilds(t *testing.T) {
 	goldentest.Run(t, "testdata/*.txtar", false, false)
 
-	var targets []any
-	var prefixes []string
-	for _, name := range codegen.Platforms() {
-		targets = append(targets, codegen.LookupPlatform(name))
-		prefixes = append(prefixes, "platform/"+codegen.LookupPlatform(name).PlatformIdentifier())
-	}
-	for _, name := range codegen.Langs() {
-		targets = append(targets, codegen.LookupLang(name))
-		prefixes = append(prefixes, "language/"+codegen.LookupLang(name).LanguageIdentifier())
-	}
 	compared := 0
-	for i, target := range targets {
-		p, ok := target.(interface{ PackageFS() fs.FS })
-		if !ok || p.PackageFS() == nil {
+	for _, pkg := range lib.Packages() {
+		if !strings.HasPrefix(pkg, "platform/") && !strings.HasPrefix(pkg, "language/") {
 			continue
 		}
 		shared := map[string]any{}
-		for _, doc := range checker.ProvidedDocs(target) {
+		for _, doc := range checker.PackageSource(pkg) {
 			shared[docFile(doc)] = doc
 		}
-		fsys := p.PackageFS()
-		entries, err := fs.ReadDir(fsys, ".")
+		entries, err := fs.ReadDir(lib.FS, pkg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,11 +43,11 @@ func TestProvidedDocsSurviveBuilds(t *testing.T) {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 				continue
 			}
-			data, err := fs.ReadFile(fsys, e.Name())
+			name := pkg + "/" + e.Name()
+			data, err := fs.ReadFile(lib.FS, name)
 			if err != nil {
 				t.Fatal(err)
 			}
-			name := prefixes[i] + "/" + e.Name()
 			fresh, err := parser.Parse(name, data)
 			if err != nil {
 				t.Fatal(err)
@@ -75,7 +64,7 @@ func TestProvidedDocsSurviveBuilds(t *testing.T) {
 		}
 	}
 	if compared == 0 {
-		t.Fatal("no target served a package, so nothing was compared")
+		t.Fatal("no target package found under lib/, so nothing was compared")
 	}
 }
 

@@ -28,7 +28,7 @@ func TestGenVocabularyIsMapped(t *testing.T) {
 		for _, m := range ed.Members {
 			seen[ed.Name] = true
 			if ed.Name == "Rendered" {
-				if m.Name != ir.RenderedIdentity {
+				if m.Name != ir.RenderedIdentity && m.Name != ir.RenderedSurface {
 					t.Errorf("sngl:x/gen declares Rendered.%s, which ir reads nowhere", m.Name)
 				}
 				continue

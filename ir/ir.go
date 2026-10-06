@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -44,7 +45,6 @@ type Package struct {
 	// a macro exists, what arguments it takes and what it does; the compiler
 	// adds only an implementation for the ones it implements.
 	Macros  []*Func
-	Windows []*Window
 	Outputs []*Output
 	// BuildConsts are the consts only a build reads: on a target that unrolls
 	// its views one document at a time, a const a view loop walks is a value
@@ -55,12 +55,21 @@ type Package struct {
 	// every ordinary build, where a window is the root and a component is
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
-	// EntryWindow is the id `output(entry = home)` names: the window a build
-	// scopes to when the program opens more than one. Empty when the
-	// directive names none, which the single-window case does not need.
-	EntryWindow string `json:",omitempty"`
-	Contexts    []*Context
-	Symbols     *SymbolTable
+	Contexts      []*Context
+	Symbols       *SymbolTable
+	// Origin is where a package the program reads by path came from: the
+	// program's own, a directory import, a fetched one. Nil for a library
+	// package and a native scheme's shell. A build-time function asks it who
+	// is reaching the host, and what code a stored answer depends on.
+	Origin *PackageOrigin `json:"-"`
+	// Schemes are the import schemes the package declares with gen.scheme,
+	// taken out of its body where they were written. An importer reaches
+	// them, and everything its imports reach, through Imports.
+	Schemes []*Scheme `json:"-"`
+	// CLinks are the C headers and flags the package's `c.link` directives
+	// name: what a cgo preamble includes and links for the `#[cnative]`
+	// declarations beside them.
+	CLinks []*CLink `json:",omitempty"`
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -73,23 +82,13 @@ type Package struct {
 	// without a special case (#135).
 	Body []Stmt `json:",omitempty"`
 
-	// WindowsFlat says no window's body holds another window, which
-	// Owners reads to skip the search that would prove it again. Only
-	// passWindowNesting sets it, and only by refusing the program that would
-	// make it false -- so it is a proof carried forward rather than a claim,
-	// and the passes after that one are where every expensive Owners call is.
-	//
-	// False means unproven, not disproven: everything before that pass, and
-	// every consumer that never lowers at all, searches as it always did.
-	WindowsFlat bool `json:"-"`
-
 	// TreeKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
 	// it: an import of sngl:ui/draw is neither necessary (a package may declare
 	// its own shapes) nor sufficient (inlining flattens a canvas out of the
 	// package that imported it), so the declarations are the only honest
 	// signal.
-	TreeKinds map[*StructDef]bool `json:"-"`
+	TreeKinds map[*Component]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -180,11 +179,36 @@ type Package struct {
 	// reason Teardown is: whether there is anything to call, and what it is
 	// called, are the lowering's answers and not a name to look up.
 	Mounts []*Func `json:"-"`
+
+	// Run is the build's function for the target's `@run` handler: it takes
+	// the command line and the host's `run`, and the host's own entry point
+	// calls it before anything the program renders exists. Nil where the
+	// program wrote none, and the host starts as it always has.
+	Run *Func `json:"-"`
+}
+
+// RootMounts are the first settles of the brackets written at the root of a
+// file: the calls the effect lowering appended to the package body. A target
+// that emits its windows from the package body and drops the rest of it --
+// fyne and gtk4 -- runs these once its entry window's widgets exist, which is
+// where the body would have run them.
+func (p *Package) RootMounts() []Stmt {
+	if p == nil || len(p.Mounts) == 0 {
+		return nil
+	}
+	var out []Stmt
+	for _, st := range p.Body {
+		cs, ok := st.(*CallStmt)
+		if ok && cs.Call != nil && slices.Contains(p.Mounts, cs.Call.Func) {
+			out = append(out, st)
+		}
+	}
+	return out
 }
 
 // EntryPoints are the handlers a platform calls from its own scaffolding
-// rather than from anything in the IR: the teardown, the store's settle, and
-// the effect mounts. Each is recorded rather than named because whether it
+// rather than from anything in the IR: the teardown, the store's settle, the
+// `@run` function and the effect mounts. Each is recorded rather than named because whether it
 // exists and what it is called are the lowering's answers -- which is exactly
 // what makes them invisible to any walk that follows calls, the tree-shaker
 // included.
@@ -194,8 +218,8 @@ func (p *Package) EntryPoints() []*Func {
 	if p == nil {
 		return nil
 	}
-	out := make([]*Func, 0, 2+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle}, p.Mounts...) {
+	out := make([]*Func, 0, 3+len(p.Mounts))
+	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle, p.Run}, p.Mounts...) {
 		if fn != nil {
 			out = append(out, fn)
 		}
@@ -226,43 +250,23 @@ func (p *Package) RootDecl() *Component {
 }
 
 // IsProgram reports whether the package is something to build rather than a
-// library to import. A window is what says so: it is the only renderable
-// member of the root tree, so a package without one has nothing to open.
+// library to import: whether its body renders a node. The package body is the
+// application's view, and every node written there is a member of `root` -- a
+// window, a root component's instance, a generated family's host -- so a
+// package whose body renders nothing has nothing to show, and one whose only
+// root component nobody instantiates renders nothing either.
 func (p *Package) IsProgram() bool {
 	if p == nil {
 		return false
 	}
-	if len(p.Windows) > 0 {
-		return true
-	}
-	// Reachability from the package body, not membership in any body: a
-	// root-family component is an ordinary declaration, so nothing lifts its
-	// windows and one nobody instantiates renders nothing. Asked of every
-	// component regardless, a file holding a spare root component and no way
-	// to reach it built -- and each backend then met an *ir.Window in the
-	// middle of a component method, which fyne and bubbletea panic on.
 	found := false
-	seen := map[*Component]bool{}
-	var scan func(stmts []Stmt)
-	scan = func(stmts []Stmt) {
-		_ = WalkStmts(stmts, func(s Stmt) error {
-			if found {
-				return SkipDir
-			}
-			if n, ok := s.(*NodeInst); ok {
-				if IsWindowNode(n) {
-					found = true
-					return SkipDir
-				}
-				if n.Component != nil && !seen[n.Component] {
-					seen[n.Component] = true
-					scan(n.Component.Body)
-				}
-			}
-			return nil
-		})
-	}
-	scan(p.Body)
+	_ = WalkStmts(p.Body, func(s Stmt) error {
+		if _, ok := s.(*NodeInst); ok {
+			found = true
+			return SkipAll
+		}
+		return nil
+	})
 	return found
 }
 
@@ -274,45 +278,111 @@ func (p *Package) usesTreeRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
-	for sd := range p.TreeKinds {
-		if isTreeRole(sd, kind) {
+	for f := range p.TreeKinds {
+		if isTreeRole(f, kind) {
 			return true
 		}
 	}
 	return false
 }
 
-// NoteTreeKind records that a member of a tree reaches this package.
-func (p *Package) NoteTreeKind(sd *StructDef) {
-	if p == nil || sd == nil {
+// NoteTreeKind records that a member of a family reaches this package.
+func (p *Package) NoteTreeKind(f *Component) {
+	if p == nil || f == nil {
 		return
 	}
 	if p.TreeKinds == nil {
-		p.TreeKinds = map[*StructDef]bool{}
+		p.TreeKinds = map[*Component]bool{}
 	}
-	p.TreeKinds[sd] = true
+	p.TreeKinds[f] = true
 }
 
-// isTreeRole reports whether sd is the tree carrying kind. The three roles a
-// phase asks after are marked on their declarations (#[marks.builtin]), so
-// nothing here spells a package and a name: a tree renamed or moved keeps its
-// role, and a program declaring `struct shape` of its own does not acquire one.
-func isTreeRole(sd *StructDef, kind BuiltinKind) bool {
-	return sd != nil && sd.IsTree && sd.Builtin == kind
+// IsFamilyValue reports whether a handle to c, a member of a family, is a
+// value of the family: a record of the props the family declares, read off
+// whichever member it holds. A member declaring the family's props is one;
+// a member of a family with props that declares none of them composes
+// members rather than being one -- `component extras { nav.page… nav.page…
+// }` -- and there is no one value for it to be. Composition itself is not the
+// question: a member declaring the props may compose others too, and either
+// kind is inlined where its family's members are collected.
+func IsFamilyValue(c *Component) bool {
+	if c == nil || c.Tree == nil {
+		return false
+	}
+	if len(c.Tree.Props) == 0 {
+		return true
+	}
+	for _, fp := range c.Tree.Props {
+		for _, p := range c.Props {
+			if p.Name == fp.Name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-// IsDrawShapeTree reports whether sd is the drawing tree.
-func IsDrawShapeTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeShape) }
+// IsFamily reports whether c declares a family: a component that is itself a
+// member of `build.family`. The family of families is the one declaration that
+// is a member of itself, which is what its #[builtin("treeFamily")] mark says.
+func (c *Component) IsFamily() bool {
+	return c != nil && c.Tree != nil && c.Tree.Builtin == BuiltinTreeFamily
+}
 
-// IsUITree reports whether sd is the widget family.
-func IsUITree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeNode) }
+// isTreeRole reports whether f is the family carrying kind. The roles a phase
+// asks after are marked on their declarations (#[marks.builtin]), so nothing
+// here spells a package and a name: a family renamed or moved keeps its role,
+// and a program declaring a `shape` family of its own does not acquire one.
+func isTreeRole(f *Component, kind BuiltinKind) bool {
+	return f.IsFamily() && f.Builtin == kind
+}
 
-// IsAppRootTree reports whether sd is the family a package body accepts.
-func IsAppRootTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeRoot) }
+// IsDrawShapeTree reports whether f is the drawing family.
+func IsDrawShapeTree(f *Component) bool { return isTreeRole(f, BuiltinTreeShape) }
 
-// IsSegmentedTree reports whether sd is a tree with its own rendering rules --
-// any tree but the widget family.
-func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }
+// IsUITree reports whether f is the widget family.
+func IsUITree(f *Component) bool { return isTreeRole(f, BuiltinTreeNode) }
+
+// IsAppRootTree reports whether f is the family a package body accepts.
+func IsAppRootTree(f *Component) bool { return isTreeRole(f, BuiltinTreeRoot) }
+
+// IsSegmentedTree reports whether f is a family with its own rendering rules --
+// any family but the widget one.
+func IsSegmentedTree(f *Component) bool { return f.IsFamily() && !IsUITree(f) }
+
+// TypeFamily is the family t names in a return position or a slot, or nil.
+// FamilyArgs is what a member's type, at the type arguments it carries, hands
+// its family's type parameters: `page<Pkg, Meta>` is a `_page<Meta>`. A
+// member written bare is its defaults, as a struct type is.
+func FamilyArgs(m *Component, args []*Type) []*Type {
+	if m == nil || len(m.TreeArgs) == 0 {
+		return nil
+	}
+	bindings := map[string]*Type{}
+	for i, tp := range m.TypeParams {
+		switch {
+		case i < len(args):
+			bindings[tp.Name] = args[i]
+		case tp.Default != nil:
+			bindings[tp.Name] = tp.Default
+		}
+	}
+	out := make([]*Type, len(m.TreeArgs))
+	for i, a := range m.TreeArgs {
+		out[i] = a.Substitute(bindings)
+	}
+	return out
+}
+
+func TypeFamily(t *Type) *Component {
+	if t == nil || t.Kind != TypeComponent {
+		return nil
+	}
+	if f, ok := t.Decl.(*Component); ok && f.IsFamily() {
+		return f
+	}
+	return nil
+}
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
 func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
@@ -327,6 +397,66 @@ type Import struct {
 	Native  *NativeImport // non-nil for scheme imports
 }
 
+// PackageOrigin is where a package came from.
+type PackageOrigin struct {
+	// Dir is a directory package's path from the import root, "." for the
+	// program's own; it may climb above the root (`../docui`).
+	Dir string
+	// URI is a fetched package's import, scheme and all.
+	URI string
+	// Docs are the package's parsed files: what its code is, for a digest of
+	// it. Shared, never cloned -- an AST is not edited after it is parsed.
+	Docs []*ast.Document
+}
+
+// Scheme is an import scheme a package declares: `gen.scheme(name=…,
+// @generate(out, importPath) { … })`. Its handler runs in the interpreter when
+// a check meets `<name>:<path>`, and what it writes is the package the import
+// resolves to.
+type Scheme struct {
+	Name string
+	// Pos is where the gen.scheme is written.
+	Pos ast.Pos
+	// Handler is the checked @generate handler, and Pkg the checked package
+	// it runs in: what the interpreter is built over.
+	Handler *EventHandler
+	Pkg     *Package
+	// Library says the scheme ships in the sngl: tree, compiled into the
+	// binary the user chose to run, so its host calls are trusted.
+	Library bool
+}
+
+// CLink is one `c.link` directive: a header a cgo preamble includes, and the
+// compiler and linker flags it needs.
+type CLink struct {
+	// Include is the header as written between the quotes or brackets of an
+	// #include; System says brackets.
+	Include string
+	System  bool
+	CFlags  []string
+	LDFlags []string
+}
+
+// ReachedCLinks is every c.link pkg and the packages it imports carry, each
+// once, in the order an import first reaches it.
+func ReachedCLinks(pkg *Package) []*CLink {
+	var out []*CLink
+	seen := map[*Package]bool{}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p.CLinks...)
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+		}
+	}
+	walk(pkg)
+	return out
+}
+
 func (i *Import) SymName() string { return i.Alias }
 func (i *Import) SymType() *Type  { return nil }
 
@@ -337,9 +467,6 @@ type NativeImport struct {
 	Enums      []*EnumDef
 	Funcs      []*Func
 	Vars       []*Var
-	// LinkFlags holds linker flags for C imports (e.g. pkg-config --libs output).
-	// Empty for non-C imports.
-	LinkFlags []string
 }
 
 // NativeDeclRef names a foreign declaration the way an encoded value does:
@@ -510,6 +637,11 @@ type Func struct {
 	// at all -- and the platforms that give a slot render a host-typed
 	// container parameter were giving those one as well.
 	SlotRender bool `json:"-"`
+	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
+	// async subexpression a view prop read: a zero-argument body returning it,
+	// lowered as a named async computed is. Said here rather than read off the
+	// `__hoist_` its name is spelled with.
+	AsyncHoist bool `json:"-"`
 	// Stdlib is true for functions declared in the SNGL standard library
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
@@ -522,6 +654,9 @@ type Func struct {
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
 	MutatesReceiver bool
+	// BuildOnly says only the build's evaluator answers this intrinsic: no
+	// target emits a call to it, so a call left unfolded is a build error.
+	BuildOnly bool
 	// LoweredFromTag and LoweredFromEvent record the originating
 	// component tag and event name when passDeclarative promotes an
 	// inline node-attached handler into a top-level Func. Platforms
@@ -607,6 +742,13 @@ type Var struct {
 	// getter counterpart to the platform hook the write side uses -- so the
 	// only read that works on those is a native call's receiver.
 	NodeHandle bool `json:"NodeHandle,omitempty"`
+
+	// Cell marks the state lowering gives a two-way prop the call site left
+	// unbound (UnboundProps): a var of the component passImplicitState wraps
+	// the node in. A read of the prop off the node's `#id` names it, from
+	// outside that component, so the inliner repoints the read at the one
+	// copy it splices. Copied with the var, so a clone says it too.
+	Cell bool `json:"-"`
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -634,6 +776,11 @@ type Body struct {
 	// Const is the override's own `const` prefix. The component a target
 	// renders is const when its base declaration is or this is.
 	Const bool `json:",omitempty"`
+	// Pkg is the package a program's override is written in, which is who
+	// a handler in it runs as at build time -- a family's gen.emit
+	// @generate. Nil for a target package's override, which is library
+	// source and trusted.
+	Pkg *Package `json:"-"`
 }
 
 // Component represents a resolved component declaration.
@@ -649,15 +796,23 @@ type Component struct {
 	// checker can recognise a built-in visual node (window) by tag rather than
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
-	// Tree is the segmented tree this component is a member of, named in its
-	// return position. Nil for a component that belongs to no tree: it may be
-	// placed in any of them and may contain none of their members.
-	Tree *StructDef `json:"-"`
+	// Tree is the family this component is a member of, named in its return
+	// position: a component that is itself a member of `build.family`. Nil for
+	// a component that belongs to no family: it may be placed in any of them
+	// and may contain none of their members.
+	Tree *Component `json:"-"`
+	// TreeArgs are the type arguments the return position hands a generic
+	// family, in terms of the member's own type parameters: `page<T, M>`
+	// returning `_page<M>` holds M here. Nil for a family that takes none.
+	TreeArgs []*Type `json:"-"`
 	// Treeless is the #[tree.none] mark: the declaration belongs to no family
 	// and says so. Nil Tree without it is a declaration that forgot to name
 	// one, which is an error, so the two states are told apart here rather
 	// than by the absence of a pointer.
 	Treeless bool `json:",omitempty"`
+	// Eventless is the #[tree.eventless] mark on a family: its members raise
+	// no events, an #[intrinsic] primitive's being the target calling in.
+	Eventless bool `json:",omitempty"`
 	// TreeParam is the component's own type parameter written in the return
 	// position, for a wrapper whose family is whatever it was handed. Nil Tree
 	// and a TreeParam is a third state: tree-less at the declaration, and a
@@ -698,6 +853,12 @@ type Component struct {
 	// and Vars, so a second swap for the same target is a no-op instead of a
 	// reset of everything lowering has since added.
 	SpecializedFor string `json:",omitempty"`
+	// DeclaredBody is the body the declaration itself writes, kept the first
+	// time an override is swapped into Body: a node a target renders with the
+	// declaration's own body rather than its override -- a nav.link in a
+	// surface that navigates in place, on a target whose links are addresses
+	// -- reads it here. Nil until a swap, when Body still is it.
+	DeclaredBody []Stmt `json:"-"`
 	// WildcardInto names the prop the matched name binds to, from the mark's
 	// second argument. Without it the name a wildcard matched reaches nothing:
 	// the component was resolved by a name it has no way to read.
@@ -896,42 +1057,6 @@ type EventHandler struct {
 	CanError bool
 }
 
-// Window is a node that instantiates the #[builtin("window")] declaration.
-//
-// It is an alias and not a type: a window is a NodeInst like every other node,
-// and the name is kept because "which of these nodes is a window" is a
-// question nineteen consumers ask and `*ir.Window` is what they have always
-// spelled the answer as. It buys no type safety -- a plain vbox satisfies it
-// -- so a function taking one is documenting its expectation rather than
-// enforcing it; IsWindowNode is the test.
-//
-// What the separate struct cost was 79 `case *ir.Window:` arms across the
-// lowering, the optimizer, the interpreter and four platforms, each of them a
-// second answer to a question the NodeInst arm beside it had already answered,
-// and each a place a walk could forget a window and say nothing.
-type Window = NodeInst
-
-// IsWindowNode reports whether n instantiates the #[builtin("window")]
-// declaration.
-//
-// The mark and never the name, for the reason every other builtin lookup gives:
-// a program may declare its own `window` and it is not this one. It is also the
-// whole of what separates a window from any other node now that the two share a
-// type, so a walk asking "is this a window" asks here.
-func IsWindowNode(n *NodeInst) bool {
-	return n != nil && n.Component != nil && n.Component.Builtin == BuiltinWindow
-}
-
-// The window props the compiler itself reads. Each is declared in
-// lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
-// matches, not a second declaration of them, and nothing enumerates the set --
-// html asks for the href, gtk4 for the title.
-const (
-	WindowTitle   = "title"
-	WindowHref    = "href"
-	WindowFavicon = "favicon"
-)
-
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
 // Output is one language/platform pair a build directive names, with the
@@ -950,6 +1075,10 @@ type Output struct {
 	Options  *StructLit
 	LangComp *Component `json:"-"`
 	PlatComp *Component `json:"-"`
+	// Run is the `@run` handler written on the platform's node, when the
+	// platform declares one and the program wrote it: the process start,
+	// wrapped. The build makes it the package's Run function.
+	Run *EventHandler `json:"-"`
 }
 
 // ReceiverParam is the surface name of the implicit method receiver (SNGL's
@@ -991,9 +1120,6 @@ func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	// IsTree is set by #[tree.kind]: this struct names a segmented tree rather
-	// than describing a value, and components name it to say they are members.
-	IsTree     bool `json:",omitempty"`
 	AST        *ast.StructDef
 	Name       string
 	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>

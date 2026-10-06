@@ -29,7 +29,7 @@ component App node {
         button(text="bump", @click { bump() })
     }
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

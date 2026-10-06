@@ -65,7 +65,7 @@ func init() {
 
 	// Let docs/lookup resolve scheme imports via the CLI's codegen-aware resolver.
 	lookup.RegisterResolver(func(cwd string) checker.ImportResolver {
-		return &build.Resolver{RootDir: cwd}
+		return &build.Resolver{RootDir: cwd, Trust: cliTrust}
 	})
 }
 

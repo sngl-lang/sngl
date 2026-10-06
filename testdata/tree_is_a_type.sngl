@@ -1,19 +1,15 @@
-// A tree is a declared type. `#[tree.kind]` marks a struct as naming one, a
-// component says which it belongs to by naming that type in its return
-// position, and a slot says which it accepts by naming it as the slot's type.
+// A family is a declared component, a member of `build.family`. A component
+// says which family it belongs to by naming it in its return position, and a
+// slot says which it accepts by naming it as the slot's type.
 //
-// Nothing is matched by name: a misspelled tree is an unresolved name where it
-// is written, and two packages each declaring a tree of the same name declare
-// two trees.
+// Nothing is matched by name: a misspelled family is an unresolved name where
+// it is written, and two packages each declaring a family of the same name
+// declare two families.
+//
+// A family may be declared below its members: it is registered before them.
 
 import . "sngl:ui"
-import tr "sngl:tree"
-
-#[tr.kind]
-struct block {}
-
-#[tr.kind]
-struct inline {}
+import build "sngl:build"
 
 // A container that is not itself a member: its rest slot names the family
 // it hosts.
@@ -32,6 +28,10 @@ component span(children ...component) inline {}
 // `node` is a family like any other: naming it in a slot says the same thing as
 // naming nothing there, because that is the family this component belongs to.
 component plain(children ...component node) node {}
+
+component block build.family
+
+component inline build.family
 
 component main node {
     document() {

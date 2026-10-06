@@ -34,7 +34,7 @@ func extStubConfig(t *testing.T, source string) *checker.Config {
 	return &checker.Config{
 		IsMain:     true,
 		Platforms:  []ir.Platform{extStubPlatform{}},
-		LibSources: map[string][]*ast.Document{"platform/extstub": {doc}},
+		LibSources: map[string][]*ast.Document{"platform/extstub": {doc, targetNodeDoc(t, "platform/extstub")}},
 	}
 }
 
@@ -174,8 +174,8 @@ component main node {
 		IsMain:    true,
 		Platforms: []ir.Platform{namedStubPlatform{"stubA"}, namedStubPlatform{"stubB"}},
 		LibSources: map[string][]*ast.Document{
-			"platform/stubA": {parse("stubA.sngl", extA)},
-			"platform/stubB": {parse("stubB.sngl", extB)},
+			"platform/stubA": {parse("stubA.sngl", extA), targetNodeDoc(t, "platform/stubA")},
+			"platform/stubB": {parse("stubB.sngl", extB), targetNodeDoc(t, "platform/stubB")},
 		},
 	}
 	pkg, diags := checker.Check(parse("main.sngl", userSource), cfg)

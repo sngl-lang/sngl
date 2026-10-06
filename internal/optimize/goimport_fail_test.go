@@ -3,6 +3,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -66,7 +67,7 @@ func TestOptimize_GoImportEvalFailureFatal(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Optimize(mkPkg(), &Config{Platform: tc.platform, Language: tc.lang, Dir: dir})
+			err := Optimize(mkPkg(), &Config{Platform: tc.platform, Language: tc.lang, Dir: dir, Trust: trust.AllowAll()})
 			if tc.wantErr && err == nil {
 				t.Fatalf("expected Optimize to fail: a go: import that failed to evaluate cannot be run at runtime by the %q target", tc.lang)
 			}

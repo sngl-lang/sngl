@@ -15,6 +15,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/plugin"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -35,6 +37,8 @@ type CheckConfig struct {
 	// though the document had imported it, so its overrides are checked here
 	// and its failures belong to this build.
 	Targets []ir.StaticTarget
+	// Warn receives each warning the check reports. Nil drops them.
+	Warn func(ir.Diagnostic)
 }
 
 // Check type-checks doc against every registered language and platform.
@@ -48,11 +52,23 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 	}
 	fsys := cfg.FS
 	if fsys == nil {
-		fsys = os.DirFS(dir)
+		fsys = ProjectFS(dir)
 	}
 	resolver := cfg.Resolver
 	if resolver == nil {
 		resolver = &Resolver{FS: fsys}
+	}
+	// A selected platform that cannot be used here -- gtk4 with no
+	// introspection data -- is refused before anything is checked against it:
+	// it serves no package, so every component it would implement reads as
+	// one it has no implementation for, and that is not the error to see.
+	for _, t := range cfg.Targets {
+		if t.Platform == "" {
+			continue
+		}
+		if err := codegen.PlatformUnavailable(t.Platform); err != nil {
+			return nil, fmt.Errorf("platform %s is unavailable here: %w", t.Platform, err)
+		}
 	}
 	langs, plats := RegisteredTargets()
 	pkg, diags := checker.Check(doc, &checker.Config{
@@ -67,6 +83,9 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 		// plugin, so a name outside it is a name nobody serves.
 		TargetsComplete: true,
 	})
+	if pkg != nil {
+		pkg.Origin = &ir.PackageOrigin{Dir: ".", Docs: []*ast.Document{doc}}
+	}
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			if os.Getenv("SNGL_DEBUG_CHECK") != "" {
@@ -75,6 +94,13 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 				}
 			}
 			return pkg, d
+		}
+	}
+	if cfg.Warn != nil {
+		for _, d := range diags {
+			if d.Severity == ir.Warning {
+				cfg.Warn(d)
+			}
 		}
 	}
 	return pkg, nil
@@ -147,7 +173,21 @@ func MergeInto(dst, src *ast.Document) {
 // NewResolver builds the resolver a check of dir uses. One is built per check,
 // which is the lifetime any scheme session it opens inherits.
 func NewResolver(dir string) *Resolver {
-	return &Resolver{RootDir: dir, FS: os.DirFS(dir)}
+	return &Resolver{RootDir: dir, FS: ProjectFS(dir)}
+}
+
+// ProjectFS reads the project at dir through an os.Root, so a symlink inside
+// it that points out of it is refused as surely as a `..` path: every scheme
+// that reads the project through the FS it is handed -- a directory import,
+// md:, js:'s node_modules -- is then held to the import root by the
+// filesystem rather than by each one's check of a path. A directory os.Root
+// cannot open is read plainly, and fails where it is read.
+func ProjectFS(dir string) fs.FS {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return os.DirFS(dir)
+	}
+	return root.FS()
 }
 
 // NewFSResolver serves a package's imports out of fsys. rootDir stays empty,
@@ -166,6 +206,10 @@ func NewFSResolver(fsys fs.FS) *Resolver {
 type Resolver struct {
 	RootDir string
 	FS      fs.FS
+	// Trust is what the project may fetch over the network: a git: or http:
+	// import of a package its cache does not hold asks it for the host. Nil
+	// refuses, so a resolver nobody thought about fetches nothing.
+	Trust *trust.Policy
 
 	mu       sync.Mutex
 	sessions map[string]codegen.SchemeImporter
@@ -182,6 +226,12 @@ func (r *Resolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, erro
 	// fs.ValidPath has no "./" prefix. Clean gives the form ReadDir accepts.
 	dir := path.Clean(importPath)
 	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil && r.RootDir != "" && strings.Contains(err.Error(), "path escapes") {
+		// A directory import may leave the root -- `../docui` does, by
+		// design, and only the reads a plugin makes are held to it -- so a
+		// symlink that leaves it is read the way `..` is.
+		return resolveImportFromDir(filepath.Join(r.RootDir, filepath.FromSlash(dir)))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", importPath, err)
 	}
@@ -264,9 +314,33 @@ func (r *Resolver) ResolveScheme(scheme, uri, dir string) (*ir.NativeImport, err
 	return imp.Resolve(uri, dir)
 }
 
+// HasScheme reports whether an importer compiled into the compiler serves
+// name: what a plugin may not take the name of, and what resolves before any
+// plugin's scheme does.
+func (r *Resolver) HasScheme(name string) bool {
+	return codegen.LookupScheme(name) != nil || codegen.LookupFSScheme(name) != nil
+}
+
+// GenerateScheme runs a plugin's handler for uri, gated by r.Trust and stored
+// in the default store, and returns the files it wrote.
+func (r *Resolver) GenerateScheme(s *ir.Scheme, uri string) ([]*ast.Document, error) {
+	run := &plugin.Runner{Trust: r.Trust, Root: r.RootDir}
+	return run.Generate(s, uri)
+}
+
 // The FS is returned alongside the documents so nested imports within the
 // package resolve against it. (nil, nil, nil) means the scheme has no FS
 // importer registered.
+// netGate asks r.Trust whether the project -- the import root, which is what
+// wrote the import -- may contact host.
+func (r *Resolver) netGate(host string) error {
+	subject := trust.Subject{Name: "."}
+	if r.RootDir != "" {
+		subject.Origin = trust.DirOrigin(r.RootDir)
+	}
+	return r.Trust.Check(trust.Request{Kind: trust.Net, Subject: subject, Value: host})
+}
+
 func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs.FS, error) {
 	imp := codegen.LookupFSScheme(scheme)
 	if imp == nil {
@@ -276,6 +350,8 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 	var err error
 	if proj, ok := imp.(codegen.ProjectFSScheme); ok && r.FS != nil {
 		fsys, err = proj.ResolveProjectFS(uri, r.FS, dir)
+	} else if net, ok := imp.(codegen.NetworkScheme); ok {
+		fsys, err = net.ResolveFSNet(uri, dir, r.netGate)
 	} else {
 		fsys, err = imp.ResolveFS(uri, dir)
 	}

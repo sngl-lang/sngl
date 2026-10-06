@@ -1301,10 +1301,14 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 			t.Fatalf("unexpected diagnostic: %s", d.Error())
 		}
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("got %d windows, want 1", len(pkg.Windows))
+	if len(pkg.Body) != 1 {
+		t.Fatalf("got %d root statements, want the window", len(pkg.Body))
 	}
-	if got := pkg.Windows[0].ID; got != "" {
+	w, ok := pkg.Body[0].(*ir.NodeInst)
+	if !ok {
+		t.Fatalf("root statement is %T, want the window", pkg.Body[0])
+	}
+	if got := w.ID; got != "" {
 		t.Fatalf("want empty id, got %q", got)
 	}
 }
@@ -1371,18 +1375,17 @@ component myWidget() node {
 `, "expected shape component in canvas, got notAShape")
 }
 
-// `shape` names the tree, so it resolves — but a tree holds nothing and no
-// value of it exists, which is what makes it usable as a slot's type and not
-// as a var's.
-func TestCheckShape_IsNotAValueType(t *testing.T) {
+// `shape` names the tree, so it resolves -- as a type whose values are
+// handles to its members, and not as a value itself.
+func TestCheckShape_IsNotAValue(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
 component myWidget() node {
-    var bad shape = 0
+    var bad = shape
 }
-`, "names a tree, which has no values")
+`, "shape names a family, which is not a value")
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {

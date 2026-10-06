@@ -22,7 +22,7 @@ func (c *checker) reportBodylessComponents() {
 		return
 	}
 	for _, comp := range c.pkg.Components {
-		if comp.AST == nil || !comp.Bodyless || renderSuppliedElsewhere(comp) {
+		if comp.AST == nil || !comp.Bodyless || comp.IsFamily() || isTargetNode(comp) || renderSuppliedElsewhere(comp) {
 			continue
 		}
 		c.error(comp.AST.Pos, "component %q has no body: give it one, or say where the render comes from with a per-target override", comp.Name)
@@ -60,7 +60,7 @@ func (c *checker) reportBodylessLibComponents() {
 			if comp == nil || comp.AST == nil || !comp.Bodyless {
 				continue
 			}
-			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone {
+			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
 				continue
 			}
 			if !used[comp] {
@@ -80,6 +80,12 @@ func (c *checker) reportBodylessLibComponents() {
 // hasOverrideFor mirrors ir.SpecializeForTarget's choice: the platform's
 // override answers first, and the language's is the fallback.
 func hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
+	// A host of a family that emits is answered by the family's override: the
+	// emitter consumes the host where it is written, so there is nothing of
+	// the host's own left for a target to render.
+	if f := ir.EmittedFamily(comp); f != nil && hasOverrideFor(f, t) {
+		return true
+	}
 	if t.Platform != "" && comp.PlatformOverrides != nil {
 		if _, ok := comp.PlatformOverrides[t.Platform]; ok {
 			return true
@@ -109,6 +115,9 @@ func describeTarget(t ir.StaticTarget) string {
 // the override maps -- mergeTargetExtensions in newChecker, collectUserOverrides
 // and checkPendingExtensions before pass2.
 func renderSuppliedElsewhere(comp *ir.Component) bool {
+	if f := ir.EmittedFamily(comp); f != nil && renderSuppliedElsewhere(f) {
+		return true
+	}
 	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
 		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
 }
@@ -150,9 +159,6 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 			reach(comp.Body)
 		}
 		reach(c.pkg.Body)
-		for _, w := range c.pkg.Windows {
-			reach(w.Children)
-		}
 	}
 
 	for len(queue) > 0 {
@@ -186,4 +192,11 @@ func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 		}
 	}
 	return out
+}
+
+// isTargetNode reports whether comp is a build-target node. What one renders
+// is its generator's, so with no command to write it has no body to give --
+// `{}` would say it renders nothing -- and is exempt as a family is.
+func isTargetNode(comp *ir.Component) bool {
+	return ir.TargetTier(comp.Tree) != ""
 }

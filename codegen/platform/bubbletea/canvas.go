@@ -92,7 +92,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	if vc.canvasSeq[c.Name] {
 		id, raster := emitLoopCanvasRaster(vc.line, c, vc.gc)
 		render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %s, %s)", cols, rows, id, raster)
-		style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+		style := vc.styleExpr(codegen.NodeStyleFields(n))
 		if style != "lipgloss.NewStyle()" {
 			render = fmt.Sprintf("%s.Render(%s)", style, render)
 		}
@@ -106,7 +106,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	// style when one is actually set — an empty NewStyle().Render() pads the
 	// multi-line half-block grid with background cells, mangling the art.
 	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasteriser(c))
-	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+	style := vc.styleExpr(codegen.NodeStyleFields(n))
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
 	} else {
@@ -188,9 +188,7 @@ func loopCanvases(ctx *codegen.CodegenCtx) map[*ir.NodeInst]bool {
 			}
 		}
 	}
-	for _, w := range ctx.Windows() {
-		walk(w.Body, false)
-	}
+	walk(viewStmts(ctx), false)
 	for _, comp := range ctx.Pkg.Components {
 		walk(comp.Body, false)
 	}
@@ -290,7 +288,7 @@ func emitCanvasTransmitMethod(b *strings.Builder, ctx *codegen.CodegenCtx, inLoo
 		// costs nothing here.
 		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c), canvasRasteriser(c))
 	}
-	if wins := ctx.Windows(); len(wins) > 0 {
+	if view := viewStmts(ctx); len(view) > 0 {
 		w := &viewWalk{b: b, indent: 1, wants: func(n *ir.NodeInst) bool { return inLoop[n] }}
 		w.visit = func(w *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
 			c := ctx.Canvases.ForNode(n)
@@ -299,13 +297,13 @@ func emitCanvasTransmitMethod(b *strings.Builder, ctx *codegen.CodegenCtx, inLoo
 			w.line("__ctb.WriteString(tui.KittyTransmit(%d, %d, %s, %s))", cols, rows, id, raster)
 		}
 		declared := map[string]bool{}
-		eachRenderedNode(wins[0].Body, func(n *ir.NodeInst) {
+		eachRenderedNode(view, func(n *ir.NodeInst) {
 			if c := ctx.Canvases.ForNode(n); c != nil && inLoop[n] && !declared[c.Name] {
 				declared[c.Name] = true
 				w.line("%s := 0", canvasSeqVar(c))
 			}
 		})
-		w.stmts(wins[0].Body, gc)
+		w.stmts(view, gc)
 	}
 	b.WriteString("\tif __ctb.Len() == 0 {\n\t\treturn nil\n\t}\n")
 	b.WriteString("\treturn tea.Raw(__ctb.String())\n")

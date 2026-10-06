@@ -20,8 +20,8 @@ component main node {
     // Multi-line with style
     vbox(
         style={
-            padding = 16,
-            gap = 8,
+            padding = 16px,
+            gap = 8px,
             background = #f0f0f0,
         },
     ) {

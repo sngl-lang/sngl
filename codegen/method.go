@@ -66,7 +66,10 @@ func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 		visit = func(n ir.Node) error {
 			switch e := n.(type) {
 			case *ir.Ident:
-				if state[e.Sym] {
+				// A node's `#id` handle is kept wherever the target keeps the
+				// tree -- a Model field on the Go targets -- so reading one
+				// reaches into the scope as a state var does.
+				if v, isVar := e.Sym.(*ir.Var); state[e.Sym] || (isVar && v.NodeHandle) {
 					touches[fn] = true
 				}
 				if callee, ok := e.Sym.(*ir.Func); ok {
@@ -80,6 +83,10 @@ func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 				// catches, and ir.Walk does not follow ResolvedHandler there.
 				if h := ir.CatchingHandler(e); h != nil && h != e.ErrorHandler && h.Func != nil {
 					_ = ir.Walk(h.Func.Block, visit)
+				}
+			case *ir.If:
+				if e.Catch != nil && e.Catch.Func != nil {
+					_ = ir.Walk(e.Catch.Func.Block, visit)
 				}
 			}
 			return nil

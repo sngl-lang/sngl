@@ -35,33 +35,61 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	return widget.NewLabel("")
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:1c0829a121a5f734d58c9f320a864021
+pass sha256:79dfe548e8fe91052f6132ae2382f221

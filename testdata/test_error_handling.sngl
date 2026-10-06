@@ -47,3 +47,164 @@ func testKindPropagates(t Test, c kindPropagates) {
 
 window {
 }
+
+// A raise inside a called function stops that function and the handler
+// statement that called it; the boundary's handler runs and the rest of the
+// handler does not.
+func requireAge(s string) int {
+    if s.length == 0 {
+        error.raise("an age is required", "validation")
+    }
+    return int(s)
+}
+
+func parseTwice(s string) int {
+    var n = requireAge(s)
+    return n * 2
+}
+
+component raiseThroughCall node {
+    var problem = "none"
+    var age = 7
+    var after = false
+    boundary(@error(e) { problem = e.message }) {
+        button #save(text="Save", @click {
+            age = requireAge("")
+            after = true
+        })
+        button #nested(text="Nested", @click {
+            age = parseTwice("")
+            after = true
+        })
+        button #ok(text="Ok", @click { age = parseTwice("21") })
+    }
+}
+
+func testRaiseInCalledFunctionReachesBoundary(t Test, c raiseThroughCall) {
+    c.save.click()
+    t.assert(c.problem == "an age is required")
+    t.assert(c.age == 7)
+    t.assert(c.after == false)
+}
+
+func testRaiseTwoCallsDownReachesBoundary(t Test, c raiseThroughCall) {
+    c.nested.click()
+    t.assert(c.problem == "an age is required")
+    t.assert(c.after == false)
+}
+
+func testNoRaiseCompletes(t Test, c raiseThroughCall) {
+    c.ok.click()
+    t.assert(c.age == 42)
+    t.assert(c.problem == "none")
+}
+
+// A direct raise ends its handler too.
+component raiseEndsHandler node {
+    var caught = ""
+    var after = false
+    boundary(@error(e) { caught = e.message }) {
+        button #go(text="Go", @click {
+            error.raise("stop", "")
+            after = true
+        })
+    }
+}
+
+func testDirectRaiseEndsHandler(t Test, c raiseEndsHandler) {
+    c.go.click()
+    t.assert(c.caught == "stop")
+    t.assert(c.after == false)
+}
+
+// A per-call handler catches at the call, and the handler carries on after the
+// statement that made it.
+component perCallCatches node {
+    var boundaryCaught = ""
+    var callCaught = ""
+    var after = false
+    boundary(@error(e) { boundaryCaught = e.message }) {
+        button #go(text="Go", @click {
+            parseTwice("", @error(e) { callCaught = e.kind })
+            after = true
+        })
+    }
+}
+
+func testPerCallCatchesAndContinues(t Test, c perCallCatches) {
+    c.go.click()
+    t.assert(c.callCaught == "validation")
+    t.assert(c.boundaryCaught == "")
+    t.assert(c.after == true)
+}
+
+// A raise from inside a per-call handler is a raise at that call, so it goes on
+// to the boundary and ends the handler.
+component perCallReraises node {
+    var caught = ""
+    var after = false
+    boundary(@error(e) { caught = e.message }) {
+        button #go(text="Go", @click {
+            requireAge("", @error(e) { error.raise("again: " + e.message, e.kind) })
+            after = true
+        })
+    }
+}
+
+func testRaiseInPerCallHandlerReachesBoundary(t Test, c perCallReraises) {
+    c.go.click()
+    t.assert(c.caught == "again: an age is required")
+    t.assert(c.after == false)
+}
+
+// A raise from a boundary's own handler goes to the boundary around it.
+component handlerReraises node {
+    var outer = ""
+    boundary(@error(e) { outer = e.message }) {
+        boundary(@error(e) { error.raise("inner saw " + e.message, "") }) {
+            button #go(text="Go", @click { requireAge("") })
+        }
+    }
+}
+
+func testRaiseInBoundaryHandlerReachesOuterBoundary(t Test, c handlerReraises) {
+    c.go.click()
+    t.assert(c.outer == "inner saw an age is required")
+}
+
+// A function that catches with a per-call handler cannot raise, so calling it
+// with no boundary anywhere is fine.
+func safeAge(s string) int {
+    var n = 0
+    requireAge(s, @error(e) { n = -1 })
+    return n
+}
+
+component noBoundaryNeeded node {
+    var n = 5
+    button #go(text="Go", @click { n = safeAge("") })
+}
+
+func testPerCallInFunctionAbsorbs(t Test, c noBoundaryNeeded) {
+    c.go.click()
+    t.assert(c.n == -1)
+}
+
+// A per-call handler answers for the call it is written on. A raise from one of
+// that call's arguments happens before the call does, and goes where a raise
+// from the statement would.
+component perCallArgument node {
+    var boundaryCaught = ""
+    var callCaught = ""
+    boundary(@error(e) { boundaryCaught = e.message }) {
+        button #go(text="Go", @click {
+            parseTwice(string(requireAge("")), @error(e) { callCaught = e.message })
+        })
+    }
+}
+
+func testRaiseInArgumentPassesPerCallHandler(t Test, c perCallArgument) {
+    c.go.click()
+    t.assert(c.boundaryCaught == "an age is required")
+    t.assert(c.callCaught == "")
+}

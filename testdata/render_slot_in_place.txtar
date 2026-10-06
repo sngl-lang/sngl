@@ -96,7 +96,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -110,7 +110,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
@@ -250,8 +250,6 @@ type Model struct {
 	__slot1    []gtk4rt.Handle
 	__slot1_at gtk4rt.Handle
 	__n2       gtk4rt.Handle
-	__n3       gtk4rt.Handle
-	__n4       gtk4rt.Handle
 	flip       gtk4rt.Handle
 	more       gtk4rt.Handle
 }
@@ -332,14 +330,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, "head")
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
+	__n3 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n3, "head")
+	gtk4rt.BoxAppend(m.__n2, __n3)
 	m.__renderSlot0(m.__n2)
 	m.__renderSlot1(m.__n2)
-	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, "tail")
-	gtk4rt.BoxAppend(m.__n2, m.__n4)
+	__n4 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n4, "tail")
+	gtk4rt.BoxAppend(m.__n2, __n4)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
@@ -370,6 +368,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:a3ac5c9bc205c318dccd78fcf6c88369
+pass sha256:64ce2c63ec1a878db179b65c6fdf0016
 -- run/go/gtk4 --
-pass sha256:65a12d701a04fa5ba489b935409d4543
+pass sha256:366e1549dc1fd051c2c4ca669cd1a97c

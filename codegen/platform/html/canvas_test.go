@@ -18,7 +18,7 @@ import . "sngl:ui/draw"
 output { none { html() } }
 var size float = 100.0
 
-window(title="Canvas Reactive Test", href="/index.html") {
+window(title="Canvas Reactive Test") {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=size, h=50.0, style=CanvasStyle{fill=color{r=255}}) {}
     }
@@ -50,7 +50,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
-window(title="Canvas Test", href="/index.html") {
+window(title="Canvas Test") {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{fill=color{r=255}}) {}
     }
