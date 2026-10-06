@@ -197,6 +197,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
@@ -653,6 +654,11 @@ func SnapshotModel(build func(app Handle) Handle, width, height int, outPath str
 	return os.WriteFile(outPath, data, 0o644)
 }
 
+// snapshotSeq names each snapshot's application apart: a registered one
+// stays exported on the session bus after it is released, so a second
+// snapshot under one id fails to register.
+var snapshotSeq atomic.Int64
+
 // SnapshotModelBytes is SnapshotModel returning the PNG as bytes rather than
 // writing a file. Used by the test-agent snapshot bridge. The GTK bindings it
 // needs are compiled once here rather than per generated program.
@@ -660,7 +666,7 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 	runtime.LockOSThread()
 	C.gtk_init()
 
-	appID, freeID := cstr("dev.sngl.snapshot")
+	appID, freeID := cstr(fmt.Sprintf("dev.sngl.snapshot.n%d", snapshotSeq.Add(1)))
 	defer freeID()
 	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
 	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
@@ -669,10 +675,12 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 	// the current (locked) OS thread without re-entrancy.
 	var gerr *C.GError
 	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "no error reported"
 		if gerr != nil {
+			msg = C.GoString(gerr.message)
 			C.g_error_free(gerr)
 		}
-		return nil, fmt.Errorf("g_application_register failed")
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
 	}
 
 	win := build(Handle(unsafe.Pointer(app)))

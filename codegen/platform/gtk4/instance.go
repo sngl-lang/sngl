@@ -37,6 +37,8 @@ func emitComponentInstance(
 	canvases []codegen.Canvas,
 	invokerSink func(gtkEventInvoker),
 	modelFieldSink func(widgetField),
+	presentIDs map[string]bool,
+	presenceSink func(id, field string),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -119,6 +121,30 @@ func emitComponentInstance(
 		}
 		inv.FieldName = named
 		invokerSink(inv)
+	}
+	// A widget a test null-tests is handed over too, and taken back when the
+	// instance goes, so the Model holds it exactly while it is rendered.
+	var release strings.Builder
+	for _, id := range slices.Sorted(maps.Keys(presentIDs)) {
+		widget := id
+		for _, inv := range invokers {
+			if inv.IDLabel == id {
+				widget = inv.FieldName
+			}
+		}
+		i := slices.IndexFunc(fields, func(f widgetField) bool { return f.name == widget })
+		if i < 0 || presenceSink == nil {
+			continue
+		}
+		named := "__named_" + widget
+		if !exposed[named] {
+			exposed[named] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
+			modelFieldSink(widgetField{name: named, goType: fields[i].goType})
+		}
+		held := instanceReceiver + "." + golang.InstanceModelField + "." + named
+		fmt.Fprintf(&release, "\tif %s == %s.%s {\n\t\t%s = nil\n\t}\n", held, instanceReceiver, widget, held)
+		presenceSink(id, named)
 	}
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
@@ -217,6 +243,7 @@ func emitComponentInstance(
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
+	b.WriteString(release.String())
 	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
 	for _, v := range comp.Vars {
 		if !isSlotVar(v) {
@@ -422,3 +449,21 @@ func instanceOwnsFunc(pkg *ir.Package, fn *ir.Func) bool {
 // instanceRootVar is the container a reactive slot in a component body renders
 // into.
 const instanceRootVar = "__root"
+
+// emitPresenceChecks writes, for each `#id` a test null-tests, whether the
+// widget is rendered now: a widget an instance holds is the Model's while the
+// instance lives, and one the Model builds itself is there from BuildUI on.
+func emitPresenceChecks(b *strings.Builder, ids map[string]bool, held map[string]string, modelFields []widgetField) {
+	for _, id := range slices.Sorted(maps.Keys(ids)) {
+		field := held[id]
+		if field == "" && slices.ContainsFunc(modelFields, func(f widgetField) bool { return f.name == id }) {
+			field = id
+		}
+		if field == "" {
+			continue
+		}
+		name := codegen.PresenceMethod(id)
+		fmt.Fprintf(b, "// %s reports whether the #%s widget is rendered now; for tests.\n", name, id)
+		fmt.Fprintf(b, "func (m *Model) %s() bool {\n\treturn m.%s != nil\n}\n\n", name, field)
+	}
+}

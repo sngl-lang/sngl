@@ -321,6 +321,10 @@ import (
 
 func currentTestModel() *Model { return currentModel }
 
+// snapshotSeq names each snapshot's application apart: a registered one stays
+// exported on the session bus after it is released.
+var snapshotSeq int
+
 func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -336,7 +340,8 @@ func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	cAppID := C.CString("dev.sngl.test.snapshot")
+	snapshotSeq++
+	cAppID := C.CString(fmt.Sprintf("dev.sngl.test.snapshot.n%d", snapshotSeq))
 	defer C.free(unsafe.Pointer(cAppID))
 	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
 	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))

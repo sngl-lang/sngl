@@ -650,6 +650,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		})
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
+	emitPresenceChecks(&b, viewStmts(ctx), codegen.NullTestedRefs(ctx.Pkg), gc)
 	emitWidgetPayloadHandlers(&b, info, gc)
 	emitTimerSyncs(&b, info.timers, gc)
 
