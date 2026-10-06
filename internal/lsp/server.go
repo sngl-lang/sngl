@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"io"
 	"log"
 	"net"
@@ -25,6 +26,38 @@ type Server struct {
 	reloadTimer   *time.Timer
 	reloadTimerMu sync.Mutex
 	cache         *previewCache
+	// trust is what the project's plugins may do while a file is checked: the
+	// grants the config file, the flags and SNGL_ALLOW hold, with no prompt,
+	// since nobody is at a terminal to answer one. A refused call is a
+	// diagnostic at the import that reached the plugin. Nil refuses every
+	// call a library plugin does not make.
+	trust *trust.Policy
+}
+
+// NewWithTrust creates a server whose checks run plugins under policy, which
+// it never prompts on. It logs each grant the flags or the environment gave,
+// so a grant nobody meant to hand an editor's server is visible.
+func NewWithTrust(policy *trust.Policy) *Server {
+	s := New()
+	if policy != nil {
+		policy.Prompt = nil
+	}
+	s.trust = policy
+	s.logGrants()
+	return s
+}
+
+// logGrants logs each grant the server holds from a flag or SNGL_ALLOW. The
+// config file's are the user's own record and are not repeated.
+func (s *Server) logGrants() {
+	if s.trust.All() {
+		s.log.Printf("trust: --allow-all: every plugin may do anything")
+	}
+	for _, g := range s.trust.Grants() {
+		if g.Source == trust.EnvVar || strings.HasPrefix(g.Source, "--allow-") {
+			s.log.Printf("trust: %s grants %s", g.Source, trust.FormatGrant(g))
+		}
+	}
 }
 
 // New creates a new LSP server.

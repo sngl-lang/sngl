@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"io/fs"
 	"sync"
 
@@ -57,6 +58,28 @@ type FSSchemeImporter interface {
 type ProjectFSScheme interface {
 	FSSchemeImporter
 	ResolveProjectFS(uri string, fsys fs.FS, dir string) (fs.FS, error)
+}
+
+// NetGate asks whether a fetch may contact host. A nil gate refuses every
+// host.
+type NetGate func(host string) error
+
+// NetworkScheme is an FSSchemeImporter that fetches over the network what its
+// cache does not already hold. A build resolves one through ResolveFSNet,
+// which asks gate before contacting any host -- a redirect's included -- and
+// asks nothing for a package already in the cache, since that touches no
+// network. Its plain ResolveFS is ResolveFSNet with a nil gate.
+type NetworkScheme interface {
+	FSSchemeImporter
+	ResolveFSNet(uri, dir string, gate NetGate) (fs.FS, error)
+}
+
+// AskNet is gate's answer for host, where nil refuses.
+func AskNet(gate NetGate, host string) error {
+	if gate == nil {
+		return fmt.Errorf("fetching from %s is not allowed here", host)
+	}
+	return gate(host)
 }
 
 // FSSchemeUpdater is an optional capability an FSSchemeImporter may implement

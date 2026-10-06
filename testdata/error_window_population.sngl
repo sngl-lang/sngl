@@ -10,10 +10,6 @@
 
 import ui "sngl:ui"
 
-struct PageParams {
-    pkg string
-}
-
 ui.window #a(title="t") {
     component ui.text(v) { // ERROR(check) "a population names a slot of window, not an override target"
         ui.text(value="x")
@@ -26,12 +22,12 @@ ui.window #b(title="t") {
     }
 }
 
-ui.window #c(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    component content(v) {
-        ui.text(value=v.pkg)
+ui.window #c(title="t") {
+    component content {
+        ui.text(value="x")
     }
 
-    component content(v) { // ERROR(check) "slot \"content\" is already populated on component window"
-        ui.text(value=v.pkg)
+    component content { // ERROR(check) "slot \"content\" is already populated on component window"
+        ui.text(value="y")
     }
 }

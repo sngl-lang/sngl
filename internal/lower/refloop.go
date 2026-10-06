@@ -41,9 +41,6 @@ func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 		st.varHandlers(c.Vars)
 	}
 	st.stmts(pkg.Body)
-	for _, w := range pkg.Windows {
-		st.stmts(w.Children)
-	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
 			st.stmts(fn.Block)
@@ -77,37 +74,36 @@ func (st *refLoopState) stmts(ss []ir.Stmt) {
 
 func (st *refLoopState) stmt(s ir.Stmt) {
 	switch n := s.(type) {
+	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
+		// Leaf statements: no nested loops to descend into. The element
+		// rewrite for an enclosing &-loop already visited these via lowerFor.
+		return
 	case *ir.For:
 		if n.RefElem {
 			st.lowerFor(n)
 		}
-		st.stmts(n.Body)
-		st.stmts(n.Else)
-	case *ir.If:
-		st.stmts(n.Body)
-		st.stmts(n.Else)
+	}
+	blocks := ir.ViewBlocks(s)
+	if blocks == nil {
+		panic(fmt.Sprintf("refloop.stmt: unhandled stmt %T", s))
+	}
+	// What the statement holds -- a population and a fallback included --
+	// and then its handlers, in the order this pass always took them.
+	for _, b := range blocks {
+		st.stmts(*b)
+	}
+	switch n := s.(type) {
 	case *ir.NodeInst:
-		st.stmts(n.Children)
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				st.stmts(h.Func.Block)
 			}
 		}
-	case *ir.SlotInst:
-		st.stmts(n.Children)
 	case *ir.ErrorBoundary:
-		st.stmts(n.Children)
 		if n.Handler != nil && n.Handler.Func != nil {
 			st.stmts(n.Handler.Func.Block)
 		}
-	case *ir.ContextProvider:
-		st.stmts(n.Children)
-	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt,
-		*ir.Break, *ir.Continue:
-		// Leaf statements: no nested loops to descend into. The element
-		// rewrite for an enclosing &-loop already visited these via lowerFor.
-	default:
-		panic(fmt.Sprintf("refloop.stmt: unhandled stmt %T", n))
 	}
 }
 
@@ -286,16 +282,27 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		for i := range n.Props {
 			n.Props[i].Value = r.expr(n.Props[i].Value)
 		}
+		n.Key = r.expr(n.Key)
 		r.stmtSlice(n.Children)
+		for _, name := range ir.SlotNames(n.Slots) {
+			r.stmtSlice(n.Slots[name].Body)
+		}
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				r.stmtSlice(h.Func.Block)
 			}
 		}
 	case *ir.SlotInst:
+		for i := range n.Args {
+			n.Args[i] = r.expr(n.Args[i])
+		}
 		r.stmtSlice(n.Children)
+		for _, name := range ir.SlotNames(n.Slots) {
+			r.stmtSlice(n.Slots[name].Body)
+		}
 	case *ir.ErrorBoundary:
 		r.stmtSlice(n.Children)
+		r.stmtSlice(n.Failed)
 		if n.Handler != nil && n.Handler.Func != nil {
 			r.stmtSlice(n.Handler.Func.Block)
 		}

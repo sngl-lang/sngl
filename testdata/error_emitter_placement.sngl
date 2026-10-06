@@ -1,0 +1,25 @@
+// gen.emit and gen.node are read in one place each -- the whole body of a
+// family's override and of a member's -- so written anywhere else they would
+// be checked and then generate nothing.
+
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+component block build.family // ERROR(check) "the block family's override for go is a gen.emit and nothing else"
+
+component text(full string) block
+
+component block[go.language] {
+    gen.node(open="x") // ERROR(check) "gen.node is written as the whole body of a member's override"
+}
+
+component text[go.language] {
+    gen.node(open="{full}") // ERROR(check) "gen.node is written as the whole body of a member's override"
+    gen.node(open="{full}") // ERROR(check) "gen.node is written as the whole body of a member's override"
+}
+
+ui.window {
+    gen.emit(file="a.txt") // ERROR(check) "gen.emit is written as the whole body of a family's override"
+}

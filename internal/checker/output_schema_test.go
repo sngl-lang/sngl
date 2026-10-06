@@ -29,18 +29,22 @@ func (optStubLang) Resolve(string) ir.Symbol   { return nil }
 // to be found by. It declares a field no option should answer to.
 const optStubPlatformSource = `
 import build "sngl:build"
+import gen "sngl:x/gen"
 
 struct Options {
     decoy string = ""
 }
 
-component optstub(gadget string, knob string = "fallback") build.platform {}
+#[gen.name("optstub")]
+component platform(gadget string, knob string = "fallback") build.platform
 `
 
 const optStubLangSource = `
 import build "sngl:build"
+import gen "sngl:x/gen"
 
-component optlang(lever string, platforms ...component build.platform) build.language {}
+#[gen.name("optlang")]
+component language(lever string, platforms ...component build.platform) build.language
 `
 
 // A declared default is part of the schema, so it reaches the record a build

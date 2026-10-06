@@ -13,13 +13,13 @@ import (
 // name another declaration of this package would also emit. Asked of the
 // recursion cycles only, since those are the components passNoInlineComponents
 // leaves standing. Interim, removed by #198.
-func (c *checker) reportBodyComponentCollisions() {
-	if c.pkg == nil || len(c.bodyComps) == 0 {
+func (c *checker) reportBodyComponentCollisions(pkg *ir.Package) {
+	if pkg == nil || len(c.bodyComps) == 0 {
 		return
 	}
-	surviving := recursiveComponents(c.pkg)
+	surviving := recursiveComponents(pkg)
 	byName := map[string][]*ir.Component{}
-	for _, comp := range c.pkg.Components {
+	for _, comp := range pkg.Components {
 		if surviving[comp] {
 			byName[comp.Name] = append(byName[comp.Name], comp)
 		}
@@ -49,12 +49,12 @@ func (c *checker) reportBodyComponentCollisions() {
 // owner's state and recurses: nothing splices a cycle, so its surviving render
 // would name a var only an instance of the owner has. Same shape as
 // reportBodyComponentCollisions -- a codegen limitation, not a language rule.
-func (c *checker) reportBodyComponentCapture() {
-	if c.pkg == nil || len(c.bodyComps) == 0 {
+func (c *checker) reportBodyComponentCapture(pkg *ir.Package) {
+	if pkg == nil || len(c.bodyComps) == 0 {
 		return
 	}
-	surviving := recursiveComponents(c.pkg)
-	owners := ir.BodyOwners(c.pkg)
+	surviving := recursiveComponents(pkg)
+	owners := ir.BodyOwners(pkg)
 	for _, comp := range c.bodyComps {
 		if !surviving[comp] || !ir.CapturesEnclosingState(comp, owners) {
 			continue

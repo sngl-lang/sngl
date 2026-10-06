@@ -38,7 +38,12 @@ var passes = []pass{
 	passHoistBodyTypes,
 	passHoistState,
 	passForeignPrimitive,
+	passNavigationValues,
+	passNavigationHrefs,
 	passPlatformExtensionBody,
+	passNavigation,
+	passHandleParams,
+	passImplicitState,
 	// After it, because which primitive a declaration renders is the override
 	// this target supplied; before passInlinePure, which carries a `#id` onto
 	// that override's first node and so takes the handle off the declaration
@@ -64,7 +69,7 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
-	passWindowNesting,
+	passErrorScope,
 	passRecursionDepth,
 	passInstanceSlots,
 	passCanvasInstances,
@@ -74,6 +79,7 @@ var passes = []pass{
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	passDirectCalls,
 	passEffect,
 	passSlotChildInstances,
 	passInstanceEvents,
@@ -93,10 +99,15 @@ var passes = []pass{
 	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
+	passErrorCatch,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,
 	passIterKind,
+	// After every pass that reaches a handler through its boundary.
+	passBoundaryPassthrough,
+	// After the passthrough: what is left to count is what raises or
+	// catches, whatever a boundary was given.
 	passStampUsage,
 }
 
@@ -349,8 +360,16 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	var visit func(fn *ir.Func)
 	walk := func(stmts []ir.Stmt) {
 		newExprWalker(func(e ir.Expr) ir.Expr {
-			if call, ok := e.(*ir.Call); ok {
-				visit(call.Func)
+			switch x := e.(type) {
+			case *ir.Call:
+				visit(x.Func)
+			case *ir.Ident:
+				// Held as a value -- handed to a func-typed prop, stored in a
+				// record -- a function is as much the program's as one it
+				// calls, and nothing else would declare it.
+				if fn, ok := x.Sym.(*ir.Func); ok {
+					visit(fn)
+				}
 			}
 			return e
 		}).stmts(stmts)
@@ -373,9 +392,6 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		walk(f.Block)
 	}
 	walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		walk(w.Children)
-	}
 	return out
 }
 
@@ -453,21 +469,19 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				for _, name := range ir.SlotNames(n.Slots) {
 					walk(n.Slots[name].Body)
 				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.SlotInst:
-				walk(n.Children)
-				for _, name := range ir.SlotNames(n.Slots) {
-					walk(n.Slots[name].Body)
-				}
 			case *ir.ErrorBoundary:
-				walk(n.Children)
-			case *ir.ContextProvider:
-				walk(n.Children)
+				if n.Handler != nil && n.Handler.Func != nil {
+					walk(n.Handler.Func.Block)
+				}
+				for _, b := range ir.ViewBlocks(n) {
+					walk(*b)
+				}
+			default:
+				// An `if`, a `for`, a provider, a slot insertion: what each
+				// holds, fallbacks and entries' populations included.
+				for _, b := range ir.ViewBlocks(n) {
+					walk(*b)
+				}
 			}
 		}
 	}
@@ -478,9 +492,6 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	walk(pkg.Body)
-	for _, w := range pkg.Windows {
-		walk(w.Children)
-	}
 	return out
 }
 

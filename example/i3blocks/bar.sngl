@@ -1,0 +1,108 @@
+// An i3 status bar, and a GTK or Fyne window in the same process that pops up
+// when the bar's load block is clicked.
+//
+// In ~/.config/i3/config:
+//
+//     bar {
+//         status_command ~/bin/i3blocks-demo
+//     }
+//
+// Build with `sngl build --lang go --platform gtk4 --opt name=i3blocks-demo -o ~/bin bar.sngl`.
+import i3 "./i3"
+import time "sngl:time"
+import ui "sngl:ui"
+
+// One binary per host. Both are Go, so both pick `i3.block[go.language]`.
+//
+// Launched by i3 the program is the bar alone: `@run` never calls `run`, so
+// the loop runs -- the timer, the clicks -- with no window on screen, and
+// closing a window never ends it. `--window` starts with the window open and
+// on screen, which is how to try it by hand.
+output {
+    go {
+        gtk4(@run(args, run) {
+            start(args, run)
+        })
+        fyne(@run(args, run) {
+            start(args, run)
+        })
+    }
+}
+
+func start(args list<string>, run func()) {
+    if args.contains("--window") {
+        details = true
+        run()
+    }
+}
+
+var (
+    uptime = 0
+    samples list<int> = []
+    workspaces = ["web", "code", "chat"]
+    focused = 0
+    // Whether the details window exists. The tree says so below: the window
+    // is created when this turns true and destroyed when it turns false.
+    details = false
+)
+
+func load() => samples.length == 0 ? 0 : samples[samples.length - 1]
+
+// Timers belong to no family, so one may sit at the package root beside the
+// bar and the window.
+time.timer(interval=1s, @tick {
+    uptime += 1
+    samples.push((uptime * 7) % 11)
+})
+
+i3.bar {
+    for var i, w = workspaces {
+        i3.text(
+            name="ws",
+            full=w,
+            color=i == focused ? #ffffff : #888888,
+            separator=false,
+            @click {
+                focused = i
+            },
+        )
+    }
+    i3.gap(width=24)
+    // A click on the load block toggles the window: the bar and the window
+    // are one process, so a write to `details` is what brings it up.
+    i3.text(
+        name="load",
+        full="load {load()}",
+        color=load() > 7 ? #ff5555 : #a3be8c,
+        urgent=load() > 9,
+        @click {
+            details = !details
+        },
+    )
+    i3.text(name="uptime", full="up {uptime}s", short="{uptime}s")
+}
+
+// Closing the window through the window manager writes the state back, so
+// the next click on the load block opens it again.
+if details {
+    ui.window(title="Load", @closed {
+        details = false
+    }) {
+        ui.vbox(style={gap=8, padding=16}) {
+            ui.text(value="{workspaces[focused]}: load {load()} after {uptime}s", style={fontWeight=bold})
+            ui.vbox(style={gap=2}) {
+                for var s = samples {
+                    ui.text(value="{s}")
+                }
+            }
+            ui.hbox(style={gap=8}) {
+                ui.button(text="Clear", @click {
+                    samples = []
+                })
+                ui.button(text="Close", @click {
+                    details = false
+                })
+            }
+        }
+    }
+}

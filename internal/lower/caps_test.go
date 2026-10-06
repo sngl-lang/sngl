@@ -70,7 +70,7 @@ func withInsertBefore(names ...string) Features {
 // added later is covered by this without being added to it.
 func TestZeroFeaturesRunsEveryCapabilityGatedPass(t *testing.T) {
 	always := EnabledPasses(NoLowering())
-	wanted := EnabledPasses(wanting("structComponents", "stdlibContextParam", "focusOrder", "canvas", "reactiveCanvas"))
+	wanted := EnabledPasses(wanting("structComponents", "stdlibContextParam", "focusOrder", "canvas", "reactiveCanvas", "navigationHrefs"))
 	// The three capabilities a target *grants* read the same way round as a
 	// want: a platform that can place a child rather than only append, one
 	// that can reach its drawing thread, one whose language can spawn. Silence

@@ -1,0 +1,38 @@
+// A two-way prop may be written through the node's `#id`.
+//
+// It is already a cell the host writes -- a checkbox reports its clicks through
+// it -- so a write from the program is one more writer of the same cell rather
+// than a second source of truth. It lands where the host's report does: the
+// var the call site bound (`:checked=shown` writes `shown`), or the instance's
+// own cell where nothing is bound. A one-way prop stays refused
+// (error_node_prop_assign.sngl).
+
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var shown = true
+
+    vbox {
+        checkbox #bound(label="bound", :checked=shown)
+        checkbox #free(label="free")
+        text #seen(value=free.checked ? "on" : "off")
+        button #flip(text="flip", @click {
+            bound.checked = false
+            free.checked!!
+        })
+    }
+}
+
+func testWriteTwoWay(t Test, c main) {
+    t.assert(c.shown)
+    t.assert(!c.free.checked)
+    c.flip.click()
+    t.assert(!c.shown)
+    t.assert(c.free.checked)
+    t.assert(c.seen.value == "on")
+}
+
+window {
+    main
+}

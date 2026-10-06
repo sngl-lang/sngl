@@ -2,7 +2,7 @@ import . "sngl:ui"
 
 context #theme("light")
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="x", @click {
         theme = "dark" // ERROR(check) "cannot assign to context \"theme\""
     })

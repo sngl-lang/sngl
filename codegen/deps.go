@@ -58,17 +58,20 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			computedDeps[f] = deps
 		}
 	}
-	// A window's route parameters are not a declaration any owner made -- the
-	// window's slot binds them and the request fills them in -- so Owners has
-	// nothing to yield. They are tracked for the same reason state is: an
-	// expression reading one has a dependency, and an updater with no
-	// dependencies is pruned, which left a bound href with nothing to write
-	// it and an element whose id was then stripped as unreferenced.
-	for _, w := range ir.AllWindows(pkg) {
-		if w != nil && w.Params != nil {
-			model[w.Params] = struct{}{}
+	// A page's params cell is not a declaration any owner made -- the page's
+	// population binds it and the request fills it in -- so Owners has nothing
+	// to yield. It is tracked for the same reason state is: an expression
+	// reading one has a dependency, and an updater with no dependencies is
+	// pruned, which left a bound href with nothing to write it and an element
+	// whose id was then stripped as unreferenced. The node a target renders a
+	// nav.page as carries it, and so does the surface a document is written
+	// from (html's documentsOf moves it there).
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Params != nil {
+			model[inst.Params] = struct{}{}
 		}
-	}
+		return nil
+	})
 	return &DepTracker{
 		ModelVars:     model,
 		ComputedFuncs: computed,
@@ -380,6 +383,15 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 		}
 		for _, c := range n.Else {
 			w.walkStmt(c)
+		}
+		// A catch block runs its handler when a raise leaves the body, so
+		// what the handler writes is written by the statement the block is.
+		// The handler is an alias -- a boundary's or a window's -- that no
+		// walk reaches through the tree once the boundary is spliced away.
+		if h := n.Catch; h != nil && h.Func != nil {
+			for _, c := range h.Func.Block {
+				w.walkStmt(c)
+			}
 		}
 	case *ir.For:
 		w.walkExpr(n.Iter)

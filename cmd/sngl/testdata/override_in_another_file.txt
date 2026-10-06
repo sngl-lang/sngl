@@ -1,0 +1,42 @@
+# An override may be written in a different file of the package from the
+# declaration it overrides, and its body resolves against the imports of the
+# file it was written in. It was checked against the declaration's file: a body
+# is checked with its component's file current, and with the override
+# installed that component was the base, so `gen` below was undefined in the
+# file that imports it.
+
+sngl check p
+stdout 'b.sngl: ok'
+
+-- p/a.sngl --
+import build "sngl:build"
+import ui "sngl:ui"
+
+component block build.family
+
+component text(full string) block
+
+component bar(blocks ...component block) root
+
+component badge(label string) ui.node {
+    ui.text(value=label)
+}
+-- p/b.sngl --
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+func enc(xs list<string>) => xs.join(",")
+
+component block[go.language] {
+    gen.emit(render=enc)
+}
+
+component text[go.language] {
+    gen.node(value=full)
+}
+
+// The same for an override of an ordinary component.
+component badge[go.language] {
+    ui.text(value="[" + label + "]")
+}

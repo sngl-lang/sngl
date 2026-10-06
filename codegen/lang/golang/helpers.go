@@ -37,7 +37,9 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	stateFuncs := ModelStateFuncs(pkg)
 	out := map[string]bool{}
 	for _, fn := range pkg.Funcs {
-		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] {
+		// A promoted handler is always a Model method: it is wired to a widget
+		// by name, and nothing calls it, so it never had to be in the set.
+		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] || fn.LoweredFromEvent != "" {
 			continue
 		}
 		if isComputedSig(fn) || stateFuncs[fn] {
@@ -46,6 +48,17 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 		out[fn.Name] = true
 	}
 	return out
+}
+
+// ModelCallee is how a Model-receiver platform's own scaffolding names a
+// package function it calls -- `m.__run`, or `__run` when the function reads
+// no state and was emitted free. The same rule a call in the program follows,
+// for a caller written as a string rather than as IR.
+func ModelCallee(pkg *ir.Package, fn *ir.Func, recv string) string {
+	if ModelFreeFuncs(pkg)[fn.Name] {
+		return ExportName(fn.Name)
+	}
+	return recv + "." + fn.Name
 }
 
 // ModelStateFuncs names the top-level funcs a Model-receiver platform must

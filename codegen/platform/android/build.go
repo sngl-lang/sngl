@@ -9,7 +9,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Build implements codegen.Builder. It compiles generated sources into a
+// Build answers `android.buildApk`, android's build command, and the
+// snapshotters. It compiles generated sources into a
 // signed debug APK, optionally running gomobile bind first if a Go module
 // is present.
 func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {

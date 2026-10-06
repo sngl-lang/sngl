@@ -105,7 +105,7 @@ func constPropLabel(name string, comp *ir.Component) string {
 	if comp == nil || comp.Name == "" {
 		return "prop " + strconv.Quote(name)
 	}
-	return "prop " + strconv.Quote(name) + " of " + comp.Name
+	return "prop " + strconv.Quote(name) + " of " + comp.DisplayName()
 }
 
 // nonConstReason names the first thing in e that keeps it from being a

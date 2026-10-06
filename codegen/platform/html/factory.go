@@ -172,7 +172,7 @@ func factorySlotAnchors(comp *ir.Component) map[string]bool {
 		return anchored
 	}
 	retarget := func(root any) {
-		_ = ir.Walk(root, func(node ir.Node) error {
+		_ = walkThroughCatch(root, func(node ir.Node) error {
 			call, ok := node.(*ir.Call)
 			if !ok || call.Func == nil || initial[call] || len(call.Args) != 1 {
 				return nil

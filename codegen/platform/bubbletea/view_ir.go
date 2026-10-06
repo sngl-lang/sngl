@@ -84,14 +84,14 @@ func (vc *irViewContext) requireImport(path string) {
 func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
 	b.WriteString("func (m Model) View() tea.View {\n")
 
-	wins := ctx.Windows()
-	if len(wins) == 0 || len(wins[0].Body) == 0 {
+	bodyStmts := viewStmts(ctx)
+	// No window, which only a package that is not a program has, draws
+	// nothing; a harness's isolated component is drawn as the window.
+	if len(bodyStmts) == 0 || info.screen == nil && ctx.Harness() == nil {
 		b.WriteString("\treturn tea.NewView(\"\")\n")
 		b.WriteString("}\n\n")
 		return
 	}
-
-	bodyStmts := wins[0].Body
 
 	vc := &irViewContext{
 		gc:          gc,
@@ -291,12 +291,22 @@ func draws(s ir.Stmt) bool {
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			// A window only appears at top level; one in a view tree is unexpected.
-			panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
-		}
 		if ir.IsTimerPrimitive(s.Component) {
 			return // see rendersPart
+		}
+		if btIntrinsic(s) == "Screen" {
+			// The window draws its content as the view, and no box of its own,
+			// while it is visible; what it holds lives on while it is not.
+			if v := codegen.NodeProp(s, "visible"); v != nil {
+				vc.line("if %s {", vc.gc.EvalExpr(v))
+				vc.indent++
+				vc.renderBranch(s.Children, resultVar)
+				vc.indent--
+				vc.line("}")
+				return
+			}
+			vc.renderBranch(s.Children, resultVar)
+			return
 		}
 		vc.renderNode(s, resultVar)
 		vc.countFocusPos(s)
@@ -976,4 +986,25 @@ func nonzero(expr ir.Expr, val string) string {
 		return fmt.Sprintf("%s != (%s{})", val, golang.ExportName(ud.Name))
 	}
 	return val + " > 0"
+}
+
+// viewStmts is what View draws: the package body, which is the application's
+// view and holds the Screen a window is on this platform -- or, for a harness
+// that isolated a component, that component's body.
+func viewStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
+	if h := ctx.Harness(); h != nil {
+		return h.Body
+	}
+	if ctx.Pkg == nil {
+		return nil
+	}
+	return ctx.Pkg.Body
+}
+
+// screenPos is where a window was written, for a diagnostic about it.
+func screenPos(n *ir.NodeInst) string {
+	if p := ir.NodePos(n); p.IsValid() {
+		return p.String()
+	}
+	return "window"
 }

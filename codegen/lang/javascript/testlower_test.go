@@ -35,7 +35,7 @@ func testFoo(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
+	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent, "")
 	if !strings.Contains(out, "import { Registry } from './testagent/testagent.js'") {
 		t.Errorf("agent mode missing Registry import:\n%s", out)
 	}
@@ -48,7 +48,7 @@ func testFoo(t Test, c box) {
 }
 
 func TestJSLowerTestFile_nativeModeIsNoOp(t *testing.T) {
-	out := LowerTestFile("ui", nil, nil, nil, nil, TestEmitNative)
+	out := LowerTestFile("ui", nil, nil, nil, nil, TestEmitNative, "")
 	if !strings.Contains(out, "not supported") {
 		t.Errorf("native mode should emit a no-op comment:\n%s", out)
 	}

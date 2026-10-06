@@ -89,10 +89,41 @@ func setEnv(env []string, key, value string) []string {
 	return append(env, prefix+value)
 }
 
-// Run implements codegen.Runner. It builds the Android project, ensures an
-// ADB device is available (starting an emulator if needed), installs the
-// APK, and launches the main activity.
-func (g *Generator) Run(dir string, opts *ir.StructLit, args []string) error {
+func init() {
+	codegen.RegisterCommand("android.install", func(opts *ir.StructLit, args []any) (any, error) {
+		dir, _ := args[0].(string)
+		return nil, (&Generator{}).Run(dir, opts)
+	})
+	codegen.RegisterCommand("android.buildApk", func(opts *ir.StructLit, args []any) (any, error) {
+		dir, _ := args[0].(string)
+		out, _ := args[1].(string)
+		apk, err := (&Generator{}).Build(dir, opts)
+		if err != nil {
+			return nil, err
+		}
+		return nil, moveFile(apk, out)
+	})
+}
+
+// moveFile renames src to dst, copying across file systems.
+func moveFile(src, dst string) error {
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		return err
+	}
+	return os.Remove(src)
+}
+
+// Run answers `android.install`, android's run command. It builds the
+// Android project, ensures an ADB device is available (starting an emulator
+// if needed), installs the APK, and launches the main activity.
+func (g *Generator) Run(dir string, opts *ir.StructLit) error {
 	if _, err := androidTool("adb"); err != nil {
 		return err
 	}

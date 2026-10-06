@@ -10,7 +10,7 @@ import . "sngl:test"
 // propagates to the switch, and the label sits after the switch.
 component main node {
     var on = false
-    toggle(checked=on, label="Notifications")
+    toggle(:checked=on, label="Notifications")
 }
 
 func testToggleFlips(t Test, c main) {
@@ -121,6 +121,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
+		case msg.Code == tea.KeySpace && m.__focusID == 0:
+			__bound_checked := !m.on
+			m.on = __bound_checked
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -191,6 +194,8 @@ func New() *Model {
 }
 
 func (m *Model) __n0_change_handler(b bool) {
+	m.on = b
+	m.__n0.SetChecked(m.on)
 }
 
 func (m *Model) On() bool {
@@ -419,6 +424,7 @@ func New() *Model {
 }
 
 func (m *Model) __n0_notifyActive_handler() {
+	m.on = (C.gtk_switch_get_active((*C.GtkSwitch)(unsafe.Pointer(m.__n0))) != 0)
 }
 
 func (m *Model) On() bool {
@@ -492,7 +498,9 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-        Switch(checked = state.on, onCheckedChange = {})
+        Switch(checked = state.on, onCheckedChange = { on ->
+            state.on = on
+        })
         Text(text = "Notifications", modifier = Modifier)
     }
 }
@@ -582,6 +590,10 @@ window.__sngl_boot = () => {
     Object.assign(window, { testToggleFlips });
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  __n0.addEventListener("change", function(e) {
+    state.on = e.target.checked;
+    __n0.checked = state.on;
+  });
   function __sngl_init() {
     __n0.checked = state.on;
   }
@@ -592,12 +604,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:054e9d8c4c497250914d99509fc81b57
+pass sha256:40583d77fa2e06bf6a770e78bdb2e2e0
 -- run/go/fyne --
-pass sha256:0cfdd65a282c4b2da031d1c0525e4d57
+pass sha256:742803ad7f0ad0f316e40c9fdcae6a94
 -- run/go/gtk4 --
-pass sha256:63b2feec02fe64c813de642c372a1fc0
+pass sha256:89f3cc50f483bc467318ab963f68e036
 -- run/kotlin/android --
-pass sha256:36a0e8c24ebb21ae420052e2436d5d82
+pass sha256:d14beb72f4939abed0596a7dd2ae4302
 -- run/none/html --
-pass sha256:ebc1b2f48b22864fd83941bdf1836e04
+pass sha256:7701a8c6431d00b0392ed0ddcf9f9a64

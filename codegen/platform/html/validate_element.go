@@ -67,7 +67,7 @@ func firstUnrenderedNode(pkg *ir.Package) error {
 		}
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if declines(n.Component) && !ir.IsWindowNode(n) && !ir.IsShapeContainer(n) {
+			if declines(n.Component) && !ir.IsShapeContainer(n) {
 				bad = codegen.UnimplementedNode(n.Component, n.AST, n.Name, "html")
 			}
 		case *ir.LocalVar:

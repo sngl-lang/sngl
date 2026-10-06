@@ -111,7 +111,7 @@ component main {
     wanted 0, got 1 (c.n)
 ```
 
-Both contradict shipped prose: `docs/learn/tour.md` says timers compose with
+Both contradict shipped prose: `docs/learn/_tour.md` says timers compose with
 `if` blocks cleanly, and `docs/reference/specification.md` says a timer is torn
 down when its component is removed.
 

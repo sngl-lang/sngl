@@ -13,11 +13,10 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
-	"iter"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -54,6 +54,10 @@ type Options struct {
 	// is a request for that package's declarations rather than a program to
 	// run, and a library has no window by construction.
 	Library bool
+	// Trust is what the build may run of the project's own code: an
+	// evaluated go: or js: package, and a build-time function's reads of the
+	// host. Nil refuses all of it.
+	Trust *trust.Policy
 }
 
 // Result is one target's build.
@@ -71,6 +75,9 @@ type Result struct {
 	// a digest stand for these, so a hundred fixtures do not each carry a
 	// copy of the same Gradle project.
 	Boilerplate map[string]bool
+	// Warnings are what the build has to say that did not stop it: a call it
+	// was not allowed to evaluate, on a target that calls it at run time.
+	Warnings []ir.Diagnostic
 }
 
 // Emit builds pkg for every resolved target.
@@ -85,10 +92,10 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
 	// perfectly good thing to type-check, and it is only as something to
-	// *run* that it has nowhere to draw. The package body is a slot for the
-	// root tree, and a window is that tree's one renderable member.
+	// *run* that it has nothing to show. The package body is the
+	// application's view, and every node in it is a member of the root tree.
 	if !o.Library && !pkg.IsProgram() {
-		return nil, fmt.Errorf("%s: a program declares at least one window: the package body renders only what a window holds", o.Dir)
+		return nil, fmt.Errorf("%s: a program renders something at the root of a file: the package body is its view, and one that renders nothing has nothing to show", o.Dir)
 	}
 	if err := ValidateOutputs(pkg); err != nil {
 		return nil, err
@@ -138,6 +145,15 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	// into what, so the isolation has to be in place before anything moves.
 	root := codegen.OptionString(target.Options, "rootComponent")
 	IsolateRootComponent(tpkg, root)
+	installRun(tpkg, target)
+
+	// Ahead of the optimizer, which has no reason to keep a bodyless host it
+	// cannot render: the emitter reads the host as it was written, and takes
+	// it out of the package so nothing after it has to know it was there.
+	emitted, err := emitFamilies(tpkg, target, o)
+	if err != nil {
+		return Result{}, err
+	}
 
 	optCfg := &optimize.Config{
 		Platform:    target.Platform,
@@ -145,10 +161,11 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		Dir:         o.Dir,
 		NoCacheBust: optionBool(target.Options, "noCacheBust"),
 		Cache:       evalCache,
+		Trust:       o.Trust,
 	}
 	start := time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
-		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+		return Result{}, inDir(o.Dir, err)
 	}
 	slog.Info("optimize", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
@@ -178,7 +195,10 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		return Result{Target: target, Pkg: tpkg}, nil
+		if err := refuseBuildOnlyCalls(tpkg); err != nil {
+			return Result{}, err
+		}
+		return Result{Target: target, Pkg: tpkg, Files: emitted, Warnings: optCfg.Warnings}, nil
 	}
 
 	feats, err := codegen.CapsFor(target.Lang, target.Platform)
@@ -198,7 +218,10 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	// one are calls nothing has looked at.
 	start = time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
-		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+		return Result{}, inDir(o.Dir, err)
+	}
+	if err := refuseBuildOnlyCalls(tpkg); err != nil {
+		return Result{}, err
 	}
 	slog.Info("optimize2", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
@@ -214,7 +237,45 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 	slog.Info("codegen", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
+	for name, data := range emitted {
+		if _, dup := files[name]; dup {
+			return Result{}, fmt.Errorf("%s: an emitted family writes %s, which the %s platform also generates", o.Dir, name, target.Platform)
+		}
+		files[name] = data
+	}
+	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate, Warnings: optCfg.Warnings}, nil
+}
+
+// inDir places err in dir, unless it already says where it happened.
+func inDir(dir string, err error) error {
+	var d ir.Diagnostic
+	if errors.As(err, &d) && d.Pos.IsValid() {
+		return err
+	}
+	return fmt.Errorf("%s: %w", dir, err)
+}
+
+// refuseBuildOnlyCalls reports a call to an intrinsic only the build answers
+// -- sngl:x/gen's host API -- that survived the optimizer: one written
+// outside a const func, or in one whose arguments are not known until the
+// program runs. No target can make it.
+func refuseBuildOnlyCalls(pkg *ir.Package) error {
+	var found *ir.Call
+	ir.Walk(pkg, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && c.Func != nil && c.Func.BuildOnly {
+			found = c
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if found == nil {
+		return nil
+	}
+	d := ir.Diagnostic{Severity: ir.Error, Msg: fmt.Sprintf("%s reads the machine the build runs on, so only the build can call it, and this call was left for the program to make: call it from a const func whose arguments are known at build time", found.Func.Intrinsic)}
+	if found.AST != nil {
+		d.Pos = found.AST.Pos
+	}
+	return d
 }
 
 func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {
@@ -227,7 +288,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 
 	projectFS := o.ProjectFS
 	if projectFS == nil {
-		projectFS = os.DirFS(filepath.Dir(o.Name))
+		projectFS = ProjectFS(filepath.Dir(o.Name))
 	}
 
 	req := &codegen.Request{
@@ -240,7 +301,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		Maps:       optionBool(target.Options, "maps"),
 		OutDir:     o.OutDir,
 	}
-	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
+	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
@@ -263,8 +324,7 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 		return
 	}
 	pkg.Body = nil
-	pkg.Windows = nil
-	// Recorded rather than left implicit: with the windows gone, this is the
+	// Recorded rather than left implicit: with the body gone, this is the
 	// only thing left that says which declaration the program renders, and
 	// AnalyzeCommon runs from the package alone.
 	pkg.RootComponent = comp

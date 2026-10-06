@@ -6,7 +6,7 @@ component Show node {
     text(value=theme)
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     theme("outer-val") {
         theme("inner-val") {
             Show()

@@ -366,7 +366,7 @@ func TestLowerProviders_Basic(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: makeContextRead(ctx)}},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -379,7 +379,7 @@ func TestLowerProviders_Basic(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{inner},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	reach := computeReachability(pkg, nil)
@@ -420,14 +420,14 @@ func TestLowerProviders_RootDefault(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: makeContextRead(ctx)}},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name:     "home",
 		Children: []ir.Stmt{makeNodeInstComp(inner)},
 	}
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{inner},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	reach := computeReachability(pkg, nil)
@@ -470,7 +470,7 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 	outerShow := makeNodeInstComp(show)
 	rootShow := makeNodeInstComp(show)
 
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -491,7 +491,7 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{show},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	reach := computeReachability(pkg, nil)
@@ -549,7 +549,7 @@ func TestApplyNoContext_ClearsContexts(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: makeContextRead(ctx)}},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -562,7 +562,7 @@ func TestApplyNoContext_ClearsContexts(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{consumer},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
@@ -584,7 +584,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: makeContextRead(ctx)}},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -597,7 +597,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{toolbar},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
@@ -650,7 +650,7 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 		},
 	)
 	cond := &ir.Literal{Type: ir.TypBool, Value: "true"}
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -668,7 +668,7 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{inner},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	reach := computeReachability(pkg, nil)
@@ -718,7 +718,7 @@ func TestMultipleContexts(t *testing.T) {
 			},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -737,7 +737,7 @@ func TestMultipleContexts(t *testing.T) {
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctxA, ctxB},
 		Components: []*ir.Component{consumer},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
@@ -878,7 +878,7 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 			Props: []ir.Arg{{Name: "value", Value: trCall}},
 		},
 	)
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{
 			&ir.ContextProvider{
@@ -892,7 +892,7 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 		Contexts:   []*ir.Context{ctx},
 		Components: []*ir.Component{consumer},
 		Funcs:      []*ir.Func{tr},
-		Windows:    []*ir.Window{win},
+		Body:       []ir.Stmt{win},
 	}
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
@@ -925,7 +925,7 @@ func TestFuncCallUnderProviderPassesItsValue(t *testing.T) {
 	ctx := makeContext("locale", "en")
 	tr := makeFunc("tr", nil, &ir.Return{Value: makeContextRead(ctx)})
 	trCall := &ir.Call{Func: tr}
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name: "home",
 		Children: []ir.Stmt{&ir.ContextProvider{
 			Ref:   ctx,
@@ -936,7 +936,7 @@ func TestFuncCallUnderProviderPassesItsValue(t *testing.T) {
 			}},
 		}},
 	}
-	pkg := &ir.Package{Contexts: []*ir.Context{ctx}, Funcs: []*ir.Func{tr}, Windows: []*ir.Window{win}}
+	pkg := &ir.Package{Contexts: []*ir.Context{ctx}, Funcs: []*ir.Func{tr}, Body: []ir.Stmt{win}}
 	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
@@ -1044,15 +1044,12 @@ func TestLowerProviders_InHandlers(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name  string
-		build func(win *ir.Window, h *ir.EventHandler)
+		build func(win *ir.NodeInst, h *ir.EventHandler)
 	}{
-		{"boundary", func(win *ir.Window, h *ir.EventHandler) {
+		{"boundary", func(win *ir.NodeInst, h *ir.EventHandler) {
 			win.Children = []ir.Stmt{&ir.ErrorBoundary{Handler: h}}
 		}},
-		{"window", func(win *ir.Window, h *ir.EventHandler) {
-			win.ErrorHandler = h
-		}},
-		{"call", func(win *ir.Window, h *ir.EventHandler) {
+		{"call", func(win *ir.NodeInst, h *ir.EventHandler) {
 			risky := &ir.Func{Name: "risky"}
 			win.Children = []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: risky, ErrorHandler: h}}}
 		}},
@@ -1061,12 +1058,12 @@ func TestLowerProviders_InHandlers(t *testing.T) {
 			ctx := makeContext("theme", "light")
 			s := &ir.Var{Name: "s", Type: ir.TypString}
 			h := handler(ctx, s)
-			win := &ir.Window{Name: "home"}
+			win := &ir.NodeInst{Name: "home"}
 			tc.build(win, h)
 			pkg := &ir.Package{
 				Contexts: []*ir.Context{ctx},
 				Vars:     []*ir.Var{s},
-				Windows:  []*ir.Window{win},
+				Body:     []ir.Stmt{win},
 			}
 			if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 				t.Fatal(err)

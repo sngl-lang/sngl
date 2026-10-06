@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"io"
 	"os"
+	"sort"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -125,11 +126,23 @@ type ClassInfo struct {
 	// A dotted name ("GObject.Object") is in another namespace, which this
 	// parser does not read, so the chain ends there.
 	Parent string
+	// Actions are the class's own methods that take nothing beyond the
+	// instance and return nothing -- gtk_progress_bar_pulse -- by GIR name,
+	// sorted. A program calls one through a `#id`; a method taking a value is
+	// a setter a prop already reaches, and one returning a value is a query
+	// nothing reads, so neither is here.
+	Actions []Action
 	// ChildAdd is how this class takes a child widget, or the zero value when
 	// it takes none this way. Derived from the introspection data rather than
 	// listed in Go: a hard-coded list of container types silently re-parented
 	// the children of every class outside it.
 	ChildAdd ChildAdder
+}
+
+// Action is a method a program calls for its effect alone.
+type Action struct {
+	Name   string // GIR name, e.g. "pulse"
+	CIdent string // C identifier, e.g. "gtk_progress_bar_pulse"
 }
 
 // ChildAdder is the C function a container's child is added through, and
@@ -201,6 +214,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 		inParam        bool
 		inProp         bool
 		inMethod       bool
+		inMethodReturn bool
 		inMethodParams bool
 		inMethodParam  bool
 		// inPropArray records that the property being parsed carries an
@@ -292,13 +306,29 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				}
 				inMethod = true
 				name := attrVal(t.Attr, "", "name")
-				currentMethod = &methodInfo{ident: attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier")}
+				currentMethod = &methodInfo{
+					ident:    attrVal(t.Attr, "http://www.gtk.org/introspection/c/1.0", "identifier"),
+					instance: local == "method",
+					// What a program cannot call as declared: one the bindings
+					// are told to skip, one a newer API replaces, and one that
+					// reports through a GError.
+					skip: attrVal(t.Attr, "", "introspectable") == "0" ||
+						attrVal(t.Attr, "", "deprecated") == "1" ||
+						attrVal(t.Attr, "", "throws") == "1",
+				}
 				if _, seen := m[name]; !seen {
 					m[name] = currentMethod
 				}
 
 			case local == "parameters" && inMethod:
 				inMethodParams = true
+
+			case local == "return-value" && inMethod:
+				inMethodReturn = true
+
+			case local == "type" && inMethodReturn:
+				currentMethod.returns = attrVal(t.Attr, "", "name")
+				inMethodReturn = false
 
 			// The instance is a separate element (<instance-parameter>), so
 			// every <parameter> here is a value the caller has to supply.
@@ -395,8 +425,12 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 				inInterface = false
 				currentInterface = nil
 
+			case local == "return-value" && inMethodReturn:
+				inMethodReturn = false
+
 			case (local == "method" || local == "function") && inMethod:
 				inMethod = false
+				inMethodReturn = false
 				inMethodParams = false
 				inMethodParam = false
 				currentMethod = nil
@@ -475,6 +509,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 	// leaves the prop with no setter rather than a name that does not exist.
 	for _, cls := range reg.Classes {
 		resolveSetters(cls.Props, methods[any(cls)])
+		cls.Actions = actionsOf(methods[any(cls)])
 	}
 	for _, iface := range reg.Interfaces {
 		resolveSetters(iface.Props, methods[any(iface)])
@@ -673,10 +708,26 @@ func resolveSetters(props []Prop, methods map[string]*methodInfo) {
 // setter, the value.
 type methodInfo struct {
 	ident    string
+	instance bool   // a <method>, called on an instance, rather than a <function>
+	returns  string // the GIR name of the return type, "none" for void
+	skip     bool
 	valCType string
 	// valParams counts the <parameter> elements after the instance — the
 	// values a caller supplies.
 	valParams int
+}
+
+// actionsOf is the methods a program calls for their effect alone: on an
+// instance, taking nothing else and returning nothing.
+func actionsOf(methods map[string]*methodInfo) []Action {
+	var out []Action
+	for name, m := range methods {
+		if m.instance && !m.skip && m.valParams == 0 && m.returns == "none" && m.ident != "" {
+			out = append(out, Action{Name: name, CIdent: m.ident})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
 // attrVal finds an attribute value by namespace URI and local name.

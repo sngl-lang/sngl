@@ -9,7 +9,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
     <span>+3</span>
@@ -22,7 +22,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 5 };
+  var state = { n: 5, visible__inst0: true };
   function display() {
     return "clamped: " + String(clamp(state.n, 0, 10));
   }
@@ -45,17 +45,17 @@ body { font-family: system-ui, sans-serif; }
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.n = state.n + 3;
-    __n0.textContent = display();
+    __n1.textContent = display();
   });
   $2.addEventListener("click", function() {
     state.n = state.n - 3;
-    __n0.textContent = display();
+    __n1.textContent = display();
   });
   function __sngl_init() {
-    __n0.textContent = display();
+    __n1.textContent = display();
   }
   __sngl_init();
 })();

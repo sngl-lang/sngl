@@ -3,4 +3,7 @@ plugins {
     id("com.android.application") version "{{.AGPVersion}}" apply false
     id("org.jetbrains.kotlin.android") version "{{.KotlinVersion}}" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "{{.ComposePluginV}}" apply false
+{{- if .HasNav}}
+    id("org.jetbrains.kotlin.plugin.serialization") version "{{.KotlinVersion}}" apply false
+{{- end}}
 }

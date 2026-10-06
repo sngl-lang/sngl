@@ -97,7 +97,8 @@ type PathCmd struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	big__inst0 bool
+	big__inst0     bool
+	visible__inst1 bool
 
 	width, height int
 }
@@ -106,6 +107,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.big__inst0 = true
+	m.visible__inst1 = true
 	return m
 }
 
@@ -167,6 +169,21 @@ func SetBig__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setBig__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -178,13 +195,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setBig__inst0Msg:
 		m = m.SetBig__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
@@ -193,11 +218,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = tui.RenderTerminal(40, 10, 1, func() image.Image {
-		__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
-		m._canvasDraw0(__c)
-		return __c.Result()
-	})
+	if m.visible__inst1 {
+		content = tui.RenderTerminal(40, 10, 1, func() image.Image {
+			__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
+			m._canvasDraw0(__c)
+			return __c.Result()
+		})
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -230,7 +257,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { big__inst0: true };
+  var state = { big__inst0: true, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -298,6 +325,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c5738cbca4907ceae2d27c220f7a03bb
+pass sha256:1b2ac6bbf014991e696ddb7350e4f49a
 -- run/none/html --
-pass sha256:694bd97383b90483f4999f25546b30b9
+pass sha256:fb9a0e611c144f30763f12bbfef5c82a

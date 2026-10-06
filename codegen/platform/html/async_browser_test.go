@@ -21,7 +21,6 @@ import (
 	rodproto "github.com/go-rod/rod/lib/proto"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	_ "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
 )
 

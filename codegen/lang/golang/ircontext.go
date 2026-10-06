@@ -451,8 +451,24 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := gc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := gc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{gc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's error result into a raise, so
+// the catch block around it recovers it as one.
+func (gc *GoIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	head := "if __err := " + gc.evalCall(call) + "; __err != nil {"
+	if call.Func.Return != nil {
+		head = "if _, __err := " + gc.evalCall(call) + "; __err != nil {"
+	}
+	return []string{head, "\tpanic(ErrorEvent{Message: __err.Error()})", "}"}
 }
 func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
@@ -821,11 +837,11 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameConst:
 		// A const is a file-scope name in a free function and a field of the
-		// receiver inside a method the Model dispatches through -- a window's
-		// as much as a component's. Asking about the component alone left a
-		// package const read as a bare name against the `m.blank` field the
-		// same build declared, once a window was the scope instead.
-		if gc.Ctx.Component != nil || gc.Ctx.Window != nil {
+		// receiver inside a method the Model dispatches through -- the
+		// package body's as much as a component's. Asking about the component
+		// alone left a package const read as a bare name against the `m.blank`
+		// field the same build declared, once the package body was the scope.
+		if gc.Ctx.Component != nil || gc.Ctx.Surface != nil || gc.Ctx.App {
 			return gc.recvFor(sym) + "." + name
 		}
 		return name
@@ -843,13 +859,17 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// names: writeRouteFuncs renames each func before emitting, because
 		// there they are methods on a per-request State struct. Same split as
 		// MutTargetIdent makes for a state var.
+		//
+		// A func emitted free is named the way a call to it is, exported and
+		// with no receiver: handed as a value to a component's func-typed
+		// prop, `render=encode` came out `m.encode` beside `func Encode`.
+		if gc.Ctx != nil && gc.Ctx.FreeFuncs[name] {
+			return ExportName(name)
+		}
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
 		return gc.recvFor(sym) + "." + ExportName(name)
 	default:
-		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
-			return fmt.Sprintf("%q", name)
-		}
 		return name
 	}
 }
@@ -989,7 +1009,18 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
-	return name + "(" + strings.Join(args, ", ") + ")", true
+	call := name + "(" + strings.Join(args, ", ") + ")"
+	// The other direction of wrapCArgs: a C function's number comes back as
+	// cgo's type for it, which a Go int or float64 is not assignable from.
+	if n.Func.Foreign.Path == "C" && n.Func.Return != nil {
+		switch n.Func.Return.Kind {
+		case ir.TypeInt:
+			call = "int(" + call + ")"
+		case ir.TypeFloat:
+			call = "float64(" + call + ")"
+		}
+	}
+	return call, true
 }
 
 // wrapCArgs converts each argument to the C type of the parameter it fills.
@@ -1467,11 +1498,49 @@ func (gc *GoIRContext) catchAtCall(call *ir.Call) []string {
 		"}()")
 }
 
+// Catch renders a catch block as a closure called in place, whose deferred
+// recover runs the handler for an ErrorEvent and re-panics anything else. A
+// closure rather than a helper taking two, so nothing has to declare the
+// helper, and a `return` in the body ends the event handler it was written in.
+func (gc *GoIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	bind := "_"
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		bind = h.Func.Params[0].Name
+	}
+	lines := []string{
+		"func() {",
+		"\tdefer func() {",
+		"\t\t__r := recover()",
+		"\t\tif __r == nil {",
+		"\t\t\treturn",
+		"\t\t}",
+		"\t\t" + bind + ", __ok := __r.(ErrorEvent)",
+		"\t\tif !__ok {",
+		"\t\t\tpanic(__r)",
+		"\t\t}",
+	}
+	if bind != "_" {
+		lines = append(lines, "\t\t_ = "+bind)
+	}
+	if h.Func != nil {
+		for _, stmt := range h.Func.Block {
+			for _, l := range gc.EvalStmt(stmt) {
+				lines = append(lines, "\t\t"+l)
+			}
+		}
+	}
+	lines = append(lines, "\t}()")
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	return append(lines, "}()")
+}
+
 // emitHandlerInvoke declares the event variable and inlines the handler body,
-// wrapped in a Go lexical block so the variable does not leak.
-//
-// It emits no return, so statements following a raise still execute: place
-// error.raise at the end of a handler body.
+// wrapped in a Go lexical block so the variable does not leak. It is what a
+// raise no catch block covers gets: a direct raise with a per-call handler,
+// or one in a view body, where there is no event handler to end.
 func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {

@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -132,11 +133,50 @@ func GoDir(path string) (Input, error) {
 }
 
 // Env records an environment variable's value, or that it is unset.
+//
+// The value is recorded by its digest: a variable may hold a token, and the
+// store is a directory on disk that outlives the build.
 func Env(name string) Input {
 	if v, ok := os.LookupEnv(name); ok {
-		return Input{Kind: "env", Props: []Prop{str("name", name), str("value", v)}}
+		return Input{Kind: "env", Props: []Prop{str("name", name), str("sha256", valueSum(v))}}
 	}
 	return Input{Kind: "unsetenv", Props: []Prop{str("name", name)}}
+}
+
+// Settings are values a build is configured with in process -- a target
+// option -- that a producer depends on without reading anything the store
+// could stat. Each is registered under a name by the code that holds it.
+var (
+	settingsMu sync.RWMutex
+	settings   = map[string]func() string{}
+)
+
+// RegisterSetting makes get the current value of the setting name.
+func RegisterSetting(name string, get func() string) {
+	settingsMu.Lock()
+	defer settingsMu.Unlock()
+	settings[name] = get
+}
+
+func settingValue(name string) (string, bool) {
+	settingsMu.RLock()
+	get := settings[name]
+	settingsMu.RUnlock()
+	if get == nil {
+		return "", false
+	}
+	return get(), true
+}
+
+// Setting records the value the setting name has now. A name nothing
+// registered is an error: the producer asking is recording a dependency
+// nothing could check.
+func Setting(name string) (Input, error) {
+	v, ok := settingValue(name)
+	if !ok {
+		return Input{}, fmt.Errorf("gencache: no setting %q is registered", name)
+	}
+	return Input{Kind: "setting", Props: []Prop{str("name", name), str("value", v)}}, nil
 }
 
 // GoEnv records what `go env` reports in dir for each name.
@@ -188,6 +228,12 @@ func (s *Store) Stale(data []byte) (string, error) {
 // A verdict is memoized for the life of the store: two entries recording one
 // file ask the filesystem once.
 func (s *Store) check(in Input) string {
+	// A setting is in process and changes between builds a store outlives
+	// (the LSP, the script harness): asking it costs nothing, so it is never
+	// memoized.
+	if in.Kind == "setting" {
+		return s.recheck(in)
+	}
 	memo := in.String()
 	s.mu.Lock()
 	ok, seen := s.checks[memo]
@@ -230,7 +276,12 @@ func (s *Store) recheck(in Input) string {
 			return in.Get("path") + " listing changed"
 		}
 	case "env":
-		if v, ok := os.LookupEnv(in.Get("name")); !ok || v != in.Get("value") {
+		v, ok := os.LookupEnv(in.Get("name"))
+		if sum := in.Get("sha256"); sum != "" {
+			if !ok || valueSum(v) != sum {
+				return "$" + in.Get("name") + " changed"
+			}
+		} else if !ok || v != in.Get("value") {
 			return "$" + in.Get("name") + " changed"
 		}
 	case "unsetenv":
@@ -241,6 +292,10 @@ func (s *Store) recheck(in Input) string {
 		vals, err := s.goEnv(in.Get("dir"))
 		if err != nil || vals[in.Get("name")] != in.Get("value") {
 			return "go env " + in.Get("name") + " changed"
+		}
+	case "setting":
+		if v, ok := settingValue(in.Get("name")); !ok || v != in.Get("value") {
+			return "setting " + in.Get("name") + " changed"
 		}
 	case "entry":
 		req := Request{Producer: in.Get("producer"), Params: in.getList("params")}
@@ -414,6 +469,12 @@ func readProp(a ast.Arg) (Prop, error) {
 	return Prop{}, fmt.Errorf("%s is not a literal", a.Name)
 }
 
+// valueSum is the digest an env input records in place of the value.
+func valueSum(v string) string {
+	h := sha256.Sum256([]byte(v))
+	return hex.EncodeToString(h[:])
+}
+
 func fileSum(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -503,4 +564,103 @@ func (s *Store) goEnv(dir string) (map[string]string, error) {
 	s.goenv[dir] = r
 	s.mu.Unlock()
 	return r.vals, r.err
+}
+
+// LiteralInputs reads the inputs a producer's output says it depends on in a
+// `cache.inputs` directive of its own: what a process it ran reads, which no
+// recorder can see. data is one file of SNGL; a file with no directive has
+// none.
+func LiteralInputs(data []byte) ([]Input, error) {
+	doc, err := parser.Parse("output", data)
+	if err != nil {
+		return nil, err
+	}
+	alias := ""
+	for _, st := range doc.Stmts {
+		if imp, ok := st.(*ast.Import); ok && imp.Path == VocabPath {
+			alias = imp.Alias
+		}
+	}
+	if alias == "" {
+		return nil, nil
+	}
+	if alias == "." {
+		return nil, errors.New("gencache: an output's directive imports " + VocabPath + " under a name")
+	}
+	var out []Input
+	for _, st := range doc.Stmts {
+		vn, ok := st.(*ast.VisualNode)
+		if !ok || vn.TargetName() != alias+".inputs" {
+			continue
+		}
+		for _, s := range vn.Block.Stmts {
+			in, err := readInput(s, alias)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, in)
+		}
+	}
+	return out, nil
+}
+
+// Complete fills in what a literal input left out -- a file's or a
+// directory's digest, a variable's value, another output's digest -- with
+// what it is now, the moment the output depending on it is stored. A file or
+// directory that is not there is recorded absent, which is what a producer
+// reading it would have depended on.
+func (s *Store) Complete(in Input) (Input, error) {
+	has := func(name string) bool {
+		for _, p := range in.Props {
+			if p.Name == name && p.Value != "" {
+				return true
+			}
+		}
+		return false
+	}
+	switch in.Kind {
+	case "file", "dir", "godir":
+		if has("sha256") {
+			return in, nil
+		}
+		path := in.Get("path")
+		if _, err := os.Stat(path); err != nil {
+			return Absent(path), nil
+		}
+		switch in.Kind {
+		case "file":
+			return File(path)
+		case "dir":
+			return Dir(path)
+		}
+		return GoDir(path)
+	case "env":
+		if has("value") || has("sha256") {
+			return in, nil
+		}
+		return Env(in.Get("name")), nil
+	case "goenv":
+		if has("value") {
+			return in, nil
+		}
+		ins, err := s.GoEnv(in.Get("dir"), in.Get("name"))
+		if err != nil {
+			return Input{}, err
+		}
+		return ins[0], nil
+	case "entry":
+		if has("sha256") {
+			return in, nil
+		}
+		got, _, err := s.Entry(Request{Producer: in.Get("producer"), Params: in.getList("params")})
+		return got, err
+	case "setting":
+		if has("value") {
+			return in, nil
+		}
+		return Setting(in.Get("name"))
+	case "absent", "unsetenv":
+		return in, nil
+	}
+	return Input{}, fmt.Errorf("gencache: unknown input %s", in.Kind)
 }

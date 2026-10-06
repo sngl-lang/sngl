@@ -74,6 +74,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Item(
@@ -91,15 +94,25 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var it by remember { mutableStateOf(Item(n = 3, span = 1.0)) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column {
-        Row(modifier = Modifier.safeDrawingPadding()) {
-            Text(text = it.label(), modifier = Modifier.weight((it.span).toFloat()).fillMaxHeight())
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Button(onClick = {
-            it = Item(n = (it.n + 1), span = 1.0)
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "bump", modifier = Modifier)
+        Column {
+            Row(modifier = Modifier.safeDrawingPadding()) {
+                Text(text = it.label(), modifier = Modifier.weight((it.span).toFloat()).fillMaxHeight())
+            }
+            Button(onClick = {
+                it = Item(n = (it.n + 1), span = 1.0)
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "bump", modifier = Modifier)
+            }
         }
     }
 }
@@ -111,4 +124,4 @@ fun Item.label(): String {
     return ("n=" + this.n.toString())
 }
 -- run/kotlin/android --
-pass sha256:cb120e7cc52c281362693dd465730624
+pass sha256:0aee720dc0b39ff073610ff6decc7e3b

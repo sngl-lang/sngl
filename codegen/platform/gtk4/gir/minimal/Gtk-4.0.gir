@@ -492,6 +492,26 @@ and then add the viewport as its child widget.</doc>
     </class>
     <class name="ProgressBar" c:type="GtkProgressBar" parent="Widget">
       <constructor name="new" c:identifier="gtk_progress_bar_new"/>
+      <method name="pulse" c:identifier="gtk_progress_bar_pulse">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="pbar" transfer-ownership="none">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_fraction" c:identifier="gtk_progress_bar_get_fraction">
+        <return-value transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="pbar" transfer-ownership="none">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
       <method name="set_fraction" c:identifier="gtk_progress_bar_set_fraction">
         <parameters>
           <instance-parameter name="pbar">

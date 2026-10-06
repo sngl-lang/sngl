@@ -37,7 +37,7 @@ component page() node {
     }
 }
 
-window #home(title="bf", href="/index.html") {
+window #home(title="bf") {
     page()
 }
 
@@ -70,6 +70,7 @@ type ErrorEvent struct {
 type Model struct {
 	seen__inst0      string
 	__failed0__inst0 bool
+	visible__inst1   bool
 	__focusID        int
 
 	width, height int
@@ -80,6 +81,7 @@ func New() Model {
 	m := Model{}
 	m.seen__inst0 = ""
 	m.__failed0__inst0 = false
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -117,6 +119,21 @@ func SetSeen__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setSeen__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -128,24 +145,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setSeen__inst0Msg:
 		m = m.SetSeen__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			{
-				e := ErrorEvent{Message: "boom", Kind: "demo"}
-				_ = e
-				m.__failed0__inst0 = true
-				m.seen__inst0 = e.Message
-			}
+			func() {
+				defer func() {
+					__r := recover()
+					if __r == nil {
+						return
+					}
+					e, __ok := __r.(ErrorEvent)
+					if !__ok {
+						panic(__r)
+					}
+					_ = e
+					m.__failed0__inst0 = true
+					m.seen__inst0 = e.Message
+				}()
+				panic(ErrorEvent{Message: "boom", Kind: "demo"})
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -162,22 +197,24 @@ func (m *Model) goClick() {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.__failed0__inst0 {
-		content = lipgloss.NewStyle().Render(fmt.Sprint("it broke"))
-	} else {
-		var contentParts []string
-		var contentPart_0 string
-		contentPart_0Focused := (m.__focusID == 0)
-		contentPart_0Prefix := " "
-		if contentPart_0Focused {
-			contentPart_0Prefix = ">"
+	if m.visible__inst1 {
+		if m.__failed0__inst0 {
+			content = lipgloss.NewStyle().Render(fmt.Sprint("it broke"))
+		} else {
+			var contentParts []string
+			var contentPart_0 string
+			contentPart_0Focused := (m.__focusID == 0)
+			contentPart_0Prefix := " "
+			if contentPart_0Focused {
+				contentPart_0Prefix = ">"
+			}
+			contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Go"))
+			contentParts = append(contentParts, contentPart_0)
+			var contentPart_1 string
+			contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
+			contentParts = append(contentParts, contentPart_1)
+			content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 		}
-		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("Go"))
-		contentParts = append(contentParts, contentPart_0)
-		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
-		contentParts = append(contentParts, contentPart_1)
-		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -211,46 +248,79 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seen__inst0: "" };
+  var state = { seen__inst0: "", visible__inst1: true };
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = __prop___p0;
+    }
+    let __n0 = document.createElement("span");
+    __n0.textContent = __prop___p0;
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
   var __failed0__inst0 = false;
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     if (__failed0__inst0) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = "it broke";
+      let __n1 = document.createElement("span");
+      __n1.textContent = "it broke";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n1) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n1, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n1);
     } else {
       let go = document.createElement("button");
-      go.setAttribute("disabled", false);
+      go.setAttribute("data-sngl-id", "go");
+      go.disabled = false;
       go.addEventListener("click", () => {
-        {
+        try {
           ;
-          let e = { message: "boom", kind: "demo" };
+          throw Object.assign(new Error("boom"), { kind: "demo" });
+        } catch (__e) {
+          ;
+          if (__e?.kind === void 0) throw __e;
+          ;
+          let e = { message: __e.message, kind: __e.kind };
           void e;
           __failed0__inst0 = true;
           __renderSlot0(__slotAnchor_0);
           state.seen__inst0 = e.message;
-          __renderSlot0(__slotAnchor_0);
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p0(state.seen__inst0);
+          }
+          ;
         }
         ;
       });
       go.addEventListener("contextmenu", () => {
       });
-      let __n1 = document.createElement("span");
-      __n1.textContent = "Go";
-      go.appendChild(__n1);
+      let __n2 = document.createElement("span");
+      __n2.textContent = "Go";
+      go.appendChild(__n2);
       let __place0_i_ref1 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref1 = __place0_prev[__place0_i];
@@ -261,19 +331,38 @@ body { font-family: system-ui, sans-serif; }
         parent.insertBefore(go, __place0_i_ref1);
       }
       __slot0.push(go);
-      let __n2 = document.createElement("span");
-      __n2.textContent = state.seen__inst0;
+      let __n3 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n3 = __inst1_live[__inst1_i];
+        __n3.__set___p0(state.seen__inst0);
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n3__new = __cf___child0({ __p0: state.seen__inst0 });
+        __n3 = __n3__new;
+      }
+      __inst1_next.push(__n3);
+      __inst1_i = __inst1_i + 1;
+      let __n3__el = __n3.__root;
       let __place0_i_ref2 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref2 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref2 === __n2) {
+      if (__place0_i_ref2 === __n3__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2, __place0_i_ref2);
+        parent.insertBefore(__n3__el, __place0_i_ref2);
       }
-      __slot0.push(__n2);
+      __slot0.push(__n3__el);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -286,6 +375,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:953099841dc8d91d18b1c02b4053c85b
+pass sha256:3b1c9d446f45e45a46cb1df812ab16c5
 -- run/none/html --
-pass sha256:808582647ed3f877e90310ec7dfb7ccc
+pass sha256:ab97d69c2b6d81396cd159c4f2597660

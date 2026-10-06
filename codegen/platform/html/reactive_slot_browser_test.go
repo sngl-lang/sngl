@@ -21,7 +21,7 @@ component Car() node {
         if a == 1 { text(value="ONE") }
     }
 }
-window(title="H", href="/index.html") { Car() }
+window(title="H") { Car() }
 `
 	b := startComponent(t, src) // skips if no browser
 	defer b.Close()

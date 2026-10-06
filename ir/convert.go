@@ -94,9 +94,6 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	for _, comp := range pkg.Components {
 		stmts = append(stmts, c.convertComponent(comp))
 	}
-	for _, w := range pkg.Windows {
-		stmts = append(stmts, c.convertNodeInst(w))
-	}
 	for _, ctx := range pkg.Contexts {
 		// Standard-library contexts arrive with the import, not from this
 		// package's source; emitting them would redeclare the name.
@@ -110,9 +107,10 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	}
 	// The package's own body renders last, after every declaration it reads,
 	// which is the order the source is written in and the order fmt keeps.
-	for _, st := range pkg.Body {
-		stmts = append(stmts, c.convertStmt(st))
-	}
+	//
+	// Through convertBodyStmts, for the flattened canvas it prints: the
+	// package body is a view body on a target whose windows are components.
+	stmts = append(stmts, c.convertBodyStmts(pkg.Body)...)
 
 	return &ast.Document{Stmts: stmts}
 }
@@ -331,11 +329,11 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-// windowContentSlot is what the window declaration calls the slot its body
-// populates. Read off the declaration rather than spelled here, for the
-// reason ErrorBoundary.FailedSlot gives: the library is free to rename it.
-func windowContentSlot(w *Window) string {
-	if rest := w.Component.RestSlot(); rest != nil {
+// restSlotName is what n's declaration calls the slot its body populates.
+// Read off the declaration rather than spelled here, for the reason
+// ErrorBoundary.FailedSlot gives: the library is free to rename it.
+func restSlotName(n *NodeInst) string {
+	if rest := n.Component.RestSlot(); rest != nil {
 		return rest.Name
 	}
 	return "content"
@@ -564,8 +562,8 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 }
 
 // convertBodyStmts is one statement list, converted. Shared with the window
-// body's own loop, which had a second copy of it and so printed a flattened
-// canvas as an empty one.
+// body's own loop and the package body's, which each had a copy of it and so
+// printed a flattened canvas as an empty one.
 func (c *converter) convertBodyStmts(stmts []Stmt) []ast.Stmt {
 	var out []ast.Stmt
 	for _, s := range stmts {
@@ -606,6 +604,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		Target: target,
 		ID:     n.ID,
 	}
+	if n.Crosses {
+		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+	}
 
 	var args []ast.ArgOrEventHandler
 	for _, a := range n.Props {
@@ -616,9 +617,6 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	}
 	for _, h := range n.Handlers {
 		args = append(args, c.convertEventHandler(&h))
-	}
-	if n.ErrorHandler != nil {
-		args = append(args, c.convertEventHandler(n.ErrorHandler))
 	}
 	if len(args) > 0 {
 		vn.Args = ast.ArgList{
@@ -632,13 +630,13 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		vn.Block.Stmts = append(c.convertSlotContents(n.Slots), vn.Block.Stmts...)
 		vn.Block.IsMultiline = true
 	}
-	// A window that reads its route parameters wrote the population its
-	// binding was named in, and the body belongs inside that rather than
+	// A node that reads its params -- a page, or the document written for one
+	// -- wrote the population its binding was named in, and the body belongs inside that rather than
 	// bare: printed bare, the name the body reads is declared nowhere and the
 	// dump does not check back in.
 	if n.Params != nil && len(vn.Block.Stmts) > 0 {
 		vn.Block.Stmts = []ast.Stmt{&ast.ComponentDecl{
-			Name:      windowContentSlot(n),
+			Name:      restSlotName(n),
 			HasParens: true,
 			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: n.Params.Name}}},
 			Body:      ast.StmtBlock{IsMultiline: true, Stmts: vn.Block.Stmts, Pos: ast.Pos{Line: 1}},
@@ -740,12 +738,11 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 		}
 		return nil
 	}
-	sd, _ := s.Content.Decl.(*StructDef)
 	var elem ast.TypeExpr
-	if sd != nil {
-		// A tree is spelled through whatever this file imported its package as;
-		// convertType reads the name off the declaration and loses that.
-		elem = c.treeName(sd)
+	if f := TypeFamily(s.Content); f != nil {
+		// A family is spelled through whatever this file imported its package
+		// as; convertType reads the name off the declaration and loses that.
+		elem = c.treeName(f)
 	} else {
 		elem = c.convertType(s.Content)
 	}
@@ -779,12 +776,12 @@ func (c *converter) aliasFor(uri string) string {
 	return uri
 }
 
-// treeName spells a tree the way the file that names it does: qualified when it
-// was declared elsewhere, bare when it was declared here.
-func (c *converter) treeName(sd *StructDef) *ast.NamedType {
-	nt := &ast.NamedType{Name: sd.Name}
-	if sd.Pkg != "" {
-		nt.Package = c.aliasFor(sd.Pkg)
+// treeName spells a family the way the file that names it does: qualified when
+// it was declared elsewhere, bare when it was declared here.
+func (c *converter) treeName(f *Component) *ast.NamedType {
+	nt := &ast.NamedType{Name: f.Name}
+	if f.Pkg != "" {
+		nt.Package = c.aliasFor(f.Pkg)
 	}
 	return nt
 }
@@ -797,6 +794,9 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
 	// Every insertion is written by name now, the rest slot included.
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: s.Name}}
+	if s.Crosses {
+		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+	}
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
 	}

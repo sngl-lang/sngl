@@ -838,7 +838,7 @@ func TestParseContextDecl(t *testing.T) {
 	// The syntax is: context #identifier(arg)
 	doc := mustParse(t, `context #theme("light")
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="hello")
 }`)
 	if len(doc.Stmts) != 2 {

@@ -109,9 +109,10 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	on        bool
-	n         int
-	__focusID int
+	on             bool
+	n              int
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -121,6 +122,7 @@ func New() Model {
 	m := Model{}
 	m.on = false
 	m.n = 1
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -173,6 +175,21 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -186,13 +203,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetOn(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -207,182 +232,184 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
-	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("toggle"))
-	contentChildren = append(contentChildren, content_0)
-	var __lt0 string
-	if m.on {
-		__lt0 = "bold"
-	} else {
-		__lt0 = "normal"
-	}
-	var content_3 string
-	content_3 = lipgloss.NewStyle().
-		Bold(__lt0 == "bold").Render(fmt.Sprint("weight"))
-	contentChildren = append(contentChildren, content_3)
-	var __lt1 string
-	if m.on {
-		__lt1 = "italic"
-	} else {
-		__lt1 = "normal"
-	}
-	var __lt2 string
-	if m.on {
-		__lt2 = "center"
-	} else {
-		__lt2 = "right"
-	}
-	var content_8 string
-	content_8 = lipgloss.NewStyle().
-		Italic(__lt1 == "italic").
-		AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[__lt2]).Render(fmt.Sprint("slant"))
-	contentChildren = append(contentChildren, content_8)
-	var content_9 string
-	content_9 = lipgloss.NewStyle().
-		AlignHorizontal(lipgloss.Center).Render(fmt.Sprint("still"))
-	contentChildren = append(contentChildren, content_9)
-	var content_10 string
-	content_10 = lipgloss.NewStyle().
-		AlignHorizontal(lipgloss.Left).Render(fmt.Sprint("left"))
-	contentChildren = append(contentChildren, content_10)
-	var content_11 string
-	content_11 = lipgloss.NewStyle().Render(fmt.Sprint("justified"))
-	contentChildren = append(contentChildren, content_11)
-	var __lt4 string
-	if m.on {
-		__lt4 = "center"
-	} else {
-		var __lt3 string
-		if m.n > 2 {
-			__lt3 = "left"
-		} else {
-			__lt3 = "right"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
 		}
-		__lt4 = __lt3
-	}
-	var content_14 string
-	content_14 = lipgloss.NewStyle().
-		AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[__lt4]).Render(fmt.Sprint("nested"))
-	contentChildren = append(contentChildren, content_14)
-	var __lt5 Measurement
-	if m.on {
-		__lt5 = Measurement{Px: 20}
-	} else {
-		__lt5 = Measurement{Px: 10}
-	}
-	var content_17 string
-	_ = __lt5
-	content_17 = lipgloss.NewStyle().Render(fmt.Sprint("grown"))
-	contentChildren = append(contentChildren, content_17)
-	var __lt6 Measurement
-	if m.on {
-		__lt6 = Measurement{Px: 16}
-	} else {
-		__lt6 = Measurement{Px: 8}
-	}
-	var __lt7 Measurement
-	if m.on {
-		__lt7 = Measurement{Px: 160}
-	} else {
-		__lt7 = Measurement{Px: 80}
-	}
-	var __lt8 Measurement
-	if m.on {
-		__lt8 = Measurement{Px: 20}
-	} else {
-		__lt8 = Measurement{Px: 12}
-	}
-	var __lt9 float64
-	if m.on {
-		__lt9 = 0.5
-	} else {
-		__lt9 = 1.0
-	}
-	var __lt10 Measurement
-	if m.on {
-		__lt10 = Measurement{Px: 1}
-	} else {
-		__lt10 = Measurement{Px: 0}
-	}
-	var __lt11 snglcolor.Color
-	if m.on {
-		__lt11 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
-	} else {
-		__lt11 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-	}
-	var content_30 string
-	_ = __lt8
-	content_30 = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), __lt10 != (Measurement{})).
-		Foreground(lipgloss.Color(__lt11.String())).
-		Faint(__lt9 < 1).
-		Padding(max(1, int(__lt6.Px)/8)).
-		Width(max(1, int(__lt7.Px)/8)).Render(fmt.Sprint("box"))
-	contentChildren = append(contentChildren, content_30)
-	var content_31 string
-	content_31 = lipgloss.NewStyle().
-		PaddingLeft(max(1, int(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Vw: Measurement{Px: 8}.Vw * float64(m.n), Vh: Measurement{Px: 8}.Vh * float64(m.n), Pct: Measurement{Px: 8}.Pct * float64(m.n)}.Px)/8)).Render(fmt.Sprint("scaled"))
-	contentChildren = append(contentChildren, content_31)
-	var __lt12 string
-	if m.on {
-		__lt12 = "bold"
-	} else {
-		__lt12 = "normal"
-	}
-	var __lt13 Measurement
-	if m.on {
-		__lt13 = Measurement{Px: 20}
-	} else {
-		__lt13 = Measurement{Px: 12}
-	}
-	var content_36 string
-	_ = __lt13
-	content_36 = ""
-	content_36 += lipgloss.NewStyle().Bold(__lt12 == "bold").Render(fmt.Sprint("flow "))
-	var __lt14 string
-	if m.on {
-		__lt14 = "inherit"
-	} else {
-		__lt14 = "lighter"
-	}
-	var __lt15 string
-	if m.on {
-		__lt15 = "italic"
-	} else {
-		__lt15 = "inherit"
-	}
-	var __lt16 Measurement
-	if m.on {
-		__lt16 = Measurement{Px: 18}
-	} else {
-		__lt16 = Measurement{Px: 0}
-	}
-	_ = __lt16
-	content_36 += lipgloss.NewStyle().Bold((__lt14 == "bold" || __lt14 == "bolder" || __lt14 != "normal" && __lt12 == "bold")).Italic((__lt15 == "italic" || __lt15 == "oblique")).Underline(m.on).Faint((__lt14 == "lighter")).Render(fmt.Sprint("run"))
-	if m.on {
-		var __lt17 string
-		if m.n > 2 {
-			__lt17 = "italic"
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("toggle"))
+		contentChildren = append(contentChildren, content_0)
+		var __lt0 string
+		if m.on {
+			__lt0 = "bold"
 		} else {
-			__lt17 = "normal"
+			__lt0 = "normal"
 		}
-		content_36 += lipgloss.NewStyle().Bold(__lt12 == "bold").Italic((__lt17 == "italic" || __lt17 == "oblique")).Render(fmt.Sprint(" gated"))
+		var content_3 string
+		content_3 = lipgloss.NewStyle().
+			Bold(__lt0 == "bold").Render(fmt.Sprint("weight"))
+		contentChildren = append(contentChildren, content_3)
+		var __lt1 string
+		if m.on {
+			__lt1 = "italic"
+		} else {
+			__lt1 = "normal"
+		}
+		var __lt2 string
+		if m.on {
+			__lt2 = "center"
+		} else {
+			__lt2 = "right"
+		}
+		var content_8 string
+		content_8 = lipgloss.NewStyle().
+			Italic(__lt1 == "italic").
+			AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[__lt2]).Render(fmt.Sprint("slant"))
+		contentChildren = append(contentChildren, content_8)
+		var content_9 string
+		content_9 = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Center).Render(fmt.Sprint("still"))
+		contentChildren = append(contentChildren, content_9)
+		var content_10 string
+		content_10 = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Left).Render(fmt.Sprint("left"))
+		contentChildren = append(contentChildren, content_10)
+		var content_11 string
+		content_11 = lipgloss.NewStyle().Render(fmt.Sprint("justified"))
+		contentChildren = append(contentChildren, content_11)
+		var __lt4 string
+		if m.on {
+			__lt4 = "center"
+		} else {
+			var __lt3 string
+			if m.n > 2 {
+				__lt3 = "left"
+			} else {
+				__lt3 = "right"
+			}
+			__lt4 = __lt3
+		}
+		var content_14 string
+		content_14 = lipgloss.NewStyle().
+			AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[__lt4]).Render(fmt.Sprint("nested"))
+		contentChildren = append(contentChildren, content_14)
+		var __lt5 Measurement
+		if m.on {
+			__lt5 = Measurement{Px: 20}
+		} else {
+			__lt5 = Measurement{Px: 10}
+		}
+		var content_17 string
+		_ = __lt5
+		content_17 = lipgloss.NewStyle().Render(fmt.Sprint("grown"))
+		contentChildren = append(contentChildren, content_17)
+		var __lt6 Measurement
+		if m.on {
+			__lt6 = Measurement{Px: 16}
+		} else {
+			__lt6 = Measurement{Px: 8}
+		}
+		var __lt7 Measurement
+		if m.on {
+			__lt7 = Measurement{Px: 160}
+		} else {
+			__lt7 = Measurement{Px: 80}
+		}
+		var __lt8 Measurement
+		if m.on {
+			__lt8 = Measurement{Px: 20}
+		} else {
+			__lt8 = Measurement{Px: 12}
+		}
+		var __lt9 float64
+		if m.on {
+			__lt9 = 0.5
+		} else {
+			__lt9 = 1.0
+		}
+		var __lt10 Measurement
+		if m.on {
+			__lt10 = Measurement{Px: 1}
+		} else {
+			__lt10 = Measurement{Px: 0}
+		}
+		var __lt11 snglcolor.Color
+		if m.on {
+			__lt11 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		} else {
+			__lt11 = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
+		}
+		var content_30 string
+		_ = __lt8
+		content_30 = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), __lt10 != (Measurement{})).
+			Foreground(lipgloss.Color(__lt11.String())).
+			Faint(__lt9 < 1).
+			Padding(max(1, int(__lt6.Px)/8)).
+			Width(max(1, int(__lt7.Px)/8)).Render(fmt.Sprint("box"))
+		contentChildren = append(contentChildren, content_30)
+		var content_31 string
+		content_31 = lipgloss.NewStyle().
+			PaddingLeft(max(1, int(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Vw: Measurement{Px: 8}.Vw * float64(m.n), Vh: Measurement{Px: 8}.Vh * float64(m.n), Pct: Measurement{Px: 8}.Pct * float64(m.n)}.Px)/8)).Render(fmt.Sprint("scaled"))
+		contentChildren = append(contentChildren, content_31)
+		var __lt12 string
+		if m.on {
+			__lt12 = "bold"
+		} else {
+			__lt12 = "normal"
+		}
+		var __lt13 Measurement
+		if m.on {
+			__lt13 = Measurement{Px: 20}
+		} else {
+			__lt13 = Measurement{Px: 12}
+		}
+		var content_36 string
+		_ = __lt13
+		content_36 = ""
+		content_36 += lipgloss.NewStyle().Bold(__lt12 == "bold").Render(fmt.Sprint("flow "))
+		var __lt14 string
+		if m.on {
+			__lt14 = "inherit"
+		} else {
+			__lt14 = "lighter"
+		}
+		var __lt15 string
+		if m.on {
+			__lt15 = "italic"
+		} else {
+			__lt15 = "inherit"
+		}
+		var __lt16 Measurement
+		if m.on {
+			__lt16 = Measurement{Px: 18}
+		} else {
+			__lt16 = Measurement{Px: 0}
+		}
+		_ = __lt16
+		content_36 += lipgloss.NewStyle().Bold((__lt14 == "bold" || __lt14 == "bolder" || __lt14 != "normal" && __lt12 == "bold")).Italic((__lt15 == "italic" || __lt15 == "oblique")).Underline(m.on).Faint((__lt14 == "lighter")).Render(fmt.Sprint("run"))
+		if m.on {
+			var __lt17 string
+			if m.n > 2 {
+				__lt17 = "italic"
+			} else {
+				__lt17 = "normal"
+			}
+			content_36 += lipgloss.NewStyle().Bold(__lt12 == "bold").Italic((__lt17 == "italic" || __lt17 == "oblique")).Render(fmt.Sprint(" gated"))
+		}
+		var __lt18 snglcolor.Color
+		if m.on {
+			__lt18 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
+		} else {
+			__lt18 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
+		}
+		content_36 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt18.Or(""))).Bold(__lt12 == "bold").Render(fmt.Sprint(" tinted"))
+		contentChildren = append(contentChildren, content_36)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	var __lt18 snglcolor.Color
-	if m.on {
-		__lt18 = snglcolor.Color{A: 0, R: 0, G: 0, B: 0}
-	} else {
-		__lt18 = snglcolor.Color{R: 255, G: 0, B: 0, A: 255}
-	}
-	content_36 += lipgloss.NewStyle().Foreground(lipgloss.Color(__lt18.Or(""))).Bold(__lt12 == "bold").Render(fmt.Sprint(" tinted"))
-	contentChildren = append(contentChildren, content_36)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -421,6 +448,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -448,40 +478,50 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var on by remember { mutableStateOf(false) }
     var n by remember { mutableStateOf(1) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            on = !on
-            n += 1
-        }, modifier = Modifier) {
-            Text(text = "toggle", modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Text(text = "weight", modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal)))
-        Text(text = "slant", modifier = Modifier, style = TextStyle(fontStyle = (if (on) FontStyle.Italic else FontStyle.Normal), textAlign = (if (on) TextAlign.Center else TextAlign.End)))
-        Text(text = "still", modifier = Modifier, style = TextStyle(textAlign = TextAlign.Center))
-        Text(text = "left", modifier = Modifier.alpha(1.0f), style = TextStyle(textAlign = TextAlign.Start))
-        Text(text = "justified", modifier = Modifier, style = TextStyle(textAlign = TextAlign.Justify))
-        Text(text = "nested", modifier = Modifier, style = TextStyle(textAlign = (if (on) TextAlign.Center else (if ((n > 2)) TextAlign.Start else TextAlign.End))))
-        Text(text = "grown", modifier = Modifier, style = TextStyle(fontSize = (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, vw = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vw * 2, vh = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vh * 2, pct = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).pct * 2)).px.sp))
-        Text(text = "box", modifier = Modifier.padding(((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).px.dp).width(((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).px.dp).alpha(((if (on) 0.5 else 1.0)).toFloat()), style = TextStyle(fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp, color = (if (on) ComposeColor(red = 255, green = 0, blue = 0, alpha = 255) else ComposeColor(red = 0, green = 255, blue = 0, alpha = 255))))
-        Text(text = "scaled", modifier = Modifier.padding(start = (Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, vw = (Measurement(px = 8.0)).vw * n, vh = (Measurement(px = 8.0)).vh * n, pct = (Measurement(px = 8.0)).pct * n)).px.dp))
-        Text(text = buildAnnotatedString {
-            append("flow ")
-            withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = (((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
-                append("run")
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                on = !on
+                n += 1
+            }, modifier = Modifier) {
+                Text(text = "toggle", modifier = Modifier)
             }
-            if (on) {
-                withStyle(SpanStyle(fontStyle = (if ((n > 2)) FontStyle.Italic else FontStyle.Normal))) {
-                    append(" gated")
+            Text(text = "weight", modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal)))
+            Text(text = "slant", modifier = Modifier, style = TextStyle(fontStyle = (if (on) FontStyle.Italic else FontStyle.Normal), textAlign = (if (on) TextAlign.Center else TextAlign.End)))
+            Text(text = "still", modifier = Modifier, style = TextStyle(textAlign = TextAlign.Center))
+            Text(text = "left", modifier = Modifier.alpha(1.0f), style = TextStyle(textAlign = TextAlign.Start))
+            Text(text = "justified", modifier = Modifier, style = TextStyle(textAlign = TextAlign.Justify))
+            Text(text = "nested", modifier = Modifier, style = TextStyle(textAlign = (if (on) TextAlign.Center else (if ((n > 2)) TextAlign.Start else TextAlign.End))))
+            Text(text = "grown", modifier = Modifier, style = TextStyle(fontSize = (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, vw = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vw * 2, vh = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vh * 2, pct = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).pct * 2)).px.sp))
+            Text(text = "box", modifier = Modifier.padding(((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).px.dp).width(((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).px.dp).alpha(((if (on) 0.5 else 1.0)).toFloat()), style = TextStyle(fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp, color = (if (on) ComposeColor(red = 255, green = 0, blue = 0, alpha = 255) else ComposeColor(red = 0, green = 255, blue = 0, alpha = 255))))
+            Text(text = "scaled", modifier = Modifier.padding(start = (Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, vw = (Measurement(px = 8.0)).vw * n, vh = (Measurement(px = 8.0)).vh * n, pct = (Measurement(px = 8.0)).pct * n)).px.dp))
+            Text(text = buildAnnotatedString {
+                append("flow ")
+                withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = (((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
+                    append("run")
                 }
-            }
-            withStyle(SpanStyle(color = (if (on) ComposeColor.Unspecified else ComposeColor(red = 255, green = 0, blue = 0, alpha = 255)))) {
-                append(" tinted")
-            }
-        }, modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal), fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp))
+                if (on) {
+                    withStyle(SpanStyle(fontStyle = (if ((n > 2)) FontStyle.Italic else FontStyle.Normal))) {
+                        append(" gated")
+                    }
+                }
+                withStyle(SpanStyle(color = (if (on) ComposeColor.Unspecified else ComposeColor(red = 255, green = 0, blue = 0, alpha = 255)))) {
+                    append(" tinted")
+                }
+            }, modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal), fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp))
+        }
     }
 }
 -- run/go/bubbletea --
-pass sha256:637fa6b76b89621968e930f99a4ad2ed
+pass sha256:cf93e2c128702e2ba556d7e6a02a3045
 -- run/kotlin/android --
-pass sha256:64935fa857a463491f569536056d11f4
+pass sha256:12956ae8cba49e9ed93651104c1462b3

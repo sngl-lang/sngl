@@ -72,14 +72,15 @@ import (
 type Model struct {
 	last         string
 	items        []string
+	value__inst0 string
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
 	__inst0_live []*RowInstance
 
-	__n3 *fyne.Container
-	__n7 *widget.Entry
-	__n1 *widget.Label
+	__n6 *fyne.Container
+	__n3 *widget.Entry
+	__n4 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -87,6 +88,7 @@ func New() *Model {
 	m := &Model{}
 	m.last = ""
 	m.items = []string{"a"}
+	m.value__inst0 = ""
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -96,29 +98,29 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n2 *RowInstance
+		var __n5 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetLabel(it)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newRowInstance(m, it)
-			__n2 = __n2__new
+			__n5__new := newRowInstance(m, it)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n2)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -129,12 +131,16 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n7_input_handler(s string) {
+func (m *Model) __n3_input_handler(s string) {
+	m.value__inst0 = s
+	m.__n3.SetText(m.value__inst0)
 }
 
-func (m *Model) __n7_change_handler(s string) {
+func (m *Model) __n3_change_handler(s string) {
+	m.value__inst0 = s
+	m.__n3.SetText(m.value__inst0)
 	m.last = ("got " + s)
-	m.__n1.SetText(m.last)
+	m.__n4.SetText(m.last)
 }
 
 func (m *Model) Last() string {
@@ -153,20 +159,28 @@ func (m *Model) SetItems(v []string) {
 	m.items = v
 }
 
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
-	m.__n7 = widget.NewEntry()
-	m.__n7.SetText("")
-	m.__n7.SetPlaceHolder("")
-	m.__n7.OnChanged = m.__n7_input_handler
-	m.__n7.OnSubmitted = m.__n7_change_handler
-	m.__n3.Add(m.__n7)
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(m.last)
-	m.__n3.Add(m.__n1)
-	m.__renderSlot0(m.__n3)
-	content := fyne.CanvasObject(m.__n3)
+	m.__n6 = container.NewVBox()
+	m.__n3 = widget.NewEntry()
+	m.__n3.SetText(m.value__inst0)
+	m.__n3.SetPlaceHolder("")
+	m.__n3.OnChanged = m.__n3_input_handler
+	m.__n3.OnSubmitted = m.__n3_change_handler
+	m.__n6.Add(m.__n3)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText(m.last)
+	m.__n6.Add(m.__n4)
+	m.__renderSlot0(m.__n6)
+	content := fyne.CanvasObject(m.__n6)
 	return content
 }
 
@@ -176,10 +190,14 @@ type RowInstance struct {
 	__model      *Model
 	__prop_label string
 	committed    string
+	value__inst1 string
+	value__inst2 string
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Label
+	__n0         *widget.Entry
+	__n1         *widget.Entry
+	__n2         *widget.Label
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -187,34 +205,44 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.committed = ""
+	c.value__inst1 = ""
+	c.value__inst2 = ""
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n4 := container.NewVBox()
-	__n5 := widget.NewEntry()
-	__n5.SetText("")
-	__n5.SetPlaceHolder("")
-	__n5.OnChanged = func(s string) {
+	__n7 := container.NewVBox()
+	c.__n0 = widget.NewEntry()
+	c.__n0.SetText(c.value__inst1)
+	c.__n0.SetPlaceHolder("")
+	c.__n0.OnChanged = func(s string) {
+		c.value__inst1 = s
+		c.__n0.SetText(c.value__inst1)
 	}
-	__n5.OnSubmitted = func(s string) {
+	c.__n0.OnSubmitted = func(s string) {
+		c.value__inst1 = s
+		c.__n0.SetText(c.value__inst1)
 		c.committed = s
-		c.__n0.SetText(c.committed)
+		c.__n2.SetText(c.committed)
 	}
-	__n4.Add(__n5)
-	__n6 := widget.NewMultiLineEntry()
-	__n6.SetText("")
-	__n6.SetPlaceHolder("")
-	__n6.SetMinRowsVisible(0)
-	__n6.OnChanged = func(s string) {
+	__n7.Add(c.__n0)
+	c.__n1 = widget.NewMultiLineEntry()
+	c.__n1.SetText(c.value__inst2)
+	c.__n1.SetPlaceHolder("")
+	c.__n1.SetMinRowsVisible(0)
+	c.__n1.OnChanged = func(s string) {
+		c.value__inst2 = s
+		c.__n1.SetText(c.value__inst2)
 	}
-	__n6.OnSubmitted = func(s string) {
+	c.__n1.OnSubmitted = func(s string) {
+		c.value__inst2 = s
+		c.__n1.SetText(c.value__inst2)
 		c.committed = ((c.__prop_label + ":") + s)
-		c.__n0.SetText(c.committed)
+		c.__n2.SetText(c.committed)
 	}
-	__n4.Add(__n6)
-	c.__n0 = widget.NewLabel("")
-	c.__n0.SetText(c.committed)
-	__n4.Add(c.__n0)
-	c.Root = __n4
+	__n7.Add(c.__n1)
+	c.__n2 = widget.NewLabel("")
+	c.__n2.SetText(c.committed)
+	__n7.Add(c.__n2)
+	c.Root = __n7
 	return c
 }
 
@@ -280,13 +308,13 @@ import (
 type Model struct {
 	last         string
 	items        []string
+	value__inst0 string
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*RowInstance
 	__n3         gtk4rt.Handle
-	__n7         gtk4rt.Handle
-	__n1         gtk4rt.Handle
+	__n4         gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -295,6 +323,7 @@ func New() *Model {
 	m := &Model{}
 	m.last = ""
 	m.items = []string{"a"}
+	m.value__inst0 = ""
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -311,22 +340,22 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n2 *RowInstance
+		var __n5 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetLabel(it)
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newRowInstance(m, it)
-			__n2 = __n2__new
+			__n5__new := newRowInstance(m, it)
+			__n5 = __n5__new
 		}
-		__inst0_next = append(__inst0_next, __n2)
+		__inst0_next = append(__inst0_next, __n5)
 		__inst0_i = (__inst0_i + 1)
-		__n2__el := __n2.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
-		m.__slot0 = append(m.__slot0, __n2__el)
+		__n5__el := __n5.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -337,12 +366,16 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n7_changed_handler() {
+func (m *Model) __n3_changed_handler() {
+	m.value__inst0 = gtk4rt.EditableGetText(m.__n3)
+	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
 }
 
-func (m *Model) __n7_activate_handler() {
-	m.last = ("got " + gtk4rt.EditableGetText(m.__n7))
-	gtk4rt.LabelSetText(m.__n1, m.last)
+func (m *Model) __n3_activate_handler() {
+	m.value__inst0 = gtk4rt.EditableGetText(m.__n3)
+	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
+	m.last = ("got " + gtk4rt.EditableGetText(m.__n3))
+	gtk4rt.LabelSetText(m.__n4, m.last)
 }
 
 // RowInstance is one live instance of the Row component.
@@ -351,10 +384,14 @@ type RowInstance struct {
 	__model      *Model
 	__prop_label string
 	committed    string
+	value__inst1 string
+	value__inst2 string
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
+	__n1         gtk4rt.Handle
+	__n2         gtk4rt.Handle
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -362,33 +399,43 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__model = __model
 	c.__prop_label = __a_label
 	c.committed = ""
+	c.value__inst1 = ""
+	c.value__inst2 = ""
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
-	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n4, 6)
-	__n5 := gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(__n5, "")
-	gtk4rt.Connect(__n5, "changed", func() {
+	__n7 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n7, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n7, 6)
+	c.__n0 = gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(c.__n0, c.value__inst1)
+	gtk4rt.Connect(c.__n0, "changed", func() {
+		c.value__inst1 = gtk4rt.EditableGetText(c.__n0)
+		gtk4rt.EditableSetText(c.__n0, c.value__inst1)
 	})
-	gtk4rt.Connect(__n5, "activate", func() {
-		c.committed = gtk4rt.EditableGetText(__n5)
-		gtk4rt.LabelSetText(c.__n0, c.committed)
+	gtk4rt.Connect(c.__n0, "activate", func() {
+		c.value__inst1 = gtk4rt.EditableGetText(c.__n0)
+		gtk4rt.EditableSetText(c.__n0, c.value__inst1)
+		c.committed = gtk4rt.EditableGetText(c.__n0)
+		gtk4rt.LabelSetText(c.__n2, c.committed)
 	})
-	gtk4rt.BoxAppend(__n4, __n5)
-	__n6 := gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(__n6, "")
-	gtk4rt.Connect(__n6, "changed", func() {
+	gtk4rt.BoxAppend(__n7, c.__n0)
+	c.__n1 = gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(c.__n1, c.value__inst2)
+	gtk4rt.Connect(c.__n1, "changed", func() {
+		c.value__inst2 = gtk4rt.EditableGetText(c.__n1)
+		gtk4rt.EditableSetText(c.__n1, c.value__inst2)
 	})
-	gtk4rt.Connect(__n6, "activate", func() {
-		c.committed = ((c.__prop_label + ":") + gtk4rt.EditableGetText(__n6))
-		gtk4rt.LabelSetText(c.__n0, c.committed)
+	gtk4rt.Connect(c.__n1, "activate", func() {
+		c.value__inst2 = gtk4rt.EditableGetText(c.__n1)
+		gtk4rt.EditableSetText(c.__n1, c.value__inst2)
+		c.committed = ((c.__prop_label + ":") + gtk4rt.EditableGetText(c.__n1))
+		gtk4rt.LabelSetText(c.__n2, c.committed)
 	})
-	gtk4rt.BoxAppend(__n4, __n6)
-	c.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n0, c.committed)
-	gtk4rt.BoxAppend(__n4, c.__n0)
-	c.Root = __n4
+	gtk4rt.BoxAppend(__n7, c.__n1)
+	c.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(c.__n2, c.committed)
+	gtk4rt.BoxAppend(__n7, c.__n2)
+	c.Root = __n7
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -423,24 +470,32 @@ func (m *Model) SetItems(v []string) {
 	m.items = v
 }
 
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n3, 6)
-	m.__n7 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(m.__n7, "")
-	gtk4rt.Connect(m.__n7, "changed", m.__n7_changed_handler)
-	gtk4rt.Connect(m.__n7, "activate", m.__n7_activate_handler)
-	gtk4rt.BoxAppend(m.__n3, m.__n7)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, m.last)
-	gtk4rt.BoxAppend(m.__n3, m.__n1)
-	m.__renderSlot0(m.__n3)
-	gtk4rt.BoxAppend(m.__root, m.__n3)
+	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n6, 6)
+	m.__n3 = gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(m.__n3, m.value__inst0)
+	gtk4rt.Connect(m.__n3, "changed", m.__n3_changed_handler)
+	gtk4rt.Connect(m.__n3, "activate", m.__n3_activate_handler)
+	gtk4rt.BoxAppend(__n6, m.__n3)
+	m.__n4 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n4, m.last)
+	gtk4rt.BoxAppend(__n6, m.__n4)
+	m.__renderSlot0(__n6)
+	gtk4rt.BoxAppend(m.__root, __n6)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -452,6 +507,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:7a062dccfdfe8e3d1c810b7592c95a02
+pass sha256:36c7035d0ddfb878d664d0ba2daa51e5
 -- run/go/gtk4 --
-pass sha256:5db0510d82c7eafa4f96cb04598f4809
+pass sha256:af0f56c8cf96df31b7e42907678c763e

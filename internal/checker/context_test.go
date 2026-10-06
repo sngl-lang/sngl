@@ -123,7 +123,7 @@ func TestContextNonConstDefaultAccepted(t *testing.T) {
 	errs := checkSrc(t, `
 var x = 1
 context #foo(x)
-window #home(title="t", href="/") { text(value="") }
+window #home(title="t") { text(value="") }
 `)
 	if len(errs) != 0 {
 		t.Fatalf("expected non-const default to be accepted, got: %v", errs)
@@ -134,7 +134,7 @@ window #home(title="t", href="/") { text(value="") }
 func TestContextNoArgsRejected(t *testing.T) {
 	errs := checkSrc(t, `
 context #foo()
-window #home(title="t", href="/") { text(value="") }
+window #home(title="t") { text(value="") }
 `)
 	if len(errs) == 0 {
 		t.Fatal("expected error for zero-arg context, got none")
@@ -147,7 +147,7 @@ func TestContextDuplicateNameRejected(t *testing.T) {
 	errs := checkSrc(t, `
 context #foo("a")
 context #foo("b")
-window #home(title="t", href="/") { text(value="") }
+window #home(title="t") { text(value="") }
 `)
 	if len(errs) == 0 {
 		t.Fatal("expected duplicate-declaration error, got none")
@@ -161,10 +161,7 @@ func TestContextProviderBasic(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("expected 1 window, got %d", len(pkg.Windows))
-	}
-	win := pkg.Windows[0]
+	win := firstRootNode(t, pkg)
 	var prov *ir.ContextProvider
 	for _, s := range win.Children {
 		if p, ok := s.(*ir.ContextProvider); ok {
@@ -231,7 +228,7 @@ func TestContextConsumerBasic(t *testing.T) {
 func TestContextAssignRejected(t *testing.T) {
 	errs := checkSrc(t, `
 context #theme("light")
-window #home(title="t", href="/") {
+window #home(title="t") {
     text(value="x", @click { theme = "dark" })
 }
 `)
@@ -244,7 +241,7 @@ window #home(title="t", href="/") {
 func TestContextVarInitRejected(t *testing.T) {
 	errs := checkSrc(t, `
 context #theme("light")
-window #home(title="t", href="/") {
+window #home(title="t") {
     var t = theme
     text(value=t)
 }

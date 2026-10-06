@@ -1,0 +1,58 @@
+# Two windows are two toplevels on gtk4, both on screen once `run` is called,
+# and none when `@run` never calls it -- the Wayland protocol log counts them.
+# fyne reaches the display through Xwayland, so its runs assert only that the
+# program started, ran its timer and ended as written.
+#
+# testdata/window_several.txtar is the code.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 app.sngl
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/app --show 2>&1 | grep -c "xdg_toplevel.*set_title" || true'
+[gtk4] stdout '^2$'
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/app 2>&1 | grep -c "xdg_toplevel.*set_title" || true'
+[gtk4] stdout '^0$'
+
+sngl build --lang go --platform fyne -o fyne app.sngl
+exec ./fyne/app --show
+exec ./fyne/app
+
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+output {
+    go {
+        gtk4(@run(args, run) {
+            if args.contains("--show") {
+                run()
+            }
+        })
+        fyne(@run(args, run) {
+            if args.contains("--show") {
+                run()
+            }
+        })
+    }
+}
+
+var ticks = 0
+
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks == 2 {
+        exit(0)
+    }
+})
+
+ui.window #main(title="Main") {
+    ui.text(value="{ticks}")
+}
+
+ui.window #log(title="Log") {
+    ui.text(value="log")
+}

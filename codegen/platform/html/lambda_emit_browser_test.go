@@ -42,7 +42,7 @@ component App() node {
     chooser(@picked { picks += 1 })
     text(value="picks=" + string(picks))
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 func TestEmitInsideALambdaReachesTheHandler(t *testing.T) {

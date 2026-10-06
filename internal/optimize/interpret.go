@@ -116,6 +116,10 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if len(args) != len(fn.Params) {
 		return nil, false
 	}
+	// A body that reads the host is a producer: stored, gated, recorded.
+	if ctx != nil && ctx.host != nil && reachesHost(fn, ctx.hostMemo) {
+		return ctx.produce(fn, args)
+	}
 
 	var (
 		env *interp.Env
@@ -398,6 +402,9 @@ func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	env, err := interp.BuildEnv(ctx.pkg, "")
 	if err != nil {
 		return nil, err
+	}
+	if ctx.host != nil {
+		env.SetBuildHost(ctx.host)
 	}
 	ctx.interpEnvs[ctx.pkg] = env
 	return env, nil

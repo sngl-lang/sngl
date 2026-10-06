@@ -112,7 +112,7 @@ func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 	parent := &ir.Ident{Name: "parent"}
 	child := &ir.Ident{Name: "__entry"}
 	got := renderStmts(gc, tr.OnRemoveChild(context.Background(), parent, child))
-	want := "__parent.Remove(__entry)"
+	want := "fynelayout.Remove(__parent, __entry)"
 	if got != want {
 		t.Errorf("OnRemoveChild: got %q, want %q", got, want)
 	}
@@ -191,8 +191,8 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 	if !strings.Contains(got, "for _, __entry := range m.__slot0") {
 		t.Errorf("expected range over m.__slot0; got:\n%s", got)
 	}
-	if !strings.Contains(got, "__parent.Remove(__entry)") {
-		t.Errorf("expected __parent.Remove(__entry); got:\n%s", got)
+	if !strings.Contains(got, "fynelayout.Remove(__parent, __entry)") {
+		t.Errorf("expected fynelayout.Remove(__parent, __entry); got:\n%s", got)
 	}
 }
 

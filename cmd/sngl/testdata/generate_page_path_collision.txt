@@ -1,0 +1,21 @@
+# Two pages resolving to the same output path must error out.
+
+! sngl generate --lang=none --platform=html --out=out site.sngl
+stderr 'html: page "b" is written to dup.html, as page "a" is'
+
+-- site.sngl --
+import . "sngl:ui"
+import nav "sngl:ui/nav"
+
+output { none { html } }
+
+component main root {
+    window(title=pages.current.title) {
+        nav.stack #pages {
+            nav.page #a(href="/dup.html", title="A") { text(value="a") }
+            nav.page #b(href="/dup.html", title="B") { text(value="b") }
+        }
+    }
+}
+
+main()

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 // TestParityGolden compiles every codegen/platform/html/testdata/parity/*.sngl

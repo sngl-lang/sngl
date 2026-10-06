@@ -25,6 +25,10 @@ func runIntrinsic(id string, args []any) (any, bool, error) {
 	return result, true, err
 }
 
+// RunIntrinsic is runIntrinsic for a caller outside the package -- the test
+// runner reading a computed off an instance it wraps.
+func RunIntrinsic(id string, args []any) (any, bool, error) { return runIntrinsic(id, args) }
+
 type nativeFunc func(args []any) (any, error)
 
 // An id with no entry is one the interpreter cannot evaluate; whether that is

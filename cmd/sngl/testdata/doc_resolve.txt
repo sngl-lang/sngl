@@ -41,12 +41,12 @@ stdout 'Counter'
 # enough to write the program.
 sngl doc circle
 stdout 'sngl:ui/draw'
-stdout 'import \. "sngl:ui/draw"'
+stdout 'import draw "sngl:ui/draw"'
 stdout '# circle'
 
 sngl doc button
 stdout 'sngl:ui'
-stdout 'import \. "sngl:ui"'
+stdout 'import ui "sngl:ui"'
 
 # Except in sngl:builtin, which is the one package needing no import.
 sngl doc color

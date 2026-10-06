@@ -180,33 +180,31 @@ func TestSnglName_NoCollisions(t *testing.T) {
 	}
 }
 
-// TestPackageFS_LoadsAsAPackage pins that the generated source is loadable
-// library source and not just text: the checker builds sngl:platform/gtk4
-// from it, the widget declarations come back with their marks and types
-// applied, and the `component sngl.X` overrides in gtk4.sngl — which are
-// written against those declarations — check clean against them.
-func TestPackageFS_LoadsAsAPackage(t *testing.T) {
+// TestGIRPackage_LoadsAsAPackage pins that the generated source is loadable
+// SNGL and not just text: the gir: scheme's package checks, its widget
+// declarations come back with their marks and types applied, and the
+// `component ui.X` overrides in sngl:platform/gtk4 -- which import it and are
+// written against those declarations -- check clean against them. Checked
+// with no resolver, as `sngl doc` checks a library package: the library
+// runner is what resolves the import.
+func TestGIRPackage_LoadsAsAPackage(t *testing.T) {
 	skipWithoutGIR(t)
-	g := &Generator{}
-	if docs := checker.ProvidedDocs(g); len(docs) != 3 {
-		t.Fatalf("ProvidedDocs = %d docs; want 3 (doc.sngl, the written half and the generated one)", len(docs))
-	}
-	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platform/gtk4\"\n"))
+	doc, err := parser.Parse("t.sngl", []byte("import w \"sngl:platform/gtk4\"\nimport gtk \"gir:Gtk-4.0\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{Platforms: []ir.Platform{g}, Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		t.Errorf("checking against the gtk4 package: %s: %s", d.Pos, d.Msg)
 	}
 	var loaded *ir.Package
 	for _, imp := range pkg.Imports {
-		if imp.Path == "sngl:platform/gtk4" {
+		if imp.Path == "gir:Gtk-4.0" {
 			loaded = imp.Pkg
 		}
 	}
 	if loaded == nil {
-		t.Fatal("sngl:platform/gtk4 did not load")
+		t.Fatal("gir:Gtk-4.0 did not load")
 	}
 	var box *ir.Component
 	for _, c := range loaded.Components {
@@ -215,7 +213,7 @@ func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 		}
 	}
 	if box == nil {
-		t.Fatal("sngl:platform/gtk4 declares no GtkBox")
+		t.Fatal("gir:Gtk-4.0 declares no GtkBox")
 	}
 	if box.Intrinsic != intrinsicPrefix+"GtkBox" {
 		t.Errorf("GtkBox.Intrinsic = %q; want %s", box.Intrinsic, intrinsicPrefix+"GtkBox")
@@ -566,4 +564,29 @@ func componentDecl(t *testing.T, src, name string) string {
 		t.Fatalf("the %s declaration does not end", name)
 	}
 	return before
+}
+
+// TestWidgetSource_DeclaresActions pins the methods a generated declaration
+// carries: a GIR method that takes nothing beyond its instance and returns
+// nothing is an action a program calls through a `#id` -- `bar.pulse()` --
+// declared as the C identifier it is. A method taking a value is a setter the
+// props already reach, and one returning a value is a query nothing here
+// reads, so neither is declared.
+func TestWidgetSource_DeclaresActions(t *testing.T) {
+	src := string(widgetSource(bundledGIR(t)))
+	for _, want := range []string{
+		"#[macro.cnative(\"gtk_progress_bar_pulse\")]\nfunc GtkProgressBar.pulse()\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("generated source lacks\n%s", want)
+		}
+	}
+	for _, deny := range []string{
+		"gtk_progress_bar_set_fraction", // takes a value: the fraction prop's setter
+		"gtk_progress_bar_get_fraction", // returns one
+	} {
+		if strings.Contains(src, deny) {
+			t.Errorf("generated source declares %s", deny)
+		}
+	}
 }

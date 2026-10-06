@@ -12,14 +12,17 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Run implements codegen.Runner. It serves the generated static assets over
-// HTTP. The listen address comes from the "listen" option (default ":0").
-func (g *Generator) Run(dir string, opts *ir.StructLit, _ []string) error {
-	var cfg htmlConfig
-	if err := codegen.ApplyOptions(&cfg, opts); err != nil {
-		return fmt.Errorf("html: %w", err)
-	}
-	addr := cfg.Listen
+func init() {
+	codegen.RegisterCommand("html.serve", func(_ *ir.StructLit, args []any) (any, error) {
+		dir, _ := args[0].(string)
+		listen, _ := args[1].(string)
+		return nil, serve(dir, listen)
+	})
+}
+
+// serve answers `html.serve`, html's run command: it serves the generated
+// static assets over HTTP at addr, ":0" when empty.
+func serve(dir, addr string) error {
 	if addr == "" {
 		addr = ":0"
 	}

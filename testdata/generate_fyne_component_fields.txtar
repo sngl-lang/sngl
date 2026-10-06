@@ -45,6 +45,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -57,22 +58,50 @@ type Issue struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	current Issue
+	current        Issue
+	visible__inst0 bool
 
-	__n4 *fyne.Container
-	__n5 *widget.Label
-	__n6 *fyne.Container
-	__n0 *widget.Label
-	__n1 *widget.Label
-	__n2 *widget.Label
-	__n3 *widget.Label
+	app     *fynelayout.Toplevel
+	__n4    *fyne.Container
+	__n5    *widget.Label
+	__n6    *fyne.Container
+	__n0    *widget.Label
+	__n1    *widget.Label
+	__n2    *widget.Label
+	__n3    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.current = Issue{}
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) app_closed_handler() {
+}
+
+func (m *Model) app_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.app.SetVisible(m.visible__inst0)
+}
+
+// appClosed invokes the OnClosed callback on the #app widget; for tests.
+func (m *Model) appClosed() {
+	if m.app.OnClosed != nil {
+		m.app.OnClosed()
+	}
+}
+
+// appVisible invokes the OnVisible callback on the #app widget; for tests.
+func (m *Model) appVisible(__visible bool) {
+	if cb := m.app.OnVisible; cb != nil {
+		m.app.OnVisible = nil
+		cb(__visible)
+		m.app.OnVisible = cb
+	}
 }
 
 func (m *Model) Current() Issue {
@@ -83,8 +112,25 @@ func (m *Model) SetCurrent(v Issue) {
 	m.current = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.app.Container
+	}
+	m.__built = true
+	m.app = fynelayout.NewToplevel()
+	m.app.SetTitle("t")
+	m.app.SetVisible(m.visible__inst0)
+	m.app.OnClosed = m.app_closed_handler
+	m.app.OnVisible = m.app_visible_handler
 	m.__n4 = container.NewVBox()
 	m.__n5 = widget.NewLabel("")
 	m.__n5.SetText("header")
@@ -103,18 +149,17 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetText(m.current.Assignee)
 	m.__n6.Add(m.__n3)
 	m.__n4.Add(m.__n6)
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	m.app.Add(m.__n4)
+	fynelayout.AppAttach(m.app)
+	return m.app.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:2815db32627926d704383c7cca7d090b
+pass sha256:8f1e076054d24ecc8f8440bafdee05e3

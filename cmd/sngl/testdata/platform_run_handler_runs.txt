@@ -1,0 +1,80 @@
+# A platform's @run runs before the loop, with the command line; `run` presents
+# the window and runs the loop, so the code after it waits for the loop to end.
+# Not called, the handler returns, the loop runs with no window, and the timer
+# still ticks -- which is how a status bar launched by i3 starts without a
+# window. Each run ends from the tick, so "after" appears only where run was
+# not called.
+#
+# testdata/platform_run_handler.txtar is the code.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 app.sngl
+[gtk4] exec ./gtk4/app
+[gtk4] cmp stdout hidden.txt
+[gtk4] exec ./gtk4/app --window x
+[gtk4] cmp stdout shown.txt
+
+sngl build --lang go --platform fyne -o fyne app.sngl
+exec ./fyne/app
+cmp stdout hidden.txt
+exec ./fyne/app --window x
+cmp stdout shown.txt
+
+# `sngl run` is sngl:language/go's gen.run, which every Go platform inherits:
+# the same binary, handed the command line after `--`.
+sngl run --lang go --platform fyne app.sngl
+cmp stdout hidden.txt
+sngl run --lang go --platform fyne app.sngl -- --window x
+cmp stdout shown.txt
+
+-- hidden.txt --
+before 0
+after
+tick 0
+-- shown.txt --
+before 2
+tick 2
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+var n = 0
+
+output {
+    go {
+        gtk4(@run(args, run) {
+            start(args, run)
+        })
+        fyne(@run(args, run) {
+            start(args, run)
+        })
+    }
+}
+
+// Before `run` is before the loop; after it, after the loop has exited. A
+// write here is state the tree is built from, not an update to one.
+func start(args list<string>, run func()) {
+    print("before {args.length}\n")
+    n = args.length
+    if args.contains("--window") {
+        run()
+    }
+    print("after\n")
+}
+
+time.timer(interval=100ms, @tick {
+    print("tick {n}\n")
+    exit(0)
+})
+
+ui.window {
+    ui.text(value="{n}")
+}

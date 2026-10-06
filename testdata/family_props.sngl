@@ -1,0 +1,44 @@
+// SKIP(codegen) "a family value reaches a compiled target with sngl:ui/nav's overrides, in C2's later commits"
+// A family declares the props its members share, and a handle to a member is
+// a value of the family's type: a func taking the family reads those props
+// off any member, a generic one included, and a family value compares with a
+// member by identity.
+
+import . "sngl:test"
+import build "sngl:build"
+
+component suit(name string, color string = "black") build.family
+
+component plain(name string) suit {}
+
+component ranked<T = int>(name string, rank T, color string) suit {}
+
+component hand(name string) suit {
+    plain #spades(name="spades")
+    ranked #hearts(name="hearts", rank=3, color="red")
+}
+
+func nameOf(s suit) => s.name
+
+func colorOf(s suit) => s.color
+
+func held(h hand) suit {
+    return h.hearts
+}
+
+func testAFamilyValueReadsItsProps(t Test, c hand) {
+    t.assert(nameOf(c.spades) == "spades")
+    t.assert(nameOf(c.hearts) == "hearts")
+    t.assert(c.hearts.rank == 3)
+}
+
+func testAnOmittedPropHoldsTheFamilysDefault(t Test, c hand) {
+    t.assert(colorOf(c.spades) == "black")
+    t.assert(c.spades.color == "black")
+    t.assert(colorOf(c.hearts) == "red")
+}
+
+func testAFamilyValueComparesByIdentity(t Test, c hand) {
+    t.assert(held(c) == c.hearts)
+    t.assert(held(c) != c.spades)
+}

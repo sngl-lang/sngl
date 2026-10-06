@@ -381,8 +381,6 @@ func places(stmts []ir.Stmt, match func(*ir.NodeInst) bool) bool {
 		n, ok := s.(*ir.NodeInst)
 		switch {
 		case !ok:
-		case ir.IsWindowNode(n):
-			return ir.SkipDir
 		case match(n):
 			found = true
 			return ir.SkipAll

@@ -43,9 +43,9 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
+</span>
+<span id="__n2" data-sngl-id="__n2">
 </span>
 <button id="$0">
   <span>Update</span>
@@ -54,29 +54,29 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "World", count__inst0: 0 };
+  var state = { name__inst0: "World", count__inst0: 0, visible__inst1: true };
   function update__inst0(newName, newCount) {
     state.name__inst0 = newName;
-    __n0.textContent = state.name__inst0;
+    __n1.textContent = state.name__inst0;
     state.count__inst0 = newCount;
-    __n1.textContent = String(state.count__inst0);
+    __n2.textContent = String(state.count__inst0);
   }
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $0.addEventListener("click", function() {
     update__inst0("Hello", 5);
   });
   function __sngl_init() {
-    __n0.textContent = state.name__inst0;
-    __n1.textContent = String(state.count__inst0);
+    __n1.textContent = state.name__inst0;
+    __n2.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:abaf30869dcba2b59034fe5d444b12f8
+pass sha256:4217a1d3e2dac5e1c7c34a3cb8e9c782

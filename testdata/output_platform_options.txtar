@@ -34,35 +34,80 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *widget.Label
+	visible__inst0 bool
+
+	w       *fynelayout.Toplevel
+	__n0    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) w_closed_handler() {
+}
+
+func (m *Model) w_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.w.SetVisible(m.visible__inst0)
+}
+
+// wClosed invokes the OnClosed callback on the #w widget; for tests.
+func (m *Model) wClosed() {
+	if m.w.OnClosed != nil {
+		m.w.OnClosed()
+	}
+}
+
+// wVisible invokes the OnVisible callback on the #w widget; for tests.
+func (m *Model) wVisible(__visible bool) {
+	if cb := m.w.OnVisible; cb != nil {
+		m.w.OnVisible = nil
+		cb(__visible)
+		m.w.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.w.Container
+	}
+	m.__built = true
+	m.w = fynelayout.NewToplevel()
+	m.w.SetVisible(m.visible__inst0)
+	m.w.OnClosed = m.w_closed_handler
+	m.w.OnVisible = m.w_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText("hello")
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.w.Add(m.__n0)
+	fynelayout.AppAttach(m.w)
+	return m.w.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/none/html/index.html --
@@ -83,11 +128,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0793be9a91bf1bd9f2a4b6409b3efed7
+pass sha256:77f74bfacc9713ba2ad6cc58ca27892b
 -- run/none/html --
-pass sha256:2a6feb6f21dfc735d9da4cc475fa404e
+pass sha256:55204b97cbc2b2297786166518136b1d
