@@ -11,7 +11,9 @@ import . "sngl:test"
 component main node {
     var open = false
     modal(open=open, title="Hello", closable=true) {
-        text(value="body")
+        component content {
+            text(value="body")
+        }
     }
 }
 

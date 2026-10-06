@@ -1,6 +1,7 @@
 // A component's refs are the ids its own body writes. An id in a component it
 // instantiates is that component's, and an id in a slot population is the
-// population's: neither is reached off the outer instance.
+// population's: neither is reached off the outer instance directly. Each is
+// reached through the node that holds it: `c.inbox.lbl`, `c.shell.head`.
 
 import . "sngl:ui"
 import . "sngl:test"
@@ -33,8 +34,8 @@ func testScope(t Test, c page) {
     var through = c.inbox.lbl
     var inCallee = c.own // ERROR(check) "no member \"own\" on component page"
     var bare = c.body
-    var populated = c.head      // ERROR(check) "no member \"head\" on component page"
-    var viaShell = c.shell.head // ERROR(check) "no member \"head\" on component frame"
+    var populated = c.head // ERROR(check) "no member \"head\" on component page"
+    var viaShell = c.shell.head
 }
 
 window {

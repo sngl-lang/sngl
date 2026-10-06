@@ -1,5 +1,5 @@
-Two callers hand one component different children, which it forwards to a
-runtime instance of another -- the copies passInstanceSlots makes must not be
+Two callers hand one component different content, which it forwards to a
+runtime instance of another as that one's children -- the copies passInstanceSlots makes must not be
 shared between them.
 
 `Row` is built at run time and forwards its children to `Card`, also built at
@@ -41,13 +41,13 @@ component Card(children ...component) node {
     }
 }
 
-component Row(children ...component) node {
+component Row(item list<component node>) node {
     var open = true
 
     hbox {
         for var k = [1, 2] {
             Card {
-                children
+                item {}
             }
         }
     }
@@ -59,12 +59,16 @@ window {
     vbox {
         for var it = items {
             Row {
-                text(value="ALPHA {it}")
+                component item {
+                    text(value="ALPHA {it}")
+                }
             }
         }
         for var it = items {
             Row {
-                button(text="BETA")
+                component item {
+                    button(text="BETA")
+                }
             }
         }
     }

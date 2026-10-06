@@ -61,7 +61,9 @@ func testRaiseInFallbackIsCaught(t Test, c underFallback) {
         c.go.click()
     }
     t.assert(c.caught == "first")
-    c.guard.retry.click()
+    if c.guard.retry != null {
+        c.guard.retry.click()
+    }
     t.assert(c.caught == "again")
 }
 

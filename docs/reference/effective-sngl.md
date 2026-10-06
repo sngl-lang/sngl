@@ -702,12 +702,12 @@ ui.window {
 }
 ```
 
-A named slot is populated by name with a nested `component`. The slot's type bounds how many: bare is any number, `option<T>` none or one. A slot may also hand its population arguments, declared in its parameter list and bound by position:
+A named slot is populated by name with a nested `component`. Its type says how often the body inserts it: bare is exactly once, `option<…>` at most once, `list<…>` any number of times -- and a node in the population reads the same way through the node it fills. A slot may also hand its population arguments, declared in its parameter list and bound by position:
 
 ```sngl
 import ui "sngl:ui"
 
-component Panel(title string, header component option<ui.node>, content ...component ui.node) ui.node {
+component Panel(title string, header option<component ui.node>, content ...component ui.node) ui.node {
     ui.vbox {
         header
         ui.text(value=title)
@@ -715,7 +715,7 @@ component Panel(title string, header component option<ui.node>, content ...compo
     }
 }
 
-component Rows(items list<string>, row component(item string, index int) ui.node) ui.node {
+component Rows(items list<string>, row list<component(item string, index int) ui.node>) ui.node {
     ui.vbox {
         for var i, item = items {
             row(item, i)
@@ -1465,8 +1465,10 @@ ui.window {
     ui.vbox(style={padding=16px}) {
         ui.button(text="Open", @click { showModal = true })
         ui.modal(open=showModal, title="Settings", @close { showModal = false }) {
-            ui.text(value="Content goes here")
-            ui.button(text="Close", @click { showModal = false })
+            component content {
+                ui.text(value="Content goes here")
+                ui.button(text="Close", @click { showModal = false })
+            }
         }
     }
 }

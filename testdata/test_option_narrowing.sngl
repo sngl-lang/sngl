@@ -34,15 +34,15 @@ component main node {
 }
 
 func testNarrowsInThenBranch(t Test, c main) {
-    t.assert(c.present.value == "6")
+    t.assert(c.present != null && c.present.value == "6")
 }
 
 func testNarrowsInElseBranch(t Test, c main) {
-    t.assert(c.missing.value == "none")
+    t.assert(c.missing != null && c.missing.value == "none")
 }
 
 func testNarrowsThroughAndChain(t Test, c main) {
-    t.assert(c.chained.value == "6")
+    t.assert(c.chained != null && c.chained.value == "6")
 }
 
 func testNarrowsAFieldPath(t Test) {

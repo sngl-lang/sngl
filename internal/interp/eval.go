@@ -1246,6 +1246,13 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 
+	if e.Populated {
+		node, err := env.Eval(e.Via)
+		if err != nil {
+			return nil, err
+		}
+		return populationRef(e, node)
+	}
 	obj, cached := env.spreadVals[e.Spread]
 	if e.Spread == 0 || !cached {
 		var err error
@@ -1257,11 +1264,11 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		if e.Ref == ir.RefNone {
 			return cv.GetField(e.Field)
 		}
-		nodes, err := cv.ElementRef(e.Field)
+		set, err := cv.ElementRef(e.Field, nil)
 		if err != nil {
 			return nil, err
 		}
-		return shapeElementRef(e, nodes)
+		return shapeElementRef(e, set)
 	}
 	if t := e.Operand.ExprType(); e.Field == "length" && t != nil {
 		if id, ok := lengthIntrinsics[t.Kind]; ok {

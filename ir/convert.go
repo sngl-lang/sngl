@@ -272,6 +272,8 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		var typ ast.TypeExpr = ct
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
+		} else if s.Inserts != InsertOne {
+			typ = &ast.NamedType{Name: string(s.Inserts), TypeArgs: []ast.TypeExpr{ct}}
 		}
 		props = append(props, ast.Param{Name: s.Name, Type: typ, Const: s.Const})
 	}

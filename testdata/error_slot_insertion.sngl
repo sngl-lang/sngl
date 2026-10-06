@@ -1,9 +1,9 @@
-// A rest slot is inserted exactly once, where it always renders: the children
-// a caller writes bare are the caller's, and one written node has to be one
-// rendered node.
+// A slot is inserted as often as its declared count says, over every path
+// through the body: exactly once for a rest slot and a bare named slot,
+// at most once for option<…>, any number of times for list<…>. The count is
+// what a ref read through the slot is wrapped in, so it has to be true.
 
 import . "sngl:ui"
-import ui "sngl:ui"
 
 component twice(children ...component) node {
     vbox {
@@ -12,13 +12,9 @@ component twice(children ...component) node {
     }
 }
 
-component either(on bool, children ...component) node {
+component sometimes(on bool, children ...component) node {
     if on {
         children // ERROR(check) "rest slot \"children\" is inserted under an if"
-    } else {
-        vbox {
-            children // ERROR(check) "rest slot \"children\" is inserted under an if"
-        }
     }
 }
 
@@ -38,7 +34,7 @@ component guarded(children ...component) node {
     }
 }
 
-component wrapped(header component) node {
+component wrapped(header option<component>) node {
     vbox {
         header {}
     }
@@ -47,7 +43,7 @@ component wrapped(header component) node {
 component populated(children ...component) node {
     wrapped {
         component header {
-            children // ERROR(check) "rest slot \"children\" is inserted under a slot population"
+            children // ERROR(check) "rest slot \"children\" is inserted under an option slot's population"
         }
     }
 }
@@ -66,12 +62,6 @@ component emptied(xs list<int>, children ...component) node {
     }
 }
 
-component windowed(children ...component node) root {
-    ui.window {
-        children // ERROR(check) "rest slot \"children\" is inserted under a window"
-    }
-}
-
 component scoped(children ...component(n int) node) node {
     for var n = [1, 2] {
         children(n) // ERROR(check) "rest slot \"children\" is inserted under a for"
@@ -84,8 +74,54 @@ component never(children ...component) node { // ERROR(check) "rest slot \"child
 
 component empty(children ...component) node {} // ERROR(check) "rest slot \"children\" of empty is never inserted"
 
-// Through a callee's own rest slot, a context override and a boundary with no
-// fallback, the insertion still renders once.
+// A bare named slot is exactly one, the same way.
+component card(on bool, head component, foot component) node { // ERROR(check) "slot \"foot\" of card is never inserted"
+    if on {
+        head {} // ERROR(check) "slot \"head\" is inserted under an if"
+    }
+}
+
+// option<…> may be left out, but not repeated.
+component maybe(on bool, tip option<component>) node {
+    vbox {
+        tip {}
+        tip {} // ERROR(check) "slot \"tip\" is inserted more than once"
+    }
+}
+
+component looped(tip option<component>) node {
+    for var i = [1, 2] {
+        tip {} // ERROR(check) "slot \"tip\" is inserted under a for"
+    }
+}
+
+// Each branch of an if/else renders the slot once, so together they do; a
+// population of an exactly-one slot renders once; a callee's rest slot, a
+// context override and a boundary with no fallback pass the insertion through.
+component either(on bool, children ...component) node {
+    if on {
+        children
+    } else {
+        vbox {
+            children
+        }
+    }
+}
+
+component framed(header component) node {
+    vbox {
+        header {}
+    }
+}
+
+component forwarded(children ...component) node {
+    framed {
+        component header {
+            children
+        }
+    }
+}
+
 component passed(children ...component) node {
     vbox {
         children
@@ -106,6 +142,16 @@ component toned(children ...component) node {
             children
         }
     }
+}
+
+component shown(on bool, tip option<component>, rows list<component>) node {
+    if on {
+        tip {}
+    }
+    for var i = [1, 2] {
+        rows {}
+    }
+    rows {}
 }
 
 window {

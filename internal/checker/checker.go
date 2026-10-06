@@ -2795,6 +2795,19 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
+	if w := ast.SlotWrapper(pd.Type); w != nil {
+		slot.Inserts = c.slotInserts(w)
+	}
+	// A named slot is populated once by name, so what it can count is how
+	// often the body inserts that population; a count of nodes is the rest
+	// slot's, whose children a caller writes bare.
+	if !rest && slot.Card != ir.SlotAny {
+		want := "component() T"
+		if slot.Card == ir.SlotOptional {
+			want = "option<component() T>"
+		}
+		c.error(pd.Pos, "slot %q counts its insertions, not its nodes: write `%s %s`", pd.Name, pd.Name, want)
+	}
 	for i, p := range ct.Params {
 		if vt, ok := p.Type.(*ast.VariadicType); ok {
 			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect; declare a component entry, `%s component`, and populate it by name at the insertion", pd.Name, cmp.Or(p.Name, "content"))
@@ -4322,7 +4335,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				}
 			}
 		}
-		c.checkRestInsertion(comp)
+		c.checkSlotInsertions(comp)
 	}
 
 	c.checkViewVarHandlers(comp.Body)
@@ -4662,9 +4675,9 @@ func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
 	for _, count := range counts {
 		switch count {
 		case countOption:
-			k = joinRef(k, ir.RefOption)
+			k = k.Inside(ir.RefOption)
 		case countList:
-			k = joinRef(k, ir.RefList)
+			k = k.Inside(ir.RefList)
 		}
 	}
 	return k.Wrap(typ)

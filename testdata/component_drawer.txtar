@@ -11,7 +11,9 @@ import . "sngl:test"
 component main node {
     var open = false
     drawer(open=open, side="right", size="medium") {
-        text(value="drawer content")
+        component content {
+            text(value="drawer content")
+        }
     }
 }
 

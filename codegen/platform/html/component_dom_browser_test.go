@@ -85,7 +85,7 @@ import ui "sngl:ui"
 ui.window { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
 	{"modal", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
+ui.window { var o = true modal(open=o, title="Dialog") { component content { text(value="body") } } }`,
 		[]string{"Dialog", "body"}},
 	{"divider", `import . "sngl:ui"
 import ui "sngl:ui"

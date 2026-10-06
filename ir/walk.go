@@ -97,6 +97,7 @@ func (w *walker) expr(e Expr) {
 		w.expr(x.Operand)
 	case *Select:
 		w.expr(x.Operand)
+		w.expr(x.Via)
 	case *Index:
 		w.expr(x.Operand)
 		w.expr(x.Idx)

@@ -13,7 +13,12 @@ func EventTriggerTarget(c *ir.Call) (recv, id string, ok bool) {
 	if c == nil || c.Event == "" {
 		return "", "", false
 	}
-	sel, isSel := c.Receiver.(*ir.Select)
+	recvExpr := c.Receiver
+	// A receiver read after a null test is the narrowing of it.
+	if conv, narrowed := recvExpr.(*ir.Conversion); narrowed {
+		recvExpr = conv.Operand
+	}
+	sel, isSel := recvExpr.(*ir.Select)
 	if !isSel {
 		return "", "", false
 	}

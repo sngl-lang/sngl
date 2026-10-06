@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"maps"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -24,7 +25,7 @@ func (env *Env) ResolveElementRef(id string) (any, error) {
 		return nil, err
 	}
 	var nodes []*Node
-	for _, n := range v.Refs(id) {
+	for _, n := range v.Refs(id, nil) {
 		if !n.IsComponent() || !n.Expanded {
 			nodes = append(nodes, n)
 		}
@@ -300,36 +301,187 @@ func capturedContext(env *Env) map[*ir.Context]any {
 	return maps.Clone(env.ContextVals)
 }
 
-// shapeElementRef hands back the nodes a `c.<id>` read found in the shape the
-// checker typed it by: a list whatever its length, an option as the node or
+// RefHit is one node a ref read found, with the value a program sees for it.
+type RefHit struct {
+	Value any
+	Node  *Node
+}
+
+// RefSet is what a ref read found, and the view it was found in, whose
+// iterations say what a list of the hits is indexed by.
+type RefSet struct {
+	View *View
+	// Supplied is the instance a population read went through, nil for a
+	// read of the owner's own body, and Via the node that made it.
+	Supplied *Env
+	Via      *ir.NodeInst
+	Hits     []RefHit
+}
+
+// shapeElementRef hands back the nodes a ref read found in the shape the
+// checker typed it by: a list per loop or list slot, in iteration order and
+// with an entry for an iteration that rendered none, an option as the node or
 // nil, and one node as itself. A count the position does not allow is a
 // disagreement between the checker's walk and the rendered tree, and is
 // reported rather than papered over.
-func shapeElementRef(e *ir.Select, nodes []any) (any, error) {
-	switch e.Ref {
-	case ir.RefList:
-		if nodes == nil {
-			return []any{}, nil
+func shapeElementRef(e *ir.Select, set RefSet) (any, error) {
+	s := refShaper{field: e.Field, loops: refLoopsOf(set, e.Field)}
+	base := -1
+	if set.View != nil {
+		for _, it := range set.View.iterations {
+			if it.owner == set.View.owner && it.supplied == set.Supplied {
+				s.iterations = append(s.iterations, it)
+				base = it.base
+			}
 		}
-		return nodes, nil
+	}
+	for _, h := range set.Hits {
+		base = h.Node.Base
+	}
+	var prefix []string
+	switch {
+	case len(set.Hits) > 0:
+		prefix = set.Hits[0].Node.Iters[:base]
+	case len(s.iterations) > 0:
+		prefix = s.iterations[0].path[:base]
+	}
+	s.base = len(prefix)
+	return s.at(string(e.Ref), prefix, set.Hits)
+}
+
+type refShaper struct {
+	field      string
+	iterations []iteration
+	// loops are the loops a list level of the read is, outermost first, and
+	// base where the first of them starts in an iteration's path.
+	loops []any
+	base  int
+}
+
+// at shapes the hits under prefix by the wrappers left in k.
+func (s refShaper) at(k string, prefix []string, hits []RefHit) (any, error) {
+	switch k[0] {
+	case ir.RefList:
+		out := []any{}
+		depth := len(prefix) - s.base
+		for _, it := range s.iterations {
+			if depth >= len(s.loops) || it.loop != s.loops[depth] || len(it.path) != len(prefix)+1 || !slices.Equal(it.path[:len(prefix)], prefix) {
+				continue
+			}
+			var sub []RefHit
+			for _, h := range hits {
+				if len(h.Node.Iters) > len(prefix) && h.Node.Iters[len(prefix)] == it.path[len(prefix)] {
+					sub = append(sub, h)
+				}
+			}
+			v, err := s.at(k[1:], it.path, sub)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, v)
+		}
+		return out, nil
 	case ir.RefOption:
-		switch len(nodes) {
+		switch len(hits) {
 		case 0:
 			return nil, nil
 		case 1:
-			return nodes[0], nil
+			return s.at(k[1:], prefix, hits)
 		}
-	case ir.RefOne:
-		if len(nodes) == 1 {
-			return nodes[0], nil
-		}
+		return nil, fmt.Errorf("#%s names %d nodes, where its position allows at most one", s.field, len(hits))
 	}
-	return nil, fmt.Errorf("#%s names %d nodes, where its position allows %s", e.Field, len(nodes), refAllows(e.Ref))
+	if len(hits) != 1 {
+		return nil, fmt.Errorf("#%s names %d nodes, where its position allows exactly one", s.field, len(hits))
+	}
+	return hits[0].Value, nil
 }
 
-func refAllows(k ir.RefCount) string {
-	if k == ir.RefOption {
-		return "at most one"
+// populationRef answers `<node>.<id>` for an id written in a population of
+// node's slots: the nodes the instance that rendered node supplied to it,
+// node being obj -- a component of the program's as its own value, any other
+// as its props.
+func populationRef(e *ir.Select, obj any) (any, error) {
+	var by ComponentValue
+	var inst *Env
+	var via *ir.NodeInst
+	switch v := obj.(type) {
+	case ComponentValue:
+		by, inst, via = v.Populated()
+	case map[string]any:
+		by, _ = v["__ownerComponent"].(ComponentValue)
+		inst, _ = v["__compEnv"].(*Env)
+		via, _ = v["__inst"].(*ir.NodeInst)
 	}
-	return "exactly one"
+	if by == nil || inst == nil {
+		return nil, fmt.Errorf("#%s is read through a node no instance rendered", e.Field)
+	}
+	set, err := by.ElementRef(e.Field, inst)
+	if err != nil {
+		return nil, err
+	}
+	set.Via = via
+	return shapeElementRef(e, set)
+}
+
+// refLoopsOf is the loops between where a ref read starts and the first node
+// #id names, outermost first: the owner's body for a read of its own, the
+// population Via was handed for a read through it -- led, for a list slot, by
+// the population itself, which renders once per insertion.
+func refLoopsOf(set RefSet, id string) []any {
+	if set.Via == nil {
+		if set.View == nil || set.View.owner == nil {
+			return nil
+		}
+		loops, _ := refLoops(set.View.owner.BodyStmts, id, nil)
+		return loops
+	}
+	for name, sc := range set.Via.Slots {
+		var lead []any
+		if comp := set.Via.Component; comp != nil {
+			for _, slot := range comp.Slots {
+				if slot.Name == name && comp.InsertsOf(slot) == ir.InsertMany {
+					lead = []any{sc}
+				}
+			}
+		}
+		if loops, ok := refLoops(sc.Body, id, lead); ok {
+			return loops
+		}
+	}
+	return nil
+}
+
+func refLoops(stmts []ir.Stmt, id string, outer []any) ([]any, bool) {
+	try := func(body []ir.Stmt, loops []any) ([]any, bool) { return refLoops(body, id, loops) }
+	for _, st := range stmts {
+		var found []any
+		ok := false
+		switch n := st.(type) {
+		case *ir.NodeInst:
+			if n.ID == id {
+				return outer, true
+			}
+			found, ok = try(n.Children, outer)
+		case *ir.If:
+			if found, ok = try(n.Body, outer); !ok {
+				found, ok = try(n.Else, outer)
+			}
+		case *ir.For:
+			if found, ok = try(n.Body, append(slices.Clip(outer), n)); !ok {
+				found, ok = try(n.Else, outer)
+			}
+		case *ir.ErrorBoundary:
+			if found, ok = try(n.Children, outer); !ok {
+				found, ok = try(n.Failed, outer)
+			}
+		case *ir.ContextProvider:
+			found, ok = try(n.Children, outer)
+		case *ir.SlotInst:
+			found, ok = try(n.Children, outer)
+		}
+		if ok {
+			return found, true
+		}
+	}
+	return nil, false
 }

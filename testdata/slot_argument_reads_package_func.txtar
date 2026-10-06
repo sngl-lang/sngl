@@ -28,7 +28,7 @@ output {
 
 func twice(n int) => n * 2
 
-component frame(n int, label component(depth int) node) node {
+component frame(n int, label list<component(depth int) node>) node {
     vbox {
         label(twice(n))
         if n > 0 {

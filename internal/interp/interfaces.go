@@ -19,9 +19,15 @@ type TestingT interface {
 type ComponentValue interface {
 	GetField(field string) (any, error)
 	// ElementRef is every node `#id` names in this instance's own body, in mount
-	// order: an element as its props, a component of the program's as its own
-	// value. The read's ir.RefCount says what shape the caller gets.
-	ElementRef(id string) ([]any, error)
+	// order -- or, with supplied set, in a population this instance wrote for
+	// that one: an element as its props, a component of the program's as its
+	// own value. The read's ir.RefCount says what shape the caller gets.
+	ElementRef(id string, supplied *Env) (RefSet, error)
+	// Populated is the instance whose body rendered this one, and so wrote the
+	// populations it was handed -- nil for the instance a test was given --
+	// this one's own scope, which those populations were supplied to, and the
+	// node that rendered it.
+	Populated() (by ComponentValue, inst *Env, node *ir.NodeInst)
 	SetField(op ast.AssignOp, field string, val any) error
 	// InvokeMethod attempts to dispatch `method` on the component. Returns
 	// (result, true, err) when the method exists (including `@event` no-ops);

@@ -53,7 +53,7 @@ grep '"level "' out6/index.html
 -- rebind.sngl --
 import . "sngl:ui"
 
-component frame(n int, label component(depth int) node) node {
+component frame(n int, label list<component(depth int) node>) node {
     vbox {
         label(n)
         if n > 0 {

@@ -1012,6 +1012,30 @@ type SlotDecl struct {
 	// Const is the `const` prefix on the slot parameter: a population is held
 	// to a const component's render rule.
 	Const bool `json:",omitempty"`
+	// Inserts is how many times the body inserts a named slot, and so how many
+	// copies of its population render: what a ref read through it is wrapped
+	// in. A rest slot is inserted exactly once and counts nodes with Card.
+	Inserts SlotInserts `json:",omitempty"`
+}
+
+// SlotInserts is how many times a named slot is inserted: its declared type's
+// `option<…>` or `list<…>` wrapper, or neither.
+type SlotInserts string
+
+const (
+	InsertOne      SlotInserts = ""       // exactly once, where it always renders
+	InsertOptional SlotInserts = "option" // at most once, possibly conditionally
+	InsertMany     SlotInserts = "list"   // any number of times
+)
+
+// InsertsOf is how often c renders what fills slot. That is the slot's
+// declared count, except where c's builtin kind says more: a nav page's
+// content is mounted only while its stack shows the page.
+func (c *Component) InsertsOf(slot *SlotDecl) SlotInserts {
+	if c.Builtin == BuiltinNavPage && slot.Rest {
+		return InsertOptional
+	}
+	return slot.Inserts
 }
 
 // Arity is how many names a population of the slot binds.

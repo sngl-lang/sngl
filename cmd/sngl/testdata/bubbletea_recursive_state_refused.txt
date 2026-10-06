@@ -34,7 +34,7 @@ sngl generate --platform html --out out6 lifetime.sngl
 ! sngl generate --lang go --platform bubbletea --out out7 canvas.sngl
 stderr 'canvas.sngl:8:24: a canvas in the recursive component "tower" is drawn once per level'
 ! sngl generate --lang go --platform bubbletea --out out8 canvas_content.sngl
-stderr 'canvas_content.sngl:19:20: a canvas handed to the recursive component "tower" is drawn once per level'
+stderr 'canvas_content.sngl:22:24: a canvas handed to the recursive component "tower" is drawn once per level'
 sngl generate --platform html --out out9 canvas.sngl
 sngl generate --platform html --out out10 canvas_content.sngl
 
@@ -132,12 +132,14 @@ window {
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 
-component tower(n int, children ...component) node {
+component tower(n int, content list<component node>) node {
     vbox {
-        children
+        content {}
         if n > 0 {
             tower(n=n - 1) {
-                children
+                component content {
+                    content {}
+                }
             }
         }
     }
@@ -147,8 +149,10 @@ window {
     var depth = 2
 
     tower(n=depth) {
-        draw.canvas(width=20px, height=10px) {
-            draw.circle(cx=5.0, cy=5.0, r=3.0)
+        component content {
+            draw.canvas(width=20px, height=10px) {
+                draw.circle(cx=5.0, cy=5.0, r=3.0)
+            }
         }
     }
 }

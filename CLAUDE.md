@@ -1378,13 +1378,33 @@ checker applies it where it registers the declaration.
 the parameter list beside the props and events, so a component's whole API is
 one list. `slot` is not a keyword. The type carries the whole of a slot's
 contract: `component(Row)`'s parenthesised list is what the slot is *invoked*
-with at its insertion point, and the trailing type is the tree it *accepts*,
-wrapped in whatever bounds the count — bare is any number, `tree.one<T>`
-exactly one, `option<T>` none or one. Bare `tree.one` is a count and no
-family: "exactly one of whatever this slot already accepts", which is the
-tree the component declaring it belongs to. It used to say that through a
-defaulted type parameter, `one<T = default>`, and there is no default family
-to point one at any more.
+with at its insertion point, and the trailing type is the tree it *accepts*.
+
+**A named slot's count is how often the body inserts it**, written around the
+whole component type (Jonathan's call): bare is exactly once, wherever the body
+goes; `option<component() T>` at most once, possibly under an `if`;
+`list<component() T>` any number of times. It is a count of *insertions*, not
+of the nodes a caller writes, because it is what a ref read through the slot is
+wrapped in -- `c.t.row` is a list for a list slot, `c.guard.gone` an option for
+boundary's `failed` -- and so it has to be true of the body.
+`checkSlotInsertions` holds it, counting every path: each branch of an
+`if`/`else` inserting once is once, a `for` is many, a boundary's fallback or a
+slot fallback may be none, and a population of another node's slot renders as
+often as *that* slot is inserted. A caller may still leave a named slot
+unpopulated (its insertion's block is the fallback), so nothing is required at
+the call site.
+
+The rest slot keeps counting nodes, since its fill is the children a caller
+writes bare: `...component` any number, `...component tree.one` exactly one,
+`...component option<T>` none or one -- and it is inserted exactly once, so
+bare children stay the caller's refs at the position the caller wrote them. A
+node count on a named slot is refused with the spelling that replaces it. Bare
+`tree.one` is a count and no family: "exactly one of whatever this slot
+already accepts", which is the tree the component declaring it belongs to.
+
+A builtin's kind can say more than its declaration: a nav page's content is
+mounted only while its stack shows the page, so `ir.Component.InsertsOf`
+reads it as an option, bare children and population alike.
 
 The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
 named (`cell component(row Row)`) — and **the name is contract, not
@@ -2776,7 +2796,7 @@ the doc site uses, so two readings of one document cannot differ.
   source -- as Go skips one; the docs site's tutorial is `learn/_tour.md`.
 
   The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
-  **`root`**, a const holding the whole tree, and **`site(layout component(page Page, content component ui.node) ui.node)`**, which renders
+  **`root`**, a const holding the whole tree, and **`site(layout list<component(page Page, content component ui.node) ui.node>)`**, which renders
   one `nav.page` per file -- at the file's href, titled by the frontmatter's
   `title` where `Frontmatter` has one -- with `layout` inserted around it,
   reading each page out of `root` so the tree is written once, and populates

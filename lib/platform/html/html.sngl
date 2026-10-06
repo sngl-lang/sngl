@@ -217,7 +217,6 @@ const component ui.text[platform] {
 const component ui.button[platform] {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
-        content
     }
 }
 

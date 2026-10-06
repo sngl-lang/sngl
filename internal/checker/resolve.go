@@ -840,3 +840,21 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	c.error(nt.Pos, "%s takes exactly one type argument", name)
 	return card, &ir.Type{Kind: ir.TypeComponent}
 }
+
+// slotInserts reads the `option<…>` or `list<…>` written around a named slot's
+// component type. Like the node-count wrappers it is recognised by #[builtin]
+// kind, so a program's own `option` is no count and the slot is refused.
+func (c *checker) slotInserts(w *ast.NamedType) ir.SlotInserts {
+	if sym, ok := c.scope.Lookup(w.Name); ok {
+		if sd, ok := sym.(*ir.StructDef); ok {
+			switch sd.Builtin {
+			case ir.BuiltinOption:
+				return ir.InsertOptional
+			case ir.BuiltinList:
+				return ir.InsertMany
+			}
+		}
+	}
+	c.error(w.Pos, "%s<…> around a slot is not the builtin %s, so it counts nothing; a slot's count is option<…> or list<…>", w.Name, w.Name)
+	return ir.InsertOne
+}

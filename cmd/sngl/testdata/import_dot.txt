@@ -259,9 +259,11 @@ window {
 import s "sngl:ui"
 import d "sngl:ui/draw"
 import "sngl:platform/html"
+import tr "sngl:tree"
 
 component d.canvas[html.platform] {
     s.text(value="styled")
+    #[tr.crosses] shapes
 }
 
 s.window {

@@ -85,7 +85,9 @@ func testTickPatchesInPlace(t Test, c main) {
 }
 
 func testTypedTextSurvivesATick(t Test, c main) {
-    c.field.input({value="typed"})
+    if c.field != null {
+        c.field.input({value="typed"})
+    }
     c.tick.click()
     t.snapshot("typed")
     t.assert(c.uptime == 1)

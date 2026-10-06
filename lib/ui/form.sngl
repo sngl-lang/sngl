@@ -12,7 +12,6 @@ component button(
     focusable bool = true,
     @click ClickEvent,
     @longPress LongPressEvent,
-    content ...component,
 ) node {}
 
 component _example_button node {

@@ -300,13 +300,24 @@ func (tv *testingT) recordFailure(ae *interp.AssertError, fatal bool) {
 
 // wrapChildComponent exposes a nested component instance as a value, backed
 // by the env its own state lives in.
-func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValue {
+func wrapChildComponent(n *interp.Node, by *componentValue) *componentValue {
 	return &componentValue{
-		Env:      childEnv,
-		comp:     comp,
-		compName: comp.Name,
-		body:     comp.Body,
+		Env:      n.CompEnv,
+		comp:     n.Component,
+		compName: n.Component.Name,
+		body:     n.Component.Body,
+		by:       by,
+		inst:     n.Inst,
 	}
+}
+
+// Populated is the instance this one was read off, this one's scope, and the
+// node that rendered it.
+func (cv *componentValue) Populated() (interp.ComponentValue, *interp.Env, *ir.NodeInst) {
+	if cv.by == nil {
+		return nil, cv.Env, cv.inst
+	}
+	return cv.by, cv.Env, cv.inst
 }
 
 // GetField resolves c.field on a componentValue.
@@ -365,31 +376,32 @@ func (cv *componentValue) GetField(field string) (any, error) {
 	return nil, fmt.Errorf("component has no field %q", field)
 }
 
-// ElementRef returns the nodes carrying #id that this instance's own body wrote.
-func (cv *componentValue) ElementRef(id string) ([]any, error) {
+// ElementRef returns the nodes carrying #id that this instance's own body
+// wrote, or that a population it wrote supplied to the instance supplied.
+func (cv *componentValue) ElementRef(id string, supplied *interp.Env) (interp.RefSet, error) {
 	cv.settle()
 	if cv.settleErr != nil {
 		err := cv.settleErr
 		cv.settleErr = nil
-		return nil, err
+		return interp.RefSet{}, err
 	}
 	view, err := interp.Mount(cv.Env)
 	if err != nil {
-		return nil, err
+		return interp.RefSet{}, err
 	}
-	var out []any
-	for _, n := range view.Refs(id) {
+	set := interp.RefSet{View: view, Supplied: supplied}
+	for _, n := range view.Refs(id, supplied) {
 		switch {
 		case n.Component != nil && n.CompEnv != nil && isUserComponent(n.Component):
-			out = append(out, wrapChildComponent(n.CompEnv, n.Component))
+			set.Hits = append(set.Hits, interp.RefHit{Value: wrapChildComponent(n, cv), Node: n})
 		case n.IsComponent() && n.Expanded:
 		default:
 			m := n.Map()
 			stampOwner(m, cv)
-			out = append(out, m)
+			set.Hits = append(set.Hits, interp.RefHit{Value: m, Node: n})
 		}
 	}
-	return out, nil
+	return set, nil
 }
 
 // SetField handles c.field = value.
@@ -553,11 +565,11 @@ func (cv *componentValue) childComponentByID(id string) *componentValue {
 	if err != nil {
 		return nil
 	}
-	for _, n := range view.Refs(id) {
+	for _, n := range view.Refs(id, nil) {
 		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
 			continue
 		}
-		return wrapChildComponent(n.CompEnv, n.Component)
+		return wrapChildComponent(n, cv)
 	}
 	return nil
 }

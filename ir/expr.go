@@ -175,6 +175,13 @@ type Select struct {
 	// so; this is what tells an evaluator the value is a node lookup rather
 	// than a member.
 	Ref RefCount `json:",omitempty"`
+	// Populated says Field names a node written in a slot population of the
+	// node Via reads -- `c.card.title`, through `card` -- rather than one in
+	// the body of the component Operand is an instance of. Operand is still
+	// the owner, `c`, which is the reach a compiled target answers; Via is
+	// which instance of the populated node, which only an evaluator asks.
+	Populated bool `json:",omitempty"`
+	Via       Expr `json:",omitempty"`
 	// Spread is nonzero on a field read a spread argument expanded to, one id
 	// per site, when its operand is not a plain path and so must be evaluated
 	// once for all of them (StatementSpreads).
@@ -182,24 +189,47 @@ type Select struct {
 }
 
 // RefCount is how many nodes an element ref names, which its position
-// decides: a node reached through a `for` is any number, one reached through
-// a conditional but no loop is at most one, and any other is exactly one.
-type RefCount uint8
+// decides: the wrappers around one node, outermost first, ending in `1` --
+// `l` for each loop or list slot the node is reached through, `o` for a
+// conditional or option slot. Nested loops are a list of lists, so an index
+// names the iteration it would in the loops. RefNone is no ref at all.
+type RefCount string
 
 const (
-	RefNone RefCount = iota
-	RefOne
-	RefOption
-	RefList
+	RefNone RefCount = ""
+	RefOne  RefCount = "1"
 )
+
+// RefOption and RefList are the wrappers a RefCount is spelled with.
+const (
+	RefOption byte = 'o'
+	RefList   byte = 'l'
+)
+
+// Inside is k with w wrapped around the node, inside every wrapper k has. An
+// option inside an option says nothing more, and one directly around a list
+// says nothing an empty list does not; an option inside a list stays, so the
+// list keeps one entry per iteration.
+func (k RefCount) Inside(w byte) RefCount {
+	wraps := string(k[:len(k)-1])
+	if n := len(wraps); n > 0 && wraps[n-1] == RefOption {
+		if w == RefOption {
+			return k
+		}
+		wraps = wraps[:n-1]
+	}
+	return RefCount(wraps + string(w) + "1")
+}
 
 // Wrap is t as a read with this count types it.
 func (k RefCount) Wrap(t *Type) *Type {
-	switch k {
-	case RefOption:
-		return OptionOf(t)
-	case RefList:
-		return ListOf(t)
+	for i := len(k) - 2; i >= 0; i-- {
+		switch k[i] {
+		case RefOption:
+			t = OptionOf(t)
+		case RefList:
+			t = ListOf(t)
+		}
 	}
 	return t
 }

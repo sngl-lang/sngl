@@ -20,7 +20,7 @@ struct Row {
 component table(
     rows list<Row>,
     header component,
-    cell component(Row),
+    cell list<component(Row)>,
     children ...component,
 ) node {
     vbox {

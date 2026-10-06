@@ -82,7 +82,7 @@ func markedPackage() *Package {
 			ErrorHandler: &EventHandler{Func: fn("EventHandler.Func")},
 		},
 		&Conversion{Operand: mark("Conversion.Operand")},
-		&Select{Operand: mark("Select.Operand")},
+		&Select{Operand: mark("Select.Operand"), Via: mark("Select.Via")},
 		&Index{Operand: mark("Index.Operand"), Idx: mark("Index.Idx")},
 		&StructLit{Fields: []FieldInit{{Name: "f", Value: mark("FieldInit.Value")}}},
 		&ListLit{Elems: []Expr{mark("ListLit.Elems")}},

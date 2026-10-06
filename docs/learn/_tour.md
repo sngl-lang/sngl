@@ -537,7 +537,7 @@ struct Person {
     role string
 }
 
-component Table(people list<Person>, header component, row component(Person, int)) ui.node {
+component Table(people list<Person>, header component, row list<component(Person, int)>) ui.node {
     ui.vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
         header {
             ui.text(value="People", style={fontWeight=bold})

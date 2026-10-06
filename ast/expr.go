@@ -131,8 +131,8 @@ type ComponentType struct {
 	// on its own.
 	HasParens bool
 	// Tree is what the slot accepts: the tree each supplied node belongs to,
-	// wrapped in whatever bounds the count. Nil accepts any number of the tree
-	// the declaring component itself belongs to.
+	// wrapped, on a rest slot, in whatever bounds the count of nodes. Nil
+	// accepts the tree the declaring component itself belongs to.
 	Tree TypeExpr
 }
 
@@ -157,8 +157,26 @@ func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
 		ct, isComp := v.Elem.(*ComponentType)
 		return ct, true, isComp
 	}
+	if w := SlotWrapper(t); w != nil {
+		return w.TypeArgs[0].(*ComponentType), false, true
+	}
 	ct, isComp := t.(*ComponentType)
 	return ct, false, isComp
+}
+
+// SlotWrapper is the `option<…>` or `list<…>` written around a named slot's
+// component type, which counts the slot's insertions, or nil. Matched by
+// shape: a component type is no type argument anywhere else, so whether the
+// name is the builtin is the checker's question, not this one's.
+func SlotWrapper(t TypeExpr) *NamedType {
+	nt, ok := t.(*NamedType)
+	if !ok || nt.Package != "" || len(nt.TypeArgs) != 1 || (nt.Name != "option" && nt.Name != "list") {
+		return nil
+	}
+	if _, isComp := nt.TypeArgs[0].(*ComponentType); !isComp {
+		return nil
+	}
+	return nt
 }
 
 // IsSlot reports whether p declares a slot rather than a prop.

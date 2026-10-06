@@ -148,10 +148,14 @@ ui.window {
     )
     button(text="Open", @click { showModal = true })
     modal(open=showModal, closable=true) {
-        button(text="Inc", @click { count += 1 })
+        component content {
+            button(text="Inc", @click { count += 1 })
+        }
     }
     drawer(open=showDrawer, side="right") {
-        button(text="Close", @click { showDrawer = false })
+        component content {
+            button(text="Close", @click { showDrawer = false })
+        }
     }
 }
 `

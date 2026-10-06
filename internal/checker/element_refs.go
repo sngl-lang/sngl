@@ -15,7 +15,7 @@ import (
 // those are reached through that instance's id, `c.inbox.lbl` -- nor the ids
 // in a slot population, which is a declaration with a scope of its own. Bare
 // children handed to a callee are comp's, and render exactly once where the
-// callee inserts them (checkRestInsertion), so they count as written.
+// callee inserts them (checkSlotInsertions), so they count as written.
 //
 // The count is the node's position: a `for` on the way makes it a list, a
 // conditional an option, and nothing at all one node.
@@ -49,8 +49,6 @@ type refSearch struct {
 	count ir.RefCount
 }
 
-func joinRef(a, b ir.RefCount) ir.RefCount { return max(a, b) }
-
 func (s *refSearch) walk(stmts []ast.Stmt, k ir.RefCount) {
 	for _, st := range stmts {
 		switch n := st.(type) {
@@ -61,11 +59,11 @@ func (s *refSearch) walk(stmts []ast.Stmt, k ir.RefCount) {
 				s.node(id, target, nil, k)
 			}
 		case *ast.IfStmt:
-			s.walk(n.Body.Stmts, joinRef(k, ir.RefOption))
-			s.walk(n.Else.Stmts, joinRef(k, ir.RefOption))
+			s.walk(n.Body.Stmts, k.Inside(ir.RefOption))
+			s.walk(n.Else.Stmts, k.Inside(ir.RefOption))
 		case *ast.ForStmt:
-			s.walk(n.Body.Stmts, joinRef(k, ir.RefList))
-			s.walk(n.Else.Stmts, joinRef(k, ir.RefOption))
+			s.walk(n.Body.Stmts, k.Inside(ir.RefList))
+			s.walk(n.Else.Stmts, k.Inside(ir.RefOption))
 		}
 	}
 }
@@ -75,7 +73,7 @@ func (s *refSearch) node(id, target string, block *ast.StmtBlock, k ir.RefCount)
 	if ownerSlot(s.comp, target) != nil {
 		// The block at an insertion is its fallback, which renders only where
 		// nothing was supplied.
-		s.walk(content, joinRef(k, ir.RefOption))
+		s.walk(content, k.Inside(ir.RefOption))
 		return
 	}
 	comp := s.c.componentNamed(target)
@@ -83,12 +81,29 @@ func (s *refSearch) node(id, target string, block *ast.StmtBlock, k ir.RefCount)
 		s.host, s.count = comp, k
 	}
 	// A population's ids are its own, reached through the node it populates
-	// (populationHost). Content beside a boundary's fallback may be what the
+	// (populationRef). Content beside a boundary's fallback may be what the
 	// fallback replaced.
 	if comp != nil && comp.Builtin == ir.BuiltinErrorBoundary && populatesFallback(comp, pops) {
-		k = joinRef(k, ir.RefOption)
+		k = k.Inside(ir.RefOption)
+	}
+	if comp != nil {
+		if rest := comp.RestSlot(); rest != nil {
+			k = insideSlot(k, comp, rest)
+		}
 	}
 	s.walk(content, k)
+}
+
+// insideSlot is k for what fills slot of host, which renders as often as host
+// inserts it.
+func insideSlot(k ir.RefCount, host *ir.Component, slot *ir.SlotDecl) ir.RefCount {
+	switch host.InsertsOf(slot) {
+	case ir.InsertOptional:
+		return k.Inside(ir.RefOption)
+	case ir.InsertMany:
+		return k.Inside(ir.RefList)
+	}
+	return k
 }
 
 // populatesFallback reports whether a boundary's populations include its
@@ -123,20 +138,7 @@ func splitPopulations(block *ast.StmtBlock) ([]ast.Stmt, []*ast.ComponentDecl) {
 
 // isElementRefRead reports whether e reads nodes by `#id` off a component:
 // the read itself, an element of it, or a narrowed option of one.
-func isElementRefRead(e ir.Expr) bool {
-	for {
-		switch n := e.(type) {
-		case *ir.Conversion:
-			e = n.Operand
-		case *ir.Index:
-			e = n.Operand
-		case *ir.Select:
-			return n.Ref != ir.RefNone
-		default:
-			return false
-		}
-	}
-}
+func isElementRefRead(e ir.Expr) bool { return refSelect(e) != nil }
 
 // walkIR is walk over a checked body, which is what another package's
 // component offers.
@@ -147,23 +149,80 @@ func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
 			if n.ID == s.id && n.Component != nil && s.host == nil {
 				s.host, s.count = n.Component, k
 			}
-			s.walkIR(n.Children, k)
+			inner := k
+			if n.Component != nil {
+				if rest := n.Component.RestSlot(); rest != nil {
+					inner = insideSlot(k, n.Component, rest)
+				}
+			}
+			s.walkIR(n.Children, inner)
 		case *ir.SlotInst:
-			s.walkIR(n.Children, joinRef(k, ir.RefOption))
+			s.walkIR(n.Children, k.Inside(ir.RefOption))
 		case *ir.If:
-			s.walkIR(n.Body, joinRef(k, ir.RefOption))
-			s.walkIR(n.Else, joinRef(k, ir.RefOption))
+			s.walkIR(n.Body, k.Inside(ir.RefOption))
+			s.walkIR(n.Else, k.Inside(ir.RefOption))
 		case *ir.For:
-			s.walkIR(n.Body, joinRef(k, ir.RefList))
-			s.walkIR(n.Else, joinRef(k, ir.RefOption))
+			s.walkIR(n.Body, k.Inside(ir.RefList))
+			s.walkIR(n.Else, k.Inside(ir.RefOption))
 		case *ir.ErrorBoundary:
 			inner := k
 			if len(n.Failed) > 0 {
-				inner = joinRef(k, ir.RefOption)
+				inner = k.Inside(ir.RefOption)
 			}
 			s.walkIR(n.Children, inner)
 		case *ir.ContextProvider:
 			s.walkIR(n.Children, k)
+		}
+	}
+}
+
+// populationRef resolves `<node>.<id>` where id is written in a population of
+// node's slots, which owner's body wrote: the component that node instantiates
+// and how many of it one instance of node renders. That is how often node
+// inserts the slot, then where the node sits inside the population.
+func (c *checker) populationRef(owner *ir.Component, node *ast.VisualNode, id string) (*ir.Component, ir.RefCount) {
+	if node == nil {
+		return nil, ir.RefNone
+	}
+	host := c.componentNamed(visualNodeTarget(node))
+	for _, st := range node.Block.Stmts {
+		cd, ok := st.(*ast.ComponentDecl)
+		if !ok {
+			continue
+		}
+		k := ir.RefOne
+		if host != nil {
+			for _, slot := range host.Slots {
+				if slot.Name == cd.Name {
+					k = insideSlot(k, host, slot)
+				}
+			}
+		}
+		s := &refSearch{c: c, comp: owner, id: id}
+		s.walk(cd.Body.Stmts, k)
+		if s.host != nil {
+			return s.host, s.count
+		}
+	}
+	return nil, ir.RefNone
+}
+
+// refSelect is the ref read e is, under the index or narrowing that picked one
+// node of it, or nil.
+func refSelect(e ir.Expr) *ir.Select {
+	for {
+		switch n := e.(type) {
+		case *ir.Conversion:
+			e = n.Operand
+		case *ir.Index:
+			e = n.Operand
+		case *ir.Select:
+			if n.Ref == ir.RefNone {
+				return nil
+			}
+			return n
+		default:
+			return nil
 		}
 	}
 }

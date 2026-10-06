@@ -51,17 +51,31 @@ func testTheStartIsTheNestedCopyAtTheRoot(t Test, c grid) {
     t.assert(c.heading.value == "b3")
 }
 
+func testCopiesAreAListPerLoop(t Test, c grid) {
+    t.assert(c.cell.length() == 2)
+    t.assert(c.cell[0].length() == 2 && c.cell[1].length() == 1)
+    t.assert(c.pages.current == c.cell[1][0])
+}
+
+// Only the copy showing is mounted, so a node its content declares is an
+// option, reached through the copy that renders it.
 func testACopyIsShownWithItsOwnParams(t Test, c grid) {
-    t.assert(c.cell.line.value == "b 3 picked 3")
-    c.cell.pick.click()
-    t.assert(c.cell.line.value == "b 3 picked x")
+    t.assert(c.cell[0][0].line == null)
+    t.assert(c.cell[1][0].line != null && c.cell[1][0].line.value == "b 3 picked 3")
+    if c.cell[1][0].pick != null {
+        c.cell[1][0].pick.click()
+    }
+    t.assert(c.cell[1][0].line != null && c.cell[1][0].line.value == "b 3 picked x")
 }
 
 func testBackRestoresTheCopyAndItsParams(t Test, c grid) {
-    c.cell.pick.click()
+    if c.cell[1][0].pick != null {
+        c.cell[1][0].pick.click()
+    }
     c.toAbout.click()
     t.assert(c.heading.value == "About")
+    t.assert(c.cell[1][0].line == null)
     c.back.click()
     t.assert(c.heading.value == "b3")
-    t.assert(c.cell.line.value == "b 3 picked x")
+    t.assert(c.cell[1][0].line != null && c.cell[1][0].line.value == "b 3 picked x")
 }

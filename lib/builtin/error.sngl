@@ -41,5 +41,5 @@ func error.raise(message string, kind string)
 component boundary<T>(
     @error error,
     content ...component T,
-    failed component T,
+    failed option<component T>,
 ) T {}

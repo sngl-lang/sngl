@@ -251,7 +251,7 @@ component OutlinedTextField(
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
     onValueChange func(e ui.InputEvent),
-    label component ui.node,
+    label option<component ui.node>,
 ) ui.node
 
 #[gen.renders(identity)]

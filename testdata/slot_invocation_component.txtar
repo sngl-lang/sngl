@@ -43,7 +43,7 @@ component frame(main component node) node {
     }
 }
 
-component site(layout component(fm Frontmatter, content component node) node) node {
+component site(layout list<component(fm Frontmatter, content component node) node>) node {
     var pages = 2
 
     vbox {

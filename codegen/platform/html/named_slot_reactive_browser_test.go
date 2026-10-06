@@ -21,7 +21,7 @@ func TestNamedSlotInsideAReactiveIfRenders(t *testing.T) {
 	src := `
 import . "sngl:ui"
 
-component q(body component) node {
+component q(body option<component>) node {
     var on = false
 
     button #t(text="toggle", @click { on = !on })
@@ -69,7 +69,7 @@ func TestScopedNamedSlotInsideAReactiveIfBindsItsArgument(t *testing.T) {
 	src := `
 import . "sngl:ui"
 
-component q(ready component(int)) node {
+component q(ready option<component(int)>) node {
     var n = 0
 
     button #b(text="bump", @click { n = n + 1 })
