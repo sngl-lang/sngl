@@ -1,13 +1,3 @@
-// TODO The formatter should add spaces similar to structs to make the props easier to read
-//
-// TODO Components take positional arguments. We prefer putting the ones that make sense early,
-// but a user could use them all that way. We should make a way to cut off positional arguments.
-// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
-// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.
-//
-// TODO Components should be documented better. Comments on each prop.
-
-
 // Displays a text string. `value` is the content; set `selectable=true`
 // to allow the platform to offer copy. Typography (size, weight, color,
 // alignment, `maxLines` truncation) is driven entirely by `style`.
@@ -97,7 +87,7 @@ component _example_chip node {
 // "circle" (default) or "square".
 component avatar(
     initials string,
-    size string, // TODO enum
+    size string,    // TODO enum
     variant string, // TODO: Enum
     src string,
     alt string,
@@ -150,7 +140,7 @@ component _example_progress node {
 component spinner(
     label string,
     variant string, // TODO enum
-    size string, // TODO enum
+    size string,    // TODO enum
     style Style,
 ) node
 
@@ -210,3 +200,12 @@ component _example_tree node {
         tree(items=["Documents", "Photos", "Music", "Videos"])
     }
 }
+
+// TODO The formatter should add spaces similar to structs to make the props easier to read
+//
+// TODO Components take positional arguments. We prefer putting the ones that make sense early,
+// but a user could use them all that way. We should make a way to cut off positional arguments.
+// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
+// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.
+//
+// TODO Components should be documented better. Comments on each prop.

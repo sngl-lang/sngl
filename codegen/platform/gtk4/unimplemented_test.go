@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -13,7 +14,8 @@ import (
 )
 
 // buildForGtk4 runs the whole pipeline for one source string and returns the
-// generated files, or the error the platform refused with.
+// generated files, or the first error the checker or the platform refused
+// with.
 func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	t.Helper()
 	doc, err := parser.Parse("t.sngl", []byte(src))
@@ -23,7 +25,7 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
-			t.Fatalf("check diag: %s", d.Msg)
+			return nil, errors.New(d.Msg)
 		}
 	}
 	g := &Generator{}
@@ -44,6 +46,8 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 // A stdlib component with no `platform gtk4` body has nothing to emit. Before
 // this was an error the node was dropped and the build succeeded, so the window
 // came out missing widgets the source asked for with no diagnostic anywhere.
+// The checker refuses it now, since `avatar` is bodyless: the platform's own
+// refusal is the backstop for IR the checker did not see.
 func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `

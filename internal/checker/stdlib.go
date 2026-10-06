@@ -93,6 +93,38 @@ func targetTierName(pkg string) (string, ir.BuiltinKind, bool) {
 	return "", ir.BuiltinNone, false
 }
 
+// recordRendersByName notes the library component a codegen marker names as
+// rendered by the target package holding the marker. A name that resolves to
+// nothing records nothing; the marker has never been checked further.
+func (c *checker) recordRendersByName(decl *ast.ComponentDecl, aliases map[string]string, targetPkg string) {
+	ns, local, ok := strings.Cut(decl.Name, ".")
+	if !ok {
+		return
+	}
+	libName, ok := aliases[ns]
+	if !ok {
+		return
+	}
+	lib := c.libPkg(libName)
+	if lib == nil {
+		return
+	}
+	sym, ok := lib.Symbols.LookupRootComponent(local)
+	if !ok {
+		return
+	}
+	comp, ok := sym.(*ir.Component)
+	if !ok {
+		return
+	}
+	m := c.libs.rendersByName[targetPkg]
+	if m == nil {
+		m = map[*ir.Component]bool{}
+		c.libs.rendersByName[targetPkg] = m
+	}
+	m[comp] = true
+}
+
 // parseStdlibDocs parses every .sngl file embedded in the lib package. File
 // ordering is not significant: loadStdlib groups declarations by kind before
 // registering them, so new stdlib files can be dropped into lib/ without
@@ -861,13 +893,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				}
 				// Parens with nothing in them are the marker for a
 				// component the platform's own codegen reads by name rather
-				// than from an override body -- android's `component ui.input()`
-				// and its three siblings, which #213 is deleting.
+				// than from an override body -- android's `component ui.select()`,
+				// which #213 is deleting. It is recorded as this target's
+				// implementation, since the declaration it names has no body.
 				//
 				// A parens form that *names* props is a prop selection, and
 				// testing HasParens alone dropped one here with no override
 				// registered and no diagnostic: the body simply vanished.
 				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
+					c.recordRendersByName(decl, aliases, pkgName)
 					continue
 				}
 				dot := strings.IndexByte(decl.Name, '.')

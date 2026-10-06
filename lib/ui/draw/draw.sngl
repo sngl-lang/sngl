@@ -15,7 +15,7 @@ struct CanvasStyle {
     fill color = color{a=0}
     stroke color = color{a=0}
     strokeWidth float = 1.0
-    lineCap string = "butt" // TODO enum
+    lineCap string = "butt"   // TODO enum
     lineJoin string = "miter" // TODO enum
     fontSize float = 16.0
     fontFamily string = "sans-serif"

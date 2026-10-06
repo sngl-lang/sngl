@@ -147,6 +147,13 @@ type libCache struct {
 	// the same one twice would report every override as a duplicate platform
 	// block.
 	extended map[string]bool
+	// rendersByName records the library components a target package marks
+	// with an empty parens form -- android's `component ui.select()` -- which
+	// say its own codegen renders the component by name rather than through
+	// an override body. Keyed by the target package's lib path, such as
+	// "platform/android". The marker is that target's implementation, and
+	// reportBodylessLibComponents reads it as one.
+	rendersByName map[string]map[*ir.Component]bool
 	// roles records the declaration each #[builtin] kind named in library
 	// source. A mark binds its declaration to the checker that registered it,
 	// but the packages are shared: a nested check reaches them from the cache
@@ -169,7 +176,7 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
 }
 
 type ImportResolver interface {

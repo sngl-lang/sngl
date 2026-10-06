@@ -69,7 +69,7 @@ type prop struct {
 // propsOf renders a node's props in written order, then its handlers.
 //
 // Written order is the checker's: a positional argument is resolved to its name
-// on the way in, so `text({}, "x")` arrives as `text(style=Style{}, value="x")`
+// on the way in, so `text("x")` arrives as `text(value="x")`
 // and there is no unnamed prop to place. A handler prints as a bare `@name`
 // marker -- a snapshot records that one is attached, never what it would do.
 func propsOf(n *interp.Node) []prop {

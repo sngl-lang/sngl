@@ -67,7 +67,7 @@ func (c *checker) reportBodylessLibComponents() {
 				continue
 			}
 			for _, t := range c.targets {
-				if hasOverrideFor(comp, t) {
+				if !c.knowsTarget(t) || hasOverrideFor(comp, t) || c.rendersByName(comp, t) {
 					continue
 				}
 				c.error(comp.AST.Pos, "component %q in sngl:%s has no body and no implementation for %s: every target it can be built for needs one",
@@ -97,6 +97,28 @@ func hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
 		}
 	}
 	return false
+}
+
+// rendersByName reports whether a target package's codegen marker answers
+// for comp on t (see libCache.rendersByName).
+func (c *checker) rendersByName(comp *ir.Component, t ir.StaticTarget) bool {
+	return (t.Platform != "" && c.libs.rendersByName["platform/"+t.Platform][comp]) ||
+		(t.Language != "" && c.libs.rendersByName["language/"+t.Language][comp])
+}
+
+// knowsTarget reports whether every half of a target names a library package
+// this check can load. One that does not is a misspelling, reported where the
+// output block names it, or a target this check has no registry for; either
+// way there is no package to hold an implementation, so asking it for one
+// reports the same name a second time against every widget the program uses.
+func (c *checker) knowsTarget(t ir.StaticTarget) bool {
+	if t.Platform != "" && !c.hasLibPkg("platform/"+t.Platform) {
+		return false
+	}
+	if t.Language != "" && !c.hasLibPkg("language/"+t.Language) {
+		return false
+	}
+	return true
 }
 
 func describeTarget(t ir.StaticTarget) string {

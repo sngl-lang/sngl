@@ -5588,8 +5588,11 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
 func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
+	// A population binds by position and may leave trailing parameters
+	// unbound, as a handler may: `component failed { … }` ignores the error
+	// the boundary hands it. Binding more than the slot passes is the error.
 	params := cd.Props.Props
-	if len(params) != decl.Arity() {
+	if len(params) > decl.Arity() {
 		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), decl.Arity())
 	}
 	if cd.ChildrenType != nil {

@@ -72,6 +72,59 @@ const component shapes.canvasText[platform] {}
 
 const component shapes.canvasImage[platform] {}
 
+// --- Widgets ---
+//
+// The interpreter draws no widget, so each sngl:ui widget is answered the way a
+// shape is: an empty body leaves the node standing in the tree with its props,
+// which is what `sngl test` asserts on and a snapshot prints. Written out for
+// the reason the shapes are -- the declarations are bodyless, and a target that
+// says nothing about one is a build failure.
+const component ui.text[platform] {}
+
+const component ui.image[platform] {}
+
+const component ui.badge[platform] {}
+
+const component ui.chip[platform] {}
+
+const component ui.avatar[platform] {}
+
+const component ui.progress[platform] {}
+
+const component ui.spinner[platform] {}
+
+const component ui.table[platform] {}
+
+const component ui.tree[platform] {}
+
+const component ui.button[platform] {}
+
+const component ui.input[platform] {}
+
+const component ui.textarea[platform] {}
+
+const component ui.checkbox[platform] {}
+
+const component ui.radio[platform] {}
+
+const component ui.toggle[platform] {}
+
+const component ui.select[platform] {}
+
+const component ui.datepicker[platform] {}
+
+const component ui.link[platform] {}
+
+const component ui.tabs[platform] {}
+
+const component ui.menu[platform] {}
+
+const component ui.menubar[platform] {}
+
+const component ui.toolbar[platform] {}
+
+const component ui.modal[platform] {}
+
 // --- Rich text ---
 //
 // The span family, implemented the way the shapes above are and for the same

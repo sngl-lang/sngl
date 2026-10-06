@@ -17,21 +17,21 @@ context #locale(defaultLocale())
 // Translate `key` against the loaded manifest, formatting via ICU.
 // The lowering of $"..." passes the synthesized ICU template as `key`
 // and the placeholder values as `args`.
-#[marks.intrinsic("i18n.tr")]
 // TODO Generic struct for the args (die dyn die)
+#[marks.intrinsic("i18n.tr")]
 func tr(key string, args map<string, dyn>) string { return _translate(locale, key, "", args) }
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
-#[marks.intrinsic("i18n.trInline")]
 // TODO Generic struct for the args (die dyn die)
+#[marks.intrinsic("i18n.trInline")]
 func trInline(key string, inlinedTemplate string, args map<string, dyn>) string { return _translate(locale, key, inlinedTemplate, args) }
 
 // Format an ICU template directly, no manifest lookup.
-#[marks.intrinsic("i18n.format")]
 // TODO Generic struct for the args (die dyn die)
+#[marks.intrinsic("i18n.format")]
 func format(template string, args map<string, dyn>) string { return _format(locale, template, args) }
 
 // --- Direct formatters ---
@@ -56,8 +56,8 @@ func datetime(dt clock.datetime, dateStyle string, timeStyle string) string { re
 // --- Direct selectors ---
 
 // Free-form value-based selection.
-#[marks.intrinsic("i18n.select")]
 // TODO Generic struct for the cases?
+#[marks.intrinsic("i18n.select")]
 func select(value string, cases map<string, string>) string { return _select(locale, value, cases) }
 
 // --- Plural/ordinal selectors ---
