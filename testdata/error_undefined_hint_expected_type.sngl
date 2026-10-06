@@ -1,0 +1,13 @@
+// An undefined name's hint loads the library to find a package declaring it,
+// from inside the expression the name was read in. The load must not inherit
+// that expression's expected type: `r` is a float, and with it leaked the
+// loaded `sngl:x/scheme/c` checked `f.trim().length() > 0` with a float `0`
+// and reported its own error in place of this one.
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window(title="t") {
+    draw.canvas(width=10px, height=10px) {
+        draw.circle(cx=1, cy=2, r=nope) // ERROR(check) "undefined: nope"
+    }
+}
