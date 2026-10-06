@@ -74,22 +74,20 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 	test.NewApp()
 	m := New()
 	m.BuildUI()
-	root := m.BuildUI()
-	check := func(when, want string) {
+	check := func(when string, win fyne.CanvasObject, want string) {
 		t.Helper()
-		if got := rendered(root); got != want {
+		if got := rendered(win); got != want {
 			t.Fatalf("%s: rendered %q, want %q", when, got, want)
 		}
 	}
-	check("built", "one head,a 0,b 0,one foot,more")
+	check("one built", m.one.Container, "one head,a 0,b 0,one foot,more")
+	check("two built", m.two.Container, "two head,x,two foot,note")
 	m.more_click_handler()
-	check("after pushing in one", "one head,a 0,b 0,c 0,one foot,more")
-	m.navigate("two")
-	check("window two, written from one", "two head,x,z,two foot,note")
+	check("one, after pushing in one", m.one.Container, "one head,a 0,b 0,c 0,one foot,more")
+	check("two, written from one", m.two.Container, "two head,x,z,two foot,note")
 	m.note_click_handler()
-	check("after pushing in two", "two head,x,z,y,two foot,note")
-	m.navigate("one")
-	check("back in one", "one head,a 0,b 0,c 0,one foot,more")
+	check("two, after pushing in two", m.two.Container, "two head,x,z,y,two foot,note")
+	check("one, untouched by two", m.one.Container, "one head,a 0,b 0,c 0,one foot,more")
 }
 `
 

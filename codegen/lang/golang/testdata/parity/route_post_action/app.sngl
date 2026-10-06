@@ -12,7 +12,7 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-window #app(title="t", href="/") {
+window #app(title="t") {
     var count = 0
 
     vbox {

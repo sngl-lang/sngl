@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -124,14 +123,14 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	return nil
 }
 
+// mainBodyStmts is what buildWidgetTree builds: the package body, whose
+// parent is the application, or the body of a component a harness isolated as
+// the whole program.
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		return wins[0].Body
-	}
 	if main := ctx.RootDecl(); main != nil {
 		return main.Body
 	}
-	return nil
+	return ctx.Pkg.Body
 }
 
 // mainComponentLocalRefs is passNodeEscape's non-escaping widget-ref set for
@@ -144,9 +143,6 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 // a ref it created -- only some of those sites go through a qualifier that
 // knows about locals.
 func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		return nil
-	}
 	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
@@ -186,14 +182,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// iterating every component's vars would re-add the originals and collide
 	// their synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
-		// nil for a binding no declaration made: a window's route parameters,
+		// nil for a binding no declaration made: a document's route parameters,
 		// which the slot population declares and the request fills. The
 		// special cases below are all things a body or a pass declared, so
 		// they are asked only where there is a declaration to ask.
 		v := tv.Var()
 		if v != nil && v.Synthesized {
-			if ir.IsSlotRootName(v.Name) {
-				// A slot root is initialized lazily inside BuildUI:
+			if v.Name == "__root" {
+				// The __root sentinel is initialized lazily inside BuildUI:
 				// cgo calls aren't valid in struct init.
 				info.binds = append(info.binds, irBind{
 					name:        v.Name,
@@ -287,7 +283,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 // a program is never half-wrapped.
 func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error) {
 	if !c.disableWrapped {
-		if m, cb, werr := c.emitIRMode(true); werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
+		m, cb, werr := c.emitIRMode(true)
+		if werr == nil && !bytesUseCgo(m) && !bytesUseCgo(cb) {
 			return m, cb, nil
 		}
 	}
@@ -309,7 +306,12 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg)}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), toplevelTitles: map[string]ir.Expr{}}
+	if !wrapped {
+		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
+			c.shared.fail(err)
+		}
+	}
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
@@ -348,49 +350,34 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	var widgetFields []widgetField
-	walkTree := func(root string, win *ir.Window, bodyStmts []ir.Stmt, localRefs map[string]bool) windowTree {
-		t := windowTree{root: root, win: win, build: &strings.Builder{}}
-		if len(bodyStmts) == 0 {
-			return t
-		}
+	// lower.passPlatformExtensionBody is always on, so every platform override
+	// is already resolved to its body here.
+	bodyStmts := mainBodyStmts(c.ctx)
+	var topLevelRefs, appChildren []string
+	var topLevelCType map[string]string
+	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
-			withLocalRefs(localRefs).withWrapped(c.wrapped).withSlotRoot(bodyStmts).
+			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
 			withInvokerSink(func(inv gtkEventInvoker) {
 				vc.eventInvokers = append(vc.eventInvokers, inv)
 			})
+		tr.building = true
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
 			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(t.build, "\t%s\n", line)
+				fmt.Fprintf(&buildBuf, "\t%s\n", line)
 			}
 		}
-		t.tops, t.cTypes = tr.topLevel, tr.idCTypes
-		if id, ok := tr.renderedRoot.(*ir.Ident); ok {
-			t.root = id.Name
-		}
-		return t
+		topLevelRefs = tr.topLevel
+		topLevelCType = tr.idCTypes
+		appChildren = tr.appChildren
 	}
-	// lower.passPlatformExtensionBody is always on, so every platform override
-	// is already resolved to its body here.
-	var trees []windowTree
-	entry := 0
-	wins := c.ctx.Windows()
-	if len(wins) > 1 {
-		for i, w := range wins {
-			trees = append(trees, walkTree(ir.SlotRootNameN(i), w.Window, w.Body, nil))
-			if w.Window == c.ctx.EntryWindow() {
-				entry = i
-			}
-		}
-	} else {
-		var win *ir.Window
-		if len(wins) == 1 {
-			win = wins[0].Window
-		}
-		trees = append(trees, walkTree(ir.SlotRootName, win, mainBodyStmts(c.ctx), mainComponentLocalRefs(c.ctx)))
-	}
+	// The root is the application unless a harness isolated a component: the
+	// package body is then what is built, and each node in it was attached to
+	// the application as it was.
+	appRoot := c.ctx.RootDecl() == nil
 
 	allFuncs := c.ctx.AllFuncs()
 	componentFuncs := gtk4ComponentFuncs(c.ctx.Pkg)
@@ -434,7 +421,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
-			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All())
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All(),
+				func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) },
+				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) })
 			continue
 		}
 		if createTargets[cc.Component] {
@@ -442,23 +431,51 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 	}
 
-	// The Model struct needs a root field whenever emitBuildUI will emit the
-	// synthetic wrapper; needsRootWrapper mirrors its conditions.
-	for _, t := range trees {
-		if !needsRootWrapper(t, len(trees)) || slices.ContainsFunc(widgetFields, func(wf widgetField) bool { return wf.name == t.root }) {
-			continue
+	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
+	// the first one's box in the window BuildUI makes, as it did the one
+	// window it could build before a window was a node.
+	cgoTitle := ""
+	if appRoot && !c.wrapped {
+		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
+		if len(appChildren) > 0 {
+			if t := c.shared.toplevelTitles[appChildren[0]]; t != nil {
+				cgoTitle = gc.EvalExpr(t)
+			}
 		}
-		rootType := "*C.GtkBox"
-		if c.wrapped {
-			rootType = gtk4rtHandleType
+	}
+	// The Model struct needs the __root field whenever emitBuildUI will emit
+	// the synthetic wrapper; needsRootWrapper mirrors its conditions.
+	if appRoot && c.wrapped {
+		widgetFields = appendWidgetFieldOnce(widgetFields, widgetField{name: "__built", goType: "bool"})
+	} else if needsRootWrapper(&buildBuf, topLevelRefs, topLevelCType) {
+		hasRoot := false
+		for _, wf := range widgetFields {
+			if wf.name == "__root" {
+				hasRoot = true
+				break
+			}
 		}
-		widgetFields = append(widgetFields, widgetField{name: t.root, goType: rootType})
+		if !hasRoot {
+			rootType := "*C.GtkBox"
+			if c.wrapped {
+				rootType = gtk4rtHandleType
+			}
+			widgetFields = append(widgetFields, widgetField{name: "__root", goType: rootType})
+		}
 	}
 
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, trees, entry, gc, c.wrapped, widgetFieldNames(widgetFields))
+	if appRoot && c.wrapped {
+		first := ""
+		if len(appChildren) > 0 {
+			first = appChildren[0]
+		}
+		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
+	} else {
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, widgetFieldNames(widgetFields))
+	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 && !c.wrapped {
@@ -502,7 +519,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg)
+		if err := emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg, appRoot && c.wrapped); err != nil {
+			c.shared.errs = append(c.shared.errs, err)
+		}
 	}
 
 	if len(c.shared.errs) > 0 {
@@ -750,7 +769,21 @@ func cgoGBoolean(getter, cType string, widgetRef ir.Expr) ir.Expr {
 // `lower.CreateNode` in the package. A promoted handler needs it to resolve
 // element refs created in a sibling Func.
 func collectNodeCTypes(pkg *ir.Package) map[string]string {
+	out, _ := collectNodeTags(pkg)
+	return out
+}
+
+// collectToplevels is every Toplevel id a `lower.CreateNode` in the package
+// makes, whichever scope makes it: a slot at the root of the package body
+// creates a window that a handler emitted before it shows and hides.
+func collectToplevels(pkg *ir.Package) map[string]bool {
+	_, tops := collectNodeTags(pkg)
+	return tops
+}
+
+func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 	out := map[string]string{}
+	tops := map[string]bool{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -763,6 +796,10 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 						// native widget name.
 						if strings.HasPrefix(tag, "Gtk") {
 							out[n.Name] = tag
+						}
+						if tag == toplevelTag {
+							out[n.Name] = "GtkBox"
+							tops[n.Name] = true
 						}
 					}
 				}
@@ -783,7 +820,7 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 		}
 	}
 	if pkg == nil {
-		return out
+		return out, tops
 	}
 	for _, comp := range pkg.Components {
 		walk(comp.Body)
@@ -793,15 +830,13 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			}
 		}
 	}
-	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Children)
-	}
+	walk(pkg.Body)
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
 			walk(fn.Block)
 		}
 	}
-	return out
+	return out, tops
 }
 
 // collectCreateComponentTargets returns the components instantiated via a
@@ -850,9 +885,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				walk(fn.Block)
 			}
 		}
-	}
-	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -1082,33 +1114,16 @@ func widgetFieldNames(fields []widgetField) map[string]bool {
 	return out
 }
 
-// windowTree is one window's widget tree as buildWidgetTree builds it: the
-// statements that build it, the widgets left for the root box to hold, and the
-// Model field naming that box.
-type windowTree struct {
-	root   string
-	win    *ir.Window
-	build  *strings.Builder
-	tops   []string
-	cTypes map[string]string
-}
-
-// passthrough reports whether a lone window's tree is itself a window-class
-// widget, which BuildUI returns directly rather than wrapping in a box.
-func (t windowTree) passthrough() bool {
-	return len(t.tops) == 1 && isWindowClass(t.cTypes[t.tops[0]])
-}
-
-func (t windowTree) empty() bool { return t.build.Len() == 0 && len(t.tops) == 0 }
-
 // needsRootWrapper mirrors the conditions inside emitBuildUI that trigger the
-// synthetic root box, and must be kept in sync with them. Every window of
-// several gets one.
-func needsRootWrapper(t windowTree, windows int) bool {
-	if windows > 1 {
-		return true
+// synthetic m.__root wrapper, and must be kept in sync with them.
+func needsRootWrapper(buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) bool {
+	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
+		return false
 	}
-	return !t.empty() && !t.passthrough()
+	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+		return false
+	}
+	return true
 }
 
 // isWindowClass reports whether cType is a top-level window widget, which is
@@ -1121,53 +1136,16 @@ func isWindowClass(cType string) bool {
 	return false
 }
 
-// windowTitleGo is the Go expression for the window's `title` prop, or "" when
-// it declares none.
-func windowTitleGo(w *ir.Window, gc *golang.GoIRContext) string {
-	if w == nil {
-		return ""
-	}
-	title := w.Prop(ir.WindowTitle)
-	if title == nil {
-		return ""
-	}
-	return gc.EvalExpr(title)
-}
-
-// windowVar is the local BuildUI creates window i in. The entry keeps `win`,
-// which is the one BuildUI returns for its caller to present.
-func windowVar(i, entry int) string {
-	if i == entry {
-		return "win"
-	}
-	return "win" + strconv.Itoa(i)
-}
-
-// otherWindowsFirst is every window index with the entry last, so the window
-// the caller presents is the one on top.
-func otherWindowsFirst(n, entry int) []int {
-	out := make([]int, 0, n)
-	for i := range n {
-		if i != entry {
-			out = append(out, i)
-		}
-	}
-	return append(out, entry)
-}
-
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget. Top-level
-// widget refs not consumed by an AppendChild are parented into their window's
-// root box, except when a lone window's sole top-level ref is itself a
-// window-class widget, which BuildUI returns directly.
-//
-// Every window of several is its own GtkApplicationWindow over the one Model.
-// BuildUI presents all but the entry, which it returns as it does for one.
-func emitBuildUI(b *strings.Builder, trees []windowTree, entry int, gc *golang.GoIRContext, wrapped bool, fields map[string]bool) {
+// widget refs not consumed by an AppendChild are parented into m.__root,
+// except when the sole top-level ref is itself a window-class widget, which
+// BuildUI returns directly.
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, trees, entry, gc, fields)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
 		return
 	}
-	if len(trees) == 1 && trees[0].empty() {
+	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
 		b.WriteString("func (m *Model) buildWidgetTree() {}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
@@ -1176,10 +1154,10 @@ func emitBuildUI(b *strings.Builder, trees []windowTree, entry int, gc *golang.G
 		b.WriteString("}\n\n")
 		return
 	}
-	if len(trees) == 1 && trees[0].passthrough() {
-		ref := trees[0].tops[0]
+	if len(topLevelRefs) == 1 && isWindowClass(topLevelCType[topLevelRefs[0]]) {
+		ref := topLevelRefs[0]
 		b.WriteString("func (m *Model) buildWidgetTree() {\n")
-		b.WriteString(trees[0].build.String())
+		b.WriteString(buildBuf.String())
 		b.WriteString("}\n\n")
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
@@ -1190,22 +1168,10 @@ func emitBuildUI(b *strings.Builder, trees []windowTree, entry int, gc *golang.G
 		b.WriteString("}\n\n")
 		return
 	}
-	cStmt := func(fn string, args ...ir.Expr) {
-		call := &ir.Call{Type: ir.TypVoid, Receiver: &ir.Ident{Name: "C"}, Func: nativeFunc(fn)}
-		for _, a := range args {
-			call.Args = append(call.Args, ir.CallArg{Value: a})
-		}
-		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: call}) {
-			fmt.Fprintf(b, "\t%s\n", line)
-		}
-	}
-	as := func(cType string, e ir.Expr) ir.Expr {
-		return &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: e}
-	}
-	rootRef := func(t windowTree) *ir.Ident { return &ir.Ident{Name: t.root, IsElementRef: true, Synthesized: true} }
-	// buildWidgetTree is idempotent (guarded by the first root being set) and
-	// BuildUI makes fresh windows per call, so a second BuildUI does not
-	// re-parent an already-parented widget.
+	// buildWidgetTree is idempotent (guarded by m.__root == nil) and BuildUI
+	// makes a fresh window per call, so a second BuildUI does not re-parent an
+	// already-parented widget.
+	rootRef := &ir.Ident{Name: "__root", IsElementRef: true, Synthesized: true}
 	rootCtorCall := &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: &ir.Ident{Name: "C"},
@@ -1215,36 +1181,62 @@ func emitBuildUI(b *strings.Builder, trees []windowTree, entry int, gc *golang.G
 			{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
 		},
 	}
-	rootInit := gc.EvalExpr(as("GtkBox", rootCtorCall))
+	rootInit := &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootCtorCall}
 	b.WriteString("func (m *Model) buildWidgetTree() {\n")
-	fmt.Fprintf(b, "\tif m.%s != nil {\n\t\treturn\n\t}\n", trees[0].root)
-	for _, t := range trees {
-		fmt.Fprintf(b, "\tm.%s = %s\n", t.root, rootInit)
-		b.WriteString(t.build.String())
-		for _, ref := range t.tops {
-			cStmt("gtk_box_append", as("GtkBox", rootRef(t)), as("GtkWidget", buildRef(ref, fields)))
+	b.WriteString("\tif m.__root != nil {\n\t\treturn\n\t}\n")
+	fmt.Fprintf(b, "\tm.__root = %s\n", gc.EvalExpr(rootInit))
+	b.WriteString(buildBuf.String())
+	for _, ref := range topLevelRefs {
+		childRef := buildRef(ref, fields)
+		appendCall := &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: "C"},
+			Func:     nativeFunc("gtk_box_append"),
+			Args: []ir.CallArg{
+				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: rootRef}},
+				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: childRef}},
+			},
+		}
+		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: appendCall}) {
+			fmt.Fprintf(b, "\t%s\n", line)
 		}
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 	b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
 	b.WriteString("\tm.buildWidgetTree()\n")
-	for _, i := range otherWindowsFirst(len(trees), entry) {
-		t := trees[i]
-		name := windowVar(i, entry)
-		winRef := &ir.Ident{Name: name}
-		fmt.Fprintf(b, "\t%s := C.gtk_application_window_new(app)\n", name)
-		cStmt("gtk_window_set_default_size", as("GtkWindow", winRef), &ir.Literal{Type: ir.TypInt, Value: "480"}, &ir.Literal{Type: ir.TypInt, Value: "640"})
-		// Not through gtk4rt: the cgo scaffold does not require that module, so
-		// importing it does not build. The string is allocated once and not freed.
-		if title := windowTitleGo(t.win, gc); title != "" {
-			fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(%s)), C.CString(%s))\n", name, title)
-			gc.RequireImport("unsafe")
-		}
-		cStmt("gtk_window_set_child", as("GtkWindow", winRef), as("GtkWidget", rootRef(t)))
-		if i != entry {
-			cStmt("gtk_window_present", as("GtkWindow", winRef))
-		}
+	b.WriteString("\twin := C.gtk_application_window_new(app)\n")
+	winRef := &ir.Ident{Name: "win"}
+	setSizeCall := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_window_set_default_size"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWindow"), Operand: winRef}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: "480"}},
+			{Value: &ir.Literal{Type: ir.TypInt, Value: "640"}},
+		},
+	}
+	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setSizeCall}) {
+		fmt.Fprintf(b, "\t%s\n", line)
+	}
+	// Not through gtk4rt: the cgo scaffold does not require that module, so
+	// importing it does not build. The string is allocated once and not freed.
+	if title != "" {
+		fmt.Fprintf(b, "\tC.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(win)), C.CString(%s))\n", title)
+		gc.RequireImport("unsafe")
+	}
+	setChildCall := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_window_set_child"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWindow"), Operand: winRef}},
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: rootRef}},
+		},
+	}
+	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setChildCall}) {
+		fmt.Fprintf(b, "\t%s\n", line)
 	}
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")
@@ -1427,10 +1419,29 @@ func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package, app bool) error {
+	if app {
+		callee := ""
+		if pkg.Run != nil && len(pkg.Run.Block) > 0 {
+			callee = golang.ModelCallee(pkg, pkg.Run, "m")
+		}
+		emitGTK4AppMain(b, callee, pkg.Run != nil, pkg.Teardown)
+		return nil
+	}
+	if pkg != nil && pkg.Run != nil {
+		if !wrapped {
+			return errors.New("gtk4: @run needs the gtk4rt entry point, and this program's generated code calls into cgo directly")
+		}
+		callee := ""
+		if len(pkg.Run.Block) > 0 {
+			callee = golang.ModelCallee(pkg, pkg.Run, "m")
+		}
+		emitGTK4RunMainWrapped(b, callee)
+		return nil
+	}
 	if wrapped {
 		emitGTK4MainWrapped(b)
-		return
+		return nil
 	}
 	teardown := pkg != nil && pkg.Teardown != nil
 	if teardown {
@@ -1469,6 +1480,7 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package)
 	b.WriteString("\t\tos.Exit(int(status))\n")
 	b.WriteString("\t}\n")
 	b.WriteString("}\n")
+	return nil
 }
 
 func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {

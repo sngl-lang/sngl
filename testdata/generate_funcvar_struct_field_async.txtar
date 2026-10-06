@@ -53,7 +53,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { h__inst0: null };
+  var state = { h__inst0: null, visible__inst1: true };
   state.h__inst0 = { run: fetchHello };
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", async function() {
@@ -63,4 +63,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9427f89236746b55929b7ce216c4aa9c
+pass sha256:585df835108502ad3681eba2caaf0319

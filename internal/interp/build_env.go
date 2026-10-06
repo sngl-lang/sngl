@@ -40,15 +40,11 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 }
 
 // BuildProgramEnv creates an Env for running pkg as a program: its package
-// state seeded, and its windows and package body as what mounts.
+// state seeded, and its package body as what mounts.
 func BuildProgramEnv(pkg *ir.Package) *Env {
 	env := newPackageEnv(pkg)
 	seedPackageState(env, pkg)
-	body := make([]ir.Stmt, 0, len(pkg.Windows)+len(pkg.Body))
-	for _, w := range pkg.Windows {
-		body = append(body, w)
-	}
-	env.BodyStmts = append(body, pkg.Body...)
+	env.BodyStmts = pkg.Body
 	return env
 }
 

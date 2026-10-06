@@ -55,7 +55,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
@@ -102,4 +102,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:af2721116e8f28ecb4a30abf58c67519
+pass sha256:4c604edc6e543a1b570fb70ac08a5c17

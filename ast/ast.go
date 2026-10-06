@@ -472,6 +472,8 @@ type VisualNode struct {
 	// argument list cannot say on its own — `vbox()` and `vbox` are the same
 	// node, and the parens are the author's.
 	HasParens bool
+	// Attrs are the marks written on the placement: `#[tree.crosses]`.
+	Attrs []MacroAttr
 }
 
 // TargetName is the node's target as written: a bare name, or a name

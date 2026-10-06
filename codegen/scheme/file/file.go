@@ -40,8 +40,22 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 		return nil, fmt.Errorf("file: import %q escapes project directory", relPath)
 	}
 
-	info, err := os.Stat(absDir)
+	// Through an os.Root on the project directory, so a symlink inside it
+	// that points out of it escapes as surely as `..` would.
+	root, err := os.OpenRoot(cleanDir)
 	if err != nil {
+		return nil, fmt.Errorf("file: resolve: %w", err)
+	}
+	defer root.Close()
+	rel, err := filepath.Rel(cleanDir, cleanAbs)
+	if err != nil {
+		return nil, fmt.Errorf("file: resolve: %w", err)
+	}
+	info, err := root.Stat(rel)
+	if err != nil {
+		if strings.Contains(err.Error(), "path escapes") {
+			return nil, fmt.Errorf("file: import %q escapes project directory through a symlink", relPath)
+		}
 		return nil, fmt.Errorf("file asset directory %q not found: %w", relPath, err)
 	}
 	if !info.IsDir() {

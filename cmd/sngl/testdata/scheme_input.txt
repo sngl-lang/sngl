@@ -5,14 +5,14 @@
 # as the checker built it rather than re-checked as a document: gtk4.sngl
 # imports sngl:internal/marks, which only lib source may.
 sngl dump --stage checked sngl:platform/gtk4
-stdout 'component GtkButton'
-stdout 'component GtkLabel'
+stdout 'import gtk "gir:Gtk-4.0"'
 
-# The widget declarations are synthesized from introspection data and have no
-# file on disk, so a path-based read could not see them even in principle.
-# They are still source, which is what --stage parsed prints.
+# The widget declarations it is written against are the gir: scheme's
+# package, synthesized from introspection data, which the dump resolves with
+# no build around it. The wrappers are source, which is what --stage parsed
+# prints.
 sngl dump --stage parsed sngl:platform/gtk4
-stdout 'component GtkButton'
+stdout 'gtk\.GtkLabel'
 
 sngl dump --stage parsed sngl:ui/draw
 stdout 'component canvas'

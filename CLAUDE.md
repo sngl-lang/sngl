@@ -70,7 +70,7 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
   an empty `{}` component (a build node) and a primitive are exempt. This
   replaces what `passInlinePure`'s strict mode found at lowering with no
   position, so its impure-wrapper branch is now unreachable from a checked
-  program. Every override in `codegen/**/*.sngl` says `const` for that reason.
+  program. Every override in a target package (`lib/platform/*`, `lib/language/*`) says `const` for that reason.
 
 **The library says `const` where it means it.** There is no default-pure rule
 any more: a bodied library func is seeded pure for its own fixpoint, and a
@@ -303,6 +303,35 @@ descent through the view finds nothing there, which is why a pure call made
 twice in an android click handler went unshared until both passes were put on
 the one walk.
 
+**A walk over a view asks `ir.ViewBlocks`; a walk over everything is
+`ir.Walk`.** A pass that descends a view -- where a node, a page or a surface
+stands -- reads a statement's blocks from `ir.ViewBlocks` (a node's children
+and each population of its slots, a slot insertion's fallback and its entries'
+populations, and `ir.TransparentBlocks`: an `if`'s and a `for`'s body and else,
+a boundary's content and fallback, a provider's content), or `ir.WalkView` for
+a plain visit, and handles a statement's own handlers itself. A pass that
+wants every expression -- props, handlers, lambdas, slot arguments -- is
+`ir.Walk`/`ir.Rewrite`/`ir.RewriteExprs`. A hand-written switch over the
+statement kinds is how each of these walks went wrong, one member at a time,
+and the members missed were always the same few: a slot entry's population, a
+boundary's fallback and own handler, a provider, a for's else. Each was a
+silent loss reachable from a program -- a for-else's else, a `:value=`
+binding's write-back, a `var`'s hoist, a function the fallback calls, a prop
+the fallback reads (`view_for_else_slot_entry`, `prop_binding_in_slot_population`,
+`view_block_state_slot_entry`, `boundary_fallback_keeps_what_it_names`,
+`boundary_fallback_reads_prop`). A walk that numbers what it synthesizes
+iterates slots by `ir.SlotNames`, never the map.
+
+**A clone owns what its subtree aliases.** A boundary's handler is the
+boundary's code, so both inliners' clones copy it with the content, and
+`ir.RepointHandler` carries the catch blocks and resolved raises in the copy to
+it -- shared, every window's `@error` was the first window's
+(`window_error_handler_per_window`). A `CanvasRedrawStmt` in a copy that names
+a canvas the copy holds names that canvas's copy (the optimizer's
+`cloneStmts`), catch blocks' handlers included: an html document is a clone,
+and a redraw naming the original repainted nothing
+(`canvas_redraw_from_handler`).
+
 `blocks.go` is not the only such enumeration, and a pass picks one of three
 depending on what it needs a handle to. A pass rewriting a *statement list in
 place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
@@ -325,17 +354,16 @@ tree it was written in, so a tick is the `@tick` handler of an ordinary node and
 is reached wherever a node's handlers are.
 
 Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
-and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
-its `@error` reach them because the enumeration says a window owns those and
-not because each remembered to — each had a *second*, thinner copy of the
-window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
-and skipped the `@error` outright. Neither was reachable, since
-`passWindowNesting` rejects the only shape that leaves a window a statement by
-then; the point is that nothing had to notice.
+and `offloadableFuncs` both iterate `ir.Owners(pkg)` -- the package and each
+component, since a window is an ordinary node of whatever renders it -- so
+what an owner holds reaches them because the enumeration says so and not
+because each remembered to. Each used to have a *second*, thinner copy of a
+window arm beside the owners loop, and `blocks.go`'s passed nil timers and
+skipped the window's `@error` outright.
 
 What *was* reachable is the case neither copy had: **the handlers on a package
 var.** Both files named the package's funcs and its body and stopped, while a
-component's and a window's vars were walked in both — so a `for … else` in the
+component's vars were walked in both — so a `for … else` in the
 `@change` of a top-level `var` reached `passForElse` not at all and every
 backend dropped the else in silence. Nothing moves a package's vars off the
 package, so the shape survives the whole pipeline;
@@ -344,13 +372,10 @@ package, so the shape survives the whole pipeline;
 Both orders are load-bearing and neither is this file's any more.
 `passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
 order, and `passAsyncOffload` names `__async_offN` off `offloadableFuncs`', so
-each keeps the order it had: a window's `@error` after its view body, and the
-declared funcs across every owner before any handler.
-`codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
-windows rather than the owners — reads the same list.
-`walk.go`'s `walkPackage` is the one left: it walks the package's funcs, its
-components, `pkg.Windows` and `pkg.Body` by hand, where the owners would give
-it all four.
+each keeps the order it had: the declared funcs across every owner before any
+handler. `walk.go`'s `walkPackage` is the one left: it walks the package's
+funcs, its components and `pkg.Body` by hand, where the owners would give it
+all three.
 
 **A lambda body is the fourth kind of block**, and it is the one none of these
 reaches by walking declarations: it hangs off an *expression*. `blocks.go`
@@ -472,12 +497,12 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 
 ### Codegen Plugin System
 
-Languages and platforms register via `init()` and are looked up by name at runtime:
+Every target is a `lib/` directory registered from the layout; its Go generator registers by key in `init()`, and both are looked up by name at runtime:
 
 - **`codegen/codegen.go`** — defines `LangTranslator` and `PlatformGenerator` interfaces
-- **`codegen/registry.go`** — thread-safe registration (`RegisterLang`, `RegisterPlatform`)
-- **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registers in `init()`
-- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html, none), each registers in `init()`
+- **`codegen/registry.go`** and **`codegen/declared.go`** — the registry: a `DeclaredPlatform`/`DeclaredLang` per lib target, resolved to the Go generator `RegisterNative` registered under the key its node names
+- **`codegen/lang/`** — language translators (golang, javascript, kotlin), each registering with `RegisterNative` in `init()`
+- **`codegen/platform/`** — platform generators (android, bubbletea, fyne, gtk4, html), each registering with `RegisterNative` in `init()`; the packages are `lib/platform/<name>` -- see *A target is its library package*
 - **`codegen/lang/languages.go`** and **`codegen/platform/platforms.go`** — blank-import all implementations; `cmd/sngl/main.go` imports these to trigger registration
 
 `PlatformGenerator` optionally implements `TestRunner`, `PreviewStyler`, or `Snapshotter` interfaces (checked via type assertion).
@@ -494,23 +519,23 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 ### Platform Details
 
 - **html** — two modes selected by `--lang`:
-  - `--lang none` (default): static site — one `index.html` per window with inline JS.
-    Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
+  - `--lang none` (default): static site — one document per page of the `nav.stack` a window holds, written at the page's href with inline JS, or one `index.html` for a window that holds none (see *Navigation*). Every window after the first one that is always there is a `<dialog>` in its document, in every page's (see *html shows a second window as a `<dialog>`*).
+    Pages are written one at a time from what `documentsOf` decides, folded with `codegen.Request.Fold`, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects the pages of the stack a window holds -- or a window that holds none -- into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any page's href is a pattern. Two pages whose route patterns conflict -- some path matches both and neither is more specific -- are a build error too, since net/http panics at startup on the second registration (`routesConflict`, held to ServeMux itself by its test).
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
-- **android** — generates Android app code; supports `kotlin` and `golang`.
+- **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`).
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
-  The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what `PackageFS` serves, directive included, and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
+  The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what the `gir:` scheme's package is -- `lib/x/scheme/gir`'s handler calls the build intrinsic `gir.widgets`, which gtk4 registers (`girwidgets.go`) and which hands it the entry, directive included, recording it and the `gtk4.gir` setting -- and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. `lib/platform/gtk4/gtk4.sngl` imports `gtk "gir:Gtk-4.0"` and writes `gtk.GtkLabel`, as a program naming a widget does. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
 
-  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
+  `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
-- **none** — no codegen; provides an interpreter-based test runner for headless test execution.
+- **none** — no codegen and no Go package: `lib/platform/none` and `lib/language/none` are the whole target, registered by `codegen/declared.go` from the layout as a `DeclaredPlatform` and a `DeclaredLang`. The interpreter is the none language's and the none platform's: `sngl test` runs a program through `internal/interp/testrunner` on `none` alone (`testRunnerFor` in `cmd/sngl/test.go`, `codegen.GeneratesNothing`), and a platform with a generator given `--lang none` has no tests to run (`test_interpreter_none_only.txt`). `sngl run` drives an interpreted pair through `interprun` (`build.IsInterpreted`), which is also how fyne's worker host runs `--lang none` -- and the interpreter's claim on `sngl:ui/nav` is declared beside the registration.
 
 ### Key Internal Packages
 
@@ -524,9 +549,11 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   (`ast.EscapeString`). Decoding in the lexer instead is what let `sngl fmt`
   rewrite `"a\nb"` with a raw newline in it.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
-- **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
-- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Eight run always and are not capability-gated because they answer for every target: `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does) and `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and one checker checks every package: `loadStdlibPackage` runs the same `pass1`, then the same two declaration halves `pass2` runs -- `checkDeclarationBodies` (every func, component and var-handler body) and `finishDeclarations` (nested-func names, membership, `analyzeEffects` and the purity fixpoint, and the rules judged against it) -- with nothing between them. What `pass2` puts between them is what only a program has: tests, the package body, `output`, schemes, c links, and family inference (a library names its family). A `sngl:` package and a user package otherwise differ in which package a declaration lands in (`declPkg`) and in a few `inLibSource()` policies (internal imports, overrides resolved by the target machinery, a bodyless func answered per target), not in how a declaration is checked. A library loads part-way through a program's check on the same checker, so `enterDeclSet` puts the program's deferred work aside while the library's is done.
+
+**A bodyless function's purity is its declaration's.** `analyzeEffects` and the fixpoint skip a func with no body (`hasDeclaredBody`): an empty block calls nothing, and read as a body it lifted an undeclared native from unknown to pure -- `error.raise` became foldable the moment library funcs joined the program's fixpoint. And **a write into a value the function built itself is no effect**: one field or element of a local initialized from a literal and never reassigned whole (`freshLocals`), which is how `color.lighten` fills its result. Deeper, or through a local that may share another value (a Go slice, a JavaScript object), stays a mutation.
+- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and a **`Fold`** (`optimize.NewFold`, handed to a platform as `codegen.Fold` on `Request.Fold`) unrolls its loops after lowering, one document at a time as the platform decides them -- html's `documentsOf`: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where the Fold evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Fifteen run always and are not capability-gated because they answer for every target: `HandleParams` (a program's write of a node's two-way prop lands where the host's report does: through the `#id`, `bound.checked = false` writes the var `:checked` bound, and a call handing the `#id` to a function that writes one through the parameter, `details.open()`, is inlined so its writes are such writes), `ImplicitState` (a two-way prop the call site left unbound, which is a cell of the instance), `DirectCalls` (a call through a name the inliner bound to a declared function -- a func-typed prop given `render=encode` -- becomes a call of that function, since every analysis following the call graph reads `Call.Func`, and an effect keyed on one was settled by no write), `SpreadOnce` (a spread's computed operand, which every field read would otherwise evaluate again), `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does), `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had), `ErrorScope` (a raise resolved against the render tree once each component is spliced where it is rendered) `ErrorCatch` (the catch block a handler body resolved to a boundary becomes, so the raise ends the handler), `NavigationValues` (a `nav.page` read as a value is its record whichever target shows it; see *Navigation*) and `Navigation` (the structure half, which on a target holding `navigation` lowers only the stacks in a surface other than the document). A sixteenth runs always and late: `BoundaryPassthrough`, which splices a boundary with no fallback into what it holds once every pass that reaches a handler through it has run -- a boundary's meaning does not turn on its `@error`, but one with no fallback has nothing left to say once each raise is a catch block, and spliced earlier a handler survived only as a catch block's alias, which no walk follows. `StampUsage` runs after it, so a boundary that only forwarded a raise declares no `ErrorEvent`. After it a catch block is the only route to the boundary's handler, so an edit codegen makes in every handler walks one (html's `walkThroughCatch`): its slot retargets missed it, and a fallback a runtime instance's mount raised into rendered at the wrong parent. `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -545,8 +572,9 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
-- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
-- **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
+- **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: `stack` (pages one on top of another, `current`/`go`/`back` as `#[intrinsic]` methods each target answers), `page` and the unexported family `_page` it is the one member of, and `link`. See **Navigation** below.
+- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
+- **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
@@ -554,8 +582,26 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
-- **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+  **`sngl run` and `sngl build` are commands a target writes**, not Go
+  interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
+  the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
+  node's override for the language wins, then the platform node's body, then
+  the language node's (`internal/build/command.go`), so `go run` is written
+  once on `sngl:language/go` and fyne, gtk4 and bubbletea say nothing. The
+  handler runs in the interpreter with the node's props bound to the target's
+  options; `gen.shell` runs a process on the user's terminal, and what only Go
+  can do is a build intrinsic the target registers with
+  `codegen.RegisterCommand` -- `go.buildModule` (the go.mod written against
+  the host checkout, tidy, build), `html.serve`, `android.buildApk` and
+  `android.install`. A target that writes none has no such command. A command
+  written in a program is refused (`error_command_placement.sngl`): nothing
+  would read it, and a repository may not choose what `sngl build` runs. A
+  build node is never rendered, which is why it may have a body and is exempt
+  from the const-component rule.
+- **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too, and its components are `Stdlib`. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
+- **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[cnative]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`).
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A package documents itself with a **package comment**: a run of line comments
@@ -568,22 +614,34 @@ adding a `lib/` directory with a package comment needs no code change.
 `checker.PackageDoc`), which is where Go's semantics are dropped: every file's
 comment counting, in a load order nothing guarantees, published whichever file
 header a directory listed first. It is also what keeps a stored file's
-`// Code generated … DO NOT EDIT.` header, which gtk4 serves as part of its
-package, out of that package's description. A leading comment in any other
-file is an ordinary comment about that file. Target packages under `codegen/`
+`// Code generated … DO NOT EDIT.` header -- what the `gir:` scheme writes for
+gtk4 opens with one -- out of that package's description. A leading comment in any other
+file is an ordinary comment about that file. Target packages
 follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
-A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `window` in `ui`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
-`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements as the package's own identity const, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the const reaches it.
+What compiler code reads *off* a marked declaration -- a nav page's `href`,
+`gen.emit`'s `render`, a stack's `nav.current` method -- is the declaration's
+own vocabulary, written once in `ir/builtinprops.go` and listed per kind in
+`ir.BuiltinVocabulary`. `lib/builtin_vocabulary_test.go` holds each marked
+declaration to declaring it, so a rename in `lib/` fails there rather than
+leaving every reader finding nothing. A method is found by its intrinsic id
+(`Component.MethodByIntrinsic`) and a rest slot's population by the slot's
+declaration (`NodeInst.RestPopulation`), never by the name either is written
+under.
 
-**A target carries its own library package.** `sngl:platform/<name>` and `sngl:language/<name>` are served by the registered plugin, not read out of `lib/`: a plugin implements `PackageFS() fs.FS` and the checker reads whatever it returns (`ProvidedDocs`, and `libDocs` which appends it to the embedded tiers). The source sits beside the plugin — `codegen/platform/html/html.sngl`, `codegen/lang/golang/golang.sngl` — and is embedded there.
+`internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements by the package's own build-target node, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the node reaches it.
 
-The point is that the checker does not know where a package comes from. gtk4's `PackageFS` returns its embedded overrides merged with one component declaration per GTK widget class, generated from the host's introspection data; nothing outside `codegen/platform/gtk4/packagefs.go` knows half of that package did not exist a moment earlier. The same interface is what will let a plugin outside this repository answer over an RPC.
+**A target is its build-target node.** A platform package declares `#[gen.name("html")] component platform(…) build.platform`, a language package `component language(…) build.language`: the node is named for its tier by convention only -- it is found by its family and its mark (`ir.TargetNodeOf`) -- and `#[gen.name]` is the string the CLI, the Go registry and an `output` block's bare `html` match on (`ir.TargetNode`, `GenCaps.TargetName`). The same declaration is the option schema, carries the `#[gen.can]` marks and is the identity: `[platform]` and `[html.platform]` resolve to it (`resolveTargetIndex`), and read as a value it has sngl:builtin's `platform` type (`targetValueType`), folding to its name in the optimizer and the interpreter, so `PLATFORM == html.platform` is unchanged. There used to be a generated `const platform = "html"` mounted into every target package (`identityDoc`, `#[macro.identity]`), a second declaration that could disagree with the first. A build-target node without the mark is an error, as is the mark anywhere else, and so is a name another node of the same tier carries (`reportTargetNames`, run last over every loaded package, library nodes ahead of the program's so the program's is the one reported) or a target package's node naming anything but its own package: `none` may be both a language and a platform, and nothing else may be two things. Diagnostics name a node by `Component.DisplayName`, its target name, since every platform's node is called `platform`.
 
-A target that cannot serve its package returns nil and contributes none, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform serving overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 does this when no introspection data resolves.
+**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
+
+The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
+
+A target that is unavailable contributes no package, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform loading overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 is unavailable when `--opt gir=` names a file it cannot read; `DeclaredPlatform.Unavailable` asks the generator its node names.
 
 The `#[builtin]` mark only stamps the kind on whichever IR the declaration
 became. What a kind then *requires* — that a node kind names a component, that
@@ -598,26 +656,29 @@ refuses a mark on one that does not.
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
-node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`) mark a
-component, and the checker dispatches a visual node to the matching IR construct
-off the mark. Three tree kinds are the odd ones out and mark a *tree* rather than a
-component: `treeRoot` (the family a package body accepts), `treeNode` (the
-widget family) and `treeShape` (the drawing tree). Each is a family the
-compiler itself has to name — to check the body against, to tell an ordinary
-component from a rendered one, to know which node is a canvas — and
-every other family it compares by declaration alone. Marking them is what
-keeps `ir.go` from holding a package URI and a name for each: `ir.IsUITree`
-and its two siblings read `StructDef.Builtin`, so a family may be renamed or
-moved and a program's own `struct shape` does not become the painted one.
+node kinds (`errorBoundary`, `effect`, `context`, `output`, and
+`sngl:ui/nav`'s `navStack`, `navPage`, `navLink`) mark a component, and the checker dispatches a visual node to the matching IR construct
+off the mark. Six tree kinds mark a *family* — itself a component, but one
+that is never rendered: `treeFamily` (the family of families), `treeRoot` (the
+family a package body accepts), `treeNode` (the widget family), `treeShape`
+(the drawing family), and `treeLanguage` and `treePlatform` (`sngl:build`'s two
+build-target tiers). Each is a family the compiler itself has to name — to
+know what a family is, to check the body against, to tell an ordinary component
+from a rendered one, to know which node is a canvas, to know which node is a
+target and of which tier (`ir.TargetTier`) — and every other family it
+compares by declaration alone. Marking them is what keeps `ir.go` from holding
+a package URI and a name for each: `ir.IsUITree` and its siblings read
+`Component.Builtin`, so a family may be renamed or moved and a program's own
+`shape` family does not become the painted one.
 The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.kind]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
+`#[tree.none]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
 `#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which
 is why every `lib/` file carrying a mark declares it. The alias is an
 ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
-means `#[t.kind]`.
+means `#[t.none]`.
 
 **Write the qualified form.** A dot import stays legal and supported — with
 `import . "sngl:internal/marks"` the mark is the bare `#[builtin("...")]` —
@@ -628,22 +689,21 @@ unaffected: it is ambient rather than dot-imported, and it is how `int`,
 `string` and `color` are named.
 
 A lib package may carry macros alongside its declarations — `sngl:tree`
-ships the `kind` mark next to the default tree it applies to — so the
+ships the `none` mark next to the `one` count — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
 makes a package exist, macro-only ones included. `sngl:internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
 or both. `internal/marks` declares only macros; `internal/ir` declares `Macro`,
 the type a macro returns, and the flag enums the marks take.
 
-**A tree is a declared type, and `#[tree.kind]` marks the struct that names
-one.** `sngl:tree` describes a segmented component tree: a family whose
-members are not interchangeable widgets, where a container accepts only its
-own family. Drawing is the first user, rich text and menus are the next, and
-nothing in the mechanism knows what a shape is.
+**A family is a declared component, a member of `sngl:build`'s `family`.**
+A segmented component tree is one whose members are not interchangeable
+widgets, where a container accepts only its own family. Drawing is the first
+user, rich text and menus are the next, and nothing in the mechanism knows what
+a shape is.
 
 ```sngl
-#[tree.kind]
-struct shape {}
+component shape build.family
 
 component circle(…)                          shape {}   // is a shape
 component canvas(shapes ...component shape)   ui.node {}   // hosts shapes, is a widget
@@ -657,9 +717,120 @@ own without saying so — but declaring a slot at all is what makes it host
 anything. Naming something that is not a tree in the return position is an
 error: a children contract is a slot's to declare.
 
-The tree is the *declaration*, not its name, so a misspelling is an unresolved
-name where it is written, and two packages each declaring `struct shape`
-declare two trees. A tree struct holds nothing and no value of it exists.
+The family is the *declaration*, not its name, so a misspelling is an
+unresolved name where it is written, and two packages each declaring a `shape`
+family declare two. `ir.Component.Tree` points at it, and `Component.IsFamily`
+is "a member of the family of families", which is the one declaration that is a
+member of itself (`#[marks.builtin("treeFamily")]` on `build.family`, where the
+regress stops). A family has no body — a body is where how a family is
+generated will be written, and nothing reads one yet, so it is refused rather
+than dropped — and writing one in a tree is an error rather than a membership
+mismatch. It is exempt from the bodyless-component rule for the same reason.
+
+**A family declares the props its members share**, and is a type with values.
+`component suit(name string, rank int) build.family`: every member
+declares each prop by name and type (`checkFamilyMember`, run once the
+package's components are registered and again for a member whose family was
+inferred), and a handle to a member is assignable to the family's type, one way
+only (`Type.IsAssignableTo`). A value of a family is a record of those props
+and the identity of the member it holds, so a select through one reaches only
+the family's props and `==` against a member compares identity
+(`comparableEq`); two *different* members still do not compare. A family prop
+may carry a default, which must be constant: a member that omits the prop then
+holds it with that default, and a call site may not set it
+(`refuseInheritedProps`), since the member never said it takes one. Anything
+else on a family -- a two-way or const prop, an event, a slot -- would be
+read by nobody and is refused (`checkFamilyDecl`); a type parameter is the
+members' to bind (see *Navigation*). Every
+family has values, the propless ones included (identity alone), but naming a
+family as an expression is still an error: it is a type, not one of its
+values. `testdata/family_props.sngl`, `family_generic.sngl`,
+`error_family_member_props.sngl`, `error_nav_surface.sngl` and
+`error_family_decl.sngl`.
+
+**A family registers before what names it.** A component is bound only once its
+own signature resolves, so a member declared above its family would name
+nothing. `familiesFirst` orders pass1's component registration by the
+same-package names each return position and slot type mentions — which is also
+what puts `family` ahead of `language` and `platform` in `sngl:build`. Structs
+get the same freedom from their shells. `resolveQualifiedType` lets a family
+through where it looks for a type, since `ir.IsTypeDecl` names only structs,
+enums and units.
+
+**A family may be generated rather than rendered.** A target overrides the
+family itself with a `gen.emit` as the override's whole body --
+`component block[go.language] { gen.emit(file="blocks.txt", open=…, close=…) }`
+-- and each bodyless member it reaches overrides itself with a `gen.node`
+(`open`/`close` templates, evaluated with the member's props bound). A bodyless
+*host*, a component whose rest slot takes the family (`ir.EmittedFamily`), is
+then answered by the family's override in both bodyless rules. The build
+(`internal/build/emit.go`, ahead of the first optimize, which would drop a
+bodyless host it cannot render) walks each host where a root member stands --
+at the root of a file, under an `if` there, and in a component whose family is
+`root` -- into data: a member with a `gen.node` override is a node, a member with a body
+composes -- its body read with its props bound, its rest slot inserting what it
+was written with -- and an `if` or a `for` is decided there, so every value is a
+build-time one and a read of state is refused at the read. The host is then
+removed from the package, and a runner turns the tree into the target's extra
+file. The walk and the runner are separate on purpose: the tree
+(`emittedNode`) carries no IR a process could not be handed, so an emitter that
+runs another program takes the same data. Where `gen.emit`/`gen.node` may be
+written is `reportEmitterPlacement`; what a build refuses is
+`cmd/sngl/testdata/emit_family_refused.txt`, and `testdata/emit_family.txtar`
+is the code.
+
+**Content that reads state is generated as SNGL the target compiles** --
+code mode, chosen by a `render` on the family's `gen.emit`
+(`internal/build/emitcode.go`). The walk keeps each `if` and `for` rather than
+deciding it, and hands its tree to a runner as data plus handles into a table
+of the expressions and handlers it was written with (`codeStmt`,
+`codeTable`), so a runner that writes host code directly, or hands the tree to
+another process, reads the same tree and resolves the handles its own way. The
+runner here, `runSNGL`, writes one function returning the members' values --
+each member's `gen.node(value=…)` with its props bound, and each of its events,
+read as a value, a call of the handler the call site wrote -- and puts a clone
+of the family's `gen.emit` where the host stood, handed that function as
+`members`. `gen.emit` is an ordinary bodied component of `sngl:x/gen`: an
+effect mounted at start that fires `@start(members)`, and one keyed on
+`render(members())` that fires `@change(text)`. So the re-render is an effect
+rekeyed by a write to what the members read, and nothing on either host had to
+learn anything: a runner that writes SNGL is one no backend needs telling
+about. The synthesized function is given its Reads and Purity by
+`checker.AnalyzeSynthesizedFunc`, since the effect's settle is placed by what
+its key reads. `testdata/emit_family_state.txtar` is the code and
+`cmd/sngl/testdata/emit_family_state_runs.txt` runs it on gtk4 and fyne under
+the headless compositor (the `headless` script condition). What is not here
+yet: a host under a `for`, a composed member's handlers, and a member holding
+children in code mode -- each refused with a position.
+
+**A family may be generated by a handler** -- process mode, chosen by
+handling `@generate(out, members)` on the family's `gen.emit`. The walk is
+template mode's, so every value is a build-time one, and what the handler is
+handed is each member's `gen.node(value=…)` with its props bound and what it
+holds, as `list<gen.Member<T>>`; the annotation on the handler's parameter is
+what binds `T`, by the general rule that a handler's written type binds a type
+parameter its event names (`bindFromHandlers`). It runs in the interpreter
+under the build host (`internal/plugin`'s `Runner.Emit`) as the package the
+family's override is written in -- `ir.Body.Pkg`, nil for a target package's,
+which is library source -- so `gen.exec`, which takes a `stdin`, is that
+package's grant and not the program's. `out.write` takes any path inside the
+output directory, and what it wrote is stored as `sngl.emit` keyed by the
+members' encoded values behind the package's closure digest
+(`cmd/sngl/testdata/emit_family_generate.txt`). A `render` beside a
+`@generate` is refused.
+
+**A host goes where a root member goes** (`emitFamilies`). Under an `if` a
+code-mode host is rewritten where it stands, so the family's `gen.emit` -- two
+effects -- sits under the same `if`, and passEffect mounts and unmounts it with
+the branch: `@start` runs again each time the host comes back, and a change
+while it is gone prints nothing (`cmd/sngl/testdata/emit_family_under_if_runs.txt`).
+In a root component the members function joins that component's `Funcs`, so
+the inliner renames what it reads with the rest of the component
+(`testdata/emit_family_under_if.txtar`). A template-mode host writes its file
+at build time, so the `if` above it must be decidable then, and one in a root
+component nobody renders writes nothing. A `for` is refused: each copy would
+be an emitter of its own, and the members function cannot see the loop's
+variables.
 
 **`sngl:ui`'s `node` is the widget family**, and it is a family like any
 other: naming it in a slot accepts widgets and nothing else, which is what
@@ -720,7 +891,9 @@ a nil `Tree`, so the first is never asked and the second is left to
 of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
 says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
 for what is under it. None puts anything in the tree itself, so every tree
-question asked of a block is asked of theirs.
+question asked of a block is asked of theirs. After the checker the same list is `ir.TransparentBlocks`, and
+`ir.ViewBlocks` adds a node's and a slot insertion's own blocks: a walk over a
+view tree in a later phase asks those rather than writing its switch.
 
 It returns **two** lists. `all` is every block, for the callers that ask whether
 content belongs to a family. `binds` is the blocks that may *supply* one, which
@@ -765,21 +938,22 @@ wrote a boundary. It keeps its own boundary case, because a boundary is the one
 transparent statement that is not: it pushes its handler onto the scope, which
 is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
-`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves — a CLI script, because nothing executes the test functions in a `testdata/test_*.sngl`: `sngl test ./...` does not walk `testdata/`, and no Go harness drives them. Those files are checked and their assertions never run.
+`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`internal/interp/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
 `checkPendingExtensions` swaps an override's statements onto the declaration
 and restores the base body after: read late, it checks the base body once per
-registered override and the override's body never. And `CheckLibPackage` has no
-pass2, so it drains the checks itself — without that, nothing checks a library
-body's membership at all, silently: `sngl doc`, the LSP's lib path and
-`sngl check sngl:platform/fyne` alike.
+registered override and the override's body never. And a library package
+drains its own, in the `finishDeclarations` its load runs -- left for the
+program's pass2, nothing checked a library body's membership when no program
+loaded it: `sngl doc`, the LSP's lib path and `sngl check sngl:platform/fyne`
+alike.
 
-A **library** declaration names its family and is not inferred. Only the
-target tiers have their bodies checked at load, so for most of `lib/` there is
-nothing to read an answer off — and a package's declarations are a published
-contract, which a body should not be quietly restating.
+A **library** declaration names its family and is not inferred. Most of
+`lib/` is bodyless, so there is nothing to read an answer off -- and a
+package's declarations are a published contract, which a body should not be
+quietly restating.
 
 **`#[tree.none]` says a component belongs to no family**, which is what a
 component that renders nothing wants — `effect`, `timer`, `context`, and each
@@ -805,7 +979,26 @@ Two rules follow from the mark, and they are each other's halves:
   would have joined that family without saying so, and would then be
   placeable in a canvas (`checkTreelessBody`). The rule reaches through
   everything `treeTransparent` lists, so a widget wrapped in a boundary or a
-  context override is still a widget this component renders.
+  context override is still a widget this component renders -- and it counts
+  a slot insertion, which puts what the slot takes where it stands. Passed
+  over, `#[tree.none] component sneak(content ...component ui.node) { content }` carried a button into a canvas, where html painted nothing for
+  it (`error_tree_treeless_slot.sngl`).
+
+`#[tree.none]` is being weeded out for type parameters, which say "any
+family" without saying "no family". **Crossing a family is said at the
+placement, with `#[tree.crosses]`** (`sngl:tree`, for any package): written on
+a node or a slot insertion in a view, it lifts the one check the position
+makes of it -- that it belongs to the family accepted there -- and nothing
+else. The node's own body, slots and children are checked as ever, it is no
+evidence for a family the body is inferring (`treeEvidence`), and on anything
+else the mark is refused (`markTreeCrosses`). On the placement rather than the
+declaration, so a platform permits exactly the use it means: html's window
+override marks the `html.dialog` it renders in a `root` member's body, and
+each `nav.page` override marks the `Page` primitive it stands in, which is a
+`ui.node` and says so. It is `NodeInst.Crosses` and `SlotInst.Crosses`, and a
+node written as a call (`ui.text(value=v)`, an `ast.CallStmt`) carries marks
+as a `VisualNode` does. `testdata/tree_crosses.sngl` and
+`error_tree_crosses_target.sngl`.
 
 **A wrapper whose family is whatever it was handed says so with a type
 parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
@@ -855,40 +1048,83 @@ The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.
 
-**A raise is caught at the call that resolved a handler**, and
-`ir.CatchingHandler` names it: the call's own `@error` (`ErrorPerCall`) or
-the boundary's or window's (`ErrorInvokeAndTerminate`). The handler runs with
-the error and execution continues after the call, which is what the
-interpreter's `dispatchRaise` does. Inside the callee a raise is the host's
-native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an
-`Error` with a `kind` on JavaScript — so each language's `catchAtCall` runs
-the call under a recover or a try and inlines the handler there, rethrowing
-anything that is not a raise; a `fails` native reports through its error
-result on Go, which gets an `if err` instead, and through any exception on
-JavaScript and Kotlin, which is caught whole
-(`call_error_handler_catches_raises_only.txtar`). Only a direct
-`error.raise` was answered before, so a raise one call down escaped every
-handler written for it (`testdata/call_error_handler.txtar`,
-`boundary_catches_called_raise.txtar`). A `return` in a handler ends the
-handler, so a body holding one runs as a function of its own rather than a
-block of the function it was inlined into (`error_handler_return.txtar`).
-A boundary's or window's handler is inlined at the call as well as emitted
-where it is declared, and `ir.Walk` does not follow `ResolvedHandler`, so
+**A raise unwinds to the handler that resolved it, and what that handler
+answers for decides what runs after it.** Inside a callee a raise is the host's
+native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an `Error`
+with a `kind` on JavaScript — and it passes through every fallible function
+between with no signature change. Where it stops has two shapes:
+
+- **A call's own `@error`** (`ErrorPerCall`) answers for that call alone: the
+  handler runs and the statement after the call runs next. Each language's
+  `catchAtCall` runs the call under a recover or a try and inlines the handler
+  there, rethrowing anything that is not a raise; a `fails` native reports
+  through its error result on Go, which gets an `if err` instead, and through
+  any exception on JavaScript and Kotlin, which is caught whole
+  (`call_error_handler_catches_raises_only.txtar`). The handler does not
+  answer for the call's arguments, which are evaluated first, so
+  `passErrorCatch` binds an argument that may raise to a temp ahead of the
+  statement.
+- **A boundary's or window's `@error`** (`ErrorInvokeAndTerminate`) ends the
+  event handler that made the call, as an exception would: `passErrorCatch`
+  makes the whole handler body one catch block (`ir.If` with `Catch` set and
+  the literal `true` for a condition, so every analysis that reads an `if`'s
+  body still reads it), and nothing after the raise runs — in the function
+  that raised, in a caller between, or in the handler. Each language renders
+  the block through `irwalk`'s `Catch` hook. A `fails` native the block covers
+  is made to raise (`raiseFailure`: its error result panics on Go, its exception
+  is rethrown as a raise elsewhere); caught at its own call instead, the handler
+  ran and the click went on, into whatever raised next
+  (`error_catch_fails_native.txtar`). A catch block in the half
+  `passAsyncOffload` spawned recovers off the drawing thread, so its handler is
+  posted back through `async.post` (`error_catch_async_offload.txtar`). The interpreter's `dispatchRaise` returns
+  a marked `returnSignal`, which `invokeHandler` and an emitted event's
+  handler pass on, so a raise caught from inside either ends the handler it
+  was run from too.
+
+A `return` in a handler ends the handler, so a body holding one runs as a
+function of its own rather than a block of the function it was inlined into
+(`error_handler_return.txtar`), the catch clause of a block included
+(`error_catch_handler_return.txtar`). A handler rendered somewhere other than where
+it is declared — inlined by `catchAtCall`, or the `Catch` of a block — is not
+reached by `ir.Walk` there (`ResolvedHandler` and `If.Catch` are aliases), so
 whatever asks what a block contains has to ask of it too: `codegen.WalkLowered`,
 or a widget write in a window's `@error` reaches fyne and gtk4 untranslated
 (`window_error_handler_updates_view.txtar`), and `codegen.PackageStateFuncs`,
 or a mount the handler is inlined into is emitted as a free func writing the
 Model (`effect_mount_caught_by_window.txtar`).
 
-Three shapes are resolved and not yet answered. A call in **expression
-position** (`v = risky(7, @error(e) { … })`) is refused
-(`refuseExprErrorHandler`): the checker attaches a handler only to a call
-statement, and what the call evaluates to after a caught raise is undecided.
-A **component instantiated under a boundary or window** resolves its own
-handlers' raises against its declaration, not its instance, so neither the
-interpreter nor any target catches them there. And a call through a **func
-value** with no `@error` of its own is never fallible, since nothing about a
-func type says whether it raises; a lambda body's raise leaves the lambda.
+**Which handler is the render tree's answer, not the declaration's.** The
+checker resolves a raise inside the component it was written in, and one that
+reaches no boundary there is left native. A compiled target settles it in
+`passErrorScope`, right after `passNoInlineComponents`: every instance has been
+spliced into the tree that renders it by then, each splice its own clone, so
+the boundaries and windows around each instance are there to walk and one
+declaration rendered under two boundaries answers to both. A handler is read
+wherever the node carries it — in `Handlers`, or as a lambda in `Props`, which
+is where android's override substitution has put it. A component built at run
+time is not spliced, so its body is shared by every instance; one of those
+under a boundary, whose body lets a raise out, is refused with a position
+rather than emitted with the raise going nowhere. The interpreter answers at
+run time instead: the mounter pushes each boundary's and window's handler onto
+a frame list it keeps among the context values a node is mounted under
+(`raiseScope`), and `underHandler` -- the outermost event handler's entry, not a
+lambda or an emitted event's -- offers a raise that left it to those frames,
+starting outside the handler that let it out
+(`error_raise_render_tree_runs.txt`, `error_raise_render_tree.txtar`,
+`internal/interp/raise_scope_test.go`).
+
+**Slot content is the exception.** A handler written in the caller and
+rendered in a callee's slot is resolved by the checker against the *caller's*
+boundaries, so where the caller has one it wins over a nearer boundary the
+callee wraps the slot in; only where the caller has none does the render tree
+answer. And a raise in a `var`'s `@change` is resolved by neither.
+
+A call in **expression position** that carries its own `@error`
+(`v = risky(7, @error(e) { … })`) is refused (`refuseExprErrorHandler`): the
+handler would replace the rest of the statement, so the call has nothing to
+evaluate to. And a call through a **func value** with no `@error` of its own is
+never fallible, since nothing about a func type says whether it raises; a
+lambda body's raise leaves the lambda.
 
 **`sngl:builtin`'s `root` is the family a package body accepts**, and that is
 the whole of what makes a window top-level — no syntactic rule names the
@@ -914,72 +1150,49 @@ only be written at the root of a file") rather than a family question. A
 component whose family is `root` could otherwise render one, and nothing would
 read it.
 
-**Which windows there are is `ir.AllWindows`**, and the field is only half the
-answer. The checker registers a window written at the root of a file on
-`pkg.Windows`; one under an `if` or a `for` there stays a statement in
-`pkg.Body`, and one a component renders stays a statement in that component's
-body. `ir.AllWindows` reads `ir.Owners`, which reports all three deduped by
-pointer, and the lowering, every platform and the checker's own entry-window
-lookup ask it rather than the field. A lowering pass used to lift the second
-and third onto the field before anything else ran, on the argument that two
-dozen passes and five platforms already walked it -- and paid for it by
-clearing the bodies it emptied, which dropped every statement in them that was
-not a window (`testdata/timer_at_package_root.txtar`).
+**The package body is checked file by file.** `checkPackageBody` gathers
+every file's root statements, and enters each one's own file (`fileOf`) before
+checking it: checked in whatever file scope pass1 ended on, `time.timer` at the
+root of one file was undefined because the file sorted after it imported no
+`time` (`cmd/sngl/testdata/package_body_reads_its_own_imports.txt`).
 
-**A window is an `ir.NodeInst`**, and `ir.Window` is an alias for it rather
-than a type. The name is kept because "which of these nodes is a window" is a
-question nineteen consumers ask and `*ir.Window` is what they have always
-spelled the answer as — but it buys no type safety, a plain vbox satisfies it,
-and `ir.IsWindowNode` is the actual test. That predicate reads the
-`#[builtin("window")]` mark off the declaration, never the name, for the reason
-every other builtin lookup gives.
+**A window is an ordinary component**. `lib/ui/window.sngl`
+declares `ui.window` with no body and no mark, a member of `root`, and every
+platform overrides it with a primitive of its own: a Toplevel on gtk4 and
+fyne, a `Screen` on bubbletea and android, html's `Window` and `none`'s.
+Nothing in the compiler names a window -- there is no `ir.Window`,
+`pkg.Windows`, `ir.AllWindows` or `IsWindowNode`, no `#[builtin("window")]`,
+and no window arm in the checker, the lowering, the optimizer, the
+interpreter or a platform. What a window needed, each had a general answer
+(one each): the `root` family to stand at the root of a file, the
+node ops to be created and destroyed with the tree, the primitive's own
+codegen for its children, a `boundary` for `@error`, a two-way prop and an
+event for `visible` and `@closed`, and `nav.page` for everything html once
+needed a window to be a destination for.
 
-What the separate struct cost was **72 `case *ir.Window:` arms** across the
-lowering, the optimizer, the interpreter and four platforms, each a second
-answer to a question the `*ir.NodeInst` arm beside it had already answered.
-Forty-eight were a strict subset of that arm; the rest are `ir.IsWindowNode`
-guards at the head of it now, next to the code they except — a window is its
-own reactivity owner, is not flattened into `CreateNode`, allocates no element
-var for its id, and may not appear in a view tree, which is what the `panic`s
-android, bubbletea, html and the interpreter keep.
+What used to need the separate construct is said generally instead. A window
+written at the root of a file is a statement of `pkg.Body`, in the order
+written, so a gtk4 or fyne window is attached to the application where it
+stands rather than ahead of every root statement. A window inside a window is
+an ordinary membership error, the window's rest slot taking `ui.node`.
+A window's `open` and `close` are written outside the declaration's block,
+`func window.open(w window) { w.visible = true }`, since a bodyless
+declaration has no block to hold them; such a method reads the component only
+through the receiver it is passed, and `passHandleParams` inlines a call handing
+it a node's handle, so the write lands on the var `:visible` bound or on the
+instance's cell (`internal/lower/handle_params.go`). A window's `@error` is a
+`boundary(@error(e) { error(e) })` around the content in each override, so it
+always catches: a window whose call site handles no `@error` catches a raise
+and drops it (`testdata/window_error_unhandled.sngl`).
 
-Three fields ride on `NodeInst` and are nil on every other node —
-`ErrorHandler`, `Params`, `LocalRefs` — which is the price, and it is three nil
-fields against 72 arms. None is a *body owner*: `Vars` and `Funcs` stay off
-`NodeInst`. `Checked` did not come along at all, being the checker's
-bookkeeping about its own progress and so a set there.
-
-**And a window's props are the declaration's, not the compiler's.**
-`lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
-component declares a prop, so they are the `Props []Arg` any node carries and
-`Component` is the declaration they were measured against. Naming the three as
-Go fields cost 22 files a hardcoded triple, and two of them — `buildWindow` and
-the window's own convert path — a hand-maintained list that had to agree; a
-fourth prop would have needed every one of them edited before it reached a
-backend. What a Go consumer still spells is `ir.WindowTitle` and its two
-siblings, which name the *prop it reads* rather than redeclaring one: html asks
-for the href, gtk4 for the title, and neither is a list of what a window has.
-
-**A window's `#id` binds a node handle**, and it is `NodeInst.ID` like every
-other node's. `declareNodeID` had the split written out: every node id bound an
-`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the window itself
-— so a window was an `ir.Symbol` and "what does a node id name" had two
-answers. It binds the same handle now, `Handle` points at it, and
-`SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
-window as a symbol. That is what found the three consumers rather than leaving
-them to a grep: `output(entry = home)` matches by handle and falls back to the
-name for a window a component renders, folding `home.title` reaches the window
-through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
-the handle is the stable thing a reference resolves to, so `buildWindow` builds
-a fresh window every call. `ir.Window.Typ` went with them, having only ever
-answered `SymType`. The window's `Name` is the target the program wrote
-(`ui.window`) and its `ID` is the `#id`, which is the one rename the type merge
-could not have the compiler check: both fields existed, and reading the wrong
-one compiles.
-
-**A read off a window's id folds to the window's own prop expression**, and it
-is folded again against the context the *read* sits in rather than the one the
-prop was written in. That is not a detail: `window #page(title=it.title)`
+**A one-way prop read off a component instance's `#id` folds to the
+expression its call site gave**, which is what the prop says for as long as the
+node is rendered -- `home.title` off a window is the case that needed it, a
+Select left standing being a dangling reference once the inliner has spliced
+the instance away. `evalCtx.nodeForHandle` finds the node; a primitive's props
+are `passNodePropReads`' and a two-way prop is a cell, so neither folds here.
+It is folded again against the context the *read* sits in rather than the one
+the prop was written in. That is not a detail: `window #page(title=it.title)`
 inside a `for` puts the loop variable in the prop, and a read of `page.title`
 from the window's body sits where the unroll has already passed -- returned as
 written it stayed `it.title`, named nothing, and the page rendered an empty
@@ -987,8 +1200,8 @@ span with no diagnostic. Which makes a prop that reads itself,
 `window #h(title = h.title)`, a fold that re-enters on the same prop forever,
 so `evalCtx.foldingProp` holds the pairs in flight and leaves the select
 standing on re-entry -- the state a prop with no answer already reached codegen
-in. Keyed by window *and* prop, so two windows naming each other terminate on
-the second key rather than looping on the first.
+in. Keyed by node *and* prop, so two nodes naming each other terminate on the
+second key rather than looping on the first.
 
 **A node may not read its own `#id` in its own arguments**, and that is now a
 positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
@@ -1002,30 +1215,69 @@ own declaration, so `context #depth(depth)` is the same error rather than an
 read of something that does exist. A handler is untouched — `@click` is split
 off before the rule is asked, and a handler runs after mount.
 
-What it does **not** cover is the two cases where no single declaration reads
-itself, and both keep the guards they had. **Mutual reference** —
-`window #a(title = b.title)` beside `window #b(title = a.title)` — reaches
-`evalCtx.foldingProp` by a second key and is still left standing, so the page
-comes out with content and no `<title>`, silently. And `const a int = a` is the
-same shape one layer down in a scope of its own: `sngl check` accepts it and
-always did, because the checker never folds, while `sngl generate` used to
-crash — `evalIdent` and `evalExpr` calling each other until the stack went,
-with no position and no message
-(`cmd/sngl/testdata/const_reads_itself.txt`).
+What it does not cover is a cycle through *other* declarations, which is the
+checker's cycle rule (`reportDeclarativeCycles`, `internal/checker/cycles.go`):
+a declaration that reads itself however many hops round has no value to be
+read, and it is refused at the read that leaves the declaration written first,
+naming each read on the way round. The graph's vertices are consts, the
+functions a const calls -- evaluated where the const is folded -- and each
+node's props, an edge running from a prop to each `x.p` it reads through a
+handle and to every prop of a handle it reads whole. A cycle of functions
+alone is recursion and is left alone. So `const a int = a`, `const a = b`
+beside `const b = a`, `window #a(title = b.title)` beside
+`window #b(title = a.title)` and two canvas shapes reading each other's radius
+are all positioned errors (`testdata/error_declarative_cycle.sngl`,
+`cmd/sngl/testdata/const_reads_itself.txt`, `node_prop_read_cycle.txt`,
+`window_prop_reads_itself.txt`). Each used to reach the build: the const fold
+recursed until a guard left the initializer standing (a page rendering
+nothing, silently, and before the guard a stack overflow with no position),
+and the props were refused by the lowering or left standing by the fold --
+an empty `<title>` on html, a name nothing declared on fyne. Those guards
+(`evalCtx.foldingProp`, the const fold's, `passNodePropReads`') remain for IR
+the checker did not see.
 
-So the general rule — a *declaration* that reads itself, however many hops
-round — is still not made, and both guards are still the survivable answer
-rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt`
-holds the two halves apart: the self-reference refused with a position, the
-mutual pair still emitted with nothing said.
+**A window owns no state**: it is a node, so what its body declares belongs
+to its container — the package, or the component that renders it: the checker
+leaves a window's `var` as an `*ir.LocalVar` statement in the body and
+`passHoistState` moves it there, as it does a `var` in any block of a view
+(below), and a `func` in a window body is registered on the container
+directly.
 
-**A window owns no state**, which is why `Vars`, `Funcs` and `Timers` did not
-come along either. A window is a rendering root and not a storage level, so
-what its body declares belongs to its container — the package, or the
-component that renders it: the checker leaves a window's `var` as an
-`*ir.LocalVar` statement in the body and `passHoistState` moves it there, and a
-`func` at the root of a window body is registered on the container directly.
-`ir.Owners` reports a window with neither. `Timers` is **gone**, and with it
+**A `var` written in a block of a view is state of that block**, as a
+component's `var` is state of the component, and nothing about a window
+decides it. The checker leaves one written anywhere but a component's or the
+package's own top level as an `*ir.LocalVar` where it was written, which no
+target implements: bubbletea and gtk4 emitted a local of the render function
+reset on every frame with the handler writing a name the Model lacks, and
+android and html declared it nowhere. `passHoistState`
+(`internal/lower/hoist_state.go`) answers by what the block is. Rendered once
+-- a window's top level, a vbox outside any loop -- its vars join its owner
+(the component, or the package) under their own names, renamed `<n>__block<k>`
+only where the owner already has the name. Under a `for`, an `if` over state, a
+page or a slot's population, the block becomes an instance of a component
+synthesized for it, `__block_state<N>`, which the inliner builds per copy as it
+does any component with state: what the block reads of the loop, a slot's
+parameter or the owner's props arrives as a prop, and what it reads of the
+owner's state as a two-way prop bound to it, so a write in a copy is the
+owner's. A block calling a function of the component around it from such a
+position is refused, since a copy cannot reach it. A provider's own body is
+left to passContext, which splices it up and promotes its vars with the
+provided value in scope for their initializers. The interpreter mounts a list
+declaring a `var` in a scope of its own (`blockEnv`), cached by the list's path
+as a component instance's is and evicted with it, and a handler's write in it
+is carried back through every loop snapshot above (`Env.writeBack`).
+`testdata/view_block_state.sngl` runs it on the interpreter and
+`view_block_state.txtar` is the code on all six targets.
+
+That made a two-way prop written inside a component built at run time reach
+codegen, which it never had: passPropBindings names the write-back event for
+the prop it reports, and passInstanceEvents skipped an event whose name a
+prop already had, so the emit came out as a call to `emit` nothing declares --
+on gtk4, fyne and html alike. Such an event's func prop is `__on_<prop>`
+(`testdata/two_way_prop_runtime_instance.txtar`). And a struct with no fields
+-- the empty `meta` a nav record carries, `struct Empty {}` -- is a Kotlin
+class with value equality rather than a data class, which needs a field.
+`Timers` is **gone**, and with it
 `ir.Timer`: the record held an interval, a gate and a tick body, and every one
 of those is readable off the timer-primitive node -- the `interval` and
 `enabled` props and the `@tick` handler -- so it carried nothing the tree did
@@ -1048,14 +1300,13 @@ instantiation. `component main root { var hits = 0; window … }` with
 **So a root component nobody instantiates renders nothing**, and that is a rule
 rather than an oversight — the last remnant of the `main`-by-convention harness,
 now gone. A program made of nothing but one is refused by
-`internal/build.Emit`, which asks `ir.Package.IsProgram`: reachability from the
-package body through the components it instantiates, not membership in any
-body. Asked the other way, a file carrying a spare root component built, and
-fyne and bubbletea then met an `*ir.Window` in the middle of a component method
-and panicked.
+`internal/build.Emit`, which asks `ir.Package.IsProgram`: whether the package
+body renders a node, not whether any body does. Asked the other way, a file
+carrying a spare root component built, and fyne and bubbletea then met a
+window in the middle of a component method and panicked.
 
 The alternative was a lowering pass that scanned `pkg.Components` for the root
-family, lifted the windows onto `pkg.Windows` and hoisted the vars and funcs
+family, lifted the windows out of it and hoisted the vars and funcs
 somewhere they would be emitted — the package, after #215 found that leaving
 them on the emptied shell reached no backend at all. It had to strip the
 receiver as it went, a component-body `func` being a method and a package-level
@@ -1067,8 +1318,10 @@ route mode skips anything that still carries a receiver
 **Several windows each get it, and the platform says what that means.** One
 root component rendering two windows is spliced once, so both read the one
 cell: a target whose windows are one process shares it — bubbletea, fyne and
-gtk4 each put it in one Model — and a target whose windows are separate
-documents copies it, html writing its own `state` into each page. That divergence is the point
+gtk4 each put it in one Model, and html too, the second window being a
+`<dialog>` in the first one's document -- and a target whose pages are
+separate documents copies it, html writing its own `state` into each page of
+a stack. That divergence is the point
 rather than a gap: two pages *are* two states and one process *is* one, and
 forcing either way round in the lowering would be the language overriding the
 platform it compiled to. The author picks a target knowing it. Shared top-level
@@ -1079,34 +1332,25 @@ a reason it does not.
 Two things that follow. **One Model, one cell:** the shared pointer reaches a
 Model through two owners, so `CodegenCtx.ModelState` dedupes by the `*ir.Var`
 — emitted per owner instead, the Go targets declared `hits int` twice and did
-not compile. And **reading it needs a scope**: `EntryWindow` declines to say
-which window a multi-window program's single Model is scoped to, rightly, since
-two windows' `count` are two names — but a declaration owned by *all* of them
-is one var reachable from each, so `sharedWindowScope` scopes to those without
-choosing between windows. Without it every such read rendered as a bare
-identifier the emitted Go never declared, beside the Model field it should have
-projected onto.
+not compile. And **reading it needs a scope**, which is the package body's:
+`CodegenCtx.ScopedExprCtx` scopes a single Model to the harness root where a
+harness isolated one, and to the package body (`ExprCtx.App`) otherwise.
+Without a scope every such read rendered as a bare identifier the emitted Go
+never declared.
 
 `testdata/root_component_state_two_windows.txtar` is the fixture, and it is
 where the per-platform table is written down.
 
-**The cells are shared; the trees are not.** A reactive slot at the top of a
-window body renders into that window's own root container, which
-`passReactivity` names by the window's position in `ir.AllWindows`
-(`__root`, `__root1`, …, `ir.SlotRootNameN`) so a platform building every
-window names the same one. It used to be one `__root` for the package, and on
-fyne the second window's rows rendered into the first window's container.
-gtk4 builds every window as a `GtkApplicationWindow` of its own over the one
-Model; fyne stacks them in one window and shows one at a time. bubbletea and
-android still render only the first. `testdata/multi_window_root_slots.txtar`
-is the fixture.
-
-**A program declares at least one window**, checked by `internal/build.Emit`
-rather than by the checker: `component c { … }` on its own is a perfectly good
-thing to type-check, and it is only as something to *run* that it has nowhere
-to draw. Which is why **`component main` has lost its harness convention** —
+**A program renders something at the root of a file**, checked by
+`internal/build.Emit` rather than by the checker: `component c { … }` on its own
+is a perfectly good thing to type-check, and it is only as something to *run*
+that it has nothing to show. The package body is the application's view and
+every node in it is a member of `root`, so a window counts, and so do a root
+component's instance and a generated family's host -- a status bar with no
+window builds (`cmd/sngl/testdata/program_without_window.txt`). Which is why
+**`component main` has lost its harness convention** —
 `CodegenCtx.RootDecl()` now answers only for a harness that has cleared the
-windows on purpose (the test launcher isolating a component), and a `main` in
+package body on purpose (the test launcher isolating a component), and a `main` in
 an ordinary program is an ordinary component. Nothing else asks for the name
 either, and each place that did was a behaviour: `sngl run --lang none` mounted
 a `main` instead of the windows (`BuildProgramEnv` mounts the program now), a
@@ -1114,16 +1358,19 @@ directory of files each declaring one was read as a corpus of programs rather
 than a package, a library declaring one could not be imported, and route mode
 gave a `window #main` the index's `/` beside the first window's
 (`route_window_named_main.txtar`). Route mode and html ask
-`ir.Package.RootDecl()` for a harness root. `output(entry = home)` names the
-window a build opens at, by element reference so a typo is a name nobody
-declared; it completes the gap `codegen/codegenctx.go` already admitted to,
-where one window was scoped implicitly and two or more got no scoping at all.
+`ir.Package.RootDecl()` for a harness root. `output(entry = home)` used to
+choose a window, and went with a window's `href` since
+which destination a build opens at is a stack's question -- the page at `/`,
+or its first.
 
 The facts land on `ir.Component.Tree` at registration and on
 `ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
-on. A drawing rule rides along there: a painted shape declares no events, which
-`finishTreeMarks` enforces for every member of `sngl:ui/draw`'s tree, because
-membership is the return position and no mark is written to opt in. Nothing
+on. A family may carry a rule of its own for its members: `#[tree.eventless]`
+(`sngl:tree`) says they raise no events, and `checkFamilyMember` refuses one
+that declares any, an `#[intrinsic]` primitive excepted since its event is the
+target calling in. `sngl:ui/draw`'s `shape` says it, because a painted shape is
+pixels and has nothing to raise one from; the checker knows no more about
+drawing than that. Nothing
 about a mark reaches the AST: the source carries the `#[...]` as written and the
 checker applies it where it registers the declaration.
 
@@ -1210,9 +1457,10 @@ nothing to bind them to" — and allowing it needed no lowering change at all:
 a population already arrives through `NodeInst.Slots`, which is the first
 thing `ir.SlotBody` looks at.
 
-`lib/ui/window.sngl` is the user: a window's route parameters arrive as one
+`sngl:ui/nav`'s `page` is the user: a page's route parameters arrive as one
 struct value in the `params` prop, `T` is inferred from it, and the body that
-reads them is the population of the window's `content` slot. That is what
+reads them is the population of the page's `content` slot. (A window was the
+user until `href` and `params` moved to the page.) That is what
 makes a path a plain string rather than an interpolation — the names in
 `/p/{pkg}` are the struct's fields, not identifiers in scope. Before it, the
 checker read the placeholders off the href and synthesized an `*ir.Var` per
@@ -1220,10 +1468,12 @@ name: a placeholder and a node `#id` shared one namespace with nothing
 declaring either, so which one a body's `pkg` reached fell out of scope-push
 order; nothing could say a parameter was anything but a string; and a
 misspelled placeholder declared a var rather than being reported.
-`checkWindowPathParams` asks the last two now, holding every `{name}` to a
-field of the struct and that field to a type a route can parse text into.
+`passNavigationHrefs` (`internal/lower/navigation_hrefs.go`) asks the last two
+now, holding every `{name}` to a field of the struct, that field to a type a
+path can carry, and every field to a placeholder.
 
-`NodeInst.Params` is the cell it lands in, and it is the `*ir.Param` the
+`NodeInst.Params` is the cell it lands in -- on the page, and from there on the
+window of the document html's `documentsOf` writes for it -- and it is the `*ir.Param` the
 population declares — an ordinary slot binding, because there is no
 distinction for the checker to make. That a target *stores* it is codegen's
 answer: `CodegenCtx.ModelState` is "which bindings a single-Model target puts
@@ -1232,41 +1482,36 @@ reason — not everything stored is a declaration a body made. `OwnedVar`
 answers the five questions the four Model emitters ask, of which a parameter
 answers `Name` and `Type` and is neither const nor synthesized, and whose
 `Init` is its type's zero because nothing in the program writes one. A Go
-route handler binds it from the request (`writeRouteParamBindings`); a target
-with no request renders that zero.
+route handler binds it from the request (`writeRouteParamBindings`), a
+client-only route's script reads it from the path the browser asked for
+(`routeParamsJS`, since one baked document answers every request), and a
+target with no request renders that zero.
 
 Two things follow from the zero being codegen's. The shake roots the window
 *node* rather than its children, so `Params.Type` and the `@error` are
 reachable — the struct a route's parameters name is otherwise declared and
-never constructed, and went. And the window that writes no population carries
-no cell at all, so nothing downstream binds a route parameter for a page that
-does not read one.
+never constructed, and went. And a page that writes no population carries no
+cell at all, so nothing downstream binds a route parameter for a page that does
+not read one.
 
-**A window's body reaches `checkSlotPopulations` like every other node's**,
-and `w.Params` is that population's own parameter. It used to read its own
-population out of the block: sixty-five lines restating "no such slot",
-"already populated" and "populated by name and bare", and missing the ones it
-did not think to restate — slot arity, and a population naming an override
-target, which `testdata/error_window_population.sngl` pins. What is left of
-that peel is `windowBodyBlock`, which answers only *which lines* the body is,
-and exists because a window hoists its own node ids before the body is read.
+**A window's body is a node's block**, read by `checkSlotPopulations` and
+checked in pass2 like every other node's (`testdata/error_window_population.sngl`
+for the population rules, `cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`
+for a prop reading a declaration further down the file). A window used to be
+registered in pass1 and checked by a construct of its own, which restated the
+population rules and missed two.
 
-**And a window is built in pass2**, like every other node. `windowShell` is
-what pass1 reserves — the target name, the `#id`, the handle — because
-`output(entry = home)` and a sibling window need something to resolve against
-before any body is read; `checkWindow` reads the props, the `@error` and the
-body. Building the whole thing in pass1 checked its arguments against a scope
-pass1 had not finished filling, so `window #home(title = greeting())` above
-`func greeting()` was `undefined: greeting` while the same window one level
-into a component body checked clean
-(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`). One local
-specialization also means the bound `T` needs no carrying, which is what the
-params cell used to be for.
-
-What is still the checker's alone is the **id scope**: a window pushes one and
-hoists its own `#id`s into it, which `declareNodeIDsStmt` says by not
-descending into a window, and which `isWindowNode`'s own doc calls the reason
-it exists.
+**A node's `#id` at the root of a file is the package's** (`hoistPackageBodyIDs`):
+hoisted into the package scope at the start of pass2, at the count an `if` or
+a `for` around it confers, so every root statement, package func and component
+body reaches it, as a window's handle always was. What a window's body
+declares hoists like any node's block, plainly, so a sibling window reads
+another's nodes as one node -- every target holds every window in one process
+or document (`testdata/window_reads_sibling_window.sngl`). A plain id is a
+declaration of the package, held to its one-name rule: one naming what the
+package declares is "already declared in this scope", and two nodes writing one
+are a duplicate (`error_window_id_takes_a_declared_name.sngl`,
+`error_window_id_collision.sngl`). A component body already refused both.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
@@ -1363,7 +1608,7 @@ mark names a signature in `ir.Intrinsics` that every language backend must
 implement. On a component there is no signature to register — the declaration
 *is* the contract for props and events, and one platform's codegen emits the
 widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
-`codegen/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
+`lib/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
 the emitting platform (`android:Column`) so it can never collide with a stdlib
 intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a
@@ -1557,6 +1802,25 @@ Go and Kotlin emitter prunes the ones nothing it wrote reads
 `testdata/toggle_change_payload.txtar` and `canvas_click.txtar` are the code,
 `cmd/sngl/testdata/toggle_change_payload_runs.txt` the answer.
 
+**A slot population is a scope**, as a component declaration's body is --
+it reads like one and is scoped like one. Its node ids are hoisted there
+through every node's children, so a sibling reads a `#id` written inside a
+`vbox` or a `canvas` in the population as it would in a body, and they are not
+the enclosing component's: not in its scope, and not claims in its namespace
+(`collectElementRefIDs` does not descend into a population), so the same `#id`
+inside and beside one is two nodes. The population's parameters are its head,
+which an id gives way to (`slot_population_node_ids`).
+
+From outside, a population's node is reached **through the node it
+populates**: `c.card.title` for `card #card { component title… }`
+(`populationHost`), as an instance's own ids are reached through its handle.
+It resolves to the node `c` renders, `c.title` in the IR, which is the reach
+every target answers; the test emitters read an event trigger's target off
+that IR receiver (`codegen.EventTriggerTarget`) and never off the source's
+spelling. Every target reaches a node from outside by the id it renders, so a
+read where the component renders two nodes of that id is refused at the read
+(`refuseAmbiguousReach`, `error_slot_population_ambiguous_reach.sngl`).
+
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
 Model on the Go targets — rather than as a local, so a read of it has to be
@@ -1573,18 +1837,30 @@ the Go language context rather than in a platform emitter because the question
 each platform's own intrinsic path already wrote `m.<id>` for the references it
 emits, which is why only a native call's *receiver* went bare and why it read
 as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
-`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
-it is hand-declared as a `#[cnative]` method reached through the handle.
+`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it; it
+is one of the *actions* `declgen` generates from GIR -- a method taking nothing
+beyond its instance and returning nothing -- as a `#[cnative]` method reached
+through the handle.
 
-**A node's prop may not be written at all**, which `refuseNodePropAssign`
-reports on both the assignment and the toggle paths. A prop is declarative:
-`ui.text(value=greeting)` says what the node shows for as long as it is
-rendered, and reactivity re-evaluates it when `greeting` changes. A write
+**A node's one-way prop may not be written**, which `refuseNodePropAssign`
+reports on both the assignment and the toggle paths, through the node's `#id`
+and through a parameter a handle was passed to alike. A one-way prop is
+declarative: `ui.text(value=greeting)` says what the node shows for as long as
+it is rendered, and reactivity re-evaluates it when `greeting` changes. A write
 beside that is a second source of truth the next render undoes, so the program
 that looks like it worked is the one whose write is silently gone — change the
-state the prop reads instead. Nothing in the repository depended on it: every
-assignment to a `#id` handle was a fixture testing whether one could be
-written.
+state the prop reads instead.
+
+**A two-way prop may be** (Jonathan's call): it is already a cell the host
+writes -- a checkbox reports its clicks through it -- so a write from the
+program is one more writer of that cell and lands where the host's report does.
+`passHandleParams` makes `bound.checked = false` under `:checked=shown` a write
+of `shown`, and inlines a call handing a handle to a function that writes one
+through the parameter (`details.open()`); an unbound one is left to
+`passImplicitState`, which names the instance's cell. The interpreter writes
+through the handle the same way (`writeThroughHandle`, and a toggle through
+one). `testdata/node_prop_write_two_way.sngl` runs it, `.txtar` is the code on
+all six targets, and `error_node_prop_assign.sngl` is the one-way half.
 
 What a *lowering* writes is untouched, and is how a prop reaches a host at all:
 `passReactivity` and `passDeclarative` emit `__n0.value = expr` by the hundred.
@@ -1642,7 +1918,9 @@ const is a wrong build. Hand the data in as an argument instead:
 `file:`'s `names(pattern)` lists a directory at build time, which is how
 website.sngl gives `docs.LibraryComponents` the snapshots it used to `os.Stat`.
 Reading the compiler's own generated source is the one exception, and only
-because the store reports it.
+because the store reports it. A SNGL `const func` reading through
+`sngl:x/gen` is the other, and for the same reason: every such read records
+what it read (see *Trust*).
 
 The mark imports nothing, resolves nothing and validates nothing, and never
 confers type identity — only a scheme importer's `Foreign.Origin` unifies two
@@ -1676,7 +1954,7 @@ and only the *name* is body-scoped: it binds through `c.declare` in the scope
 `collectComponentDecls` pushed and reaches `claimTopLevel` not at all. So it is
 keyed by nothing — the declaration is its identity, and two bodies each writing
 `struct Local` declare two incompatible types, the rule that makes two
-packages each declaring `struct shape` declare two trees; a body-local
+packages each declaring a `shape` family declare two; a body-local
 `component card` likewise shadows a top-level one inside that body and is
 undefined outside it. A component body needs the binding in both passes and a
 scope cannot span them, so the symbols travel on `ir.Component.BodyDecls` and
@@ -1865,7 +2143,7 @@ stopped, which a refusal stood in for (#245); and a reactive `if` inside a
 const loop became a render func reading a loop variable only the host loop
 bound (`undefined: p`). What still differs is only what has nothing to
 reconcile: a stateless component is spliced, and a const loop whose body reads
-no state renders as a plain loop -- on html, as markup `optimize.Documents`
+no state renders as a plain loop -- on html, as markup html's `documentsOf`
 unrolls. A window resets the context, because a loop over pages is not a
 position a page's body is repeated in. A canvas under a `for` is built at run
 time for the same reason -- its surface and draw routine are its owner's one
@@ -1891,6 +2169,98 @@ two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
 record also holds a reference on its root, since the slot holding it removes
 it before appending it again and GTK frees a widget its parent held alone.
 
+**A slot re-renders on what its structure reads**, the `if`'s condition and
+the `for`'s iterable, and what its body reads beyond that is patched where it
+stands. A re-render builds the body afresh, so a slot that re-fired on
+everything its body read rebuilt a whole panel under `if details` every time
+one label in it changed, and lost what its widgets held that no state
+described -- focus, a selection, typed text. So on the three targets that
+build instances at run time, `passSlotChildInstances` lifts each top-level
+node of a slot body that reads state into a synthesized component
+(`liftSlotBodies`, `internal/lower/slot_body_instances.go`): what the subtree
+reads becomes a prop, and the slot keeps the instances across renders as it
+keeps any other. passReactivity's `registerSlotBodyDeps` then subscribes such
+an instance's props to the vars they read rather than the slot to them, and a
+write hands every live instance at the site the new value through its setter
+(`liveUpdaters`, a loop over the site's registry). A prop reading something
+the slot binds -- a loop variable, a local -- has no one value for every copy
+and still re-fires the slot, as does a `#[construct]` prop and anything else
+the body renders from; a node reading nothing is left to the rebuild, which
+only a structural change triggers. A node is not lifted when its subtree holds
+a slot insertion, a boundary, a canvas or a window, or declares a handle
+something reads. bubbletea and android re-render the view anyway and are
+untouched (`testdata/slot_body_updates_in_place.txtar`,
+`cmd/sngl/testdata/slot_body_updates_in_place_runs.txt`).
+
+**A two-way prop the caller leaves unbound is state of the instance**
+(`ir.UnboundProps`): a cell that starts from what the call site gave the prop,
+or its default, or its type's zero, and that the host's reports write, as if
+the component had declared a `var` for it. A one-way value on a two-way prop
+is *only* where the cell starts (Jonathan's call): after
+`checkbox(checked=done)`, a later write to `done` does not reach the box, and
+`:checked=done` is the spelling for one that should. So a checkbox nobody binds
+keeps what it is clicked to, which before this reported its clicks into nothing.
+
+`passImplicitState` (`internal/lower/implicit_state.go`, always on) says it in
+the inliner's vocabulary: it wraps each such node in a component written for
+that call site, `__checkbox_state0`, whose `var` is the cell and whose body is
+the node bound to it with `:checked=`. The inliner then does what it does with
+any component with a var -- splices it once where it stands, builds it at run
+time in a reactive position, keeps a cell per copy under a `for` on bubbletea
+-- and no backend is told. One wrapper per call site rather than per
+declaration, because the node's `#id` moves inside with it: the handle is what
+a test drives the widget through. A read of the prop off the `#id`
+(`box.checked`) names the cell, and since it sits outside the wrapper the
+inliner repoints it at the one copy it spliced (`repointCellReads`); a read of
+one built at run time, or rendered more than once, cannot say which copy it
+means and is refused with a position, on the terms `uniqueNodeIDs` holds a
+handle to. That is also why `box.checked` beside an input under a reactive `if`
+is refused: the wrapper there is an instance of its own. Bare children stay at
+the call site and reach the node through the wrapper's own rest slot; two
+shapes are refused, neither reachable from `sngl:ui`, whose components carry
+one two-way prop and take no content: a call site binding one two-way prop and
+not another, and one populating a named slot.
+
+A `const` component keeps no state, so a two-way prop of one left unbound is a
+checker error at the call site (`refuseUnboundConstProps`); a one-way value is
+no answer, since all it says is where the cell starts. A two-way prop cannot
+itself be `const` (`checkConstProp`), so the callee is the only question. The
+interpreter keeps the cell natively, on the prop's symbol in the instance's
+cached env: `bindProps` binds it on the first mount only, a node's prop shows
+the cell, and `writeCells` writes it from the payload before the handler runs.
+The interpreter also answers a `#id` read in a view now (`bindHandle`), which it
+never did for any prop. `testdata/unbound_prop_state.txtar`,
+`cmd/sngl/testdata/unbound_prop_state_runs.txt` and
+`testdata/error_unbound_prop_const.sngl` are the three halves.
+
+**A test reaches a `#id` inside a component built at run time**, which the
+typed-text half of `slot_body_updates_in_place_runs.txt` needs: on html an
+element a program named and built by code carries `data-sngl-id` and the
+invoker looks it up when called (`runtimeHandlers`); on fyne and gtk4 the
+instance's ctor hands the widget to a Model field `__named_<id>` and the
+invoker goes through that, so it reaches whichever instance built it last. A
+handler emitted as a closure records the component event it serves as well as
+a promoted one (`LoweredFromComponentEvent`), or a gtk4 invoker was named for
+the GTK signal. html's snapshot writes each control's text and checkedness
+onto a copy of the document, since `outerHTML` carries neither.
+
+Giving every unbound input a write-back put a binding where none had been,
+and five gaps it had hidden came with it. fyne's `Select.SetSelected` fires
+`OnChanged` for the value it already holds, so a re-sync from inside the
+callback recursed; a `Setter` names the Go field holding the current value
+(`current`) and the write is skipped when it would change nothing. A handler
+`passDeclarative` promoted from a branch the post-lowering fold then decided
+away -- `listItem`'s checkbox under `if task == Task.none`, whose operands meet
+as constants only after the splice -- named a widget nobody built; the shake
+drops a promoted handler nothing names (`dropDetachedHandlers`), from every
+component's funcs as well as the package's, since a root component keeps its
+own. A handler lifted out of a slot body relays its event whole, which gtk4's
+parameterless trampoline answers by building the one-field payload from the
+widget (`codegen.SubstituteEventPayload`). The shake roots the payload types
+an instance's events and a closure's parameters name. And the test invokers:
+fyne's commit sets the entry's text quietly first, as gtk4's does, and
+bubbletea's writes the binding back before the handler, as Update does.
+
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea
 declares: a record on fyne and gtk4, a factory closure on html, `remember` on
@@ -1902,8 +2272,14 @@ one cell per copy (`perCopyCells`): a map keyed by the loops' indices
 (`lower.CopyKey`), read as `cell.get(key, init)` and written through a
 temporary stored back. A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
-(`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
-collected by nobody and never ran. A recursion is never spliced, so state
+(`codegen.CollectLoopTimers`, `bubbletea/timers.go`); it used to be
+collected by nobody and never ran. A timer under no loop is the same
+schedule with one copy, keyed `""`: sync runs after every Update and asks the
+gate -- the timer's `enabled` ANDed with every `if` around it -- as an
+expression. It used to be armed from Init and gated by a Model field only when
+the gate was a bare state read, so a timer under an `if` ran while the branch
+was off, and one a gate did stop was never armed again
+(`bubbletea/timer_gate_run_test.go`). A recursion is never spliced, so state
 inside one -- the recursive component's own vars or lifetime, a stateful
 component written in its body, or a canvas it renders -- has nowhere to live
 there and is refused with a position
@@ -2030,7 +2406,7 @@ Two consequences of a built-in being identified by its mark: a kind classifies
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).
 And `output` is a *directive* kind rather than a node one: it parses as a
-visual node and is marked on a component declaration like `window` is, but the
+visual node and is marked on a component declaration like `context` is, but the
 compiler reads the tree into `ir.Output` instead of rendering it. The mark is
 what recognises it — a package declaring its own `component output` gets that
 component and no build directive — and what the mark permits is the root of a
@@ -2049,11 +2425,10 @@ level that declares it, `output(name=…)` for the ones every target shares,
 `ir.Output` is the projection a build reads: one per pair, with the three levels
 of props flattened into `Options`.
 
-Three things follow. A target package now declares a component sharing the
-package's own name, and the package binds *itself* as a namespace under that
-name so its bodies can write `html.div`; the namespace wins inside the package,
-and an output block reaches the node off the package rather than through that
-scope. Resolution inside the directive is by level rather than by scope
+Three things follow. A target package declares a node named for its tier and
+binds *itself* as a namespace under the package's name so its bodies can write
+`html.div`, and an output block reaches the node off the package, by its
+`#[gen.name]`, rather than through that scope. Resolution inside the directive is by level rather than by scope
 (`checker.targetNode`, keyed on `c.outputDepth`), trying the tier that level
 accepts first and the other second — `none` is both a language and a platform,
 and trying the other tier second is what makes a misplaced target a
@@ -2065,6 +2440,188 @@ and passes. No walk says so: `output`, each language node and `cache.inputs`
 declare `const` slots and their members `const` props, so it is the general
 const-argument and const-slot rules (see *The const prefix*). `entry` is the
 exception, naming a declaration rather than holding a value.
+
+**A platform node may declare `@run`, which wraps the process start** --
+`gtk4(@run(args, run) { … })`. A handler is not a value, so the const rule
+does not reach it, and its body is program code: `enterFuncBody` resets
+`outputDepth`, or a call in it resolved as a target at the next level down.
+The event is what says a platform supports it: gtk4 and fyne declare it, and
+on html or android it is an event the node does not declare. The build
+(`internal/build/run.go`) makes the handler a function of the program's,
+`ir.Package.Run`, so every lowering pass reads it as it reads any other --
+a handler reached only through `ir.Output` is in no body. Each host's `main`
+builds the tree first, its first settle included, so a write in the handler
+updates widgets that exist; then calls the function with the command line and
+a `run` that presents the window and runs the loop. A handler that never calls
+it gets the loop with no window presented (`RunWindows(false)` in
+`gtk4rt` and `fynelayout`), which is how a status bar launched by i3 starts.
+`golang.ModelCallee` spells the call, since a handler that touches no state is
+emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
+`testdata/platform_run_handler.txtar` is the code and
+`cmd/sngl/testdata/platform_run_handler_runs.txt` runs it.
+
+**The package body is the application's view, and a window is a component.**
+Every node at the root of the package body is `lower.AppendChild(__app, n)`
+(`ir.AppParent`, written by passDeclarative), and a render slot there is
+handed the application as its parent; what attaching to it means is each
+platform translator's answer. On gtk4 and fyne `ui.window` is overridden by
+the platform's `Toplevel` primitive (`title`, `:visible`, `@closed`, a rest
+slot of `ui.node`), and attaching a Toplevel creates its window: `gtk4rt.App`
+and `fynelayout.App` are what a slot is handed, and the box calls a slot makes
+(`BoxAppend`/`BoxRemove`/`InsertBefore`/`SlotAnchor`, fyne's `InsertBefore`,
+`Remove`, `SlotAnchor`) answer for the application when handed it. A Toplevel's
+handle is the box its content is appended to, so a child and a slot inside a
+window are ordinary box operations. BuildUI -- what a test and a snapshot take
+-- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
+the tree, its first settle included, and runs `RunWindows(show)`.
+
+What makes that reach the two platforms is generic: `ui.window` is an ordinary
+component, composed through its override like any other, and a builtin node
+whose declaration the target overrides is composed the same way
+(`composeOverriddenBuiltins` in `internal/lower/platform_extension.go`, which
+repoints each node at a per-build copy of the declaration with the mark off,
+since library IR is shared between builds) -- sngl:ui/nav's stack and page on
+html.
+
+**html writes its document from a Window and shows every other as a
+`<dialog>`**. html overrides `ui.window` once,
+with `Window(title, favicon, :visible=visible, @closed { closed() }) { boundary(@error(e) { error(e) }) { content } }`, around its
+`#[gen.renders(surface)] #[intrinsic("html:window")] component Window(…) root`.
+The mark is what says the primitive's nodes are surfaces (`ir.IsSurface`,
+`ir.RenderedSurface`), and it is read twice. After inlining,
+html's `documentsOf` writes its documents from the first Window that no `if`
+over state and no `for` can take away (`documentSurface`), and writes what the
+package body renders around it (`bodyAround`: nodes and render-slot calls)
+into every document -- each page's, in static and route mode, and a
+harness's -- so a dialog is the application's and not a page's, with a `state`
+per document as each page has. Before inlining, `findSurfaces`
+(`internal/lower/surfaces.go`) finds which `ui.window` will be that document,
+a node being a surface when the primitive its component renders is one
+(`ir.RenderedPrimitive`): a `nav.stack` in any other surface navigates in
+place, so passNavigationHrefs leaves it alone, the composition leaves its nav
+nodes the builtins they are, and passNavigation -- which runs on every target,
+and on one holding `navigation` lowers nothing unless the package has
+surfaces -- lowers exactly those. A program whose every window may be absent
+has no document and is refused at its first (`window_dialog_refused.txt`).
+
+The emitter answers a Window that is not the document, as gtk4's codegen
+answers a Toplevel (`renderDialog`): a `<dialog>` with the title in its
+`aria-label` and a header holding the title and a close button, which is a
+window manager's close -- the `visible` write-back with false, then `@closed`
+-- and the only thing that fires `@closed`: a close the program makes runs
+nothing, as on gtk4. `visible` is the dialog's `open` property
+(`domPropForProp`), written by the init and by the patches reactivity put in
+every handler that writes it. One built at run time -- a window under an `if`
+over state -- is `_snglDialog()`, whose close button runs the `__onVisible`
+and `__onClosed` the attach ops assign, in that order whichever was attached
+first. The document's own `visible` and `@closed` do nothing, since a page
+cannot leave the screen and is told of no close, and its writes through its
+`#id` are dropped (`respellWindowWrites`); its `open` and `close` write the
+var `:visible` bound or its cell as on every target. The lowering knows none of
+that: the document's unbound `visible` is a cell like any window's, which the
+page's `state` carries and nothing reads. A page's reset strips a
+dialog's margin and padding, so a page holding one gives them back.
+`testdata/window_several.txtar`, `window_visible.txtar`,
+`window_under_if.txtar`, `window_dialog_pages.txtar` (static and route) and
+`window_dialog_nav.txtar` are the code, and
+`cmd/sngl/testdata/window_dialog_runs.txt` runs it in Chromium, on fyne, gtk4
+and the interpreter.
+
+A test may now take a root component and reach its windows. The interpreter
+mounts a window as a node of its component, so its `#id` holds the cell
+behind `visible`, and a method called through a node's handle runs in the
+instance's scope. A test's `c.box.checked` -- a select of the handle through
+the instance -- is repointed at the cell as `box.checked` is
+(`handleThrough`), and the JS and Go test emitters spell the root
+component's vars as the instance's state.
+
+**bubbletea and android show one window, and a `Screen` is it.** Each
+overrides `ui.window` with `Screen(visible=visible, …) { content(params) }`: a
+hidden screen draws nothing, while what it holds stays mounted -- its timers
+tick and its effects stay -- since hiding is not destroying. Both re-render
+the whole view from state, so a window under `if details` is an ordinary
+conditional and needs no slot. The view is the package body (`viewStmts`), and `codegen.SoleScreen`
+finds the Screen in it and the conditions it is drawn under, following a
+component built at run time into its body -- which is where android's window
+under a reactive `if` lands, the implicit-state wrapper being a `remember`ing
+composable there. A second window is refused at the second, one in the other
+branch of an `if` and one under a `for` included; both targets used to take
+`wins[0]` and drop the rest without a word
+(`cmd/sngl/testdata/window_second_refused.txt`). The close is the host's:
+ctrl+c on bubbletea, the system back on android (a `BackHandler` inside the
+Screen). It runs the Screen's `@closed`, which the override answers with
+`visible = false` and then the window's own handler, and the program quits
+(`tea.Quit`, `Activity.finish`) when the conditions say the window is off
+screen after it (`Screen.Shown`: the conditions and the Screen's own
+`visible`) -- on android the innermost body's, which is the scope a runtime
+instance's composable can evaluate. `testdata/window_screen.txtar` and
+`window_under_if_screen.txtar` are the code, and
+`codegen/platform/bubbletea/window_close_run_test.go` drives ctrl+c through
+Update and ticks a hidden window's timer. The fixture harnesses compile every
+multi-window fixture in `testdata/` for these two as well, and skip one on
+`codegen.OneWindowError` rather than fail it.
+
+Two gaps composing the window there exposed are general. A library component
+with no state of its own in a reactive position is spliced rather than
+elected a runtime instance, since nothing emits a library body as one:
+`ui.window` has methods, so passInlinePure leaves it to passNoInlineComponents,
+and on bubbletea the implicit-state wrapper around it is spliced per copy,
+leaving the window under the `if` with no declaration any backend writes. And
+`ir.NodeInst.Site` is the node a program wrote where an override's body was
+substituted for it (`ir.AttachNodeSite`, in both inliners, and in expandCall
+for a library body), since the node's own AST is then the platform
+package's; `ir.NodePos` reads it, and the second-window refusal is the first
+diagnostic that needed it.
+
+One divergence stays: bubbletea keeps no state of an instance's own, so the
+`visible` cell of a window under `if details` is spliced into the Model and
+survives the condition turning false, where every other target starts it
+again.
+
+**A window under an `if details` is a node in a render slot**: created with
+the slot, destroyed with it, content and effects included. The slot's body is
+lifted into a component built at run time (liftSlotBodies), so what the window
+renders is an instance, and an instance's teardown destroys the instances its
+own build made (`destroyBuiltInstances`) -- without that an effect in a
+component the window rendered stayed mounted after the window was gone.
+Nothing survives the condition turning false; hiding without destroying is
+`visible`. `testdata/window_under_if.txtar` is the code and
+`cmd/sngl/testdata/window_under_if_runs.txt` runs it, including a counter
+that starts again at zero the second time.
+
+**`visible` is a two-way prop of `ui.window`, and `open`/`close` assign it.**
+They are ordinary methods in the window's body (`func open() { visible = true }`), so `details.open()` writes the caller's var where `:visible=shown`
+bound one and the window's own cell (passImplicitState) where nothing did; a
+read `details.visible` names the same. A method called through a component's
+`#id` is repointed at the clone the inliner made where it spliced the node
+(`repointHandleCalls`, beside repointCellReads) -- before, `p.open()` came out
+as `m.p.open()` and the method was shaken away -- and the inliner now
+substitutes a component's events into its hoisted methods too, which is how a
+method's write of a bound prop reaches the caller. The override binds the prop
+through (`Toplevel(:visible=visible)`), which works because passPropBindings
+also lowers the bindings of every library body the program renders.
+
+The host reports a window manager's close as `visible = false` and then fires
+`@closed` -- renamed from `@close`, which clashed with the `close` method --
+and the tree decides what exists: a handler writing `details = false`
+destroys the window, one calling `open()` keeps it on screen. A close that
+leaves no window on screen ends the program, unless it started with none; a
+start with none on screen reports every window hidden, which is what makes a
+later `open()` a change (`pkg/go/gtk4rt/toplevel_test.go` drives the rules
+through `ToplevelRequestClose`). Each setter ignores the value the window
+already has, since the binding's write-back sets it again. gtk4 holds the
+application (`g_application_hold`) and fyne keeps a window it never shows,
+because both would otherwise end when the last window goes. gtk4's inline-cgo
+mode builds one window with no `@closed` and no state-driven `visible`, and
+refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a script tells a window
+reached the screen (`cmd/sngl/testdata/window_open_runs.txt`,
+`window_several_runs.txt`, `window_visible_runs.txt`).
+
+**A selected platform that cannot be used here is refused before the check**
+(`internal/build.Check`), by the platform's own `Unavailable()` -- gtk4 with
+no introspection data serves no package, so every component it would
+implement would otherwise be reported as one it has no implementation for
+(`cmd/sngl/testdata/gtk4_unavailable.txt`).
 
 Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
 answer, and only a caller holding the whole registry may claim it
@@ -2090,7 +2647,7 @@ document there was no other way to say, and a document is a `vbox` of
 `richText` flows interleaved with anything else a `ui.node` can be — which is
 also what makes a document extensible without the vocabulary growing.
 
-`span` is an ordinary `#[tree.kind]` family, and that is the design rather
+`span` is an ordinary family, and that is the design rather
 than a shortcut. A member holds its own family and never a `node`, so
 emphasis around a link and a link inside emphasis are both one flow, and a box
 in the middle of a sentence is a membership error rather than a content model
@@ -2186,15 +2743,20 @@ the doc site uses, so two readings of one document cannot differ.
   content is `guide.md` or `guide/index.md` — both is an error, and neither
   leaves the child with no parent. A page's href follows its file:
   `/guide/intro.html`, and `/guide/index.html` for `guide/index.md` where
-  `guide.md` is `/guide.html`.
+  `guide.md` is `/guide.html`. A file or directory whose name starts with `_`
+  is the directory's own material and no page -- a template, a tutorial's
+  source -- as Go skips one; the docs site's tutorial is `learn/_tour.md`.
 
   The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
-  **`root`**, a const holding the whole tree, and **`site<T>(layout component(page Page, content component ui.node) T) T`**, which inserts
-  `layout` once per page — reading each page out of `root` so the tree is
-  written once — and populates its `content` entry with that page's component.
-  The program writes the layout once and decides what a page is: a `window`
-  per page, a route, a pane. Nothing holds a component, so all of it is
-  compile-time. Those four names are reserved, and a page taking one, or two
+  **`root`**, a const holding the whole tree, and **`site(layout component(page Page, content component ui.node) ui.node)`**, which renders
+  one `nav.page` per file -- at the file's href, titled by the frontmatter's
+  `title` where `Frontmatter` has one -- with `layout` inserted around it,
+  reading each page out of `root` so the tree is written once, and populates
+  its `content` entry with that page's component. `site` renders pages, so it
+  composes them (see *Navigation*): the program
+  writes it among a `nav.stack`'s pages, beside pages of its own, and the
+  window around the stack is the chrome every page shares. Nothing holds a
+  component, so all of it is compile-time. Those four names are reserved, and a page taking one, or two
   paths becoming one name, is refused naming the files.
 
   **`Frontmatter` is the site's own vocabulary.** A `struct Frontmatter`
@@ -2223,6 +2785,402 @@ collapsed only when identical, since rewriting an alias would be checking. A
 mistake inside one reports the markdown file and line, because the position the
 checker has is the `import` that read the document.
 
+### Plugins
+
+A new family, language, platform or import scheme is a SNGL package rather than
+Go compiled into the binary, and the rules below are what that rests on. The
+mechanisms themselves are described where they live: families under
+*Stdlib*, targets under *A target is its library package*, `gen.emit` and
+`gen.scheme` under `sngl:x/gen` and *Import schemes*, commands beside them, and
+*Trust*.
+
+- **A platform is a host plus the families it renders.** The host owns the
+  process -- `main`, the Model, the event loop, the drawing thread; a family
+  emitter turns a family's subtrees into code inside it. A new use is usually
+  a family, not a platform: an i3 bar is a family a program builds for gtk4 or
+  fyne, getting the bar and its windows in one process
+  (`example/i3blocks/`). Two code-generating platforms in one process is out
+  of scope until someone asks.
+- **Dispatch is the override mechanism.** A family's override is its emitter
+  and a member's override is what that member contributes, found in the
+  existing order -- platform, language, the declaration's own body, then the
+  per-target bodyless error. The compiler walks; an emitter never switches on
+  a node's kind. A member with a body composes, so only primitives need an
+  override.
+- **Walk and runner are separate.** The walk produces data carrying no IR --
+  member, position, build-time prop values, children -- and a runner turns it
+  into files: a template, SNGL the host compiles (code mode), or a handler
+  (process mode). Keep that tree free of IR pointers as it grows; it is what a
+  process would be handed.
+- **An emitter that reads state writes SNGL**, not host code: the host is
+  rewritten into a members function and the family's `gen.emit`, two effects
+  every host already compiles. A direct API writing host code through the
+  language's translator, for output no SNGL construct expresses, is the door
+  left open; measure the interpreter on a large host before building on it.
+- **Every read a handler makes is recorded**, through `sngl:x/gen`, so a
+  plugin's output is a store entry with no bookkeeping by its author, and a
+  result depends only on what was recorded -- there is no unrecorded way to
+  read. `gen.exec` is the exception in what it can see (the process's own
+  reads are invisible), which is why it is never allowed unasked.
+- **Handlers run in the interpreter**, in process: an import resolves during
+  the check, which is every LSP keystroke, and the playground cannot exec a
+  toolchain. The cost is that the interpreter's correctness now matters for
+  output, not only for tests.
+- **A plugin's code is part of its key**: a SNGL producer adds the digest of
+  its package closure to the store key (`Request.Identity`), or editing a
+  plugin would replay what the old one produced.
+- **A command is the user's terminal, not a build input**: `gen.run` and
+  `gen.build` handlers run processes through `gen.shell`, which records
+  nothing; test, snapshot and preview are still Go interfaces
+  (`codegen.TestRunner`, `Snapshotter`, `PreviewStyler`) and are the next to
+  become commands.
+
+Known gaps, each refused or documented where it bites:
+
+- A generated family's host under a `for` is refused, and so are a composed
+  member's handlers and a member holding children in code mode.
+- Emitter layers of `@run` (a family adding its own process start) do not
+  exist; `none` and bubbletea do not declare `@run`.
+- html route mode under `--lang go`: `sngl run` serves the static files
+  rather than running the server.
+- bubbletea splices a stateful component in a page, or a window under an `if`,
+  into the Model, so its state survives the page being left.
+- A page handle read above its `nav.page` does not check
+  (`specializeHandle` runs only when the node is), and no Go test emitter
+  reaches a node's prop or a nested component.
+- `sngl dump` prints a qualified node by its local name, so a dump of a
+  program writing `nav.page` does not check again.
+- A node id that is a Go keyword (`button #go`) is a field fyne and gtk4
+  cannot declare.
+- `gir:` reads only `Gtk-4.0`.
+
+### Import schemes
+
+**A scheme is served by a compiled-in importer, by a library plugin, or by a
+plugin a package declares** -- `gen.scheme(name="pc", @generate(out, importPath) { … })` at the root of a file (`lib/x/gen/scheme.sngl`). The
+directive is recorded in pass1, checked in pass2 and taken off the package
+body onto `ir.Package.Schemes` (`internal/checker/schemes.go`), so it is never
+rendered; written anywhere else it is an error. The first two are *built in*,
+and a plugin may not take one's name: a scheme is a dispatch key every import
+of the build shares, not a name in scope. A library plugin lives at
+`lib/x/scheme/<name>` and needs no import -- the layout is the registration.
+
+**A package resolves what its own import closure declares, in two phases.**
+pass1 registers every import before any declaration, and one whose scheme
+nothing built in serves is deferred (`deferImport`); once the rest have
+resolved, each deferred import resolves against the schemes the imported
+packages declare and reach (`resolveDeferredImports`), round after round,
+since what a plugin generates may declare another. So where the plugin's
+import is written -- below its use, in another file, in a library the package
+imports -- does not matter, while a sibling package reaching neither cannot
+use it. What is left is reported once the package's own schemes are known: one
+it declares itself ("a plugin may not use a scheme it declares"), or one
+nothing serves. Two plugins in a closure declaring one name are an error at
+the import that brings the second. A cycle of plugins is a directory import
+cycle, reported where it closes, and the scheme it left waiting is not
+reported again. No registry outlives a check: the schemes hang off the IR, the
+library plugins loaded off the check's `libCache`.
+
+**The handler runs in the interpreter, through the build host**
+(`internal/plugin`, reached through `build.Resolver.GenerateScheme`; a
+resolver that is not a `checker.SchemeRunner` resolves no plugin scheme). Its
+calls are gated by the plugin's origin -- a library plugin is trusted -- and
+recorded, `out.write(name, src)` writes one `.sngl` file of the package and
+records nothing, and a raise that leaves the handler is the import's error. The
+output is checked as a package with no directory, so it may not import by
+path, and is stored as `sngl.scheme` (see *Performance*). Fixtures:
+`cmd/sngl/testdata/scheme_order.txt`, `scheme_errors.txt`,
+`scheme_store.txt`, `c_pkgconfig.txt`, and `testdata/c_link.txtar`.
+
+**`c:` declares nothing a program calls.** `c:pkg:<library>/<header>` asks
+pkg-config for flags and includes `<header>`; anything else is a header
+included as written. What it writes is one `c.link`, and the program declares
+each function with `#[cnative]` -- GTK's headers take a C parser minutes, which
+is why the Go importer that parsed them went rather than moved. A `#[cnative]`
+call returning an int or a float is converted to Go's type at the call, as its
+arguments are to C's.
+
+### Navigation
+
+`sngl:ui/nav` says a
+window is a surface and a page a destination. A stack shows one page, named by
+its `#id` -- `pages.go(about)`, `pages.go(pkg, P{name="x"})`, `pages.back()`,
+`nav.link(to=about, text="About")` -- and `pages.current` is the page
+showing, read through the stack's handle. A page not showing is not mounted. A
+link shows `text`, as `ui.link` does, and takes no content: no Go target's
+button renders any.
+
+**The stack's page and a page's params are state of the navigation, never
+props.** `current` is a computed of the stack (`#[intrinsic("nav.current")] func stack<M>.current()`), read with its parentheses elided as any zero-arg
+method selected through a handle is, so nothing sets or binds it. A page's
+`params` is a one-way prop: where the page starts, and what a `go` or a
+`link` naming no params shows it with (`params option<T> = null`). The params
+it is showing reach its content's population, `component content(p)`, and
+nothing else; `pkg.params` reads what the call site wrote. They travel with
+the history entry, so `back` restores them.
+
+**The family is `_page<M>`, unexported, and `page` is its only member.** It
+exists so `pages.current` has a type: `pages.current.title`,
+`pages.current.meta.label` and `pages.current == about` read it, and a program
+names a page and never the family -- so a func cannot take one as a
+parameter, and `pages.go(pages.current)` is refused, since `go` takes a
+`page<T, M>`. `meta M` is what a program says about every page of a stack
+beside its href and title, one type for all of them; `stack<M>` binds M from
+the pages written in it (`bindFromChildren`, every page held to the first),
+which is what will let a menu iterate the pages.
+
+**The compiler answers the stack and the page; the link has a body.**
+`stack`, `page` and `link` carry `#[marks.builtin("navStack")]`, `navPage` and
+`navLink`, as `effect` carries its kind: a builtin node is exempt from the
+bodyless-library rule and from inlining -- the optimizer's included --
+`composeOverriddenBuiltins` composes one a platform overrides, and
+`passNavigation` finds them by the kind. A link's body is what it is wherever
+there is no address to follow: a `ui.button` whose click runs `@click` and
+then the unexported intrinsic `nav._follow(to, params)`, going to the page in
+the stack that holds it. The mark stays on the link because which body it
+renders is decided per node: html overrides it with `ui.link(href=nav.href(to, params))`, and a link in a `<dialog>` keeps the declaration's own, which
+`Component.DeclaredBody` holds once the override is swapped in. Three answers:
+
+- **The interpreter** is the reference. It runs the checked IR, so
+  `sngl:platform/none` overrides the stack and the page with its `Stack` and
+  `Page` primitives, renders the link's own body, and `internal/interp/nav.go`
+  answers them and `nav._follow`, keeping the
+  page showing on the stack's instance and the params a page is showing on
+  the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
+  from what it holds, and `Page` is `#[tree.none]`.
+- **A target declaring `#[gen.can(navigation)]`** renders them in its own
+  codegen -- html's documents and routes, and android's `NavHost`
+  (`codegen/platform/android/nav.go`). On android a page's content is a
+  reactive position for the inliner, since the target mounts and unmounts it
+  as the stack moves, so a component with state in it is built at run time.
+- **Every target gets `passNavigationValues`**, the value half
+  (`internal/lower/navigation.go`): each page's record (`_page__value`, the
+  family's props at the stack's meta type plus an `id` numbered across the
+  family's pages in the package) is made once and hung on the node
+  (`NodeInst.Record`, walked by `ir.Walk` and `ir.Rewrite`), a page handle
+  read anywhere -- a `go`'s or a link's `to` included -- is that record,
+  `pkg.params` is what the call site wrote, `==` against a page compares
+  ids, `pages.current` is the one call `stack.current(pages)`, and every page
+  type the program names is the record's. What is left is the three nodes
+  and the `go`, `back` and `current` calls, naming the stack by its handle
+  and the page by its record.
+- **Every target without the capability then gets `passNavigation`**, the
+  structure half, which lowers what is left to plain UI before
+  ImplicitState: a var holding the current page as its record, a var per page whose params are not the empty struct,
+  starting at what its call site wrote, a history list of entries holding the
+  page replaced and every params var, and the pages as an `if`/`else if`
+  chain on `current.id`, so a page not showing is not mounted. `go` pushes,
+  writes the params and the current page; `back` pops and restores both, and
+  does nothing at the bottom; a `nav.link` is pointed at a copy of its
+  declaration whose body has `_follow` lowered to the same `go`, a copy per
+  node since which page that is is the node's. The `current` call is the cell,
+  rebased through `c` when a test reads `c.pages.current`. Three shapes are
+  refused with a position (`cmd/sngl/testdata/nav_lowering_refused.txt`): a
+  stack directly under a `for`, whose cells would be one for every copy, a
+  `go` naming its page through a value rather than a page's own `#id`, and
+  params handed as an option value. `testdata/nav_stack_lowered.txtar` is
+  the code on gtk4, fyne and bubbletea, and
+  `cmd/sngl/testdata/nav_stack_runs.txt` runs the program on each and on the
+  interpreter.
+
+**android is a NavHost.** A link is android's own `Link` primitive
+(`lib/platform/android/nav.sngl`), since its body names a page and a
+NavHost answers that only knowing which controller holds it. Each page is a destination with a typed route of
+its own, a `@Serializable` class named for the page's record and id
+(`_page__valueRoute2`), holding the params where the page has any with the
+params its call site wrote as the default; the struct a params type reaches is
+`@Serializable` too, and the params travel as their JSON through one
+`snglNavType<T>()` per type, declared once at top level -- a NavType made
+afresh each composition is a different graph each time, and Compose never got
+idle. A route is a class even with nothing to hold, so a `go`, which names its
+page by the record alone, is `pages__nav.navigate(Route(params = …))` whatever
+the page. `back` pops, and does nothing at the bottom, where the system back
+is the window's. `pages.current` is read off the back stack:
+`currentBackStackEntryAsState()`, mapped to the family's record by one
+`<Record>Of(entry)` per record type, and in test mode the state class holds the
+controller so a test reads the same thing. A page's title, href, meta and
+params are written in declarations rather than where the page is, so each is a
+constant; a params type with no serializer (a datetime) and `--lang go`, whose
+funcs live in golib with no NavController, are refused with a position
+(`cmd/sngl/testdata/nav_android_refused.txt`). navigation-compose and
+kotlinx-serialization-json join the scaffold, with the serialization plugin,
+only for a program that renders a stack; the direct build adds the same
+artifacts and plugin. `testdata/nav_stack_android.txtar` is the code, and
+`nav_stack_runs.txt` runs the program under Robolectric.
+
+**html is a document per page.** It declares `navigation` and asks for
+`#[gen.wants(navigationHrefs)]`: a page is an address, so what is left of
+navigation once a script is written is a browser following one.
+`passNavigationHrefs` (`internal/lower/navigation_hrefs.go`), run after the
+value half and before `composeOverriddenBuiltins` -- which is why
+NavigationValues now runs ahead of it too: composition clears the kind they
+find a page by -- writes the page's own params into a `nav.link` or a `go`
+that passes none. html's override makes the link a `ui.link` to
+`nav.href(to, params)`, which the optimizer folds to the page's href with each
+`{name}` filled and escaped where the params are literals (`foldNavHref`), and
+the html emitter answers where they are not. Only a link: a button that goes
+to a page keeps its look and navigates when clicked, since `<a>` around a
+`<button>` is not HTML a browser agrees on. It moves each page's content into its children under
+`if pages.current.id == <id>` with the population's parameter on the node
+(`NodeInst.Params`, the window's cell one level down). It refuses what an
+address cannot carry: a params field the href names no placeholder for (so a
+page's params all travel in its path), and a stack under an `if` that reads
+state. A page whose href is a pattern on a static site is html's to refuse, as
+it writes the page: whether a language serves routes is
+`codegen.ServesRoutes`, which nothing in the lowering or the optimizer asks by
+name.
+
+html then overrides `nav.stack` and `nav.page` with its own `Stack` and
+`Page` primitives (`#[intrinsic("html:stack")]`, `"html:page"`), and the
+inliner carries the page's `Record` and `Params` onto the `Page` node with its
+site (`ir.AttachNodeSite`). html's `documentsOf` writes one document per node
+carrying a page record: the whole window with the stack standing for that page
+alone, so the window and what sits beside the stack are the shell. In each
+document `pages.current` folds to the page's record (`Fold.Answer`, which makes
+every call of an intrinsic fold to a value -- the optimizer names no page), so
+`title="Docs - {pages.current.title}"` is that page's title and the page's
+`if` folds true; on a static site the params cell folds to the page's own, and
+in route mode it is the document's `Params`, which the route binds from the
+request on the server and `routeParamsJS` reads from the path on the client.
+A static document is written at the page's href (`/about` is
+about/index.html), and route mode serves a route per page named for it, with
+`routesConflict` asking the pages. What no document's fold reaches -- a
+function, a test body, the step an effect in a page settles by -- reads
+`globalThis.__sngl_page`, which a document publishes only when its script
+names it. A `go` is `location.assign` and `back` is `history.back()`: the
+browser's history, so at its bottom it leaves the site. A window holds one
+stack. Refused with a position:
+`cmd/sngl/testdata/nav_html_refused.txt`. `testdata/nav_stack_html.txtar` and
+`nav_stack_html_route.txtar` are the code, and `nav_stack_runs.txt` runs what
+a document answers without leaving itself -- a test runs inside the document
+it was loaded in, and a navigation ends it.
+
+**A stack's pages are fixed when it is built, and need not be written one by
+one.** A `for` over a constant writes a page per element, an `if` over
+constants one or none, and **pages compose in components as widgets and
+shapes do**: a component written among a stack's pages is inlined to the page
+primitives it renders, whatever it declares. Whether its `#id` is a value of
+the page family is a separate question, `ir.IsFamilyValue`: a member
+declaring the family's props is one, and one declaring none of them composes
+members without being one (`Type.IsAssignableTo` refuses it, and
+`bindFromChildren` skips it). The optimizer splices the second kind wherever it
+is written (`inlineComponentCall`, whatever its props), which is what folds an
+`if` over what the call site handed it -- md's `site` and its layout -- and
+`spliceComposedPages` inlines whatever the optimizer did not before
+passNavigationValues numbers the pages, since the inliner runs long after.
+A member whose family is inferred from its body binds the family's type
+parameters at their defaults, so a wrapper may declare `href` and `title` and
+render the page from them (`_page`'s `meta` defaults to `M{}` for it to omit). A copy of a page under loops -- nested to any depth -- shares the page's id,
+and its record holds which copy it is, `copy`, a `list<int>` of one index per
+enclosing loop, outermost first (`ensureLoopIndex` makes each loop's index
+explicit, `__copy`, `__copy1`, …), present on a family's record only where some
+page of it is under a loop. `==` compares the ids and the copies, element by
+element against whichever side's indices are known where it is written
+(`copyMatch`) and through a synthesized `__nav_copy_eq` where neither is, since
+Go's slices have no `==` and JavaScript's arrays compare by reference. The
+page's `#id` names that copy inside its loops and is nothing outside them (the
+checker's "rendered inside a for" diagnostic). A looped page may take params,
+held in one cell for the page -- only one copy shows -- which starts at the
+starting copy's params, read back by index into each loop's iterable
+(`loopedStartParams`, a pure function the fold answers), and a `go` or link
+naming a copy and passing none hands it its own (`handLoopedParams`). html
+writes a document per copy: html's `documentsOf` enumerates the copies
+(`documentCopies`), folds an `if` and walks each loop with its variables
+bound, and clones the window holding only the statement the copy is in, so a
+site of a thousand pages holds one page's tree at a time; a loop of pages is no
+render slot (`loopsOverPages`, asked by passReactivity and
+passSlotChildInstances) and the page primitive under one is a rendering root
+for the inliner, as a window is. passNavigation keeps the loops: each copy is
+the `if` on `id` and `copy`, and where a copy may be the start the stack's
+first page is `<stack>__start()`, which looks for the page at "/" among the
+copies and falls back to the first written -- folded at build time where the
+iterables are constants. android declares a destination per page: a looped
+page's route class holds the copy as a dotted string (`copy = "1.0"`, since
+typed routes carry plain types) and its params as an optional the copy's own
+fill in, and the destination and the record mapping bind each loop's
+variables back from it by index. The start is `NodeInst.Start`, the search
+passNavigationValues hands a target that declares stacks itself, which the
+fold makes the record (and android runs at composition where it did not). A
+composition nothing instantiates after its splice is dropped. Refused with a position
+(`cmd/sngl/testdata/nav_pages_written_around_refused.txt`): a `for` over state
+or an `if` reading it, and a composition of pages with state of its own.
+`testdata/nav_stack_pages_written_around.sngl` and `nav_stack_pages_nested.sngl`
+run it on the interpreter, which needed nothing new -- each copy is an
+instance of its own -- and the two `.txtar`s are the code on html, gtk4, fyne,
+bubbletea and android.
+
+**A window lost `href` and `params`, and `output(entry=…)` went**: a destination is a page, and a stack starts at the page at "/", or
+its first. Every program that was a window per page is a window holding a
+stack of pages, the window's title the page's (`title=pages.current.title`),
+and html writes the same documents from it. A `var` written in a page's body is state of the page, which starts again when the page is left, as any block's is (see *A `var` written in a block of a view is state of that block*).
+
+Three limits that are not navigation's. On bubbletea a stateful component in a
+page is spliced into the Model, so its state survives the page being left --
+the divergence a window under an `if` has there. A `nav.link` above its
+`nav.page` in source does not check (`cannot use page as page<struct {}>`):
+`specializeHandle` completes a handle's type only when its node is checked, so
+a read above the node sees the bare declaration. And no Go target's test
+emitter compiles a read of a node's prop (`c.heading.value`) or of a component
+nested in the one under test (`c.tally.hits`), which is why `nav_stack_runs`
+tests a narrower surface than `testdata/nav_stack.sngl`.
+
+What it needed from the checker is general:
+
+- **A component type keeps its type arguments** (`page<T>`, resolved like a
+  struct's), and a node's `#id` is typed by what its call site bound
+  (`specializeHandle`), so a func binding `T` from a handle holds the value
+  beside it to that type. Written bare, a generic component type is its
+  defaults, as a struct type is (`page` is `page<struct {}>`), and a
+  parameter with no default has to be written. A select through one reads
+  its props, and its computeds' results, under those arguments, and a handle
+  reached from outside its body (`c.pkg`) carries what its call site bound
+  (`handleArgs`). A qualified component name (`nav.page`) is a type too, not
+  only a family.
+- **A family may take type parameters**, and a member binds them in its
+  return position: `page<T, M>` is a `_page<M>` (`Component.TreeArgs`,
+  `ir.FamilyArgs`). A member declares each family prop at the family's type
+  under that binding, a member's handle is assignable to the family at the
+  arguments it binds, and a select through a family value reads its props at
+  the value's. A generic slot's family arguments are bound by the children
+  written in it where no prop pinned them (`bindFromChildren`, recorded per
+  node in `nodeArgs`). `testdata/family_generic.sngl`.
+- **A package names its own unexported declarations**: the export rule is the
+  one between packages, and a bare type name resolving in this package (or in
+  the library source being loaded) is not held to it.
+- **`T{}` is the zero of what T is bound to**: typed `T` in the declaration,
+  and written out by each call that omits it (`typeParamZeroFor`), for a func
+  and for a component prop, the library's included, since no backend can
+  spell a type parameter's zero. A generic signature's defaults see its type
+  parameters.
+- **A two-way prop is never required**: unbound, it starts from its default
+  or its type's zero.
+- **A window's own props see its body's handles uncounted**, so
+  `title="App - {pages.current.title}"` reads one node rather than an option.
+- **`==` on two handles needs one declaration.**
+- **A method whose receiver is not its first parameter** (every `sngl:`
+  method, a component's) infers its type parameters from all of its
+  arguments; the shift for the receiver-as-param form dropped `to`. And a
+  component another package declares finds its methods in its own table
+  when its bare name is not in scope (`pages.current` off `nav.stack`).
+
+And from the interpreter, each a rule for every component:
+
+- **An instance the mount no longer reaches loses its state**
+  (`evictUnreached`), as every compiled target already does: a component under
+  an `if` that went false starts again from its initializers.
+- **A handle compares by instance**, the scope the interpreter keeps for it,
+  through the test runner's wrapper as well (`InstanceValue`).
+- **An event on a component whose call site handled none of it reaches what
+  it renders** (`InvokeElementEvent`), the way a user's click reaches the
+  widget: `c.link.click()` clicks what the link's override draws.
+- **A bare call of an intrinsic the interpreter implements runs it**, as a
+  qualified one always did, and so does an intrinsic computed selected
+  through a handle (`intrinsicMethod`, and the test runner's `GetField`).
+
+`TestRunFixtures` runs `SKIP(codegen)` fixtures too: the directive opts a
+fixture out of code generation, and the interpreter is the reference such a
+fixture is held to.
+
 ### Runtime packages for generated code
 
 SNGL ships per-target-language runtime packages under `pkg/<lang>/<name>/`. These contain Go/Kotlin/JS code that generated programs import. Examples:
@@ -2242,6 +3200,15 @@ When adding a new stdlib package that needs runtime support:
 
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
 - **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
+
+**An anonymous struct is its fields.** `struct {}` and `{a int}` written
+inline are interned per package as a synthesized declaration
+(`checker.internAnonStruct`, `StructDef.Anon`), whose host name is derived
+from the field signature alone. Two of them are one type when they have the
+same fields at equal types, whichever package spelled them (`Type.Equal`):
+`sngl:ui/nav`'s page family defaults `meta` to its own `struct {}`, and a
+program declaring the prop writes the program's. Compared by declaration
+instead, the two never matched.
 
 **A unit's members are its bases, and they are registered like any other
 declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
@@ -2412,7 +3379,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 **A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
-**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
+**Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions. A script gets `$WORK` (its directory), its own `XDG_CONFIG_HOME` so it never reads or writes the user's trust config, and `GOENV` pinned to the user's so the go command's own config survives the move. A script that builds a Go module against the checkout writes its go.mod with `exec sh -c` from `$SNGL_HOST_GO_MOD` (a `go` line included, or an offline `go mod tidy` needs the unpruned graph, and the checkout's `require` blocks, or the pruned graph selects versions the module cache was never given) and runs `go mod tidy` under `GOPROXY=off GOFLAGS=-mod=mod`; `trust_eval.txt` is the pattern.
 
 **Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
 from the root `TestGolden`): the archive's root-level files are one SNGL
@@ -2522,11 +3489,10 @@ targets in parallel) is not a saving.
   `build.Check` → `build.Emit`, slog discarded) gives the warm per-phase
   numbers a one-shot CLI profile is too short to show.
 - **An AST is immutable once parsed.** Nothing after the parser writes to one,
-  which is what lets the embedded library tiers (`parseStdlibDocs`) and a
-  target's served package (`parseProvided`, keyed by file name and content)
-  be parsed once per process and shared by every check.
+  which is what lets the embedded library tiers (`parseStdlibDocs`), target
+  packages included, be parsed once per process and shared by every check.
   `TestProvidedDocsSurviveBuilds` builds every golden fixture and then compares
-  each shared document with a fresh parse; a phase that needs a modified tree
+  each target package's shared document with a fresh parse; a phase that needs a modified tree
   builds IR or a new node, never an edit.
 - **A library package is loaded against the targets it belongs to.**
   `CheckLibPackage` selects a target package's own target (`ownTarget`);
@@ -2538,8 +3504,8 @@ targets in parallel) is not a saving.
   and is tuned to one machine besides.
 - **The docs site (`go tool docsgen`) is the stress case**: one html build
   writing ~1200 files, where per-page costs dominate. Its compile step is
-  `sngl generate --platform html --lang none website.sngl` once
-  `internal/playground/assets/sngl.wasm` is staged.
+  `sngl generate --allow-eval=go:git.duckfam.us/jonathan/sngl/docs --allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
+  staged.
 - **What another process produces is SNGL, and it is stored.** A step
   whose output the compiler reads but did not write -- the compile-time
   evaluator's run, gtk4's GIR -- is a *producer* registered with
@@ -2550,7 +3516,13 @@ targets in parallel) is not a saving.
   producer's code is an input nothing in a file can record), it re-checks the
   recorded inputs and hands back the stored file when all still hold. Under
   `os.UserCacheDir()/sngl/gen`, `SNGL_GENCACHE_DIR` to move it,
-  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU.
+  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU. A
+  producer written in SNGL adds its own identity to the key
+  (`Request.Identity`, the digest of its package closure), since editing it
+  changes every answer while every input it recorded still holds. `Default`
+  is the store the environment names *when asked*, and `ResetDefault` forgets
+  them: a store memoizes each input's verdict for its life, which is one
+  build's, and the in-process script harness runs many.
   An `entry` input names another producer's output by digest, which is how a
   consteval value depends on the `go.deps` closure of the packages its
   program imported without restating hundreds of files, and on whatever of the
@@ -2560,10 +3532,82 @@ targets in parallel) is not a saving.
   up and runs its misses as one program. The docs site's warm compile answers
   every call from the store and runs no subprocess. js: calls are not stored
   yet, nor are go: import declarations -- both are producers still to move.
+  A plugin's handler is the third producer, `sngl.scheme` (`internal/plugin`):
+  what it records reading, plus each input a literal `cache.inputs` in what it
+  *wrote* names -- what a process it ran read, which no recorder sees -- with
+  any digest or value left out filled in by `Store.Complete` as it is stored.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target but the last, and `ir.ClonePackage` copies by
   reflection everything reachable — library IR included, since per-target
   override bodies are written onto the shared library declarations.
+
+### Trust
+
+**A malicious repository may not reach the host.** Running any `sngl`
+command in a clone must not run a process, read the environment or read
+outside the project on the repository's say-so (`internal/trust`). Two kinds of code ask, and they are gated
+differently because they reach differently:
+
+- **An evaluated go: or js: package** is native code with the user's
+  privileges, so the grant is per package and total: `--allow-eval="go:<path>"`.
+  It is asked only of a store *miss* (`gateEval`, after the lookups in
+  `execConstEval`): a stored value was computed by a run that was allowed.
+  A refused call does not fold. On a target that calls the scheme at run
+  time it is emitted as a call and `Config.Warnings` says so once per
+  package (`reportRefused`), which `build.Result.Warnings` carries and the
+  CLI prints beside the checker's; on one that cannot, it is the error.
+- **A build-time SNGL function** reaches the host only through
+  `sngl:x/gen`'s `lines`, `exists`, `files`, `env` and `exec`, intrinsics
+  marked `build` that only the build host (`internal/buildhost`) answers, in
+  a const func the optimizer folds or in a scheme's handler (see *Import
+  schemes*) -- a call left unfolded is refused by `refuseBuildOnlyCalls`. Each call is gated by the package that
+  wrote it (the interpreter keeps the frame stack for that): inside the
+  import root (`Config.Dir`, symlinks resolved) or the package's own
+  directory reads unasked, anything else needs `--allow-file`/`--allow-dir`,
+  and env and exec always need a grant. `gen.exec` holds every call to its
+  declared prefix and banned flags whatever was granted. Every read is
+  recorded, so a fold that reaches the host is a producer (`produce.go`):
+  stored as `sngl.eval` under its package closure's digest, the files it read
+  hashed as they streamed. A scheme's handler is gated and recorded the same
+  way, and a refusal there is an error at the import that ran it.
+
+- **A fetch** -- a `git:` or `http:` import of a package its cache does not
+  hold -- contacts a host the repository chose, so the importer asks before
+  any request (`codegen.NetworkScheme`'s `ResolveFSNet`, with a `NetGate`
+  `build.Resolver` builds from its `Trust`), a redirect's host included:
+  git is run with `http.followRedirects=false`, and the http client's
+  `CheckRedirect` asks. A cache hit asks nothing. The grant is a host, exact
+  or `*.<domain>` for what is below it and not it, and belongs to the project
+  -- the import root -- or, recorded under `trust.everywhere`, to every
+  project. The go command's own fetches (modules, a toolchain) are not
+  gated: once a plugin runs it as a command sngl cannot see them, and the
+  go command is trusted as a command. `sngl pkg`, which fetches because it
+  was asked to, grants itself the network.
+
+A grant comes from a flag (an import path or an origin, one invocation),
+`SNGL_ALLOW` (`;`-separated, origins only, no `all`) or the user's
+`os.UserConfigDir()/sngl/trust.sngl` (`sngl:x/gen/trust`, written by `sngl trust` and the terminal prompt, never read from the project). A recorded grant
+names where code came from -- `dir:<path>` (with the go.mod module path for a
+Go package), `go:<module>@<version>`, a fetched URI and its digest -- because
+an import path is a name a repository chooses. `SNGL_ALLOW` is unset in
+`setupTrust`, so no child sngl starts inherits it. **A nil `*trust.Policy`
+refuses everything**: a caller that never thought about trust runs nothing a
+repository brought, which is why the golden harness, docsgen and
+docbrowser's `go:generate` each name their grant. A library package is
+trusted.
+
+**The LSP resolves imports, and runs plugins, under the same gate** -- the
+config file's grants, the flags' and `SNGL_ALLOW`'s, and never a prompt
+(`lsp.NewWithTrust`). It logs each grant the last two gave at startup, so one
+an editor's workspace settings handed it is visible, and a refused call is a
+diagnostic at the import that reached the plugin.
+
+**The project is read through an `os.Root`** (`build.ProjectFS`), so a
+symlink inside the import root that points out of it is refused wherever a
+scheme reads the project through the FS it is handed -- `md:`, `js:`'s
+node_modules -- and `file:` resolves and reads its assets through one. A
+directory import is the exception, read as `../x` is, since only what code
+*reads* is held to the root.
 
 ### Debugging
 

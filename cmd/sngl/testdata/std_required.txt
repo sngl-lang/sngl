@@ -50,7 +50,7 @@ stdout 'rawelem.sngl: ok'
 # namespace resolves and the member is what is missing; every other platform
 # fails on the namespace.
 ! sngl check rawelem_unimported.sngl
-stderr 'unknown component "gtk4.GtkLabel"'
+stderr 'unknown component "gtk.GtkLabel"'
 
 # That filter still applies to a real user package.
 ! sngl check private.sngl
@@ -60,7 +60,7 @@ stderr 'unknown component "helper" in package w'
 # application wants for itself -- rect, line, path -- is free unless the file
 # asks for sngl:ui/draw.
 ! sngl check draw_unimported.sngl
-stderr 'unknown component "canvas"; sngl:ui/draw declares it'
+stderr 'unknown component "canvas"; sngl:ui/draw declares it, add import draw "sngl:ui/draw" and reach it as draw.canvas'
 
 sngl check draw_imported.sngl
 stdout 'draw_imported.sngl: ok'
@@ -142,7 +142,7 @@ ui.window {
 }
 -- rawelem.sngl --
 import "sngl:platform/html"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 import ui "sngl:ui"
 
 component Foo() ui.node {
@@ -150,7 +150,7 @@ component Foo() ui.node {
 }
 
 component Bar() ui.node {
-    gtk4.GtkLabel(label="x") {}
+    gtk.GtkLabel(label="x") {}
 }
 
 ui.window {
@@ -159,7 +159,7 @@ ui.window {
 import ui "sngl:ui"
 
 component Bar() ui.node {
-    gtk4.GtkLabel(label="x") {}
+    gtk.GtkLabel(label="x") {}
 }
 
 ui.window {

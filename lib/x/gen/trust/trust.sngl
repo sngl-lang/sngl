@@ -1,0 +1,41 @@
+import build "sngl:build"
+
+// The family of what `allow` grants.
+component grant build.family
+
+// Everything the code at `origin` may do.
+//
+// `origin` is `dir:<absolute path>` for code on disk, `go:<module>@<version>`
+// for a Go dependency go.sum pins, or the URI a fetched package was imported
+// by. `module` is the go.mod module path a Go package on disk belonged to when
+// it was granted, so the directory reused for another project is asked about
+// again; `sha256` is the content a fetched package was granted for, so a
+// changed one is.
+component allow(const origin string, const module string = "", const sha256 string = "", const grants ...component grant) root {}
+
+// What every project may do: contact the hosts named, and nothing else. Any
+// other grant names the code it trusts, in an `allow`.
+component everywhere(const grants ...component grant) root {}
+
+// Build and run the package's pure functions at compile time: an evaluated Go
+// or JavaScript package. Total, since native code reaches anything.
+component eval() grant {}
+
+// Run a command whose arguments begin with `prefix`, where the call banned at
+// least `banFlags`.
+component command(const prefix list<string>, const banFlags list<string> = []) grant {}
+
+// Read the environment variable `name`.
+component env(const name string) grant {}
+
+// Read the file at `path`, outside the import root.
+component file(const path string) grant {}
+
+// Read the directory at `path`, and everything below it, outside the import
+// root.
+component dir(const path string) grant {}
+
+// Contact `host` over the network: a git: or http: import fetching what is
+// not yet in the cache. `*.example.com` names every host below example.com,
+// and not example.com itself.
+component net(const host string) grant {}

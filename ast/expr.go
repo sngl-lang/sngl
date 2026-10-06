@@ -445,6 +445,9 @@ type ContinueStmt struct {
 type CallStmt struct {
 	Pos  Pos
 	Call *CallExpr
+	// Attrs are the marks written on it, which only a node written as a call
+	// -- `ui.text(value=v)`, with no block -- has a use for.
+	Attrs []MacroAttr
 }
 
 // I18nInterpExpr is a translatable string: $"text {placeholder} more".

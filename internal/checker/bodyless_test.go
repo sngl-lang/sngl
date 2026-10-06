@@ -278,7 +278,7 @@ component main node {
 		Targets:   []ir.StaticTarget{{Platform: "extstub"}},
 		LibSources: map[string][]*ast.Document{
 			"blipkit":          {libDoc},
-			"platform/extstub": {extDoc},
+			"platform/extstub": {extDoc, targetNodeDoc(t, "platform/extstub")},
 		},
 	})
 	for _, d := range diags {
@@ -324,7 +324,7 @@ const component bk.blip[extstub.platform](bogus) {
 		Targets:   []ir.StaticTarget{{Platform: "extstub"}},
 		LibSources: map[string][]*ast.Document{
 			"blipkit":          {libDoc},
-			"platform/extstub": {extDoc},
+			"platform/extstub": {extDoc, targetNodeDoc(t, "platform/extstub")},
 		},
 	})
 	var found bool

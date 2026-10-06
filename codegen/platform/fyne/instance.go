@@ -36,6 +36,8 @@ func emitComponentInstance(
 	canvasByNode map[*ir.NodeInst]*canvasMeta,
 	canvases []codegen.Canvas,
 	failSink func(error),
+	invokerSink func(fyneEventInvoker),
+	modelFieldSink func(name, goType string),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -58,8 +60,14 @@ func emitComponentInstance(
 		fields = append(fields, irWidgetField{name: name, goType: goType})
 	}
 
+	// A widget the program named is one a test drives, and a record is built
+	// and destroyed while the program runs, so the record hands its widget to
+	// the Model as it is built: the invoker reaches whichever instance built
+	// it last, which is the one on screen.
+	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(comp.Body)
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
+		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
@@ -77,6 +85,31 @@ func emitComponentInstance(
 		fmt.Fprintf(&ctorBody, "\t%s\n", line)
 	}
 	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, root)
+	exposed := map[string]bool{}
+	for _, inv := range invokers {
+		widget := inv.IDLabel
+		if inv.Target != "" {
+			widget = inv.Target
+		}
+		goType := ""
+		for _, f := range fields {
+			if f.name == widget {
+				goType = f.goType
+				break
+			}
+		}
+		if goType == "" || invokerSink == nil {
+			continue
+		}
+		named := namedWidgetField(widget)
+		if !exposed[widget] {
+			exposed[widget] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
+			modelFieldSink(named, goType)
+		}
+		inv.Target = named
+		invokerSink(inv)
+	}
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -180,6 +213,10 @@ func emitComponentInstance(
 	}
 }
 
+// namedWidgetField is the Model field an instance's program-named widget is
+// handed to, for the test invoker that drives it.
+func namedWidgetField(widget string) string { return "__named_" + widget }
+
 // instanceMethodName is the name one of a component's funcs carries as a
 // method on its record. Two of them the lowering dispatches to by name from
 // outside -- the prop setters and the teardown -- so those are spelled the way
@@ -220,7 +257,7 @@ func instanceVarGoType(v *ir.Var) string {
 	switch {
 	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "[]fyne.CanvasObject"
-	case v.Synthesized && v.Name == slotRootVar:
+	case v.Synthesized && v.Name == instanceRootVar:
 		return "*fyne.Container"
 	}
 	return golang.VarGoType(v)
@@ -230,18 +267,18 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext) string {
 	switch {
 	case v.Synthesized && ir.IsSlotVarName(v.Name):
 		return "nil"
-	case v.Synthesized && v.Name == slotRootVar:
+	case v.Synthesized && v.Name == instanceRootVar:
 		igc.RequireImport("fyne.io/fyne/v2/container")
 		return "container.NewVBox()"
 	}
 	return golang.LowerVarInit(v, igc)
 }
 
-// instanceRootExpr is the widget the instance renders as: the container a
-// reactive slot at the top of its body renders into, when there is one, and
-// otherwise whatever the body left unattached. Wrapped when the body left
-// several, because a parent holds one child per instance and an instance with
-// two top-level nodes has no single widget to be.
+// instanceRootExpr is the widget the instance renders as: the container its
+// reactive slots render into when the body has one, holding the body's own
+// widgets in written order, and otherwise whatever the body left unattached.
+// Wrapped when the body left several, because a parent holds one child per
+// instance and an instance with two top-level nodes has no single widget to be.
 func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) (lines []string, root string) {
 	if tr.renderedRoot != nil {
 		for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
@@ -265,9 +302,9 @@ func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) (lines []stri
 	return nil, "container.NewVBox(" + strings.Join(parts, ", ") + ")"
 }
 
-// slotRootVar is the container a reactive slot at the top of a body renders
+// instanceRootVar is the container a reactive slot in a component body renders
 // into.
-const slotRootVar = "__root"
+const instanceRootVar = "__root"
 
 // isInstanceComponent reports whether a component's body belongs to a record
 // rather than to the Model. What survives inlining and was met at a site the

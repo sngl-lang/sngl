@@ -37,7 +37,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\n")
 	declared := map[string]bool{}
 	for _, name := range names {
 		info := reg.Classes[name]
@@ -98,6 +98,17 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// from, so a body would be emitted by nobody. The checker refuses one on
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
+		// Each action is a method reached through a `#id` on the widget,
+		// declared as the C identifier it is: `bar.pulse()` is
+		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
+		// slot already holds is left out rather than shadowing it.
+		for _, a := range info.Actions {
+			n, ok := snglName(a.Name)
+			if !ok || taken[n] || events[n] {
+				continue
+			}
+			fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s()\n", a.CIdent, info.CType, n)
+		}
 	}
 	return []byte(b.String())
 }

@@ -56,16 +56,19 @@ func (*CanvasRedrawStmt) irNode() {}
 // returns a second list as well, the blocks that may *supply* a family rather
 // than merely be held to one, and that distinction belongs where the rule it
 // serves is written.
-func TransparentBlocks(st Stmt) [][]Stmt {
+//
+// Each is a pointer to the field, so a pass rewriting the blocks assigns
+// through it; one only reading them dereferences.
+func TransparentBlocks(st Stmt) []*[]Stmt {
 	switch s := st.(type) {
 	case *If:
-		return [][]Stmt{s.Body, s.Else}
+		return []*[]Stmt{&s.Body, &s.Else}
 	case *For:
-		return [][]Stmt{s.Body, s.Else}
+		return []*[]Stmt{&s.Body, &s.Else}
 	case *ErrorBoundary:
-		return [][]Stmt{s.Children, s.Failed}
+		return []*[]Stmt{&s.Children, &s.Failed}
 	case *ContextProvider:
-		return [][]Stmt{s.Children}
+		return []*[]Stmt{&s.Children}
 	}
 	return nil
 }
@@ -83,19 +86,73 @@ func TransparentBlocks(st Stmt) [][]Stmt {
 // read of the id resolves to that binding, and separating them leaves a rename
 // with nothing to repoint and uniqueNodeIDs with nothing to key on.
 func AttachNodeID(body []Stmt, id string, handle *Var) bool {
+	return attachNode(body, func(ni *NodeInst) { ni.ID, ni.Handle = id, handle })
+}
+
+// AttachNodeSite records on the node AttachNodeID picks that it stands for
+// callsite, keeping the outermost site through nested substitutions. The
+// callsite's Record goes with it, being what the node a program wrote is as a
+// value: a target that overrides nav.page with a primitive of its own finds
+// which page the primitive is by it, and the params cell the page's content
+// reads (Params) beside it.
+func AttachNodeSite(body []Stmt, callsite *NodeInst) bool {
+	site := callsite.Site
+	if site == nil {
+		site = callsite.AST
+	}
+	if site == nil && callsite.Record == nil && !callsite.Document {
+		return false
+	}
+	return attachNode(body, func(ni *NodeInst) {
+		if site != nil {
+			ni.Site = site
+		}
+		if callsite.Document {
+			ni.Document = true
+		}
+		if callsite.Record != nil && ni.Record == nil {
+			ni.Record, ni.Params = callsite.Record, callsite.Params
+		}
+	})
+}
+
+func attachNode(body []Stmt, set func(*NodeInst)) bool {
 	for _, s := range body {
 		if ni, ok := s.(*NodeInst); ok {
-			ni.ID = id
-			ni.Handle = handle
+			set(ni)
 			return true
 		}
 		// Through the four, because a component whose body opens with a
 		// conditional still renders whatever is inside it.
 		for _, block := range TransparentBlocks(s) {
-			if AttachNodeID(block, id, handle) {
+			if attachNode(*block, set) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// RepointHandler makes every alias of old under root name repl instead: a
+// catch block (If.Catch) and a raise resolved to it (Call.ResolvedHandler).
+// Both are pointers to a handler a boundary or a window owns, so a clone of
+// the boundary that copies its handler has to carry the aliases in what it
+// cloned to the copy, or the clone's content catches into the original.
+func RepointHandler(root any, old, repl *EventHandler) {
+	if old == nil || old == repl {
+		return
+	}
+	_ = Walk(root, func(n Node) error {
+		switch x := n.(type) {
+		case *If:
+			if x.Catch == old {
+				x.Catch = repl
+			}
+		case *Call:
+			if x.ResolvedHandler == old {
+				x.ResolvedHandler = repl
+			}
+		}
+		return nil
+	})
 }

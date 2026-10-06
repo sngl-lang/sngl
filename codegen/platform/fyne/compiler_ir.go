@@ -64,7 +64,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// body instantiating it, so there are no remaining child-component vars to
 	// collect.
 	for _, ov := range ctx.ModelState() {
-		// nil for a binding no declaration made: a window's route parameters,
+		// nil for a binding no declaration made: a document's route parameters,
 		// which the slot population declares and the request fills. None of
 		// the special cases below can be one -- a const, a synthesized var and
 		// a slot ref are all things a body or a pass declared -- so they are
@@ -82,8 +82,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			continue
 		}
 		if v != nil && v.Synthesized {
-			if ir.IsSlotRootName(v.Name) {
-				// A slot root is built through a native call so that
+			if v.Name == "__root" {
+				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
 				initCall := &ir.Call{
 					Type:     ir.TypDyn,
@@ -209,14 +209,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	singleRoot := true
 	var endLabel, endContainer int
 
-	wins := ctx.Windows()
-	windowNames := make(map[string]bool)
-	for _, w := range wins {
-		windowNames[w.Name] = true
-	}
-
-	var windowCodes []string
-
 	// Package-wide because a promoted handler references nodes created in a
 	// sibling slot Func, which per-Func discovery would not see.
 	// AllFuncs already covers every window's funcs, component-declared ones
@@ -236,43 +228,41 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	canvasByID, canvasByNode := collectCanvases(ctx.Canvases)
 	hasCanvas := len(canvasByID) > 0
 
-	if len(wins) <= 1 {
-		if len(wins) > 0 && len(wins[0].Body) > 0 {
-			bodyStmts := wins[0].Body
-			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
-				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
-				withSlotRoot(bodyStmts).
-				withInvokerSink(func(inv fyneEventInvoker) {
-					eventInvokers = append(eventInvokers, inv)
-				})
-			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
-			if tr.renderedRoot != nil {
-				// __root outlives BuildUI, which a test calls again to snapshot
-				// what it rendered.
-				fmt.Fprintf(&buildBuf, "\t%s.RemoveAll()\n", gc.EvalExpr(tr.renderedRoot))
+	// What BuildUI builds: the package body, whose parent is the application,
+	// or the body of a component a harness isolated as the whole program.
+	appRoot := ctx.RootDecl() == nil
+	bodyStmts := ctx.Pkg.Body
+	if main := ctx.RootDecl(); main != nil {
+		bodyStmts = main.Body
+	}
+	var appChildren []string
+	if len(bodyStmts) > 0 {
+		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
+			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+		}, addWidgetImport, failProp).withLocalRefs(mainScopeLocalRefs(ctx)).
+			withInvokerSink(func(inv fyneEventInvoker) {
+				eventInvokers = append(eventInvokers, inv)
+			})
+		tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
+		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
+		for _, stmt := range body {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(&buildBuf, "\t%s\n", line)
 			}
-			for _, stmt := range body {
-				for _, line := range gc.EvalStmt(stmt) {
-					fmt.Fprintf(&buildBuf, "\t%s\n", line)
-				}
-			}
-			// topLevel holds the widget ids no AppendChild consumed and no root
-			// slot render placed.
-			tops := tr.topLevel
-			switch {
-			case tr.renderedRoot != nil:
-				for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
-					for _, line := range gc.EvalStmt(stmt) {
-						fmt.Fprintf(&buildBuf, "\t%s\n", line)
-					}
-				}
-				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(tr.renderedRoot))
-			case len(tops) == 0:
+		}
+		appChildren = tr.appChildren
+		// topLevel holds the widget ids no AppendChild consumed: a harness
+		// root's content. At the application root every node was attached.
+		tops := tr.topLevel
+		if !appRoot {
+			switch len(tops) {
+			case 0:
+				// A purely reactive body has no top-level widgets; a
+				// synthesized __root bind then drives emitIRBuildUI to return
+				// m.__root, and an empty label is the fallback.
 				buildBuf.WriteString("\tcontent := fyne.CanvasObject(widget.NewLabel(\"\"))\n")
 				gc.RequireImport("fyne.io/fyne/v2/widget")
-			case len(tops) == 1:
+			case 1:
 				fmt.Fprintf(&buildBuf, "\tcontent := fyne.CanvasObject(%s)\n", gc.EvalExpr(topRef(tr, tops[0])))
 			default:
 				singleRoot = false
@@ -283,60 +273,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				}
 			}
 		}
-	} else {
-		gc.RequireImport("fyne.io/fyne/v2/container")
-		widgetFields = append(widgetFields, irWidgetField{"activeWindow", "string"})
-		for _, w := range wins {
-			widgetFields = append(widgetFields, irWidgetField{windowBoxField(w.Name), "*fyne.Container"})
-		}
-
-		for _, w := range wins {
-			buildFn := windowBuildFunc(w.Name)
-			var winBuf strings.Builder
-			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
-				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-			}, addWidgetImport, failProp).withLocalRefs(w.Window.LocalRefs).withSlotRoot(w.Body)
-			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-			body := codegen.WalkLowered(context.Background(), w.Body, tr)
-			if tr.renderedRoot != nil {
-				fmt.Fprintf(&winBuf, "\t%s.RemoveAll()\n", gc.EvalExpr(tr.renderedRoot))
-			}
-			for _, stmt := range body {
-				for _, line := range gc.EvalStmt(stmt) {
-					fmt.Fprintf(&winBuf, "\t%s\n", line)
-				}
-			}
-			var winCode strings.Builder
-			fmt.Fprintf(&winCode, "func (m *Model) %s() fyne.CanvasObject {\n", buildFn)
-			winCode.WriteString(winBuf.String())
-			tops := tr.topLevel
-			switch {
-			case tr.renderedRoot != nil:
-				for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
-					for _, line := range gc.EvalStmt(stmt) {
-						fmt.Fprintf(&winCode, "\t%s\n", line)
-					}
-				}
-				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(tr.renderedRoot))
-			case len(tops) == 0:
-				winCode.WriteString("\treturn widget.NewLabel(\"\")\n")
-				gc.RequireImport("fyne.io/fyne/v2/widget")
-			case len(tops) == 1:
-				fmt.Fprintf(&winCode, "\treturn %s\n", gc.EvalExpr(topRef(tr, tops[0])))
-			default:
-				gc.RequireImport("fyne.io/fyne/v2/container")
-				winCode.WriteString("\treturn container.NewVBox(")
-				for i, ref := range tops {
-					if i > 0 {
-						winCode.WriteString(", ")
-					}
-					winCode.WriteString(gc.EvalExpr(topRef(tr, ref)))
-				}
-				winCode.WriteString(")\n")
-			}
-			winCode.WriteString("}\n\n")
-			windowCodes = append(windowCodes, winCode.String())
-		}
+	}
+	if appRoot {
+		widgetFields = append(widgetFields, irWidgetField{"__built", "bool"})
 	}
 
 	// Sub-component widget fields are collected before the template data is
@@ -348,12 +287,16 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
-			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp)
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All(), failProp,
+				func(inv fyneEventInvoker) { eventInvokers = append(eventInvokers, inv) },
+				func(name, goType string) {
+					widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+				})
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
-			cc, ctx, gc, info, windowNames, endLabel, endContainer, nodeSpecs, addWidgetImport, failProp,
+			cc, ctx, gc, info, endLabel, endContainer, nodeSpecs, addWidgetImport, failProp,
 		)
 		componentCodes = append(componentCodes, code)
 		widgetFields = append(widgetFields, compFields...)
@@ -502,17 +445,26 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var b strings.Builder
 	emitFyneModel(&b, &td, gc)
 
-	if len(wins) <= 1 {
-		emitIRBuildUI(&b, info, &buildBuf, singleRoot, gc)
+	if appRoot {
+		first := ""
+		if len(appChildren) > 0 {
+			first = appChildren[0]
+		}
+		emitIRBuildUIApp(&b, info, &buildBuf, first, gc)
 	} else {
-		emitIRMultiWindowCode(&b, wins, windowCodes)
+		emitIRBuildUI(&b, info, &buildBuf, singleRoot, gc)
 	}
 	for _, code := range componentCodes {
 		b.WriteString(code)
 	}
 
 	if cfg.Main {
-		emitIRMain(&b, cfg, info, ctx.Pkg)
+		if appRoot {
+			gc.RequireImport(fyneLayoutImportPath)
+			emitIRAppMain(&b, ctx.Pkg)
+		} else {
+			emitIRMain(&b, cfg, info, ctx.Pkg)
+		}
 	}
 
 	imports := make([]string, 0, len(td.Imports)+8)
@@ -626,21 +578,9 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
-	var cNativeImports []*ir.NativeImport
-	for _, imp := range ctx.Pkg.Imports {
-		if imp.Native == nil {
-			continue
-		}
-		for _, fn := range imp.Native.Funcs {
-			if fn.Foreign.Path == "C" {
-				cNativeImports = append(cNativeImports, imp.Native)
-				break
-			}
-		}
-	}
-	if len(cNativeImports) > 0 {
+	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
 		if cc, ok := lang.(codegen.CCompiler); ok {
-			td.CgoPreamble = cc.EmitCHeader(cNativeImports)
+			td.CgoPreamble = cc.EmitCHeader(links)
 		} else {
 			return templateData{}, fmt.Errorf("platform fyne with lang %T does not support C imports", lang)
 		}
@@ -750,6 +690,14 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 
 	b.WriteString(buildBuf.String())
 
+	hasRoot := false
+	for _, bind := range info.binds {
+		if bind.name == "__root" {
+			hasRoot = true
+			break
+		}
+	}
+
 	if singleRoot {
 		if info.NeedsToast {
 			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
@@ -759,13 +707,27 @@ func emitIRBuildUI(b *strings.Builder, info *irAnalysis, buildBuf *strings.Build
 		} else {
 			b.WriteString("\treturn content\n")
 		}
-	} else if info.NeedsToast {
-		b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
-		b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
-		b.WriteString("\tm.toastBox.Hide()\n")
-		b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, container.NewVBox(parts...))\n")
 	} else {
-		b.WriteString("\treturn container.NewVBox(parts...)\n")
+		// A synthesized __root is reused as the returned container, so slot
+		// updaters operating on m.__root mutate the displayed tree.
+		if hasRoot {
+			b.WriteString("\tm.__root.Objects = parts\n")
+			if info.NeedsToast {
+				b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+				b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+				b.WriteString("\tm.toastBox.Hide()\n")
+				b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, m.__root)\n")
+			} else {
+				b.WriteString("\treturn m.__root\n")
+			}
+		} else if info.NeedsToast {
+			b.WriteString("\tm.toastLabel = widget.NewLabel(\"\")\n")
+			b.WriteString("\tm.toastBox = container.NewVBox(m.toastLabel)\n")
+			b.WriteString("\tm.toastBox.Hide()\n")
+			b.WriteString("\treturn container.NewBorder(nil, m.toastBox, nil, nil, container.NewVBox(parts...))\n")
+		} else {
+			b.WriteString("\treturn container.NewVBox(parts...)\n")
+		}
 	}
 
 	b.WriteString("}\n\n")
@@ -779,7 +741,6 @@ func renderIRComponentMethod(
 	ctx *codegen.CodegenCtx,
 	gc *golang.GoIRContext,
 	info *irAnalysis,
-	windowNames map[string]bool,
 	startLabel, startContainer int,
 	specs map[string]*fyneSpec,
 	importSink func(string),
@@ -855,6 +816,10 @@ func renderIRComponentMethod(
 }
 
 func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Package) {
+	if pkg != nil && pkg.Run != nil {
+		emitIRRunMain(b, cfg, pkg)
+		return
+	}
 	b.WriteString("func main() {\n")
 	b.WriteString("\ta := app.New()\n")
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
@@ -882,6 +847,39 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 	b.WriteString("}\n")
 }
 
+// emitIRRunMain is the entry point for a program that wrote `@run`. The tree
+// is built first -- its first settle included -- so a write the handler makes
+// is an ordinary update of widgets that exist; `run` then shows the window and
+// runs the loop, and a handler that never calls it gets the loop alone, which
+// fyne keeps running with no window until something quits.
+func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
+	b.WriteString("func main() {\n")
+	b.WriteString("\ta := app.New()\n")
+	b.WriteString("\tm := New()\n")
+	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
+	b.WriteString("\tw.SetContent(m.BuildUI())\n")
+	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
+	if pkg.RemoteSettle != nil {
+		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
+	}
+	b.WriteString("\tran := false\n")
+	// An empty handler is emitted as no function at all, and never calls run.
+	if len(pkg.Run.Block) > 0 {
+		fmt.Fprintf(b, "\t%s(os.Args[1:], func() {\n", golang.ModelCallee(pkg, pkg.Run, "m"))
+		b.WriteString("\t\tran = true\n")
+		b.WriteString("\t\tw.ShowAndRun()\n")
+		b.WriteString("\t})\n")
+	}
+	b.WriteString("\tif !ran {\n")
+	b.WriteString("\t\ta.Run()\n")
+	b.WriteString("\t}\n")
+	if pkg.Teardown != nil {
+		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
+	}
+	b.WriteString("\t_ = os.Stderr\n")
+	b.WriteString("}\n")
+}
+
 // elementRef builds an ir.Ident for a widget field name. Its
 // IsElementRef+Synthesized flags route through evalIdent's m.<name>
 // qualification, so callers do not hand-emit the "m." prefix.
@@ -901,7 +899,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 
 // mainScopeLocalRefs returns the non-escaping widget-ref set passNodeEscape
 // recorded for the scope the BuildUI emission walks: a harness-isolated root
-// component's body, and nothing for a window's.
+// component's body with nothing in it, and nothing otherwise.
 //
 // Nil for the entry scope, and deliberately: locals are for a *recursive*
 // render method, where a frame must not clobber the temp of the frame that
@@ -909,7 +907,7 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 // a ref it created -- only some of those sites go through a qualifier that
 // knows about locals.
 func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
-	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
+	if h := ctx.Harness(); h != nil && len(h.Body) > 0 {
 		return nil
 	}
 	if main := ctx.RootDecl(); main != nil {
@@ -1005,7 +1003,6 @@ func windowPascal(name string) string {
 }
 
 func windowBuildFunc(name string) string { return "buildWindow" + windowPascal(name) }
-func windowBoxField(name string) string  { return "window" + windowPascal(name) + "Box" }
 
 // promotedHandlersInNonMainComponents returns the node-attached event handlers
 // that lowering promoted to Funcs on a component other than the app root.
@@ -1111,9 +1108,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				}
 			}
 		}
-		for _, w := range ir.AllWindows(pkg) {
-			walk(w.Children)
-		}
+		walk(pkg.Body)
 	}
 	for id, sp := range specs {
 		sp.Children = kids[id]
@@ -1292,45 +1287,6 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		b.WriteByte('\n')
 	}
 	b.WriteByte('\n')
-}
-
-// emitIRMultiWindowCode emits BuildUI, navigate, and per-window build methods
-// for a multi-window application. Called only when len(wins) > 1.
-// widgetFields already includes the windowXxxBox fields added by emitIR.
-func emitIRMultiWindowCode(b *strings.Builder, wins []*codegen.WindowCtx, windowCodes []string) {
-	b.WriteString("// BuildUI creates the widget tree. Call once.\n")
-	b.WriteString("func (m *Model) BuildUI() fyne.CanvasObject {\n")
-	b.WriteString("\tif m.activeWindow == \"\" {\n")
-	fmt.Fprintf(b, "\t\tm.activeWindow = %q\n", wins[0].Name)
-	b.WriteString("\t}\n")
-	for _, w := range wins {
-		fmt.Fprintf(b, "\tm.%s = container.NewStack(m.%s())\n", windowBoxField(w.Name), windowBuildFunc(w.Name))
-	}
-	for _, w := range wins {
-		fmt.Fprintf(b, "\tif m.activeWindow != %q { m.%s.Hide() }\n", w.Name, windowBoxField(w.Name))
-	}
-	b.WriteString("\tvar windowObjects []fyne.CanvasObject\n")
-	for _, w := range wins {
-		fmt.Fprintf(b, "\twindowObjects = append(windowObjects, m.%s)\n", windowBoxField(w.Name))
-	}
-	b.WriteString("\treturn container.NewStack(windowObjects...)\n")
-	b.WriteString("}\n\n")
-
-	b.WriteString("func (m *Model) navigate(name string) {\n")
-	b.WriteString("\tm.activeWindow = name\n")
-	for _, w := range wins {
-		fmt.Fprintf(b, "\tm.%s.Hide()\n", windowBoxField(w.Name))
-	}
-	b.WriteString("\tswitch name {\n")
-	for _, w := range wins {
-		fmt.Fprintf(b, "\tcase %q:\n\t\tm.%s.Show()\n", w.Name, windowBoxField(w.Name))
-	}
-	b.WriteString("\t}\n")
-	b.WriteString("}\n\n")
-
-	for _, code := range windowCodes {
-		b.WriteString(code)
-	}
 }
 
 // assignedAliases is the alias every import must arrive under: whatever the

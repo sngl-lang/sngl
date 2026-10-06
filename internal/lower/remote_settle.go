@@ -1,6 +1,9 @@
 package lower
 
 import (
+	"slices"
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -50,6 +53,7 @@ func (st *reactivityState) synthesizeRemoteSettle() {
 	// Deterministic output: the map walks above are unordered, and these
 	// statements are emitted in the order they are built.
 	sortProps(props)
+	slices.SortStableFunc(slots, func(a, b reactiveSlot) int { return strings.Compare(a.SlotID, b.SlotID) })
 
 	body := st.updaterStmts(props, slots, nil)
 	if len(body) == 0 {

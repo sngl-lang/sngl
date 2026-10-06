@@ -10,7 +10,7 @@ import . "sngl:test"
 // index changes the chosen row.
 component main node {
     var idx = 0
-    table(columns=["Name", "Role"], selectable=true, selected=idx)
+    table(columns=["Name", "Role"], selectable=true, :selected=idx)
 }
 
 func testTableSelectedMutates(t Test, c main) {
@@ -135,6 +135,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.__focusID == 0 {
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
+		m.idx = tui.Cursor(m.widget0)
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -194,6 +195,10 @@ func New() *Model {
 	m := &Model{}
 	m.idx = 0
 	return m
+}
+
+func (m *Model) __n0_selected_handler(__selected int) {
+	m.idx = __selected
 }
 
 func (m *Model) Idx() int {
@@ -334,7 +339,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<table style="border-collapse:collapse;width:100%">
+<table id="$0" style="border-collapse:collapse;width:100%">
   <thead>
     <tr>
       <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Name</th>
@@ -371,16 +376,20 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testTableSelectedMutates });
   }
+  var $0 = document.getElementById("$0");
+  $0.addEventListener("selected", function(e) {
+    state.idx = e;
+  });
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0d5e22c85fd5e266c275e864bb7e8078
+pass sha256:cee14827b6d4cd8945f78d1e2b61b0a0
 -- run/go/fyne --
-pass sha256:d1f1d19b2e0a3adbf44b2ad1b6171551
+pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
 -- run/kotlin/android --
 pass sha256:05a402c234d27b9d436aca9e6fe9d493
 -- run/none/html --
-pass sha256:c00ddb7bd4278c5993333a4f67b45d6d
+pass sha256:a13a16fdf776dd75782530b1f448dae7

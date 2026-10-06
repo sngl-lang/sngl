@@ -2,7 +2,6 @@ package ir
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -25,6 +24,9 @@ type IntrinsicDef struct {
 	// signature returns a value. Reactivity treats a statement-level call as a
 	// write to the receiver var, and backends emit an in-place mutation.
 	MutatesReceiver bool
+	// BuildOnly says no target emits the id: the build's evaluator answers
+	// every call, and one it cannot is an error.
+	BuildOnly bool
 	// Pkg is the library package the declaration lives in -- how a caller asks
 	// about a group of intrinsics without matching id spellings.
 	Pkg string
@@ -127,34 +129,6 @@ const SlotVarPrefix = "__slot"
 
 // IsSlotVarName reports whether name is a slot accumulator's.
 func IsSlotVarName(name string) bool { return strings.HasPrefix(name, SlotVarPrefix) }
-
-// SlotRootName is the container a reactive slot written at the top of a body
-// renders into. A component has one. Each window has its own, since two
-// windows are two trees: the first is SlotRootName and the rest are numbered
-// after it (SlotRootNameN).
-const SlotRootName = "__root"
-
-// SlotRootNameN is the root container of the n-th window in AllWindows.
-func SlotRootNameN(n int) string {
-	if n == 0 {
-		return SlotRootName
-	}
-	return SlotRootName + strconv.Itoa(n)
-}
-
-// IsSlotRootName reports whether name is a slot root container's.
-func IsSlotRootName(name string) bool {
-	rest, ok := strings.CutPrefix(name, SlotRootName)
-	if !ok {
-		return false
-	}
-	for _, r := range rest {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
 
 // NodeOps is every node operation, for the passes that build a call per op.
 var NodeOps = []string{

@@ -1,0 +1,69 @@
+# A package's imports resolve in two phases: every import a built-in scheme
+# serves first, then the rest against the schemes the packages those reached
+# declare with gen.scheme. So where the plugin's import is written does not
+# decide whether its scheme resolves: above or below the import that uses it,
+# in another file of the package, or in a library the package imports.
+env SNGL_GENCACHE=off
+
+# The plugin is imported below the import that uses its scheme.
+sngl generate --lang=none --platform=html -o out-after after/app.sngl
+grep 'hello, after' out-after/index.html
+
+# The plugin is imported by another file of the package, one that sorts after
+# the file using it.
+sngl generate --lang=none --platform=html -o out-files files
+grep 'hello, files' out-files/index.html
+
+# The plugin is imported by a library the package imports, and the scheme is
+# used by the package itself.
+sngl generate --lang=none --platform=html -o out-lib lib/app.sngl
+grep 'hello, lib' out-lib/index.html
+
+-- after/app.sngl --
+import ui "sngl:ui"
+import g "greet:after"
+import "./greet"
+
+ui.window(title="t") {
+    ui.text(value=g.message)
+}
+-- after/greet/greet.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="greet", @generate(out, importPath) {
+    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+})
+-- files/a.sngl --
+import ui "sngl:ui"
+import g "greet:files"
+
+ui.window(title="t") {
+    ui.text(value=g.message)
+}
+-- files/b.sngl --
+import "./greet"
+-- files/greet/greet.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="greet", @generate(out, importPath) {
+    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+})
+-- lib/app.sngl --
+import ui "sngl:ui"
+import g "greet:lib"
+import "./shared"
+
+ui.window(title="t") {
+    ui.text(value=g.message)
+}
+-- lib/shared/shared.sngl --
+import "./greet"
+
+// What the library offers besides the scheme it brings.
+const unused = 1
+-- lib/shared/greet/greet.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="greet", @generate(out, importPath) {
+    out.write("greet.sngl", "const message = \"hello, " + importPath + "\"\n")
+})

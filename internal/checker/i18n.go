@@ -356,8 +356,8 @@ func (c *checker) lookupI18nTrInline(pos ast.Pos) (*ir.Func, string) {
 		return fn, alias
 	}
 	c.error(pos, `a $"..." string is a call to i18n.tr, and %s is not imported: `+
-		`add import %q, or import . %q to write tr unqualified`,
-		i18nImportPath, i18nImportPath, i18nImportPath)
+		`add import %s %q`,
+		i18nImportPath, i18nNamespace, i18nImportPath)
 	return nil, ""
 }
 

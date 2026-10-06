@@ -1,0 +1,9 @@
+// Kotlin language package. Declarations here are visible at every output target
+// that selects --lang kotlin.
+//
+// The build node carries no props; see the note in
+// lib/language/js/doc.sngl. The Android build knobs — the
+// application id, the launcher icon, whether to emit a Gradle project — belong
+// to the platform rather than to the language, and are declared in
+// lib/platform/android/android.sngl. What would belong here is something
+// true of Kotlin at every platform, which so far is nothing.

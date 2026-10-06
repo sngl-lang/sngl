@@ -1,0 +1,8 @@
+// Package c is what a SNGL package says about the C library its `#[cnative]`
+// declarations name: the header a cgo preamble includes, and the flags it
+// compiles and links with.
+//
+// The `c:` scheme writes one of these for each import -- `c:pkg:gtk4/gtk/gtk.h`
+// runs pkg-config for gtk4 and includes `<gtk/gtk.h>`, `c:lib/math.h`
+// includes `"lib/math.h"` -- and the program declares the functions it calls
+// beside it with `#[cnative]`. A package may also write one by hand.

@@ -111,6 +111,9 @@ func str(v any) string {
 	return s
 }
 
+// ToplevelName is fyne.sngl's Toplevel, the primitive `ui.window` is on fyne.
+const ToplevelName = "Toplevel"
+
 // Host renders into a Fyne container. It is not safe for concurrent use and
 // expects to be driven from the goroutine that owns the Fyne loop.
 type Host struct {
@@ -190,6 +193,16 @@ func (h *Host) Create(d snglhost.NodeDesc, parent snglhost.Key, index int) error
 		if _, known := h.ctors[sp.ctor]; !known {
 			ok = false
 		}
+	}
+	// A Toplevel is what a window is on fyne, and names no Fyne widget: this
+	// host renders into the one window its worker opened, so a Toplevel is
+	// the box its content is laid out in there, as a window was before it
+	// was a node.
+	if !ok && d.Name == ToplevelName {
+		m := &mounted{key: d.Key, name: d.Name, obj: container.NewVBox(), spec: spec{add: "Add", axis: "vertical"}, parent: parent}
+		m.view = m.obj
+		h.nodes[d.Key] = m
+		return h.insert(m, parent, index)
 	}
 	if !ok {
 		// Not an error: a program may name an element this worker was not built

@@ -31,17 +31,17 @@ const ModelTypeName = "Model"
 func SlotAnchorField(slot string) string { return slot + "_at" }
 
 // RootSlotRenders is the set of render-slot calls written directly in body
-// that render into its slot root container. A handler inside the body renders
-// the same slot into the same container, and is not a position in the body's
-// own layout.
-func RootSlotRenders(body []ir.Stmt) map[ir.Stmt]bool {
+// that render into the container named root. A handler inside the body
+// renders the same slot into the same container, and is not a position in the
+// body's own layout.
+func RootSlotRenders(body []ir.Stmt, root string) map[ir.Stmt]bool {
 	set := map[ir.Stmt]bool{}
 	for _, s := range body {
 		cs, ok := s.(*ir.CallStmt)
 		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
 			continue
 		}
-		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && id.Synthesized && ir.IsSlotRootName(id.Name) {
+		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && id.Name == root {
 			set[s] = true
 		}
 	}
@@ -111,12 +111,14 @@ func HandlerPayload(handler ir.Expr) (*ir.Type, *ir.StructDef) {
 // visible. A platform whose primitive declares the component's own event name
 // gets the same answer from the fallback.
 func TriggerEventName(handler ir.Expr, fallback string) string {
-	id, ok := handler.(*ir.Ident)
-	if !ok {
-		return fallback
+	var fn *ir.Func
+	switch h := handler.(type) {
+	case *ir.Ident:
+		fn, _ = h.Sym.(*ir.Func)
+	case *ir.Lambda:
+		fn = h.Func
 	}
-	fn, ok := id.Sym.(*ir.Func)
-	if !ok || fn.LoweredFromComponentEvent == "" {
+	if fn == nil || fn.LoweredFromComponentEvent == "" {
 		return fallback
 	}
 	return fn.LoweredFromComponentEvent

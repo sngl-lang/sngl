@@ -13,14 +13,20 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 
 # textarea forwards @input onto onValueChange. The lambda parameter is
 # declared as the event payload, so the holder a handler reads `.value` from is
-# built from the text Compose passed.
-grep 'OutlinedTextField\(value = notes, minLines = 3, modifier = Modifier\.safeDrawingPadding\(\), onValueChange = \{ newValue ->' out/MainScreen.kt
+# built from the text Compose passed. Its `value` is one-way, so the field
+# shows a remembered cell of its own that starts at `notes`, and the callback
+# writes the cell before the handler writes `notes`.
+grep 'var value__inst0 by remember \{ mutableStateOf\(notes\) \}' out/MainScreen.kt
+grep 'OutlinedTextField\(value = value__inst0, minLines = 3, modifier = Modifier\.safeDrawingPadding\(\), onValueChange = \{ newValue ->' out/MainScreen.kt
 grep 'val e = SnglInputEvent\(newValue\)' out/MainScreen.kt
+grep 'value__inst0 = e\.value' out/MainScreen.kt
 grep 'notes = e\.value' out/MainScreen.kt
 
-# toggle binds `checked` and puts the Switch before its label. A call site that
-# wired nothing leaves the callback empty rather than dropping the state.
-grep 'Switch\(checked = flag, onCheckedChange = \{\}\)' out/MainScreen.kt
+# toggle puts the Switch before its label. A call site that binds nothing
+# leaves the toggle a cell of its own, which Compose's report writes.
+grep 'var checked__inst1 by remember \{ mutableStateOf\(flag\) \}' out/MainScreen.kt
+grep 'Switch\(checked = checked__inst1, onCheckedChange = \{ on ->' out/MainScreen.kt
+grep 'checked__inst1 = on$' out/MainScreen.kt
 grep 'Text\(text = "Wifi", modifier = Modifier\)' out/MainScreen.kt
 
 # A two-way `:checked` binding reaches the same callback: the write-back is the

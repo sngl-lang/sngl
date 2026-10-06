@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -54,29 +53,23 @@ const multiWindowProbe = `package main
 import "C"
 
 import (
-	"slices"
 	"strings"
 	"unsafe"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
-func newApp() unsafe.Pointer {
+func newApp() gtk4rt.Handle {
 	app := C.gtk_application_new(nil, C.G_APPLICATION_NON_UNIQUE)
 	C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, nil)
-	return unsafe.Pointer(app)
+	return gtk4rt.Handle(unsafe.Pointer(app))
 }
 
-// windowTexts reads each of app's windows as its title and the texts it
-// shows, sorted, since GTK orders them by focus.
-func windowTexts(app unsafe.Pointer) []string {
-	var out []string
-	for l := C.gtk_application_get_windows((*C.GtkApplication)(app)); l != nil; l = l.next {
-		w := (*C.GtkWindow)(l.data)
-		var got []string
-		widgetTexts(unsafe.Pointer(C.gtk_window_get_child(w)), &got)
-		out = append(out, C.GoString(C.gtk_window_get_title(w))+": "+strings.Join(got, ","))
-	}
-	slices.Sort(out)
-	return out
+// shown is the texts a window's box shows, in order.
+func shown(box gtk4rt.Handle) string {
+	var got []string
+	widgetTexts(unsafe.Pointer(box), &got)
+	return strings.Join(got, ",")
 }
 
 func widgetTexts(w unsafe.Pointer, out *[]string) {
@@ -96,98 +89,62 @@ func widgetTexts(w unsafe.Pointer, out *[]string) {
 }
 `
 
-const multiWindowBuildWrapped = `package main
+const multiWindowDriver = `package main
 
 import (
-	"unsafe"
+	"testing"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
-func buildUI(m *Model, app unsafe.Pointer) { m.BuildUI(gtk4rt.Handle(app)) }
-`
-
-const multiWindowBuildCgo = `package main
-
-/*
-#cgo pkg-config: gtk4
-#include <gtk/gtk.h>
-*/
-import "C"
-
-import "unsafe"
-
-func buildUI(m *Model, app unsafe.Pointer) { m.BuildUI((*C.GtkApplication)(app)) }
-`
-
-const multiWindowDriver = `package main
-
-import (
-	"strings"
-	"testing"
-)
-
 func TestEachWindowKeepsItsRows(t *testing.T) {
-	app := newApp()
 	m := New()
-	buildUI(m, app)
-	check := func(when, want string) {
+	m.BuildUI(newApp())
+	check := func(when string, box gtk4rt.Handle, want string) {
 		t.Helper()
-		if got := strings.Join(windowTexts(app), " | "); got != want {
-			t.Fatalf("%s: windows %q, want %q", when, got, want)
+		if got := shown(box); got != want {
+			t.Fatalf("%s: shows %q, want %q", when, got, want)
 		}
 	}
-	check("built", "One: one head,a 0,b 0,one foot,more | Two: two head,x,two foot,note")
+	check("one built", m.one, "one head,a 0,b 0,one foot,more")
+	check("two built", m.two, "two head,x,two foot,note")
 	m.moreClick()
-	check("after pushing in one", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,z,two foot,note")
+	check("one, after pushing in one", m.one, "one head,a 0,b 0,c 0,one foot,more")
+	check("two, written from one", m.two, "two head,x,z,two foot,note")
 	m.noteClick()
-	check("after pushing in two", "One: one head,a 0,b 0,c 0,one foot,more | Two: two head,x,z,y,two foot,note")
+	check("two, after pushing in two", m.two, "two head,x,z,y,two foot,note")
+	check("one, untouched by two", m.one, "one head,a 0,b 0,c 0,one foot,more")
 }
 `
 
-// Every window of a program is a window of its own, and each renders its
-// top-level slot into its own root: its rows show between its own siblings,
-// and a push reaches the window it belongs to. The toggle has no gtk4rt
-// wrapper, which puts the second variant on the cgo path.
+// Each window renders the loop at the top of its body into its own box, between
+// its own siblings, and a push in either window reaches every window that
+// renders what it wrote.
 func TestMultiWindowRootSlotsRun(t *testing.T) {
 	skipWithoutGIR(t)
 	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 		t.Skip("gtk4 needs an X11/Wayland display")
 	}
-	for name, src := range map[string]string{
-		"wrapped": multiWindowRootSlotSrc,
-		"cgo":     strings.Replace(multiWindowRootSlotSrc, "    ui.text(value=\"two foot\")", "    ui.toggle(checked=true)\n    ui.text(value=\"two foot\")", 1),
-	} {
-		t.Run(name, func(t *testing.T) {
-			files := generateGTK4FilesBuilt(t, src)
-			if cgo := !strings.Contains(files["model.go"], "gtk4rt."); cgo != (name == "cgo") {
-				t.Fatalf("expected the %s path:\n%s", name, files["model.go"])
-			}
-			tmp, err := os.MkdirTemp(".", "_gtk4-multi-window-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(tmp)
-			files["entry.go"] = "package main\n\nfunc main() {}\n"
-			files["probe.go"] = multiWindowProbe
-			files["build.go"] = multiWindowBuildWrapped
-			if name == "cgo" {
-				files["build.go"] = multiWindowBuildCgo
-			}
-			files["windows_test.go"] = multiWindowDriver
-			for name, src := range files {
-				if filepath.Ext(name) != ".go" {
-					continue
-				}
-				if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			cmd := exec.Command("go", "test", "-count=1", ".")
-			cmd.Dir = tmp
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Errorf("%v\n%s\n--- model.go ---\n%s", err, out, files["model.go"])
-			}
-		})
+	files := generateGTK4FilesBuilt(t, multiWindowRootSlotSrc)
+	tmp, err := os.MkdirTemp(".", "_gtk4-multi-window-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+	files["entry.go"] = "package main\n\nfunc main() {}\n"
+	files["probe.go"] = multiWindowProbe
+	files["windows_test.go"] = multiWindowDriver
+	for name, src := range files {
+		if filepath.Ext(name) != ".go" {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command("go", "test", "-count=1", ".")
+	cmd.Dir = tmp
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Errorf("%v\n%s\n--- model.go ---\n%s", err, out, files["model.go"])
 	}
 }

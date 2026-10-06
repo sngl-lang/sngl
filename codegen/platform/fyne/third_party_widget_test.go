@@ -75,14 +75,14 @@ func TestThirdPartyWidgetIsWrappedInSNGLAlone(t *testing.T) {
 		// The callback's Go signature, which is the widget's and not the
 		// SNGL event's — the handler is promoted with the params the Spec
 		// named.
-		{"callback signature", "func (m *Model) __n0_change_handler(v int)"},
+		{"callback signature", "func (m *Model) __n1_change_handler(v int)"},
 		// The Spec's `param`, naming the value inside that signature: a
 		// `:level` binding writes back from the callback's own parameter, so
 		// a widget the compiler has never heard of takes part in two-way
 		// binding on the strength of its declaration alone. Matched with its
 		// following line so it cannot be satisfied by the generated
 		// SetReading accessor, whose body is the same assignment.
-		{"two-way write-back", "\tm.reading = v\n\tm.__n0.SetValue(m.reading)"},
+		{"two-way write-back", "\tm.reading = v\n\tm.__n1.SetValue(m.reading)"},
 	} {
 		if !strings.Contains(out, tc.want) {
 			t.Errorf("%s: missing %q\n--- generated ---\n%s", tc.what, tc.want, out)
@@ -334,7 +334,7 @@ func TestSignatureParametersAreJudgedAsGo(t *testing.T) {
 				t.Errorf("%s was rejected: %v", tc.sig, err)
 			case !tc.wantErr:
 				// The handler must actually take the parameter its body names.
-				if !strings.Contains(out, "__n0_change_handler(v ") {
+				if !strings.Contains(out, "__n1_change_handler(v ") {
 					t.Errorf("%s: handler does not take v\n--- generated ---\n%s", tc.sig, out)
 				}
 			}

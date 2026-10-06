@@ -31,6 +31,12 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 	for _, p := range params {
 		paramSet[p] = true
 	}
+	// A loop variable or a local the body declares is the body's own, not
+	// something it closes over. Counted as a capture, a `for` in a handler
+	// read as a per-iteration binding and made the handler a closure.
+	for sym := range boundWithin(&ir.If{Body: body}) {
+		paramSet[sym] = true
+	}
 
 	seen := make(map[ir.Symbol]int) // sym → index in result
 	var caps []capture

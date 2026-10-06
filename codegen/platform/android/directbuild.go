@@ -133,6 +133,7 @@ func directBuild(dir string, tc *toolchain, pkg string) (string, error) {
 
 	kotlincArgs := []string{
 		"-Xplugin=" + tc.ComposePlugin,
+		"-Xplugin=" + tc.SerializationPlugin,
 		"-cp", tc.classpath(),
 		"-d", classesDir,
 		"-jvm-target", "17",

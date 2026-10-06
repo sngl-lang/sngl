@@ -47,6 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -63,8 +66,18 @@ fun MainScreen() {
     val evens__inst0 = remember { xs__inst0.filter({ n: Int -> ((n % 2) == 0) }).toMutableStateList() }
     val empty__inst0 = remember { mutableStateListOf<Int>() }
     var idx__inst0 by remember { mutableStateOf(xs__inst0.indexOf(2)) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Text(text = (((rev__inst0.size.toString() + evens__inst0.size.toString()) + empty__inst0.size.toString()) + idx__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Text(text = (((rev__inst0.size.toString() + evens__inst0.size.toString()) + empty__inst0.size.toString()) + idx__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+    }
 }
 -- run/kotlin/android --
-pass sha256:9481f6c39ea82061a73d9b625e06c0d8
+pass sha256:66aa08af8894c310d35fb562e83fba77

@@ -36,33 +36,33 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>sum</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { scores__inst0: null, total__inst0: 0 };
+  var state = { scores__inst0: null, total__inst0: 0, visible__inst1: true };
   state.scores__inst0 = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     for (const [k, v] of state.scores__inst0.entries()) {
       ;
       state.total__inst0 = state.total__inst0 + v;
-      __n0.textContent = String(state.total__inst0);
+      __n1.textContent = String(state.total__inst0);
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.total__inst0);
+    __n1.textContent = String(state.total__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:674a0c055f41eb1af315f18910ac5fd4
+pass sha256:4cd090ad2d71696b19c8ecea031dc610

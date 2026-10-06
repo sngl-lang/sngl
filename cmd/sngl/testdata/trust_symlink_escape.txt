@@ -1,0 +1,72 @@
+# The import root is a boundary the filesystem holds, not a path prefix: the
+# project is read through an os.Root, so a symlink inside it that points out of
+# it escapes no more than `..` does. md: and file: each checked the path they
+# were given and then followed whatever it named.
+env SNGL_GENCACHE=off
+symlink proj/doc.md -> ../outside/doc.md
+symlink proj/out -> ../outside
+symlink proj/assets/link.txt -> ../../outside/secret.txt
+symlink proj/shared -> ../outside/lib
+
+# md: a document that is a link to one outside the root.
+! sngl generate --lang=none --platform=html -o out proj/md.sngl
+stderr 'import "md:./doc.md": md: reading "./doc.md": .*path escapes'
+! exists out/index.html
+
+# file: an asset directory that is a link to a directory outside the root.
+! sngl generate --lang=none --platform=html -o out proj/dir.sngl
+stderr 'file: import "out" escapes project directory through a symlink'
+
+# file: an asset inside the directory that is a link to a file outside it. Not
+# a missing file, which would leave the call unfolded and render nothing.
+! sngl generate --lang=none --platform=html -o out proj/file.sngl
+stderr 'file: link.txt in proj/assets is a link to something outside it'
+! exists out/index.html
+
+# A directory import may still leave the root -- `../lib` always could, and a
+# symlink to a directory is read the same way -- since only a plugin's reads are
+# held to it.
+sngl generate --lang=none --platform=html -o out-lib proj/lib.sngl
+grep 'from the shared library' out-lib/index.html
+
+-- outside/secret.txt --
+the outside's secret
+-- outside/doc.md --
+# Outside
+-- outside/lib/lib.sngl --
+// What every project shares.
+const greeting = "from the shared library"
+-- proj/assets/keep.txt --
+kept
+-- proj/md.sngl --
+import ui "sngl:ui"
+import d "md:./doc.md"
+
+ui.window(title="t") {
+    d.document()
+}
+-- proj/dir.sngl --
+import ui "sngl:ui"
+import a "file:out"
+
+const v = a.contents("secret.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- proj/file.sngl --
+import ui "sngl:ui"
+import a "file:assets"
+
+const v = a.contents("link.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- proj/lib.sngl --
+import ui "sngl:ui"
+import l "./shared"
+
+ui.window(title="t") {
+    ui.text(value=l.greeting)
+}

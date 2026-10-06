@@ -39,6 +39,13 @@ type emitShared struct {
 	// assigns a span's prop in a scope that never saw the flow. Collecting it
 	// once beside them also means it is walked once rather than per scope.
 	markup *markupTrees
+
+	// toplevels are every Toplevel id the file creates, since a handler or an
+	// updater setting one's `visible` is a scope that did not create it; and
+	// toplevelTitles the title each is built with, which the inline-cgo
+	// scaffold writes on the window BuildUI makes.
+	toplevels      map[string]bool
+	toplevelTitles map[string]ir.Expr
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -102,8 +109,13 @@ type gtk4Translator struct {
 	// reactive one and is what re-writes it.
 	builtSpans map[string]bool
 	topLevel   []string
-	// rootRenders are the calls written at the top of this scope's body that
-	// render a slot into its slot root; renderedRoot is that container once one has.
+	// rootRenders are the calls written directly in this scope's body that
+	// render a slot into the scope's own box; renderedRoot is that box once one
+	// has run. Every slot in a body renders into the one box, so the body's own
+	// widgets go into it too, in written order, or a widget between two slots
+	// lands after both. Empty in a scope whose root is decided some other way,
+	// which is every Model scope: the Model's own __root is the wrapper
+	// buildWidgetTree already parents into.
 	rootRenders  map[ir.Stmt]bool
 	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
@@ -130,6 +142,14 @@ type gtk4Translator struct {
 	// could not be emitted at all. nil in scopes that emit no widgets.
 	shared *emitShared
 
+	// toplevels are the Toplevel ids this scope created, and appChildren the
+	// nodes it attached to the application, in order.
+	toplevels   map[string]bool
+	appChildren []string
+	// building says this scope is the tree's own build rather than a handler
+	// or an updater, which the inline-cgo scaffold can answer only for.
+	building bool
+
 	// invokerSink records one (id, event) pair per signal connected, for the
 	// test-invoker methods emitted after the walk. nil in the scopes that emit
 	// no test surface -- a slot func, a canvas draw -- which is also why this
@@ -154,9 +174,21 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	return t
 }
 
-func (t *gtk4Translator) withSlotRoot(body []ir.Stmt) *gtk4Translator {
-	t.rootRenders = codegen.RootSlotRenders(body)
+func (t *gtk4Translator) withSlotRoot(name string, body []ir.Stmt) *gtk4Translator {
+	t.rootRenders = codegen.RootSlotRenders(body, name)
 	return t
+}
+
+// addTopsTo places the top-level widgets written so far into root, ahead of
+// the slot render that follows: a slot's first render appends at the end of
+// its box, and lowering finishes a node's subtree before anything later.
+func (t *gtk4Translator) addTopsTo(ctx context.Context, root ir.Expr) []ir.Stmt {
+	var stmts []ir.Stmt
+	for _, ref := range slices.Clone(t.topLevel) {
+		stmts = append(stmts, t.OnAppendChild(ctx, root, &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})...)
+	}
+	t.topLevel = nil
+	return stmts
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
@@ -356,6 +388,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// naming it is dropped too, and its words reach the label through
 	// emitFlowMarkup.
 	switch tag {
+	case toplevelTag:
+		return t.emitToplevelCreate(id)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -651,6 +685,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
+	if ir.IsAppParent(parent) {
+		return t.appAttach(child)
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -696,6 +733,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
+	}
+	if ir.IsAppParent(parent) {
+		return t.appDetach(child)
 	}
 	cType := t.parentCType(parent)
 	if cType == "" {
@@ -769,6 +809,9 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
+	if t.isToplevel(bare) {
+		return t.toplevelPropAssign(node, prop, value)
+	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
@@ -1117,6 +1160,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
+	if t.isToplevel(bare) {
+		return t.toplevelAttachHandler(node, event, handler)
+	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
 		return t.attachCanvasClick(bare, event, handler)
@@ -1236,22 +1282,9 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
 	if t.rootRenders[stmt] {
 		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
-		placed := t.addTopsTo(ctx, t.renderedRoot)
-		return append(placed, t.translateDefault(stmt)...)
+		return append(t.addTopsTo(ctx, t.renderedRoot), t.translateDefault(stmt)...)
 	}
 	return t.translateDefault(stmt)
-}
-
-// addTopsTo places the top-level widgets written so far into root, ahead of
-// the slot render that follows: lowering finishes a node's subtree before
-// anything later, so every one of them is a finished root by then.
-func (t *gtk4Translator) addTopsTo(ctx context.Context, root ir.Expr) []ir.Stmt {
-	var stmts []ir.Stmt
-	for _, ref := range slices.Clone(t.topLevel) {
-		stmts = append(stmts, t.OnAppendChild(ctx, root, &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})...)
-	}
-	t.topLevel = nil
-	return stmts
 }
 
 func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
@@ -1259,6 +1292,9 @@ func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if app, ok := t.appSlotCall(n); ok {
+			return app
+		}
 		if boxed, ok := t.boxedSlotRenderCall(n); ok {
 			return boxed
 		}

@@ -53,7 +53,7 @@ component main root {
     func keep(n int) bool { return n > 1 }
     func biggest() int { return nums.length() + total }
 
-    window #home(title="t", href="/") {
+    window #home(title="t") {
         html.button(innerText="go", @click {
             total = srv.Bump(nums.filter(keep).length() + biggest())
         })

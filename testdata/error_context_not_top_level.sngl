@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     context #theme("light") // ERROR(check) "context decl only permitted at file top level"
     text(value="hi")
 }

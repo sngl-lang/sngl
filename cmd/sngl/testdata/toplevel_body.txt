@@ -18,12 +18,11 @@ sngl generate --platform=android --lang=kotlin --out=w-an win.sngl
 
 # The state is the package's, and it has to reach the page as state rather than
 # as a name nothing declared -- the failure mode #133 documented.
-grep 'var state = \{ n: 0 \}' w-html/index.html
+grep 'var state = \{ n: 0[,}]' w-html/index.html
 grep 'state.n = state.n \+ 1' w-html/index.html
 
-# Several windows coexist: the first is the root the program opens at, the
-# others are what it navigates to. The root takes index.html even though it is
-# not the only window, which is what distinguishes "first" from "only".
+# Several pages coexist in a window's stack: the one at "/" takes index.html
+# and the others are what it navigates to, each at its href.
 sngl generate --platform=html --lang=none --out=both both.sngl
 exists both/index.html
 exists both/about/index.html
@@ -38,7 +37,7 @@ grep 'About this app' both/about/index.html
 # The instance's state is renamed per instance by the inliner, which is what a
 # component instantiated in a body has always done.
 sngl generate --platform=html --lang=none --out=comp compose.sngl
-grep 'var state = \{ n__inst0: 0 \}' comp/index.html
+grep 'var state = \{ n__inst0: 0[,}]' comp/index.html
 grep 'state.n__inst0 = state.n__inst0 \+ 1' comp/index.html
 
 -- win.sngl --
@@ -55,20 +54,24 @@ window {
 
 -- both.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 var visits = 0
 
-window #root(title="Home", href="/") {
-    vbox {
-        text(value="visits: {visits}")
-        link(href="/about", text="About")
-    }
-}
-
-window #about(title="About", href="/about") {
-    vbox {
-        text(value="About this app")
-        link(href="/", text="Home")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #root(href="/", title="Home") {
+            vbox {
+                text(value="visits: {visits}")
+                link(href="/about", text="About")
+            }
+        }
+        nav.page #about(href="/about", title="About") {
+            vbox {
+                text(value="About this app")
+                link(href="/", text="Home")
+            }
+        }
     }
 }
 

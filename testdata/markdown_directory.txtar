@@ -6,12 +6,19 @@ in `docs/meta.sngl` is the vocabulary each page's frontmatter is checked
 against. Each page is a component named for its path, and a page's
 subdirectory holds its children: `guide/intro.md` is a child of `guide.md`.
 
-The package hands the program `site`, whose one slot is the layout. It takes
-the page as data -- `href`, `frontmatter` and `children` on one `Page` -- and
-the page's blocks as a component entry, so the program writes its layout once
-and the importer writes one insertion per page. The layout here makes each page
-a window and draws the page's children as a list of titles, which is what
-`children` is for.
+The package hands the program `site`, which renders a `nav.page` per file at
+the file's href, titled by its frontmatter's `title`, and whose one slot is the
+layout around the page's content. The layout takes the page as data -- `href`,
+`frontmatter` and `children` on one `Page` -- and the page's blocks as a
+component entry, so the program writes its layout once and the importer writes
+one page per file. `site` renders pages without being one, so it is written
+among a stack's pages, and the window around the stack is the chrome every page
+shares. The layout here draws the page's children as a list of titles, which is
+what `children` is for.
+
+`_draft.md` is no page: a name starting with `_` is the directory's own
+material, as Go skips one, and the golden's file set is what says there is no
+`_draft.html`.
 
 `ref/index.md` is the page `ref` and is written to `/ref/index.html`, because
 an href follows the file; `guide.md` is `/guide.html`.
@@ -25,6 +32,7 @@ deny * `innerHTML` -- a page is a component tree; nothing is handed to a parser 
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 import docs "md:./docs/"
 
 output {
@@ -33,15 +41,17 @@ output {
     }
 }
 
-docs.site {
-    component layout(page, content) {
-        ui.window(title=page.frontmatter.title, href=page.href) {
-            ui.vbox {
-                ui.text(value="weight {page.frontmatter.weight}")
-                for var child = page.children {
-                    ui.text(value="child: {child.frontmatter.title}")
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        docs.site {
+            component layout(page, content) {
+                ui.vbox {
+                    ui.text(value="weight {page.frontmatter.weight}")
+                    for var child = page.children {
+                        ui.text(value="child: {child.frontmatter.title}")
+                    }
+                    content
                 }
-                content
             }
         }
     }
@@ -94,6 +104,12 @@ weight: 3
 ---
 
 # Reference
+-- docs/_draft.md --
+---
+title: Draft
+---
+
+# Not a page
 -- docs/ref/types.md --
 ---
 title: Types
@@ -120,7 +136,7 @@ body { font-family: system-ui, sans-serif; }
   <div style="display:flex;flex-direction:column;gap:12px">
     <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>How to use it.</span></p>
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
   </div>
 </div>
@@ -128,13 +144,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
   function String(v) {
     return "" + v;
   }
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n1.textContent = "guide island " + String(state.n__inst1);
+    __n2.textContent = "guide island " + String(state.n__inst1);
   }
   __sngl_init();
 })();
@@ -165,7 +181,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
 })();
 </script>
 </body></html>
@@ -190,7 +206,7 @@ body { font-family: system-ui, sans-serif; }
   <div style="display:flex;flex-direction:column;gap:12px">
     <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Welcome</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>The home page.</span></p>
-    <span id="__n0" data-sngl-id="__n0">
+    <span id="__n1" data-sngl-id="__n1">
     </span>
   </div>
 </div>
@@ -198,13 +214,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "home island " + String(state.n__inst0);
+    __n1.textContent = "home island " + String(state.n__inst0);
   }
   __sngl_init();
 })();
@@ -235,7 +251,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
 })();
 </script>
 </body></html>
@@ -263,9 +279,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d7c6afbf23031eb1d4ce90cf324c0997
+pass sha256:7810310706b7dd5602c9d41a9955e225

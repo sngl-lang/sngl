@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	codegen.RegisterLang(&Translator{})
+	codegen.RegisterNative("go", &Translator{})
 }
 
 // Translator implements codegen.LangTranslator for Go.

@@ -1,0 +1,21 @@
+import . "sngl:ui"
+
+// A handle carries the type its call site bound, so a func binding T from it
+// holds the value beside it to that type. Written bare, a generic component
+// type is its defaults, as a struct type is: a `box` is a `box<int>`, and a
+// `box<string>` is not one.
+component box<T = int>(item T) node {
+    text(value="box")
+}
+
+func same<T>(b box<T>, v T) => v
+
+func first(b box) => "first"
+
+component pair node {
+    box #counts(item=1)
+    box #words(item="a")
+    text(value=same(counts, "b")) // ERROR(check) "cannot pass string as int"
+    text(value=first(counts))
+    text(value=first(words)) // ERROR(check) "cannot pass box<string> as box<int>"
+}

@@ -53,9 +53,14 @@ type templateData struct {
 	ComposeBOM      string
 	ActivityCompose string
 	Coil            string
-	CompileSdk      int
-	TargetSdk       int
-	MinSdk          int
+	// HasNav adds what a sngl:ui/nav stack is built on: navigation-compose,
+	// and the serialization plugin its typed routes are written with.
+	HasNav        bool
+	Navigation    string
+	Serialization string
+	CompileSdk    int
+	TargetSdk     int
+	MinSdk        int
 }
 
 // ManifestActivity describes one <activity> entry to emit into the manifest
@@ -82,6 +87,9 @@ func newTemplateData(cfg Config) templateData {
 		ComposeBOM:      combo.ComposeBOM,
 		ActivityCompose: combo.ActivityCompose,
 		Coil:            combo.Coil,
+		HasNav:          cfg.Nav,
+		Navigation:      combo.Navigation,
+		Serialization:   combo.Serialization,
 		CompileSdk:      combo.CompileSdk,
 		TargetSdk:       combo.CompileSdk,
 		MinSdk:          cfg.minSdk(),

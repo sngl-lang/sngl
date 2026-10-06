@@ -1,0 +1,23 @@
+// A generic func's parameter may default to its type parameter's zero value,
+// `T{}`: the parameter list is in the scope of the type parameters it names,
+// defaults included. Before, the default was read before they were declared
+// and `T` was undefined there.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct P {
+    name string = "none"
+}
+
+func pick<T>(seed T, v T = T{}) => v
+
+component shows node {
+    text #given(value=pick(P{}, P{name="given"}).name)
+    text #zero(value=pick(P{name="seed"}).name)
+}
+
+func testAGenericDefaultIsTheZeroOfItsType(t Test, c shows) {
+    t.assert(c.given.value == "given")
+    t.assert(c.zero.value == "none")
+}

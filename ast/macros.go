@@ -30,6 +30,13 @@ func (v *VarDecl) MacroAttrs() []MacroAttr       { return v.Attrs }
 func (u *UnitDef) MacroAttrs() []MacroAttr       { return u.Attrs }
 func (e *EnumDef) MacroAttrs() []MacroAttr       { return e.Attrs }
 
+// A node is marked where it is placed rather than where its component is
+// declared: `#[tree.crosses]` says one placement crosses a family. A node with
+// no block parses as a call statement, so that form carries marks too, and the
+// checker refuses one on a call that is not a node.
+func (n *VisualNode) MacroAttrs() []MacroAttr { return n.Attrs }
+func (s *CallStmt) MacroAttrs() []MacroAttr   { return s.Attrs }
+
 // A Param is not Attributed — the parser fills its attributes in directly, and
 // it is not a Stmt — but it reads them out the same way, so that whatever
 // accepts attributes from a declaration accepts them from a parameter too.
@@ -43,6 +50,8 @@ func (f *FuncDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { f.Attrs, f.P
 func (c *ComponentDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr) { c.Attrs, c.Pos = attrs, pos }
 func (c *ConstDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr)     { c.Attrs, c.Pos = attrs, pos }
 func (v *VarDecl) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { v.Attrs, v.Pos = attrs, pos }
+func (n *VisualNode) SetMacroAttrs(pos Pos, attrs []MacroAttr)    { n.Attrs, n.Pos = attrs, pos }
+func (s *CallStmt) SetMacroAttrs(pos Pos, attrs []MacroAttr)      { s.Attrs, s.Pos = attrs, pos }
 func (u *UnitDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { u.Attrs, u.Pos = attrs, pos }
 func (e *EnumDef) SetMacroAttrs(pos Pos, attrs []MacroAttr)       { e.Attrs, e.Pos = attrs, pos }
 

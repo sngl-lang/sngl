@@ -96,6 +96,7 @@ type PathCmd struct {
 type Model struct {
 	sizes               []float64
 	big__inst0          map[string]bool
+	visible__inst1      bool
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -107,6 +108,7 @@ func New() Model {
 	m := Model{}
 	m.sizes = []float64{1.0, 6.0}
 	m.big__inst0 = map[string]bool{}
+	m.visible__inst1 = true
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -234,6 +236,21 @@ func SetBig__inst0Cmd(v map[string]bool) tea.Cmd {
 	return func() tea.Msg { return setBig__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -247,13 +264,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSizes(msg.value)
 	case setBig__inst0Msg:
 		m = m.SetBig__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -291,59 +316,61 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	__canvasSeq0 := 0
-	_ = __canvasSeq0
-	var content_0Items []string
-	for __copy0, s := range m.sizes {
-		_ = __copy0
-		_ = s
-		var content_0Item string
-		var content_0ItemChildren []string
-		var content_0Item_0 string
-		__canvasAt0 := __canvasSeq0
-		__canvasSeq0++
-		__canvasRaster0 := func() image.Image {
-			ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
-			ctx.Save()
-			ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-			var __lt0 float64
-			if func() bool {
-				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
-					return __v
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		__canvasSeq0 := 0
+		_ = __canvasSeq0
+		var content_0Items []string
+		for __copy0, s := range m.sizes {
+			_ = __copy0
+			_ = s
+			var content_0Item string
+			var content_0ItemChildren []string
+			var content_0Item_0 string
+			__canvasAt0 := __canvasSeq0
+			__canvasSeq0++
+			__canvasRaster0 := func() image.Image {
+				ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
+				ctx.Save()
+				ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+				var __lt0 float64
+				if func() bool {
+					if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
+						return __v
+					}
+					return false
+				}() {
+					__lt0 = (s * 2.0)
+				} else {
+					__lt0 = s
 				}
-				return false
-			}() {
-				__lt0 = (s * 2.0)
-			} else {
-				__lt0 = s
+				ctx.Circle(8.0, 8.0, __lt0)
+				ctx.Restore()
+				return ctx.Result()
 			}
-			ctx.Circle(8.0, 8.0, __lt0)
-			ctx.Restore()
-			return ctx.Result()
+			content_0Item_0 = tui.RenderTerminal(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0)
+			content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
+			var content_0Item_1 string
+			content_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			content_0Item_1Prefix := " "
+			if content_0Item_1Focused {
+				content_0Item_1Prefix = ">"
+			}
+			content_0Item_1 = lipgloss.NewStyle().Render(content_0Item_1Prefix + " " + fmt.Sprint("grow"))
+			__focusPos0++
+			content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
+			content_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0ItemChildren...)
+			content_0Items = append(content_0Items, content_0Item)
 		}
-		content_0Item_0 = tui.RenderTerminal(16, 8, 1|(__canvasAt0+1)<<16, __canvasRaster0)
-		content_0ItemChildren = append(content_0ItemChildren, content_0Item_0)
-		var content_0Item_1 string
-		content_0Item_1Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		content_0Item_1Prefix := " "
-		if content_0Item_1Focused {
-			content_0Item_1Prefix = ">"
+		content_0 = strings.Join(content_0Items, "\n")
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
 		}
-		content_0Item_1 = lipgloss.NewStyle().Render(content_0Item_1Prefix + " " + fmt.Sprint("grow"))
-		__focusPos0++
-		content_0ItemChildren = append(content_0ItemChildren, content_0Item_1)
-		content_0Item = lipgloss.JoinVertical(lipgloss.Left, content_0ItemChildren...)
-		content_0Items = append(content_0Items, content_0Item)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = strings.Join(content_0Items, "\n")
-	if content_0 != "" {
-		contentChildren = append(contentChildren, content_0)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -370,14 +397,14 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n1" data-sngl-id="__n1" style="display:flex;flex-direction:column">
+<div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { sizes: [1, 6] };
+  var state = { sizes: [1, 6], visible__inst0: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -392,7 +419,7 @@ body { font-family: system-ui, sans-serif; }
     let __slot02 = [];
     function __set_r(__v) {
       __prop_r = __v;
-      _snglCanvasDraw(__n3, 16, 16, "", _canvasDraw0);
+      _snglCanvasDraw(__n4, 16, 16, "", _canvasDraw0);
     }
     function _canvasDraw0(ctx) {
       ctx.save();
@@ -402,26 +429,26 @@ body { font-family: system-ui, sans-serif; }
       ctx.fill();
       ctx.restore();
     }
-    let __n2 = document.createElement("div");
-    __n2.setAttribute("style", "display:flex;flex-direction:column");
-    let __n3 = document.createElement("canvas");
-    __n3.setAttribute("width", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n3.setAttribute("height", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n2.appendChild(__n3);
-    let __n4 = document.createElement("button");
-    __n4.disabled = false;
-    __n4.addEventListener("click", () => {
+    let __n3 = document.createElement("div");
+    __n3.setAttribute("style", "display:flex;flex-direction:column");
+    let __n4 = document.createElement("canvas");
+    __n4.setAttribute("width", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
+    __n4.setAttribute("height", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
+    __n3.appendChild(__n4);
+    let __n5 = document.createElement("button");
+    __n5.disabled = false;
+    __n5.addEventListener("click", () => {
       big = !big;
-      _snglCanvasDraw(__n3, 16, 16, "", _canvasDraw0);
+      _snglCanvasDraw(__n4, 16, 16, "", _canvasDraw0);
     });
-    __n4.addEventListener("contextmenu", () => {
+    __n5.addEventListener("contextmenu", () => {
     });
-    let __n5 = document.createElement("span");
-    __n5.textContent = "grow";
-    __n4.appendChild(__n5);
-    __n2.appendChild(__n4);
-    __root.appendChild(__n2);
-    _snglCanvasDraw(__n3, 16, 16, "", _canvasDraw0);
+    let __n6 = document.createElement("span");
+    __n6.textContent = "grow";
+    __n5.appendChild(__n6);
+    __n3.appendChild(__n5);
+    __root.appendChild(__n3);
+    _snglCanvasDraw(__n4, 16, 16, "", _canvasDraw0);
     return {
       __root,
       __destroy() {
@@ -438,30 +465,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const s of state.sizes) {
-      let __n0 = null;
+      let __n1 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n0 = __inst1_live[__inst1_i];
-        __n0.__set_r(s);
+        __n1 = __inst1_live[__inst1_i];
+        __n1.__set_r(s);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n0__new = __cf_Dot({ r: s });
-        __n0 = __n0__new;
+        let __n1__new = __cf_Dot({ r: s });
+        __n1 = __n1__new;
       }
-      __inst1_next.push(__n0);
+      __inst1_next.push(__n1);
       __inst1_i = __inst1_i + 1;
-      let __n0__el = __n0.__root;
+      let __n1__el = __n1.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0__el) {
+      if (__place0_i_ref0 === __n1__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0__el, __place0_i_ref0);
+        parent.insertBefore(__n1__el, __place0_i_ref0);
       }
-      __slot0.push(__n0__el);
+      __slot0.push(__n1__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -520,6 +547,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a9a30bddc53418bd1fc2dfb3e56240ef
+pass sha256:2ba17bc9826b4cba61822652af7e1be8
 -- run/none/html --
-pass sha256:2a4068f854117356404aacf4f2569220
+pass sha256:eadaa23b37f5799c29949d24b3dddad5

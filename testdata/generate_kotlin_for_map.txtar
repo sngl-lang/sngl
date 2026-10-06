@@ -44,6 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -57,17 +60,27 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var scores__inst0 by remember { mutableStateOf(mapOf("alice" to 10, "bob" to 20)) }
     var total__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            for ((k, v) in scores__inst0) {
-            	total__inst0 = (total__inst0 + v)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "sum", modifier = Modifier)
         }
-        Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        Column {
+            Button(onClick = {
+                for ((k, v) in scores__inst0) {
+                	total__inst0 = (total__inst0 + v)
+                }
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "sum", modifier = Modifier)
+            }
+            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- run/kotlin/android --
-pass sha256:63e48e66acc030a83df1c6fe0633d886
+pass sha256:1ca72f3b0ad95ae1e932bcb83ac5356f

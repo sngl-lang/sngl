@@ -71,8 +71,9 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	count__inst0   int
-	count__inst1   int
-	tracked__inst1 int
+	visible__inst1 bool
+	count__inst2   int
+	tracked__inst2 int
 	__focusID      int
 
 	width, height int
@@ -82,8 +83,9 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.count__inst0 = 5
-	m.count__inst1 = 0
-	m.tracked__inst1 = 0
+	m.visible__inst1 = true
+	m.count__inst2 = 0
+	m.tracked__inst2 = 0
 	m.__focusID = 0
 	return m
 }
@@ -121,35 +123,50 @@ func SetCount__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
-func (m Model) Count__inst1() int {
-	return m.count__inst1
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-func (m Model) SetCount__inst1(v int) Model {
-	m.count__inst1 = v
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
 	return m
 }
 
-type setCount__inst1Msg struct{ value int }
+type setVisible__inst1Msg struct{ value bool }
 
-func SetCount__inst1Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setCount__inst1Msg{value: v} }
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
 }
 
-func (m Model) Tracked__inst1() int {
-	return m.tracked__inst1
+func (m Model) Count__inst2() int {
+	return m.count__inst2
 }
 
-func (m Model) SetTracked__inst1(v int) Model {
-	m.tracked__inst1 = v
-	m.count__inst1 = (v + 1)
+func (m Model) SetCount__inst2(v int) Model {
+	m.count__inst2 = v
 	return m
 }
 
-type setTracked__inst1Msg struct{ value int }
+type setCount__inst2Msg struct{ value int }
 
-func SetTracked__inst1Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTracked__inst1Msg{value: v} }
+func SetCount__inst2Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setCount__inst2Msg{value: v} }
+}
+
+func (m Model) Tracked__inst2() int {
+	return m.tracked__inst2
+}
+
+func (m Model) SetTracked__inst2(v int) Model {
+	m.tracked__inst2 = v
+	m.count__inst2 = (v + 1)
+	return m
+}
+
+type setTracked__inst2Msg struct{ value int }
+
+func SetTracked__inst2Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTracked__inst2Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -163,23 +180,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setCount__inst0Msg:
 		m = m.SetCount__inst0(msg.value)
-	case setCount__inst1Msg:
-		m = m.SetCount__inst1(msg.value)
-	case setTracked__inst1Msg:
-		m = m.SetTracked__inst1(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
+	case setCount__inst2Msg:
+		m = m.SetCount__inst2(msg.value)
+	case setTracked__inst2Msg:
+		m = m.SetTracked__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.tracked__inst1 = (m.tracked__inst1 + 1)
+			m.tracked__inst2 = (m.tracked__inst2 + 1)
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -187,26 +212,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0Focused := (m.__focusID == 0)
-	content_1_0Prefix := " "
-	if content_1_0Focused {
-		content_1_0Prefix = ">"
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0Focused := (m.__focusID == 0)
+		content_1_0Prefix := " "
+		if content_1_0Focused {
+			content_1_0Prefix = ">"
+		}
+		content_1_0 = lipgloss.NewStyle().Render(content_1_0Prefix + " " + fmt.Sprint("+"))
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		content_1_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst2)))
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_1_0 = lipgloss.NewStyle().Render(content_1_0Prefix + " " + fmt.Sprint("+"))
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	content_1_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst1)))
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -234,13 +261,13 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <div style="display:flex;flex-direction:column">
     <button id="$2">
       <span>+</span>
     </button>
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
   </div>
 </div>
@@ -248,30 +275,30 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst0: 5, count__inst1: 0, tracked__inst1: 0 };
-  function $set_tracked__inst1(v) {
-    state.tracked__inst1 = v;
-    state.count__inst1 = v + 1;
-    __n1.textContent = String(state.count__inst1);
+  var state = { count__inst0: 5, visible__inst1: true, count__inst2: 0, tracked__inst2: 0 };
+  function $set_tracked__inst2(v) {
+    state.tracked__inst2 = v;
+    state.count__inst2 = v + 1;
+    __n2.textContent = String(state.count__inst2);
   }
   function String(v) {
     return "" + v;
   }
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
-    state.tracked__inst1 = state.tracked__inst1 + 1;
+    state.tracked__inst2 = state.tracked__inst2 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count__inst0);
-    __n1.textContent = String(state.count__inst1);
+    __n1.textContent = String(state.count__inst0);
+    __n2.textContent = String(state.count__inst2);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7cb1d4eadef5188c0aab44132fa04486
+pass sha256:cd50f7850ad4e664ebed45a2631eea29
 -- run/none/html --
-pass sha256:88f5d81f4732637de8b4af87a83020b2
+pass sha256:e9ff7158a37e46797282f420fcacdcf4

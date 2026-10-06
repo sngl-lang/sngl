@@ -21,7 +21,7 @@ func TestInlinedInstanceMethodDispatchesThroughTheModel(t *testing.T) {
 
 	for _, want := range []string{
 		"func (m *Model) both__inst0() string {",
-		"m.__n0.SetText(m.both__inst0())",
+		"m.__n1.SetText(m.both__inst0())",
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)

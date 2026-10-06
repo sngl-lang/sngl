@@ -1,0 +1,19 @@
+// A two-way prop is never required. Left unbound it is a cell of the instance,
+// and a cell starts from the prop's default or, with none declared, from its
+// type's zero -- which is what an unbound two-way prop means and what the checker did not:
+// it asked for a value no caller had any reason to supply.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component toggle(:on bool) node {
+    checkbox(:checked=on)
+}
+
+component page node {
+    toggle #t
+}
+
+func testAnUnboundTwoWayPropStartsAtItsZero(t Test, c page) {
+    t.assert(c.t.on == false)
+}

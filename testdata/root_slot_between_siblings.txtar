@@ -86,26 +86,28 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items        []string
-	__root       *fyne.Container
-	__slot2      []fyne.CanvasObject
-	__slot2_at   fyne.CanvasObject
-	__inst0_live []*RowInstance
-	__slot3      []fyne.CanvasObject
-	__slot3_at   fyne.CanvasObject
-	__inst1_live []*CardInstance
+	items          []string
+	visible__inst0 bool
+	__slot2        []fyne.CanvasObject
+	__slot2_at     fyne.CanvasObject
+	__inst0_live   []*RowInstance
+	__slot3        []fyne.CanvasObject
+	__slot3_at     fyne.CanvasObject
+	__inst1_live   []*CardInstance
 
-	__n9  *widget.Label
-	__n10 *widget.Label
-	__n11 *widget.Label
-	more  *widget.Button
+	__n1    *fynelayout.Toplevel
+	__n10   *widget.Label
+	__n11   *widget.Label
+	__n12   *widget.Label
+	more    *widget.Button
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.items = []string{"a", "b"}
-	m.__root = container.NewVBox()
+	m.visible__inst0 = true
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst0_live = []*RowInstance{}
@@ -117,29 +119,29 @@ func New() *Model {
 
 func (m *Model) __renderSlot2(__parent *fyne.Container) {
 	for _, __entry := range m.__slot2 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot2 = nil
 	m.__slot2_at = fynelayout.SlotAnchor(__parent, m.__slot2_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n3 *RowInstance
+		var __n4 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, it)
-			__n3 = __n3__new
+			__n4__new := newRowInstance(m, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot2_at, __n3__el)
-		m.__slot2 = append(m.__slot2, __n3__el)
+		__n4__el := __n4.Root
+		fynelayout.InsertBefore(__parent, m.__slot2_at, __n4__el)
+		m.__slot2 = append(m.__slot2, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -152,29 +154,29 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 
 func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	for _, __entry := range m.__slot3 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot3 = nil
 	m.__slot3_at = fynelayout.SlotAnchor(__parent, m.__slot3_at)
 	__inst1_next := []*CardInstance{}
 	var __inst1_i int = 0
 	for _, it := range m.items {
-		var __n4 *CardInstance
+		var __n5 *CardInstance
 		if len(m.__inst1_live) > __inst1_i {
-			__n4 = m.__inst1_live[__inst1_i]
-			__n4.SetXs([]string{it})
+			__n5 = m.__inst1_live[__inst1_i]
+			__n5.SetXs([]string{it})
 		} else {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n4__new := newCardInstance(m, []string{it})
-			__n4 = __n4__new
+			__n5__new := newCardInstance(m, []string{it})
+			__n5 = __n5__new
 		}
-		__inst1_next = append(__inst1_next, __n4)
+		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
-		__n4__el := __n4.Root
-		fynelayout.InsertBefore(__parent, m.__slot3_at, __n4__el)
-		m.__slot3 = append(m.__slot3, __n4__el)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot3_at, __n5__el)
+		m.__slot3 = append(m.__slot3, __n5__el)
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
 		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
@@ -185,10 +187,18 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 	m.__inst1_live = __inst1_next
 }
 
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n1.SetVisible(m.visible__inst0)
+}
+
 func (m *Model) more_click_handler() {
 	m.items = append(m.items, "c")
-	m.__renderSlot2(m.__root)
-	m.__renderSlot3(m.__root)
+	m.__renderSlot2(m.__n1.Container)
+	m.__renderSlot3(m.__n1.Container)
 }
 
 // moreClick invokes the OnTapped callback on the #more widget; for tests.
@@ -206,26 +216,41 @@ func (m *Model) SetItems(v []string) {
 	m.items = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__root.RemoveAll()
-	m.__n9 = widget.NewLabel("")
-	m.__n9.SetText("header")
-	m.__root.Add(m.__n9)
-	m.__renderSlot2(m.__root)
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetVisible(m.visible__inst0)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__n10 = widget.NewLabel("")
-	m.__n10.SetText("mid")
-	m.__root.Add(m.__n10)
-	m.__renderSlot3(m.__root)
+	m.__n10.SetText("header")
+	m.__n1.Add(m.__n10)
+	m.__renderSlot2(m.__n1.Container)
 	m.__n11 = widget.NewLabel("")
-	m.__n11.SetText("footer")
+	m.__n11.SetText("mid")
+	m.__n1.Add(m.__n11)
+	m.__renderSlot3(m.__n1.Container)
+	m.__n12 = widget.NewLabel("")
+	m.__n12.SetText("footer")
+	m.__n1.Add(m.__n12)
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
-	m.__root.Add(m.__n11)
-	m.__root.Add(m.more)
-	content := fyne.CanvasObject(m.__root)
-	return content
+	m.__n1.Add(m.more)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
 
 // RowInstance is one live instance of the Row component.
@@ -300,24 +325,24 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n5 := widget.NewLabel("")
-	__n5.SetText("[")
-	c.__root.Add(__n5)
-	c.__renderSlot0(c.__root)
 	__n6 := widget.NewLabel("")
-	__n6.SetText("|")
+	__n6.SetText("[")
 	c.__root.Add(__n6)
-	c.__renderSlot1(c.__root)
+	c.__renderSlot0(c.__root)
 	__n7 := widget.NewLabel("")
-	__n7.SetText("]")
-	__n8 := widget.NewButton("", nil)
-	__n8.SetText("flip")
-	__n8.OnTapped = func() {
+	__n7.SetText("|")
+	c.__root.Add(__n7)
+	c.__renderSlot1(c.__root)
+	__n8 := widget.NewLabel("")
+	__n8.SetText("]")
+	__n9 := widget.NewButton("", nil)
+	__n9.SetText("flip")
+	__n9.OnTapped = func() {
 		c.open = !c.open
 		c.__renderSlot1(c.__root)
 	}
-	c.__root.Add(__n7)
 	c.__root.Add(__n8)
+	c.__root.Add(__n9)
 	c.Root = c.__root
 	return c
 }
@@ -329,29 +354,29 @@ func (c *CardInstance) SetXs(__v []string) {
 
 func (c *CardInstance) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range c.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot0 = nil
 	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
 	for _, x := range c.__prop_xs {
-		__n1 := widget.NewLabel("")
-		__n1.SetText(x)
-		fynelayout.InsertBefore(__parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+		__n2 := widget.NewLabel("")
+		__n2.SetText(x)
+		fynelayout.InsertBefore(__parent, c.__slot0_at, __n2)
+		c.__slot0 = append(c.__slot0, __n2)
 	}
 }
 
 func (c *CardInstance) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range c.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot1 = nil
 	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
 	if c.open {
-		__n2 := widget.NewLabel("")
-		__n2.SetText("open")
-		fynelayout.InsertBefore(__parent, c.__slot1_at, __n2)
-		c.__slot1 = append(c.__slot1, __n2)
+		__n3 := widget.NewLabel("")
+		__n3.SetText("open")
+		fynelayout.InsertBefore(__parent, c.__slot1_at, __n3)
+		c.__slot1 = append(c.__slot1, __n3)
 	}
 }
 
@@ -359,11 +384,9 @@ func (c *CardInstance) Destroy() {}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -374,9 +397,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -390,18 +414,20 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items        []string
-	__root       gtk4rt.Handle
-	__slot2      []gtk4rt.Handle
-	__slot2_at   gtk4rt.Handle
-	__inst0_live []*RowInstance
-	__slot3      []gtk4rt.Handle
-	__slot3_at   gtk4rt.Handle
-	__inst1_live []*CardInstance
-	__n9         gtk4rt.Handle
-	__n10        gtk4rt.Handle
-	__n11        gtk4rt.Handle
-	more         gtk4rt.Handle
+	items          []string
+	visible__inst0 bool
+	__slot2        []gtk4rt.Handle
+	__slot2_at     gtk4rt.Handle
+	__inst0_live   []*RowInstance
+	__slot3        []gtk4rt.Handle
+	__slot3_at     gtk4rt.Handle
+	__inst1_live   []*CardInstance
+	__n1           gtk4rt.Handle
+	__n10          gtk4rt.Handle
+	__n11          gtk4rt.Handle
+	__n12          gtk4rt.Handle
+	more           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -409,7 +435,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items = []string{"a", "b"}
-	m.__root = nil
+	m.visible__inst0 = true
 	m.__slot2 = nil
 	m.__slot2_at = nil
 	m.__inst0_live = []*RowInstance{}
@@ -428,22 +454,22 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n3 *RowInstance
+		var __n4 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n4 = m.__inst0_live[__inst0_i]
+			__n4.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, it)
-			__n3 = __n3__new
+			__n4__new := newRowInstance(m, it)
+			__n4 = __n4__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot2_at, __n3__el)
-		m.__slot2 = append(m.__slot2, __n3__el)
+		__n4__el := __n4.Root
+		gtk4rt.InsertBefore(parent, m.__slot2_at, __n4__el)
+		m.__slot2 = append(m.__slot2, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -463,22 +489,22 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 	__inst1_next := []*CardInstance{}
 	var __inst1_i int = 0
 	for _, it := range m.items {
-		var __n4 *CardInstance
+		var __n5 *CardInstance
 		if len(m.__inst1_live) > __inst1_i {
-			__n4 = m.__inst1_live[__inst1_i]
-			__n4.SetXs([]string{it})
+			__n5 = m.__inst1_live[__inst1_i]
+			__n5.SetXs([]string{it})
 		} else {
 			if len(m.__inst1_live) > __inst1_i {
 				m.__inst1_live[__inst1_i].Destroy()
 			}
-			__n4__new := newCardInstance(m, []string{it})
-			__n4 = __n4__new
+			__n5__new := newCardInstance(m, []string{it})
+			__n5 = __n5__new
 		}
-		__inst1_next = append(__inst1_next, __n4)
+		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
-		__n4__el := __n4.Root
-		gtk4rt.InsertBefore(parent, m.__slot3_at, __n4__el)
-		m.__slot3 = append(m.__slot3, __n4__el)
+		__n5__el := __n5.Root
+		gtk4rt.InsertBefore(parent, m.__slot3_at, __n5__el)
+		m.__slot3 = append(m.__slot3, __n5__el)
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
 		var __inst1_i_j int = ((len(m.__inst1_live) - 1) - __inst1_i_d)
@@ -489,10 +515,18 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 	m.__inst1_live = __inst1_next
 }
 
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+}
+
 func (m *Model) more_clicked_handler() {
 	m.items = append(m.items, "c")
-	m.__renderSlot2(m.__root)
-	m.__renderSlot3(m.__root)
+	m.__renderSlot2(m.__n1)
+	m.__renderSlot3(m.__n1)
 }
 
 // RowInstance is one live instance of the Row component.
@@ -585,24 +619,24 @@ func newCardInstance(__model *Model, __a_xs []string) *CardInstance {
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	__n5 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n5, "[")
-	gtk4rt.BoxAppend(c.__root, __n5)
-	c.__renderSlot0(c.__root)
 	__n6 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n6, "|")
+	gtk4rt.LabelSetText(__n6, "[")
 	gtk4rt.BoxAppend(c.__root, __n6)
-	c.__renderSlot1(c.__root)
+	c.__renderSlot0(c.__root)
 	__n7 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n7, "]")
-	__n8 := gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(__n8, "flip")
-	gtk4rt.Connect(__n8, "clicked", func() {
+	gtk4rt.LabelSetText(__n7, "|")
+	gtk4rt.BoxAppend(c.__root, __n7)
+	c.__renderSlot1(c.__root)
+	__n8 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n8, "]")
+	__n9 := gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(__n9, "flip")
+	gtk4rt.Connect(__n9, "clicked", func() {
 		c.open = !c.open
 		c.__renderSlot1(c.__root)
 	})
-	gtk4rt.BoxAppend(c.__root, __n7)
 	gtk4rt.BoxAppend(c.__root, __n8)
+	gtk4rt.BoxAppend(c.__root, __n9)
 	c.Root = c.__root
 	gtk4rt.Retain(c.Root)
 	return c
@@ -620,10 +654,10 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__slot0 = nil
 	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	for _, x := range c.__prop_xs {
-		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, x)
-		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
-		c.__slot0 = append(c.__slot0, __n1)
+		__n2 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n2, x)
+		gtk4rt.InsertBefore(parent, c.__slot0_at, __n2)
+		c.__slot0 = append(c.__slot0, __n2)
 	}
 }
 
@@ -634,10 +668,10 @@ func (c *CardInstance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__slot1 = nil
 	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
 	if c.open {
-		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, "open")
-		gtk4rt.InsertBefore(parent, c.__slot1_at, __n2)
-		c.__slot1 = append(c.__slot1, __n2)
+		__n3 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n3, "open")
+		gtk4rt.InsertBefore(parent, c.__slot1_at, __n3)
+		c.__slot1 = append(c.__slot1, __n3)
 	}
 }
 
@@ -668,35 +702,46 @@ func (m *Model) SetItems(v []string) {
 	m.items = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n9 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n9, "header")
-	gtk4rt.BoxAppend(m.__root, m.__n9)
-	m.__renderSlot2(m.__root)
+	m.__built = true
+	m.__n1 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__n10 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n10, "mid")
-	gtk4rt.BoxAppend(m.__root, m.__n10)
-	m.__renderSlot3(m.__root)
+	gtk4rt.LabelSetText(m.__n10, "header")
+	gtk4rt.BoxAppend(m.__n1, m.__n10)
+	m.__renderSlot2(m.__n1)
 	m.__n11 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n11, "footer")
+	gtk4rt.LabelSetText(m.__n11, "mid")
+	gtk4rt.BoxAppend(m.__n1, m.__n11)
+	m.__renderSlot3(m.__n1)
+	m.__n12 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n12, "footer")
+	gtk4rt.BoxAppend(m.__n1, m.__n12)
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n11)
-	gtk4rt.BoxAppend(m.__root, m.more)
+	gtk4rt.BoxAppend(m.__n1, m.more)
+	gtk4rt.AppAttach(m.__n1)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 
 // moreClick fires the "clicked" signal on the #more widget; for tests.
@@ -704,6 +749,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:bf40306d77390cadd9a97fdd0c3cafde
+pass sha256:a23851c30ba0fcd54cd6c8323e651408
 -- run/go/gtk4 --
-pass sha256:6a201d03bc23ad8b475ef7ecdbb15a08
+pass sha256:ab6c81ccc249f29455b51a06688f4676

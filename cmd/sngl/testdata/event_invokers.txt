@@ -55,8 +55,10 @@ sngl generate --platform=gtk4 --lang=go --out=out rooted.sngl
 grep 'func \(m \*Model\) incClick\(\)' out/model.go
 grep 'gtk4rt.Emit\(m.inc, "clicked"\)' out/model.go
 
-# A synthesized id is not something a test can name, so it gets no invoker.
-! grep 'func \(m \*Model\) __n' out/model.go
+# A synthesized id is not something a test can name, so it gets no invoker:
+# an invoker is the id and the event run together (`incClick`), where the
+# window's Toplevel handlers are promoted as `__n0_closed_handler`.
+! grep 'func \(m \*Model\) __n[0-9]+[A-Z]' out/model.go
 
 sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
 grep 'func \(m \*Model\) incClick\(\)' fy/model.go
@@ -127,7 +129,7 @@ sha256:cd484cca95af58ee4e215e7da823e4f0
   ]
 }
 -- testrun/gtk4/go/click.sngl/counter/1 --
-sha256:5432f57af2f9ec2ae26f6a8a6af87646
+sha256:718af620f9037e8f123ee00437f4ac42
 {
   "results": [
     {
@@ -137,7 +139,7 @@ sha256:5432f57af2f9ec2ae26f6a8a6af87646
   ]
 }
 -- testrun/html/none/click.sngl/counter/1 --
-sha256:6b4fc91dce8fb8bbb227b248c118860d
+sha256:c18f5599b7a6a4a924bd60ac68ace516
 {
   "results": [
     {

@@ -1,0 +1,51 @@
+import . "sngl:macro"
+import ir "sngl:internal/ir"
+import build "sngl:build"
+import gen "sngl:x/gen"
+
+// The `kotlin` node of a build directive: `output { kotlin { android() } }`.
+#[gen.can(
+    toggle,
+    ternary,
+    lambda,
+    ref,
+    unitType,
+    enumType,
+    asyncReactive,
+    asyncCalls,
+    computed,
+    listLambdas,
+    reactivity,
+    declarative,
+    inlineComponents,
+    implicitRecv,
+    structSpread,
+    viewStatements,
+)]
+#[gen.name("kotlin")]
+#[gen.native("kotlin")]
+component language(const platforms ...component build.platform) build.language
+
+// Names the Kotlin identifier a declaration *is*. The counterpart of
+// `go.native` and `js.native`, and the same thin spelling: a call becomes a
+// call to that identifier, and nothing is emitted for the declaration.
+//
+// The name is spelled as Kotlin reaches it after the import, `Color.Red` and
+// not `Red`, because a Kotlin package's name is not a function of its import
+// path any more than a Go one is. `module` is the import to add, and is
+// optional: a member of `kotlin.*` needs none, and a Compose `DrawScope`
+// function is called with no receiver at all because the scope supplies it.
+func native(name string, module string = "", flags list<NativeFlag> = []) ir.Macro
+
+// What a Kotlin declaration's shape says beyond its name.
+//
+// `method` says the identifier is invoked *on* its first argument rather than
+// handed it. Compose's drawing functions want neither -- inside a `DrawScope`
+// the receiver is implicit, which is a receiverless declaration and the
+// default.
+//
+// `named` says the arguments are passed by name, which is what a Kotlin
+// function with defaults in the middle of its parameter list requires: reaching
+// `style` on `drawCircle` positionally means supplying the `alpha` before it,
+// and the declaration's own parameter names are the Compose ones.
+enum NativeFlag { method, named }

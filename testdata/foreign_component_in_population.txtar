@@ -79,28 +79,28 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
-<span id="__n1" data-sngl-id="__n1">
+<span id="__n2" data-sngl-id="__n2">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2 };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n0.textContent = "n is " + String(state.n__inst0);
-    __n1.textContent = "tally is " + String(state.n__inst1);
+    __n1.textContent = "n is " + String(state.n__inst0);
+    __n2.textContent = "tally is " + String(state.n__inst1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6681ae30c9d45c0cde21e981d4edf89a
+pass sha256:300235f0c555c87033496bbb832b21e8

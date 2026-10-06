@@ -2,5 +2,9 @@ import . "sngl:ui"
 
 var x Nonexistent // ERROR(check) "unknown type"
 
+// The hint names the import the way the repository writes one: qualified,
+// under the package's last path segment.
+var d date // ERROR(check) "unknown type \"date\"; sngl:time declares it, add import time \"sngl:time\" and reach it as time.date"
+
 window {
 }

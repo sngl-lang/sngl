@@ -1,14 +1,13 @@
-Regression test for #36: several `window` blocks in one package, plus link
-navigation. Every window is emitted as its own buildWindow<Name> method with a
-container field on the Model, BuildUI hides the inactive one at startup, and
-navigate() shows and hides those containers.
+Regression test for #36: several `window` blocks in one package, plus a link
+between them. Every window is emitted as its own buildWindow<Name> method, and
+each is an OS window of its own: BuildUI wraps each one's content in the
+snglWindow record that shows it (window_several.txtar).
 
-What is not wired yet is the link's own tap interception. `link` declares no
-event binding in fyne.sngl, so the AttachHandler intrinsic finds no target and
-nothing rewrites an internal href into `m.navigate("settings")` -- the link
-still opens the OS browser. The scaffold around it, above, is correct. The fix
-is either a declarative-lowering href-to-navigate rewrite or an event binding
-on link.
+A link does not navigate between them, and is not meant to: a window is a
+surface and a link names a destination, which is `sngl:ui/nav`'s page
+(CLAUDE.md, *Navigation*). fyne's in-window switcher, which is what an
+href would have navigated, is gone with it; the link still opens the OS
+browser.
 
 -- app.sngl --
 import . "sngl:ui"
@@ -37,79 +36,136 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	activeWindow      string
-	windowAppBox      *fyne.Container
-	windowSettingsBox *fyne.Container
+	visible__inst0 bool
+	visible__inst1 bool
+
+	app      *fynelayout.Toplevel
+	__n0     *fyne.Container
+	__n1     *widget.Label
+	__n2     *widget.Hyperlink
+	settings *fynelayout.Toplevel
+	__n3     *fyne.Container
+	__n4     *widget.Label
+	__built  bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
+	m.visible__inst1 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once.
+func (m *Model) app_closed_handler() {
+}
+
+func (m *Model) app_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.app.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) settings_closed_handler() {
+}
+
+func (m *Model) settings_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.settings.SetVisible(m.visible__inst1)
+}
+
+// appClosed invokes the OnClosed callback on the #app widget; for tests.
+func (m *Model) appClosed() {
+	if m.app.OnClosed != nil {
+		m.app.OnClosed()
+	}
+}
+
+// appVisible invokes the OnVisible callback on the #app widget; for tests.
+func (m *Model) appVisible(__visible bool) {
+	if cb := m.app.OnVisible; cb != nil {
+		m.app.OnVisible = nil
+		cb(__visible)
+		m.app.OnVisible = cb
+	}
+}
+
+// settingsClosed invokes the OnClosed callback on the #settings widget; for tests.
+func (m *Model) settingsClosed() {
+	if m.settings.OnClosed != nil {
+		m.settings.OnClosed()
+	}
+}
+
+// settingsVisible invokes the OnVisible callback on the #settings widget; for tests.
+func (m *Model) settingsVisible(__visible bool) {
+	if cb := m.settings.OnVisible; cb != nil {
+		m.settings.OnVisible = nil
+		cb(__visible)
+		m.settings.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	if m.activeWindow == "" {
-		m.activeWindow = "app"
+	if m.__built {
+		return m.app.Container
 	}
-	m.windowAppBox = container.NewStack(m.buildWindowApp())
-	m.windowSettingsBox = container.NewStack(m.buildWindowSettings())
-	if m.activeWindow != "app" {
-		m.windowAppBox.Hide()
-	}
-	if m.activeWindow != "settings" {
-		m.windowSettingsBox.Hide()
-	}
-	var windowObjects []fyne.CanvasObject
-	windowObjects = append(windowObjects, m.windowAppBox)
-	windowObjects = append(windowObjects, m.windowSettingsBox)
-	return container.NewStack(windowObjects...)
-}
-
-func (m *Model) navigate(name string) {
-	m.activeWindow = name
-	m.windowAppBox.Hide()
-	m.windowSettingsBox.Hide()
-	switch name {
-	case "app":
-		m.windowAppBox.Show()
-	case "settings":
-		m.windowSettingsBox.Show()
-	}
-}
-
-func (m *Model) buildWindowApp() fyne.CanvasObject {
-	__n0 := container.NewVBox()
-	__n1 := widget.NewLabel("")
-	__n1.SetText("App page")
-	__n0.Add(__n1)
-	__n2 := widget.NewHyperlink("", nil)
-	__n0.Add(__n2)
-	return __n0
-}
-
-func (m *Model) buildWindowSettings() fyne.CanvasObject {
-	__n3 := container.NewVBox()
-	__n4 := widget.NewLabel("")
-	__n4.SetText("Settings page")
-	__n3.Add(__n4)
-	return __n3
+	m.__built = true
+	m.app = fynelayout.NewToplevel()
+	m.app.SetTitle("App")
+	m.app.SetVisible(m.visible__inst0)
+	m.app.OnClosed = m.app_closed_handler
+	m.app.OnVisible = m.app_visible_handler
+	m.__n0 = container.NewVBox()
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText("App page")
+	m.__n0.Add(m.__n1)
+	m.__n2 = widget.NewHyperlink("", nil)
+	m.__n0.Add(m.__n2)
+	m.app.Add(m.__n0)
+	fynelayout.AppAttach(m.app)
+	m.settings = fynelayout.NewToplevel()
+	m.settings.SetTitle("Settings")
+	m.settings.SetVisible(m.visible__inst1)
+	m.settings.OnClosed = m.settings_closed_handler
+	m.settings.OnVisible = m.settings_visible_handler
+	m.__n3 = container.NewVBox()
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("Settings page")
+	m.__n3.Add(m.__n4)
+	m.settings.Add(m.__n3)
+	fynelayout.AppAttach(m.settings)
+	return m.app.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:0cb6997b5d087b89ae247aa1a8d981f6
+pass sha256:a477f693c7ae3f87d065bc8e20460305

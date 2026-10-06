@@ -3,6 +3,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"os/exec"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestBatchSpansTwoSchemes(t *testing.T) {
 	if got := len(ctx.native.order); got != 2 {
 		t.Fatalf("batch holds %d requests, want 2", got)
 	}
-	if errs := runNativeRequests(ctx.evalCache(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order); len(errs) > 0 {
+	if errs := runNativeRequests(ctx.evalCache(), trust.AllowAll(), ctx.dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order); len(errs) > 0 {
 		t.Fatalf("running the batch: %v", errs)
 	}
 

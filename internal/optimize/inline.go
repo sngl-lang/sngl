@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"slices"
+	"sync/atomic"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -160,7 +161,7 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 		if x.Func == target {
 			return true
 		}
-		if callsFunc(x.Receiver, target) {
+		if callsFunc(x.Receiver, target) || callsFunc(x.Callee, target) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -325,7 +326,7 @@ func containsContextRead(e ir.Expr) bool {
 	case *ir.ContextRead:
 		return true
 	case *ir.Call:
-		if containsContextRead(x.Receiver) {
+		if containsContextRead(x.Receiver) || containsContextRead(x.Callee) {
 			return true
 		}
 		for _, a := range x.Args {
@@ -448,6 +449,9 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		x.Then = substituteParams(x.Then, subs)
 		x.Else = substituteParams(x.Else, subs)
 	case *ir.Call:
+		// A call through a func-typed parameter names it as its callee:
+		// `f()` in `func call(f func() T) => f()`.
+		x.Callee = substituteParams(x.Callee, subs)
 		x.Receiver = substituteParams(x.Receiver, subs)
 		for i := range x.Args {
 			x.Args[i].Value = substituteParams(x.Args[i].Value, subs)
@@ -536,6 +540,7 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		return &cp
 	case *ir.Call:
 		cp := *x
+		cp.Callee = cloneExpr(x.Callee)
 		cp.Receiver = cloneExpr(x.Receiver)
 		cp.Args = make([]ir.CallArg, len(x.Args))
 		for i, a := range x.Args {
@@ -627,24 +632,27 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			// each reporting the press of the first.
 			if h.Func != nil {
 				fn := *h.Func
-				fn.Block = cloneStmts(h.Func.Block)
+				fn.Block = copyStmts(h.Func.Block)
 				cp.Handlers[i].Func = &fn
 			}
 		}
-		cp.Children = cloneStmts(n.Children)
+		cp.Children = copyStmts(n.Children)
 		cp.Slots = cloneSlots(n.Slots)
 		return &cp
 	case *ir.If:
+		if n.Catch != nil {
+			copiedRedraws.Add(1)
+		}
 		cp := *n
 		cp.Cond = cloneExpr(n.Cond)
-		cp.Body = cloneStmts(n.Body)
-		cp.Else = cloneStmts(n.Else)
+		cp.Body = copyStmts(n.Body)
+		cp.Else = copyStmts(n.Else)
 		return &cp
 	case *ir.For:
 		cp := *n
 		cp.Iter = cloneExpr(n.Iter)
-		cp.Body = cloneStmts(n.Body)
-		cp.Else = cloneStmts(n.Else)
+		cp.Body = copyStmts(n.Body)
+		cp.Else = copyStmts(n.Else)
 		return &cp
 	case *ir.Assign:
 		cp := *n
@@ -687,19 +695,34 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		for i, a := range n.Args {
 			cp.Args[i] = cloneExpr(a)
 		}
-		cp.Children = cloneStmts(n.Children)
+		cp.Children = copyStmts(n.Children)
 		cp.Slots = cloneSlots(n.Slots)
 		return &cp
 	case *ir.ContextProvider:
 		cp := *n
 		cp.Value = cloneExpr(n.Value)
-		cp.Children = cloneStmts(n.Children)
+		cp.Children = copyStmts(n.Children)
 		return &cp
 	case *ir.ErrorBoundary:
 		cp := *n
-		cp.Children = cloneStmts(n.Children)
+		cp.Children = copyStmts(n.Children)
+		cp.Failed = copyStmts(n.Failed)
+		// The handler is folded per copy as its children are; shared, the
+		// first copy's bindings wrote the handler every copy runs.
+		if h := n.Handler; h != nil {
+			hc := *h
+			if h.Func != nil {
+				fc := *h.Func
+				fc.Block = copyStmts(h.Func.Block)
+				hc.Func = &fc
+			}
+			cp.Handler = &hc
+			ir.RepointHandler(cp.Children, h, &hc)
+			ir.RepointHandler(cp.Failed, h, &hc)
+		}
 		return &cp
 	case *ir.CanvasRedrawStmt:
+		copiedRedraws.Add(1)
 		cp := *n
 		return &cp
 	case *ir.Break:
@@ -713,7 +736,9 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 	}
 }
 
-func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
+// copyStmts is cloneStmts' recursion: the copy alone, without repointing
+// what the copy names.
+func copyStmts(stmts []ir.Stmt) []ir.Stmt {
 	if stmts == nil {
 		return nil
 	}
@@ -732,7 +757,75 @@ func cloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
 	}
 	out := make(map[string]*ir.SlotContent, len(slots))
 	for name, sc := range slots {
-		out[name] = &ir.SlotContent{Params: sc.Params, Body: cloneStmts(sc.Body)}
+		out[name] = &ir.SlotContent{Params: sc.Params, Body: copyStmts(sc.Body)}
 	}
 	return out
+}
+
+// copiedRedraws counts CanvasRedrawStmts and catch blocks copied -- a catch
+// block's handler is shared by the copy, and may hold a redraw -- so
+// cloneStmts knows whether a copy holds one to repoint without walking every
+// copy to find out. Read
+// before and after; another goroutine's copy can only make it walk for
+// nothing.
+var copiedRedraws atomic.Int64
+
+// cloneStmts creates a deep copy of stmts. A redraw in the copy that names a
+// canvas the copy also holds names that canvas's copy: an html document and a
+// loop's iteration are each a clone, and a redraw left naming the original
+// redrew a canvas no document holds -- which is nothing.
+func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
+	before := copiedRedraws.Load()
+	out := copyStmts(stmts)
+	if copiedRedraws.Load() != before {
+		repointRedraws(stmts, out)
+	}
+	return out
+}
+
+// repointRedraws pairs the nodes of orig and its copy in walk order -- the
+// copy is structural, so the orders agree -- and points each redraw in the
+// copy at the copy of the canvas it names, where that canvas was copied.
+func repointRedraws(orig, cp []ir.Stmt) {
+	nodes := func(stmts []ir.Stmt) []*ir.NodeInst {
+		var out []*ir.NodeInst
+		_ = ir.Walk(stmts, func(n ir.Node) error {
+			if ni, ok := n.(*ir.NodeInst); ok {
+				out = append(out, ni)
+			}
+			return nil
+		})
+		return out
+	}
+	from, to := nodes(orig), nodes(cp)
+	if len(from) != len(to) {
+		return
+	}
+	copyOf := make(map[*ir.NodeInst]*ir.NodeInst, len(from))
+	for i, n := range from {
+		copyOf[n] = to[i]
+	}
+	var repoint func(root any)
+	seen := map[*ir.EventHandler]bool{}
+	repoint = func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.CanvasRedrawStmt:
+				if c, ok := copyOf[x.Canvas]; ok {
+					x.Canvas = c
+				}
+			case *ir.If:
+				// A catch block's handler is an alias the walk does not
+				// follow, and once a fallback-less boundary is spliced away it
+				// is the handler's only route: a redraw a window's @error
+				// makes is in it.
+				if h := x.Catch; h != nil && h.Func != nil && !seen[h] {
+					seen[h] = true
+					repoint(h.Func.Block)
+				}
+			}
+			return nil
+		})
+	}
+	repoint(cp)
 }

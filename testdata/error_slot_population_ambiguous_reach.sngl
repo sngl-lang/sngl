@@ -1,0 +1,26 @@
+import ui "sngl:ui"
+import . "sngl:test"
+
+component card(top component() ui.node) ui.node {
+    ui.vbox {
+        top()
+    }
+}
+
+// The same `#id` inside a population and beside it are two nodes, each legal
+// in its own scope, as a nested component's would be. A read from outside
+// cannot say which it means, since every target reaches a node by the id it
+// renders, so the read is what is refused.
+component shadowed ui.node {
+    ui.text #shared(value="outer")
+    card #other {
+        component top {
+            ui.text #shared(value="population")
+            ui.text(value="reads {shared.value}")
+        }
+    }
+}
+
+func testAnAmbiguousReachIsRefused(t Test, c shadowed) {
+    t.assert(c.other.shared.value == "population") // ERROR(check) "#shared names 2 nodes shadowed renders"
+}

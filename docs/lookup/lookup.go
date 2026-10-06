@@ -327,7 +327,7 @@ func resolveTarget(cwd, path string) (*target, error) {
 	}
 
 	if scheme == "sngl" {
-		if !checker.HasPackage(uri) && len(providedPackageDocs(uri)) == 0 {
+		if !checker.HasPackage(uri) {
 			return nil, fmt.Errorf("unknown stdlib package %q (have: %s)", uri, strings.Join(checker.Packages(), ", "))
 		}
 		pd, stmts := stdlibPackageDocs(uri)
@@ -456,8 +456,8 @@ func buildIndex(tgt *target) *DeclIndex {
 	case tgt.library:
 		// No package comment in lib/<name>/. Say how to import it, which is
 		// the one thing true of every library package.
-		idx.Description = "Import it to bring its declarations into scope: `import . " + quote(tgt.title) +
-			"` to write them unqualified, or `import <alias> " + quote(tgt.title) + "` to qualify them."
+		idx.Description = "Import it to bring its declarations into scope: `" + importLine(tgt.title) +
+			"`, and write each name qualified by the alias."
 	}
 	if tgt.native != nil {
 		populateNativeIndex(idx, tgt.native)
@@ -801,20 +801,6 @@ func isRegisteredTarget(tier, path string) bool {
 	return false
 }
 
-// providedPackageDocs is the source a registered target provides for its own
-// library package. A target carries its package rather than lib/ holding it, so
-// a package that exists only because a plugin is registered has to resolve
-// here the way it does in the checker.
-func providedPackageDocs(pkg string) []*ast.Document {
-	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
-		return checker.ProvidedDocs(codegen.LookupPlatform(name))
-	}
-	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
-		return checker.ProvidedDocs(codegen.LookupLang(name))
-	}
-	return nil
-}
-
 // packageProse is one package's own description. Only its
 // checker.PackageDocFile answers checker.PackageDoc, so at most one document
 // contributes.
@@ -945,7 +931,14 @@ func (o LibraryOrigin) ImportLine() string {
 	if o.Ambient {
 		return ""
 	}
-	return `import . ` + quote(o.Pkg)
+	return importLine(o.Pkg)
+}
+
+// importLine imports pkg under its last path segment, the alias the
+// repository's own source writes.
+func importLine(pkg string) string {
+	alias := pkg[strings.LastIndexAny(pkg, ":/")+1:]
+	return "import " + alias + " " + quote(pkg)
 }
 
 // FindInLibrary reports every public library package declaring name. Only
