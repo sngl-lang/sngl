@@ -91,8 +91,9 @@ func TestEachWindowKeepsItsRows(t *testing.T) {
 }
 `
 
-// Each window renders its top-level slot into a root of its own, so its rows
-// show between its own siblings and a push reaches the window it belongs to.
+// Each window renders the loop at the top of its body into its own container,
+// between its own siblings, and a push in either window reaches every window
+// that renders what it wrote.
 func TestMultiWindowRootSlotsRun(t *testing.T) {
 	runEmitted(t, "fyne-multi-window-root-slot-", []byte(generateFyneModelBuilt(t, multiWindowRootSlotSrc)), multiWindowRootSlotDriver)
 }
