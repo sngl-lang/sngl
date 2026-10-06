@@ -18,7 +18,7 @@ type interpFrame struct {
 // lexer scans SNGL v2 source text into tokens.
 // v2 changes vs v1:
 //   - Non-base-10 integer literals (0x…, 0o…, 0b…) are rejected (ILLEGAL).
-//   - true, false, null are keyword tokens (KW_TRUE/KW_FALSE/KW_NULL).
+//   - true, false, null are predeclared identifiers, not keyword tokens.
 type lexer struct {
 	// src is the original source; input is it decoded to runes, which the
 	// scanning below indexes directly. wideAt/wideCum record where the two

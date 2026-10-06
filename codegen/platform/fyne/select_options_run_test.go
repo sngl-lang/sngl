@@ -37,7 +37,7 @@ func TestSelectOptionsUpdateInPlace(t *testing.T) {
 	m := New()
 	m.BuildUI()
 
-	sel := m.__n0
+	sel := m.__n1
 	if got := len(sel.Options); got != 2 {
 		t.Fatalf("built with %d options, want 2", got)
 	}
@@ -45,9 +45,9 @@ func TestSelectOptionsUpdateInPlace(t *testing.T) {
 		t.Fatalf("built with %q selected, want %q", got, "b")
 	}
 
-	m.__n2.OnTapped()
+	m.__n3.OnTapped()
 
-	if sel != m.__n0 {
+	if sel != m.__n1 {
 		t.Fatal("the select was rebuilt; a new widget has neither the selection nor the focus")
 	}
 	if got := len(sel.Options); got != 3 {

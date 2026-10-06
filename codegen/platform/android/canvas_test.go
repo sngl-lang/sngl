@@ -200,7 +200,7 @@ component main node {
     })
 }
 
-window(title="t", href="/index.html") { main() }
+window(title="t") { main() }
 `, false)
 
 	for _, want := range []string{

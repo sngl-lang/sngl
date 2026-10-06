@@ -1,12 +1,12 @@
-// Anonymous windows distinguish themselves via their literal href —
-// the html platform derives the output filename from the folded href.
+// Two windows with no `#id` are two windows: neither needs a name to be told
+// apart from the other.
 
 import . "sngl:ui"
 
-window(title="A", href="/") {
+window(title="A") {
     text(value="a")
 }
 
-window(title="B", href="/b.html") {
+window(title="B") {
     text(value="b")
 }

@@ -91,6 +91,7 @@ type Model struct {
 	xs__inst0        []int
 	tally__inst0     map[string]int
 	constPair__inst0 P
+	visible__inst1   bool
 
 	width, height int
 }
@@ -104,6 +105,7 @@ func New() Model {
 	m.xs__inst0 = []int{m.a__inst0, m.b__inst0}
 	m.tally__inst0 = map[string]int{"one": m.a__inst0, "two": m.b__inst0}
 	m.constPair__inst0 = P{A: 1, B: 2}
+	m.visible__inst1 = true
 	return m
 }
 
@@ -203,6 +205,21 @@ func SetConstPair__inst0Cmd(v P) tea.Cmd {
 	return func() tea.Msg { return setConstPair__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -224,35 +241,46 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTally__inst0(msg.value)
 	case setConstPair__inst0Msg:
 		m = m.SetConstPair__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B))))
-	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B))))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(func() int {
-		if __v, __ok := m.tally__inst0["one"]; __ok {
-			return __v
-		}
-		return 0
-	}())))
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B))))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B))))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(func() int {
+			if __v, __ok := m.tally__inst0["one"]; __ok {
+				return __v
+			}
+			return 0
+		}())))
+		contentParts = append(contentParts, contentPart_2)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -275,8 +303,8 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -293,10 +321,13 @@ type Model struct {
 	xs__inst0        []int
 	tally__inst0     map[string]int
 	constPair__inst0 P
+	visible__inst1   bool
 
-	__n0 *widget.Label
-	__n1 *widget.Label
-	__n2 *widget.Label
+	__n0    *fynelayout.Toplevel
+	__n1    *widget.Label
+	__n2    *widget.Label
+	__n3    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -308,7 +339,16 @@ func New() *Model {
 	m.xs__inst0 = []int{m.a__inst0, m.b__inst0}
 	m.tally__inst0 = map[string]int{"one": m.a__inst0, "two": m.b__inst0}
 	m.constPair__inst0 = P{A: 1, B: 2}
+	m.visible__inst1 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
 }
 
 func (m *Model) A__inst0() int {
@@ -359,33 +399,47 @@ func (m *Model) SetConstPair__inst0(v P) {
 	m.constPair__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B)))
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B)))
+	m.__n1.SetText(fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B)))
+	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(fmt.Sprint(func() int {
+	m.__n2.SetText(fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B)))
+	m.__n0.Add(m.__n2)
+	m.__n3 = widget.NewLabel("")
+	m.__n3.SetText(fmt.Sprint(func() int {
 		if __v, __ok := m.tally__inst0["one"]; __ok {
 			return __v
 		}
 		return 0
 	}()))
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n0)
-	parts = append(parts, m.__n1)
-	parts = append(parts, m.__n2)
-	return container.NewVBox(parts...)
+	m.__n0.Add(m.__n3)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -396,9 +450,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -423,10 +478,12 @@ type Model struct {
 	xs__inst0        []int
 	tally__inst0     map[string]int
 	constPair__inst0 P
+	visible__inst1   bool
 	__n0             gtk4rt.Handle
 	__n1             gtk4rt.Handle
 	__n2             gtk4rt.Handle
-	__root           gtk4rt.Handle
+	__n3             gtk4rt.Handle
+	__built          bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -439,7 +496,16 @@ func New() *Model {
 	m.xs__inst0 = []int{m.a__inst0, m.b__inst0}
 	m.tally__inst0 = map[string]int{"one": m.a__inst0, "two": m.b__inst0}
 	m.constPair__inst0 = P{A: 1, B: 2}
+	m.visible__inst1 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
 }
 
 func (m *Model) A__inst0() int {
@@ -490,34 +556,45 @@ func (m *Model) SetConstPair__inst0(v P) {
 	m.constPair__inst0 = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B)))
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B)))
+	gtk4rt.LabelSetText(m.__n1, fmt.Sprint((m.pair__inst0.A + m.pair__inst0.B)))
+	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(func() int {
+	gtk4rt.LabelSetText(m.__n2, fmt.Sprint((m.xs__inst0[0] + m.constPair__inst0.B)))
+	gtk4rt.BoxAppend(m.__n0, m.__n2)
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, fmt.Sprint(func() int {
 		if __v, __ok := m.tally__inst0["one"]; __ok {
 			return __v
 		}
 		return 0
 	}()))
-	gtk4rt.BoxAppend(m.__root, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n1)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(m.__n0, m.__n3)
+	gtk4rt.AppAttach(m.__n0)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -544,6 +621,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class P(
@@ -566,11 +646,21 @@ fun MainScreen() {
     val xs__inst0 = remember { mutableStateListOf(a__inst0, b__inst0) }
     var tally__inst0 by remember { mutableStateOf(mapOf("one" to a__inst0, "two" to b__inst0)) }
     var constPair__inst0 by remember { mutableStateOf(P(a = 1, b = 2)) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Text(text = (pair__inst0.a + pair__inst0.b).toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = (xs__inst0[0] + constPair__inst0.b).toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = tally__inst0.getOrDefault("one", 0).toString(), modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = (pair__inst0.a + pair__inst0.b).toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = (xs__inst0[0] + constPair__inst0.b).toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = tally__inst0.getOrDefault("one", 0).toString(), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -586,17 +676,17 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
+</span>
+<span id="__n3" data-sngl-id="__n3">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 1, b__inst0: 2, pair__inst0: null, xs__inst0: null, tally__inst0: null, constPair__inst0: null };
+  var state = { a__inst0: 1, b__inst0: 2, pair__inst0: null, xs__inst0: null, tally__inst0: null, constPair__inst0: null, visible__inst1: true };
   state.pair__inst0 = { a: state.a__inst0, b: state.b__inst0 };
   state.xs__inst0 = [state.a__inst0, state.b__inst0];
   state.tally__inst0 = /* @__PURE__ */ new Map([["one", state.a__inst0], ["two", state.b__inst0]]);
@@ -604,25 +694,25 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   function __sngl_init() {
-    __n0.textContent = String(state.pair__inst0.a + state.pair__inst0.b);
-    __n1.textContent = String(state.xs__inst0[0] + state.constPair__inst0.b);
-    __n2.textContent = String(state.tally__inst0.has("one") ? state.tally__inst0.get("one") : 0);
+    __n1.textContent = String(state.pair__inst0.a + state.pair__inst0.b);
+    __n2.textContent = String(state.xs__inst0[0] + state.constPair__inst0.b);
+    __n3.textContent = String(state.tally__inst0.has("one") ? state.tally__inst0.get("one") : 0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e452b5a2a734103604b67a26247a0f3d
+pass sha256:74ae0b5e9d41ff6d0e6cd6a3b88ef1dc
 -- run/go/fyne --
-pass sha256:31f3488403fd1e844d687895051a103f
+pass sha256:6f6c0539cfb6df5ca1bd4426da51d187
 -- run/go/gtk4 --
-pass sha256:4448619b9b9cb9355043a8bd82e35899
+pass sha256:74a08e68e58896caac77c1ff240f3ab0
 -- run/kotlin/android --
-pass sha256:a54c2a40e78de6277e84c46f98045ab5
+pass sha256:710621ebf68ec254d69370be160bbb87
 -- run/none/html --
-pass sha256:ccea7e0aa6d9e3af55bc22415876df93
+pass sha256:62823e5978d9438cb9fd0b45abdc1b50

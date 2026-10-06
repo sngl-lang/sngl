@@ -1,0 +1,17 @@
+import gen "sngl:x/gen"
+import marks "sngl:internal/marks"
+
+gen.scheme(name="gir", @generate(out, importPath) {
+    if importPath != "Gtk-4.0" {
+        error.raise("gir:" + importPath + ": only gir:Gtk-4.0 is read", "import")
+        return
+    }
+    out.write("widgets.sngl", widgets(importPath))
+})
+
+// The SNGL source declaring every class of the namespace, from the
+// introspection data gtk4's `gir` option selects. Answered by the gtk4
+// platform's Go, which parses GIR; it records the file it read and the option
+// that chose it.
+#[marks.intrinsic("gir.widgets", build)]
+func widgets(namespace string) string

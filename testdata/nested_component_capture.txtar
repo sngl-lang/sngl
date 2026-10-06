@@ -116,6 +116,7 @@ type Model struct {
 	taps__inst2__inst5 int
 	hits__inst6        int
 	taps__inst2__inst6 int
+	visible__inst7     bool
 	__focusID          int
 
 	width, height int
@@ -134,6 +135,7 @@ func New() Model {
 	m.taps__inst2__inst5 = 0
 	m.hits__inst6 = 0
 	m.taps__inst2__inst6 = 0
+	m.visible__inst7 = true
 	m.__focusID = 0
 	return m
 }
@@ -362,6 +364,21 @@ func SetTaps__inst2__inst6Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTaps__inst2__inst6Msg{value: v} }
 }
 
+func (m Model) Visible__inst7() bool {
+	return m.visible__inst7
+}
+
+func (m Model) SetVisible__inst7(v bool) Model {
+	m.visible__inst7 = v
+	return m
+}
+
+type setVisible__inst7Msg struct{ value bool }
+
+func SetVisible__inst7Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst7Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -391,13 +408,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetHits__inst6(msg.value)
 	case setTaps__inst2__inst6Msg:
 		m = m.SetTaps__inst2__inst6(msg.value)
+	case setVisible__inst7Msg:
+		m = m.SetVisible__inst7(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst7 {
+				m.visible__inst7 = false
+			}
+			if !(m.visible__inst7) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -431,106 +456,108 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	var content_0_0Children []string
-	var content_0_0_0 string
-	content_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst0__inst3))))
-	content_0_0Children = append(content_0_0Children, content_0_0_0)
-	var content_0_0_1 string
-	content_0_0_1Focused := (m.__focusID == 0)
-	content_0_0_1Prefix := " "
-	if content_0_0_1Focused {
-		content_0_0_1Prefix = ">"
+	if m.visible__inst7 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		var content_0_0Children []string
+		var content_0_0_0 string
+		content_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst0__inst3))))
+		content_0_0Children = append(content_0_0Children, content_0_0_0)
+		var content_0_0_1 string
+		content_0_0_1Focused := (m.__focusID == 0)
+		content_0_0_1Prefix := " "
+		if content_0_0_1Focused {
+			content_0_0_1Prefix = ">"
+		}
+		content_0_0_1 = lipgloss.NewStyle().Render(content_0_0_1Prefix + " " + fmt.Sprint("+"))
+		content_0_0Children = append(content_0_0Children, content_0_0_1)
+		content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
+		content_0Children = append(content_0Children, content_0_0)
+		var content_0_1 string
+		var content_0_1Children []string
+		var content_0_1_0 string
+		content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst1__inst3))))
+		content_0_1Children = append(content_0_1Children, content_0_1_0)
+		var content_0_1_1 string
+		content_0_1_1Focused := (m.__focusID == 1)
+		content_0_1_1Prefix := " "
+		if content_0_1_1Focused {
+			content_0_1_1Prefix = ">"
+		}
+		content_0_1_1 = lipgloss.NewStyle().Render(content_0_1_1Prefix + " " + fmt.Sprint("+"))
+		content_0_1Children = append(content_0_1Children, content_0_1_1)
+		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
+		content_0Children = append(content_0Children, content_0_1)
+		content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		var content_1_0Children []string
+		var content_1_0_0 string
+		content_1_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst0__inst4))))
+		content_1_0Children = append(content_1_0Children, content_1_0_0)
+		var content_1_0_1 string
+		content_1_0_1Focused := (m.__focusID == 2)
+		content_1_0_1Prefix := " "
+		if content_1_0_1Focused {
+			content_1_0_1Prefix = ">"
+		}
+		content_1_0_1 = lipgloss.NewStyle().Render(content_1_0_1Prefix + " " + fmt.Sprint("+"))
+		content_1_0Children = append(content_1_0Children, content_1_0_1)
+		content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		var content_1_1Children []string
+		var content_1_1_0 string
+		content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst1__inst4))))
+		content_1_1Children = append(content_1_1Children, content_1_1_0)
+		var content_1_1_1 string
+		content_1_1_1Focused := (m.__focusID == 3)
+		content_1_1_1Prefix := " "
+		if content_1_1_1Focused {
+			content_1_1_1Prefix = ">"
+		}
+		content_1_1_1 = lipgloss.NewStyle().Render(content_1_1_1Prefix + " " + fmt.Sprint("+"))
+		content_1_1Children = append(content_1_1Children, content_1_1_1)
+		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		var content_2Children []string
+		var content_2_0 string
+		content_2_0Focused := (m.__focusID == 4)
+		content_2_0Prefix := " "
+		if content_2_0Focused {
+			content_2_0Prefix = ">"
+		}
+		content_2_0 = lipgloss.NewStyle().Render(content_2_0Prefix + " " + fmt.Sprint("tap"))
+		content_2Children = append(content_2Children, content_2_0)
+		var content_2_1 string
+		content_2_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst5)))
+		content_2Children = append(content_2Children, content_2_1)
+		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		contentChildren = append(contentChildren, content_2)
+		var content_3 string
+		var content_3Children []string
+		var content_3_0 string
+		content_3_0Focused := (m.__focusID == 5)
+		content_3_0Prefix := " "
+		if content_3_0Focused {
+			content_3_0Prefix = ">"
+		}
+		content_3_0 = lipgloss.NewStyle().Render(content_3_0Prefix + " " + fmt.Sprint("tap"))
+		content_3Children = append(content_3Children, content_3_0)
+		var content_3_1 string
+		content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst6)))
+		content_3Children = append(content_3Children, content_3_1)
+		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+		contentChildren = append(contentChildren, content_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0_0_1 = lipgloss.NewStyle().Render(content_0_0_1Prefix + " " + fmt.Sprint("+"))
-	content_0_0Children = append(content_0_0Children, content_0_0_1)
-	content_0_0 = lipgloss.JoinVertical(lipgloss.Left, content_0_0Children...)
-	content_0Children = append(content_0Children, content_0_0)
-	var content_0_1 string
-	var content_0_1Children []string
-	var content_0_1_0 string
-	content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst1__inst3))))
-	content_0_1Children = append(content_0_1Children, content_0_1_0)
-	var content_0_1_1 string
-	content_0_1_1Focused := (m.__focusID == 1)
-	content_0_1_1Prefix := " "
-	if content_0_1_1Focused {
-		content_0_1_1Prefix = ">"
-	}
-	content_0_1_1 = lipgloss.NewStyle().Render(content_0_1_1Prefix + " " + fmt.Sprint("+"))
-	content_0_1Children = append(content_0_1Children, content_0_1_1)
-	content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
-	content_0Children = append(content_0Children, content_0_1)
-	content_0 = lipgloss.JoinVertical(lipgloss.Left, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	var content_1_0Children []string
-	var content_1_0_0 string
-	content_1_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst0__inst4))))
-	content_1_0Children = append(content_1_0Children, content_1_0_0)
-	var content_1_0_1 string
-	content_1_0_1Focused := (m.__focusID == 2)
-	content_1_0_1Prefix := " "
-	if content_1_0_1Focused {
-		content_1_0_1Prefix = ">"
-	}
-	content_1_0_1 = lipgloss.NewStyle().Render(content_1_0_1Prefix + " " + fmt.Sprint("+"))
-	content_1_0Children = append(content_1_0Children, content_1_0_1)
-	content_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_0Children...)
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	var content_1_1Children []string
-	var content_1_1_0 string
-	content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst1__inst4))))
-	content_1_1Children = append(content_1_1Children, content_1_1_0)
-	var content_1_1_1 string
-	content_1_1_1Focused := (m.__focusID == 3)
-	content_1_1_1Prefix := " "
-	if content_1_1_1Focused {
-		content_1_1_1Prefix = ">"
-	}
-	content_1_1_1 = lipgloss.NewStyle().Render(content_1_1_1Prefix + " " + fmt.Sprint("+"))
-	content_1_1Children = append(content_1_1Children, content_1_1_1)
-	content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	var content_2Children []string
-	var content_2_0 string
-	content_2_0Focused := (m.__focusID == 4)
-	content_2_0Prefix := " "
-	if content_2_0Focused {
-		content_2_0Prefix = ">"
-	}
-	content_2_0 = lipgloss.NewStyle().Render(content_2_0Prefix + " " + fmt.Sprint("tap"))
-	content_2Children = append(content_2Children, content_2_0)
-	var content_2_1 string
-	content_2_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst5)))
-	content_2Children = append(content_2Children, content_2_1)
-	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	var content_3Children []string
-	var content_3_0 string
-	content_3_0Focused := (m.__focusID == 5)
-	content_3_0Prefix := " "
-	if content_3_0Focused {
-		content_3_0Prefix = ">"
-	}
-	content_3_0 = lipgloss.NewStyle().Render(content_3_0Prefix + " " + fmt.Sprint("tap"))
-	content_3Children = append(content_3Children, content_3_0)
-	var content_3_1 string
-	content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst6)))
-	content_3Children = append(content_3Children, content_3_1)
-	content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
-	contentChildren = append(contentChildren, content_3)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -569,6 +596,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -590,6 +620,7 @@ fun MainScreen() {
     var taps__inst2__inst5 by remember { mutableStateOf(0) }
     var hits__inst6 by remember { mutableStateOf(0) }
     var taps__inst2__inst6 by remember { mutableStateOf(0) }
+    var visible__inst7 by remember { mutableStateOf(true) }
 
 
     fun bump__inst3() {
@@ -611,68 +642,77 @@ fun MainScreen() {
         hits__inst6 = (hits__inst6 + 1)
     }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Column(modifier = Modifier) {
-            Column(modifier = Modifier) {
-                Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst0__inst3.toString()), modifier = Modifier)
-                Button(onClick = {
-                    count__inst3 = (count__inst3 + 1)
-                    runs__inst0__inst3 = (runs__inst0__inst3 + 1)
-                    bump__inst3()
-                }, modifier = Modifier) {
-                    Text(text = "+", modifier = Modifier)
-                }
-            }
-            Column(modifier = Modifier) {
-                Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst1__inst3.toString()), modifier = Modifier)
-                Button(onClick = {
-                    count__inst3 = (count__inst3 + 10)
-                    runs__inst1__inst3 = (runs__inst1__inst3 + 1)
-                    bump__inst3()
-                }, modifier = Modifier) {
-                    Text(text = "+", modifier = Modifier)
-                }
+    if (visible__inst7) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst7 = false
+            if (!(visible__inst7)) {
+                __activity?.finish()
             }
         }
-        Column(modifier = Modifier) {
+        Column(modifier = Modifier.safeDrawingPadding()) {
             Column(modifier = Modifier) {
-                Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst0__inst4.toString()), modifier = Modifier)
-                Button(onClick = {
-                    count__inst4 = (count__inst4 + 1)
-                    runs__inst0__inst4 = (runs__inst0__inst4 + 1)
-                    bump__inst4()
-                }, modifier = Modifier) {
-                    Text(text = "+", modifier = Modifier)
+                Column(modifier = Modifier) {
+                    Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst0__inst3.toString()), modifier = Modifier)
+                    Button(onClick = {
+                        count__inst3 = (count__inst3 + 1)
+                        runs__inst0__inst3 = (runs__inst0__inst3 + 1)
+                        bump__inst3()
+                    }, modifier = Modifier) {
+                        Text(text = "+", modifier = Modifier)
+                    }
+                }
+                Column(modifier = Modifier) {
+                    Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst1__inst3.toString()), modifier = Modifier)
+                    Button(onClick = {
+                        count__inst3 = (count__inst3 + 10)
+                        runs__inst1__inst3 = (runs__inst1__inst3 + 1)
+                        bump__inst3()
+                    }, modifier = Modifier) {
+                        Text(text = "+", modifier = Modifier)
+                    }
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst1__inst4.toString()), modifier = Modifier)
-                Button(onClick = {
-                    count__inst4 = (count__inst4 + 10)
-                    runs__inst1__inst4 = (runs__inst1__inst4 + 1)
-                    bump__inst4()
-                }, modifier = Modifier) {
-                    Text(text = "+", modifier = Modifier)
+                Column(modifier = Modifier) {
+                    Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst0__inst4.toString()), modifier = Modifier)
+                    Button(onClick = {
+                        count__inst4 = (count__inst4 + 1)
+                        runs__inst0__inst4 = (runs__inst0__inst4 + 1)
+                        bump__inst4()
+                    }, modifier = Modifier) {
+                        Text(text = "+", modifier = Modifier)
+                    }
+                }
+                Column(modifier = Modifier) {
+                    Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst1__inst4.toString()), modifier = Modifier)
+                    Button(onClick = {
+                        count__inst4 = (count__inst4 + 10)
+                        runs__inst1__inst4 = (runs__inst1__inst4 + 1)
+                        bump__inst4()
+                    }, modifier = Modifier) {
+                        Text(text = "+", modifier = Modifier)
+                    }
                 }
             }
-        }
-        Column(modifier = Modifier) {
-            Button(onClick = {
-                hit__inst5()
-                taps__inst2__inst5 = (taps__inst2__inst5 + 1)
-            }, modifier = Modifier) {
-                Text(text = "tap", modifier = Modifier)
+            Column(modifier = Modifier) {
+                Button(onClick = {
+                    hit__inst5()
+                    taps__inst2__inst5 = (taps__inst2__inst5 + 1)
+                }, modifier = Modifier) {
+                    Text(text = "tap", modifier = Modifier)
+                }
+                Text(text = hits__inst5.toString(), modifier = Modifier)
             }
-            Text(text = hits__inst5.toString(), modifier = Modifier)
-        }
-        Column(modifier = Modifier) {
-            Button(onClick = {
-                hit__inst6()
-                taps__inst2__inst6 = (taps__inst2__inst6 + 1)
-            }, modifier = Modifier) {
-                Text(text = "tap", modifier = Modifier)
+            Column(modifier = Modifier) {
+                Button(onClick = {
+                    hit__inst6()
+                    taps__inst2__inst6 = (taps__inst2__inst6 + 1)
+                }, modifier = Modifier) {
+                    Text(text = "tap", modifier = Modifier)
+                }
+                Text(text = hits__inst6.toString(), modifier = Modifier)
             }
-            Text(text = hits__inst6.toString(), modifier = Modifier)
         }
     }
 }
@@ -692,14 +732,14 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column">
     <div style="display:flex;flex-direction:column">
-      <span id="__n0" data-sngl-id="__n0">
+      <span id="__n1" data-sngl-id="__n1">
       </span>
       <button id="$3">
         <span>+</span>
       </button>
     </div>
     <div style="display:flex;flex-direction:column">
-      <span id="__n1" data-sngl-id="__n1">
+      <span id="__n2" data-sngl-id="__n2">
       </span>
       <button id="$5">
         <span>+</span>
@@ -708,14 +748,14 @@ body { font-family: system-ui, sans-serif; }
   </div>
   <div style="display:flex;flex-direction:column">
     <div style="display:flex;flex-direction:column">
-      <span id="__n2" data-sngl-id="__n2">
+      <span id="__n3" data-sngl-id="__n3">
       </span>
       <button id="$8">
         <span>+</span>
       </button>
     </div>
     <div style="display:flex;flex-direction:column">
-      <span id="__n3" data-sngl-id="__n3">
+      <span id="__n4" data-sngl-id="__n4">
       </span>
       <button id="$10">
         <span>+</span>
@@ -726,14 +766,14 @@ body { font-family: system-ui, sans-serif; }
     <button id="$12">
       <span>tap</span>
     </button>
-    <span id="__n4" data-sngl-id="__n4">
+    <span id="__n5" data-sngl-id="__n5">
     </span>
   </div>
   <div style="display:flex;flex-direction:column">
     <button id="$14">
       <span>tap</span>
     </button>
-    <span id="__n5" data-sngl-id="__n5">
+    <span id="__n6" data-sngl-id="__n6">
     </span>
   </div>
 </div>
@@ -741,24 +781,24 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst3: 0, runs__inst0__inst3: 0, runs__inst1__inst3: 0, count__inst4: 0, runs__inst0__inst4: 0, runs__inst1__inst4: 0, hits__inst5: 0, taps__inst2__inst5: 0, hits__inst6: 0, taps__inst2__inst6: 0 };
+  var state = { count__inst3: 0, runs__inst0__inst3: 0, runs__inst1__inst3: 0, count__inst4: 0, runs__inst0__inst4: 0, runs__inst1__inst4: 0, hits__inst5: 0, taps__inst2__inst5: 0, hits__inst6: 0, taps__inst2__inst6: 0, visible__inst7: true };
   function bump__inst3() {
     state.count__inst3 = state.count__inst3 + 100;
-    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n2.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
   }
   function bump__inst4() {
     state.count__inst4 = state.count__inst4 + 100;
-    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
-    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n4.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
   }
   function hit__inst5() {
     state.hits__inst5 = state.hits__inst5 + 1;
-    __n4.textContent = String(state.hits__inst5);
+    __n5.textContent = String(state.hits__inst5);
   }
   function hit__inst6() {
     state.hits__inst6 = state.hits__inst6 + 1;
-    __n5.textContent = String(state.hits__inst6);
+    __n6.textContent = String(state.hits__inst6);
   }
   function String(v) {
     return "" + v;
@@ -769,42 +809,42 @@ body { font-family: system-ui, sans-serif; }
   var $3 = document.getElementById("$3");
   var $5 = document.getElementById("$5");
   var $8 = document.getElementById("$8");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __n6 = document.querySelector('[data-sngl-id="__n6"]');
   $3.addEventListener("click", function() {
     state.count__inst3 = state.count__inst3 + 1;
-    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n2.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
     state.runs__inst0__inst3 = state.runs__inst0__inst3 + 1;
-    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
     bump__inst3();
   });
   $5.addEventListener("click", function() {
     state.count__inst3 = state.count__inst3 + 10;
-    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n2.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
     state.runs__inst1__inst3 = state.runs__inst1__inst3 + 1;
-    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n2.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
     bump__inst3();
   });
   $8.addEventListener("click", function() {
     state.count__inst4 = state.count__inst4 + 1;
-    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
-    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n4.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
     state.runs__inst0__inst4 = state.runs__inst0__inst4 + 1;
-    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
     bump__inst4();
   });
   $10.addEventListener("click", function() {
     state.count__inst4 = state.count__inst4 + 10;
-    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
-    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n4.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
     state.runs__inst1__inst4 = state.runs__inst1__inst4 + 1;
-    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n4.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
     bump__inst4();
   });
   $12.addEventListener("click", function() {
@@ -816,20 +856,20 @@ body { font-family: system-ui, sans-serif; }
     state.taps__inst2__inst6 = state.taps__inst2__inst6 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
-    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
-    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
-    __n4.textContent = String(state.hits__inst5);
-    __n5.textContent = String(state.hits__inst6);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n2.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n4.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n5.textContent = String(state.hits__inst5);
+    __n6.textContent = String(state.hits__inst6);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b1c16f54d8674e4bc5984594bebc69e7
+pass sha256:8d5629444c14ab5a69795e98afc56af3
 -- run/kotlin/android --
-pass sha256:ccb04a76d3578f8cf99575aac5248bb0
+pass sha256:4cff5a3077f0d47670fad7479098e68d
 -- run/none/html --
-pass sha256:91b6853f928295ae875c3e684f25e6c1
+pass sha256:47c5c55391a6e3815aa2d8d5bbd5390f

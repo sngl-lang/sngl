@@ -88,7 +88,7 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // buildRenderModel walks a route window's visual tree into a RouteRender:
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
-func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
+func buildRenderModel(pkg *ir.Package, win *codegen.ViewCtx, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
 		state:     stateVarNames(pkg, win),
@@ -168,10 +168,6 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 // otherwise HoleAttr). A node carrying a backend event handler is wrapped in a
 // server-action <form>.
 func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
-	// A window is handled at route level.
-	if ir.IsWindowNode(n) {
-		return
-	}
 
 	actionIdx, backendForm := rb.nodeActionIndex(n)
 	if backendForm {
@@ -352,6 +348,19 @@ func logicalMutations(block []ir.Stmt) []ir.Stmt {
 		if isDOMPatchStmt(s) {
 			continue
 		}
+		// A patch inside a block is the page's too -- the catch block the
+		// window's boundary makes of a handler that may raise, a branch. The
+		// block is copied, since the page's half of the handler keeps it.
+		switch n := s.(type) {
+		case *ir.If:
+			cp := *n
+			cp.Body, cp.Else = logicalMutations(n.Body), logicalMutations(n.Else)
+			s = &cp
+		case *ir.For:
+			cp := *n
+			cp.Body, cp.Else = logicalMutations(n.Body), logicalMutations(n.Else)
+			s = &cp
+		}
 		out = append(out, s)
 	}
 	return out
@@ -385,13 +394,13 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // It is one name rather than one per placeholder, and it is not a field of
 // the per-session State: the struct is a handler local bound from the request,
 // which is why routeStateVars below does not yield it.
-func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
+func stateVarNames(pkg *ir.Package, win *codegen.ViewCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
-	if win != nil && win.Window != nil && win.Window.Params != nil {
-		out[win.Window.Params.Name] = true
+	if win != nil && win.Surface != nil && win.Surface.Params != nil {
+		out[win.Surface.Params.Name] = true
 	}
 	return out
 }
@@ -407,7 +416,7 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 // hole into a State struct that had no such field.
 //
 // win may be nil, which is every caller that asks the package-wide question.
-func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {
+func routeStateVars(pkg *ir.Package, win *codegen.ViewCtx) []codegen.StateVar {
 	vars := routeVars(pkg, win)
 	out := make([]codegen.StateVar, 0, len(vars))
 	for _, v := range vars {
@@ -432,7 +441,7 @@ func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar 
 // and nothing POSTed it.
 //
 // win may be nil, which is every caller that asks the package-wide question.
-func routeVars(pkg *ir.Package, win *codegen.WindowCtx) []*ir.Var {
+func routeVars(pkg *ir.Package, win *codegen.ViewCtx) []*ir.Var {
 	var out []*ir.Var
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {

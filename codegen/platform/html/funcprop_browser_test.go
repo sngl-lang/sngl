@@ -23,7 +23,7 @@ component App() node {
         row(label=item, onpick=func(s string) { picked = s })
     }
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 // The page builds at all.

@@ -43,7 +43,13 @@ type Importer struct {
 
 func (h *Importer) Scheme() string { return h.scheme }
 
-func (h *Importer) ResolveFS(uri, _ string) (fs.FS, error) {
+func (h *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
+	return h.ResolveFSNet(uri, dir, nil)
+}
+
+// ResolveFSNet resolves uri, asking gate before the fetch contacts a host and
+// before it follows a redirect to another.
+func (h *Importer) ResolveFSNet(uri, _ string, gate codegen.NetGate) (fs.FS, error) {
 	rawURL := h.scheme + ":" + uri
 	hash, cleanURL := splitHashFragment(rawURL)
 	kind, err := archiveKind(cleanURL)
@@ -60,7 +66,14 @@ func (h *Importer) ResolveFS(uri, _ string) (fs.FS, error) {
 		return os.DirFS(cacheDir), nil
 	}
 
-	data, err := httpGetBytes(cleanURL)
+	u, err := url.Parse(cleanURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := codegen.AskNet(gate, u.Host); err != nil {
+		return nil, err
+	}
+	data, err := httpGetBytes(cleanURL, gate)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +128,7 @@ func (h *Importer) Refresh(uri, _ string) (string, error) {
 	if err := os.RemoveAll(cacheDir); err != nil {
 		return "", fmt.Errorf("clear cache: %w", err)
 	}
-	data, err := httpGetBytes(cleanURL)
+	data, err := httpGetBytes(cleanURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -177,15 +190,27 @@ func httpCacheDir(cleanURL string) string {
 	key := fmt.Sprintf("%x", sha256.Sum256([]byte(cleanURL)))
 	u, err := url.Parse(cleanURL)
 	host := "unknown"
-	if err == nil {
+	if err == nil && u.Host != "" && u.Host != "." && u.Host != ".." && !strings.ContainsAny(u.Host, `/\`) {
 		host = u.Host
 	}
 	return filepath.Join(codegen.SnglCacheDir(), "http", host, key)
 }
 
-func httpGetBytes(rawURL string) ([]byte, error) {
+// httpGetBytes fetches rawURL, asking gate before following a redirect; a
+// nil gate follows any, which only `sngl pkg update` -- a fetch the user
+// asked for by name -- passes.
+func httpGetBytes(rawURL string, gate codegen.NetGate) ([]byte, error) {
 	slog.Info("exec", "cmd", "http GET", "url", rawURL)
-	resp, err := nethttp.Get(rawURL)
+	client := &nethttp.Client{CheckRedirect: func(req *nethttp.Request, via []*nethttp.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		if gate == nil {
+			return nil
+		}
+		return gate(req.URL.Host)
+	}}
+	resp, err := client.Get(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("http get %q: %w", rawURL, err)
 	}

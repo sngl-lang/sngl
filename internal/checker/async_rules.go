@@ -84,9 +84,7 @@ func (c *checker) checkAsyncRules() {
 // when FuncSig gains IsAsync; see Rule 3).
 func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
 	out := make(map[*ir.Func]bool)
-	for _, w := range pkg.Windows {
-		collectCalleesInStmts(out, w.Children)
-	}
+	collectCalleesInStmts(out, pkg.Body)
 	for _, comp := range pkg.Components {
 		collectCalleesInStmts(out, comp.Body)
 	}

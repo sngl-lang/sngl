@@ -41,7 +41,7 @@ func tgtStubConfig(t *testing.T, targets ...ir.StaticTarget) *checker.Config {
 		IsMain:     true,
 		Platforms:  []ir.Platform{tgtStubPlatform{}},
 		Targets:    targets,
-		LibSources: map[string][]*ast.Document{"platform/tgtstub": {doc}},
+		LibSources: map[string][]*ast.Document{"platform/tgtstub": {doc, targetNodeDoc(t, "platform/tgtstub")}},
 	}
 }
 

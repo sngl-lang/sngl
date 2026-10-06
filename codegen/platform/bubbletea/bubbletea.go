@@ -13,7 +13,7 @@ import (
 var previewCSS string
 
 func init() {
-	codegen.RegisterPlatform(&Generator{})
+	codegen.RegisterNative("bubbletea", &Generator{})
 }
 
 // Generator implements codegen.PlatformGenerator for Bubbletea.

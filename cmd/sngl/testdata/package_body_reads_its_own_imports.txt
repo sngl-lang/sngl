@@ -1,0 +1,26 @@
+# A statement at the root of a file resolves names against that file's own
+# imports, whichever file of the package pass1 happened to finish on. The
+# package body used to be checked in the scope of the last file read, so
+# `time.timer` in app.sngl was undefined because z.sngl, sorted after it,
+# imports no `time`.
+
+sngl check .
+stdout 'app.sngl: ok'
+
+-- app.sngl --
+import time "sngl:time"
+import ui "sngl:ui"
+
+var n = 0
+
+time.timer(interval=200ms, @tick {
+    n += 1
+})
+
+ui.window(title="Main") {
+    ui.text(value="{n}")
+}
+-- z.sngl --
+import ui "sngl:ui"
+
+var m = 0

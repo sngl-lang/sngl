@@ -2,6 +2,7 @@ package html
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -15,7 +16,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 )
 
 func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
@@ -285,30 +285,33 @@ ui.window {
 	}
 
 	// Static render must carry the data-sngl-id attribute for the
-	// reactive text node so JS lang's IsElementRef path resolves it.
-	if !strings.Contains(out, `data-sngl-id="__n0"`) {
-		t.Errorf("missing data-sngl-id=\"__n0\" attr; output:\n%s", out)
+	// reactive text node so JS lang's IsElementRef path resolves it. Which
+	// __nN it is depends on what else the page reads state for.
+	m := regexp.MustCompile(`<span id="(__n\d+)" data-sngl-id="(__n\d+)"`).FindStringSubmatch(out)
+	if m == nil || m[1] != m[2] {
+		t.Fatalf("missing data-sngl-id attr on the reactive span; output:\n%s", out)
 	}
+	ref := m[1]
 	// The click handler body must contain the prop-remapped DOM write
 	// for the text node (textContent, not value).
 	if !strings.Contains(out, `.textContent = String(state.n)`) &&
 		!strings.Contains(out, `.textContent = String((state.n))`) {
 		t.Errorf("missing .textContent = String(state.n) DOM write; output:\n%s", out)
 	}
-	// addTextUpdater must NOT have fired for __n0 — no $u_*_text
+	// addTextUpdater must NOT have fired for the node — no $u_*_text
 	// updater function should target it. (Match the legacy naming
 	// pattern $u_<idsuffix>_text and rule it out.)
-	if strings.Contains(out, "function $u___n0_text(") {
-		t.Errorf("legacy $u___n0_text updater registered despite NoReactivity; output:\n%s", out)
+	if strings.Contains(out, "function $u_"+ref+"_text(") {
+		t.Errorf("legacy $u_%s_text updater registered despite NoReactivity; output:\n%s", ref, out)
 	}
 	// The __n* id should be cached as a top-level const, not
 	// re-resolved per update.
-	if !strings.Contains(out, `__n0 = document.querySelector('[data-sngl-id="__n0"]')`) {
-		t.Errorf("missing cached __n0 binding; output:\n%s", out)
+	if !strings.Contains(out, ref+` = document.querySelector('[data-sngl-id="`+ref+`"]')`) {
+		t.Errorf("missing cached %s binding; output:\n%s", ref, out)
 	}
-	// The handler body should reference __n0 as a bare identifier,
+	// The handler body should reference the node as a bare identifier,
 	// not via inline document.querySelector.
-	if strings.Contains(out, `document.querySelector('[data-sngl-id="__n0"]').textContent`) {
+	if strings.Contains(out, `document.querySelector('[data-sngl-id="`+ref+`"]').textContent`) {
 		t.Errorf("handler body still inlines querySelector instead of using cached const; output:\n%s", out)
 	}
 }

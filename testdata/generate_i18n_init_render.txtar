@@ -50,7 +50,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
     <span>+</span>
@@ -578,19 +578,19 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = { count__inst0: 3 };
+  var state = { count__inst0: 3, visible__inst1: true };
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.count__inst0 += 1;
-    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
+    __n1.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   });
   function __sngl_init() {
-    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
+    __n1.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ce2d5c4a8621af10b819b85cf0adf071
+pass sha256:ca089cb1d20891cdd26eb09d16155211

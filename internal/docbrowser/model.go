@@ -22,10 +22,11 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	path      string
-	ident1    string
-	ident2    string
-	__focusID int
+	path           string
+	ident1         string
+	ident2         string
+	visible__inst0 bool
+	__focusID      int
 
 	widget0 textinput.Model
 	widget1 textinput.Model
@@ -40,6 +41,7 @@ func New() Model {
 	m.path = "sngl"
 	m.ident1 = ""
 	m.ident2 = ""
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.widget0 = textinput.New()
 	m.widget0.Placeholder = "import path"
@@ -149,6 +151,21 @@ func SetIdent2Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setIdent2Msg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -164,6 +181,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetIdent1(msg.value)
 	case setIdent2Msg:
 		m = m.SetIdent2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -171,7 +190,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
@@ -228,410 +253,412 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	var content_0Children []string
-	var content_0_0 string
-	content_0_0 = m.widget0.View()
-	content_0Children = append(content_0Children, content_0_0)
-	var content_0_1 string
-	content_0_1 = m.widget1.View()
-	content_0Children = append(content_0Children, content_0_1)
-	var content_0_2 string
-	content_0_2 = m.widget2.View()
-	content_0Children = append(content_0Children, content_0_2)
-	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	if !m.entry().Found && (m.entry().Error != "") {
-		var content_1Children []string
-		var content_1_0 string
-		content_1_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint("Not found"))
-		content_1Children = append(content_1Children, content_1_0)
-		var content_1_1 string
-		content_1_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().Error))
-		content_1Children = append(content_1Children, content_1_1)
-		content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		var content_0Children []string
+		var content_0_0 string
+		content_0_0 = m.widget0.View()
+		content_0Children = append(content_0Children, content_0_0)
+		var content_0_1 string
+		content_0_1 = m.widget1.View()
+		content_0Children = append(content_0Children, content_0_1)
+		var content_0_2 string
+		content_0_2 = m.widget2.View()
+		content_0Children = append(content_0Children, content_0_2)
+		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		if !m.entry().Found && (m.entry().Error != "") {
+			var content_1Children []string
+			var content_1_0 string
+			content_1_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint("Not found"))
+			content_1Children = append(content_1Children, content_1_0)
+			var content_1_1 string
+			content_1_1 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().Error))
+			content_1Children = append(content_1Children, content_1_1)
+			content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
+		}
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
+		}
+		var content_2 string
+		if m.entry().Kind == "index" {
+			var content_2Children []string
+			var content_2_0 string
+			content_2_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().Index.Title))
+			content_2Children = append(content_2Children, content_2_0)
+			var content_2_1 string
+			content_2_1 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#aaa")).Render(fmt.Sprint(m.entry().Index.Description))
+			content_2Children = append(content_2Children, content_2_1)
+			var content_2_2 string
+			if m.entry().Index.IsNative && (m.entry().Index.NativeImportPath != "") {
+				content_2_2 = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath)))
+			}
+			if content_2_2 != "" {
+				content_2Children = append(content_2Children, content_2_2)
+			}
+			var content_2_3 string
+			content_2_3 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_3)
+			var content_2_4 string
+			content_2_4 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("COMPONENTS"))
+			content_2Children = append(content_2Children, content_2_4)
+			var content_2_5 string
+			var content_2_5Items []string
+			for _, c := range m.entry().Index.Components {
+				_ = c
+				var content_2_5Item string
+				content_2_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
+				content_2_5Items = append(content_2_5Items, content_2_5Item)
+			}
+			content_2_5 = strings.Join(content_2_5Items, "\n")
+			if content_2_5 != "" {
+				content_2Children = append(content_2Children, content_2_5)
+			}
+			var content_2_6 string
+			content_2_6 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_6)
+			var content_2_7 string
+			content_2_7 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("TYPES"))
+			content_2Children = append(content_2Children, content_2_7)
+			var content_2_8 string
+			var content_2_8Items []string
+			for _, t := range m.entry().Index.Types {
+				_ = t
+				var content_2_8Item string
+				content_2_8Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + t.Name) + " — ") + t.Doc)))
+				content_2_8Items = append(content_2_8Items, content_2_8Item)
+			}
+			content_2_8 = strings.Join(content_2_8Items, "\n")
+			if content_2_8 != "" {
+				content_2Children = append(content_2Children, content_2_8)
+			}
+			var content_2_9 string
+			content_2_9 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_9)
+			var content_2_10 string
+			content_2_10 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("ENUMS"))
+			content_2Children = append(content_2Children, content_2_10)
+			var content_2_11 string
+			var content_2_11Items []string
+			for _, e := range m.entry().Index.Enums {
+				_ = e
+				var content_2_11Item string
+				content_2_11Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc)))
+				content_2_11Items = append(content_2_11Items, content_2_11Item)
+			}
+			content_2_11 = strings.Join(content_2_11Items, "\n")
+			if content_2_11 != "" {
+				content_2Children = append(content_2Children, content_2_11)
+			}
+			var content_2_12 string
+			content_2_12 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_12)
+			var content_2_13 string
+			content_2_13 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("FUNCTIONS"))
+			content_2Children = append(content_2Children, content_2_13)
+			var content_2_14 string
+			var content_2_14Items []string
+			for _, f := range m.entry().Index.Functions {
+				_ = f
+				var content_2_14Item string
+				content_2_14Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc)))
+				content_2_14Items = append(content_2_14Items, content_2_14Item)
+			}
+			content_2_14 = strings.Join(content_2_14Items, "\n")
+			if content_2_14 != "" {
+				content_2Children = append(content_2Children, content_2_14)
+			}
+			var content_2_15 string
+			content_2_15 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_15)
+			var content_2_16 string
+			content_2_16 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("CONSTANTS"))
+			content_2Children = append(content_2Children, content_2_16)
+			var content_2_17 string
+			var content_2_17Items []string
+			for _, c := range m.entry().Index.Constants {
+				_ = c
+				var content_2_17Item string
+				content_2_17Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
+				content_2_17Items = append(content_2_17Items, content_2_17Item)
+			}
+			content_2_17 = strings.Join(content_2_17Items, "\n")
+			if content_2_17 != "" {
+				content_2Children = append(content_2Children, content_2_17)
+			}
+			var content_2_18 string
+			content_2_18 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+			content_2Children = append(content_2Children, content_2_18)
+			var content_2_19 string
+			content_2_19 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("DATA"))
+			content_2Children = append(content_2Children, content_2_19)
+			var content_2_20 string
+			var content_2_20Items []string
+			for _, d := range m.entry().Index.Data {
+				_ = d
+				var content_2_20Item string
+				content_2_20Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc)))
+				content_2_20Items = append(content_2_20Items, content_2_20Item)
+			}
+			content_2_20 = strings.Join(content_2_20Items, "\n")
+			if content_2_20 != "" {
+				content_2Children = append(content_2Children, content_2_20)
+			}
+			content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		}
+		if content_2 != "" {
+			contentChildren = append(contentChildren, content_2)
+		}
+		var content_3 string
+		if m.entry().Kind == "component" {
+			var content_3Children []string
+			var content_3_0 string
+			content_3_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().ComponentDoc.Name))
+			content_3Children = append(content_3Children, content_3_0)
+			var content_3_1 string
+			content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ComponentDoc.Doc))
+			content_3Children = append(content_3Children, content_3_1)
+			var content_3_2 string
+			content_3_2 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("PROPS"))
+			content_3Children = append(content_3Children, content_3_2)
+			var content_3_3 string
+			var content_3_3Items []string
+			for _, p := range m.entry().ComponentDoc.Props {
+				_ = p
+				var content_3_3Item string
+				content_3_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc)))
+				content_3_3Items = append(content_3_3Items, content_3_3Item)
+			}
+			content_3_3 = strings.Join(content_3_3Items, "\n")
+			if content_3_3 != "" {
+				content_3Children = append(content_3Children, content_3_3)
+			}
+			var content_3_4 string
+			content_3_4 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("SLOTS"))
+			content_3Children = append(content_3Children, content_3_4)
+			var content_3_5 string
+			var content_3_5Items []string
+			for _, sl := range m.entry().ComponentDoc.Slots {
+				_ = sl
+				var content_3_5Item string
+				content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + sl.Name) + "  ") + sl.Type)))
+				content_3_5Items = append(content_3_5Items, content_3_5Item)
+			}
+			content_3_5 = strings.Join(content_3_5Items, "\n")
+			if content_3_5 != "" {
+				content_3Children = append(content_3Children, content_3_5)
+			}
+			var content_3_6 string
+			content_3_6 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("EVENTS"))
+			content_3Children = append(content_3Children, content_3_6)
+			var content_3_7 string
+			var content_3_7Items []string
+			for _, e := range m.entry().ComponentDoc.Events {
+				_ = e
+				var content_3_7Item string
+				content_3_7Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
+				content_3_7Items = append(content_3_7Items, content_3_7Item)
+			}
+			content_3_7 = strings.Join(content_3_7Items, "\n")
+			if content_3_7 != "" {
+				content_3Children = append(content_3Children, content_3_7)
+			}
+			content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+		}
+		if content_3 != "" {
+			contentChildren = append(contentChildren, content_3)
+		}
+		var content_4 string
+		if m.entry().Kind == "type" {
+			var content_4Children []string
+			var content_4_0 string
+			content_4_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().TypeDoc.Name))
+			content_4Children = append(content_4Children, content_4_0)
+			var content_4_1 string
+			content_4_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().TypeDoc.Doc))
+			content_4Children = append(content_4Children, content_4_1)
+			var content_4_2 string
+			content_4_2 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("FIELDS"))
+			content_4Children = append(content_4Children, content_4_2)
+			var content_4_3 string
+			var content_4_3Items []string
+			for _, f := range m.entry().TypeDoc.Fields {
+				_ = f
+				var content_4_3Item string
+				content_4_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + "  ") + f.Type)))
+				content_4_3Items = append(content_4_3Items, content_4_3Item)
+			}
+			content_4_3 = strings.Join(content_4_3Items, "\n")
+			if content_4_3 != "" {
+				content_4Children = append(content_4Children, content_4_3)
+			}
+			var content_4_4 string
+			content_4_4 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).
+				Bold(true).Render(fmt.Sprint("METHODS"))
+			content_4Children = append(content_4Children, content_4_4)
+			var content_4_5 string
+			var content_4_5Items []string
+			for _, m := range m.entry().TypeDoc.Methods {
+				_ = m
+				var content_4_5Item string
+				content_4_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  ." + m.Short) + "  ") + m.Doc)))
+				content_4_5Items = append(content_4_5Items, content_4_5Item)
+			}
+			content_4_5 = strings.Join(content_4_5Items, "\n")
+			if content_4_5 != "" {
+				content_4Children = append(content_4Children, content_4_5)
+			}
+			content_4 = lipgloss.JoinVertical(lipgloss.Left, content_4Children...)
+		}
+		if content_4 != "" {
+			contentChildren = append(contentChildren, content_4)
+		}
+		var content_5 string
+		if m.entry().Kind == "enum" {
+			var content_5Children []string
+			var content_5_0 string
+			content_5_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().EnumDoc.Name))
+			content_5Children = append(content_5Children, content_5_0)
+			var content_5_1 string
+			content_5_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().EnumDoc.Doc))
+			content_5Children = append(content_5Children, content_5_1)
+			var content_5_2 string
+			var content_5_2Items []string
+			for _, m := range m.entry().EnumDoc.Members {
+				_ = m
+				var content_5_2Item string
+				content_5_2Item = lipgloss.NewStyle().Render(fmt.Sprint(("  • " + m.Name)))
+				content_5_2Items = append(content_5_2Items, content_5_2Item)
+			}
+			content_5_2 = strings.Join(content_5_2Items, "\n")
+			if content_5_2 != "" {
+				content_5Children = append(content_5Children, content_5_2)
+			}
+			content_5 = lipgloss.JoinVertical(lipgloss.Left, content_5Children...)
+		}
+		if content_5 != "" {
+			contentChildren = append(contentChildren, content_5)
+		}
+		var content_6 string
+		if m.entry().Kind == "func" {
+			var content_6Children []string
+			var content_6_0 string
+			content_6_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().FuncDoc.Name))
+			content_6Children = append(content_6Children, content_6_0)
+			var content_6_1 string
+			content_6_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Signature))
+			content_6Children = append(content_6Children, content_6_1)
+			var content_6_2 string
+			content_6_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Doc))
+			content_6Children = append(content_6Children, content_6_2)
+			content_6 = lipgloss.JoinVertical(lipgloss.Left, content_6Children...)
+		}
+		if content_6 != "" {
+			contentChildren = append(contentChildren, content_6)
+		}
+		var content_7 string
+		if m.entry().Kind == "value" {
+			var content_7Children []string
+			var content_7_0 string
+			content_7_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(m.entry().ValueDoc.Name))
+			content_7Children = append(content_7Children, content_7_0)
+			var content_7_1 string
+			content_7_1 = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().ValueDoc.Type))
+			content_7Children = append(content_7Children, content_7_1)
+			var content_7_2 string
+			content_7_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ValueDoc.Doc))
+			content_7Children = append(content_7Children, content_7_2)
+			content_7 = lipgloss.JoinVertical(lipgloss.Left, content_7Children...)
+		}
+		if content_7 != "" {
+			contentChildren = append(contentChildren, content_7)
+		}
+		var content_8 string
+		if m.entry().Kind == "prop" {
+			var content_8Children []string
+			var content_8_0 string
+			content_8_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(((m.entry().PropDoc.ComponentName + ".") + m.entry().PropDoc.Name)))
+			content_8Children = append(content_8Children, content_8_0)
+			var content_8_1 string
+			content_8_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Type))
+			content_8Children = append(content_8Children, content_8_1)
+			var content_8_2 string
+			content_8_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Doc))
+			content_8Children = append(content_8Children, content_8_2)
+			content_8 = lipgloss.JoinVertical(lipgloss.Left, content_8Children...)
+		}
+		if content_8 != "" {
+			contentChildren = append(contentChildren, content_8)
+		}
+		var content_9 string
+		if m.entry().Kind == "field" {
+			var content_9Children []string
+			var content_9_0 string
+			content_9_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(((m.entry().FieldDoc.Type + ".") + m.entry().FieldDoc.Name)))
+			content_9Children = append(content_9Children, content_9_0)
+			var content_9_1 string
+			content_9_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FieldDoc.Expr))
+			content_9Children = append(content_9Children, content_9_1)
+			content_9 = lipgloss.JoinVertical(lipgloss.Left, content_9Children...)
+		}
+		if content_9 != "" {
+			contentChildren = append(contentChildren, content_9)
+		}
+		var content_10 string
+		if m.entry().Kind == "member" {
+			var content_10Children []string
+			var content_10_0 string
+			content_10_0 = lipgloss.NewStyle().
+				Bold(true).Render(fmt.Sprint(((m.entry().MemberDoc.EnumName + ".") + m.entry().MemberDoc.Name)))
+			content_10Children = append(content_10Children, content_10_0)
+			var content_10_1 string
+			content_10_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().MemberDoc.Doc))
+			content_10Children = append(content_10Children, content_10_1)
+			content_10 = lipgloss.JoinVertical(lipgloss.Left, content_10Children...)
+		}
+		if content_10 != "" {
+			contentChildren = append(contentChildren, content_10)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = lipgloss.NewStyle().
+			Padding(1).Render(content)
 	}
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
-	}
-	var content_2 string
-	if m.entry().Kind == "index" {
-		var content_2Children []string
-		var content_2_0 string
-		content_2_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().Index.Title))
-		content_2Children = append(content_2Children, content_2_0)
-		var content_2_1 string
-		content_2_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#aaa")).Render(fmt.Sprint(m.entry().Index.Description))
-		content_2Children = append(content_2Children, content_2_1)
-		var content_2_2 string
-		if m.entry().Index.IsNative && (m.entry().Index.NativeImportPath != "") {
-			content_2_2 = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(("Import: " + m.entry().Index.NativeImportPath)))
-		}
-		if content_2_2 != "" {
-			content_2Children = append(content_2Children, content_2_2)
-		}
-		var content_2_3 string
-		content_2_3 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_3)
-		var content_2_4 string
-		content_2_4 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("COMPONENTS"))
-		content_2Children = append(content_2Children, content_2_4)
-		var content_2_5 string
-		var content_2_5Items []string
-		for _, c := range m.entry().Index.Components {
-			_ = c
-			var content_2_5Item string
-			content_2_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
-			content_2_5Items = append(content_2_5Items, content_2_5Item)
-		}
-		content_2_5 = strings.Join(content_2_5Items, "\n")
-		if content_2_5 != "" {
-			content_2Children = append(content_2Children, content_2_5)
-		}
-		var content_2_6 string
-		content_2_6 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_6)
-		var content_2_7 string
-		content_2_7 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("TYPES"))
-		content_2Children = append(content_2Children, content_2_7)
-		var content_2_8 string
-		var content_2_8Items []string
-		for _, t := range m.entry().Index.Types {
-			_ = t
-			var content_2_8Item string
-			content_2_8Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + t.Name) + " — ") + t.Doc)))
-			content_2_8Items = append(content_2_8Items, content_2_8Item)
-		}
-		content_2_8 = strings.Join(content_2_8Items, "\n")
-		if content_2_8 != "" {
-			content_2Children = append(content_2Children, content_2_8)
-		}
-		var content_2_9 string
-		content_2_9 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_9)
-		var content_2_10 string
-		content_2_10 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("ENUMS"))
-		content_2Children = append(content_2Children, content_2_10)
-		var content_2_11 string
-		var content_2_11Items []string
-		for _, e := range m.entry().Index.Enums {
-			_ = e
-			var content_2_11Item string
-			content_2_11Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + e.Name) + " — ") + e.Doc)))
-			content_2_11Items = append(content_2_11Items, content_2_11Item)
-		}
-		content_2_11 = strings.Join(content_2_11Items, "\n")
-		if content_2_11 != "" {
-			content_2Children = append(content_2Children, content_2_11)
-		}
-		var content_2_12 string
-		content_2_12 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_12)
-		var content_2_13 string
-		content_2_13 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("FUNCTIONS"))
-		content_2Children = append(content_2Children, content_2_13)
-		var content_2_14 string
-		var content_2_14Items []string
-		for _, f := range m.entry().Index.Functions {
-			_ = f
-			var content_2_14Item string
-			content_2_14Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + " — ") + f.Doc)))
-			content_2_14Items = append(content_2_14Items, content_2_14Item)
-		}
-		content_2_14 = strings.Join(content_2_14Items, "\n")
-		if content_2_14 != "" {
-			content_2Children = append(content_2Children, content_2_14)
-		}
-		var content_2_15 string
-		content_2_15 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_15)
-		var content_2_16 string
-		content_2_16 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("CONSTANTS"))
-		content_2Children = append(content_2Children, content_2_16)
-		var content_2_17 string
-		var content_2_17Items []string
-		for _, c := range m.entry().Index.Constants {
-			_ = c
-			var content_2_17Item string
-			content_2_17Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + c.Name) + " — ") + c.Doc)))
-			content_2_17Items = append(content_2_17Items, content_2_17Item)
-		}
-		content_2_17 = strings.Join(content_2_17Items, "\n")
-		if content_2_17 != "" {
-			content_2Children = append(content_2Children, content_2_17)
-		}
-		var content_2_18 string
-		content_2_18 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		content_2Children = append(content_2Children, content_2_18)
-		var content_2_19 string
-		content_2_19 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("DATA"))
-		content_2Children = append(content_2Children, content_2_19)
-		var content_2_20 string
-		var content_2_20Items []string
-		for _, d := range m.entry().Index.Data {
-			_ = d
-			var content_2_20Item string
-			content_2_20Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + d.Name) + " — ") + d.Doc)))
-			content_2_20Items = append(content_2_20Items, content_2_20Item)
-		}
-		content_2_20 = strings.Join(content_2_20Items, "\n")
-		if content_2_20 != "" {
-			content_2Children = append(content_2Children, content_2_20)
-		}
-		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-	}
-	if content_2 != "" {
-		contentChildren = append(contentChildren, content_2)
-	}
-	var content_3 string
-	if m.entry().Kind == "component" {
-		var content_3Children []string
-		var content_3_0 string
-		content_3_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().ComponentDoc.Name))
-		content_3Children = append(content_3Children, content_3_0)
-		var content_3_1 string
-		content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ComponentDoc.Doc))
-		content_3Children = append(content_3Children, content_3_1)
-		var content_3_2 string
-		content_3_2 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("PROPS"))
-		content_3Children = append(content_3Children, content_3_2)
-		var content_3_3 string
-		var content_3_3Items []string
-		for _, p := range m.entry().ComponentDoc.Props {
-			_ = p
-			var content_3_3Item string
-			content_3_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((((("  " + p.Name) + "  ") + p.Type) + "  ") + p.Doc)))
-			content_3_3Items = append(content_3_3Items, content_3_3Item)
-		}
-		content_3_3 = strings.Join(content_3_3Items, "\n")
-		if content_3_3 != "" {
-			content_3Children = append(content_3Children, content_3_3)
-		}
-		var content_3_4 string
-		content_3_4 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("SLOTS"))
-		content_3Children = append(content_3Children, content_3_4)
-		var content_3_5 string
-		var content_3_5Items []string
-		for _, sl := range m.entry().ComponentDoc.Slots {
-			_ = sl
-			var content_3_5Item string
-			content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + sl.Name) + "  ") + sl.Type)))
-			content_3_5Items = append(content_3_5Items, content_3_5Item)
-		}
-		content_3_5 = strings.Join(content_3_5Items, "\n")
-		if content_3_5 != "" {
-			content_3Children = append(content_3Children, content_3_5)
-		}
-		var content_3_6 string
-		content_3_6 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("EVENTS"))
-		content_3Children = append(content_3Children, content_3_6)
-		var content_3_7 string
-		var content_3_7Items []string
-		for _, e := range m.entry().ComponentDoc.Events {
-			_ = e
-			var content_3_7Item string
-			content_3_7Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
-			content_3_7Items = append(content_3_7Items, content_3_7Item)
-		}
-		content_3_7 = strings.Join(content_3_7Items, "\n")
-		if content_3_7 != "" {
-			content_3Children = append(content_3Children, content_3_7)
-		}
-		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
-	}
-	if content_3 != "" {
-		contentChildren = append(contentChildren, content_3)
-	}
-	var content_4 string
-	if m.entry().Kind == "type" {
-		var content_4Children []string
-		var content_4_0 string
-		content_4_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().TypeDoc.Name))
-		content_4Children = append(content_4Children, content_4_0)
-		var content_4_1 string
-		content_4_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().TypeDoc.Doc))
-		content_4Children = append(content_4Children, content_4_1)
-		var content_4_2 string
-		content_4_2 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("FIELDS"))
-		content_4Children = append(content_4Children, content_4_2)
-		var content_4_3 string
-		var content_4_3Items []string
-		for _, f := range m.entry().TypeDoc.Fields {
-			_ = f
-			var content_4_3Item string
-			content_4_3Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + f.Name) + "  ") + f.Type)))
-			content_4_3Items = append(content_4_3Items, content_4_3Item)
-		}
-		content_4_3 = strings.Join(content_4_3Items, "\n")
-		if content_4_3 != "" {
-			content_4Children = append(content_4Children, content_4_3)
-		}
-		var content_4_4 string
-		content_4_4 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("METHODS"))
-		content_4Children = append(content_4Children, content_4_4)
-		var content_4_5 string
-		var content_4_5Items []string
-		for _, m := range m.entry().TypeDoc.Methods {
-			_ = m
-			var content_4_5Item string
-			content_4_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  ." + m.Short) + "  ") + m.Doc)))
-			content_4_5Items = append(content_4_5Items, content_4_5Item)
-		}
-		content_4_5 = strings.Join(content_4_5Items, "\n")
-		if content_4_5 != "" {
-			content_4Children = append(content_4Children, content_4_5)
-		}
-		content_4 = lipgloss.JoinVertical(lipgloss.Left, content_4Children...)
-	}
-	if content_4 != "" {
-		contentChildren = append(contentChildren, content_4)
-	}
-	var content_5 string
-	if m.entry().Kind == "enum" {
-		var content_5Children []string
-		var content_5_0 string
-		content_5_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().EnumDoc.Name))
-		content_5Children = append(content_5Children, content_5_0)
-		var content_5_1 string
-		content_5_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().EnumDoc.Doc))
-		content_5Children = append(content_5Children, content_5_1)
-		var content_5_2 string
-		var content_5_2Items []string
-		for _, m := range m.entry().EnumDoc.Members {
-			_ = m
-			var content_5_2Item string
-			content_5_2Item = lipgloss.NewStyle().Render(fmt.Sprint(("  • " + m.Name)))
-			content_5_2Items = append(content_5_2Items, content_5_2Item)
-		}
-		content_5_2 = strings.Join(content_5_2Items, "\n")
-		if content_5_2 != "" {
-			content_5Children = append(content_5Children, content_5_2)
-		}
-		content_5 = lipgloss.JoinVertical(lipgloss.Left, content_5Children...)
-	}
-	if content_5 != "" {
-		contentChildren = append(contentChildren, content_5)
-	}
-	var content_6 string
-	if m.entry().Kind == "func" {
-		var content_6Children []string
-		var content_6_0 string
-		content_6_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().FuncDoc.Name))
-		content_6Children = append(content_6Children, content_6_0)
-		var content_6_1 string
-		content_6_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Signature))
-		content_6Children = append(content_6Children, content_6_1)
-		var content_6_2 string
-		content_6_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FuncDoc.Doc))
-		content_6Children = append(content_6Children, content_6_2)
-		content_6 = lipgloss.JoinVertical(lipgloss.Left, content_6Children...)
-	}
-	if content_6 != "" {
-		contentChildren = append(contentChildren, content_6)
-	}
-	var content_7 string
-	if m.entry().Kind == "value" {
-		var content_7Children []string
-		var content_7_0 string
-		content_7_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(m.entry().ValueDoc.Name))
-		content_7Children = append(content_7Children, content_7_0)
-		var content_7_1 string
-		content_7_1 = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888")).Render(fmt.Sprint(m.entry().ValueDoc.Type))
-		content_7Children = append(content_7Children, content_7_1)
-		var content_7_2 string
-		content_7_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().ValueDoc.Doc))
-		content_7Children = append(content_7Children, content_7_2)
-		content_7 = lipgloss.JoinVertical(lipgloss.Left, content_7Children...)
-	}
-	if content_7 != "" {
-		contentChildren = append(contentChildren, content_7)
-	}
-	var content_8 string
-	if m.entry().Kind == "prop" {
-		var content_8Children []string
-		var content_8_0 string
-		content_8_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((m.entry().PropDoc.ComponentName + ".") + m.entry().PropDoc.Name)))
-		content_8Children = append(content_8Children, content_8_0)
-		var content_8_1 string
-		content_8_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Type))
-		content_8Children = append(content_8Children, content_8_1)
-		var content_8_2 string
-		content_8_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().PropDoc.Doc))
-		content_8Children = append(content_8Children, content_8_2)
-		content_8 = lipgloss.JoinVertical(lipgloss.Left, content_8Children...)
-	}
-	if content_8 != "" {
-		contentChildren = append(contentChildren, content_8)
-	}
-	var content_9 string
-	if m.entry().Kind == "field" {
-		var content_9Children []string
-		var content_9_0 string
-		content_9_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((m.entry().FieldDoc.Type + ".") + m.entry().FieldDoc.Name)))
-		content_9Children = append(content_9Children, content_9_0)
-		var content_9_1 string
-		content_9_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().FieldDoc.Expr))
-		content_9Children = append(content_9Children, content_9_1)
-		content_9 = lipgloss.JoinVertical(lipgloss.Left, content_9Children...)
-	}
-	if content_9 != "" {
-		contentChildren = append(contentChildren, content_9)
-	}
-	var content_10 string
-	if m.entry().Kind == "member" {
-		var content_10Children []string
-		var content_10_0 string
-		content_10_0 = lipgloss.NewStyle().
-			Bold(true).Render(fmt.Sprint(((m.entry().MemberDoc.EnumName + ".") + m.entry().MemberDoc.Name)))
-		content_10Children = append(content_10Children, content_10_0)
-		var content_10_1 string
-		content_10_1 = lipgloss.NewStyle().Render(fmt.Sprint(m.entry().MemberDoc.Doc))
-		content_10Children = append(content_10Children, content_10_1)
-		content_10 = lipgloss.JoinVertical(lipgloss.Left, content_10Children...)
-	}
-	if content_10 != "" {
-		contentChildren = append(contentChildren, content_10)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = lipgloss.NewStyle().
-		Padding(1).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

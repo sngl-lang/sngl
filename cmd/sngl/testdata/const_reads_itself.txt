@@ -1,49 +1,19 @@
-# A const whose initializer reads itself does not take the compiler down.
+# A const whose initializer reads itself, by one hop or by several, is a
+# cycle, and the checker refuses it with a position, naming each read on the
+# way round.
 #
-# `evalIdent` reads a const's value by evaluating its initializer, and the
-# initializer reads the const: evalIdent <-> evalExpr with nothing between
-# them. `const a int = a` was a one-line program that ended in
-#
-#   runtime: goroutine stack exceeds 1000000000-byte limit
-#   fatal error: stack overflow
-#
-# with no position and no message. Pre-existing, and found from the other end:
-# the identical shape in a window prop (window_prop_reads_itself.txt) needed
-# the same guard, keyed the same way, twenty lines away.
-#
-# Answered "not constant", which leaves the initializer standing -- what a
-# const the optimizer cannot evaluate already does. Survivable rather than
-# right, and the page says exactly how much so: the self-reference reaches the
-# output verbatim as `var a = a`, and the span that reads it renders empty --
-# the element survives, its content does not, and the page carries no
-# initializer to fill it. No diagnostic either way.
-#
-# That `var a = a` is tolerable at all is a fact about the JavaScript emitter,
-# not about this guard: `var` hoists, so the line assigns undefined to itself
-# and the page loads. Spelled `let` or `const` the identical line is a TDZ
-# ReferenceError and the page breaks outright -- which would turn a silently
-# missing value into a broken one and make leaving the expression standing the
-# wrong trade. The two denies below are what would notice.
-#
-# The rule that a declaration may not read itself belongs in the checker, and
-# this is why a guard here cannot be the answer: `sngl check` accepts this
-# program and always did, because the checker never folds. CLAUDE.md says so
-# and this fixture is what changing it would update.
-#
-# A CLI script rather than a golden because the first thing asserted is that
-# the compiler comes back at all.
-sngl generate --lang none --platform html --out out selfconst.sngl
-grep '<title>t</title>' out/index.html
-grep 'var a = a;' out/index.html
-! grep '__sngl_init' out/index.html
-! grep 'let a = a' out/index.html
-! grep 'const a = a' out/index.html
+# It used to be accepted by `sngl check`, which never folds, and to take the
+# compiler down at `sngl generate`: `evalIdent` reads a const's value by
+# evaluating its initializer, so `const a int = a` was evalIdent <-> evalExpr
+# until the stack went, with no position and no message. A guard there turned
+# that into a page that rendered nothing in silence. The fold keeps the guard
+# for IR the checker did not see; a program never reaches it now.
 
-# A cycle reaches the guard by a second key rather than the first one twice.
-sngl generate --lang none --platform html --out out2 cycle.sngl
-grep '<title>t</title>' out2/index.html
-grep 'var a = b;' out2/index.html
-grep 'var b = a;' out2/index.html
+! sngl check selfconst.sngl
+stderr 'selfconst.sngl:9:15: a cycle: a reads a; it needs its own value first, so it has none'
+
+! sngl check cycle.sngl
+stderr 'cycle.sngl:9:15: a cycle: a reads b, b reads a; each needs the next one''s value first, so none has one'
 
 -- selfconst.sngl --
 import . "sngl:ui"
@@ -56,7 +26,7 @@ output {
 
 const a int = a
 
-window #home(title="t", href="/index.html") {
+window #home(title="t") {
     text(value="{a}")
 }
 -- cycle.sngl --
@@ -71,6 +41,6 @@ output {
 const a int = b
 const b int = a
 
-window #home(title="t", href="/index.html") {
+window #home(title="t") {
     text(value="{a}")
 }

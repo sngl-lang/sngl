@@ -63,6 +63,7 @@ import (
 type Model struct {
 	items               []string
 	hits__inst0         map[string]int
+	visible__inst1      bool
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -74,6 +75,7 @@ func New() Model {
 	m := Model{}
 	m.items = []string{"a", "b"}
 	m.hits__inst0 = map[string]int{}
+	m.visible__inst1 = true
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -156,6 +158,21 @@ func SetHits__inst0Cmd(v map[string]int) tea.Cmd {
 	return func() tea.Msg { return setHits__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -169,13 +186,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetItems(msg.value)
 	case setHits__inst0Msg:
 		m = m.SetHits__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -212,29 +237,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	__focusPos0 := 0
-	_ = __focusPos0
-	var content_0Items []string
-	for __copy0, it := range m.items {
-		_ = __copy0
-		_ = it
-		var content_0Item string
-		content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
-		content_0ItemPrefix := " "
-		if content_0ItemFocused {
-			content_0ItemPrefix = ">"
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
+		var content_0Items []string
+		for __copy0, it := range m.items {
+			_ = __copy0
+			_ = it
+			var content_0Item string
+			content_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+			content_0ItemPrefix := " "
+			if content_0ItemFocused {
+				content_0ItemPrefix = ">"
+			}
+			content_0Item = lipgloss.NewStyle().Render(content_0ItemPrefix + " " + fmt.Sprint(m.describe__inst0(fmt.Sprint(__copy0), it)))
+			__focusPos0++
+			content_0Items = append(content_0Items, content_0Item)
 		}
-		content_0Item = lipgloss.NewStyle().Render(content_0ItemPrefix + " " + fmt.Sprint(m.describe__inst0(fmt.Sprint(__copy0), it)))
-		__focusPos0++
-		content_0Items = append(content_0Items, content_0Item)
+		content_0 = strings.Join(content_0Items, "\n")
+		if content_0 != "" {
+			contentChildren = append(contentChildren, content_0)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = strings.Join(content_0Items, "\n")
-	if content_0 != "" {
-		contentChildren = append(contentChildren, content_0)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -261,14 +288,14 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
+<div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
   <span data-sngl-slot="0" style="display:contents"></span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items: ["a", "b"] };
+  var state = { items: ["a", "b"], visible__inst0: true };
   function __cf_row(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -283,6 +310,7 @@ body { font-family: system-ui, sans-serif; }
       __prop_label = __v;
     }
     let b = document.createElement("button");
+    b.setAttribute("data-sngl-id", "b");
     b.disabled = false;
     b.addEventListener("click", () => {
       hits = hits + 1;
@@ -310,30 +338,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const it of state.items) {
-      let __n1 = null;
+      let __n2 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n1 = __inst1_live[__inst1_i];
-        __n1.__set_label(it);
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set_label(it);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n1__new = __cf_row({ label: it });
-        __n1 = __n1__new;
+        let __n2__new = __cf_row({ label: it });
+        __n2 = __n2__new;
       }
-      __inst1_next.push(__n1);
+      __inst1_next.push(__n2);
       __inst1_i = __inst1_i + 1;
-      let __n1__el = __n1.__root;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n1__el) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n1__el, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n1__el);
+      __slot0.push(__n2__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -357,6 +385,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1f99b78ad634cc5d04afcb901f48d42e
+pass sha256:2d5cb2847ea1940d09c2ddcd1ca581a7
 -- run/none/html --
-pass sha256:65f259f3b346f5976b02e3d9e7de9f19
+pass sha256:7f522ea1d90a795dd8f8a520ed2a7ec2

@@ -1,22 +1,23 @@
 import marks "sngl:internal/marks"
 
-// The identity of a build target: one platform, named. Its values are not
-// declared anywhere — the compiler synthesizes one const per registered
-// platform into that platform's own package, so `html.platform` is the html
-// target and there is no second way to name it.
+// The identity of a build target: one platform, named. A value of it is a
+// platform's build-target node read as a value -- `html.platform`, the
+// `component platform(…) build.platform` sngl:platform/html declares -- so the
+// node is the html target and there is no second way to name it.
 //
 // There is no literal, so a string is never mistaken for a platform. Compare
-// `PLATFORM` against one of these rather than against `"html"`.
+// `PLATFORM` against a node rather than against `"html"`.
 #[marks.builtin("platform")]
 struct platform {}
 
 // The identity of a build target's output language, the `platform` type's
-// counterpart: `go.language`, `js.language`. Compare `LANGUAGE` against one.
+// counterpart: `go.language`, `js.language`, each a language package's node.
+// Compare `LANGUAGE` against one.
 #[marks.builtin("language")]
 struct language {}
 
-// The platform this build targets. Compare it against a platform's own
-// identity const — `PLATFORM == html.platform` — to gate code on the target;
+// The platform this build targets. Compare it against a platform's
+// build-target node — `PLATFORM == html.platform` — to gate code on the target;
 // the comparison folds at build time and the branch not taken is removed. The
 // compiler supplies the value.
 //

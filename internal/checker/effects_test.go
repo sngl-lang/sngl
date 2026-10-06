@@ -82,10 +82,7 @@ window("App") {
     })
 }
 `)
-	if len(pkg.Windows) != 1 {
-		t.Fatalf("want 1 window, got %d", len(pkg.Windows))
-	}
-	block := firstClickHandlerBlock(pkg.Windows[0].Children)
+	block := firstClickHandlerBlock(firstRootNode(t, pkg).Children)
 	if block == nil {
 		t.Fatal("no @click handler found")
 	}
@@ -108,7 +105,7 @@ window("App") {
     }
 }
 `)
-	eb := pkg.Windows[0].Children[0].(*ir.ErrorBoundary)
+	eb := firstRootNode(t, pkg).Children[0].(*ir.ErrorBoundary)
 	if eb.Handler == nil {
 		t.Fatal("boundary has no handler")
 	}
@@ -128,31 +125,6 @@ window("App") {
 	}
 }
 
-func TestErrorRaiseCaughtByWindow(t *testing.T) {
-	pkg := parse(t, `
-window("App", @error(e) { }) {
-    button(text="Go", @click {
-        error.raise("boom", "")
-    })
-}
-`)
-	w := pkg.Windows[0]
-	if w.ErrorHandler == nil {
-		t.Fatal("window missing @error handler")
-	}
-	block := firstClickHandlerBlock(w.Children)
-	call := findCallStmt(block, "error.raise")
-	if call == nil {
-		t.Fatal("ErrorRaise not found")
-	}
-	if call.ErrorMode != ir.ErrorInvokeAndTerminate {
-		t.Errorf("mode = %v, want ErrorInvokeAndTerminate", call.ErrorMode)
-	}
-	if call.ResolvedHandler != w.ErrorHandler {
-		t.Error("resolved handler != window handler")
-	}
-}
-
 func TestErrorBoundaryInnerWins(t *testing.T) {
 	pkg := parse(t, `
 window("App", @error(e) { }) {
@@ -163,7 +135,7 @@ window("App", @error(e) { }) {
     }
 }
 `)
-	eb := pkg.Windows[0].Children[0].(*ir.ErrorBoundary)
+	eb := firstRootNode(t, pkg).Children[0].(*ir.ErrorBoundary)
 	block := firstClickHandlerBlock(eb.Children)
 	call := findCallStmt(block, "error.raise")
 	if call.ResolvedHandler != eb.Handler {
@@ -193,7 +165,7 @@ window("App") {
 	if risky == nil || !risky.CanError {
 		t.Fatalf("risky should be CanError; got %+v", risky)
 	}
-	block := firstClickHandlerBlock(pkg.Windows[0].Children)
+	block := firstClickHandlerBlock(firstRootNode(t, pkg).Children)
 	call := findCallStmt(block, "risky")
 	if call == nil {
 		t.Fatal("risky call not found")
@@ -262,4 +234,17 @@ func caller() {
 	if call.ErrorMode != ir.ErrorBubble {
 		t.Errorf("mode = %v, want ErrorBubble", call.ErrorMode)
 	}
+}
+
+// firstRootNode is the node the package body renders first: its window, in
+// these fixtures.
+func firstRootNode(t *testing.T, pkg *ir.Package) *ir.NodeInst {
+	t.Helper()
+	for _, s := range pkg.Body {
+		if n, ok := s.(*ir.NodeInst); ok {
+			return n
+		}
+	}
+	t.Fatalf("the package body renders no node: %v", pkg.Body)
+	return nil
 }

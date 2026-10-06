@@ -65,8 +65,8 @@ func lowerInstanceEvents(pkg *ir.Package, _ Features, opts Options) error {
 		rewriteEmits(c, byName)
 	}
 	forEachInstanceNode(pkg, func(n *ir.NodeInst) {
-		if _, ok := syms[n.Component]; ok {
-			handlersToProps(n)
+		if byName, ok := syms[n.Component]; ok {
+			handlersToProps(n, byName)
 		}
 	})
 	return nil
@@ -79,18 +79,33 @@ func lowerInstanceEvents(pkg *ir.Package, _ Features, opts Options) error {
 // the call site may leave out, and an event nobody subscribed to has always
 // been allowed to fire and go nowhere -- substituteEvents drops such an emit
 // on the floor. Calling a lambda that does nothing is that same silence.
+//
+// The prop is named for the event, except where the event is the write-back
+// of a two-way prop: passPropBindings names that event for the prop it reports,
+// so the prop holding its handler is `__on_<prop>`. Skipped once that prop
+// exists, which keeps running the pass twice a no-op.
 func eventProps(c *ir.Component) map[string]*ir.Param {
 	byName := make(map[string]*ir.Param, len(c.Events))
 	for _, e := range c.Events {
-		if e == nil || byName[e.Name] != nil || propNamed(c, e.Name) != nil {
+		if e == nil || byName[e.Name] != nil {
+			continue
+		}
+		name := e.Name
+		if p := propNamed(c, name); p != nil {
+			if !p.Bidirectional {
+				continue
+			}
+			name = "__on_" + e.Name
+		}
+		if propNamed(c, name) != nil {
 			continue
 		}
 		params := eventParams(e)
 		typ := ir.FuncOf(params, nil)
-		sym := &ir.Param{Name: e.Name, Type: typ}
+		sym := &ir.Param{Name: name, Type: typ}
 		byName[e.Name] = sym
 		c.Props = append(c.Props, &ir.Prop{
-			Name:    e.Name,
+			Name:    name,
 			Type:    typ,
 			Default: &ir.Lambda{Type: typ, Func: &ir.Func{Params: params}},
 			Sym:     sym,
@@ -192,7 +207,7 @@ func rewriteEmits(c *ir.Component, byName map[string]*ir.Param) {
 // program wrote, and it is about to be the body of the lambda the render hands
 // over. Its parameter is whatever name the call site gave the payload, which
 // is why the declaration's parameter name is never the one that matters.
-func handlersToProps(n *ir.NodeInst) {
+func handlersToProps(n *ir.NodeInst, byName map[string]*ir.Param) {
 	declared := map[string]bool{}
 	for _, e := range n.Component.Events {
 		if e != nil {
@@ -208,8 +223,12 @@ func handlersToProps(n *ir.NodeInst) {
 		}
 		want := eventParams(eventNamed(n.Component, h.Name))
 		padParams(h.Func, want)
+		name := h.Name
+		if sym := byName[h.Name]; sym != nil {
+			name = sym.Name
+		}
 		n.Props = append(n.Props, ir.Arg{
-			Name:  h.Name,
+			Name:  name,
 			Value: &ir.Lambda{Type: ir.FuncOf(want, nil), Func: h.Func},
 		})
 	}

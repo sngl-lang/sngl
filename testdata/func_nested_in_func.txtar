@@ -83,9 +83,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	n__inst0   int
-	log__inst0 string
-	__focusID  int
+	n__inst0       int
+	log__inst0     string
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -95,6 +96,7 @@ func New() Model {
 	m := Model{}
 	m.n__inst0 = 0
 	m.log__inst0 = ""
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -173,6 +175,21 @@ func SetLog__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setLog__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -186,13 +203,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN__inst0(msg.value)
 	case setLog__inst0Msg:
 		m = m.SetLog__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -207,27 +232,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.n__inst0) + m.log__inst0)))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 0)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.n__inst0) + m.log__inst0)))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 0)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("step"))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2Focused := (m.__focusID == 1)
+		contentPart_2Prefix := " "
+		if contentPart_2Focused {
+			contentPart_2Prefix = ">"
+		}
+		contentPart_2 = lipgloss.NewStyle().Render(contentPart_2Prefix + " " + fmt.Sprint("reset"))
+		contentParts = append(contentParts, contentPart_2)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("step"))
-	parts = append(parts, part1)
-	var part2 string
-	part2Focused := (m.__focusID == 1)
-	part2Prefix := " "
-	if part2Focused {
-		part2Prefix = ">"
-	}
-	part2 = lipgloss.NewStyle().Render(part2Prefix + " " + fmt.Sprint("reset"))
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -266,6 +294,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -279,6 +310,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var n__inst0 by remember { mutableStateOf(0) }
     var log__inst0 by remember { mutableStateOf("") }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
 
     fun step__mark__inst0(k: Int): Int {
@@ -298,17 +330,26 @@ fun MainScreen() {
 
     fun reset__inst0(a: Int): Int = reset__mark__inst0(a)
 
-    Column {
-        Text(text = (n__inst0.toString() + log__inst0), modifier = Modifier.safeDrawingPadding())
-        Button(onClick = {
-            n__inst0 = step__inst0(n__inst0)
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "step", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
         }
-        Button(onClick = {
-            n__inst0 = reset__inst0(n__inst0)
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "reset", modifier = Modifier)
+        Column {
+            Text(text = (n__inst0.toString() + log__inst0), modifier = Modifier.safeDrawingPadding())
+            Button(onClick = {
+                n__inst0 = step__inst0(n__inst0)
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "step", modifier = Modifier)
+            }
+            Button(onClick = {
+                n__inst0 = reset__inst0(n__inst0)
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "reset", modifier = Modifier)
+            }
         }
     }
 }
@@ -325,7 +366,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 <button id="$0">
   <span>step</span>
@@ -337,10 +378,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0, log__inst0: "" };
+  var state = { n__inst0: 0, log__inst0: "", visible__inst1: true };
   function step__mark__inst0(k) {
     state.log__inst0 = state.log__inst0 + "!";
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
     return k * 2;
   }
   function step__inst0(a) {
@@ -348,7 +389,7 @@ body { font-family: system-ui, sans-serif; }
   }
   function reset__mark__inst0(k) {
     state.log__inst0 = "";
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
     return k - 1;
   }
   function reset__inst0(a) {
@@ -359,25 +400,25 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.n__inst0 = step__inst0(state.n__inst0);
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   });
   $1.addEventListener("click", function() {
     state.n__inst0 = reset__inst0(state.n__inst0);
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.n__inst0) + state.log__inst0;
+    __n1.textContent = String(state.n__inst0) + state.log__inst0;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eefcf14838574bd0d083b64e87bc0a73
+pass sha256:3edd0a33cd701bb495e58b08fed1de58
 -- run/kotlin/android --
-pass sha256:a4ce222d34ff41aafab0e43a1897f592
+pass sha256:3654ea474bf4a26ffaad80fc4a8889f4
 -- run/none/html --
-pass sha256:9ea7059763190fbb73dba76fab451dda
+pass sha256:1fbdef6bdc578af462395bea4ecd73c3

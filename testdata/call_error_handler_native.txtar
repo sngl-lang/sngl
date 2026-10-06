@@ -304,6 +304,7 @@ func (m *Model) bad_click_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = e.Message
+		m.__n0.SetText(((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "b")
 	m.__n0.SetText(((m.caught + "|") + m.after))
@@ -314,6 +315,7 @@ func (m *Model) good_click_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = "never"
+		m.__n0.SetText(((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "g")
 	m.__n0.SetText(((m.caught + "|") + m.after))
@@ -458,6 +460,7 @@ func (m *Model) bad_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = e.Message
+		gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "b")
 	gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
@@ -468,6 +471,7 @@ func (m *Model) good_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = "never"
+		gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "g")
 	gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
@@ -528,6 +532,6 @@ func (m *Model) goodClick() {
 -- run/go/bubbletea --
 pass sha256:1f6f578074a2db9710c0c07fb32ae703
 -- run/go/fyne --
-pass sha256:3f2600f0ddc1d199d457ec8b7083c337
+pass sha256:fcab6d3387f571e63ded96227a7f36d3
 -- run/go/gtk4 --
-pass sha256:66e2db40a4b954d7336b30a0336bf9a1
+pass sha256:8291b64f6b1c7b5d649df4d03f9cb4e9

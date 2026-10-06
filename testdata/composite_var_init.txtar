@@ -58,9 +58,10 @@ type Node struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	first  Node
-	second Node
-	pair   []int
+	first          Node
+	second         Node
+	pair           []int
+	visible__inst0 bool
 
 	width, height int
 }
@@ -71,6 +72,7 @@ func New() Model {
 	m.first = Node{Value: 1, Label: "one"}
 	m.second = Node{Value: m.first.Value, Label: m.first.Label}
 	m.pair = []int{m.first.Value, m.second.Value}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -125,6 +127,21 @@ func SetPairCmd(v []int) tea.Cmd {
 	return func() tea.Msg { return setPairMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -140,13 +157,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSecond(msg.value)
 	case setPairMsg:
 		m = m.SetPair(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -154,14 +179,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.second.Label))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.pair))))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.second.Label))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.pair))))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -200,6 +227,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Node(
@@ -219,13 +249,23 @@ fun MainScreen() {
     var first by remember { mutableStateOf(Node(value = 1, label = "one")) }
     var second by remember { mutableStateOf(Node(value = first.value, label = first.label)) }
     val pair = remember { mutableStateListOf(first.value, second.value) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = second.label, modifier = Modifier)
-        Text(text = pair.size.toString(), modifier = Modifier)
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = second.label, modifier = Modifier)
+            Text(text = pair.size.toString(), modifier = Modifier)
+        }
     }
 }
 -- run/go/bubbletea --
-pass sha256:9b041aa7366a91467901c69e86129003
+pass sha256:b1abe42602191ff6dc6edbe765fc0914
 -- run/kotlin/android --
-pass sha256:26e9fc954d44254391a0a92a1a2107c5
+pass sha256:8a800e86f15766873d20aea9b90255b6

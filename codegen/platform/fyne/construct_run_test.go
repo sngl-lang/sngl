@@ -75,7 +75,7 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 	}
 
 	// Changing it rebuilds: the initializer runs again, from the new value.
-	m.__n2_click_handler()
+	m.__n3_click_handler()
 	if m.__inst0_live[0] == first {
 		t.Fatal("a changed construct prop should rebuild the instance")
 	}

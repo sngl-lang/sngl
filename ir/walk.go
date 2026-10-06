@@ -153,11 +153,10 @@ func (w *walker) stmt(s Stmt) {
 				w.fn(h.Func)
 			}
 		}
-		if n.ErrorHandler != nil {
-			w.fn(n.ErrorHandler.Func)
-		}
 		w.expr(n.Key)
 		w.expr(n.Ref)
+		w.expr(n.Record)
+		w.expr(n.Start)
 		w.stmts(n.Children)
 		w.slots(n.Slots)
 	case *CallStmt:
@@ -312,9 +311,6 @@ func (w *walker) pkg(pkg *Package) {
 	}
 	for _, c := range pkg.Components {
 		w.component(c)
-	}
-	for _, win := range pkg.Windows {
-		w.stmt(win)
 	}
 	w.stmts(pkg.Body)
 }

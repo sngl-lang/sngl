@@ -20,7 +20,7 @@ component App() node {
     }
     button(text="unshift", @click { rows = ["z", "a", "b", "c"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 // A retained plain-node row reports the value it now renders.

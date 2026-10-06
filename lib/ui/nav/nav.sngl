@@ -1,0 +1,106 @@
+// sngl:ui is qualified rather than dot-imported, as every lib package does:
+// a name lifted by a dot import would be indistinguishable from one declared
+// here.
+import ui "sngl:ui"
+import build "sngl:build"
+import marks "sngl:internal/marks"
+
+// What a page is, read off one: a stack's `current` is a value of it. It is
+// the family `page` belongs to and the only member it has, and unexported, so
+// a program names a page and never this: `pages.current.title` reads one,
+// `pages.current == about` compares by identity, and what a page declares
+// beyond these -- its params -- is not reachable through it.
+//
+// `meta` is what a program says about every page of a stack beside its href
+// and title, one type for all of them -- a menu's label, an icon.
+component _page<M = struct {}>(href string, title string, meta M = M{}) build.family
+
+// A destination. `href` is where it is served on a target that has addresses,
+// with `{name}` placeholders filled from the fields of `params`; `title` names
+// it, and contributes nothing on its own -- a window reads
+// `pages.current.title` for that.
+//
+// `params` is what the page is shown with when nothing hands it any: at the
+// start, and by a `go` or a `link` that passes none. The params it is showing
+// reach its content through the population of `content`,
+// `component content(p) { … }`, the way any scoped slot is read, and nothing
+// else; content written bare sees none.
+#[marks.builtin("navPage")]
+component page<T = struct {}, M = struct {}>(
+    href string,
+    title string,
+    meta M = M{},
+    params T = T{},
+    content ...component(v T) ui.node,
+) _page<M>
+
+// Pages one on top of another, showing the top one, which starts as the page
+// whose href is "/", or the first. Every page carries one meta type, which is
+// the stack's M.
+//
+// A page the stack is not showing is not mounted: leaving one destroys what it
+// rendered, as an `if` does.
+//
+// The pages are fixed when the stack is built, and need not be written one by
+// one: a `for` over a constant writes a page per element -- each copy a page of
+// its own, whose `#id` names that copy inside the loop -- an `if` over
+// constants writes one or none, and pages compose in components as widgets
+// do: a component rendering pages, written among them, is inlined to the
+// pages it renders.
+#[marks.builtin("navStack")]
+component stack<M = struct {}>(pages ...component _page<M>) ui.node
+
+// The page showing. It is the stack's own state, read and never set:
+// `go` and `back` are what change it.
+#[marks.intrinsic("nav.current")]
+func stack<M>.current() _page<M>
+
+// Shows `to`, and pushes the page it replaces: `back` returns to it. `params`
+// is what the page's content is handed, the page's own `params` when not
+// given, and it travels with the entry, so `back` restores it too.
+#[marks.intrinsic("nav.go")]
+func stack<M>.go<T>(to page<T, M>, params option<T> = null)
+
+// Returns to the page `go` last replaced, with the params it had. Nothing at
+// the bottom of the stack.
+#[marks.intrinsic("nav.back")]
+func stack<M>.back()
+
+// Where `to` is reached with `params`, or the page's own when null: its href
+// with each `{name}` filled from the field of that name, escaped as a path
+// segment. A target whose pages are addresses answers it -- html, whose
+// override makes a link follow it -- and the build folds it where the page
+// and the params are both known then.
+#[marks.intrinsic("nav.href")]
+const func href<T, M>(to page<T, M>, params option<T> = null) string
+
+// Goes to `to` in the stack that holds it, handing it `params`, or the page's
+// own when null: what a link does when activated, where there is no address
+// to follow. A link names a page and not its stack, which is why this is not
+// the stack's `go`; the lowering knows which stack holds the page, and the
+// interpreter asks the page.
+#[marks.intrinsic("nav.follow")]
+func _follow<T, M>(to page<T, M>, params option<T> = null)
+
+// Goes to `to` when activated, handing it `params`, or the page's own when not
+// given. `text` is what it shows, as `ui.link`'s is. `@click` runs first, as
+// `ui.link`'s does.
+//
+// What is written here is what a link is wherever there is no address to
+// follow: a button that goes to the page. A target whose pages are addresses
+// overrides it -- html's is an `<a href>` -- and a link inside a surface that
+// navigates in place keeps this body there too, which is why the mark stays:
+// which body a link renders is decided per node.
+#[marks.builtin("navLink")]
+component link<T = struct {}, M = struct {}>(
+    to page<T, M>,
+    params option<T> = null,
+    text string,
+    style ui.Style,
+    @click ui.ClickEvent,
+) ui.node {
+    ui.button(text=text, style=style, @click {
+        click()
+        _follow(to, params)
+    })
+}

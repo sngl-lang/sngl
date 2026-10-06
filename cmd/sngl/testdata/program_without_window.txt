@@ -1,0 +1,63 @@
+# A package is a program when its body renders a node, and a window is one
+# such node rather than the thing asked for. A bar with no window -- a status
+# line i3 reads off stdout -- builds: its body renders the host, which is a
+# member of `root` like a window.
+#
+# This used to be refused, "a program declares at least one window", which
+# the package body answered by holding no window.
+
+sngl generate --lang go --platform gtk4 -o out app.sngl
+exists out/model.go
+grep 'func Encode' out/model.go
+
+# A body that renders nothing is still no program, whatever it declares.
+! sngl generate --lang go --platform gtk4 -o none nothing.sngl
+stderr 'a program renders something at the root of a file'
+
+-- app.sngl --
+import build "sngl:build"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+
+component block build.family
+
+component text(full string) block
+
+component bar(blocks ...component block) root
+
+struct Entry {
+    full string
+}
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)
+
+func encode(members list<Entry>) string {
+    var parts list<string> = []
+    for var e = members {
+        parts.push(e.full)
+    }
+    return parts.join("|")
+}
+
+component block[go.language] {
+    gen.emit(render=encode, @change(line) {
+        print(line + "\n")
+    })
+}
+
+component text[go.language] {
+    gen.node(value=Entry{full=full})
+}
+
+var n = 0
+
+bar {
+    text(full="{n}")
+}
+-- nothing.sngl --
+import ui "sngl:ui"
+
+component card ui.node {
+    ui.text(value="hi")
+}

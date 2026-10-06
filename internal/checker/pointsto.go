@@ -42,9 +42,7 @@ func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
 		}
 		w.walkStmts(c.Body)
 	}
-	for _, win := range pkg.Windows {
-		w.walkStmts(win.Children)
-	}
+	w.walkStmts(pkg.Body)
 }
 
 func (w *pointsToWalker) walkVarInit(v *ir.Var) {

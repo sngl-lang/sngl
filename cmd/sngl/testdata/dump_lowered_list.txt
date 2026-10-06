@@ -36,14 +36,14 @@ stdout ' → Effect → '
 # apart and neither can this list -- which is what the cmp says, rather than
 # two copies of one chain saying it by coincidence.
 #
-# SlotChildInstances is the one that does tell them apart, and html is the only
-# target with it. It gates on InsertBefore as well, because retaining a slot
-# child buys the placement match and nothing else -- a container that only
-# appends tears its children down every render, so there is no identity for
-# anything to ask about.
+# SlotChildInstances runs on all three: a slot body's node that reads state is
+# lifted into a record the slot keeps, so a write patches it where it stands
+# rather than re-rendering the slot. Converting the rows that read nothing is
+# html's alone, on InsertBefore, because retaining those buys the placement
+# match and nothing else -- inside the pass, so the list cannot show it.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
-! stdout 'SlotChildInstances'
+stdout ' → SlotChildInstances → '
 cp stdout fyne.txt
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
@@ -55,7 +55,7 @@ cmp stdout fyne.txt
 # they are held under --lang none, even though Go withholds both. html+go and
 # html+none lower identically, which is again the cmp and not a repeated chain.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,InlineSlots,Navigation,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas,NavigationHrefs$'
 stdout ' → SlotChildInstances → '
 cp stdout htmlgo.txt
 
@@ -65,10 +65,14 @@ cmp stdout htmlgo.txt
 # android is the one target with no Effect pass: Compose brackets a keyed
 # lifetime itself, so it holds Effects and gets the node rather than the
 # calls the pass would lower it to. The other four match ' → Effect → ' above,
-# so the pattern is one that does match when the pass is there.
+# so the pattern is one that does match when the pass is there. It answers
+# sngl:ui/nav with a NavHost too, so it holds Navigation: the pass runs on every
+# target, and on one holding the capability lowers only the stacks in a surface
+# other than the document, which android renders none of.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,StructComponents,StdlibContextParam,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,Navigation,StructComponents,StdlibContextParam,Canvas$'
 ! stdout ' → Effect → '
+stdout ' → Navigation → '
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

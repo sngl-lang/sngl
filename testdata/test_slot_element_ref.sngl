@@ -13,7 +13,7 @@ output {
 // scope -- #head interpolates main's `title`, not anything of frame's.
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
     t.assert(c.body.value == "in the rest slot")
-    t.assert(c.head.value == "Hello")
+    t.assert(c.f.head.value == "Hello")
     t.assert(c.own.value == "frame's own")
 }
 
@@ -41,7 +41,7 @@ component bare(children ...component) node {
 component main node {
     var title = "Hello"
 
-    frame {
+    frame #f {
         text #body(value="in the rest slot")
         component header {
             text #head(value=title)

@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,8 @@ type Config struct {
 	Height     int      // viewport height (default 720)
 	OutDir     string   // directory to write PNGs
 	Prefix     string   // filename prefix (default: source file base name without extension)
+	// Trust is what a build may run of the project's own code; nil refuses.
+	Trust *trust.Policy
 }
 
 // Result describes a generated screenshot.
@@ -79,7 +82,7 @@ func Generate(cfg Config) ([]Result, error) {
 
 	var results []Result
 	for _, t := range targets {
-		pngBytes, err := snapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height)
+		pngBytes, err := snapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height, cfg.Trust)
 		if err != nil {
 			return nil, fmt.Errorf("snapshot %s: %w", t.platform, err)
 		}
@@ -100,7 +103,7 @@ func Generate(cfg Config) ([]Result, error) {
 		})
 
 		// If the platform supports text snapshots, write a .txt alongside the PNG.
-		textBytes, textErr := textSnapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height)
+		textBytes, textErr := textSnapshotTarget(sourceFile, t.platform, t.lang, cfg.Width, cfg.Height, cfg.Trust)
 		if textErr == nil && len(textBytes) > 0 {
 			txtPath := filepath.Join(cfg.OutDir, prefix+"_"+t.platform+".txt")
 			os.WriteFile(txtPath, textBytes, 0o644)
@@ -116,7 +119,7 @@ func Generate(cfg Config) ([]Result, error) {
 }
 
 // snapshotTarget captures a screenshot for a single platform target.
-func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+func snapshotTarget(sourceFile, platform, lang string, width, height int, policy *trust.Policy) ([]byte, error) {
 	plat := codegen.LookupPlatform(platform)
 
 	// If the platform implements Snapshotter, use native capture.
@@ -134,6 +137,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 			Platform: platform,
 			Language: lang,
 			Dir:      dir,
+			Trust:    policy,
 		}
 		if err := optimize.Optimize(pkg, optCfg); err != nil {
 			return nil, fmt.Errorf("optimize: %w", err)
@@ -161,11 +165,11 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 	}
 
 	// Platforms without a Snapshotter: compile to HTML preview and screenshot.
-	return snapshotViaHTML(sourceFile, platform, lang, width, height)
+	return snapshotViaHTML(sourceFile, platform, lang, width, height, policy)
 }
 
 // textSnapshotTarget returns ANSI text for platforms that support TextSnapshotter.
-func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+func textSnapshotTarget(sourceFile, platform, lang string, width, height int, policy *trust.Policy) ([]byte, error) {
 	plat := codegen.LookupPlatform(platform)
 	ts, ok := plat.(codegen.TextSnapshotter)
 	if !ok {
@@ -184,6 +188,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 		Platform: platform,
 		Language: lang,
 		Dir:      dir,
+		Trust:    policy,
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return nil, fmt.Errorf("optimize: %w", err)
@@ -211,7 +216,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 }
 
 // snapshotViaHTML compiles a preview HTML and uses the HTML platform to screenshot it.
-func snapshotViaHTML(sourceFile, platform, lang string, width, height int) ([]byte, error) {
+func snapshotViaHTML(sourceFile, platform, lang string, width, height int, policy *trust.Policy) ([]byte, error) {
 	html, err := CompilePreviewHTML(sourceFile, platform, lang)
 	if err != nil {
 		return nil, fmt.Errorf("compiling %s: %w", platform, err)
@@ -233,6 +238,8 @@ type BatchConfig struct {
 	Width     int
 	Height    int
 	OutDir    string
+	// Trust is what a build may run of the project's own code; nil refuses.
+	Trust *trust.Policy
 }
 
 // DocEntry identifies a document for batch snapshotting.
@@ -319,6 +326,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 					Platform: platform,
 					Language: lang,
 					Dir:      p.dir,
+					Trust:    cfg.Trust,
 				}
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
@@ -403,6 +411,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				Platform: platform,
 				Language: lang,
 				Dir:      p.dir,
+				Trust:    cfg.Trust,
 			}
 			if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)

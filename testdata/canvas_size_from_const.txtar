@@ -40,7 +40,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(200,0,0,1)";
@@ -91,4 +91,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f1948cf1fb2cab32510c676e32838337
+pass sha256:a04541d66989edc1e13d0ce465007c44

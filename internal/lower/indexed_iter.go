@@ -90,27 +90,22 @@ func (st *indexedIterState) block(block []ir.Stmt) []ir.Stmt {
 
 // stmt returns the statements to emit before s, and s itself.
 func (st *indexedIterState) stmt(s ir.Stmt) (pre []ir.Stmt, out ir.Stmt) {
+	for _, b := range ir.ViewBlocks(s) {
+		*b = st.block(*b)
+	}
 	switch n := s.(type) {
 	case *ir.For:
-		n.Body = st.block(n.Body)
-		n.Else = st.block(n.Else)
 		return st.rewriteFor(n), n
-	case *ir.If:
-		n.Body = st.block(n.Body)
-		n.Else = st.block(n.Else)
 	case *ir.NodeInst:
-		n.Children = st.block(n.Children)
 		for _, h := range n.Handlers {
 			if h.Func != nil {
 				h.Func.Block = st.block(h.Func.Block)
 			}
 		}
-	case *ir.SlotInst:
-		n.Children = st.block(n.Children)
 	case *ir.ErrorBoundary:
-		n.Children = st.block(n.Children)
-	case *ir.ContextProvider:
-		n.Children = st.block(n.Children)
+		if h := n.Handler; h != nil && h.Func != nil {
+			h.Func.Block = st.block(h.Func.Block)
+		}
 	}
 	return nil, s
 }

@@ -1,13 +1,15 @@
 package gtk4
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
 )
 
@@ -75,20 +77,34 @@ func TestGIRIsParsedOncePerContent(t *testing.T) {
 	}
 }
 
-// The generated declarations are served exactly as the store holds them, so
-// the file the checker reads says what it was generated from: the registry
-// entry, which in turn names the GIR.
+// The generated declarations are handed to the gir: scheme exactly as the
+// store holds them, so the file the checker reads says what it was generated
+// from: the registry entry, which in turn names the GIR. What the intrinsic
+// records is the widgets entry and the option that chose it.
 func TestServedDeclarationsCarryTheirInputs(t *testing.T) {
 	g := &Generator{store: gencache.Open(t.TempDir()), girOpt: girCopy(t)}
-	fsys := g.PackageFS()
-	if fsys == nil {
-		t.Fatal(g.fsErr)
-	}
-	data, err := fs.ReadFile(fsys, widgetSourceFile)
+	gencache.RegisterSetting(girSetting, func() string { return g.girOpt })
+	defer registerGIRScheme(codegen.LookupPlatform(platformName).(*Generator))
+	rec := buildhost.NewRecorder()
+	out, err := g.girWidgets(rec, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(data)
+	src := out.(string)
+	inputs, err := rec.Finish()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kinds []string
+	for _, in := range inputs {
+		kinds = append(kinds, in.String())
+	}
+	joined := strings.Join(kinds, "\n")
+	for _, want := range []string{`cache.entry(producer="gtk4.widgets"`, `cache.setting(name="gtk4.gir", value=` + strconv.Quote(g.girOpt)} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("recorded inputs lack %s:\n%s", want, joined)
+		}
+	}
 	for _, want := range []string{
 		`import cache "sngl:x/gen/cache"`,
 		`cache.entry(producer="gtk4.registry"`,
@@ -108,8 +124,8 @@ func TestMissingNamedGIRIsUnavailable(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "--opt gir=") {
 		t.Errorf("Unavailable() = %v, want the --opt gir= message", err)
 	}
-	if g.PackageFS() != nil {
-		t.Error("a platform with no GIR served a package")
+	if _, err := g.girWidgets(buildhost.NewRecorder(), nil); err == nil {
+		t.Error("a platform with no GIR wrote widgets")
 	}
 }
 

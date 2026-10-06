@@ -1,0 +1,68 @@
+import marks "sngl:internal/marks"
+
+// The lines of the file at path, without their line endings, read as a loop
+// takes them: a file of megabytes is never held whole.
+//
+// A relative path is the import root's -- the directory the program's package
+// is read from. Reading inside it, or inside the package making the call,
+// needs nothing; anywhere else needs `--allow-file`, or `--allow-dir` for a
+// directory above it, granted to the package making the call.
+//
+// What is read is recorded: the value the call contributes to is stored
+// between builds and replayed until the file changes. A loop that stops early
+// still records the whole file, the rest read and hashed but not handed out.
+#[marks.intrinsic("gen.lines", build)]
+const func lines(path string) iter<string>
+
+// Whether anything is at path. Gated and recorded as a read of it is, so a
+// probe of a list of locations depends on the ones before the first hit
+// staying absent.
+#[marks.intrinsic("gen.exists", build)]
+const func exists(path string) bool
+
+// The names of what the directory dir holds -- files and directories alike --
+// that match pattern, a `path.Match` glob, sorted. Gated as a read of dir, and
+// recorded as its listing.
+#[marks.intrinsic("gen.files", build)]
+const func files(dir string, pattern string) list<string>
+
+// The environment variable name, or null where it is unset. Needs
+// `--allow-env` for that variable, granted to the package making the call.
+#[marks.intrinsic("gen.env", build)]
+const func env(name string) option<string>
+
+// A process `exec` started.
+struct Process {
+    // What it writes to standard output, a line at a time, as a loop takes
+    // them. Read once.
+    stdout iter<string>
+}
+
+// Waits for the process to exit, reading and dropping what is left of its
+// output, and returns its exit status.
+#[marks.intrinsic("gen.Process.code", build)]
+const func Process.code() int
+
+// Runs cmd -- the program, then its arguments -- in dir, the import root when
+// empty, with stdin on its standard input, and returns the running process.
+//
+// A call says what it needs, and the compiler holds it to that whatever was
+// granted: `cmd` must begin with `prefix` -- the program alone when empty --
+// and no argument may be a flag in `banFlags`, in any of its spellings (`-x`,
+// `--x`, `-x=v`, `--x=v`). Running needs `--allow-command` for a prefix the
+// declared one begins with, granted to the package making the call, and the
+// prompt shows the prefix and the bans: a command that is safe can still be
+// handed an argument that is not.
+//
+//     gen.exec(
+//         cmd=["go", "list", "-deps", "-json", "--", pkg],
+//         prefix=["go", "list"],
+//         banFlags=["-exec", "-toolexec", "-overlay", "-modfile"],
+//     )
+//
+// The program the command resolves to is recorded, and the arguments are part
+// of the call the value is stored under. What the process itself reads is not
+// visible, which is why running one is never allowed unasked. The process
+// gets the build's environment, less SNGL_ALLOW.
+#[marks.intrinsic("gen.exec", build)]
+const func exec(cmd list<string>, prefix list<string> = [], banFlags list<string> = [], dir string = "", stdin string = "") Process

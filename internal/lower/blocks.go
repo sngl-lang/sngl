@@ -124,14 +124,6 @@ func (c *blockCollector) owner(o ir.Owner) {
 		}
 	}
 	c.viewIn(o.Body)
-	// After the view body, not before: passCSE and passForElse number their
-	// temps off this order, and a window's @error came last when this file
-	// enumerated the owners itself.
-	for _, h := range o.Handlers {
-		if h.Func != nil {
-			c.addImperative(&h.Func.Block)
-		}
-	}
 }
 
 // viewIn walks a view body for the handler bodies it hosts, and for the body's
@@ -144,6 +136,8 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 		c.add(stmts)
 	}
 	for _, s := range *stmts {
+		// A statement's own handler bodies first, then what it holds: the
+		// order numbers a temp passCSE binds.
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			for _, h := range n.Handlers {
@@ -151,24 +145,6 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 					c.addImperative(&h.Func.Block)
 				}
 			}
-			c.viewIn(&n.Children)
-			// Slot content is a view body the caller wrote, so the handlers
-			// on it are the caller's imperative blocks like any other. By
-			// name because Slots is a map, and this order is what numbers a
-			// temp passCSE binds.
-			for _, name := range ir.SlotNames(n.Slots) {
-				if sc := n.Slots[name]; sc != nil {
-					c.viewIn(&sc.Body)
-				}
-			}
-		case *ir.If:
-			c.viewIn(&n.Body)
-			c.viewIn(&n.Else)
-		case *ir.For:
-			c.viewIn(&n.Body)
-			c.viewIn(&n.Else)
-		case *ir.SlotInst:
-			c.viewIn(&n.Children)
 		case *ir.ErrorBoundary:
 			// The boundary's own @error handler, which is a handler body like
 			// any other -- ir.Walk reaches it and analyzeCaptures walks it, so
@@ -176,10 +152,12 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			if n.Handler != nil && n.Handler.Func != nil {
 				c.addImperative(&n.Handler.Func.Block)
 			}
-			c.viewIn(&n.Children)
-			c.viewIn(&n.Failed)
-		case *ir.ContextProvider:
-			c.viewIn(&n.Children)
+		}
+		// Slot content -- a population, a slot insertion's fallback and its
+		// entries' populations -- is a view body the caller wrote, so the
+		// handlers on it are the caller's imperative blocks like any other.
+		for _, b := range ir.ViewBlocks(s) {
+			c.viewIn(b)
 		}
 	}
 }

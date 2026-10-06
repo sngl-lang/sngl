@@ -1,0 +1,67 @@
+# A literal `cache.inputs` in what a plugin writes names inputs the store
+# reads -- to complete each one now and to check it again on every later
+# build -- so each is a read the plugin makes, held to its grants as gen.lines,
+# gen.env and gen.exec are. Unasked, the plugin's own output could name a
+# file anywhere on the machine, a variable holding a token, or a process run
+# in a directory it chose.
+env SNGL_GENCACHE=off
+
+! sngl check env/app.sngl
+stderr 'may not read \$SNGL_SECRET'
+sngl check --allow-env='./pc=SNGL_SECRET' env/app.sngl
+
+! sngl check file/app.sngl
+stderr 'may not read /etc/hostname'
+
+! sngl check entry/app.sngl
+stderr 'cache.entry is the library''s to declare'
+
+# Inside the import root a file needs nothing.
+sngl check inroot/app.sngl
+
+-- env/app.sngl --
+import x "w:x"
+import "./pc"
+
+const v = x.v
+-- env/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="w", @generate(out, importPath) {
+    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.env(name=\"SNGL_SECRET\")\n\}\n\nconst v = 1\n")
+})
+-- file/app.sngl --
+import x "w:x"
+import "./pc"
+
+const v = x.v
+-- file/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="w", @generate(out, importPath) {
+    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"/etc/hostname\")\n\}\n\nconst v = 1\n")
+})
+-- entry/app.sngl --
+import x "w:x"
+import "./pc"
+
+const v = x.v
+-- entry/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="w", @generate(out, importPath) {
+    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.entry(producer=\"go.deps\", params=[\"/\", \"x\"])\n\}\n\nconst v = 1\n")
+})
+-- inroot/app.sngl --
+import x "w:x"
+import "./pc"
+
+const v = x.v
+-- inroot/data.txt --
+hi
+-- inroot/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="w", @generate(out, importPath) {
+    out.write("x.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"data.txt\")\n\}\n\nconst v = 1\n")
+})

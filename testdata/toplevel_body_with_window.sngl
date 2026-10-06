@@ -1,22 +1,20 @@
-// Several windows coexist at the top level, and `output(entry = …)` says
-// which one the program opens at. Without it a build scopes to a single
-// window and, past one, to none -- it refuses to guess, which is the gap the
-// option closes.
+// Several windows coexist at the top level, each a surface of its own. A
+// single-Model build scopes to a single window and, past one, to none: it
+// refuses to guess. Pages a user goes between are a nav.stack's, in one
+// window, rather than windows.
 
 import . "sngl:ui"
 
-output(entry=home)
-
 var visits = 0
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     vbox {
         text(value="visits: {visits}")
         link(href="/about", text="About")
     }
 }
 
-window #about(title="About", href="/about") {
+window #about(title="About") {
     vbox {
         text(value="About")
         link(href="/", text="Home")

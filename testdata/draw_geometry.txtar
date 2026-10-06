@@ -69,7 +69,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { c__inst0: null };
+  var state = { c__inst0: null, visible__inst1: true };
   state.c__inst0 = { x: 50, y: 50 };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
@@ -171,4 +171,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9fd20708bbff97919c8808d00ce37c7b
+pass sha256:c49367ff8b7ad7b7a34281e8e0f77015

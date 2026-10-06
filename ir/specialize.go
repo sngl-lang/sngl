@@ -180,11 +180,6 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 			walk(comp.Body)
 		}
 	}
-	for _, win := range pkg.Windows {
-		if win != nil {
-			walk(win.Children)
-		}
-	}
 	walk(pkg.Body)
 }
 
@@ -244,6 +239,9 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	// second's.
 	if covers(comp.SpecializedFor, t) {
 		return
+	}
+	if comp.SpecializedFor == "" && comp.DeclaredBody == nil {
+		comp.DeclaredBody = comp.Body
 	}
 	comp.SpecializedFor = t.key()
 	// The vars travel with the statements: the body reads them, and a var

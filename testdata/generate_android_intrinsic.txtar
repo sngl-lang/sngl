@@ -72,6 +72,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
@@ -91,21 +94,32 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-        Row(modifier = Modifier.testTag("bar").padding(4.dp)) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "hi", modifier = Modifier.padding(1.dp), style = TextStyle(fontSize = 20.sp))
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
         }
-        Row(modifier = Modifier.padding(2.dp)) {
-            Text(text = "wrapped", modifier = Modifier)
-        }
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            Text(text = "scrolled", modifier = Modifier)
-        }
-        Box(modifier = Modifier.padding(3.dp)) {
-            Text(text = "layered", modifier = Modifier)
+        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+            Row(modifier = Modifier.testTag("bar").padding(4.dp)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "hi", modifier = Modifier.padding(1.dp), style = TextStyle(fontSize = 20.sp))
+            }
+            Row(modifier = Modifier.padding(2.dp)) {
+                Text(text = "wrapped", modifier = Modifier)
+            }
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(text = "scrolled", modifier = Modifier)
+            }
+            Box(modifier = Modifier.padding(3.dp)) {
+                Text(text = "layered", modifier = Modifier)
+            }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:f073452d4133719afed46b100f12b370
+pass sha256:169397eb167af518679114262ae3520e

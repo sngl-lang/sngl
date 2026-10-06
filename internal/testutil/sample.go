@@ -187,21 +187,25 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 
 				// A wrapped fragment's imports have to end up at file scope.
 				// A doc snippet shows its imports at the top of the block, and
-				// wrapping that in `component main { ... }` would bury them
+				// wrapping that in `component snippet { ... }` would bury them
 				// inside the component, where they bind nothing.
 				body := block.Source
-				if block.Annotation == "component" || block.Annotation == "expression" {
+				wrapped := block.Annotation == "component" || block.Annotation == "expression"
+				if wrapped {
 					var hoisted string
 					hoisted, body = hoistImports(body)
 					src += hoisted
 				}
-				src = libImports(src) + src
+				src = libImports(src+body) + src
+				if wrapped {
+					src = snippetUI + src
+				}
 
 				switch block.Annotation {
 				case "component":
-					src += "component main node {\n" + body + "\n}"
+					src += "component snippet snippetui.node {\n" + body + "\n}"
 				case "expression":
-					src += "component main node {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
+					src += "component snippet snippetui.node {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
 				default:
 					src += body
 				}
@@ -324,16 +328,20 @@ func (e *docEditor) flush(t testing.TB) {
 }
 
 // libImports returns the library imports a doc snippet needs but did not
-// write, so a fragment about `list<T>` need not open with boilerplate. Both
-// packages are dot-imported: a snippet writes `text(...)` and `circle(...)`
-// unqualified. Nothing is added when the snippet imports for itself, so a
-// snippet demonstrating the alias form keeps its own spelling.
+// write, so a fragment about `list<T>` need not open with boilerplate. They
+// are qualified under the package's last path segment, the spelling the docs
+// teach, so a fragment writes `ui.text(...)` and `draw.circle(...)`. Nothing
+// is added when the snippet imports for itself.
 func libImports(src string) string {
 	if strings.Contains(src, "sngl:") {
 		return ""
 	}
-	return "import . \"sngl:ui\"\nimport . \"sngl:time\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\n"
+	return "import ui \"sngl:ui\"\nimport time \"sngl:time\"\nimport dialog \"sngl:dialog\"\nimport macro \"sngl:macro\"\nimport draw \"sngl:ui/draw\"\n"
 }
+
+// snippetUI is the alias the fragment wrapper names its family through, kept
+// apart from whatever alias the fragment itself imports `sngl:ui` under.
+const snippetUI = "import snippetui \"sngl:ui\"\n"
 
 // Splits the leading run of import declarations off a block body.
 func hoistImports(body string) (imports, rest string) {

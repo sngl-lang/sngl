@@ -3,7 +3,7 @@
 # `none` renders nothing, so what it owes the family is the tree: `sngl test`
 # asserts on it and `t.snapshot` prints it, and a document reaching a test as
 # the words the author wrote is the whole of what an implementation here means.
-# Which is why `codegen/platform/none/none.sngl` declares `flow` and `inline`
+# Which is why `lib/platform/none/none.sngl` declares `flow` and `inline`
 # rather than leaving every member an empty body the way the shapes are left:
 # a member whose body inserts its content is a component with a body, and a
 # snapshot prints a component's expansion rather than the component -- so a

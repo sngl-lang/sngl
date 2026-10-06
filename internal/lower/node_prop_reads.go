@@ -109,26 +109,12 @@ func nodeHandles(pkg *ir.Package) map[*ir.Var]*ir.NodeInst {
 }
 
 func collectNodeHandles(stmts []ir.Stmt, out map[*ir.Var]*ir.NodeInst) {
-	for _, s := range stmts {
-		switch v := s.(type) {
-		case *ir.NodeInst:
-			if v.Handle != nil {
-				out[v.Handle] = v
-			}
-			collectNodeHandles(v.Children, out)
-		case *ir.If:
-			collectNodeHandles(v.Body, out)
-			collectNodeHandles(v.Else, out)
-		case *ir.For:
-			collectNodeHandles(v.Body, out)
-			collectNodeHandles(v.Else, out)
-		case *ir.ErrorBoundary:
-			collectNodeHandles(v.Children, out)
-			collectNodeHandles(v.Failed, out)
-		case *ir.ContextProvider:
-			collectNodeHandles(v.Children, out)
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok && n.Handle != nil {
+			out[n.Handle] = n
 		}
-	}
+		return true
+	})
 }
 
 // rewriteNodePropRead is what `handle.prop` should become, or nil to leave it

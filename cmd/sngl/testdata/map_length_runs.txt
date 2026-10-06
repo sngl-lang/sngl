@@ -1,0 +1,72 @@
+# `.length` on a map, run on three backends.
+#
+# The checker typed `.length` as int on a list or a string and let it through
+# on a map as an unchecked `dyn` select, so each backend spelled whatever it
+# spelled for a field: Go's `len(m)` happened to be right, JavaScript read
+# `m.length` off a `Map` (undefined -- the property is `size`), Kotlin emitted
+# `m.length`, which does not compile, and the interpreter looked the map up for
+# a key named "length". The list half is here too, because the interpreter had
+# no `.length` select at all and failed it for a list as well.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component counts node {
+    var stock map<string, int> = {"a"=1, "b"=2}
+    var xs = [1, 2, 3]
+    var mapLen = 0
+    var listLen = 0
+
+    button #go(text="go", @click {
+        mapLen = stock.length
+        listLen = xs.length
+    })
+}
+
+func testLength(t Test, c counts) {
+    c.go.click()
+    t.assert(c.mapLen == 2)
+    t.assert(c.listLen == 3)
+}
+
+window {
+}
+-- testrun/bubbletea/go/app.sngl/counts/1 --
+sha256:3a3656870f780e96646764d9b808ed9a
+{
+  "results": [
+    {
+      "Desc": "Length",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/counts/1 --
+sha256:c864783a0ec02ed28d21cbc79ccfbb4c
+{
+  "results": [
+    {
+      "Desc": "Length",
+      "Passed": true
+    }
+  ]
+}

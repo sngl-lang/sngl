@@ -1,8 +1,9 @@
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 // docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
-// renders the top-level main body; html route mode compiles the window
-// declarations inside the `platform html` guard. State (path + up to two
+// renders the top-level main body; html route mode serves a route per page of
+// the stack inside the `platform html` guard. State (path + up to two
 // idents) is local to main — lookup re-runs on every render.
 output {
     go {
@@ -15,10 +16,13 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
 import "sngl:platform/html"
 
-// The route parameters each window takes. `PkgParams` serves two paths, the
-// second of which fills `name` as well -- a field a path does not name keeps
-// the struct's zero, which is what lets one struct describe both.
+// The route parameters each page takes. A page's params all travel in its
+// path, so each struct names what its path does.
 struct PkgParams {
+    pkg string
+}
+
+struct DeclParams {
     pkg string
     name string
 }
@@ -28,60 +32,64 @@ var ident1 = ""
 var ident2 = ""
 func entry() => lookup.Resolve(path, ident1, ident2)
 if PLATFORM == html.platform {
-    window #home(title="SNGL Docs", href="/") {
-        hbox {
-            docui.Sidebar(homeHref="/") {
-                for var p = lookup.Packages() {
-                    docui.NavItem(text=p.title, href="/p/" + p.path)
-                }
-            }
-            vbox(style={padding=24, flex=1}) {
-                text(
-                    value="SNGL Documentation",
-                    style={fontSize=28, fontWeight=bold},
-                )
-                docui.EntryView(path="sngl")
-            }
-        }
-    }
-
-    window #pkg(title="Package — SNGL Docs", href=`/p/{pkg}`, params=PkgParams{}) {
-        component content(v) {
-            hbox {
-                docui.Sidebar(homeHref="/") {
-                    for var p = lookup.Packages() {
-                        docui.NavItem(
-                            text=p.title,
-                            href="/p/" + p.path,
-                            active=p.path == v.pkg,
+    window(title=pages.current.title) {
+        nav.stack #pages {
+            nav.page #home(href="/", title="SNGL Docs") {
+                hbox {
+                    docui.Sidebar(homeHref="/") {
+                        for var p = lookup.Packages() {
+                            docui.NavItem(text=p.title, href="/p/" + p.path)
+                        }
+                    }
+                    vbox(style={padding=24, flex=1}) {
+                        text(
+                            value="SNGL Documentation",
+                            style={fontSize=28, fontWeight=bold},
                         )
+                        docui.EntryView(path="sngl")
                     }
                 }
-                vbox(style={padding=24, flex=1}) {
-                    docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
-                }
             }
-        }
-    }
 
-    window #decl(title="Decl — SNGL Docs", href=`/p/{pkg}/{name}`, params=PkgParams{}) {
-        component content(v) {
-            hbox {
-                docui.Sidebar(homeHref="/") {
-                    for var p = lookup.Packages() {
-                        docui.NavItem(
-                            text=p.title,
-                            href="/p/" + p.path,
-                            active=p.path == v.pkg,
-                        )
+            nav.page #pkg(href=`/p/{pkg}`, title="Package — SNGL Docs", params=PkgParams{}) {
+                component content(v) {
+                    hbox {
+                        docui.Sidebar(homeHref="/") {
+                            for var p = lookup.Packages() {
+                                docui.NavItem(
+                                    text=p.title,
+                                    href="/p/" + p.path,
+                                    active=p.path == v.pkg,
+                                )
+                            }
+                        }
+                        vbox(style={padding=24, flex=1}) {
+                            docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
+                        }
                     }
                 }
-                vbox(style={padding=24, flex=1}) {
-                    docui.EntryView(
-                        path=v.pkg,
-                        ident1=v.name,
-                        hrefPrefix="/p/" + v.pkg + "/",
-                    )
+            }
+
+            nav.page #decl(href=`/p/{pkg}/{name}`, title="Decl — SNGL Docs", params=DeclParams{}) {
+                component content(v) {
+                    hbox {
+                        docui.Sidebar(homeHref="/") {
+                            for var p = lookup.Packages() {
+                                docui.NavItem(
+                                    text=p.title,
+                                    href="/p/" + p.path,
+                                    active=p.path == v.pkg,
+                                )
+                            }
+                        }
+                        vbox(style={padding=24, flex=1}) {
+                            docui.EntryView(
+                                path=v.pkg,
+                                ident1=v.name,
+                                hrefPrefix="/p/" + v.pkg + "/",
+                            )
+                        }
+                    }
                 }
             }
         }

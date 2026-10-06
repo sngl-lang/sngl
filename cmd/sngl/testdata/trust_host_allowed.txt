@@ -1,0 +1,84 @@
+# What allows a plugin's host call: a flag for this invocation, an entry in
+# SNGL_ALLOW naming the plugin's origin, or a line `sngl trust` recorded in the
+# user's config file. The three are a union.
+env SNGL_GENCACHE=off
+
+# Unasked, refused.
+! sngl generate --lang=none --platform=html -o out app/app.sngl
+stderr 'may not run sh -c'
+
+# A flag names the plugin by its import path, relative to the root.
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' app/app.sngl
+grep 'ran: \[unset\]' out/index.html
+
+# The grant is the command's prefix: one for a different command is no grant.
+! sngl generate --lang=none --platform=html -o out --allow-command='./pc=bash' app/app.sngl
+stderr 'may not run sh -c'
+
+# The grant is the plugin's: another package naming the same command is not it.
+! sngl generate --lang=none --platform=html -o out --allow-command='./other=sh' app/app.sngl
+stderr 'may not run sh -c'
+
+# SNGL_ALLOW names the plugin by its origin, which an ambient grant has to:
+# an import path is whatever a repository chooses to call its code. It is
+# stripped from every process sngl starts, so the command run here -- which
+# prints it -- sees nothing.
+env SNGL_ALLOW='eval=dir:/nowhere; command=dir:'$WORK'/app/pc=sh'
+sngl generate --lang=none --platform=html -o out-env app/app.sngl
+grep 'ran: \[unset\]' out-env/index.html
+
+# A blanket grant is a flag only.
+env SNGL_ALLOW='all'
+! sngl generate --lang=none --platform=html -o out app/app.sngl
+stderr 'SNGL_ALLOW: "all" grants everything, which an environment variable may not: pass --allow-all'
+env SNGL_ALLOW=
+
+# `sngl trust` records the grant in the user's config, by origin, and a later
+# build reads it there.
+cd app
+sngl trust --allow-command='./pc=sh'
+stdout '^recorded in '$WORK'/config/sngl/trust.sngl:$'
+stdout '^trust.allow\(origin="dir:'$WORK'/app/pc"\) \{ trust.command\(prefix=\["sh"\]\) \}$'
+cd $WORK
+sngl generate --lang=none --platform=html -o out-config app/app.sngl
+grep 'ran: \[unset\]' out-config/index.html
+
+sngl trust --list
+stdout '^1  trust.allow\(origin="dir:'$WORK'/app/pc"\) \{ trust.command\(prefix=\["sh"\]\) \}$'
+
+sngl trust --remove 1
+stdout '^removed 1  trust.allow\(origin="dir:'$WORK'/app/pc"\)'
+! sngl generate --lang=none --platform=html -o out app/app.sngl
+stderr 'may not run sh -c'
+
+# --allow-all is a flag for one invocation and is never recorded.
+sngl generate --lang=none --platform=html -o out-all --allow-all app/app.sngl
+grep 'ran: \[unset\]' out-all/index.html
+! sngl trust --allow-all
+stderr '--allow-all is never recorded'
+
+# There is one import root, the program's directory, and no flag names another.
+! sngl check --project=. app/app.sngl
+stderr 'unknown flag: --project'
+
+-- app/app.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.run()
+
+ui.window(title="t") {
+    ui.text(value="ran: [{v}]")
+}
+-- app/pc/pc.sngl --
+import gen "sngl:x/gen"
+
+// What the command prints: SNGL_ALLOW as the child sees it.
+const func run() string {
+    var out = ""
+    var p = gen.exec(cmd=["sh", "-c", "printenv SNGL_ALLOW || echo unset"])
+    for var line = p.stdout {
+        out = out + line
+    }
+    return out
+}

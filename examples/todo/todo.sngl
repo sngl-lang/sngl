@@ -29,7 +29,7 @@ ui.window {
     ui.vbox(style={gap=12, padding=16}) {
         ui.text(value=status, style={fontWeight=bold, fontSize=24})
         ui.hbox(style={alignItems=center, gap=8, textAlign=center}) {
-            ui.input(placeholder="Buy eggs", @input(e) { newTodo = e.value })
+            ui.input(placeholder="Buy eggs", :value=newTodo)
             ui.button(text="Add", @click { todos.push(Todo{text=newTodo}); newTodo = "" })
         }
         ui.vbox(style={gap=4}) {

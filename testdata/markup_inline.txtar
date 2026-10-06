@@ -1,7 +1,7 @@
 A flow of rich text, rendered by html.
 
 The span family is an ordinary component tree and this is a platform
-implementing it: `codegen/platform/html/html.sngl` names the element html
+implementing it: `lib/platform/html/html.sngl` names the element html
 already has for what each member means, so `bold` is `<strong>` and a link is
 `<a>`, and the nesting an author wrote carries straight over. The cascade is
 CSS's own -- the five typography fields a `SpanStyle` carries are exactly the
@@ -255,12 +255,15 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -268,6 +271,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -279,13 +297,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -293,54 +319,56 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = ""
-	content_0 += lipgloss.NewStyle().Bold(true).Render(fmt.Sprint("Title"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = ""
-	content_1 += fmt.Sprint("a < b & \"c\"  two spaces\nand a newline")
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	content_2 = ""
-	content_2 += lipgloss.NewStyle().Underline(true).Render(fmt.Sprint("mono link"))
-	content_2 += lipgloss.NewStyle().Underline(true).Render(fmt.Sprint("link mono"))
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	content_3 = ""
-	content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Render(fmt.Sprint("func"))
-	content_3 += fmt.Sprint(" ")
-	content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render(fmt.Sprint("main"))
-	content_3 = lipgloss.NewStyle().
-		Background(lipgloss.Color("#f5f5f5")).
-		Padding(1).Render(content_3)
-	contentChildren = append(contentChildren, content_3)
-	var content_4 string
-	content_4 = ""
-	content_4 += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint("all three"))
-	contentChildren = append(contentChildren, content_4)
-	var content_5 string
-	content_5 = ""
-	content_5 += fmt.Sprint("before ")
-	content_5 += fmt.Sprint("[an \"icon\" & more]")
-	content_5 += fmt.Sprint(" after")
-	contentChildren = append(contentChildren, content_5)
-	var content_6 string
-	content_6 = ""
-	content_6 += lipgloss.NewStyle().Foreground(lipgloss.Color("#336699")).Bold(true).Render(fmt.Sprint("a styled run"))
-	contentChildren = append(contentChildren, content_6)
-	var content_7 string
-	content_7 = ""
-	content_7 += lipgloss.NewStyle().Italic(true).Render(fmt.Sprint("quoted"))
-	content_7 = lipgloss.NewStyle().
-		PaddingLeft(1).Render(content_7)
-	contentChildren = append(contentChildren, content_7)
-	var content_8 string
-	content_8 = ""
-	content_8 += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render(fmt.Sprint("a caption"))
-	contentChildren = append(contentChildren, content_8)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = ""
+		content_0 += lipgloss.NewStyle().Bold(true).Render(fmt.Sprint("Title"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = ""
+		content_1 += fmt.Sprint("a < b & \"c\"  two spaces\nand a newline")
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		content_2 = ""
+		content_2 += lipgloss.NewStyle().Underline(true).Render(fmt.Sprint("mono link"))
+		content_2 += lipgloss.NewStyle().Underline(true).Render(fmt.Sprint("link mono"))
+		contentChildren = append(contentChildren, content_2)
+		var content_3 string
+		content_3 = ""
+		content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Render(fmt.Sprint("func"))
+		content_3 += fmt.Sprint(" ")
+		content_3 += lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render(fmt.Sprint("main"))
+		content_3 = lipgloss.NewStyle().
+			Background(lipgloss.Color("#f5f5f5")).
+			Padding(1).Render(content_3)
+		contentChildren = append(contentChildren, content_3)
+		var content_4 string
+		content_4 = ""
+		content_4 += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint("all three"))
+		contentChildren = append(contentChildren, content_4)
+		var content_5 string
+		content_5 = ""
+		content_5 += fmt.Sprint("before ")
+		content_5 += fmt.Sprint("[an \"icon\" & more]")
+		content_5 += fmt.Sprint(" after")
+		contentChildren = append(contentChildren, content_5)
+		var content_6 string
+		content_6 = ""
+		content_6 += lipgloss.NewStyle().Foreground(lipgloss.Color("#336699")).Bold(true).Render(fmt.Sprint("a styled run"))
+		contentChildren = append(contentChildren, content_6)
+		var content_7 string
+		content_7 = ""
+		content_7 += lipgloss.NewStyle().Italic(true).Render(fmt.Sprint("quoted"))
+		content_7 = lipgloss.NewStyle().
+			PaddingLeft(1).Render(content_7)
+		contentChildren = append(contentChildren, content_7)
+		var content_8 string
+		content_8 = ""
+		content_8 += lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render(fmt.Sprint("a caption"))
+		contentChildren = append(contentChildren, content_8)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -364,6 +392,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
 	"image/color"
@@ -385,51 +414,97 @@ type Measurement struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0  *fyne.Container
-	__n1  *fynetext.Flow
-	__n2  *fynetext.Span
-	__n3  *fynetext.Flow
-	__n4  *fynetext.Span
-	__n5  *fynetext.Flow
-	__n6  *fynetext.Span
-	__n7  *fynetext.Span
-	__n8  *fynetext.Span
-	__n9  *fynetext.Span
-	__n10 *fynetext.Span
-	__n11 *fynetext.Span
-	__n12 *fynetext.Flow
-	__n13 *fynetext.Span
-	__n14 *fynetext.Span
-	__n15 *fynetext.Span
-	__n16 *fynetext.Span
-	__n17 *fynetext.Span
-	__n18 *fynetext.Span
-	__n19 *fynetext.Flow
-	__n20 *fynetext.Span
-	__n21 *fynetext.Span
-	__n22 *fynetext.Span
-	__n23 *fynetext.Span
-	__n24 *fynetext.Flow
-	__n25 *fynetext.Span
-	__n26 *fynetext.Span
-	__n27 *fynetext.Span
-	__n28 *fynetext.Flow
-	__n29 *fynetext.Span
-	__n30 *fynetext.Span
-	__n31 *fynetext.Flow
-	__n32 *fynetext.Span
-	__n33 *fynetext.Flow
-	__n34 *fynetext.Span
+	visible__inst0 bool
+
+	home    *fynelayout.Toplevel
+	__n0    *fyne.Container
+	__n1    *fynetext.Flow
+	__n2    *fynetext.Span
+	__n3    *fynetext.Flow
+	__n4    *fynetext.Span
+	__n5    *fynetext.Flow
+	__n6    *fynetext.Span
+	__n7    *fynetext.Span
+	__n8    *fynetext.Span
+	__n9    *fynetext.Span
+	__n10   *fynetext.Span
+	__n11   *fynetext.Span
+	__n12   *fynetext.Flow
+	__n13   *fynetext.Span
+	__n14   *fynetext.Span
+	__n15   *fynetext.Span
+	__n16   *fynetext.Span
+	__n17   *fynetext.Span
+	__n18   *fynetext.Span
+	__n19   *fynetext.Flow
+	__n20   *fynetext.Span
+	__n21   *fynetext.Span
+	__n22   *fynetext.Span
+	__n23   *fynetext.Span
+	__n24   *fynetext.Flow
+	__n25   *fynetext.Span
+	__n26   *fynetext.Span
+	__n27   *fynetext.Span
+	__n28   *fynetext.Flow
+	__n29   *fynetext.Span
+	__n30   *fynetext.Span
+	__n31   *fynetext.Flow
+	__n32   *fynetext.Span
+	__n33   *fynetext.Flow
+	__n34   *fynetext.Span
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("doc")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = container.NewVBox()
 	m.__n1 = fynetext.NewFlow()
 	m.__n2 = fynetext.NewSpan(fynetext.Style())
@@ -515,17 +590,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n34.SetText("a caption")
 	m.__n33.Add(m.__n34)
 	m.__n0.Add(container.NewThemeOverride(m.__n33, _snglTheme3))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.home.Add(m.__n0)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -536,9 +610,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from doc.sngl; DO NOT EDIT.
@@ -559,31 +634,55 @@ type Measurement struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   gtk4rt.Handle
-	__n1   gtk4rt.Handle
-	__n3   gtk4rt.Handle
-	__n5   gtk4rt.Handle
-	__n12  gtk4rt.Handle
-	__n19  gtk4rt.Handle
-	__n24  gtk4rt.Handle
-	__n28  gtk4rt.Handle
-	__n31  gtk4rt.Handle
-	__n33  gtk4rt.Handle
-	__root gtk4rt.Handle
+	visible__inst0 bool
+	home           gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__n1           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	__n12          gtk4rt.Handle
+	__n19          gtk4rt.Handle
+	__n24          gtk4rt.Handle
+	__n28          gtk4rt.Handle
+	__n31          gtk4rt.Handle
+	__n33          gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "doc")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n0, 6)
@@ -632,17 +731,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.LabelSetXAlign(m.__n33, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n33, "<span size=\"13312\" foreground=\"#666666\">a caption</span>")
 	gtk4rt.BoxAppend(m.__n0, m.__n33)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(m.home, m.__n0)
+	gtk4rt.AppAttach(m.home)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "doc")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/go/html/server.go --
 package main
@@ -660,7 +757,7 @@ func Handler() http.Handler {
 
 func handleHome(__w http.ResponseWriter, _ *http.Request) {
 	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	__w.Write([]byte("<!-- Code generated by sngl (html) from doc.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>doc</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <h1 style=\"font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap\"><span>Title</span></h1>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>a &lt; b &amp; &#34;c&#34;  two spaces\nand a newline</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><code><a href=\"https://example.com/?a=1&amp;b=2\"><span>mono link</span></a></code><a href=\"https://example.com/\"><code><span>link mono</span></code></a></p>\n  <pre class=\"sngl-code\" style=\"margin:0px;white-space:pre-wrap\"><code><span class=\"sngl-tok-keyword\"><span>func</span></span><span> </span><span class=\"sngl-tok-function\"><span>main</span></span></code></pre>\n  <p style=\"margin:0px;white-space:pre-wrap\"><u><s><em><span>all three</span></em></s></u></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>before </span><img alt=\"an &#34;icon&#34; &amp; more\" src=\"/icon.png\"/><span> after</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span style=\"color:#336699;font-size:20px;font-weight:bold\"><span>a styled run</span></span></p>\n  <blockquote style=\"border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap\"><span>quoted</span></blockquote>\n  <figcaption style=\"color:#666666;font-size:13px;margin:0px;white-space:pre-wrap\"><span>a caption</span></figcaption>\n</div>\n<style>\n:where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }\n@media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }\n:where(.sngl-tok-keyword) { color:#cf222e }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }\n:where(.sngl-tok-function) { color:#8250df }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }\n</style>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = {};\n})();\n</script>\n</body></html>\n"))
+	__w.Write([]byte("<!-- Code generated by sngl (html) from doc.sngl; DO NOT EDIT. -->\n\n<!DOCTYPE html>\n<html><head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>doc</title>\n  <style>\n* { margin: 0; padding: 0; box-sizing: border-box; }\nbody { font-family: system-ui, sans-serif; }\n  </style>\n</head><body>\n\n<div style=\"display:flex;flex-direction:column\">\n  <h1 style=\"font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap\"><span>Title</span></h1>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>a &lt; b &amp; &#34;c&#34;  two spaces\nand a newline</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><code><a href=\"https://example.com/?a=1&amp;b=2\"><span>mono link</span></a></code><a href=\"https://example.com/\"><code><span>link mono</span></code></a></p>\n  <pre class=\"sngl-code\" style=\"margin:0px;white-space:pre-wrap\"><code><span class=\"sngl-tok-keyword\"><span>func</span></span><span> </span><span class=\"sngl-tok-function\"><span>main</span></span></code></pre>\n  <p style=\"margin:0px;white-space:pre-wrap\"><u><s><em><span>all three</span></em></s></u></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span>before </span><img alt=\"an &#34;icon&#34; &amp; more\" src=\"/icon.png\"/><span> after</span></p>\n  <p style=\"margin:0px;white-space:pre-wrap\"><span style=\"color:#336699;font-size:20px;font-weight:bold\"><span>a styled run</span></span></p>\n  <blockquote style=\"border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap\"><span>quoted</span></blockquote>\n  <figcaption style=\"color:#666666;font-size:13px;margin:0px;white-space:pre-wrap\"><span>a caption</span></figcaption>\n</div>\n<style>\n:where(.sngl-code) { padding:12px;background-color:#f5f5f5;color:#1f2328;border-radius:4px }\n@media (prefers-color-scheme: dark) { :where(.sngl-code) { background-color:#161b22;color:#e6edf3 } }\n:where(.sngl-tok-keyword) { color:#cf222e }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }\n:where(.sngl-tok-function) { color:#8250df }\n@media (prefers-color-scheme: dark) { :where(.sngl-tok-function) { color:#d2a8ff } }\n</style>\n\n<script>\n(() => {\n  // sngl-entry.js\n  var state = { visible__inst0: true };\n})();\n</script>\n</body></html>\n"))
 }
 
 func main() {
@@ -691,6 +788,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -718,65 +818,76 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = buildAnnotatedString {
-            append("Title")
-        }, modifier = Modifier, style = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold))
-        Text(text = buildAnnotatedString {
-            append("a < b & \"c\"  two spaces\nand a newline")
-        }, modifier = Modifier)
-        Text(text = buildAnnotatedString {
-            withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                withLink(LinkAnnotation.Url("https://example.com/?a=1&b=2")) {
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = buildAnnotatedString {
+                append("Title")
+            }, modifier = Modifier, style = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold))
+            Text(text = buildAnnotatedString {
+                append("a < b & \"c\"  two spaces\nand a newline")
+            }, modifier = Modifier)
+            Text(text = buildAnnotatedString {
+                withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                    withLink(LinkAnnotation.Url("https://example.com/?a=1&b=2")) {
+                        withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
+                            append("mono link")
+                        }
+                    }
+                }
+                withLink(LinkAnnotation.Url("https://example.com/")) {
                     withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                        append("mono link")
+                        withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                            append("link mono")
+                        }
                     }
                 }
-            }
-            withLink(LinkAnnotation.Url("https://example.com/")) {
+            }, modifier = Modifier)
+            Text(text = buildAnnotatedString {
+                withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                        append("func")
+                    }
+                    append(" ")
+                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
+                        append("main")
+                    }
+                }
+            }, modifier = Modifier.padding(12.dp).background(ComposeColor(red = 245, green = 245, blue = 245, alpha = 255)))
+            Text(text = buildAnnotatedString {
                 withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                    withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                        append("link mono")
+                    withStyle(SpanStyle(textDecoration = TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough)))) {
+                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                            append("all three")
+                        }
                     }
                 }
-            }
-        }, modifier = Modifier)
-        Text(text = buildAnnotatedString {
-            withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                    append("func")
+            }, modifier = Modifier)
+            Text(text = buildAnnotatedString {
+                append("before ")
+                append("[an \"icon\" & more]")
+                append(" after")
+            }, modifier = Modifier)
+            Text(text = buildAnnotatedString {
+                withStyle(SpanStyle(color = ComposeColor(red = 51, green = 102, blue = 153, alpha = 255), fontSize = 20.sp, fontWeight = FontWeight.Bold)) {
+                    append("a styled run")
                 }
-                append(" ")
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
-                    append("main")
-                }
-            }
-        }, modifier = Modifier.padding(12.dp).background(ComposeColor(red = 245, green = 245, blue = 245, alpha = 255)))
-        Text(text = buildAnnotatedString {
-            withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                withStyle(SpanStyle(textDecoration = TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough)))) {
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                        append("all three")
-                    }
-                }
-            }
-        }, modifier = Modifier)
-        Text(text = buildAnnotatedString {
-            append("before ")
-            append("[an \"icon\" & more]")
-            append(" after")
-        }, modifier = Modifier)
-        Text(text = buildAnnotatedString {
-            withStyle(SpanStyle(color = ComposeColor(red = 51, green = 102, blue = 153, alpha = 255), fontSize = 20.sp, fontWeight = FontWeight.Bold)) {
-                append("a styled run")
-            }
-        }, modifier = Modifier)
-        Text(text = buildAnnotatedString {
-            append("quoted")
-        }, modifier = Modifier.padding(start = 12.dp), style = TextStyle(fontStyle = FontStyle.Italic))
-        Text(text = buildAnnotatedString {
-            append("a caption")
-        }, modifier = Modifier, style = TextStyle(fontSize = 13.sp, color = ComposeColor(red = 102, green = 102, blue = 102, alpha = 255)))
+            }, modifier = Modifier)
+            Text(text = buildAnnotatedString {
+                append("quoted")
+            }, modifier = Modifier.padding(start = 12.dp), style = TextStyle(fontStyle = FontStyle.Italic))
+            Text(text = buildAnnotatedString {
+                append("a caption")
+            }, modifier = Modifier, style = TextStyle(fontSize = 13.sp, color = ComposeColor(red = 102, green = 102, blue = 102, alpha = 255)))
+        }
     }
 }
 -- out/none/html/index.html --
@@ -817,19 +928,19 @@ and a newline</span></p>
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:224677c06a3f61ab7630a91f3c219011
+pass sha256:076da8d4b6c0d318d3009e53664829b3
 -- run/go/fyne --
-pass sha256:21bb5e278377e8e3ae431adcc24043d1
+pass sha256:bd12805506f105239332fae829cbae13
 -- run/go/gtk4 --
-pass sha256:ae42858608a47e832c8e6dce2fc32e3a
+pass sha256:b72c5862f9805bf204af13be1882b63e
 -- run/go/html --
-pass sha256:8640bb93a9e853a834254457dc7ecc1d
+pass sha256:0694d497433b217bd3961196dcec8e0f
 -- run/kotlin/android --
-pass sha256:ccc21c7ad2fed09f464e03e5965e8906
+pass sha256:0d5fd75b338c509573f8fc8f0f8f2d76
 -- run/none/html --
-pass sha256:36e010bfa29b4db3421650edca7e592f
+pass sha256:2bc69c15b8390682b0996b2670596440

@@ -47,15 +47,21 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				n.Ref = rewrite(n.Ref)
 			}
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			rewriteSlotExprs(n.Slots, rewrite)
 			for i := range n.Handlers {
 				if n.Handlers[i].Func != nil {
 					n.Handlers[i].Func.Block = rewriteStmtExprs(n.Handlers[i].Func.Block, rewrite)
 				}
 			}
 		case *ir.SlotInst:
+			for i := range n.Args {
+				n.Args[i] = rewrite(n.Args[i])
+			}
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			rewriteSlotExprs(n.Slots, rewrite)
 		case *ir.ErrorBoundary:
 			n.Children = rewriteStmtExprs(n.Children, rewrite)
+			n.Failed = rewriteStmtExprs(n.Failed, rewrite)
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = rewriteStmtExprs(n.Handler.Func.Block, rewrite)
 			}
@@ -65,6 +71,9 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 			}
 		case *ir.CallStmt:
 			if n.Call != nil {
+				if n.Call.Callee != nil {
+					n.Call.Callee = rewrite(n.Call.Callee)
+				}
 				if n.Call.Receiver != nil {
 					n.Call.Receiver = rewrite(n.Call.Receiver)
 				}
@@ -84,6 +93,15 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 		}
 	}
 	return stmts
+}
+
+// rewriteSlotExprs is rewriteStmtExprs over each population, in name order.
+func rewriteSlotExprs(slots map[string]*ir.SlotContent, rewrite func(ir.Expr) ir.Expr) {
+	for _, name := range ir.SlotNames(slots) {
+		if sc := slots[name]; sc != nil {
+			sc.Body = rewriteStmtExprs(sc.Body, rewrite)
+		}
+	}
 }
 
 // walkFuncs collects optional callbacks invoked while walking a package's
@@ -129,9 +147,6 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, comp := range pkg.Components {
 		walkComponent(comp, fns)
 	}
-	for _, w := range pkg.Windows {
-		walkWindow(w, fns)
-	}
 	// The package's own body is a view body like a component's: a window under
 	// a top-level `for` is a statement in it and reaches these passes nowhere
 	// else.
@@ -167,25 +182,5 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 	}
 	if fns.stmts != nil {
 		c.Body = fns.stmts(c.Body)
-	}
-}
-
-// walkWindow deliberately skips w.Props, and a window reached as a *statement*
-// does not: passTernary and the rest carry their own `*ir.Window` arm, which
-// walks the props and hoists what it produces into the list the window sits in.
-// An entry in pkg.Windows sits in no list, so there is nothing to hoist into
-// and fns.expr -- a no-op for passTernary for exactly that reason -- would drop
-// it.
-//
-// The cost is real and pre-dates this: `window #a(title = c ? x : y)` at the
-// root of a file panics the Go emitter with "ir.Ternary reached Go codegen",
-// while the same ternary a level in lowers. Where that temp belongs is the open
-// question, and a window that is a NodeInst in pkg.Body answers it for free.
-func walkWindow(w *ir.Window, fns walkFuncs) {
-	if fns.stmts != nil {
-		w.Children = fns.stmts(w.Children)
-	}
-	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil && fns.stmts != nil {
-		w.ErrorHandler.Func.Block = fns.stmts(w.ErrorHandler.Func.Block)
 	}
 }

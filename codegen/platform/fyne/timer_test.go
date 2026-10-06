@@ -16,7 +16,7 @@ import (
 // still works is that `running` decides whether the bracket is described at
 // all. The widget
 // write is the second claim and is independent of the first: rendered by
-// gc.EvalStmt alone it comes out as a raw `__n0.Value =`, which is not Fyne's
+// gc.EvalStmt alone it comes out as a raw `__n1.Value =`, which is not Fyne's
 // API and does not compile.
 func TestTimerEmitsATickerAndASelect(t *testing.T) {
 	src := `
@@ -69,7 +69,7 @@ window {
 		"m.seconds += 1",
 		// Tick body's reactive widget update must use the fyne widget API,
 		// qualified with the receiver — not a raw, unqualified field write.
-		"m.__n0.SetText(",
+		"m.__n1.SetText(",
 		// The gate is the effect's position: while `running` is false the
 		// bracket describes no schedule, so nothing is armed to skip a tick.
 		"if m.running {",
@@ -78,7 +78,7 @@ window {
 			t.Errorf("generated model.go missing timer snippet %q\n--- generated ---\n%s", snippet, out)
 		}
 	}
-	if strings.Contains(out, "__n0.Value =") {
-		t.Errorf("tick body emitted an untranslated raw field write (__n0.Value =):\n%s", out)
+	if strings.Contains(out, "__n1.Value =") {
+		t.Errorf("tick body emitted an untranslated raw field write (__n1.Value =):\n%s", out)
 	}
 }

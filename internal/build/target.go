@@ -20,11 +20,13 @@ type Target struct {
 // IsInterpreted reports whether a target runs the IR rather than being
 // translated into a language.
 //
-// `--lang none` says the program is not translated; something else runs it.
-// For html that something is the browser, and the platform genuinely generates
-// a static site. For every other platform it is the interpreter.
+// A language whose package names no translator (`none`, by #[gen.native]'s
+// absence) says the program is not translated; something else runs it.
+// A platform that generates for it says so (codegen.Untranslated) -- html,
+// whose static site the browser runs. For every other platform it is the
+// interpreter.
 func IsInterpreted(t Target) bool {
-	return t.Lang == "none" && t.Platform != "html"
+	return t.Lang != "" && !codegen.Translates(t.Lang) && !codegen.GeneratesUntranslated(t.Platform)
 }
 
 // SelectedTargets is the caller's own target selection, as the checker takes
