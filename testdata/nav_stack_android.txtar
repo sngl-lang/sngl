@@ -126,10 +126,10 @@ data class Meta(
 )
 
 data class _page__value(
-    var id: Int,
-    var href: String,
-    var title: String,
-    var meta: Meta
+    var id: Int = 0,
+    var href: String = "",
+    var title: String = "",
+    var meta: Meta = Meta()
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -237,4 +237,4 @@ fun Counter() {
     }
 }
 -- run/kotlin/android --
-pass sha256:5fe48b59adfbab9b99f2e118dadc01e7
+pass sha256:60913e83d33b25458ce268470c48e530

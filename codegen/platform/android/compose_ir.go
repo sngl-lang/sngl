@@ -357,6 +357,13 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			parts = append(parts, mod)
 		}
 	}
+	if held := heldStyle(n, styleProp); held != nil {
+		bg := ""
+		if skip["background"] {
+			bg = ", withBackground = false"
+		}
+		parts = append(parts, heldModifierFn+"("+cc.kc.EvalExpr(held)+bg+")")
+	}
 	return strings.Join(parts, ".")
 }
 
@@ -482,6 +489,9 @@ func userTestTag(n *ir.NodeInst) string {
 func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {
 	styleFields := codegen.NodeStyleFieldsOf(n, styleProp)
 	if styleFields == nil {
+		if held := heldStyle(n, styleProp); held != nil {
+			return heldTextStyleFn + "(" + cc.kc.EvalExpr(held) + ")"
+		}
 		return ""
 	}
 	var styleParts []string

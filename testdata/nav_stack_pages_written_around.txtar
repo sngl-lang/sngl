@@ -1116,11 +1116,11 @@ class __anon_e3b0c4 {
 }
 
 data class _page__value(
-    var id: Int,
-    var href: String,
-    var title: String,
-    var meta: __anon_e3b0c4,
-    var copy: List<Int>
+    var id: Int = 0,
+    var href: String = "",
+    var title: String = "",
+    var meta: __anon_e3b0c4 = __anon_e3b0c4(),
+    var copy: List<Int> = listOf()
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -1474,6 +1474,6 @@ pass sha256:f9bfd2c6147e95ae8dcf1fff6a9ad5c7
 -- run/go/gtk4 --
 pass sha256:451b8a81a49122c6482a6ad9d1225182
 -- run/kotlin/android --
-pass sha256:8bcf68c93ddff3802bfc26cd09f8e015
+pass sha256:6292b459b3bf0ad257d2c1ed8774b5a9
 -- run/none/html --
 pass sha256:70a05d3dccf1e4d4bb3022d0b37088b7
