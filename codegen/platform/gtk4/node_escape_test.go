@@ -25,7 +25,7 @@ struct TreeNode {
     right dyn = null
 }
 component TreeView(node dyn = null) node {
-    vbox(style={paddingLeft=12, gap=2}) {
+    vbox(style={paddingLeft=12px, gap=2px}) {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }
         if node.right != null { TreeView(node=node.right) }

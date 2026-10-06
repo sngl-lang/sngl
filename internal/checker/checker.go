@@ -1988,20 +1988,10 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 				}
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
 			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			if typ.Kind != ir.TypeDyn {
-				initExpr = wrapIfNeeded(initExpr, typ)
-			}
 			// Infer type from init if not declared.
-			if c.requireValueType(initType, decl.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Don't propagate void into an inferred const type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -2130,20 +2120,10 @@ func (c *checker) checkPendingConstInits() {
 			}
 		}
 
+		initExpr = c.coerce(p.spec.Default, initExpr, typ, initSlot(p.decl.Pos))
 		initType := exprType(initExpr)
-		if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-			if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-				initExpr = adapted
-			} else {
-				want, got := ir.Contrast(typ, initType)
-				c.error(p.decl.Pos, "cannot initialize %s with %s", want, got)
-			}
-		}
-		if typ.Kind != ir.TypeDyn {
-			initExpr = wrapIfNeeded(initExpr, typ)
-		}
 		finalType := typ
-		if c.requireValueType(initType, p.decl.Pos) {
+		if initType.Kind == ir.TypeVoid {
 			// Don't propagate void into an inferred const type.
 		} else if typ.Kind == ir.TypeDyn {
 			finalType = initType
@@ -2308,21 +2288,10 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
 			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if typ.Kind != ir.TypeDyn {
-				initExpr = wrapIfNeeded(initExpr, typ)
-			}
 			// Infer type from init if not declared.
-			if c.requireValueType(initType, decl.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Don't propagate void into an inferred type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -2378,20 +2347,9 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
 			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if typ.Kind != ir.TypeDyn {
-				initExpr = wrapIfNeeded(initExpr, typ)
-			}
-			if c.requireValueType(initType, decl.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Don't propagate void into an inferred component var type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -2427,19 +2385,9 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 				c.error(decl.Pos, "const initializer references non-const %q", name)
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
 			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			if typ.Kind != ir.TypeDyn {
-				initExpr = wrapIfNeeded(initExpr, typ)
-			}
-			if c.requireValueType(initType, decl.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Don't propagate void into an inferred const type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -3502,7 +3450,9 @@ func (c *checker) fillStructFieldDefaults(sd *ir.StructDef) {
 			// names, and a rejected duplicate leaves the two lists a different
 			// length, which silently gave a field its neighbour's default.
 			if field, ok := byName[name]; ok {
-				field.Default = c.checkExprExpecting(f.Default, field.Type)
+				field.Default = c.checkExprAs(f.Default, field.Type, slot{pos: *f.Default.ExprPos(), mismatch: func(want, got string) string {
+					return "default value type " + got + " does not match field type " + want
+				}})
 			}
 		}
 	}
@@ -3776,7 +3726,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	for _, p := range fn.Params {
 		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
-			p.Default = c.checkExprExpecting(ap.Default, p.Type)
+			p.Default = c.checkExprAs(ap.Default, p.Type, defaultSlot(*ap.Default.ExprPos()))
 			if p.Const {
 				c.deferConstArg(*ap.Default.ExprPos(), p.Default, "the default of "+constParamLabel(p.Name))
 			}
@@ -3809,9 +3759,15 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 
 	if fn.AST != nil && fn.AST.Body != nil {
 		body := fn.AST.Body
-		bodyExpr := c.checkExpr(body)
+		declared := fn.Return
+		bodyExpr := c.checkExprExpecting(body, declared)
 		if bodyExpr == nil {
 			return
+		}
+		// A body is what the function returns, held to a declared return type
+		// as a return statement is. One yielding nothing is a void function's.
+		if declared != nil && declared.Kind != ir.TypeVoid {
+			bodyExpr = c.coerce(body, bodyExpr, declared, returnSlot(*body.ExprPos()))
 		}
 		bodyType := exprType(bodyExpr)
 		// Infer return type from expression body when there was no annotation.
@@ -3827,10 +3783,6 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
 			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
-		}
-		if fn.Return != nil && fn.Return.Kind != ir.TypeDyn && bodyType.Kind != ir.TypeDyn && !bodyType.IsAssignableTo(fn.Return) {
-			pos := *body.ExprPos()
-			c.error(pos, "cannot return %s as %s", bodyType, fn.Return)
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *body.ExprPos(), Value: body}, Value: bodyExpr}}
 	} else if fn.AST != nil && fn.AST.Block.IsDefined() {
@@ -4205,7 +4157,11 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					// standing, and then the declaration says nothing the
 					// default could disagree with.
 					want := prop.Type.Substitute(declBindings)
-					prop.Default = c.checkExprExpecting(pd.Default, want)
+					// `T{}` is the zero of whatever T is bound to, the default
+					// T's own default makes it here included.
+					s := defaultSlot(comp.AST.Pos)
+					s.accept = func(val ir.Expr, _ *ir.Type) bool { return typeParamZero(val) }
+					prop.Default = c.checkExprAs(pd.Default, want, s)
 					if prop.Const {
 						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
 					}
@@ -4216,12 +4172,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 						c.inheritDefault(prop)
 					}
 					initType := exprType(prop.Default)
-					// `T{}` is the zero of whatever T is bound to, the default
-					// T's own default makes it here included.
-					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
-						!mentionsTypeParam(want) && !typeParamZero(prop.Default) && !initType.IsAssignableTo(want) {
-						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, want)
-					}
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
 						prop.Type = initType
 					}

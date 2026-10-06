@@ -37,13 +37,13 @@ component main node {
     var n = 0
 
     vbox {
-        button(style={padding=4}, text="bump", @click { n += 1 })
+        button(style={padding=4px}, text="bump", @click { n += 1 })
         button(text="quiet")
-        badge(style={padding=6}, value="7")
+        badge(style={padding=6px}, value="7")
         link(href="/", text="Home")
         image(src="/logo.png", alt="logo")
         chip(label="Tag")
-        toolbar(style={padding=9}) {
+        toolbar(style={padding=9px}) {
             button(text="New")
         }
         menubar(items=["File"])
@@ -83,6 +83,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
+
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -130,4 +138,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:8f9c91411b67907775977b05b6d956e8
+pass sha256:3ecee763497f61d4f0f7d8b5d6771181

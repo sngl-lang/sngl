@@ -16,10 +16,10 @@ ui.window {
     var price = 1234
     var partyDate time.date = time.date("2026-05-09")
 
-    ui.vbox(style={gap=16, padding=24, maxWidth=480}) {
-        ui.text(value=$"Party RSVP", style={fontSize=24, fontWeight=bold})
+    ui.vbox(style={gap=16px, padding=24px, maxWidth=480px}) {
+        ui.text(value=$"Party RSVP", style={fontSize=24px, fontWeight=bold})
 
-        ui.vbox(style={gap=8}) {
+        ui.vbox(style={gap=8px}) {
             ui.text(value=$"Name")
             ui.input(
                 value=name,
@@ -28,37 +28,37 @@ ui.window {
             )
         }
 
-        ui.vbox(style={gap=8}) {
+        ui.vbox(style={gap=8px}) {
             ui.text(value=$"Honorific")
-            ui.hbox(style={gap=8}) {
+            ui.hbox(style={gap=8px}) {
                 ui.button(text=$"female", @click { gender = Gender.female })
                 ui.button(text=$"male", @click { gender = Gender.male })
                 ui.button(text=$"other", @click { gender = Gender.other })
             }
         }
 
-        ui.vbox(style={gap=8}) {
+        ui.vbox(style={gap=8px}) {
             ui.text(value=$"Guests")
-            ui.hbox(style={gap=8, alignItems=center}) {
+            ui.hbox(style={gap=8px, alignItems=center}) {
                 ui.button(text="-", @click { guests = guests - 1 })
-                ui.text(value=$"{guests, number}", style={minWidth=24, textAlign=center})
+                ui.text(value=$"{guests, number}", style={minWidth=24px, textAlign=center})
                 ui.button(text="+", @click { guests = guests + 1 })
             }
         }
 
         ui.text(
             value=$"{gender, select, female{Ms.} male{Mr.} other{Mx.}} {name} is bringing {guests, plural, =0{no guests} one{# guest} other{# guests}} to the party.",
-            style={fontSize=18, padding=12, color=#111111, background=#f5f5f5, borderRadius=8},
+            style={fontSize=18px, padding=12px, color=#111111, background=#f5f5f5, borderRadius=8px},
         )
 
         ui.text(
             value=$"Ticket price: {price, number, currency}",
-            style={fontSize=14, color=#555555},
+            style={fontSize=14px, color=#555555},
         )
 
         ui.text(
             value=$"Party date: {partyDate, date, long}",
-            style={fontSize=14, color=#555555},
+            style={fontSize=14px, color=#555555},
         )
     }
 }

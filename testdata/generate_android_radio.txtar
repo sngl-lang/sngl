@@ -34,13 +34,13 @@ component main node {
 
     vbox {
         radio(
-            style={padding=4},
+            style={padding=4px},
             direction="horizontal",
             options=["small", "medium", "large"],
             value=pick,
             @change(e) { chosen = e.value },
         )
-        radio(style={padding=5}, options=["one", "two"], value=pick)
+        radio(style={padding=5px}, options=["one", "two"], value=pick)
         radio(options=more, value=pick)
     }
 }
@@ -77,6 +77,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
+
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -139,4 +147,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:868d4513d5301d5a4338f8337125d0fd
+pass sha256:e2438d18df23b59cc5ef4b111205a0fa

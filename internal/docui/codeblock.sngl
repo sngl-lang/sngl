@@ -12,6 +12,6 @@ component CodeBlock(code = "", language = "") node {
     if PLATFORM == html.platform {
         html.div(innerHTML=docs.Highlight(code, language), class="hl-code")
     } else {
-        text(value=code, style={fontFamily="monospace", padding=12, background="#1e1e1e", color="#d4d4d4"})
+        text(value=code, style={fontFamily="monospace", padding=12px, background="#1e1e1e", color="#d4d4d4"})
     }
 }

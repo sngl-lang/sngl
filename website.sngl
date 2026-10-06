@@ -66,14 +66,14 @@ component PlatformCarousel() ui.node {
         active = (active + 1) % 4
     })
 
-    ui.vbox(style={gap=16, alignItems=center, paddingY=32}) {
+    ui.vbox(style={gap=16px, alignItems=center, paddingY=32px}) {
         ui.stack {
             if active == 0 {
                 ui.image(
                     src=screenshotWeb,
                     alt="SNGL Todo App on Web",
                     fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 1 {
@@ -81,7 +81,7 @@ component PlatformCarousel() ui.node {
                     src=screenshotTerminal,
                     alt="SNGL Todo App in Terminal",
                     fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 2 {
@@ -89,7 +89,7 @@ component PlatformCarousel() ui.node {
                     src=screenshotDesktop,
                     alt="SNGL Todo App on Desktop",
                     fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 3 {
@@ -97,17 +97,17 @@ component PlatformCarousel() ui.node {
                     src=screenshotAndroid,
                     alt="SNGL Todo App on Android",
                     fit=contain,
-                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
         }
-        ui.hbox(style={gap=8}) {
+        ui.hbox(style={gap=8px}) {
             ui.button(
                 text="Web",
                 @click { active = 0 },
                 style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 0 ? #2196f3 : #f5f5f5,
                     color = active == 0 ? #fff : #333,
                 },
@@ -116,8 +116,8 @@ component PlatformCarousel() ui.node {
                 text="Terminal",
                 @click { active = 1 },
                 style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 1 ? #2196f3 : #f5f5f5,
                     color = active == 1 ? #fff : #333,
                 },
@@ -126,8 +126,8 @@ component PlatformCarousel() ui.node {
                 text="Desktop",
                 @click { active = 2 },
                 style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 2 ? #2196f3 : #f5f5f5,
                     color = active == 2 ? #fff : #333,
                 },
@@ -136,8 +136,8 @@ component PlatformCarousel() ui.node {
                 text="Android",
                 @click { active = 3 },
                 style={
-                    paddingX = 20,
-                    borderRadius = 20,
+                    paddingX = 20px,
+                    borderRadius = 20px,
                     background = active == 3 ? #2196f3 : #f5f5f5,
                     color = active == 3 ? #fff : #333,
                 },
@@ -174,8 +174,8 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
     } else {
         ui.hbox {
             NavSidebar(currentHref=currentHref)
-            ui.vbox(style={padding=24, flex=1}) {
-                ui.text(value=title, style={fontSize=28, fontWeight=bold})
+            ui.vbox(style={padding=24px, flex=1}) {
+                ui.text(value=title, style={fontSize=28px, fontWeight=bold})
                 children
             }
         }
@@ -322,7 +322,7 @@ component site() root {
                         docui.Markdown(src=comp.previewHTML)
                         docui.Markdown(src=comp.highlightedCode)
 
-                        ui.text(value="Properties", style={fontSize=20, fontWeight=bold})
+                        ui.text(value="Properties", style={fontSize=20px, fontWeight=bold})
                         docui.Table {
                             docui.HeaderRow {
                                 docui.HeaderCell(value="Name")
@@ -337,7 +337,7 @@ component site() root {
                                 }
                             }
                         }
-                        ui.text(value="Slots", style={fontSize=20, fontWeight=bold})
+                        ui.text(value="Slots", style={fontSize=20px, fontWeight=bold})
                         docui.Table {
                             docui.HeaderRow {
                                 docui.HeaderCell(value="Name")
@@ -350,7 +350,7 @@ component site() root {
                                 }
                             }
                         }
-                        ui.text(value="Events", style={fontSize=20, fontWeight=bold})
+                        ui.text(value="Events", style={fontSize=20px, fontWeight=bold})
                         docui.Table {
                             docui.HeaderRow {
                                 docui.HeaderCell(value="Name")
@@ -393,7 +393,7 @@ component site() root {
                 PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
                     ui.text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-                    ui.text(value="Global Options", style={fontSize=22, fontWeight=bold})
+                    ui.text(value="Global Options", style={fontSize=22px, fontWeight=bold})
                     ui.text(value="Declared by the standard library and set on `output` itself; accepted by every target.")
                     docui.Table {
                         docui.HeaderRow {
@@ -410,7 +410,7 @@ component site() root {
                         }
                     }
 
-                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
+                    ui.text(value="Capabilities", style={fontSize=22px, fontWeight=bold})
                     docui.Table {
                         docui.HeaderRow {
                             docui.HeaderCell(value="Platform")
@@ -429,13 +429,13 @@ component site() root {
                     }
 
                     for var p = targets.platforms {
-                        ui.text(value=p.name, style={fontSize=20, fontWeight=bold})
+                        ui.text(value=p.name, style={fontSize=20px, fontWeight=bold})
                         ui.text(value=p.doc)
                         ui.text(value="Supported languages:")
                         for var lname = p.languages {
                             ui.text(value="• " + lname, style={fontFamily="monospace"})
                         }
-                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
+                        ui.text(value="Options", style={fontSize=16px, fontWeight=bold})
                         docui.Table {
                             docui.HeaderRow {
                                 docui.HeaderCell(value="Name")
@@ -459,7 +459,7 @@ component site() root {
                 PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
                     ui.text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
+                    ui.text(value="Capabilities", style={fontSize=22px, fontWeight=bold})
                     docui.Table {
                         docui.HeaderRow {
                             docui.HeaderCell(value="Language")
@@ -478,9 +478,9 @@ component site() root {
                     }
 
                     for var l = targets.languages {
-                        ui.text(value=l.name, style={fontSize=20, fontWeight=bold})
+                        ui.text(value=l.name, style={fontSize=20px, fontWeight=bold})
                         ui.text(value=l.doc)
-                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
+                        ui.text(value="Options", style={fontSize=16px, fontWeight=bold})
                         docui.Table {
                             docui.HeaderRow {
                                 docui.HeaderCell(value="Name")

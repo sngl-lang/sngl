@@ -24,7 +24,7 @@ component HeaderRow(cells ...component) node {
             }
         }
     } else {
-        hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
+        hbox(style={fontWeight=bold, gap=16px, padding=4px, borderBottom="1px solid #ddd"}) {
             cells
         }
     }
@@ -37,7 +37,7 @@ component Row(cells ...component) node {
             cells
         }
     } else {
-        hbox(style={gap=16, padding=4}) {
+        hbox(style={gap=16px, padding=4px}) {
             cells
         }
     }
@@ -48,7 +48,7 @@ component Cell(value = "") node {
     if PLATFORM == html.platform {
         html.td(innerText=value)
     } else {
-        text(value=value, style={minWidth=80})
+        text(value=value, style={minWidth=80px})
     }
 }
 
@@ -57,7 +57,7 @@ component HeaderCell(value = "") node {
     if PLATFORM == html.platform {
         html.th(innerText=value)
     } else {
-        text(value=value, style={minWidth=80, fontWeight="bold"})
+        text(value=value, style={minWidth=80px, fontWeight=bold})
     }
 }
 
@@ -68,6 +68,6 @@ component CodeCell(value = "") node {
             html.code(innerText=value)
         }
     } else {
-        text(value=value, style={minWidth=80, fontFamily="monospace"})
+        text(value=value, style={minWidth=80px, fontFamily="monospace"})
     }
 }

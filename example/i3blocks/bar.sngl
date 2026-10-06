@@ -88,14 +88,14 @@ if details {
     ui.window(title="Load", @closed {
         details = false
     }) {
-        ui.vbox(style={gap=8, padding=16}) {
+        ui.vbox(style={gap=8px, padding=16px}) {
             ui.text(value="{workspaces[focused]}: load {load()} after {uptime}s", style={fontWeight=bold})
-            ui.vbox(style={gap=2}) {
+            ui.vbox(style={gap=2px}) {
                 for var s = samples {
                     ui.text(value="{s}")
                 }
             }
-            ui.hbox(style={gap=8}) {
+            ui.hbox(style={gap=8px}) {
                 ui.button(text="Clear", @click {
                     samples = []
                 })

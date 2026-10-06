@@ -15,7 +15,7 @@ stderr 'cannot pass A as B'
 
 # A mark and the js: import it names: still two types.
 ! sngl check markvsimport.sngl
-stderr 'cannot pass Entry as'
+stderr 'cannot pass Entry \(markvsimport.sngl:5:1\) as Entry \('
 
 -- ok.sngl --
 import . "sngl:ui"

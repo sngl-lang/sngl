@@ -14,7 +14,7 @@ component link(
 ) node {}
 
 component _example_link node {
-    hbox(style={gap=16, padding=16}) {
+    hbox(style={gap=16px, padding=16px}) {
         link(href="https://example.com", text="Example Site")
         link(href="https://example.com", text="New Tab", target="blank")
     }
@@ -36,7 +36,7 @@ component tabs(
 
 component _example_tabs node {
     var selected = 0
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         tabs(items=["Overview", "Details", "Settings"], selected=selected) {
             text(value="Overview content")
             text(value="Detail content")
@@ -59,7 +59,7 @@ component menu(
 
 component _example_menu node {
     var showMenu = false
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         button(text="Show Menu", @click { showMenu = true })
         menu(items=["Cut", "Copy", "Paste"], open=showMenu)
     }
@@ -76,7 +76,7 @@ component menubar(
 ) node {}
 
 component _example_menubar node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         menubar(items=["File", "Edit", "View", "Help"])
     }
 }
@@ -93,7 +93,7 @@ component toolbar(
 ) node {}
 
 component _example_toolbar node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         toolbar {
             button(text="New")
             button(text="Open")

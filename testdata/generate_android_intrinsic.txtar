@@ -28,17 +28,17 @@ output {
 
 component main node {
     android.Column(chain=["fillMaxSize()"]) {
-        android.Row #bar(modifier={padding=4}) {
-            android.Spacer(modifier={height=8})
-            android.Text(text="hi", modifier={padding=1}, style={fontSize=20})
+        android.Row #bar(modifier={padding=4px}) {
+            android.Spacer(modifier={height=8px})
+            android.Text(text="hi", modifier={padding=1px}, style={fontSize=20px})
         }
-        hbox(style={padding=2}) {
+        hbox(style={padding=2px}) {
             text(value="wrapped")
         }
         scroll {
             text(value="scrolled")
         }
-        stack(style={padding=3}) {
+        stack(style={padding=3px}) {
             text(value="layered")
         }
     }
@@ -77,6 +77,14 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -114,4 +122,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:c096c1ec6eafa7cb0d3a469ed135f6d7
+pass sha256:169397eb167af518679114262ae3520e

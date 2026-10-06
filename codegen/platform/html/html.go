@@ -2010,7 +2010,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	lowered := loweredID(id)
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
-		if name == "style" || name == classStyleProp || name == classStyleDarkProp {
+		if name == classStyleProp || name == classStyleDarkProp {
+			continue
+		}
+		if name == "style" {
+			g.styleWriteUpdaters(id, expr, lowered)
 			continue
 		}
 		if name == spanStyleProp {
@@ -2284,6 +2288,11 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	if g.ctx.Helpers[spanColorHelper] {
 		b.WriteString(spanColorHelperJS + "\n")
+	}
+	for _, h := range []string{styleColorHelper, styleLengthHelper, styleKeywordHelper} {
+		if g.ctx.Helpers[h] {
+			b.WriteString(styleHelperJS[h] + "\n")
+		}
 	}
 	if g.ctx.Helpers[dialogHelper] {
 		b.WriteString(dialogHelperJS + "\n")
