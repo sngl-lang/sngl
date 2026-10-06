@@ -12,9 +12,9 @@ import (
 // stored, because that is where the requirement comes from.
 func TestBindBuiltinRejectsWrongDeclarationForm(t *testing.T) {
 	c := &checker{}
-	sd := &ir.StructDef{Name: "window"}
+	sd := &ir.StructDef{Name: "context"}
 	var dst *ir.Component
-	if got := bindBuiltin(c, &dst, ir.BuiltinWindow, sd); got != nil {
+	if got := bindBuiltin(c, &dst, ir.BuiltinContext, sd); got != nil {
 		t.Errorf("bound a struct to a component field")
 	}
 	if dst != nil {
@@ -30,11 +30,11 @@ func TestBindBuiltinRejectsWrongDeclarationForm(t *testing.T) {
 // silent overwrite.
 func TestBindBuiltinRejectsDuplicate(t *testing.T) {
 	c := &checker{}
-	first := &ir.Component{Name: "window"}
-	second := &ir.Component{Name: "alsoWindow"}
+	first := &ir.Component{Name: "context"}
+	second := &ir.Component{Name: "alsoContext"}
 	var dst *ir.Component
-	bindBuiltin(c, &dst, ir.BuiltinWindow, first)
-	bindBuiltin(c, &dst, ir.BuiltinWindow, second)
+	bindBuiltin(c, &dst, ir.BuiltinContext, first)
+	bindBuiltin(c, &dst, ir.BuiltinContext, second)
 	if dst != first {
 		t.Errorf("dst = %v, want the first declaration to win", dst)
 	}

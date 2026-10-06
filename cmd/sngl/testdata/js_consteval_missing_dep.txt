@@ -6,7 +6,7 @@
 [!node] skip
 env SNGL_CONSTEVAL_CACHE=$WORK/evalcache
 
-! sngl generate --lang=none --platform=html --out=out app.sngl
+! sngl generate --allow-eval=js:./lib --lang=none --platform=html --out=out app.sngl
 stderr 'left-pad'
 stderr 'lib/index.ts'
 

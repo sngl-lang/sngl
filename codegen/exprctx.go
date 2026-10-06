@@ -35,11 +35,16 @@ type ExprCtx struct {
 	Platform  string
 	Pkg       *ir.Package
 	Component *ir.Component // current component (nil for top-level)
-	// Window is the window whose body is being translated, if any. A window
-	// declares state the way a component does, and it nests: a `window`
-	// written inside a component sees that component's declarations too, so
-	// this is an inner scope beside Component rather than a replacement.
-	Window   *ir.Window
+	// Surface is the node whose document is being translated, if any: a
+	// route's params cell is the one name it binds, which package scope has
+	// nothing to find for. An inner scope beside Component rather than a
+	// replacement.
+	Surface *ir.NodeInst
+	// App says the scope is the package body, whose parent is the
+	// application: a target that holds it in one Model reads the package's
+	// state and consts through it, as it did through the one window that used
+	// to be the scope.
+	App      bool
 	Locals   map[string]bool   // for-loop vars, lambda params
 	Renames  map[string]string // original → unique name (component inlining)
 	EventVar string            // what the handler's event parameter maps to (e.g., "e.target")
@@ -131,17 +136,17 @@ func NewExprCtx(pkg *ir.Package) *ExprCtx {
 func (ctx *ExprCtx) ForComponent(comp *ir.Component) *ExprCtx {
 	c := ctx.Clone()
 	c.Component = comp
-	c.Window = nil
+	c.Surface = nil
+	c.App = false
 	return c
 }
 
-// ForWindow returns a new ExprCtx with win as the innermost scope. Any
-// component scope is kept: a `window` written inside a component reads that
-// component's vars, and dropping them made every one of those reads render as
-// a bare identifier.
-func (ctx *ExprCtx) ForWindow(win *ir.Window) *ExprCtx {
+// ForSurface returns a new ExprCtx with the document written from n as the
+// innermost scope. Any component scope is kept, since a component's vars are
+// still read by bare name inside it.
+func (ctx *ExprCtx) ForSurface(n *ir.NodeInst) *ExprCtx {
 	c := ctx.Clone()
-	c.Window = win
+	c.Surface = n
 	return c
 }
 
@@ -155,16 +160,12 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 		return nil, NameLocal
 	}
 
-	// A window's own `var` and `func` are the package's: a window is a
-	// rendering root and owns nothing, so a read of one falls through to
-	// package scope below, where the hoist put it.
-	//
-	// Its route parameters are the exception, and are not a declaration the
-	// body made: they are the binding the window's scoped slot hands what it
-	// renders, one cell per window rather than one per program, so package
-	// scope has nothing to find.
-	if ctx.Window != nil && ctx.Window.Params != nil && ctx.Window.Params.Name == name {
-		return ctx.Window.Params, NameStateVar
+	// A document's route parameters are not a declaration the body made:
+	// they are the binding the page's population hands what it renders, one
+	// cell per document rather than one per program, so package scope has
+	// nothing to find.
+	if ctx.Surface != nil && ctx.Surface.Params != nil && ctx.Surface.Params.Name == name {
+		return ctx.Surface.Params, NameStateVar
 	}
 
 	// Component-scoped declarations.
@@ -254,7 +255,8 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		Platform:      ctx.Platform,
 		Pkg:           ctx.Pkg,
 		Component:     ctx.Component,
-		Window:        ctx.Window,
+		Surface:       ctx.Surface,
+		App:           ctx.App,
 		Locals:        maps.Clone(ctx.Locals),
 		Renames:       maps.Clone(ctx.Renames),
 		EventVar:      ctx.EventVar,

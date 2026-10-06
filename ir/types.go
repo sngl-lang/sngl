@@ -278,10 +278,17 @@ func (t *Type) String() string {
 		}
 		return sig
 	case TypeComponent:
-		if t.Decl != nil {
+		if t.Decl == nil {
+			return "component"
+		}
+		if len(t.Elems) == 0 {
 			return t.Decl.SymName()
 		}
-		return "component"
+		args := make([]string, len(t.Elems))
+		for i, e := range t.Elems {
+			args[i] = e.String()
+		}
+		return t.Decl.SymName() + "<" + strings.Join(args, ", ") + ">"
 	case TypeInstance:
 		if t.Decl != nil {
 			return "instance<" + t.Decl.SymName() + ">"
@@ -493,6 +500,19 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return t
 		}
 		return &Type{Kind: t.Kind, Elems: elems, Decl: t.Decl}
+	case TypeComponent:
+		// `page<T>` in a generic signature: its type arguments are the
+		// signature's, bound at the call like any other element type.
+		if len(t.Elems) == 0 {
+			return t
+		}
+		elems := make([]*Type, len(t.Elems))
+		for i, e := range t.Elems {
+			elems[i] = e.Substitute(bindings)
+		}
+		cp := *t
+		cp.Elems = elems
+		return &cp
 	case TypeFunc:
 		if t.Sig == nil {
 			return t
@@ -559,6 +579,14 @@ func (t *Type) Equal(other *Type) bool {
 		}
 		return true
 	case TypeStruct:
+		// Two anonymous structs are the same type when they have the same
+		// fields: the program never named either, so there is no declaration
+		// for identity to be. Each package interns its own -- `sngl:ui/nav`'s
+		// `struct {}` is not the program's -- and both spell one host name,
+		// which is derived from the fields alone.
+		if a, b := anonStructDef(t), anonStructDef(other); a != nil && b != nil {
+			return sameFields(a.Fields, b.Fields)
+		}
 		// Two struct types are equal when they share the same declaration AND
 		// their type arguments (if any) are pairwise equal. This covers both
 		// non-generic structs (no Elems) and generic instantiations like Box<int>
@@ -575,7 +603,23 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeEnum, TypeUnit, TypeComponent, TypeInstance:
+	case TypeComponent:
+		// `page<P>` is the instances whose call site bound the declaration's
+		// type parameters that way, and a handle carries what its call site
+		// bound. A bare `component` names no declaration and carries none.
+		if !sameDecl(t, other) {
+			return false
+		}
+		if len(t.Elems) != len(other.Elems) {
+			return false
+		}
+		for i, e := range t.Elems {
+			if !e.Equal(other.Elems[i]) {
+				return false
+			}
+		}
+		return true
+	case TypeEnum, TypeUnit, TypeInstance:
 		return sameDecl(t, other)
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)
@@ -654,6 +698,31 @@ func (t *Type) IsAssignableTo(target *Type) bool {
 	}
 	if target.Kind == TypeOption {
 		return t.IsAssignableTo(target.Elems[0])
+	}
+	// A handle to a member of a family is a value of the family: one record
+	// of the props the family declares, which every member declares too. One
+	// way only -- nothing turns a family value back into a member, since
+	// which member it holds is known only when the program runs.
+	if t.Kind == TypeComponent && target.Kind == TypeComponent {
+		if f, ok := target.Decl.(*Component); ok && f.IsFamily() {
+			m, ok := t.Decl.(*Component)
+			if !ok || m.IsFamily() || !IsFamilyValue(m) || m.Tree != f {
+				return false
+			}
+			if len(target.Elems) == 0 {
+				return true
+			}
+			got := FamilyArgs(m, t.Elems)
+			if len(got) != len(target.Elems) {
+				return false
+			}
+			for i, e := range got {
+				if !e.Equal(target.Elems[i]) {
+					return false
+				}
+			}
+			return true
+		}
 	}
 	if t.Kind == TypeRemote && target.Kind == TypeRemote {
 		return t.Elems[0].IsAssignableTo(target.Elems[0])
@@ -869,4 +938,29 @@ func NativeGoPointerOf(name string) *Type {
 // handle (e.g. "gtk4rt.Handle").
 func NativeGoNamed(name string) *Type {
 	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name, Bare: true}}
+}
+
+// anonStructDef is t's declaration when it is an anonymous struct the checker
+// interned, nil otherwise.
+func anonStructDef(t *Type) *StructDef {
+	sd, ok := t.Decl.(*StructDef)
+	if !ok || !sd.Anon || len(t.Elems) > 0 {
+		return nil
+	}
+	return sd
+}
+
+// sameFields reports whether two field lists, each in the name order an
+// interned anonymous struct keeps them in, name the same fields at equal
+// types.
+func sameFields(a, b []*StructField) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Name != b[i].Name || !a[i].Type.Equal(b[i].Type) {
+			return false
+		}
+	}
+	return true
 }

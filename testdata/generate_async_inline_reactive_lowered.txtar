@@ -47,7 +47,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { __async___hoist_0: "" };
+  var state = { __async___hoist_0: "", visible__inst0: true };
   function __hoist_0() {
     return state.__async___hoist_0;
   }
@@ -64,4 +64,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9f8bd62968e266ee893fafc6ce6add55
+pass sha256:caeb84db98ac8582d040ded75bfd0f8a

@@ -15,9 +15,10 @@
 // it writes.
 //
 // The key is the request -- which producer, asked what -- plus the identity of
-// the compiler asking, since a producer's code is part of what its output
-// depends on and nothing in the file could record that. The inputs are what
-// validates the entry the key found.
+// the compiler asking and of the producer's own code where the compiler's does
+// not cover it, since a producer's code is part of what its output depends on
+// and nothing in the file could record that. The inputs are what validates the
+// entry the key found.
 package gencache
 
 import (
@@ -38,11 +39,17 @@ import (
 )
 
 // Request identifies one question put to a producer. Params are the whole of
-// what the producer is asked; two requests with the same producer and params
-// are the same question.
+// what the producer is asked; two requests with the same producer, params and
+// identity are the same question.
 type Request struct {
 	Producer string
 	Params   []string
+	// Identity is the producer's own code, where the compiler's identity does
+	// not already cover it: a producer written in SNGL is a package the
+	// program imported, and editing it changes every answer while every input
+	// it recorded still holds. Empty for a producer compiled into the
+	// compiler, which compilerID already names.
+	Identity string
 }
 
 func (r Request) String() string {
@@ -127,28 +134,52 @@ type entryResult struct {
 }
 
 var (
-	defaultOnce  sync.Once
-	defaultStore *Store
+	defaultMu     sync.Mutex
+	defaultStores = map[string]*Store{}
 )
 
 // Default is the store every producer in this process shares: under the
 // user's cache directory, or DirEnv, or off when OffEnv says so.
+//
+// One per directory the environment names when it is asked, rather than one
+// for the process: a process that runs several builds in turn -- a test
+// harness running scripts in process -- has each build's environment decide,
+// as a fresh process would. A store a build turned off is one it asked not
+// to be answered from.
 func Default() *Store {
-	defaultOnce.Do(func() {
-		switch {
-		case os.Getenv(OffEnv) == "off":
-			defaultStore = Open("")
-		case os.Getenv(DirEnv) != "":
-			defaultStore = Open(os.Getenv(DirEnv))
-		default:
-			base, err := os.UserCacheDir()
-			if err != nil {
-				base = os.TempDir()
-			}
-			defaultStore = Open(filepath.Join(base, "sngl", "gen"))
+	return defaultStore()
+}
+
+// ResetDefault forgets every store Default handed out, for a process that runs
+// several builds in turn: a store memoizes what it found each input to be for
+// its life, which is one build's, and the files may change between two.
+func ResetDefault() {
+	defaultMu.Lock()
+	defer defaultMu.Unlock()
+	clear(defaultStores)
+}
+
+func defaultStore() *Store {
+	dir := ""
+	switch {
+	case os.Getenv(OffEnv) == "off":
+	case os.Getenv(DirEnv) != "":
+		dir = os.Getenv(DirEnv)
+	default:
+		base, err := os.UserCacheDir()
+		if err != nil {
+			base = os.TempDir()
 		}
-	})
-	return defaultStore
+		dir = filepath.Join(base, "sngl", "gen")
+	}
+	defaultMu.Lock()
+	defer defaultMu.Unlock()
+	s, ok := defaultStores[dir]
+	if !ok {
+		s = Open(dir)
+		defaultStores[dir] = s
+	}
+	return s
 }
 
 // Open returns a store kept in dir. An empty dir is a store that keeps
@@ -285,13 +316,13 @@ func (s *Store) put(req Request, key string, out Output) []byte {
 	return data
 }
 
-// key is the file name a request is stored under: the request, and the
-// compiler that asked it. Params are length-prefixed, so no two lists of them
-// run together into one key.
+// key is the file name a request is stored under: the request, the compiler
+// that asked it and the producer's identity. Params are length-prefixed, so no
+// two lists of them run together into one key.
 func (s *Store) key(req Request) string {
 	s.ready()
 	h := sha256.New()
-	fmt.Fprintf(h, "gencache v1\x00%s\x00%s\x00%d\x00", s.id, req.Producer, len(req.Params))
+	fmt.Fprintf(h, "gencache v2\x00%s\x00%s\x00%s\x00%d\x00", s.id, req.Identity, req.Producer, len(req.Params))
 	for _, p := range req.Params {
 		fmt.Fprintf(h, "%d:%s\x00", len(p), p)
 	}

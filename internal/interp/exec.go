@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
@@ -30,6 +31,9 @@ func (e *AssertError) Error() string {
 // invoke a resolved handler or propagate further up.
 type RaisedError struct {
 	Event map[string]any
+	// from is the handler whose body let this raise out, so the render-tree
+	// frames it is offered to start outside that handler rather than at it.
+	from *ir.EventHandler
 }
 
 func (e *RaisedError) Error() string {
@@ -44,13 +48,12 @@ func (e *RaisedError) Error() string {
 	return fmt.Sprintf("raised: %s", msg)
 }
 
-// dispatchRaise routes a RaisedError through the error-handling modes set
-// by the checker's effect analysis. Returns nil to consume the error
-// (handler was invoked); returns the error to propagate upward.
+// dispatchRaise routes a raise that came out of call through the mode the
+// checker's effect analysis resolved for it. A per-call handler runs and the
+// statement holding the call is over; a boundary's or window's handler runs
+// and the event handler that made the call is over, which is a return. Any
+// other mode passes the raise to the caller.
 func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
-	if raised == nil || call == nil {
-		return nil
-	}
 	switch call.ErrorMode {
 	case ir.ErrorPerCall:
 		if call.ErrorHandler != nil {
@@ -58,7 +61,10 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 		}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler != nil {
-			return env.invokeHandler(call.ResolvedHandler, raised.Event)
+			if err := env.invokeHandler(call.ResolvedHandler, raised.Event); err != nil {
+				return err
+			}
+			return &returnSignal{raised: true}
 		}
 	}
 	return raised
@@ -67,6 +73,10 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 // invokeHandler executes the handler body with the error bound to the
 // handler's param. Propagates any error raised by the handler body itself to
 // the caller.
+//
+// The body's own `return` ends the body alone. One that stands for a raise the
+// body made and a handler further out caught is passed on, because that raise
+// ends the event handler this one was invoked from too.
 func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {
 	if handler == nil || handler.Func == nil {
 		return nil
@@ -89,7 +99,78 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 			}
 		}()
 	}
-	return env.ExecBlock(handler.Func.Block)
+	for _, stmt := range handler.Func.Block {
+		err := env.Exec(stmt)
+		if ret, ok := err.(*returnSignal); ok && !ret.raised {
+			return nil
+		}
+		if raised, ok := err.(*RaisedError); ok {
+			raised.from = handler
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// raiseScope is the key, among the context values a node is mounted under,
+// that holds the boundaries and windows around it, nearest first. The checker
+// resolves a raise within the component it was written in; one that escapes
+// that is the render tree's, and which instance of the component raised is
+// only known here.
+var raiseScope = &ir.Context{Name: "__raise"}
+
+type raiseFrame struct {
+	handler *ir.EventHandler
+	// env is the scope that rendered the boundary, where its handler runs.
+	env *Env
+}
+
+// pushRaiseScope makes h the nearest frame for what is mounted until the
+// returned func restores the previous ones.
+func (env *Env) pushRaiseScope(h *ir.EventHandler) func() {
+	prev, had := env.ContextVals[raiseScope]
+	frames, _ := prev.([]raiseFrame)
+	env.SetContext(raiseScope, append([]raiseFrame{{handler: h, env: env}}, frames...))
+	return func() {
+		if had {
+			env.ContextVals[raiseScope] = prev
+		} else {
+			delete(env.ContextVals, raiseScope)
+		}
+	}
+}
+
+// catchEscaped offers a raise that left an event handler to the frames it was
+// mounted under, starting outside the handler that let it out.
+func catchEscaped(vals map[*ir.Context]any, err error) error {
+	raised, ok := err.(*RaisedError)
+	if !ok {
+		return err
+	}
+	frames, _ := vals[raiseScope].([]raiseFrame)
+	i := 0
+	if raised.from != nil {
+		for j, f := range frames {
+			if f.handler == raised.from {
+				i = j + 1
+				break
+			}
+		}
+	}
+	for ; i < len(frames); i++ {
+		err := frames[i].env.invokeHandler(frames[i].handler, raised.Event)
+		next, ok := err.(*RaisedError)
+		if !ok {
+			if IsReturn(err) {
+				return nil
+			}
+			return err
+		}
+		raised = next
+	}
+	return raised
 }
 
 // returnSignal carries a `return` out of the blocks it was written inside.
@@ -98,7 +179,12 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 // whoever is running the function body catches it. Reading a Return only where
 // it sits at the top of a body — which is what the interpreter used to do — let
 // a guard clause fall through to the statement after its `if`.
-type returnSignal struct{ value any }
+//
+// raised marks the return a caught raise stands for; see dispatchRaise.
+type returnSignal struct {
+	value  any
+	raised bool
+}
 
 func (*returnSignal) Error() string { return "return outside a function body" }
 
@@ -165,9 +251,6 @@ func (env *Env) exec(s ir.Stmt) error {
 			return nil
 		}
 		_, err := env.evalCall(n.Call)
-		if raised, ok := err.(*RaisedError); ok {
-			return env.dispatchRaise(n.Call, raised)
-		}
 		return err
 	case *ir.Emit:
 		return env.emit(n)
@@ -200,11 +283,6 @@ func (env *Env) exec(s ir.Stmt) error {
 		}
 		return &returnSignal{value: v}
 	case *ir.NodeInst:
-		// A window is a top-level construct; reaching one inside a statement
-		// stream means something nested it incorrectly.
-		if ir.IsWindowNode(n) {
-			panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
-		}
 		// Visual nodes don't execute in statement position in the headless
 		// interpreter (they're rendered elsewhere). Skipping preserves
 		// forward-compat with boundary/window structures appearing as
@@ -267,6 +345,9 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		if m, ok := obj.(map[string]any); ok {
 			nv, err := ApplyOp(s.Op, m[target.Field], val, target.ExprType())
 			if err != nil {
+				return err
+			}
+			if err := writeThroughHandle(m, target.Field, nv); err != nil {
 				return err
 			}
 			m[target.Field] = nv
@@ -352,11 +433,27 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		if cv, ok := obj.(ComponentValue); ok {
 			return cv.Toggle(target.Field)
 		}
+		// A two-way prop through a node's handle: what it holds now, written
+		// back negated the way an assignment through the handle is.
+		if _, ok := obj.(map[string]any); ok {
+			cur, err := env.Eval(target)
+			if err != nil {
+				return err
+			}
+			b, ok := cur.(bool)
+			if !ok {
+				return fmt.Errorf("cannot toggle non-bool %s", target.Field)
+			}
+			return env.execAssign(&ir.Assign{Target: target, Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(!b)}})
+		}
 	}
 	return fmt.Errorf("invalid toggle target %T", s.Target)
 }
 
 func (env *Env) execIf(s *ir.If) error {
+	if s.Catch != nil {
+		return env.execCatch(s)
+	}
 	cond, err := env.Eval(s.Cond)
 	if err != nil {
 		return err
@@ -413,6 +510,8 @@ func (env *Env) execFor(s *ir.For) error {
 			}
 		}
 		env.unbindLoopVars(s)
+	case *Stream:
+		return env.execStreamLoop(s, v)
 	default:
 		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
 		// of the two produced it, and neither is walked by building the other.
@@ -589,4 +688,59 @@ func numKindOfValue(v any) opeval.NumKind {
 		return opeval.NumKind{Float: true}
 	}
 	return opeval.NumKind{}
+}
+
+// execCatch runs a catch block. Only lowered IR holds one -- `sngl test` runs
+// checked IR -- so this answers a caller that interprets after lowering, as the
+// build-time Fold does (optimize.NewFold).
+func (env *Env) execCatch(s *ir.If) error {
+	for _, st := range s.Body {
+		err := env.Exec(st)
+		if raised, ok := err.(*RaisedError); ok {
+			return env.invokeHandler(s.Catch, raised.Event)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeThroughHandle writes a two-way prop of the node m is a handle to --
+// `w.visible = true` in `func window.open(w window)` -- where a write of the
+// prop lands: the var the call site bound, in the scope the node was written
+// in, or the instance's own cell where nothing is bound. A write of anything
+// else stays the handle's.
+func writeThroughHandle(m map[string]any, field string, val any) error {
+	inst, _ := m["__inst"].(*ir.NodeInst)
+	if inst == nil || inst.Component == nil {
+		return nil
+	}
+	var prop *ir.Prop
+	for _, p := range inst.Component.Props {
+		if p.Name == field && p.Bidirectional {
+			prop = p
+		}
+	}
+	if prop == nil {
+		return nil
+	}
+	for _, b := range inst.Bindings {
+		if b.PropName != field {
+			continue
+		}
+		owner, _ := m["__ownerEnv"].(*Env)
+		if owner == nil {
+			return nil
+		}
+		tmp := &ir.Param{Name: "__bound"}
+		owner.Set(tmp, val)
+		err := owner.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		delete(owner.vals, tmp)
+		return err
+	}
+	if ce, _ := m["__compEnv"].(*Env); ce != nil && prop.Sym != nil {
+		ce.Set(prop.Sym, val)
+	}
+	return nil
 }

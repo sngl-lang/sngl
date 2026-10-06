@@ -46,12 +46,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -59,6 +62,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -70,13 +88,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -84,17 +110,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint("left"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	content_2 = lipgloss.NewStyle().Render(fmt.Sprint("right"))
-	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint("left"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(""))
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("right"))
+		contentChildren = append(contentChildren, content_2)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -119,45 +147,74 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *fyne.Container
-	__n1 *widget.Label
-	__n2 fyne.CanvasObject
-	__n3 *widget.Label
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Label
+	__n3    fyne.CanvasObject
+	__n4    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewHBox()
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("left")
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewHBox()
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText("left")
+	m.__n1.Add(m.__n2)
+	m.__n3 = layout.NewSpacer()
+	m.__n1.Add(m.__n3)
+	m.__n4 = widget.NewLabel("")
+	m.__n4.SetText("right")
+	m.__n1.Add(m.__n4)
 	m.__n0.Add(m.__n1)
-	m.__n2 = layout.NewSpacer()
-	m.__n0.Add(m.__n2)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("right")
-	m.__n0.Add(m.__n3)
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -319,18 +376,36 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkBox
-	__n1   *C.GtkLabel
-	__n2   *C.GtkBox
-	__n3   *C.GtkLabel
-	__root *C.GtkBox
+	visible__inst0 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkBox
+	__n2           *C.GtkLabel
+	__n3           *C.GtkBox
+	__n4           *C.GtkLabel
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
+}
+
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -338,19 +413,21 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n0)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n0)), C.int(6))
-	m.__n1 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString("left"))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.CString("left"))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	m.__n3 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
+	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	m.__n4 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n4)), C.CString("right"))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_widget_set_hexpand((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
-	C.gtk_widget_set_vexpand((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString("right"))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -387,6 +464,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -398,10 +478,21 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "left", modifier = Modifier)
-        Spacer(modifier = Modifier)
-        Text(text = "right", modifier = Modifier)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "left", modifier = Modifier)
+            Spacer(modifier = Modifier)
+            Text(text = "right", modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -427,17 +518,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7d2fcd67e5325f59fb47e1ea26776e47
+pass sha256:c81fb4c21b6621280f4e0108fcbd1683
 -- run/go/fyne --
-pass sha256:b7caa1d8280dde23404b84e197c93a62
+pass sha256:d6625329bfea3a8471d3991d34af85a5
 -- run/go/gtk4 --
-pass sha256:3e4446ca47ede962713dd60d85ee28c2
+pass sha256:4ebe5ace0de7ddcdeb0547e5176175df
 -- run/kotlin/android --
-pass sha256:301d9b0d12d36d91b0275d67b66f9ff1
+pass sha256:41949366a49ef67745c953a5bb7d832e
 -- run/none/html --
-pass sha256:a4db370166da1f28eca3a1efb7ea83e4
+pass sha256:697fe50a7651e8d70ca2cdf176305238

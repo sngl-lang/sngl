@@ -70,9 +70,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst1: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2d98eed4b6b05b48257dfe7a012a737f
+pass sha256:3601fbaf5656492e9074f873f0deeb11

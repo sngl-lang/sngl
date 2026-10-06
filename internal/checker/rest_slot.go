@@ -14,10 +14,11 @@ import (
 // A signature has no insertion to hold, so the rule is asked of a body only.
 // A library declaration's own `{}` is the same: its render is a platform's
 // primitive or override, which is asked instead, and so is a declaration the
-// compiler or an emitter renders from its marks.
+// compiler or an emitter renders from its marks. A `const` rest slot holds
+// build-time data, which nothing renders.
 func (c *checker) checkRestInsertion(comp *ir.Component) {
 	rest := comp.RestSlot()
-	if rest == nil || comp.AST == nil || !comp.AST.Body.IsDefined() {
+	if rest == nil || rest.Const || comp.AST == nil || !comp.AST.Body.IsDefined() {
 		return
 	}
 	if comp.Builtin != ir.BuiltinNone || comp.Intrinsic != "" || comp.Wildcard != "" {
@@ -99,13 +100,9 @@ func (w *restWalk) stmt(st ir.Stmt, under string) {
 			w.stmts(sc.Body, orUnder(under, "a slot population"))
 		}
 	case *ir.NodeInst:
-		inner := under
-		if ir.IsWindowNode(n) {
-			inner = orUnder(under, "a window")
-		}
-		w.stmts(n.Children, inner)
+		w.stmts(n.Children, under)
 		for _, sc := range n.Slots {
-			w.stmts(sc.Body, orUnder(inner, "a slot population"))
+			w.stmts(sc.Body, orUnder(under, "a slot population"))
 		}
 	case *ir.If:
 		w.stmts(n.Body, orUnder(under, "an if"))

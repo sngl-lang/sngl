@@ -1,10 +1,11 @@
-import . "sngl:ui"
-import . "sngl:time"
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import time "sngl:time"
 
 output {
-	none {
-		html(stylesheet="public/style.css")
-	}
+    none {
+        html(stylesheet="public/style.css")
+    }
 }
 
 import "go:git.duckfam.us/jonathan/sngl/docs"
@@ -34,456 +35,497 @@ const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
 const screenshotDesktop = public.path("snapshots/todo/todo_fyne.png")
 const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
 
-component NavSidebar(currentHref = "") node {
-	docui.Sidebar(homeHref="/index.html", logo=logo) {
-		docui.SearchBox(entries=searchEntries)
-		html.ul {
-			for var group = navTree {
-				if group.title == "" {
-					for var item = group.items {
-						docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
-					}
-				}
-				if group.title != "" {
-					docui.NavGroup(title=group.title, href=group.href) {
-						for var item = group.items {
-							docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
-						}
-					}
-				}
-			}
-		}
-	}
+component NavSidebar(currentHref = "") ui.node {
+    docui.Sidebar(homeHref="/index.html", logo=logo) {
+        docui.SearchBox(entries=searchEntries)
+        html.ul {
+            for var group = navTree {
+                if group.title == "" {
+                    for var item = group.items {
+                        docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
+                    }
+                }
+                if group.title != "" {
+                    docui.NavGroup(title=group.title, href=group.href) {
+                        for var item = group.items {
+                            docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
-component PlatformCarousel() node {
-	var (
-		active = 0
-		rotating = true
-	)
-	timer(interval=5000ms, enabled=rotating, @tick {
-		active = (active + 1) % 4
-	})
+component PlatformCarousel() ui.node {
+    var (
+        active = 0
+        rotating = true
+    )
+    time.timer(interval=5000ms, enabled=rotating, @tick {
+        active = (active + 1) % 4
+    })
 
-	vbox(style={gap=16, alignItems="center", padding="32 0"}) {
-		stack {
-			if active == 0 {
-				image(src=screenshotWeb, alt="SNGL Todo App on Web", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
-			}
-			if active == 1 {
-				image(src=screenshotTerminal, alt="SNGL Todo App in Terminal", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
-			}
-			if active == 2 {
-				image(src=screenshotDesktop, alt="SNGL Todo App on Desktop", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
-			}
-			if active == 3 {
-				image(src=screenshotAndroid, alt="SNGL Todo App on Android", fit=contain,
-					style={maxWidth=800, maxHeight=500, borderRadius=8, width="100%"})
-			}
-		}
-		hbox(style={gap=8}) {
-			button(text="Web", @click { active = 0 },
-				style={paddingLeft=20, paddingRight=20, borderRadius=20,
-					background=active == 0 ? "#2196f3" : "#f5f5f5",
-					color=active == 0 ? "#fff" : "#333"})
-			button(text="Terminal", @click { active = 1 },
-				style={paddingLeft=20, paddingRight=20, borderRadius=20,
-					background=active == 1 ? "#2196f3" : "#f5f5f5",
-					color=active == 1 ? "#fff" : "#333"})
-			button(text="Desktop", @click { active = 2 },
-				style={paddingLeft=20, paddingRight=20, borderRadius=20,
-					background=active == 2 ? "#2196f3" : "#f5f5f5",
-					color=active == 2 ? "#fff" : "#333"})
-			button(text="Android", @click { active = 3 },
-				style={paddingLeft=20, paddingRight=20, borderRadius=20,
-					background=active == 3 ? "#2196f3" : "#f5f5f5",
-					color=active == 3 ? "#fff" : "#333"})
-		}
-	}
+    ui.vbox(style={gap=16, alignItems=center, paddingY=32}) {
+        ui.stack {
+            if active == 0 {
+                ui.image(
+                    src=screenshotWeb,
+                    alt="SNGL Todo App on Web",
+                    fit=contain,
+                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                )
+            }
+            if active == 1 {
+                ui.image(
+                    src=screenshotTerminal,
+                    alt="SNGL Todo App in Terminal",
+                    fit=contain,
+                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                )
+            }
+            if active == 2 {
+                ui.image(
+                    src=screenshotDesktop,
+                    alt="SNGL Todo App on Desktop",
+                    fit=contain,
+                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                )
+            }
+            if active == 3 {
+                ui.image(
+                    src=screenshotAndroid,
+                    alt="SNGL Todo App on Android",
+                    fit=contain,
+                    style={maxWidth=800, maxHeight=500, borderRadius=8, width=100pct},
+                )
+            }
+        }
+        ui.hbox(style={gap=8}) {
+            ui.button(
+                text="Web",
+                @click { active = 0 },
+                style={
+                    paddingX = 20,
+                    borderRadius = 20,
+                    background = active == 0 ? #2196f3 : #f5f5f5,
+                    color = active == 0 ? #fff : #333,
+                },
+            )
+            ui.button(
+                text="Terminal",
+                @click { active = 1 },
+                style={
+                    paddingX = 20,
+                    borderRadius = 20,
+                    background = active == 1 ? #2196f3 : #f5f5f5,
+                    color = active == 1 ? #fff : #333,
+                },
+            )
+            ui.button(
+                text="Desktop",
+                @click { active = 2 },
+                style={
+                    paddingX = 20,
+                    borderRadius = 20,
+                    background = active == 2 ? #2196f3 : #f5f5f5,
+                    color = active == 2 ? #fff : #333,
+                },
+            )
+            ui.button(
+                text="Android",
+                @click { active = 3 },
+                style={
+                    paddingX = 20,
+                    borderRadius = 20,
+                    background = active == 3 ? #2196f3 : #f5f5f5,
+                    color = active == 3 ? #fff : #333,
+                },
+            )
+        }
+    }
 }
 
-component PageLayout(title = "", currentHref = "", children ...component) node {
-	if PLATFORM == html.platform {
-		html.div(class="site") {
-			html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
-			NavSidebar(currentHref=currentHref)
-			html.main {
-				html.article {
-					html.h1(innerText=title)
-					children
-				}
-				html.footer(class="site-footer") {
-					// docsgen replaces the year marker with the commit's year.
-					html.span(class="copyright",
-						innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.")
-					html.span(class="footer-meta") {
-						html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
-						// docsgen replaces the marker with the commit this site
-						// was generated from; plain `sngl generate` leaves it out.
-						html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")
-					}
-				}
-			}
-		}
-	} else {
-		hbox {
-			NavSidebar(currentHref=currentHref)
-			vbox(style={padding=24, flex=1}) {
-				text(value=title, style={fontSize=28, fontWeight="bold"})
-				children
-			}
-		}
-	}
+component PageLayout(title = "", currentHref = "", children ...component) ui.node {
+    if PLATFORM == html.platform {
+        html.div(class="site") {
+            html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
+            NavSidebar(currentHref=currentHref)
+            html.main {
+                html.article {
+                    html.h1(innerText=title)
+                    children
+                }
+                html.footer(class="site-footer") {
+                    // docsgen replaces the year marker with the commit's year.
+                    html.span(
+                        class="copyright",
+                        innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
+                    )
+                    html.span(class="footer-meta") {
+                        html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
+                        // docsgen replaces the marker with the commit this site
+                        // was generated from; plain `sngl generate` leaves it out.
+                        html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")
+                    }
+                }
+            }
+        }
+    } else {
+        ui.hbox {
+            NavSidebar(currentHref=currentHref)
+            ui.vbox(style={padding=24, flex=1}) {
+                ui.text(value=title, style={fontSize=28, fontWeight=bold})
+                children
+            }
+        }
+    }
 }
 
-component PlaygroundContent() node {
-	if PLATFORM == html.platform {
-		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
-		html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
-		html.div(class="playground-toolbar") {
-			html.select(id="examples") {
-				html.option(value="", innerText="Examples...")
-				html.option(value="default", innerText="Hello")
-			}
-			html.button(id="format-btn", type="button", title="Format (Shift+Alt+F)", innerText="Format")
-			html.span(class="status", id="status", innerText="Loading WASM...")
-		}
-		html.div(class="error-banner", id="error")
-		html.div(class="split-pane") {
-			html.div(class="editor-pane", id="editor-pane")
-			html.div(class="output-pane") {
-				html.div(class="tab-bar", innerHTML="<button class='active' data-tab='preview'>Preview</button><button data-tab='code'>Code</button><button data-tab='ast'>AST</button>")
-				html.div(class="tab-content") {
-					html.div(class="tab-panel active", id="tab-preview") {
-						html.iframe(id="preview")
-					}
-					html.div(class="tab-panel", id="tab-code") {
-						html.div(id="code-header") {
-							html.select(id="target-select")
-						}
-						html.pre(id="code-output") {
-							html.code
-						}
-					}
-					html.div(class="tab-panel", id="tab-ast") {
-						html.div(id="ast-output")
-					}
-				}
-			}
-		}
-		html.div(id="playground-sources")
-		html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
-		html.script(src=pgAssets.path("wasm_exec.js"))
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js")
-		html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-kotlin.min.js")
-		html.script(type="module", src=pgAssets.path("playground.js"))
-	} else {
-		text(value="Interactive playground — available in browser only.")
-	}
+component PlaygroundContent() ui.node {
+    if PLATFORM == html.platform {
+        html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
+        html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
+        html.div(class="playground-toolbar") {
+            html.select(id="examples") {
+                html.option(value="", innerText="Examples...")
+                html.option(value="default", innerText="Hello")
+            }
+            html.button(id="format-btn", type="button", title="Format (Shift+Alt+F)", innerText="Format")
+            html.span(class="status", id="status", innerText="Loading WASM...")
+        }
+        html.div(class="error-banner", id="error")
+        html.div(class="split-pane") {
+            html.div(class="editor-pane", id="editor-pane")
+            html.div(class="output-pane") {
+                html.div(class="tab-bar", innerHTML="<button class='active' data-tab='preview'>Preview</button><button data-tab='code'>Code</button><button data-tab='ast'>AST</button>")
+                html.div(class="tab-content") {
+                    html.div(class="tab-panel active", id="tab-preview") {
+                        html.iframe(id="preview")
+                    }
+                    html.div(class="tab-panel", id="tab-code") {
+                        html.div(id="code-header") {
+                            html.select(id="target-select")
+                        }
+                        html.pre(id="code-output") {
+                            html.code
+                        }
+                    }
+                    html.div(class="tab-panel", id="tab-ast") {
+                        html.div(id="ast-output")
+                    }
+                }
+            }
+        }
+        html.div(id="playground-sources")
+        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+        html.script(src=pgAssets.path("wasm_exec.js"))
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js")
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js")
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js")
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markup.min.js")
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js")
+        html.script(src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-kotlin.min.js")
+        html.script(type="module", src=pgAssets.path("playground.js"))
+    } else {
+        ui.text(value="Interactive playground — available in browser only.")
+    }
 }
 
-component TutorialContent() node {
-	if PLATFORM == html.platform {
-		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
-		html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
-		html.div(class="tutorial-layout") {
-			html.aside(id="lesson-nav", class="tutorial-nav") {
-				for var section = lessonSections {
-					html.div(class="tutorial-section") {
-						html.h3(innerText=section.title)
-						html.ul {
-							for var lesson = section.lessons {
-								html.li {
-									html.a(innerText=lesson.title, href="#lesson=" + lesson.slug)
-								}
-							}
-						}
-					}
-				}
-			}
-			html.div(class="tutorial-prose-pane") {
-				html.h2(id="lesson-title")
-				html.div(id="lesson-prose", class="tutorial-prose")
-			}
-			html.div(class="tutorial-playground") {
-				html.div(class="editor-pane", id="editor-pane")
-				html.div(class="tutorial-preview-pane") {
-					html.iframe(id="preview", class="tutorial-preview")
-					html.div(class="error-banner", id="error")
-				}
-				html.span(class="status", id="status", innerText="Loading WASM...")
-			}
-		}
-		html.div(id="lesson-sources")
-		html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
-		html.script(src=pgAssets.path("wasm_exec.js"))
-		html.script(type="module", src=pgAssets.path("tutorial.js"))
-	} else {
-		text(value="Interactive tutorial — available in browser only.")
-	}
+component TutorialContent() ui.node {
+    if PLATFORM == html.platform {
+        html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
+        html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
+        html.div(class="tutorial-layout") {
+            html.aside(id="lesson-nav", class="tutorial-nav") {
+                for var section = lessonSections {
+                    html.div(class="tutorial-section") {
+                        html.h3(innerText=section.title)
+                        html.ul {
+                            for var lesson = section.lessons {
+                                html.li {
+                                    html.a(innerText=lesson.title, href="#lesson=" + lesson.slug)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            html.div(class="tutorial-prose-pane") {
+                html.h2(id="lesson-title")
+                html.div(id="lesson-prose", class="tutorial-prose")
+            }
+            html.div(class="tutorial-playground") {
+                html.div(class="editor-pane", id="editor-pane")
+                html.div(class="tutorial-preview-pane") {
+                    html.iframe(id="preview", class="tutorial-preview")
+                    html.div(class="error-banner", id="error")
+                }
+                html.span(class="status", id="status", innerText="Loading WASM...")
+            }
+        }
+        html.div(id="lesson-sources")
+        html.script(innerHTML="window.__sngl_wasm_url=\"" + pgAssets.path("sngl.wasm") + "\";")
+        html.script(src=pgAssets.path("wasm_exec.js"))
+        html.script(type="module", src=pgAssets.path("tutorial.js"))
+    } else {
+        ui.text(value="Interactive tutorial — available in browser only.")
+    }
 }
 
-// The site's windows, gathered in a component of the root family: it is one
-// declaration rather than two hundred lines at a file's top level, and
-// passRootWindow lifts them onto pkg.Windows either way.
+// The site's pages, one window's stack of them, gathered in a component of the
+// root family so they read as one declaration. Nothing renders it until
+// `site()` at the end of the file.
 component site() root {
-	// Components — the starter set, in reading order. Everything else is one
-	// click on, in the package the component belongs to.
-	window(title="Components", href="/components/index.html", favicon=logo) {
-		PageLayout(title="Components", currentHref="/components/index.html") {
-			html.p(innerText="The components a first application reaches for. Each links to its API reference and a live preview.")
-			html.div(class="component-list") {
-				for var comp = curated {
-					html.a(class="component-card", href=comp.href) {
-						html.h3(innerText=comp.name)
-						html.p(innerText=comp.blurb)
-					}
-				}
-			}
-			html.p(class="browse-all") {
-				html.a(href=curatedHref, innerText=curatedLabel)
-			}
-		}
-	}
+    ui.window(title=pages.current.title, favicon=logo) {
+        nav.stack #pages {
+            // Components — the starter set, in reading order. Everything else is one
+            // click on, in the package the component belongs to.
+            nav.page(href="/components/index.html", title="Components") {
+                PageLayout(title="Components", currentHref="/components/index.html") {
+                    html.p(innerText="The components a first application reaches for. Each links to its API reference and a live preview.")
+                    html.div(class="component-list") {
+                        for var comp = curated {
+                            html.a(class="component-card", href=comp.href) {
+                                html.h3(innerText=comp.name)
+                                html.p(innerText=comp.blurb)
+                            }
+                        }
+                    }
+                    html.p(class="browse-all") {
+                        html.a(href=curatedHref, innerText=curatedLabel)
+                    }
+                }
+            }
 
-	// The library root: the packages, each imported by its own path.
-	window(title="Library", href="/docs/sngl/index.html", favicon=logo) {
-		PageLayout(title="The SNGL library", currentHref="/docs/sngl/index.html") {
-			html.p(innerText="Every package of the embedded library. Only sngl:builtin is in scope without an import.")
-			html.ul(class="decl-list") {
-				for var pkg = libraryTree {
-					html.li {
-						html.a(href=pkg.href, innerText=pkg.title)
-						html.span(innerText=pkg.blurb, class="decl-doc")
-					}
-				}
-			}
-		}
-	}
+            // The library root: the packages, each imported by its own path.
+            nav.page(href="/docs/sngl/index.html", title="Library") {
+                PageLayout(title="The SNGL library", currentHref="/docs/sngl/index.html") {
+                    html.p(innerText="Every package of the embedded library. Only sngl:builtin is in scope without an import.")
+                    html.ul(class="decl-list") {
+                        for var pkg = libraryTree {
+                            html.li {
+                                html.a(href=pkg.href, innerText=pkg.title)
+                                html.span(innerText=pkg.blurb, class="decl-doc")
+                            }
+                        }
+                    }
+                }
+            }
 
-	// Rich per-component pages (preview + highlighted code + props/events tables)
-	for var comp = components {
-		window #componentPage(title=comp.name, href=comp.href, favicon=logo) {
-			PageLayout(title=comp.name, currentHref=componentPage.href) {
-				html.p(innerText=comp.doc, class="component-blurb")
+            // Rich per-component pages (preview + highlighted code + props/events tables)
+            for var comp = components {
+                nav.page #componentPage(href=comp.href, title=comp.name) {
+                    PageLayout(title=comp.name, currentHref=componentPage.href) {
+                        html.p(innerText=comp.doc, class="component-blurb")
 
-				docui.Markdown(src=comp.previewHTML)
-				docui.Markdown(src=comp.highlightedCode)
+                        docui.Markdown(src=comp.previewHTML)
+                        docui.Markdown(src=comp.highlightedCode)
 
-				text(value="Properties", style={fontSize=20, fontWeight="bold"})
-				docui.Table {
-					docui.HeaderRow {
-						docui.HeaderCell(value="Name")
-						docui.HeaderCell(value="Type")
-						docui.HeaderCell(value="Description")
-					}
-					for var prop = comp.props {
-						docui.Row {
-							docui.CodeCell(value=prop.name)
-							docui.Cell(value=prop.type)
-							docui.Cell(value=prop.doc)
-						}
-					}
-				}
-				text(value="Slots", style={fontSize=20, fontWeight="bold"})
-				docui.Table {
-					docui.HeaderRow {
-						docui.HeaderCell(value="Name")
-						docui.HeaderCell(value="Type")
-					}
-					for var sl = comp.slots {
-						docui.Row {
-							docui.CodeCell(value=sl.name)
-							docui.Cell(value=sl.type)
-						}
-					}
-				}
-				text(value="Events", style={fontSize=20, fontWeight="bold"})
-				docui.Table {
-					docui.HeaderRow {
-						docui.HeaderCell(value="Name")
-						docui.HeaderCell(value="Payload Type")
-					}
-					for var evt = comp.events {
-						docui.Row {
-							docui.CodeCell(value=evt.name)
-							docui.Cell(value=evt.payloadType)
-						}
-					}
-				}
-				text(value="Children: " + comp.children)
-			}
-		}
-	}
+                        ui.text(value="Properties", style={fontSize=20, fontWeight=bold})
+                        docui.Table {
+                            docui.HeaderRow {
+                                docui.HeaderCell(value="Name")
+                                docui.HeaderCell(value="Type")
+                                docui.HeaderCell(value="Description")
+                            }
+                            for var prop = comp.props {
+                                docui.Row {
+                                    docui.CodeCell(value=prop.name)
+                                    docui.Cell(value=prop.type)
+                                    docui.Cell(value=prop.doc)
+                                }
+                            }
+                        }
+                        ui.text(value="Slots", style={fontSize=20, fontWeight=bold})
+                        docui.Table {
+                            docui.HeaderRow {
+                                docui.HeaderCell(value="Name")
+                                docui.HeaderCell(value="Type")
+                            }
+                            for var sl = comp.slots {
+                                docui.Row {
+                                    docui.CodeCell(value=sl.name)
+                                    docui.Cell(value=sl.type)
+                                }
+                            }
+                        }
+                        ui.text(value="Events", style={fontSize=20, fontWeight=bold})
+                        docui.Table {
+                            docui.HeaderRow {
+                                docui.HeaderCell(value="Name")
+                                docui.HeaderCell(value="Payload Type")
+                            }
+                            for var evt = comp.events {
+                                docui.Row {
+                                    docui.CodeCell(value=evt.name)
+                                    docui.Cell(value=evt.payloadType)
+                                }
+                            }
+                        }
+                        ui.text(value="Children: " + comp.children)
+                    }
+                }
+            }
 
-	// One index page per package: the library's, then each target's.
-	for var pkg = allPackages {
-		window #packagePage(title=pkg.title, href=pkg.href, favicon=logo) {
-			PageLayout(title=pkg.title, currentHref=packagePage.href) {
-				docui.PackagePage(path=pkg.path, baseHref=pkg.baseHref)
-			}
-		}
-	}
+            // One index page per package: the library's, then each target's.
+            for var pkg = allPackages {
+                nav.page #packagePage(href=pkg.href, title=pkg.title) {
+                    PageLayout(title=pkg.title, currentHref=packagePage.href) {
+                        docui.PackagePage(path=pkg.path, baseHref=pkg.baseHref)
+                    }
+                }
+            }
 
-	// Per-decl detail pages across every package (top-level decls + type
-	// methods + enum members). A library component is skipped by AllDeclPages
-	// itself — it is rendered above as a rich page.
-	for var d = allDeclPages {
-		window #declPage(title=d.title, href=d.href, favicon=logo) {
-			PageLayout(title=d.title, currentHref=d.href) {
-				docui.Markdown(src=d.body)
-			}
-		}
-	}
+            // Per-decl detail pages across every package (top-level decls + type
+            // methods + enum members). A library component is skipped by AllDeclPages
+            // itself — it is rendered above as a rich page.
+            for var d = allDeclPages {
+                nav.page #declPage(href=d.href, title=d.title) {
+                    PageLayout(title=d.title, currentHref=d.href) {
+                        docui.Markdown(src=d.body)
+                    }
+                }
+            }
 
-	// Platforms reference — capability matrix and per-platform options
-	window(title="Platforms", href="/platforms/index.html", favicon=logo) {
-		PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
-			text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents the recognized `--opt key=value` options.")
+            // Platforms reference — capability matrix and per-platform options
+            nav.page(href="/platforms/index.html", title="Platforms") {
+                PageLayout(title="Built-in Platforms", currentHref="/platforms/index.html") {
+                    ui.text(value="A platform decides what to render. The matrix below shows which optional capabilities each platform implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-			text(value="Global Options", style={fontSize=22, fontWeight="bold"})
-			text(value="Declared by the standard library; accepted by every output target.")
-			docui.Table {
-				docui.HeaderRow {
-					docui.HeaderCell(value="Name")
-					docui.HeaderCell(value="Type")
-					docui.HeaderCell(value="Description")
-				}
-				for var opt = targets.globalOptions {
-					docui.Row {
-						docui.CodeCell(value=opt.name)
-						docui.Cell(value=opt.type)
-						docui.Cell(value=opt.doc)
-					}
-				}
-			}
+                    ui.text(value="Global Options", style={fontSize=22, fontWeight=bold})
+                    ui.text(value="Declared by the standard library and set on `output` itself; accepted by every target.")
+                    docui.Table {
+                        docui.HeaderRow {
+                            docui.HeaderCell(value="Name")
+                            docui.HeaderCell(value="Type")
+                            docui.HeaderCell(value="Description")
+                        }
+                        for var opt = targets.globalOptions {
+                            docui.Row {
+                                docui.CodeCell(value=opt.name)
+                                docui.Cell(value=opt.type)
+                                docui.Cell(value=opt.doc)
+                            }
+                        }
+                    }
 
-			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
-			docui.Table {
-				docui.HeaderRow {
-					docui.HeaderCell(value="Platform")
-					for var col = targets.platformCapabilities {
-						docui.HeaderCell(value=col)
-					}
-				}
-				for var p = targets.platforms {
-					docui.Row {
-						docui.CodeCell(value=p.name)
-						for var c = p.capabilities {
-							docui.Cell(value=c.value == "" ? "—" : c.value)
-						}
-					}
-				}
-			}
+                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
+                    docui.Table {
+                        docui.HeaderRow {
+                            docui.HeaderCell(value="Platform")
+                            for var col = targets.platformCapabilities {
+                                docui.HeaderCell(value=col)
+                            }
+                        }
+                        for var p = targets.platforms {
+                            docui.Row {
+                                docui.CodeCell(value=p.name)
+                                for var c = p.capabilities {
+                                    docui.Cell(value=c.value == "" ? "—" : c.value)
+                                }
+                            }
+                        }
+                    }
 
-			for var p = targets.platforms {
-				text(value=p.name, style={fontSize=20, fontWeight="bold"})
-				text(value=p.doc)
-				text(value="Supported languages:")
-				for var lname = p.languages {
-					text(value="• " + lname, style={fontFamily="monospace"})
-				}
-				text(value="Options", style={fontSize=16, fontWeight="bold"})
-				docui.Table {
-					docui.HeaderRow {
-						docui.HeaderCell(value="Name")
-						docui.HeaderCell(value="Type")
-						docui.HeaderCell(value="Description")
-					}
-					for var opt = p.options {
-						docui.Row {
-							docui.CodeCell(value=opt.name)
-							docui.Cell(value=opt.type)
-							docui.Cell(value=opt.doc)
-						}
-					}
-				}
-			}
-		}
-	}
+                    for var p = targets.platforms {
+                        ui.text(value=p.name, style={fontSize=20, fontWeight=bold})
+                        ui.text(value=p.doc)
+                        ui.text(value="Supported languages:")
+                        for var lname = p.languages {
+                            ui.text(value="• " + lname, style={fontFamily="monospace"})
+                        }
+                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
+                        docui.Table {
+                            docui.HeaderRow {
+                                docui.HeaderCell(value="Name")
+                                docui.HeaderCell(value="Type")
+                                docui.HeaderCell(value="Description")
+                            }
+                            for var opt = p.options {
+                                docui.Row {
+                                    docui.CodeCell(value=opt.name)
+                                    docui.Cell(value=opt.type)
+                                    docui.Cell(value=opt.doc)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-	// Languages reference — capability matrix and per-language options
-	window(title="Languages", href="/languages/index.html", favicon=logo) {
-		PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
-			text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents the recognized `--opt key=value` options.")
+            // Languages reference — capability matrix and per-language options
+            nav.page(href="/languages/index.html", title="Languages") {
+                PageLayout(title="Built-in Languages", currentHref="/languages/index.html") {
+                    ui.text(value="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
-			text(value="Capabilities", style={fontSize=22, fontWeight="bold"})
-			docui.Table {
-				docui.HeaderRow {
-					docui.HeaderCell(value="Language")
-					for var col = targets.languageCapabilities {
-						docui.HeaderCell(value=col)
-					}
-				}
-				for var l = targets.languages {
-					docui.Row {
-						docui.CodeCell(value=l.name)
-						for var c = l.capabilities {
-							docui.Cell(value=c.value == "" ? "—" : c.value)
-						}
-					}
-				}
-			}
+                    ui.text(value="Capabilities", style={fontSize=22, fontWeight=bold})
+                    docui.Table {
+                        docui.HeaderRow {
+                            docui.HeaderCell(value="Language")
+                            for var col = targets.languageCapabilities {
+                                docui.HeaderCell(value=col)
+                            }
+                        }
+                        for var l = targets.languages {
+                            docui.Row {
+                                docui.CodeCell(value=l.name)
+                                for var c = l.capabilities {
+                                    docui.Cell(value=c.value == "" ? "—" : c.value)
+                                }
+                            }
+                        }
+                    }
 
-			for var l = targets.languages {
-				text(value=l.name, style={fontSize=20, fontWeight="bold"})
-				text(value=l.doc)
-				text(value="Options", style={fontSize=16, fontWeight="bold"})
-				docui.Table {
-					docui.HeaderRow {
-						docui.HeaderCell(value="Name")
-						docui.HeaderCell(value="Type")
-						docui.HeaderCell(value="Description")
-					}
-					for var opt = l.options {
-						docui.Row {
-							docui.CodeCell(value=opt.name)
-							docui.Cell(value=opt.type)
-							docui.Cell(value=opt.doc)
-						}
-					}
-				}
-			}
-		}
-	}
+                    for var l = targets.languages {
+                        ui.text(value=l.name, style={fontSize=20, fontWeight=bold})
+                        ui.text(value=l.doc)
+                        ui.text(value="Options", style={fontSize=16, fontWeight=bold})
+                        docui.Table {
+                            docui.HeaderRow {
+                                docui.HeaderCell(value="Name")
+                                docui.HeaderCell(value="Type")
+                                docui.HeaderCell(value="Description")
+                            }
+                            for var opt = l.options {
+                                docui.Row {
+                                    docui.CodeCell(value=opt.name)
+                                    docui.Cell(value=opt.type)
+                                    docui.Cell(value=opt.doc)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-	// Documentation pages
-	mddocs.site {
-		component layout(page, content) {
-			if page.href != "/learn/tour.html" {
-				window(title=page.frontmatter.title, href=page.href, favicon=logo) {
-					PageLayout(title=page.frontmatter.title, currentHref=page.href) {
-						if page.href == "/index.html" {
-							PlatformCarousel
-						}
-						content
-					}
-				}
-			}
-		}
-	}
+            // Documentation pages
+            mddocs.site {
+                component layout(page, content) {
+                    PageLayout(title=page.frontmatter.title, currentHref=page.href) {
+                        if page.href == "/index.html" {
+                            PlatformCarousel
+                        }
+                        content
+                    }
+                }
+            }
 
-	// Playground (HTML-only content via platform body)
-	window(title="Playground", href="/playground.html", favicon=logo) {
-		PageLayout(title="Playground", currentHref="/playground.html") {
-			PlaygroundContent
-		}
-	}
+            // Playground (HTML-only content via platform body)
+            nav.page(href="/playground.html", title="Playground") {
+                PageLayout(title="Playground", currentHref="/playground.html") {
+                    PlaygroundContent
+                }
+            }
 
-	// Tutorial (Go-tour-style interactive walkthrough)
-	window(title="Tutorial", href="/tutorial.html", favicon=logo) {
-		PageLayout(title="Tutorial", currentHref="/tutorial.html") {
-			TutorialContent
-		}
-	}
-
+            // Tutorial (Go-tour-style interactive walkthrough)
+            nav.page(href="/tutorial.html", title="Tutorial") {
+                PageLayout(title="Tutorial", currentHref="/tutorial.html") {
+                    TutorialContent
+                }
+            }
+        }
+    }
 }
 
 site()

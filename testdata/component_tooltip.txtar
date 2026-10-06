@@ -406,8 +406,6 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	msg    string
-	__n0   *C.GtkBox
-	__n1   *C.GtkButton
 	__root *C.GtkBox
 }
 
@@ -435,14 +433,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.CString(m.msg))
-	m.__n1 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), C.CString("hover"))
+	__n0 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(__n0)), C.CString(m.msg))
+	__n1 := (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(__n1)), C.CString("hover"))
 	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.sngl_connect(unsafe.Pointer(__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n0)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -594,7 +592,7 @@ pass sha256:ec77887264626a53d03db76d8a316f7e
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
-pass sha256:29e301344b874cb974f2d616f17aca92
+pass sha256:f9306c5fa1ebc0b1da0782d0b8a7f6ae
 -- run/kotlin/android --
 pass sha256:5ff1ebf6f747bb3dd9bcc8bc2a142ac0
 -- run/none/html --

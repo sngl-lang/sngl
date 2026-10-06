@@ -342,8 +342,6 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	dark   bool
-	__n2   gtk4rt.Handle
-	__n3   gtk4rt.Handle
 	__n0   gtk4rt.Handle
 	__n1   gtk4rt.Handle
 	__root gtk4rt.Handle
@@ -388,13 +386,13 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__n3 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n3, "toggle")
-	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
+	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n2, 6)
+	__n3 := gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(__n3, "toggle")
+	gtk4rt.Connect(__n3, "clicked", m.__n3_clicked_handler)
+	gtk4rt.BoxAppend(__n2, __n3)
 	var __lt2 string
 	if m.dark {
 		__lt2 = "dark"
@@ -403,7 +401,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, ("outer: " + __lt2))
-	gtk4rt.BoxAppend(m.__n2, m.__n0)
+	gtk4rt.BoxAppend(__n2, m.__n0)
 	var __lt3 string
 	if m.dark {
 		__lt3 = "dark"
@@ -412,8 +410,8 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__n1 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n1, ("sibling: " + __lt3))
-	gtk4rt.BoxAppend(m.__n2, m.__n1)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(__n2, m.__n1)
+	gtk4rt.BoxAppend(m.__root, __n2)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -581,7 +579,7 @@ pass sha256:8ca3c9728cc71a951a334318688f0408
 -- run/go/fyne --
 pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
-pass sha256:58eb81c03da71dabc6bd7bb3f74ed2e7
+pass sha256:e20c515c7bd00045e33c559a22f7cf9a
 -- run/kotlin/android --
 pass sha256:57c5d33bab3c791e76c59981556a0863
 -- run/none/html --

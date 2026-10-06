@@ -3,6 +3,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,7 +32,7 @@ func evalIn(t *testing.T, store *gencache.Store, dir, importPath string, fn *ir.
 	if _, _, err := requestPureNativeFunc(ctx, "go", importPath, fn, args); err != nil {
 		t.Fatal(err)
 	}
-	if errs := runNativeRequests(ctx.evalCache(), dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order); len(errs) > 0 {
+	if errs := runNativeRequests(ctx.evalCache(), trust.AllowAll(), dir, ir.IndexNativeDecls(ctx.pkg), ctx.native.order); len(errs) > 0 {
 		t.Fatal(errs)
 	}
 	v, _, err := requestPureNativeFunc(nextRound(ctx), "go", importPath, fn, args)

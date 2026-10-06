@@ -59,6 +59,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -72,15 +75,26 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "heavy", modifier = Modifier, style = TextStyle(fontWeight = FontWeight.Bold))
-        Text(text = "light", modifier = Modifier, style = TextStyle(fontWeight = FontWeight.Light))
-        Text(text = "slanted", modifier = Modifier, style = TextStyle(fontStyle = FontStyle.Italic))
-        Text(text = "also slanted", modifier = Modifier, style = TextStyle(fontStyle = FontStyle.Italic))
-        Text(text = "code", modifier = Modifier, style = TextStyle(fontFamily = FontFamily.Monospace))
-        Text(text = "a face nobody registered", modifier = Modifier, style = TextStyle(fontFamily = FontFamily.Default))
-        Text(text = "plain", modifier = Modifier)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "heavy", modifier = Modifier, style = TextStyle(fontWeight = FontWeight.Bold))
+            Text(text = "light", modifier = Modifier, style = TextStyle(fontWeight = FontWeight.Light))
+            Text(text = "slanted", modifier = Modifier, style = TextStyle(fontStyle = FontStyle.Italic))
+            Text(text = "also slanted", modifier = Modifier, style = TextStyle(fontStyle = FontStyle.Italic))
+            Text(text = "code", modifier = Modifier, style = TextStyle(fontFamily = FontFamily.Monospace))
+            Text(text = "a face nobody registered", modifier = Modifier, style = TextStyle(fontFamily = FontFamily.Default))
+            Text(text = "plain", modifier = Modifier)
+        }
     }
 }
 -- run/kotlin/android --
-pass sha256:b58ad65aa9d2908297f93f020631b492
+pass sha256:4eb9ed2438e4a39d464d58d29bf7d5d9

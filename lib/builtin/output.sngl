@@ -19,7 +19,7 @@ import marks "sngl:internal/marks"
 // under the language it is built with:
 //
 //     output {
-//         js {
+//         none {
 //             html(minify = true)
 //         }
 //         go {
@@ -59,11 +59,5 @@ component output(
     // alongside the application code, using that language's native test
     // runner (Go's testing, Kotlin's JUnit, JS's Jest/Vitest).
     const test bool,
-    // The window a build opens at, named by its `#id` rather than by a
-    // string, so a typo is a window nobody declared. A program with one
-    // window needs it only for emphasis; past one it is what says which of
-    // them is the program, a question the compiler previously refused to
-    // guess and therefore left unanswered.
-    entry dyn,
     const targets ...component build.language,
 ) root {}

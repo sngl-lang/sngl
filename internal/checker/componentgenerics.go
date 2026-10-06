@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -41,6 +42,54 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		}
 		bindTypeParams(p.Type, argType, bindings)
 	}
+	c.bindFromHandlers(comp, args, bindings)
+	return c.specializeWith(comp, bindings)
+}
+
+// bindFromHandlers binds what the props left unbound from the types a handler
+// writes on its parameters, the way a lambda's annotation binds a func's:
+// `gen.emit(@generate(out, members list<gen.Member<Entry>>) { … })` says T is
+// Entry, and nothing else at that call site could. A written type is resolved
+// quietly here, since bindParams resolves it again and reports it there.
+func (c *checker) bindFromHandlers(comp *ir.Component, args ast.ArgList, bindings map[string]*ir.Type) {
+	for _, a := range args.Args {
+		h, ok := a.(ast.EventHandler)
+		if !ok {
+			continue
+		}
+		var ev *ir.EventDecl
+		for _, e := range comp.Events {
+			if e.Name == h.Name {
+				ev = e
+			}
+		}
+		if ev == nil {
+			continue
+		}
+		for i, p := range h.Params.Params {
+			if p.Type == nil || i >= len(ev.Params) || ev.Params[i].Type == nil || !mentionsTypeParam(ev.Params[i].Type) {
+				continue
+			}
+			n := len(c.diags)
+			got := c.resolveType(p.Type)
+			c.diags = c.diags[:n]
+			if got == nil || got.Kind == ir.TypeDyn {
+				continue
+			}
+			bindTypeParams(ev.Params[i].Type, got, bindings)
+		}
+	}
+}
+
+// specializeWith is the specialization of comp at bindings, its defaults
+// filling what they leave unbound. What the props pinned is recorded, so the
+// children may bind the rest once they are checked (bindFromChildren) without
+// the props' expressions being walked a second time.
+func (c *checker) specializeWith(comp *ir.Component, pinned map[string]*ir.Type) *ir.Component {
+	bindings := maps.Clone(pinned)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
 	// A parameter no prop pinned falls back to its default, the way a struct's
 	// does when the type-argument list stops short. One with neither stays a
 	// parameter, and a prop typed by it accepts anything -- the same latitude a
@@ -67,7 +116,154 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		c.specOrigin = map[*ir.Component]*ir.Component{}
 	}
 	c.specOrigin[spec] = comp
+	if c.specArgs == nil {
+		c.specArgs = map[*ir.Component][]*ir.Type{}
+	}
+	bound := make([]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		if b, ok := bindings[tp.Name]; ok {
+			bound[i] = b
+		} else {
+			bound[i] = &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}
+		}
+	}
+	c.specArgs[spec] = bound
+	if c.specPinned == nil {
+		c.specPinned = map[*ir.Component]map[string]*ir.Type{}
+	}
+	c.specPinned[spec] = pinned
 	return spec
+}
+
+// bindFromChildren binds the type parameters a generic family names in the
+// rest slot's type from the children written there, where no prop pinned
+// them: `stack<M>(pages ...component _page<M>)` holds pages each of which is
+// a `_page<Meta>`, so the stack is a `stack<Meta>`. The first child that is a
+// member says what they are, and every other is held to it, since one slot
+// holds one type. Returns spec, or the specialization the children bound.
+func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt) *ir.Component {
+	if comp == nil || len(comp.TypeParams) == 0 {
+		return spec
+	}
+	rest := comp.RestSlot()
+	if rest == nil || rest.Content == nil || len(rest.Content.Elems) == 0 || !mentionsTypeParam(rest.Content) {
+		return spec
+	}
+	fam := ir.TypeFamily(rest.Content)
+	if fam == nil {
+		return spec
+	}
+	pinned := c.specPinned[spec]
+	bindings := maps.Clone(pinned)
+	if bindings == nil {
+		bindings = map[string]*ir.Type{}
+	}
+	var first *ir.Type
+	var walk func([]ir.Stmt)
+	walk = func(stmts []ir.Stmt) {
+		for _, st := range stmts {
+			if _, binds, ok := treeTransparent(st); ok {
+				for _, b := range binds {
+					walk(b)
+				}
+				continue
+			}
+			n, ok := st.(*ir.NodeInst)
+			// A member that is no value of the family has no one type to
+			// hold; the members it composes are checked where it is.
+			if !ok || n.Component == nil || n.Component.Tree != fam || !ir.IsFamilyValue(n.Component) {
+				continue
+			}
+			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, c.nodeArgs[n])}
+			if first == nil {
+				first = got
+				bindTypeParams(rest.Content, got, bindings)
+				continue
+			}
+			if !got.Equal(first) {
+				at := stmtPos(n.AST)
+				if at == nil {
+					continue
+				}
+				c.error(*at, "this %s is a %s, and %s holds %s: every member one %s holds is the same type",
+					n.Component.DisplayName(), got, comp.DisplayName(), first, comp.DisplayName())
+			}
+		}
+	}
+	walk(children)
+	if first == nil {
+		return spec
+	}
+	return c.specializeWith(comp, bindings)
+}
+
+// specializeHandle gives the handle a node's `#id` declared the type
+// arguments its call site bound, so `box #counts(item=1)` is a `box<int>`
+// wherever it is read. The id is hoisted before any node is checked, when the
+// arguments are not known, so the var is completed here -- the count it was
+// hoisted through, an option or a list, is kept around it.
+func (c *checker) specializeHandle(id string, comp, spec *ir.Component) {
+	args := c.specArgs[spec]
+	if len(args) == 0 {
+		return
+	}
+	v := c.nodeHandleSym(id)
+	if v == nil {
+		return
+	}
+	v.Type = withComponentArgs(v.Type, comp, args)
+	if owner := c.currentComponent; owner != nil {
+		if c.handleArgs == nil {
+			c.handleArgs = map[handleKey][]*ir.Type{}
+		}
+		c.handleArgs[handleKey{owner, id}] = args
+	}
+}
+
+// handleKey names a handle from outside the body declaring it, the way a
+// select `c.box` reaches one: the component and the id.
+type handleKey struct {
+	owner *ir.Component
+	id    string
+}
+
+// componentArgBindings is what a component type's arguments bind its
+// declaration's type parameters to: `page<Pkg>` binds T to Pkg, so a select
+// through it reads `params` as a Pkg.
+func componentArgBindings(t *ir.Type, comp *ir.Component) map[string]*ir.Type {
+	if t == nil || len(t.Elems) != len(comp.TypeParams) || len(comp.TypeParams) == 0 {
+		return nil
+	}
+	b := make(map[string]*ir.Type, len(comp.TypeParams))
+	for i, tp := range comp.TypeParams {
+		b[tp.Name] = t.Elems[i]
+	}
+	return b
+}
+
+// withComponentArgs is t with the component type naming comp, under any
+// options and lists, carrying args.
+func withComponentArgs(t *ir.Type, comp *ir.Component, args []*ir.Type) *ir.Type {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case ir.TypeComponent:
+		if t.Decl != ir.Symbol(comp) {
+			return t
+		}
+		cp := *t
+		cp.Elems = args
+		return &cp
+	case ir.TypeOption, ir.TypeList:
+		if len(t.Elems) != 1 {
+			return t
+		}
+		cp := *t
+		cp.Elems = []*ir.Type{withComponentArgs(t.Elems[0], comp, args)}
+		return &cp
+	}
+	return t
 }
 
 // propArgType is the type of the value a call site supplied for prop p, or nil

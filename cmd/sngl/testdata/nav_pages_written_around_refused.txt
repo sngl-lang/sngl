@@ -1,0 +1,69 @@
+# What a stack's pages may be written under, and what is refused there with a
+# position.
+#
+# A stack's pages are fixed when it is built, so a `for` among them iterates a
+# constant and an `if` among them reads none of the program's state. A
+# component pages are composed in keeps no state of its own, since nothing
+# holds it once it is inlined into the stack.
+
+! sngl generate --platform gtk4 --lang go -o out state.sngl
+stderr 'state.sngl:12:13: a stack''s pages are fixed when it is built, and this `for` iterates state; iterate a constant'
+
+! sngl generate --platform gtk4 --lang go -o out cond.sngl
+stderr 'cond.sngl:9:9: a stack''s pages are fixed when it is built, and this `if` reads state; decide it from constants, or write it inside a page'
+
+! sngl generate --platform gtk4 --lang go -o out group.sngl
+stderr 'group.sngl:16:9: extras renders pages, and what a stack''s pages are composed of keeps no state of its own: move it into a page'
+
+-- state.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+var items list<string> = ["a"]
+
+ui.window(title="State") {
+    ui.vbox {
+        ui.button(text="more", @click { items.push("b") })
+        nav.stack #pages {
+            nav.page(href="/", title="Home") {
+            }
+            for var it = items {
+                nav.page(href="/" + it, title=it) {
+                }
+            }
+        }
+    }
+}
+-- cond.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+var shown = true
+
+ui.window(title="Cond") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {}
+        if shown {
+            nav.page(href="/more", title="More") {}
+        }
+    }
+}
+-- group.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+component extras {
+    var n = 0
+
+    nav.page(href="/faq", title="FAQ") {
+        ui.button(text="n {n}", @click { n += 1 })
+    }
+}
+
+ui.window(title="Group") {
+    nav.stack #pages {
+        nav.page(href="/", title="Home") {
+        }
+        extras
+    }
+}

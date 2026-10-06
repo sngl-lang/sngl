@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	codegen.RegisterLang(&Translator{})
+	codegen.RegisterNative("js", &Translator{})
 }
 
 // Translator implements codegen.LangTranslator for JavaScript.

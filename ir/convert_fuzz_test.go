@@ -69,10 +69,10 @@ func FuzzConvertRoundTrip(f *testing.F) {
 }
 
 func summarizePkg(pkg *ir.Package) string {
-	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d windows=%d outputs=%d",
+	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d body=%d outputs=%d",
 		len(pkg.Imports), len(pkg.Structs), len(pkg.Enums), len(pkg.Units),
 		len(pkg.Consts), len(pkg.Vars), len(pkg.Funcs), len(pkg.Components),
-		len(pkg.Windows), len(pkg.Outputs))
+		len(pkg.Body), len(pkg.Outputs))
 }
 
 func safeParse(_ *testing.T, src string) (doc *ast.Document, ok bool) {

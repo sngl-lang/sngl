@@ -1,0 +1,40 @@
+// A declaration that reads itself, however many hops round, has no value to
+// be read: what it is depends on what it is. The checker refuses the cycle
+// where it closes, naming each read on the way round, whatever the
+// declarations are -- a const, a node's prop read through another node's
+// `#id`, a function a const calls.
+//
+// Each of these used to reach the build: the consts as a fold that re-entered
+// itself until a guard gave up, the props as a read the optimizer left
+// standing, which on html wrote an empty title and on fyne a name nothing
+// declared.
+
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+const a int = b // ERROR(check) "a cycle: a reads b, b reads a"
+const b int = a
+
+const c int = twice() // ERROR(check) "a cycle: c reads twice, twice reads c"
+
+func twice() int {
+    return c * 2
+}
+
+// Not a cycle: a const may read one declared after it.
+const later int = sooner + 1
+const sooner int = 1
+
+ui.window(title=pages.current.title) {
+    ui.vbox {
+        ui.text #first(value=second.value) // ERROR(check) "a cycle: first.value reads second.value, second.value reads first.value"
+        ui.text #second(value=first.value)
+        ui.text #third(value=first.value)
+        nav.stack #pages {
+            nav.page #x(href="/", title=y.title) { // ERROR(check) "a cycle: x.title reads y.title, y.title reads x.title"
+            }
+            nav.page #y(href="/y", title=x.title) {
+            }
+        }
+    }
+}

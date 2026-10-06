@@ -39,6 +39,13 @@ type emitShared struct {
 	// assigns a span's prop in a scope that never saw the flow. Collecting it
 	// once beside them also means it is walked once rather than per scope.
 	markup *markupTrees
+
+	// toplevels are every Toplevel id the file creates, since a handler or an
+	// updater setting one's `visible` is a scope that did not create it; and
+	// toplevelTitles the title each is built with, which the inline-cgo
+	// scaffold writes on the window BuildUI makes.
+	toplevels      map[string]bool
+	toplevelTitles map[string]ir.Expr
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -133,6 +140,14 @@ type gtk4Translator struct {
 	// statements themselves: preamble helpers, and the properties that
 	// could not be emitted at all. nil in scopes that emit no widgets.
 	shared *emitShared
+
+	// toplevels are the Toplevel ids this scope created, and appChildren the
+	// nodes it attached to the application, in order.
+	toplevels   map[string]bool
+	appChildren []string
+	// building says this scope is the tree's own build rather than a handler
+	// or an updater, which the inline-cgo scaffold can answer only for.
+	building bool
 
 	// invokerSink records one (id, event) pair per signal connected, for the
 	// test-invoker methods emitted after the walk. nil in the scopes that emit
@@ -374,6 +389,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// naming it is dropped too, and its words reach the label through
 	// emitFlowMarkup.
 	switch tag {
+	case toplevelTag:
+		return t.emitToplevelCreate(id)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -669,6 +686,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
 	}
+	if ir.IsAppParent(parent) {
+		return t.appAttach(child)
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -714,6 +734,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 func (t *gtk4Translator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
 	if t.isSkipped(parent) || t.isSkipped(child) {
 		return nil
+	}
+	if ir.IsAppParent(parent) {
+		return t.appDetach(child)
 	}
 	cType := t.parentCType(parent)
 	if cType == "" {
@@ -787,6 +810,9 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
+	if t.isToplevel(bare) {
+		return t.toplevelPropAssign(node, prop, value)
+	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
 		return nil
@@ -1135,6 +1161,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
+	if t.isToplevel(bare) {
+		return t.toplevelAttachHandler(node, event, handler)
+	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {
 		return t.attachCanvasClick(bare, event, handler)
@@ -1259,6 +1288,9 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if app, ok := t.appSlotCall(n); ok {
+			return app
+		}
 		if boxed, ok := t.boxedSlotRenderCall(n); ok {
 			return boxed
 		}

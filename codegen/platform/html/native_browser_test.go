@@ -53,7 +53,7 @@ component App() node {
     })
     text(value="same=" + same + " renamed=" + renamed)
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 func TestJSNative_CallsTheRealGlobal(t *testing.T) {

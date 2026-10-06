@@ -25,24 +25,27 @@ deny out/none/html/plain.html `-webkit-line-clamp` -- an omitted style carries n
 
 -- site.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 
 output { none { html } }
 
-window #one(title="One", href="/one.html") {
-    vbox(style=Style{flex=1.0}) {
-        text(value="share")
-    }
-}
-
-window #zero(title="Zero", href="/zero.html") {
-    vbox(style=Style{flex=0.0}) {
-        text(value="none")
-    }
-}
-
-window #plain(title="Plain", href="/plain.html") {
-    vbox {
-        text(value="unsaid")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #one(href="/one.html", title="One") {
+            vbox(style=Style{flex=1.0}) {
+                text(value="share")
+            }
+        }
+        nav.page #zero(href="/zero.html", title="Zero") {
+            vbox(style=Style{flex=0.0}) {
+                text(value="none")
+            }
+        }
+        nav.page #plain(href="/plain.html", title="Plain") {
+            vbox {
+                text(value="unsaid")
+            }
+        }
     }
 }
 -- out/none/html/one.html --
@@ -68,7 +71,7 @@ body { display: flex; flex-direction: column; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -93,7 +96,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -118,9 +121,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6443d626f460dac728876e6cb95521c7
+pass sha256:b9b5c19ac0b7f84e8b28d809a754f1e8

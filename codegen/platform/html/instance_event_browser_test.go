@@ -30,7 +30,7 @@ component App() node {
     }
     button(text="unshift", @click { items = ["z", "a", "b", "c"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 // The event reaches the handler the call site wrote.

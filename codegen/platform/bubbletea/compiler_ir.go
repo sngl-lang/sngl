@@ -24,7 +24,7 @@ type Config struct {
 	Description string
 	Version     string
 
-	// Lang globals (codegen/lang/golang/golang.sngl).
+	// Lang globals (lib/language/go/golang.sngl).
 	GoVersion  string // Go toolchain version emitted in `sngl run` go.mod (default: "1.23")
 	GoModExtra string // Extra text appended to temp test-module go.mod (e.g. replace directive)
 
@@ -164,7 +164,10 @@ type irAnalysis struct {
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	gc        *golang.GoIRContext
 	// loopTimers are the schedules written under a loop (loop_timers.go).
-	loopTimers []codegen.LoopTimer
+	timers []codegen.LoopTimer
+	// screen is the window, the one Screen the view draws, and nil for a
+	// harness that isolated a component.
+	screen *codegen.Screen
 }
 
 // overlayInfo records one modal/drawer Overlay primitive for Update()'s
@@ -215,6 +218,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc:             gc,
 	}
 	pkg := ctx.Pkg
+	screen, err := codegen.SoleScreen(viewStmts(ctx), "bubbletea:Screen", "bubbletea", screenPos)
+	if err != nil {
+		ctx.Fail(err)
+	}
+	info.screen = screen
 
 	for _, path := range golang.BaseImports(pkg) {
 		gc.RequireImport(path)
@@ -262,85 +270,81 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	for _, t := range info.Timers {
-		if t.IntervalMs > 0 {
-			gc.RequireImport("time")
+	for _, o := range ir.Owners(pkg) {
+		for _, t := range codegen.CollectTimers(o.Stmts()) {
+			info.timers = append(info.timers, codegen.LoopTimer{ScheduledTimer: t})
 		}
 	}
 	for _, o := range ir.Owners(pkg) {
-		info.loopTimers = append(info.loopTimers, codegen.CollectLoopTimers(o.Stmts())...)
+		info.timers = append(info.timers, codegen.CollectLoopTimers(o.Stmts())...)
 	}
-	if len(info.loopTimers) > 0 {
+	if len(info.timers) > 0 {
 		gc.RequireImport("time")
 	}
 
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
-	wins := ctx.Windows()
-	for _, win := range wins {
-		codegen.WalkVisualTree(win.Body, func(n *ir.NodeInst, _ int) bool {
-			if btIntrinsic(n) != "Widget" {
-				return false
-			}
-			bp := extractBlueprint(n)
-			if bp.Kind != bpWidget {
-				return false
-			}
-			fieldName := ctx.Namer.Next("widget")
-			placeholder := ""
-			if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
-				placeholder = s
-			}
-			// A `:value` bind lowers to a handler named after the prop, and an
-			// explicit @input/@change handler carries the same write; take the
-			// first whose body assigns to a var, prop-named handler first.
-			var binds []widgetBind
-			for _, bm := range bp.Binds {
-				target := ""
-				for _, hname := range []string{bm.Prop, "input", "change", "select"} {
-					if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
-						if t := extractIRAssignTarget(h.Func.Block); t != "" {
-							target = t
-							break
-						}
+	view := viewStmts(ctx)
+	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
+		if btIntrinsic(n) != "Widget" {
+			return false
+		}
+		bp := extractBlueprint(n)
+		if bp.Kind != bpWidget {
+			return false
+		}
+		fieldName := ctx.Namer.Next("widget")
+		placeholder := ""
+		if s, ok := codegen.IRLiteralString(bp.Placeholder); ok {
+			placeholder = s
+		}
+		// A `:value` bind lowers to a handler named after the prop, and an
+		// explicit @input/@change handler carries the same write; take the
+		// first whose body assigns to a var, prop-named handler first.
+		var binds []widgetBind
+		for _, bm := range bp.Binds {
+			target := ""
+			for _, hname := range []string{bm.Prop, "input", "change", "select"} {
+				if h := codegen.NodeHandler(n, hname); h != nil && h.Func != nil {
+					if t := extractIRAssignTarget(h.Func.Block); t != "" {
+						target = t
+						break
 					}
 				}
-				binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
 			}
-			if bp.Model.Pkg != "" {
-				gc.RequireImport(bp.Model.Pkg)
+			binds = append(binds, widgetBind{target: target, get: bm.Get, set: bm.Set})
+		}
+		if bp.Model.Pkg != "" {
+			gc.RequireImport(bp.Model.Pkg)
+		}
+		// A no-token string passes through unchanged, so its output stays
+		// byte-identical.
+		model := bp.Model
+		model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
+		model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
+		model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
+		model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
+		model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
+		// A model string may name a pkg/go/tui helper inline, without the
+		// `|conv` token whose path would have required the import.
+		for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
+			if strings.Contains(s, "tui.") {
+				gc.RequireImport(tuiImportPath)
+				break
 			}
-			// A no-token string passes through unchanged, so its output stays
-			// byte-identical.
-			model := bp.Model
-			model.New = expandWidgetTemplate(gc, model.New, n, fieldName)
-			model.View = expandWidgetTemplate(gc, model.View, n, fieldName)
-			model.Update = expandWidgetTemplate(gc, model.Update, n, fieldName)
-			model.Init = expandWidgetTemplate(gc, model.Init, n, fieldName)
-			model.Resize = expandWidgetTemplate(gc, model.Resize, n, fieldName)
-			// A model string may name a pkg/go/tui helper inline, without the
-			// `|conv` token whose path would have required the import.
-			for _, s := range []string{model.New, model.View, model.Update, model.Init, model.Resize} {
-				if strings.Contains(s, "tui.") {
-					gc.RequireImport(tuiImportPath)
-					break
-				}
-			}
-			info.widgets = append(info.widgets, widgetInfo{
-				fieldName:   fieldName,
-				model:       model,
-				binds:       binds,
-				placeholder: placeholder,
-				focusExpr:   nodeStaticFocusExpr(n, gc),
-				node:        n,
-			})
-			return false
+		}
+		info.widgets = append(info.widgets, widgetInfo{
+			fieldName:   fieldName,
+			model:       model,
+			binds:       binds,
+			placeholder: placeholder,
+			focusExpr:   nodeStaticFocusExpr(n, gc),
+			node:        n,
 		})
-	}
+		return false
+	})
 
-	for _, win := range wins {
-		collectOverlays(win.Body, nil, gc, &info.overlays)
-	}
+	collectOverlays(view, nil, gc, &info.overlays)
 
 	for _, b := range info.binds {
 		if b.name == "__focusID" {
@@ -413,13 +417,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 
-	for _, t := range info.Timers {
-		fmt.Fprintf(&b, "type timerTickMsg%d struct{}\n", t.Index)
-	}
-	if len(info.Timers) > 0 {
-		b.WriteString("\n")
-	}
-	emitLoopTimerTypes(&b, info.loopTimers)
+	emitTimerTypes(&b, info.timers)
 
 	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
@@ -443,7 +441,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.widgets) > 0 {
 		b.WriteString("\n")
 	}
-	emitLoopTimerFields(&b, info.loopTimers)
+	emitTimerFields(&b, info.timers)
 	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
@@ -455,7 +453,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
 	b.WriteString("\tm := Model{}\n")
-	emitLoopTimerInits(&b, info.loopTimers)
+	emitTimerInits(&b, info.timers)
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
@@ -611,23 +609,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.Timers) > 0 || len(info.loopTimers) > 0 {
+	if len(info.timers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
 		for _, wi := range widgetInits {
 			fmt.Fprintf(&b, "\tcmds = append(cmds, %s)\n", wi)
 		}
-		for _, t := range info.Timers {
-			tick := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
-			if t.ActiveVar != "" {
-				fmt.Fprintf(&b, "\tif m.%s {\n", t.ActiveVar)
-				fmt.Fprintf(&b, "\t\t%s\n", tick)
-				b.WriteString("\t}\n")
-			} else {
-				// An empty ActiveVar would emit "if m. {", which is invalid Go.
-				fmt.Fprintf(&b, "\t%s\n", tick)
-			}
-		}
-		emitLoopTimerSyncCalls(&b, info.loopTimers, "\t")
+		emitTimerSyncCalls(&b, info.timers, "\t")
 		if hasCanvas {
 			// Out of band, so the kitty image data is not dropped by the cell
 			// compositor.
@@ -664,7 +651,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
 	emitWidgetPayloadHandlers(&b, info, gc)
-	emitLoopTimerSyncs(&b, info.loopTimers, gc)
+	emitTimerSyncs(&b, info.timers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
 
@@ -924,33 +911,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	}
 
 	// Timer ticks
-	for _, t := range info.Timers {
-		fmt.Fprintf(b, "\tcase timerTickMsg%d:\n", t.Index)
-		rearm := fmt.Sprintf("cmds = append(cmds, tea.Tick(%d*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg%d{} }))", t.IntervalMs, t.Index)
-		if t.ActiveVar != "" {
-			// Gated timer: run the body and re-arm only while active.
-			fmt.Fprintf(b, "\t\tif m.%s {\n", t.ActiveVar)
-			for _, bodyStmt := range t.Body {
-				for _, line := range gc.EvalStmt(bodyStmt) {
-					fmt.Fprintf(b, "\t\t\t%s\n", line)
-				}
-			}
-			fmt.Fprintf(b, "\t\t\tif m.%s {\n", t.ActiveVar)
-			fmt.Fprintf(b, "\t\t\t\t%s\n", rearm)
-			b.WriteString("\t\t\t}\n")
-			b.WriteString("\t\t}\n")
-		} else {
-			// Always-on timer (no active condition): run the body and re-arm
-			// unconditionally. Emitting "if m. {" (empty ActiveVar) is invalid Go.
-			for _, bodyStmt := range t.Body {
-				for _, line := range gc.EvalStmt(bodyStmt) {
-					fmt.Fprintf(b, "\t\t%s\n", line)
-				}
-			}
-			fmt.Fprintf(b, "\t\t%s\n", rearm)
-		}
-	}
-	emitLoopTimerCases(b, info.loopTimers, gc)
+	emitTimerCases(b, info.timers, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -982,7 +943,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	b.WriteString("\tcase tea.KeyPressMsg:\n")
 	b.WriteString("\t\tswitch {\n")
 	b.WriteString("\t\tcase msg.Code == 'c' && msg.Mod == tea.ModCtrl:\n")
-	b.WriteString("\t\t\treturn m, tea.Quit\n")
+	emitScreenClose(b, info, gc)
 
 	// Escape closes the topmost open overlay. Overlays are listed in source
 	// order; the last-declared open one is closed first (a simple modal-over-
@@ -1029,10 +990,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// each background case so its activation keys don't fire while frozen;
 	// handlers inside an Overlay primitive stay unguarded (see
 	// emitIRButtonHandlers) so overlay-content buttons keep working.
-	wins := ctx.Windows()
-	for _, win := range wins {
-		emitIRButtonHandlers(b, win.Body, info, gc, caseGuard, invokerSink)
-	}
+	emitIRButtonHandlers(b, viewStmts(ctx), info, gc, caseGuard, invokerSink)
 
 	b.WriteString("\t\t}\n") // end switch
 	b.WriteString("\t}\n")   // end type switch
@@ -1097,7 +1055,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		// no flicker.
 		fmt.Fprintf(b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 	}
-	emitLoopTimerSyncCalls(b, info.loopTimers, "\t")
+	emitTimerSyncCalls(b, info.timers, "\t")
 	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
 }
@@ -1149,9 +1107,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
-			if ir.IsWindowNode(n) {
-				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
-			}
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
 			// handler for that event name was transferred onto the node during
@@ -1338,7 +1293,22 @@ func widgetEventMethod(w widgetInfo, event string) string {
 // carries: the event types are declarations nothing else here emits.
 func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	for _, w := range info.widgets {
-		_, hasInput, hasChange := widgetPayloadEvents(w)
+		get, hasInput, hasChange := widgetPayloadEvents(w)
+		// A text widget whose only subscriber is its binding -- a cell the
+		// call site left unbound, or a `:value` with no @input -- still takes
+		// a test's typing: into the widget, and back into the var the way
+		// Update writes it.
+		if get != "" && !hasInput && w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n") {
+			fmt.Fprintf(b, "// %sInput types v into the #%s widget; for tests.\n", w.node.ID, w.node.ID)
+			fmt.Fprintf(b, "func (m *Model) %sInput(v string) {\n", w.node.ID)
+			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			for _, bd := range w.binds {
+				if bindTargetSyncs(info.binds, bd.target) {
+					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+				}
+			}
+			b.WriteString("}\n\n")
+		}
 		for _, ev := range []struct {
 			name string
 			on   bool
@@ -1367,6 +1337,13 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
 			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
 			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			// What Update writes back from the widget before it runs the
+			// handler, so a handler reading the bound var reads the text.
+			for _, bd := range w.binds {
+				if bindTargetSyncs(info.binds, bd.target) {
+					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
+				}
+			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
 		}
 	}
@@ -1526,4 +1503,45 @@ func loopVarUsed(block []ir.Stmt, name string, sym ir.Symbol) bool {
 		return nil
 	})
 	return found
+}
+
+// emitScreenClose is ctrl+c: the window's close on a terminal, the
+// counterpart of a window manager's. With the window on screen it runs the
+// Screen's `@closed` -- which the override reports as `visible = false` before
+// the window's own handler -- and the program ends when the window is off
+// screen after that, or was already. A harness that isolated a component has
+// no window, and ctrl+c quits.
+func emitScreenClose(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
+	sc := info.screen
+	shown := ""
+	if sc != nil {
+		shown = sc.Shown(gc.EvalExpr)
+	}
+	if shown == "" {
+		if sc != nil {
+			emitScreenClosedHandler(b, sc.Node, info, gc, "\t\t\t")
+		}
+		b.WriteString("\t\t\treturn m, tea.Quit\n")
+		return
+	}
+	fmt.Fprintf(b, "\t\t\tif %s {\n", shown)
+	emitScreenClosedHandler(b, sc.Node, info, gc, "\t\t\t\t")
+	b.WriteString("\t\t\t}\n")
+	fmt.Fprintf(b, "\t\t\tif !(%s) {\n", shown)
+	b.WriteString("\t\t\t\treturn m, tea.Quit\n")
+	b.WriteString("\t\t\t}\n")
+	b.WriteString("\t\t\treturn m, nil\n")
+}
+
+func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysis, gc *golang.GoIRContext, indent string) {
+	h := codegen.NodeHandler(n, "closed")
+	if h == nil || h.Func == nil {
+		return
+	}
+	for _, stmt := range h.Func.Block {
+		for _, line := range gc.EvalStmt(stmt) {
+			fmt.Fprintf(b, "%s%s\n", indent, line)
+		}
+	}
+	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }

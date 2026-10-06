@@ -94,24 +94,33 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type timerTickMsg0 struct{}
+type timerTickMsg0 struct {
+	key string
+	gen int
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	frame               int
+	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effects0_settling bool
 	__effects0_pending  bool
 	__effects0_steps    int
 
+	__timer0      map[string]int
+	__timer0Seq   map[string]int
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.__timer0 = map[string]int{}
+	m.__timer0Seq = map[string]int{}
 	m.frame = 0
+	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
@@ -214,9 +223,24 @@ func SetFrameCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setFrameMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+	cmds = append(cmds, m.__timer0Sync()...)
 	cmds = append(cmds, m.__canvasTransmit())
 	return tea.Batch(cmds...)
 }
@@ -228,34 +252,68 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setFrameMsg:
 		m = m.SetFrame(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case timerTickMsg0:
-		m.frame = (m.frame + 1)
-		cmds = append(cmds, tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+		if m.__timer0[msg.key] == msg.gen && true {
+			m.frame = (m.frame + 1)
+			cmds = append(cmds, tea.Tick(time.Duration(100)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
+	cmds = append(cmds, m.__timer0Sync()...)
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __timer0Sync() []tea.Cmd {
+	var cmds []tea.Cmd
+	seen := map[string]bool{}
+	key := ""
+	if true {
+		seen[key] = true
+		if _, ok := m.__timer0[key]; !ok {
+			m.__timer0Seq[key]++
+			gen := m.__timer0Seq[key]
+			m.__timer0[key] = gen
+			cmds = append(cmds, tea.Tick(time.Duration(100)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+		}
+	}
+	for key := range m.__timer0 {
+		if !seen[key] {
+			delete(m.__timer0, key)
+		}
+	}
+	return cmds
 }
 
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	var part0Children []string
-	var part0_0 string
-	part0_0 = tui.RenderTerminal(40, 20, 1, func() image.Image {
-		__c := _canvasSurface0.Begin(40, 40, 0, 0, "")
-		m._canvasDraw0(__c)
-		return __c.Result()
-	})
-	part0Children = append(part0Children, part0_0)
-	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	if m.visible__inst0 {
+		var part0Children []string
+		var part0_0 string
+		part0_0 = tui.RenderTerminal(40, 20, 1, func() image.Image {
+			__c := _canvasSurface0.Begin(40, 40, 0, 0, "")
+			m._canvasDraw0(__c)
+			return __c.Result()
+		})
+		part0Children = append(part0Children, part0_0)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
+	}
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -282,6 +340,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 	"time"
@@ -328,6 +387,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
+	visible__inst1      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -337,9 +397,11 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
-	__n0    *fyne.Container
-	__n1    *canvas.Image
-	__n1Ctx *snglcanvas.Context
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *canvas.Image
+	__n2Ctx *snglcanvas.Context
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -350,6 +412,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
+	m.visible__inst1 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -371,10 +434,10 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 
 func (m *Model) __effect0_mount() {
 	m.frame = 4
-	m.__n1Ctx = snglcanvas.New(40, 40)
-	m._canvasDraw0(m.__n1Ctx)
-	m.__n1.Image = m.__n1Ctx.Result()
-	m.__n1.Refresh()
+	m.__n2Ctx = snglcanvas.New(40, 40)
+	m._canvasDraw0(m.__n2Ctx)
+	m.__n2.Image = m.__n2Ctx.Result()
+	m.__n2.Refresh()
 }
 
 func (m *Model) __effect0_down() {
@@ -413,10 +476,10 @@ func (m *Model) __effect1_mount() {
 							return
 						}
 						m.frame = (m.frame + 1)
-						m.__n1Ctx = snglcanvas.New(40, 40)
-						m._canvasDraw0(m.__n1Ctx)
-						m.__n1.Image = m.__n1Ctx.Result()
-						m.__n1.Refresh()
+						m.__n2Ctx = snglcanvas.New(40, 40)
+						m._canvasDraw0(m.__n2Ctx)
+						m.__n2.Image = m.__n2Ctx.Result()
+						m.__n2.Refresh()
 					})
 				case <-stopped:
 					return
@@ -501,6 +564,14 @@ func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
 }
 
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
+}
+
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
@@ -548,27 +619,43 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
-	m.__n1Ctx = snglcanvas.New(40, 40)
-	m._canvasDraw0(m.__n1Ctx)
-	m.__n1 = canvas.NewImageFromImage(m.__n1Ctx.Result())
-	m.__n1.FillMode = canvas.ImageFillOriginal
-	m.__n1.SetMinSize(fyne.NewSize(40, 40))
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("drawing")
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewVBox()
+	m.__n2Ctx = snglcanvas.New(40, 40)
+	m._canvasDraw0(m.__n2Ctx)
+	m.__n2 = canvas.NewImageFromImage(m.__n2Ctx.Result())
+	m.__n2.FillMode = canvas.ImageFillOriginal
+	m.__n2.SetMinSize(fyne.NewSize(40, 40))
+	m.__n1.Add(m.__n2)
 	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
 	m.__effects0_settle()
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	m.__snglTeardown()
 	_ = os.Stderr
 }
@@ -848,6 +935,7 @@ type Color struct {
 type Model struct {
 	frame               int
 	handle__inst0       *gtk4rt.Schedule
+	visible__inst1      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -857,7 +945,8 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 	__n0                *C.GtkBox
-	__n1                *C.GtkDrawingArea
+	__n1                *C.GtkBox
+	__n2                *C.GtkDrawingArea
 	__root              *C.GtkBox
 }
 
@@ -867,6 +956,7 @@ func New() *Model {
 	m := &Model{}
 	m.frame = 0
 	m.handle__inst0 = nil
+	m.visible__inst1 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -922,7 +1012,7 @@ func LineJoin(name string) C.cairo_line_join_t {
 
 func (m *Model) __effect0_mount() {
 	m.frame = 4
-	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 }
 
 func (m *Model) __effect0_down() {
@@ -946,7 +1036,7 @@ func (m *Model) __effect0_up() {
 func (m *Model) __effect1_mount() {
 	m.handle__inst0 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
 		m.frame = (m.frame + 1)
-		C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+		C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	})
 }
 
@@ -1020,6 +1110,13 @@ func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
 }
 
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+}
+
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
 	C.cairo_new_sub_path(ctx)
@@ -1044,19 +1141,29 @@ func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n0)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n0)), C.int(6))
-	m.__n1 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
-	C.gtk_drawing_area_set_content_width(m.__n1, C.int(40))
-	C.gtk_drawing_area_set_content_height(m.__n1, C.int(40))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
+	m.__n2 = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
+	C.gtk_drawing_area_set_content_width(m.__n2, C.int(40))
+	C.gtk_drawing_area_set_content_height(m.__n2, C.int(40))
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); m._canvasDraw0(cr) })
-	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n1), C.int((len(snglDrawFuncs) - 1)))
+	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.__n2), C.int((len(snglDrawFuncs) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
@@ -1097,6 +1204,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.delay
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
@@ -1182,6 +1292,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var frame by remember { mutableStateOf(0) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
     LaunchedEffect(true) {
         while (true) {
@@ -1190,9 +1301,18 @@ fun MainScreen() {
         }
     }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Canvas(modifier = Modifier.size(40.dp, 40.dp)) {
-            drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 255, alpha = 255), radius = frame.toDouble().toFloat(), center = Offset(20.0.toFloat(), 20.0.toFloat()))
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Canvas(modifier = Modifier.size(40.dp, 40.dp)) {
+                drawCircle(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 255, alpha = 255), radius = frame.toDouble().toFloat(), center = Offset(20.0.toFloat(), 20.0.toFloat()))
+            }
         }
     }
 }
@@ -1218,7 +1338,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { frame: 0, handle__inst0: 0 };
+  var state = { frame: 0, handle__inst0: 0, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -1377,12 +1497,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ca8bdde4d98a0aa2228c6bf9baabc58e
+pass sha256:6ffa37db9881a3800575d4f05276f563
 -- run/go/fyne --
-pass sha256:38033c7ae2c4175c564998ddc0425a47
+pass sha256:405ab19eeb8f4f9499f03f18b947ff34
 -- run/go/gtk4 --
-pass sha256:5921378f0e2a9b71c77c4754a89d5a78
+pass sha256:d1abd77d4fe8478e26c2033fa9b1d499
 -- run/kotlin/android --
-pass sha256:402bd9076adb5313d5dc01f4dce88a35
+pass sha256:0ba987f35115edd2b61ae742bf4280af
 -- run/none/html --
-pass sha256:72b487c5809c71f05f07521be01cdb58
+pass sha256:8ba795a3ecb0ad3d3eb248db4b1aea2a

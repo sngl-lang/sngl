@@ -1,38 +1,58 @@
-import marks "sngl:internal/marks"
-
-// A top-level window — the entry point of a UI. `href` is the route the
-// window is served at; `title` names it; `favicon` is its icon. `@error` is
-// the window's outermost error boundary.
+// A top-level window — a surface the user sees, which a program creates and
+// destroys with the tree. `title` names it; `favicon` is its icon. A window is
+// not a destination: the pages a user goes between are sngl:ui/nav's `page`s,
+// held by a `stack` the window shows, and the window around the stack is the
+// chrome every page shares -- `title="Docs - {pages.current.title}"`.
 //
-// `params` is what the route hands the body per request, as one struct value,
-// and `T` is inferred from it: a path with `{name}` placeholders in it is
-// served with a field of that name filled in from the URL. A window that takes
-// none writes nothing, and `T` falls back to the struct with no fields.
+// A window is an ordinary component and a member of `root`, which is what lets
+// it stand at the root of a file. It has no body: every platform implements it
+// in its own package, with a primitive of its own -- a toplevel on gtk4 and
+// fyne, the one screen bubbletea and android draw, a document or a `<dialog>`
+// on html -- so a target that renders one and does not is a build failure.
 //
-// The body that reads them is the population of `content`, written by name
-// the way any scoped slot's is — `component content(v) { … }` — and `v` is
-// the caller's word. A body written as bare children sees no parameters at
-// all: there is nowhere in a spread to write a name for them.
+// `@error` is the window's outermost error boundary, and it always catches: a
+// window whose call site handles no `@error` catches a raise from what it
+// renders and drops it. Each platform writes it as a `boundary` around the
+// content.
 //
-// That is why the path is a plain string here where it used to be an
-// interpolation: the names in it are the struct's fields rather than
-// identifiers in scope, so a path parameter and a node `#id` no longer share
-// one namespace with nothing declaring either. Write the path with a
-// backticked string, or escape the braces.
-//
-// Reading `name.href` / `name.title` off a `window #name` declaration
-// lets links survive a window's path change without copying the path
-// string. The #[builtin("window")] mark is how the checker recognises a
-// window declaration — by tag, not by matching the name "window".
-//
-// A program must declare at least one: the package body renders nothing on
-// its own, so a program with no window has nowhere to draw.
-#[marks.builtin("window")]
-component window<T = struct {}>(
+// `visible` is whether the window is on screen, on a target whose windows the
+// program can show and hide: gtk4 and fyne, and bubbletea and android, which
+// show one window and draw nothing while it is hidden. On html the first
+// window that is always there is the document, which cannot leave the screen
+// and is told of no close, so its `visible` and `@closed` do nothing; every
+// other window is a `<dialog>` in it, shown and hidden as a desktop window is.
+// It is a two-way prop: a window manager's close is the host reporting
+// `visible = false`, the way a checkbox reports a click, and `@closed` fires
+// after it. On bubbletea the close is ctrl+c, and on android the system back.
+// So `:visible=shown` writes `shown` back, and a window nothing binds keeps the
+// value in a cell of its own, which `open` and `close` below write. What the
+// tree says decides what exists: a window under `if details` whose `@closed`
+// writes `details = false` is destroyed, widgets and effects with it, and
+// hiding one without destroying it is `visible`. A close that leaves no window
+// on screen ends the program, unless it started with none.
+component window(
     title string,
-    href string,
     favicon string,
-    params T,
+    :visible bool = true,
     @error error,
-    content ...component(v T) node,
-) root {}
+    @closed(),
+    content ...component node,
+) root
+
+// Puts the window on screen: `visible = true`, which is no change to a window
+// already there, so it does not raise one. Reached through the window's `#id`
+// -- `window #details(…)`, then `details.open()` from a handler -- which is
+// what lets a program started with no window on screen, one whose `@run`
+// never called `run`, bring one up in answer to something. The write lands on
+// whatever `visible` is: the caller's var where `:visible=shown` bound one,
+// the window's own cell where nothing did -- on html's document too, which
+// stays on screen whatever its `visible` says.
+func window.open(w window) {
+    w.visible = true
+}
+
+// Takes the window off screen without ending the program: `visible = false`.
+// `open` brings it back as it was.
+func window.close(w window) {
+    w.visible = false
+}

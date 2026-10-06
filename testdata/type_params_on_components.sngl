@@ -79,7 +79,7 @@ component main node {
     bracket #plain()
     bracket #keyed(on=7)
 
-    grid(seed=2) {
+    grid #g(seed=2) {
         component cell(v) {
             text #cell(value=string(v + 1))
         }
@@ -108,8 +108,12 @@ func testAnUnpinnedParameterTakesItsDefault(t Test, c main) {
     t.assert(c.keyed.b.value == "bracket")
 }
 
+func testASlotIsCheckedAgainstTheSpecialization(t Test, c main) {
+    t.assert(c.g.cell.value == "3")
+}
+
 func testAGenericComponentHoldsStateOfItsOwnParameter(t Test, c stateful) {
-    t.assert(c.h.last == c.h.on)
+    t.assert(c.h.held.value == "7")
 }
 
 window {

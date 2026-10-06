@@ -1,0 +1,18 @@
+// gen.run and gen.build are what `sngl run` and `sngl build` do with a
+// target's output, read from the body of the target package's build-tree
+// node. Written in a program they would be checked and then run by nobody --
+// and a program choosing what `sngl build` runs is a repository choosing it.
+
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+component tools() {
+    gen.run(@run(dir, args) {}) // ERROR(check) "gen.run is written in the body of a target package's build-tree node"
+    ui.text(value="x")
+}
+
+gen.build(@build(dir, out) {}) // ERROR(check) "gen.build is written in the body of a target package's build-tree node"
+
+ui.window {
+    tools()
+}

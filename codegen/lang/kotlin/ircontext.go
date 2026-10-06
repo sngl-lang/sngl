@@ -106,7 +106,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	}
 	field := n.Field
 	if field == "length" {
-		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
 			field = "size"
 		}
 	}
@@ -301,8 +301,28 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := kc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{kc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's exception into a SnglRaise, so
+// the catch block around it takes it for one.
+func (kc *KtIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	return []string{
+		"try {",
+		"\t" + kc.EvalExpr(call),
+		"} catch (__err: SnglRaise) {",
+		"\tthrow __err",
+		"} catch (__err: Exception) {",
+		"\tthrow SnglRaise(ErrorEvent(__err.message ?: \"\", \"\"))",
+		"}",
+	}
 }
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
@@ -560,7 +580,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-			return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+			return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
@@ -851,6 +871,24 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 	return nil
 }
 
+// Catch renders a catch block as try/catch over SnglRaise, the exception a
+// raise throws, so a host exception is not taken for one.
+func (kc *KtIRContext) Catch(n *ir.If, body []string) []string {
+	h := n.Catch
+	lines := []string{"try {"}
+	for _, l := range body {
+		lines = append(lines, "\t"+l)
+	}
+	lines = append(lines, "} catch (__e: SnglRaise) {")
+	if h.Func != nil && len(h.Func.Params) > 0 {
+		lines = append(lines, "\tval "+h.Func.Params[0].Name+" = __e.event")
+	}
+	if h.Func != nil {
+		lines = append(lines, kc.handlerBody(h)...)
+	}
+	return append(lines, "}")
+}
+
 func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) []string {
 	paramName := "e"
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
@@ -1084,7 +1122,7 @@ func ktZeroFor(t *ir.Type) string {
 		// `null` is not a value of a non-nullable Kotlin enum, so a struct
 		// field left at its default did not compile.
 		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
-			return exportName(ed.Name) + "." + EnumEntry(ed.Members[0].Name)
+			return EnumName(ed) + "." + EnumEntry(ed.Members[0].Name)
 		}
 	}
 	return "null"
@@ -1099,6 +1137,35 @@ func ktZeroFor(t *ir.Type) string {
 // separately, so every `Op.none` in the output named an entry declared as
 // `NONE`.
 func EnumEntry(member string) string { return strings.ToUpper(member) }
+
+// EnumName is the Kotlin name of an enum declaration. A library enum is
+// prefixed because its SNGL names are the ones Compose uses for its own types
+// -- FontWeight, TextAlign, Alignment -- and the file imports those by name.
+func EnumName(decl ir.Symbol) string {
+	ed, ok := decl.(*ir.EnumDef)
+	if !ok {
+		return exportName(decl.SymName())
+	}
+	if ed.Pkg != "" {
+		return "Sngl" + exportName(ed.Name)
+	}
+	return exportName(ed.Name)
+}
+
+// EnumDecl declares ed as a Kotlin enum class. Each entry carries the member's
+// SNGL name as its string form, because the entry's own name is upper-cased
+// and a program printing a member prints it as declared on every target.
+func EnumDecl(ed *ir.EnumDef) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "enum class %s(private val sngl: String) {\n", EnumName(ed))
+	entries := make([]string, len(ed.Members))
+	for i, m := range ed.Members {
+		entries[i] = fmt.Sprintf("    %s(%q)", EnumEntry(m.Name), m.Name)
+	}
+	b.WriteString(strings.Join(entries, ",\n"))
+	b.WriteString(";\n\n    override fun toString(): String = sngl\n}\n")
+	return b.String()
+}
 
 func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
@@ -1257,7 +1324,7 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Any"
 	case ir.TypeEnum:
 		if t.Decl != nil {
-			return exportName(t.Decl.SymName())
+			return EnumName(t.Decl)
 		}
 		return "String"
 	case ir.TypeUnit:
@@ -1341,7 +1408,7 @@ func IRLiteralToKt(e ir.Expr) string {
 		// a constructor call whose parameter is an enum.
 		if n.Member != "" {
 			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-				return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+				return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 			}
 			return fmt.Sprintf("%q", n.Member)
 		}

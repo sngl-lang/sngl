@@ -19,14 +19,12 @@ import (
 // Membership is the return position; what a component hosts is its default
 // slot's type, which is how a member hosts a different family from its own.
 const treeStubSource = `
-import tree "sngl:tree"
+import build "sngl:build"
 import ui "sngl:ui"
 
-#[tree.kind]
-struct block {}
+component block build.family
 
-#[tree.kind]
-struct inline {}
+component inline build.family
 
 component document(children ...component block) ui.node {}
 

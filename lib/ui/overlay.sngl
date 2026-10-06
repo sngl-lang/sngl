@@ -45,7 +45,7 @@ component _example_drawer node {
         button(text="Open Drawer", @click { showDrawer = true })
         drawer(open=showDrawer, side="right") {
             vbox(style={gap=8, padding=16}) {
-                text(value="Drawer Content", style={fontWeight="bold"})
+                text(value="Drawer Content", style={fontWeight=bold})
                 button(text="Close", @click { showDrawer = false })
             }
         }

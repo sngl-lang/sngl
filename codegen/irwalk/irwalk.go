@@ -52,6 +52,9 @@ type Renderer interface {
 	// — Stmt blocks (walker controls body recursion, indent, close)
 	ForHead(n *ir.For, iterStr string) string
 	IfHead(n *ir.If, condStr string) string
+	// Catch renders a catch block (If.Catch set): body is the rendered Body,
+	// and the renderer renders the handler itself.
+	Catch(n *ir.If, body []string) []string
 	ElseHead() string
 	BlockEnd() string
 	Indent() string
@@ -210,6 +213,13 @@ func evalFor(r Renderer, n *ir.For) []string {
 }
 
 func evalIf(r Renderer, n *ir.If) []string {
+	if n.Catch != nil {
+		var body []string
+		for _, s := range n.Body {
+			body = append(body, EvalStmt(r, s)...)
+		}
+		return r.Catch(n, body)
+	}
 	cond := EvalExpr(r, n.Cond)
 	lines := []string{r.IfHead(n, cond)}
 	indent := r.Indent()

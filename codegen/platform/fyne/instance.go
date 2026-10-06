@@ -36,6 +36,8 @@ func emitComponentInstance(
 	canvasByNode map[*ir.NodeInst]*canvasMeta,
 	canvases []codegen.Canvas,
 	failSink func(error),
+	invokerSink func(fyneEventInvoker),
+	modelFieldSink func(name, goType string),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -58,8 +60,14 @@ func emitComponentInstance(
 		fields = append(fields, irWidgetField{name: name, goType: goType})
 	}
 
+	// A widget the program named is one a test drives, and a record is built
+	// and destroyed while the program runs, so the record hands its widget to
+	// the Model as it is built: the invoker reaches whichever instance built
+	// it last, which is the one on screen.
+	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar)
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar).
+		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
@@ -73,6 +81,31 @@ func emitComponentInstance(
 		}
 	}
 	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, instanceRootExpr(tr, cgc))
+	exposed := map[string]bool{}
+	for _, inv := range invokers {
+		widget := inv.IDLabel
+		if inv.Target != "" {
+			widget = inv.Target
+		}
+		goType := ""
+		for _, f := range fields {
+			if f.name == widget {
+				goType = f.goType
+				break
+			}
+		}
+		if goType == "" || invokerSink == nil {
+			continue
+		}
+		named := namedWidgetField(widget)
+		if !exposed[widget] {
+			exposed[widget] = true
+			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, widget)
+			modelFieldSink(named, goType)
+		}
+		inv.Target = named
+		invokerSink(inv)
+	}
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -175,6 +208,10 @@ func emitComponentInstance(
 		fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
 	}
 }
+
+// namedWidgetField is the Model field an instance's program-named widget is
+// handed to, for the test invoker that drives it.
+func namedWidgetField(widget string) string { return "__named_" + widget }
 
 // instanceMethodName is the name one of a component's funcs carries as a
 // method on its record. Two of them the lowering dispatches to by name from

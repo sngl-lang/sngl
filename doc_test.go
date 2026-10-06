@@ -110,12 +110,12 @@ func TestDocSNGLFormat(t *testing.T) {
 
 				switch block.Annotation {
 				case "component":
-					src += "component main node {\n" + block.Source + "\n}"
+					src += "component snippet node {\n" + block.Source + "\n}"
 				default:
 					src += block.Source
 				}
 
-				doc, err := parser.Parse(name, []byte(withStdSrc(src)))
+				doc, err := parser.Parse(name, []byte(src))
 				if err != nil {
 					return // parse errors caught by TestDocSNGLBlocks
 				}
@@ -129,7 +129,7 @@ func TestDocSNGLFormat(t *testing.T) {
 					snippet = testutil.UnwrapComponent(formatted, block.Prelude)
 				default:
 					if block.Prelude != "" {
-						preDoc, perr := parser.Parse("prelude", []byte(withStdSrc(block.Prelude)))
+						preDoc, perr := parser.Parse("prelude", []byte(block.Prelude))
 						if perr == nil {
 							fmtPre := parser.Format(preDoc)
 							formatted = strings.TrimPrefix(formatted, fmtPre)

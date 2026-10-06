@@ -87,6 +87,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 	"time"
@@ -133,6 +134,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
+	visible__inst1      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -142,8 +144,10 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_steps    int
 
-	__n0    *canvas.Image
-	__n0Ctx *snglcanvas.Context
+	__n0    *fynelayout.Toplevel
+	__n1    *canvas.Image
+	__n1Ctx *snglcanvas.Context
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -154,6 +158,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
+	m.visible__inst1 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -175,10 +180,10 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 
 func (m *Model) __effect0_mount() {
 	m.frame = 4
-	m.__n0Ctx = snglcanvas.New(40, 40)
-	m._canvasDraw0(m.__n0Ctx)
-	m.__n0.Image = m.__n0Ctx.Result()
-	m.__n0.Refresh()
+	m.__n1Ctx = snglcanvas.New(40, 40)
+	m._canvasDraw0(m.__n1Ctx)
+	m.__n1.Image = m.__n1Ctx.Result()
+	m.__n1.Refresh()
 }
 
 func (m *Model) __effect0_down() {
@@ -217,10 +222,10 @@ func (m *Model) __effect1_mount() {
 							return
 						}
 						m.frame = (m.frame + 1)
-						m.__n0Ctx = snglcanvas.New(40, 40)
-						m._canvasDraw0(m.__n0Ctx)
-						m.__n0.Image = m.__n0Ctx.Result()
-						m.__n0.Refresh()
+						m.__n1Ctx = snglcanvas.New(40, 40)
+						m._canvasDraw0(m.__n1Ctx)
+						m.__n1.Image = m.__n1Ctx.Result()
+						m.__n1.Refresh()
 					})
 				case <-stopped:
 					return
@@ -305,6 +310,14 @@ func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
 }
 
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
+}
+
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
@@ -352,25 +365,41 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0Ctx = snglcanvas.New(40, 40)
-	m._canvasDraw0(m.__n0Ctx)
-	m.__n0 = canvas.NewImageFromImage(m.__n0Ctx.Result())
-	m.__n0.FillMode = canvas.ImageFillOriginal
-	m.__n0.SetMinSize(fyne.NewSize(40, 40))
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetTitle("drawing")
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1Ctx = snglcanvas.New(40, 40)
+	m._canvasDraw0(m.__n1Ctx)
+	m.__n1 = canvas.NewImageFromImage(m.__n1Ctx.Result())
+	m.__n1.FillMode = canvas.ImageFillOriginal
+	m.__n1.SetMinSize(fyne.NewSize(40, 40))
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
 	m.__effects0_settle()
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	m.__snglTeardown()
 	_ = os.Stderr
 }
@@ -394,7 +423,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { frame: 0, handle__inst0: 0 };
+  var state = { frame: 0, handle__inst0: 0, visible__inst1: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -553,6 +582,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:036e33b9b4b0224f7fe862320960bb50
+pass sha256:93ff03b06e66a7d40d07e05bb60b5dd7
 -- run/none/html --
-pass sha256:c903d80b9603f9b4e96769747491efca
+pass sha256:41018febd677326df9092c549e10f55b

@@ -94,9 +94,6 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		scanStmts(comp.Body, visit)
 	}
 	scanStmts(pkg.Body, visit)
-	for _, w := range pkg.Windows {
-		scanStmts(w.Children, visit)
-	}
 	return found
 }
 

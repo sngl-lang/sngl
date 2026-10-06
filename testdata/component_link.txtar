@@ -45,12 +45,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -58,6 +61,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -69,13 +87,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -83,14 +109,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Example"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint("New tab"))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Example"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint("New tab"))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -114,40 +142,69 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *fyne.Container
-	__n1 *widget.Hyperlink
-	__n2 *widget.Hyperlink
+	visible__inst0 bool
+
+	__n0    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Hyperlink
+	__n3    *widget.Hyperlink
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewHBox()
-	m.__n1 = widget.NewHyperlink("", nil)
-	m.__n0.Add(m.__n1)
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst0)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n1 = container.NewHBox()
 	m.__n2 = widget.NewHyperlink("", nil)
-	m.__n0.Add(m.__n2)
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__n1.Add(m.__n2)
+	m.__n3 = widget.NewHyperlink("", nil)
+	m.__n1.Add(m.__n3)
+	m.__n0.Add(m.__n1)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -309,23 +366,41 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   *C.GtkBox
-	__n1   *C.GtkLinkButton
-	__n2   *C.GtkLinkButton
-	__root *C.GtkBox
+	visible__inst0 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkBox
+	__n2           *C.GtkLinkButton
+	__n3           *C.GtkLinkButton
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) __n1_clicked_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
 }
 
 func (m *Model) __n2_clicked_handler() {
+}
+
+func (m *Model) __n3_clicked_handler() {
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -333,23 +408,25 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n0)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n0)), C.int(6))
-	m.__n1 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(nil)))
-	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n1)), C.CString("https://example.com"))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n1)), C.CString("Example"))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n1)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.__n1_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n1), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
+	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
 	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(nil)))
 	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), C.CString("https://example.com"))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), C.CString("New tab"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), C.CString("Example"))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(nil)))
+	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), C.CString("https://example.com"))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), C.CString("New tab"))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -386,6 +463,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -397,9 +477,20 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "Example", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
-        Text(text = "New tab", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "Example", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+            Text(text = "New tab", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -427,17 +518,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9f270ae718fa30f36914188480eecdf0
+pass sha256:dcd4f7cdb9702baa7d9dcb569a9ce88d
 -- run/go/fyne --
-pass sha256:de2c72356cb850cba40a151818dc257c
+pass sha256:5a1695c0f44ed212ffb34e9b912cd674
 -- run/go/gtk4 --
-pass sha256:2eaf7998e6f7e0c6b2e2a8f87a49608b
+pass sha256:42480428dc337ee20c59c50ee81ca875
 -- run/kotlin/android --
-pass sha256:3ded672d5cd1567769a2babc4fa205ba
+pass sha256:a0c904dc3e94e8847ecb9f217e0e4a9b
 -- run/none/html --
-pass sha256:3dae505ff86f03d61e35b72c349cd4ec
+pass sha256:1d4d4f44900ce2598a5d99d8ee62e4b8

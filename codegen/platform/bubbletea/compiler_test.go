@@ -1,6 +1,7 @@
 package bubbletea
 
 import (
+	"errors"
 	goparser "go/parser"
 	"go/token"
 	"os"
@@ -53,6 +54,11 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 	}
 	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: p}, "bubbletea")
 	src, err := CompileIR(ctx, Config{})
+	// A second window is a program this platform refuses by design, and the
+	// fixture harness compiles every fixture in testdata for it.
+	if one := (*codegen.OneWindowError)(nil); errors.As(err, &one) {
+		t.Skipf("shows one window: %v", one)
+	}
 	if err != nil {
 		t.Fatalf("compile: %v", err)
 	}

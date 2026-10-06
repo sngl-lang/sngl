@@ -54,6 +54,7 @@ func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 import "go:pkgwin/srv"
 import "sngl:platform/html"
 
@@ -63,16 +64,20 @@ struct PageParams {
 
 var hits = 0
 
-window #page(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    component content(v) {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        if v.pkg != "" {
-            html.span(innerText="named")
-        } else {
-            html.span(innerText="unnamed")
-        }
-        for var row = srv.Rows(v.pkg) {
-            html.a(href="/r/" + row.name, innerText=row.name)
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #page(href=`/p/{pkg}`, title="t", params=PageParams{}) {
+            component content(v) {
+                html.button(innerText="go", @click { hits = srv.Bump(hits) })
+                if v.pkg != "" {
+                    html.span(innerText="named")
+                } else {
+                    html.span(innerText="unnamed")
+                }
+                for var row = srv.Rows(v.pkg) {
+                    html.a(href="/r/" + row.name, innerText=row.name)
+                }
+            }
         }
     }
 }

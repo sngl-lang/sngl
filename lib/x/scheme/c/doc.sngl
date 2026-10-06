@@ -1,0 +1,3 @@
+// Package c serves the `c:` import scheme: the library's own plugin, which a
+// program reaches by importing `c:…` and never by importing this package.
+// See the scheme's declaration for the forms an import takes.

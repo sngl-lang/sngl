@@ -1,0 +1,72 @@
+# An import that fetches over the network -- git:, http: -- contacts a host
+# the repository chose, so it is never done unasked. A grant names the host:
+# exactly, or `*.` for its subdomains and not itself. A package already in the
+# cache touches no network and needs nothing.
+env XDG_CACHE_HOME=$WORK/cache
+
+! sngl check git/app.sngl
+stderr 'git/app.sngl:2:1: import "git://example.invalid/p@v1#-": fetching from example.invalid needs --allow-net="example.invalid" \(or `sngl trust --allow-net="example.invalid"` to record it for this project, or with --everywhere for every project\)$'
+! exists cache/sngl/git
+
+! sngl check http/app.sngl
+stderr 'import "https://example.invalid/p.tar.gz#-": fetching from example.invalid needs --allow-net="example.invalid"'
+
+# A subdomain grant is not one for the domain itself.
+! sngl check --allow-net='*.example.invalid' git/app.sngl
+stderr 'fetching from example.invalid needs'
+
+# Granted, the fetch is attempted -- and fails, there being no such host.
+! sngl check --allow-net='*.invalid' git/app.sngl
+stderr 'git clone'
+! sngl check --allow-net=example.invalid http/app.sngl
+stderr 'http get "https://example.invalid/p.tar.gz"'
+
+# In the cache, the package is used with no network and no grant.
+mkdir cache/sngl/git/example.invalid/p/v1
+cp lib.sngl cache/sngl/git/example.invalid/p/v1/lib.sngl
+sngl check git/app.sngl
+
+# Recorded for a project, the grant is that project's; recorded everywhere,
+# it is every project's. Nothing is recorded by import path.
+rm cache/sngl/git
+cd git
+sngl trust --allow-net=example.invalid
+stdout '^trust.allow\(origin="dir:'$WORK'/git"\) \{ trust.net\(host="example.invalid"\) \}$'
+cd $WORK
+! sngl check git/app.sngl
+stderr 'git clone'
+! sngl check http/app.sngl
+stderr 'fetching from example.invalid needs'
+sngl trust --everywhere --allow-net=example.invalid
+stdout '^trust.everywhere \{ trust.net\(host="example.invalid"\) \}$'
+! sngl check http/app.sngl
+stderr 'http get'
+
+# --everywhere grants only network access: anything else names its code.
+! sngl trust --everywhere --allow-env=./pc=HOME
+stderr '--everywhere records only --allow-net'
+
+# SNGL_ALLOW carries a host, everywhere or for one origin.
+env XDG_CONFIG_HOME=$WORK/other
+env SNGL_ALLOW='net=dir:'$WORK'/http=example.invalid'
+! sngl check http/app.sngl
+stderr 'http get'
+! sngl check git/app.sngl
+stderr 'fetching from example.invalid needs'
+env SNGL_ALLOW='net=example.invalid'
+! sngl check git/app.sngl
+stderr 'git clone'
+
+-- git/app.sngl --
+import ui "sngl:ui"
+import p "git://example.invalid/p@v1#-"
+
+ui.window(title=p.title)
+-- http/app.sngl --
+import ui "sngl:ui"
+import p "https://example.invalid/p.tar.gz#-"
+
+ui.window(title=p.title)
+-- lib.sngl --
+// The title.
+const title = "from the cache"

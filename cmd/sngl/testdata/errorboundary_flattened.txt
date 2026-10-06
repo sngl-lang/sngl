@@ -1,0 +1,39 @@
+# fyne and gtk4 have no error-boundary emitter, and need none: by the time
+# passDeclarative flattens their views, every raise under a boundary is
+# resolved to its handler (Call.ResolvedHandler) and the handler has had its
+# updaters injected, so the boundary holds nothing and is spliced into what it
+# holds. Every window's content is under one -- each platform's override of
+# ui.window wraps it in the boundary its @error is -- which is what made that
+# general. They used to refuse a boundary a program wrote by name, before the
+# renderer met it.
+#
+# The raise is caught where the click runs: the handler is a catch block that
+# recovers the payload and runs the boundary's body.
+
+sngl generate --platform=fyne --lang=go --out=fy boundary.sngl
+grep 'recover\(\)' fy/model.go
+grep 'm.caught__inst0 = e.Message' fy/model.go
+! stderr 'panic'
+
+sngl generate --platform=gtk4 --lang=go --out=gt boundary.sngl
+grep 'recover\(\)' gt/model.go
+grep 'm.caught__inst0 = e.Message' gt/model.go
+
+sngl generate --platform=html --lang=none --out=ht boundary.sngl
+sngl generate --platform=bubbletea --lang=go --out=bt boundary.sngl
+sngl generate --platform=android --lang=kotlin --out=an boundary.sngl
+
+-- boundary.sngl --
+import . "sngl:ui"
+
+component main node {
+    var caught = ""
+    boundary(@error(e) { caught = e.message }) {
+        button #retry(text="Go", @click { error.raise("boom", "") })
+    }
+    text(value=caught)
+}
+
+window {
+    main
+}

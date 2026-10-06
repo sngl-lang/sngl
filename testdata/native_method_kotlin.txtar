@@ -71,6 +71,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import kotlin.math.hypot
 import androidx.compose.foundation.layout.safeDrawingPadding
 
@@ -84,12 +87,22 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var d__inst0 by remember { mutableStateOf(0.0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Button(onClick = {
-        d__inst0 = (kotlin.math.hypot(3.0, 4.0) + shift(x = 1.0, y = 2.0))
-    }, modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "ab".repeat(2), modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Button(onClick = {
+            d__inst0 = (kotlin.math.hypot(3.0, 4.0) + shift(x = 1.0, y = 2.0))
+        }, modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "ab".repeat(2), modifier = Modifier)
+        }
     }
 }
 -- run/kotlin/android --
-broken sha256:e4d05a57b7beb1dcb12dd1642ccd4b43
+broken sha256:6411670383508379a1ecd65cff4661f9

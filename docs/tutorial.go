@@ -22,11 +22,11 @@ type Lesson struct {
 	Code     string // seed loaded into the playground editor
 }
 
-// Tutorial parses docs/learn/tour.md and returns the lesson tree.
+// Tutorial parses docs/learn/_tour.md and returns the lesson tree.
 //
 //sngl:pure
 func Tutorial() []Section {
-	data, err := content.ReadFile("learn/tour.md")
+	data, err := content.ReadFile("learn/_tour.md")
 	if err != nil {
 		return nil
 	}

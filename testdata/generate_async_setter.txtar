@@ -42,7 +42,7 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>Go</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
@@ -53,7 +53,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { count__inst0: 0 };
+  var state = { count__inst0: 0, visible__inst1: true };
   async function $set_count__inst0(v) {
     state.count__inst0 = v;
     await fetchHello("updated");
@@ -62,17 +62,17 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     state.count__inst0 = state.count__inst0 + 1;
-    __n0.textContent = String(state.count__inst0);
+    __n1.textContent = String(state.count__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count__inst0);
+    __n1.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:16f3c05a5bbe8eb384f6c4c16e4ac9e1
+pass sha256:13cc9a3a31f982b415c2ebdde8b18d1e

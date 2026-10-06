@@ -52,7 +52,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   async function outer() {
     let f = async () => {
       await fetchHello("x");
@@ -67,4 +67,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2f325877d060dd1916df38217d088a25
+pass sha256:9ae93cad6809a566f08a8f1ad02b6e42

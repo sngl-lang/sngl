@@ -265,10 +265,10 @@ func summarize(pkg *ir.Package) string {
 	if pkg == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d windows=%d outputs=%d",
+	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d body=%d outputs=%d",
 		len(pkg.Imports), len(pkg.Structs), len(pkg.Enums), len(pkg.Units),
 		len(pkg.Consts), len(pkg.Vars), len(pkg.Funcs), len(pkg.Components),
-		len(pkg.Windows), len(pkg.Outputs))
+		len(pkg.Body), len(pkg.Outputs))
 }
 
 // validateIR walks pkg and asserts that the checker populated every field
@@ -337,11 +337,9 @@ func (v *irValidator) walkPackage(pkg *ir.Package) {
 		v.walkComponent(c)
 		v.pop()
 	}
-	for i, w := range pkg.Windows {
-		v.push(fmt.Sprintf("windows[%d]", i))
-		v.walkWindow(w)
-		v.pop()
-	}
+	v.push("body")
+	v.walkStmts(pkg.Body)
+	v.pop()
 }
 
 func (v *irValidator) walkStruct(s *ir.StructDef) {
@@ -451,20 +449,6 @@ func (v *irValidator) walkComponent(c *ir.Component) {
 	}
 	v.push("body")
 	v.walkStmts(c.Body)
-	v.pop()
-}
-
-func (v *irValidator) walkWindow(w *ir.Window) {
-	if w.ID == "" {
-		v.fail("window has no id")
-	}
-	for _, p := range w.Props {
-		if p.Value != nil {
-			v.walkExpr(p.Value)
-		}
-	}
-	v.push("body")
-	v.walkStmts(w.Children)
 	v.pop()
 }
 

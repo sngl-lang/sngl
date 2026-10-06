@@ -64,9 +64,9 @@ window {
 		"gtk4rt.LabelNew(",
 		// The slot-local label does not escape __renderSlot0 (it is created,
 		// appended, and tracked in m.__slot0 all within this scope), so the
-		// node-escape lower pass emits it as a function-local `__n0 := ...`
+		// node-escape lower pass emits it as a function-local `__n1 := ...`
 		// rather than a shared Model field. The slot slice keeps it alive.
-		"__n0 := gtk4rt.LabelNew(",
+		"__n1 := gtk4rt.LabelNew(",
 		"gtk4rt.LabelSetText(",
 		"gtk4rt.BoxAppend(",
 		"m.__slot0 = append(m.__slot0",

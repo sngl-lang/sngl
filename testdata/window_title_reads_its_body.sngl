@@ -1,0 +1,10 @@
+// A window's own props see the handles its body declares, with no count for
+// the window itself: whatever the body renders exists exactly when the window
+// does, so its title may read one. From outside the window the same handle is
+// still an option, since the window may not be open.
+
+import . "sngl:ui"
+
+window #main(title="App - {label.value}") {
+    text #label(value="Home")
+}

@@ -8,7 +8,7 @@ description: Authoritative references for the SNGL language, standard library, a
 
 The Reference section is the authoritative API surface for SNGL. Use it when you know what you're looking for and want exact details.
 
-- **[Components](/components/index.html)** — every built-in stdlib component with props, events, and live previews.
+- **[Components](/components/index.html)** — the components a first application reaches for, each linking to a page with its props, slots, events, and a live preview.
 - **[Standard Library](/docs/sngl/index.html)** — components, types, enums, functions, constants, and platform overrides shipped with SNGL.
 - **[Platforms](/platforms/index.html)** — supported output platforms, their capability matrix, and per-platform options.
 - **[Languages](/languages/index.html)** — supported target languages, their capability matrix, and per-language options.

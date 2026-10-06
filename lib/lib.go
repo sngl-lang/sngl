@@ -19,8 +19,10 @@
 //	test/       the receiver a test function's first parameter carries
 //	i18n/       the translation surface `$"..."` lowers to
 //	macro/      the marks a package writes to describe its own declarations
-//	x/gen/      what a target package says about what it generates
+//	x/gen/      what a target package says about what it generates, and the
+//	            host API a build-time function reads the machine through
 //	x/gen/cache/ what a generated file says it was generated from
+//	x/gen/trust/ what the user's config file grants the code a project brought
 //	internal/   the compiler's own primitives, declared so that what the
 //	            compiler knows about them is written where they are
 //

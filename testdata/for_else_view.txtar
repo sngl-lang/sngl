@@ -88,9 +88,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	rows__inst0 []string
-	n__inst0    int
-	__focusID   int
+	rows__inst0    []string
+	n__inst0       int
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -100,6 +101,7 @@ func New() Model {
 	m := Model{}
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -152,6 +154,21 @@ func SetN__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -165,13 +182,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRows__inst0(msg.value)
 	case setN__inst0Msg:
 		m = m.SetN__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -186,47 +211,49 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
-	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("load"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	if len(m.rows__inst0) == 0 {
-		content_1 = lipgloss.NewStyle().Render(fmt.Sprint("NOTHING YET"))
-	} else {
-		var content_1Items []string
-		for _, row := range m.rows__inst0 {
-			_ = row
-			var content_1Item string
-			content_1Item = lipgloss.NewStyle().Render(fmt.Sprint(row))
-			content_1Items = append(content_1Items, content_1Item)
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
 		}
-		content_1 = strings.Join(content_1Items, "\n")
-	}
-	if content_1 != "" {
-		contentChildren = append(contentChildren, content_1)
-	}
-	var content_2 string
-	if 0 >= m.n__inst0 {
-		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("NO TICKS"))
-	} else {
-		var content_2Items []string
-		for range m.n__inst0 {
-			var content_2Item string
-			content_2Item = lipgloss.NewStyle().Render(fmt.Sprint("tick"))
-			content_2Items = append(content_2Items, content_2Item)
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("load"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		if len(m.rows__inst0) == 0 {
+			content_1 = lipgloss.NewStyle().Render(fmt.Sprint("NOTHING YET"))
+		} else {
+			var content_1Items []string
+			for _, row := range m.rows__inst0 {
+				_ = row
+				var content_1Item string
+				content_1Item = lipgloss.NewStyle().Render(fmt.Sprint(row))
+				content_1Items = append(content_1Items, content_1Item)
+			}
+			content_1 = strings.Join(content_1Items, "\n")
 		}
-		content_2 = strings.Join(content_2Items, "\n")
+		if content_1 != "" {
+			contentChildren = append(contentChildren, content_1)
+		}
+		var content_2 string
+		if 0 >= m.n__inst0 {
+			content_2 = lipgloss.NewStyle().Render(fmt.Sprint("NO TICKS"))
+		} else {
+			var content_2Items []string
+			for range m.n__inst0 {
+				var content_2Item string
+				content_2Item = lipgloss.NewStyle().Render(fmt.Sprint("tick"))
+				content_2Items = append(content_2Items, content_2Item)
+			}
+			content_2 = strings.Join(content_2Items, "\n")
+		}
+		if content_2 != "" {
+			contentChildren = append(contentChildren, content_2)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	if content_2 != "" {
-		contentChildren = append(contentChildren, content_2)
-	}
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -256,15 +283,18 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	rows__inst0 []string
-	n__inst0    int
-	__slot0     []fyne.CanvasObject
-	__slot0_at  fyne.CanvasObject
-	__slot1     []fyne.CanvasObject
-	__slot1_at  fyne.CanvasObject
+	rows__inst0    []string
+	n__inst0       int
+	visible__inst1 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
 
-	__n4 *fyne.Container
-	__n5 *widget.Button
+	__n0    *fynelayout.Toplevel
+	__n5    *fyne.Container
+	__n6    *widget.Button
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -272,6 +302,7 @@ func New() *Model {
 	m := &Model{}
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__slot1 = nil
@@ -281,51 +312,59 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	if len(m.rows__inst0) == 0 {
-		__n0 := widget.NewLabel("")
-		__n0.SetText("NOTHING YET")
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
-		m.__slot0 = append(m.__slot0, __n0)
+		__n1 := widget.NewLabel("")
+		__n1.SetText("NOTHING YET")
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
+		m.__slot0 = append(m.__slot0, __n1)
 	} else {
 		for _, row := range m.rows__inst0 {
-			__n1 := widget.NewLabel("")
-			__n1.SetText(row)
-			fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)
-			m.__slot0 = append(m.__slot0, __n1)
+			__n2 := widget.NewLabel("")
+			__n2.SetText(row)
+			fynelayout.InsertBefore(__parent, m.__slot0_at, __n2)
+			m.__slot0 = append(m.__slot0, __n2)
 		}
 	}
 }
 
 func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	if 0 >= m.n__inst0 {
-		__n2 := widget.NewLabel("")
-		__n2.SetText("NO TICKS")
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
-		m.__slot1 = append(m.__slot1, __n2)
+		__n3 := widget.NewLabel("")
+		__n3.SetText("NO TICKS")
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
+		m.__slot1 = append(m.__slot1, __n3)
 	} else {
 		for range m.n__inst0 {
-			__n3 := widget.NewLabel("")
-			__n3.SetText("tick")
-			fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
-			m.__slot1 = append(m.__slot1, __n3)
+			__n4 := widget.NewLabel("")
+			__n4.SetText("tick")
+			fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
+			m.__slot1 = append(m.__slot1, __n4)
 		}
 	}
 }
 
-func (m *Model) __n5_click_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n0.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) __n6_click_handler() {
 	m.rows__inst0 = []string{"one", "two"}
-	m.__renderSlot0(m.__n4)
+	m.__renderSlot0(m.__n5)
 	m.n__inst0 = 2
-	m.__renderSlot1(m.__n4)
+	m.__renderSlot1(m.__n5)
 }
 
 func (m *Model) Rows__inst0() []string {
@@ -344,26 +383,41 @@ func (m *Model) SetN__inst0(v int) {
 	m.n__inst0 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
-	m.__n5 = widget.NewButton("", nil)
-	m.__n5.SetText("load")
-	m.__n5.OnTapped = m.__n5_click_handler
-	m.__n4.Add(m.__n5)
-	m.__renderSlot0(m.__n4)
-	m.__renderSlot1(m.__n4)
-	content := fyne.CanvasObject(m.__n4)
-	return content
+	if m.__built {
+		return m.__n0.Container
+	}
+	m.__built = true
+	m.__n0 = fynelayout.NewToplevel()
+	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.OnClosed = m.__n0_closed_handler
+	m.__n0.OnVisible = m.__n0_visible_handler
+	m.__n5 = container.NewVBox()
+	m.__n6 = widget.NewButton("", nil)
+	m.__n6.SetText("load")
+	m.__n6.OnTapped = m.__n6_click_handler
+	m.__n5.Add(m.__n6)
+	m.__renderSlot0(m.__n5)
+	m.__renderSlot1(m.__n5)
+	m.__n0.Add(m.__n5)
+	fynelayout.AppAttach(m.__n0)
+	return m.__n0.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -374,9 +428,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
@@ -389,15 +444,17 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	rows__inst0 []string
-	n__inst0    int
-	__slot0     []gtk4rt.Handle
-	__slot0_at  gtk4rt.Handle
-	__slot1     []gtk4rt.Handle
-	__slot1_at  gtk4rt.Handle
-	__n4        gtk4rt.Handle
-	__n5        gtk4rt.Handle
-	__root      gtk4rt.Handle
+	rows__inst0    []string
+	n__inst0       int
+	visible__inst1 bool
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__n5           gtk4rt.Handle
+	__n6           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -406,6 +463,7 @@ func New() *Model {
 	m := &Model{}
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
+	m.visible__inst1 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__slot1 = nil
@@ -420,16 +478,16 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if len(m.rows__inst0) == 0 {
-		__n0 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n0, "NOTHING YET")
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
-		m.__slot0 = append(m.__slot0, __n0)
+		__n1 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n1, "NOTHING YET")
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
+		m.__slot0 = append(m.__slot0, __n1)
 	} else {
 		for _, row := range m.rows__inst0 {
-			__n1 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n1, row)
-			gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
-			m.__slot0 = append(m.__slot0, __n1)
+			__n2 := gtk4rt.LabelNew("")
+			gtk4rt.LabelSetText(__n2, row)
+			gtk4rt.InsertBefore(parent, m.__slot0_at, __n2)
+			m.__slot0 = append(m.__slot0, __n2)
 		}
 	}
 }
@@ -441,25 +499,33 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if 0 >= m.n__inst0 {
-		__n2 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n2, "NO TICKS")
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
-		m.__slot1 = append(m.__slot1, __n2)
+		__n3 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n3, "NO TICKS")
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+		m.__slot1 = append(m.__slot1, __n3)
 	} else {
 		for range m.n__inst0 {
-			__n3 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n3, "tick")
-			gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
-			m.__slot1 = append(m.__slot1, __n3)
+			__n4 := gtk4rt.LabelNew("")
+			gtk4rt.LabelSetText(__n4, "tick")
+			gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
+			m.__slot1 = append(m.__slot1, __n4)
 		}
 	}
 }
 
-func (m *Model) __n5_clicked_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+}
+
+func (m *Model) __n6_clicked_handler() {
 	m.rows__inst0 = []string{"one", "two"}
-	m.__renderSlot0(m.__n4)
+	m.__renderSlot0(m.__n5)
 	m.n__inst0 = 2
-	m.__renderSlot1(m.__n4)
+	m.__renderSlot1(m.__n5)
 }
 
 func (m *Model) Rows__inst0() []string {
@@ -478,30 +544,41 @@ func (m *Model) SetN__inst0(v int) {
 	m.n__inst0 = v
 }
 
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
-		return
-	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.__n5 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n5, "load")
-	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
-	gtk4rt.BoxAppend(m.__n4, m.__n5)
-	m.__renderSlot0(m.__n4)
-	m.__renderSlot1(m.__n4)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__built {
+		return
+	}
+	m.__built = true
+	m.__n0 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
+	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n5, 6)
+	m.__n6 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n6, "load")
+	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
+	gtk4rt.BoxAppend(m.__n5, m.__n6)
+	m.__renderSlot0(m.__n5)
+	m.__renderSlot1(m.__n5)
+	gtk4rt.BoxAppend(m.__n0, m.__n5)
+	gtk4rt.AppAttach(m.__n0)
+}
+
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
@@ -528,6 +605,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -541,26 +621,36 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     val rows__inst0 = remember { mutableStateListOf<String>() }
     var n__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            (listOf("one", "two")).let { __v -> rows__inst0.clear(); rows__inst0.addAll(__v) }
-            n__inst0 = 2
-        }, modifier = Modifier) {
-            Text(text = "load", modifier = Modifier)
-        }
-        if ((rows__inst0.size == 0)) {
-            Text(text = "NOTHING YET", modifier = Modifier)
-        } else {
-            for (row in rows__inst0) {
-                Text(text = row, modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        if ((0 >= n__inst0)) {
-            Text(text = "NO TICKS", modifier = Modifier)
-        } else {
-            for (__x in 0 until n__inst0) {
-                Text(text = "tick", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                (listOf("one", "two")).let { __v -> rows__inst0.clear(); rows__inst0.addAll(__v) }
+                n__inst0 = 2
+            }, modifier = Modifier) {
+                Text(text = "load", modifier = Modifier)
+            }
+            if ((rows__inst0.size == 0)) {
+                Text(text = "NOTHING YET", modifier = Modifier)
+            } else {
+                for (row in rows__inst0) {
+                    Text(text = row, modifier = Modifier)
+                }
+            }
+            if ((0 >= n__inst0)) {
+                Text(text = "NO TICKS", modifier = Modifier)
+            } else {
+                for (__x in 0 until n__inst0) {
+                    Text(text = "tick", modifier = Modifier)
+                }
             }
         }
     }
@@ -578,7 +668,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
+<div id="__n6" data-sngl-id="__n6" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>load</span>
   </button>
@@ -589,7 +679,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { rows__inst0: [], n__inst0: 0 };
+  var state = { rows__inst0: [], n__inst0: 0, visible__inst1: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -616,9 +706,9 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __slot02 = [];
     let __slot12 = [];
-    let __n6 = document.createElement("span");
-    __n6.textContent = "tick";
-    __root.appendChild(__n6);
+    let __n7 = document.createElement("span");
+    __n7.textContent = "tick";
+    __root.appendChild(__n7);
     return {
       __root,
       __destroy() {
@@ -636,44 +726,44 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     if (state.rows__inst0.length === 0) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "NOTHING YET";
+      let __n2 = document.createElement("span");
+      __n2.textContent = "NOTHING YET";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n1) {
+      if (__place0_i_ref0 === __n2) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n1, __place0_i_ref0);
+        parent.insertBefore(__n2, __place0_i_ref0);
       }
-      __slot0.push(__n1);
+      __slot0.push(__n2);
     } else {
       for (const row of state.rows__inst0) {
-        let __n2 = null;
+        let __n3 = null;
         if (__inst1_live.length > __inst1_i) {
-          __n2 = __inst1_live[__inst1_i];
-          __n2.__set___p0(row);
+          __n3 = __inst1_live[__inst1_i];
+          __n3.__set___p0(row);
         } else {
           if (__inst1_live.length > __inst1_i) {
             __inst1_live[__inst1_i].__destroy();
           }
-          let __n2__new = __cf___child0({ __p0: row });
-          __n2 = __n2__new;
+          let __n3__new = __cf___child0({ __p0: row });
+          __n3 = __n3__new;
         }
-        __inst1_next.push(__n2);
+        __inst1_next.push(__n3);
         __inst1_i = __inst1_i + 1;
-        let __n2__el = __n2.__root;
+        let __n3__el = __n3.__root;
         let __place0_i_ref1 = null;
         if (__place0_i < __place0_prev.length) {
           __place0_i_ref1 = __place0_prev[__place0_i];
         }
-        if (__place0_i_ref1 === __n2__el) {
+        if (__place0_i_ref1 === __n3__el) {
           __place0_i = __place0_i + 1;
         } else {
-          parent.insertBefore(__n2__el, __place0_i_ref1);
+          parent.insertBefore(__n3__el, __place0_i_ref1);
         }
-        __slot0.push(__n2__el);
+        __slot0.push(__n3__el);
       }
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -696,43 +786,43 @@ body { font-family: system-ui, sans-serif; }
     let __inst3_next = [];
     let __inst3_i = 0;
     if (0 >= state.n__inst0) {
-      let __n3 = document.createElement("span");
-      __n3.textContent = "NO TICKS";
+      let __n4 = document.createElement("span");
+      __n4.textContent = "NO TICKS";
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === __n3) {
+      if (__place2_i_ref0 === __n4) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n3, __place2_i_ref0);
+        parent.insertBefore(__n4, __place2_i_ref0);
       }
-      __slot1.push(__n3);
+      __slot1.push(__n4);
     } else {
       for (let __x = 0, __end = state.n__inst0; __x < __end; __x++) {
-        let __n4 = null;
+        let __n5 = null;
         if (__inst3_live.length > __inst3_i) {
-          __n4 = __inst3_live[__inst3_i];
+          __n5 = __inst3_live[__inst3_i];
         } else {
           if (__inst3_live.length > __inst3_i) {
             __inst3_live[__inst3_i].__destroy();
           }
-          let __n4__new = __cf___child1({});
-          __n4 = __n4__new;
+          let __n5__new = __cf___child1({});
+          __n5 = __n5__new;
         }
-        __inst3_next.push(__n4);
+        __inst3_next.push(__n5);
         __inst3_i = __inst3_i + 1;
-        let __n4__el = __n4.__root;
+        let __n5__el = __n5.__root;
         let __place2_i_ref1 = null;
         if (__place2_i < __place2_prev.length) {
           __place2_i_ref1 = __place2_prev[__place2_i];
         }
-        if (__place2_i_ref1 === __n4__el) {
+        if (__place2_i_ref1 === __n5__el) {
           __place2_i = __place2_i + 1;
         } else {
-          parent.insertBefore(__n4__el, __place2_i_ref1);
+          parent.insertBefore(__n5__el, __place2_i_ref1);
         }
-        __slot1.push(__n4__el);
+        __slot1.push(__n5__el);
       }
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -763,12 +853,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5c1a0fef9fd7662ceb4faeda0ff5b2b3
+pass sha256:04a81b52a6c51a24527f9bdfff6ffc5a
 -- run/go/fyne --
-pass sha256:d5aec909dcbbf4da93c68d2d913fe88c
+pass sha256:56bf2f8826c7f3e80710e6847a04d2a8
 -- run/go/gtk4 --
-pass sha256:1900836ae3e15e09f89bd5a11310cf8b
+pass sha256:c9c45b985f7e49fb8b353e115efd6e7e
 -- run/kotlin/android --
-pass sha256:40e422d9199fd5d7da2ca5b2e6a7a355
+pass sha256:839d54c8796f8e5db330e7eb40e01f25
 -- run/none/html --
-pass sha256:2b102421337c0fbe768b31b6ca9cbcaa
+pass sha256:93c6edaae81572f1acdde181eedf1014

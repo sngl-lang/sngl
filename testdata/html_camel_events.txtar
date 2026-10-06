@@ -44,7 +44,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div id="$0" style="overflow:auto">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
 <button id="$1">
@@ -54,31 +54,31 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0 };
+  var state = { n__inst0: 0, visible__inst1: true };
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("scrollend", function() {
     state.n__inst0 = state.n__inst0 + 1;
-    __n0.textContent = String(state.n__inst0);
+    __n1.textContent = String(state.n__inst0);
   });
   $1.addEventListener("click", function() {
     state.n__inst0 = state.n__inst0 + 1;
-    __n0.textContent = String(state.n__inst0);
+    __n1.textContent = String(state.n__inst0);
   });
   $1.addEventListener("contextmenu", function() {
     state.n__inst0 = 0;
-    __n0.textContent = String(state.n__inst0);
+    __n1.textContent = String(state.n__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.n__inst0);
+    __n1.textContent = String(state.n__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:468f141b1d091a5a6a571805d6afd635
+pass sha256:1ea436a0aa1c255401691e0fb105deac

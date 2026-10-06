@@ -252,6 +252,15 @@ func (m *Model) tag__inst0(x int) string {
 	return (("<" + fmt.Sprint(x)) + ">")
 }
 
+func (m *Model) run_click_handler() {
+	__list0 := []string{}
+	for _, __item0 := range []int{4, 5} {
+		__list0 = append(__list0, m.tag__inst0(__item0))
+	}
+	m.got__inst0 = strings.Join(__list0, ",")
+	m.__n0.SetText(m.got__inst0)
+}
+
 // runClick invokes the OnTapped callback on the #run widget; for tests.
 func (m *Model) runClick() {
 	if m.run.OnTapped != nil {
@@ -279,14 +288,7 @@ func (m *Model) SetGot__inst0(v string) {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.run = widget.NewButton("", nil)
 	m.run.SetText("run")
-	m.run.OnTapped = func() {
-		__list0 := []string{}
-		for _, __item0 := range []int{4, 5} {
-			__list0 = append(__list0, m.tag__inst0(__item0))
-		}
-		m.got__inst0 = strings.Join(__list0, ",")
-		m.__n0.SetText(m.got__inst0)
-	}
+	m.run.OnTapped = m.run_click_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.got__inst0)
 	var parts []fyne.CanvasObject
@@ -475,7 +477,7 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:846e44a4337a394a2a7379266cdb4393
 -- run/go/fyne --
-pass sha256:bf57d9a17d3f9a742e5183ae73633b6d
+pass sha256:c626544d0949868116ee1b956f1e1a7f
 -- run/kotlin/android --
 pass sha256:c4fb6f38a4f2c91e2869704c0563c9ad
 -- run/none/html --

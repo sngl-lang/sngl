@@ -1,5 +1,7 @@
 package parser
 
+import "slices"
+
 // TokenType identifies a lexical token.
 // The underlying byte value is the sentinel used in the egg parser's token stream.
 // Byte 0x20 (space) is reserved as the stream separator and must not be a token value.
@@ -134,12 +136,11 @@ const (
 )
 
 var keywords = map[string]TokenType{
-	"import": KW_IMPORT,
-	"struct": KW_STRUCT,
-	"enum":   KW_ENUM,
-	"const":  KW_CONST,
-	"var":    KW_VAR,
-	// style is now a pre-declared identifier, not a keyword
+	"import":    KW_IMPORT,
+	"struct":    KW_STRUCT,
+	"enum":      KW_ENUM,
+	"const":     KW_CONST,
+	"var":       KW_VAR,
 	"component": KW_COMPONENT,
 	"if":        KW_IF,
 	"for":       KW_FOR,
@@ -149,7 +150,16 @@ var keywords = map[string]TokenType{
 	"break":     KW_BREAK,
 	"return":    KW_RETURN,
 	"continue":  KW_CONTINUE,
-	// output, timer, window, true, false, null are pre-declared identifiers, not keywords
+}
+
+// Keywords returns the reserved words, sorted.
+func Keywords() []string {
+	out := make([]string, 0, len(keywords))
+	for k := range keywords {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // LookupIdent returns the keyword TokenType for s, or IDENT if not a keyword.

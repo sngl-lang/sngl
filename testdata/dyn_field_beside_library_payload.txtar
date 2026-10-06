@@ -64,9 +64,11 @@ type ErrorEvent struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	typed     string
-	tree      Item
-	__focusID int
+	typed          string
+	tree           Item
+	value__inst0   string
+	visible__inst1 bool
+	__focusID      int
 
 	widget0 textinput.Model
 
@@ -78,9 +80,11 @@ func New() Model {
 	m := Model{}
 	m.typed = ""
 	m.tree = Item{Value: 3, Next: Item{Value: 4, Next: nil}}
+	m.value__inst0 = m.typed
+	m.visible__inst1 = true
 	m.__focusID = 0
 	m.widget0 = textinput.New()
-	m.widget0.SetValue(m.typed)
+	m.widget0.SetValue(m.value__inst0)
 	m.widget0.Focus()
 	m.resizeWidgets()
 	return m
@@ -116,7 +120,6 @@ func (m Model) Typed() string {
 
 func (m Model) SetTyped(v string) Model {
 	m.typed = v
-	m.widget0.SetValue(m.typed)
 	return m
 }
 
@@ -141,6 +144,37 @@ func SetTreeCmd(v Item) tea.Cmd {
 	return func() tea.Msg { return setTreeMsg{value: v} }
 }
 
+func (m Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m Model) SetValue__inst0(v string) Model {
+	m.value__inst0 = v
+	m.widget0.SetValue(m.value__inst0)
+	return m
+}
+
+type setValue__inst0Msg struct{ value string }
+
+func SetValue__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setValue__inst0Msg{value: v} }
+}
+
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -154,6 +188,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTyped(msg.value)
 	case setTreeMsg:
 		m = m.SetTree(msg.value)
+	case setValue__inst0Msg:
+		m = m.SetValue__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -161,7 +199,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
@@ -182,7 +226,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
-		m.typed = m.widget0.Value()
+		m.value__inst0 = m.widget0.Value()
 		if __v := m.widget0.Value(); __v != __prev {
 			m.__widget0_input(__v)
 		}
@@ -191,20 +235,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) __widget0_input(__v string) {
-	e := struct{ Value string }{Value: __v}
-	_ = e
-	m.typed = e.Value
+	__input0 := struct{ Value string }{Value: __v}
+	_ = __input0
+	m.typed = __input0.Value
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = m.widget0.View()
-	parts = append(parts, part0)
-	var part1 string
-	part1 = m.renderShow(m.tree, 0)
-	parts = append(parts, part1)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = m.widget0.View()
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = m.renderShow(m.tree, 0)
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -264,12 +311,16 @@ type Item struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	typed string
-	tree  Item
+	typed          string
+	tree           Item
+	value__inst0   string
+	visible__inst1 bool
 
-	__n1     *widget.Entry
-	__n2     *ShowInstance
-	__n2__el fyne.CanvasObject
+	__n1     *fynelayout.Toplevel
+	__n2     *widget.Entry
+	__n3     *ShowInstance
+	__n3__el fyne.CanvasObject
+	__built  bool
 }
 
 // New creates a Model with default values.
@@ -277,15 +328,28 @@ func New() *Model {
 	m := &Model{}
 	m.typed = ""
 	m.tree = Item{Value: 3, Next: Item{Value: 4, Next: nil}}
+	m.value__inst0 = m.typed
+	m.visible__inst1 = true
 	return m
 }
 
-func (m *Model) __n1_input_handler(s string) {
-	m.typed = s
-	m.__n1.SetText(m.typed)
+func (m *Model) __n1_closed_handler() {
 }
 
-func (m *Model) __n1_change_handler(s string) {
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+	m.__n1.SetVisible(m.visible__inst1)
+}
+
+func (m *Model) __n2_input_handler(s string) {
+	m.value__inst0 = s
+	m.__n2.SetText(m.value__inst0)
+	m.typed = s
+}
+
+func (m *Model) __n2_change_handler(s string) {
+	m.value__inst0 = s
+	m.__n2.SetText(m.value__inst0)
 }
 
 func (m *Model) Typed() string {
@@ -304,19 +368,44 @@ func (m *Model) SetTree(v Item) {
 	m.tree = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Value__inst0() string {
+	return m.value__inst0
+}
+
+func (m *Model) SetValue__inst0(v string) {
+	m.value__inst0 = v
+}
+
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n1 = widget.NewEntry()
-	m.__n1.SetText(m.typed)
-	m.__n1.SetPlaceHolder("")
-	m.__n1.OnChanged = m.__n1_input_handler
-	m.__n1.OnSubmitted = m.__n1_change_handler
-	m.__n2 = newShowInstance(m, m.tree, 0)
-	m.__n2__el = m.__n2.Root
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n1)
-	parts = append(parts, m.__n2__el)
-	return container.NewVBox(parts...)
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetTitle("t")
+	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n2 = widget.NewEntry()
+	m.__n2.SetText(m.value__inst0)
+	m.__n2.SetPlaceHolder("")
+	m.__n2.OnChanged = m.__n2_input_handler
+	m.__n2.OnSubmitted = m.__n2_change_handler
+	m.__n1.Add(m.__n2)
+	m.__n3 = newShowInstance(m, m.tree, 0)
+	m.__n3__el = m.__n3.Root
+	m.__n1.Add(m.__n3__el)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
 
 // ShowInstance is one live instance of the show component.
@@ -360,7 +449,7 @@ func (c *ShowInstance) Set__depth(__v int) {
 
 func (c *ShowInstance) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range c.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	c.__slot0 = nil
 	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
@@ -370,23 +459,23 @@ func (c *ShowInstance) __renderSlot0(__parent *fyne.Container) {
 		if c.__prop___depth >= 512 {
 			panic(ErrorEvent{Message: "show: recursion exceeded 512 nested instances", Kind: "recursion"})
 		} else {
-			var __n3 *ShowInstance
+			var __n4 *ShowInstance
 			if len(c.__inst0_live) > __inst0_i {
-				__n3 = c.__inst0_live[__inst0_i]
-				__n3.SetNode((c.__prop_node).(Item).Next)
-				__n3.Set__depth((c.__prop___depth + 1))
+				__n4 = c.__inst0_live[__inst0_i]
+				__n4.SetNode((c.__prop_node).(Item).Next)
+				__n4.Set__depth((c.__prop___depth + 1))
 			} else {
 				if len(c.__inst0_live) > __inst0_i {
 					c.__inst0_live[__inst0_i].Destroy()
 				}
-				__n3__new := newShowInstance(c.__model, (c.__prop_node).(Item).Next, (c.__prop___depth + 1))
-				__n3 = __n3__new
+				__n4__new := newShowInstance(c.__model, (c.__prop_node).(Item).Next, (c.__prop___depth + 1))
+				__n4 = __n4__new
 			}
-			__inst0_next = append(__inst0_next, __n3)
+			__inst0_next = append(__inst0_next, __n4)
 			__inst0_i = (__inst0_i + 1)
-			__n3__el := __n3.Root
-			fynelayout.InsertBefore(__parent, c.__slot0_at, __n3__el)
-			c.__slot0 = append(c.__slot0, __n3__el)
+			__n4__el := __n4.Root
+			fynelayout.InsertBefore(__parent, c.__slot0_at, __n4__el)
+			c.__slot0 = append(c.__slot0, __n4__el)
 		}
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -408,14 +497,12 @@ func (c *ShowInstance) Destroy() {
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:7b4a9fe90d6e1138835f0555d4f019e9
+pass sha256:f0afe416daf76041c02cebde6688d708
 -- run/go/fyne --
-pass sha256:4189a309ea688a9312f6e84608359d8f
+pass sha256:5235e278a4de4d914b4a77d18c278003

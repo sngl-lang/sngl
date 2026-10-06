@@ -30,7 +30,7 @@ component art(rad float) node {
     }
 }
 
-window(title="art", href="/index.html") { art(rad=3.0) }
+window(title="art") { art(rad=3.0) }
 `
 	buildGeneratedFiles(t, "gtk4-draw-", generateGTK4FilesBuilt(t, src))
 }

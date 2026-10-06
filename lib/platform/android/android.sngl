@@ -1,0 +1,269 @@
+import ui "sngl:ui"
+import time "sngl:time"
+import . "sngl:macro"
+import . "sngl:internal/marks"
+import tree "sngl:tree"
+import build "sngl:build"
+import shapes "sngl:ui/draw"
+import kt "sngl:language/kotlin"
+import gen "sngl:x/gen"
+
+// The `android` node of a build directive:
+// `output { kotlin { android(main = true) } }`.
+// Compose brackets a keyed lifetime itself: DisposableEffect is the same
+// construct an `effect` declares, so the node arrives intact rather than as the
+// calls passEffect would build. No reactiveCanvas -- the draw lambda reads
+// Compose state directly, so a recomposition already redraws. `navigation`
+// because sngl:ui/nav is a NavHost here (nav.go): each page a destination with
+// a typed route, the back stack Compose's.
+#[gen.can(effects, instanceState, navigation)]
+#[gen.cannot(inlineComponents, structSpread)]
+#[gen.wants(structComponents, stdlibContextParam, canvas)]
+#[gen.name("android")]
+#[gen.native("android")]
+component platform(
+    // Kotlin package / Android application ID.
+    const package string,
+    // Display name used in AndroidManifest.xml.
+    const appName string,
+    // Path to a launcher icon asset.
+    const icon string,
+    // Emit a full Gradle project or just Compose sources.
+    const main bool,
+    // Include Gradle wrapper + build scripts (default: true; set "false" to skip).
+    const gradle bool,
+    // Theme accent color (hex).
+    const color string,
+    // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
+    const projectDir string,
+    // Which Android runtime to test against under `sngl test`.
+    //   "robolectric": JVM simulation, fast, no emulator (default).
+    //   "device":      APK on a real emulator/device via adb.
+    const testRunner string,
+    // Toolchain combo — a known-good set of Gradle/AGP/Kotlin/Compose/SDK
+    // versions (see internal/androidtc). "stable" (default) or "next".
+    const toolchain string,
+    // Override compileSdk / targetSdk (0 = combo default).
+    const sdk int,
+    // Override minSdk (0 = default 26).
+    const minSdk int,
+    // Override the Gradle distribution version (unset = combo default).
+    const gradleVersion string,
+) build.platform {
+    gen.run(@run(dir, args) {
+        install(dir)
+    })
+    gen.build(@build(dir, out) {
+        buildApk(dir, out)
+    })
+}
+
+// Builds the project in dir into a debug APK at out. The options are the
+// node's, as the build had them.
+#[intrinsic("android.buildApk", build)]
+func buildApk(dir string, out string)
+
+// Builds the project in dir, makes sure a device is attached -- starting an
+// emulator where none is -- installs the APK, launches it and follows its log
+// until it exits.
+#[intrinsic("android.install", build)]
+func install(dir string)
+
+// --- The intrinsics ---
+//
+// A prop's name is the Compose argument it is emitted as, in declaration
+// order. Three names are the emitter's own: `modifier` takes a Style and
+// becomes the `Modifier` chain built from it, `chain` appends further Modifier
+// calls verbatim after those, and `args` is arguments spelled in Kotlin, for a
+// value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
+// has no way to write.
+//
+// A func-typed prop is a Compose lambda argument, and the override supplies
+// the lambda: its body is emitted where the argument goes, so what the callback
+// does is ordinary code in this file rather than a case in the codegen. A
+// parameter typed as an event payload is the SNGL event, built from the value
+// Compose passes; one typed as that value is the value. A callback Compose
+// passes nothing to has neither, so the override names the value itself and
+// builds the event from the value it does have — `change({value = opt})`
+// in radio below. An event is handed its payload, never a value to build one
+// from: a shorthand for a single-field payload would stop checking the moment
+// that payload gained a second field.
+//
+// A **slot** is the other kind of lambda Compose takes: content rather than a
+// callback. A named slot a call site populated is emitted as that argument,
+// and one whose body renders nothing is left out — an absent argument and one
+// given empty content are two different widgets.
+//
+// The id is `android:` plus the composable's name — namespaced by the
+// platform whose codegen answers to it, so a platform primitive can never
+// collide with a stdlib intrinsic or with another platform's. It names no
+// Kotlin package: the platform codegen emits the call, not the language
+// translator.
+
+// The screen: what a `ui.window` is on android, which shows one. It is not
+// a composable: MainScreen draws its content, and a program declares one
+// window here, a second being refused where it is written.
+//
+// A hidden screen draws nothing. The system back at the root is the window's
+// close, the counterpart of a window manager's: `onBack` runs -- the override
+// reports `visible = false` before the window's own `@closed` -- and the
+// activity finishes when no screen is drawn after it.
+#[intrinsic("android:Screen")]
+component Screen(
+    visible bool = true,
+    onBack func(),
+    children ...component ui.node,
+) root
+
+#[gen.renders(identity)]
+#[intrinsic("android:Column")]
+component Column(
+    modifier ui.Style,
+    chain list<string>,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Box")]
+component Box(
+    modifier ui.Style,
+    chain list<string>,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Row")]
+component Row(
+    modifier ui.Style,
+    chain list<string>,
+    args list<string>,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Spacer")]
+component Spacer(
+    modifier ui.Style,
+    chain list<string>,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Text")]
+component Text(
+    text string,
+    modifier ui.Style,
+    // Typography, as Compose's own `style` argument: a TextStyle built from
+    // the Style's font and colour fields.
+    style ui.Style,
+    args list<string>,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:HorizontalDivider")]
+component HorizontalDivider(
+    modifier ui.Style,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:CircularProgressIndicator")]
+component CircularProgressIndicator(
+    modifier ui.Style,
+) ui.node
+
+// Compose splits determinate from indeterminate by whether the `progress`
+// argument is there at all, so the override writes the two calls rather than
+// choosing a number for "unknown". It is a `() -> Float`, which is why the
+// prop is a func returning `float32`: `float` is a Kotlin Double, and the
+// declaration is what says otherwise.
+#[gen.renders(identity)]
+#[intrinsic("android:LinearProgressIndicator")]
+component LinearProgressIndicator(
+    progress func() float32,
+    modifier ui.Style,
+) ui.node
+
+// `colors` is the same Style the modifier gets. A Button paints its own
+// surface, so a background in the modifier lands behind the pill rather than
+// on it -- the colour has to go through the widget's own colour set.
+#[gen.renders(identity)]
+#[intrinsic("android:Button")]
+component Button(
+    onClick func(),
+    modifier ui.Style,
+    colors ui.Style,
+    shape ui.Style,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Badge")]
+component Badge(
+    modifier ui.Style,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Card")]
+component Card(
+    modifier ui.Style,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:TabRow")]
+component TabRow(
+    selectedTabIndex int,
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Checkbox")]
+component Checkbox(
+    checked bool,
+    onCheckedChange func(bool),
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Switch")]
+component Switch(
+    checked bool,
+    onCheckedChange func(bool),
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:RadioButton")]
+component RadioButton(
+    selected bool,
+    onClick func(),
+) ui.node
+
+// `label` is the floating caption, and it is a slot rather than a prop
+// because Compose takes content there, not text. An override that leaves it
+// empty gets no `label` argument at all, which is not the same widget as one
+// labelled with nothing.
+#[gen.renders(identity)]
+#[intrinsic("android:OutlinedTextField")]
+component OutlinedTextField(
+    value string,
+    minLines int,
+    readOnly bool,
+    modifier ui.Style,
+    // Compose passes the new text; the SNGL event a handler reads is built
+    // from it at the boundary, which is what declaring the payload says.
+    onValueChange func(e ui.InputEvent),
+    label component ui.node,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Dialog")]
+component Dialog(
+    onDismissRequest func(),
+    children ...component,
+) ui.node
+
+#[gen.renders(identity)]
+#[intrinsic("android:Surface")]
+component Surface(
+    args list<string>,
+    children ...component,
+) ui.node

@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -52,6 +53,10 @@ type htmlTranslator struct {
 	// out as a bare element nothing ever drew into.
 	canvasByID   map[string]*canvasutil.Meta
 	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
+	// pageCanvas is a canvas the page rendered as markup, which canvasByNode
+	// does not hold: a redraw nested where translateBlockJC cannot lift it out
+	// -- inside a catch block, a window's @error -- finds it here.
+	pageCanvas func(*ir.NodeInst) *canvasutil.Meta
 	// canvasDraws are the canvases this scope created, in order. The draw call
 	// cannot be emitted where the element is: it reads the box the element was
 	// laid out in, and the props that size it are assigned after OnCreateNode.
@@ -61,13 +66,17 @@ type htmlTranslator struct {
 	// element built at run time: the page walk sees only the page's markup.
 	classProps map[string][]ir.Arg
 	addStyle   func(string)
+	// windows are the names a lowering creates a Window under, each a
+	// `<dialog>` built by _snglDialog (htmlGen.windowIDs).
+	windows map[string]bool
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
-		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
+		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode, pageCanvas: g.pageCanvas,
 		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
+		windows: g.windowIDs(),
 	}
 }
 
@@ -148,6 +157,16 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.canvasDraws = append(t.canvasDraws, m)
 	}
 
+	// A Window built at run time is a `<dialog>` with its chrome: the title
+	// and a close button, which _snglDialog makes.
+	if tag == windowElement {
+		t.jc.Ctx.Helpers[dialogHelper] = true
+		return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: &ir.Call{
+			Type: ir.TypDyn,
+			Func: &ir.Func{Name: dialogHelper},
+		}}}
+	}
+
 	// const <id> = document.createElement("<tag>")
 	createCall := &ir.Call{
 		Type:     ir.TypDyn,
@@ -159,11 +178,32 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.creates = map[string]*ir.Call{}
 	}
 	t.creates[id] = createCall
-	return []ir.Stmt{&ir.LocalVar{
+	out := []ir.Stmt{&ir.LocalVar{
 		Name: id,
 		Type: ir.TypDyn,
 		Init: createCall,
 	}}
+	// An element a program named, built at run time -- by a factory or a
+	// slot renderer -- is marked the way the page's markup marks one, so a
+	// test's invoker can find it when it is called (emitEventInvokers).
+	if isProgramID(id) {
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: id},
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Value: "data-sngl-id"}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: id}},
+			},
+		}})
+	}
+	return out
+}
+
+// isProgramID reports whether an element's name is a `#id` the program wrote
+// rather than one the lowering or the page allocated.
+func isProgramID(id string) bool {
+	return id != "" && !strings.HasPrefix(id, "__") && !strings.HasPrefix(id, "$")
 }
 
 // OnCreateComponent preserves the LocalVar as-is: on the WalkLowered (JS) path
@@ -259,6 +299,11 @@ func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	if id, ok := node.(*ir.Ident); ok {
+		if t.windows[id.Name] {
+			return attachWindowHandler(id, event, handler)
+		}
+	}
 	domEvent := domEventName(t.declOf(node), event)
 	if domEvent == "" {
 		return nil
@@ -364,6 +409,13 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 		return out
 	}
+	if id, ok := node.(*ir.Ident); ok {
+		if t.windows[id.Name] || isWindowPrimitive(t.idToNode[id.Name]) {
+			if stmts, ok := windowPropWrite(node, prop, value); ok {
+				return stmts
+			}
+		}
+	}
 	if field, ok := domPropForProp(t.declOf(node), prop); ok {
 		// node.<field> = value
 		return []ir.Stmt{&ir.Assign{
@@ -412,6 +464,11 @@ func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		if m := t.canvasByNode[rs.Canvas]; m != nil {
 			return []ir.Stmt{canvasDrawStmt(m)}
 		}
+		if t.pageCanvas != nil {
+			if m := t.pageCanvas(rs.Canvas); m != nil {
+				return []ir.Stmt{canvasDrawStmt(m)}
+			}
+		}
 	}
 	return []ir.Stmt{stmt}
 }
@@ -427,4 +484,92 @@ func (t *htmlTranslator) registerClassRules(node ir.Expr, prop string, value ir.
 	for _, rule := range classRules(&ir.NodeInst{Props: t.classProps[id.Name]}) {
 		t.addStyle(rule)
 	}
+}
+
+// windowElement is what a lowering names html's Window when it creates one:
+// the primitive's own name.
+const windowElement = "Window"
+
+// dialogHelper names the page's function that builds a Window's `<dialog>`.
+const dialogHelper = "_snglDialog"
+
+// dialogHelperJS builds what renderDialog writes as markup: the dialog, and a
+// header holding the title and a close button. The close is a window
+// manager's: the dialog reports itself hidden (__onVisible) and then runs
+// `@closed` (__onClosed), in that order whichever was attached first.
+const dialogHelperJS = `function _snglDialog() {
+  const d = document.createElement("dialog");
+  const h = document.createElement("header");
+  const c = document.createElement("button");
+  const x = document.createElement("span");
+  c.setAttribute("aria-label", "Close");
+  x.textContent = "\u00d7";
+  c.appendChild(x);
+  h.appendChild(document.createElement("span"));
+  h.appendChild(c);
+  d.appendChild(h);
+  c.addEventListener("click", () => {
+    if (d.__onVisible) d.__onVisible();
+    if (d.__onClosed) d.__onClosed();
+  });
+  return d;
+}`
+
+// attachWindowHandler hands a Window's events to its close button, which is a
+// window manager's close: `visible` is reported false, then `@closed` runs.
+func attachWindowHandler(node *ir.Ident, event string, handler ir.Expr) []ir.Stmt {
+	var field string
+	var listener ir.Expr
+	switch event {
+	case "visible":
+		field = "__onVisible"
+		lam, ok := handler.(*ir.Lambda)
+		if !ok || lam.Func == nil {
+			return nil
+		}
+		// The handler's parameter is what the window reports, false.
+		var block []ir.Stmt
+		for _, p := range lam.Func.Params {
+			block = append(block, &ir.LocalVar{Name: p.Name, Type: p.Type, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}})
+		}
+		listener = &ir.Lambda{Type: lam.Type, Func: &ir.Func{Block: append(block, lam.Func.Block...)}}
+	case "closed":
+		field, listener = "__onClosed", handler
+	default:
+		return nil
+	}
+	return []ir.Stmt{&ir.Assign{
+		Target: &ir.Select{Type: ir.TypDyn, Operand: node, Field: field},
+		Op:     ast.AssignSet,
+		Value:  listener,
+	}}
+}
+
+// windowPropWrite is a write of one of a Window's props: `visible` is the
+// dialog's `open`, the title is its label and the header's text, and the
+// favicon is the page's alone.
+func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool) {
+	switch prop {
+	case "visible":
+		return []ir.Stmt{&ir.Assign{Target: &ir.Select{Operand: node, Field: "open", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value}}, true
+	case windowTitle:
+		header := &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: node,
+			Func:     &ir.Func{Name: "querySelector"},
+			Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "header > span"}}},
+		}
+		return []ir.Stmt{
+			&ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: node,
+				Func:     &ir.Func{Name: "setAttribute"},
+				Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: "aria-label"}}, {Value: value}},
+			}},
+			&ir.Assign{Target: &ir.Select{Operand: header, Field: "textContent", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value},
+		}, true
+	case windowFavicon:
+		return nil, true
+	}
+	return nil, false
 }

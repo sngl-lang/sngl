@@ -1,0 +1,24 @@
+// A tree-less component may contain a member of no family, and inserting a
+// slot that takes widgets puts widgets where it stands. checkTreelessBody read
+// the nodes a body renders and passed over a slot insertion, so this checked
+// clean -- and the tree-less wrapper, placeable in any tree, carried a button
+// into a canvas, where html painted nothing for it and said nothing.
+//
+// Crossing a family is said at the placement, with #[tree.crosses].
+
+import tree "sngl:tree"
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+#[tree.none]
+component sneak(content ...component ui.node) {
+    content // ERROR(check) "component sneak names no tree, so it may not contain the node slot content"
+}
+
+ui.window(title="t") {
+    draw.canvas(width=100px, height=100px) {
+        sneak {
+            ui.button(text="hi")
+        }
+    }
+}

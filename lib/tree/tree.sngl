@@ -1,14 +1,6 @@
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
 
-// Marks a struct as naming a tree. The struct is the tree: nothing is stored in
-// it and no value of it exists, so a component naming it says which family it
-// is a member of rather than what it holds.
-//
-// A name resolves or it does not, which is the point — a misspelled tree is an
-// unresolved name at the declaration rather than a family nobody joins.
-func kind() ir.Macro
-
 // Marks a component as belonging to no tree. It may be placed in any of them
 // and may contain a member of none, which is what a component that renders
 // nothing wants: a lifetime bracket, a scheduler, a context override.
@@ -17,6 +9,31 @@ func kind() ir.Macro
 // that has not said which family it joins, and the compiler reports it as
 // one — so tree-lessness is a claim the declaration makes.
 func none() ir.Macro
+
+// Marks a family whose members raise no events: what they are has nothing to
+// raise one from -- a painted shape is pixels, not an element. A member that
+// declares an event is refused where it is declared, since a handler written
+// for it would never run. A platform primitive is the exception, in the other
+// direction: its event is the target calling in -- with the drawing context,
+// say -- which is how an override is handed what it renders with, and only an
+// #[intrinsic] declaration can be one.
+func eventless() ir.Macro
+
+// Written on a placement -- a node, or a slot insertion, in a view -- it says
+// this one stands where its family is not the one the position accepts. That
+// one check is all it lifts: the node's own body, its slots and its children
+// are held to their families as ever, and the mark reaches no further than the
+// placement it is written on.
+//
+// Crossing a family is what a platform's primitives are for -- html's window
+// override puts an element in the root family, where a dialog is a window --
+// and a program crosses into a family of its own the same way:
+//
+//     component slide(caption string) deck {
+//         #[tree.crosses]
+//         ui.text(value=caption)
+//     }
+func crosses() ir.Macro
 
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.

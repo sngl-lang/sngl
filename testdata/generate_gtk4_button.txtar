@@ -2,7 +2,7 @@ End-to-end gtk4 platform compile test, run against the bundled GIR
 (gir="builtin") so it does not need system GTK4 development files. The
 fixture's widgets descend from a Widget base class because that is where real
 GIR declares visible/sensitive/hexpand/tooltip-text and where the stdlib
-override bodies in lib/platforms/gtk4/gtk4.sngl are written against them -- so
+override bodies in lib/platform/gtk4/gtk4.sngl are written against them -- so
 this also checks that the parent-chain merge reaches them.
 
 model.go is cgo: a `#include <gtk/gtk.h>` preamble and `import "C"`. Each
@@ -26,7 +26,7 @@ deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_butto
 broken out/go/gtk4 -- `undefined: app`, and a GtkApplicationWindow is passed where gtk_window_set_child wants a GtkWindow
 -- main.sngl --
 import . "sngl:test"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 import ui "sngl:ui"
 
 output {
@@ -38,10 +38,10 @@ output {
 component main ui.node {
     var count int
 
-    gtk4.GtkApplicationWindow(title="Test") {
-        gtk4.GtkBox(orientation="vertical", tooltipText="a box") {
-            gtk4.GtkLabel(label="hello") {}
-            gtk4.GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
+    gtk.GtkApplicationWindow(title="Test") {
+        gtk.GtkBox(orientation="vertical", tooltipText="a box") {
+            gtk.GtkLabel(label="hello") {}
+            gtk.GtkButton(label="click me", sensitive=true, @clicked { count = count + 1 }) {}
         }
     }
 }
@@ -208,11 +208,14 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	count__inst0 int
-	__n0         *C.GtkApplicationWindow
-	__n1         *C.GtkBox
-	__n2         *C.GtkLabel
-	__n3         *C.GtkButton
+	count__inst0   int
+	visible__inst1 bool
+	__n0           *C.GtkBox
+	__n1           *C.GtkApplicationWindow
+	__n2           *C.GtkBox
+	__n3           *C.GtkLabel
+	__n4           *C.GtkButton
+	__root         *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
@@ -220,10 +223,18 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.count__inst0 = 0
+	m.visible__inst1 = true
 	return m
 }
 
-func (m *Model) __n3_clicked_handler() {
+func (m *Model) __n0_closed_handler() {
+}
+
+func (m *Model) __n0_visible_handler(__visible bool) {
+	m.visible__inst1 = __visible
+}
+
+func (m *Model) __n4_clicked_handler() {
 	m.count__inst0 = (m.count__inst0 + 1)
 }
 
@@ -235,28 +246,46 @@ func (m *Model) SetCount__inst0(v int) {
 	m.count__inst0 = v
 }
 
+func (m *Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m *Model) SetVisible__inst1(v bool) {
+	m.visible__inst1 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	m.__n0 = (*C.GtkApplicationWindow)(unsafe.Pointer(C.gtk_application_window_new(app)))
-	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(m.__n0)), C.CString("Test"))
-	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_VERTICAL)
-	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n1)), C.CString("a box"))
-	m.__n2 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
-	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n2)), C.CString("hello"))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), C.CString("click me"))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
-	snglCallbacks = append(snglCallbacks, m.__n3_clicked_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n3), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
-	C.gtk_window_set_child((*C.GtkApplicationWindow)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	if m.__root != nil {
+		return
+	}
+	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n0 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
+	m.__n1 = (*C.GtkApplicationWindow)(unsafe.Pointer(C.gtk_application_window_new(app)))
+	C.gtk_window_set_title((*C.GtkWindow)(unsafe.Pointer(m.__n1)), C.CString("Test"))
+	m.__n2 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n2)), C.GTK_ORIENTATION_VERTICAL)
+	C.gtk_widget_set_tooltip_text((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.CString("a box"))
+	m.__n3 = (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n3)), C.CString("hello"))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n3)))
+	m.__n4 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
+	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n4)), C.CString("click me"))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n4)), C.gboolean(boolToInt(true)))
+	snglCallbacks = append(snglCallbacks, m.__n4_clicked_handler)
+	C.sngl_connect(unsafe.Pointer(m.__n4), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n4)))
+	C.gtk_window_set_child((*C.GtkApplicationWindow)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
 func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
-	return (*C.GtkWidget)(unsafe.Pointer(m.__n0))
+	win := C.gtk_application_window_new(app)
+	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 480, 640)
+	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
+	return win
 }
 -- run/go/gtk4 --
-broken sha256:21ecd26ec47f38fb4c97969ffb8deb75
+broken sha256:d8c13f8afd2bbe76b2f7a67556451469

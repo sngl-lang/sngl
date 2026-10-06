@@ -9,11 +9,11 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
-  </span>
   <span id="__n1" data-sngl-id="__n1">
   </span>
   <span id="__n2" data-sngl-id="__n2">
+  </span>
+  <span id="__n3" data-sngl-id="__n3">
   </span>
   <button id="$1">
     <span>Add</span>
@@ -23,7 +23,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs: [1, 2, 3, 4, 5] };
+  var state = { xs: [1, 2, 3, 4, 5], visible__inst0: true };
   function evens() {
     return state.xs.filter((x) => x % 2 === 0);
   }
@@ -37,19 +37,19 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   $1.addEventListener("click", function() {
     state.xs.push(state.xs.length + 1);
-    __n0.textContent = "count: " + String(total());
-    __n1.textContent = "evens: " + String(evens().length);
-    __n2.textContent = "first doubled: " + String(doubled()[0]);
+    __n1.textContent = "count: " + String(total());
+    __n2.textContent = "evens: " + String(evens().length);
+    __n3.textContent = "first doubled: " + String(doubled()[0]);
   });
   function __sngl_init() {
-    __n0.textContent = "count: " + String(total());
-    __n1.textContent = "evens: " + String(evens().length);
-    __n2.textContent = "first doubled: " + String(doubled()[0]);
+    __n1.textContent = "count: " + String(total());
+    __n2.textContent = "evens: " + String(evens().length);
+    __n3.textContent = "first doubled: " + String(doubled()[0]);
   }
   __sngl_init();
 })();

@@ -1,0 +1,29 @@
+# The interpreter is the none language's and the none platform's: `sngl test`
+# runs a program through it on `none`, and nowhere else. A platform with a
+# generator of its own, given `--lang none`, has no tests to run.
+
+sngl test app.sngl
+stdout 'ok'
+
+sngl test --platform none app.sngl
+stdout 'ok'
+
+! sngl test --platform fyne --language none app.sngl
+stderr 'platform "fyne" does not support testing'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component counter() ui.node {
+    var n = 0
+    ui.button(text="{n}", @click { n = n + 1 })
+}
+
+func testCounts(t test.Test, c counter) {
+    t.assert(c.n == 0)
+}
+
+ui.window {
+    counter()
+}

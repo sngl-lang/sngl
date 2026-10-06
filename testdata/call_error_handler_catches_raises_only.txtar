@@ -66,6 +66,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
@@ -83,19 +86,29 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var caught__inst0 by remember { mutableStateOf("") }
     var got__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            try {
-            	ratio(0)
-            } catch (__err: SnglRaise) {
-            	val e = __err.event
-            	caught__inst0 = e.message
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
-        }, modifier = Modifier.testTag("b").safeDrawingPadding()) {
-            Text(text = "b", modifier = Modifier)
         }
-        Text(text = (caught__inst0 + got__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        Column {
+            Button(onClick = {
+                try {
+                	ratio(0)
+                } catch (__err: SnglRaise) {
+                	val e = __err.event
+                	caught__inst0 = e.message
+                }
+            }, modifier = Modifier.testTag("b").safeDrawingPadding()) {
+                Text(text = "b", modifier = Modifier)
+            }
+            Text(text = (caught__inst0 + got__inst0.toString()), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 
@@ -121,13 +134,13 @@ body { font-family: system-ui, sans-serif; }
 <button id="$0">
   <span>b</span>
 </button>
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { caught__inst0: "", got__inst0: 0 };
+  var state = { caught__inst0: "", got__inst0: 0, visible__inst1: true };
   function ratio(n) {
     if (n > 5) {
       ;
@@ -140,7 +153,7 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $0 = document.getElementById("$0");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
     try {
       ;
@@ -151,17 +164,18 @@ body { font-family: system-ui, sans-serif; }
       ;
       let e = { message: __err?.message ?? String(__err), kind: __err?.kind ?? "" };
       state.caught__inst0 = e.message;
+      __n1.textContent = state.caught__inst0 + String(state.got__inst0);
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = state.caught__inst0 + String(state.got__inst0);
+    __n1.textContent = state.caught__inst0 + String(state.got__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/kotlin/android --
-pass sha256:3b8b6951e4600aeb5b2af1a5f0bffaca
+pass sha256:c9b0ccc593b239f6dbd5b08c7582d759
 -- run/none/html --
-pass sha256:f5f0ccc07a91336820afaa1cfd0412ed
+pass sha256:b4e7765af4896a402bb7e72c9204eb62

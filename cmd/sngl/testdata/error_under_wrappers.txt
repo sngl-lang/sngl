@@ -47,7 +47,7 @@ func testRaiseUnderProviderIsCaught(t Test, c underProvider) {
 
 component underFallback node {
     var caught = ""
-    boundary(@error(e) { caught = e.message }) {
+    boundary #guard(@error(e) { caught = e.message }) {
         component failed {
             button #retry(text="Retry", @click { error.raise("again", "") })
         }
@@ -61,9 +61,7 @@ func testRaiseInFallbackIsCaught(t Test, c underFallback) {
         c.go.click()
     }
     t.assert(c.caught == "first")
-    if c.retry != null {
-        c.retry.click()
-    }
+    c.guard.retry.click()
     t.assert(c.caught == "again")
 }
 

@@ -53,7 +53,7 @@ own blocks name.
 
 ## 2. Platform implementations
 
-- [X] **html**, `--lang none`. `codegen/platform/html/html.sngl` declares
+- [X] **html**, `--lang none`. `lib/platform/html/html.sngl` declares
   `flow` and `inline` -- the same element twice, differing only in the
   family each joins -- and one override per member. `spanStyleCSS` in Go
   maps a `run`'s style, because which fields a `SpanStyle` literal set is a
@@ -77,7 +77,7 @@ own blocks name.
   renderers now ask `nodeInlineCSS` for an element's inline CSS, which is
   also what stops a node carrying a box style and a run style from
   emitting `style` twice. Both targets are in `markup_inline.txtar`.
-- [X] **none** (interpreter). `codegen/platform/none/none.sngl` declares
+- [X] **none** (interpreter). `lib/platform/none/none.sngl` declares
   `flow` and `inline` and overrides the six signatures. The interpreter
   draws nothing, so what it owes the family is the tree `sngl test`
   asserts on -- but a member whose body inserts its content is a component
@@ -474,7 +474,7 @@ Work these in this order:
      follows the file, and `docs/` already has the shape the directory
      form requires (`index.md`, `learn/index.md`, `reference/index.md`), so
      the site may be able to import the public `md:./docs/` with no internal
-     importer at all. Its layout skips `learn/tour.md` by href.
+     importer at all. The tutorial's source is `learn/_tour.md`, which the import skips.
    - If an internal scheme turns out to be needed after all, **docsgen runs
      the build in-process** through `internal/build` and registers the
      scheme first. The scheme does not ship in the `sngl` binary.
@@ -857,7 +857,7 @@ What this means for markup: `richText` and the `span` family were already
 built as an ordinary tree, and every hole the branch had to punch for them
 (`hostsLoweredTree`, the window arms in its own walks) is closed on main or
 was deleted by the merge. A new boundary starts from an ordinary
-`#[tree.kind]` family, a host component, and one override per member on each
+family (`component x build.family`), a host component, and one override per member on each
 platform. It needs no pass of its own, and it no longer needs a
 lowering-side exception.
 

@@ -41,7 +41,7 @@ component App() node {
     seeded(start=k, more=0)
     text(value="after")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

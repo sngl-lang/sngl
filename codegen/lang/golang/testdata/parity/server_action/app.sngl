@@ -12,7 +12,7 @@ import "go:example.com/route-post/api"
 
 var count = 0
 
-window #app(title="t", href="/") {
+window #app(title="t") {
     vbox {
         button(text="Save", @click {
             count = api.Persist(count + 1)

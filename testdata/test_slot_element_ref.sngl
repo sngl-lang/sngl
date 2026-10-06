@@ -8,12 +8,14 @@ output {
 // Children written bare are the caller's, wherever the callee inserts them, so
 // #body is main's ref. What the callee writes in its own body is the callee's,
 // reached through the instance's id. A population written by name is a
-// declaration with a scope of its own, so #head is neither's.
+// declaration with a scope of its own, reached through the node it populates:
+// `c.shell.head`.
 //
 // Slot content is written in the caller's body, so it reads the caller's
 // scope -- #body interpolates main's `title`, not anything of frame's.
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
     t.assert(c.body.value == "Hello in the rest slot")
+    t.assert(c.shell.head.value == "Hello")
     t.assert(c.shell.own.value == "frame's own")
 }
 

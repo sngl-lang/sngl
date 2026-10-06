@@ -266,10 +266,12 @@ func (m *Model) bad_click_handler() {
 			e := ErrorEvent{Message: __err.Error()}
 			_ = e
 			m.caught = "c"
+			m.__n0.SetText(((m.caught + "|") + m.after))
 			if m.caught == "c" {
 				return
 			}
 			m.caught = "never"
+			m.__n0.SetText(((m.caught + "|") + m.after))
 		}()
 	}
 	m.after = (m.after + "b")
@@ -396,10 +398,12 @@ func (m *Model) bad_clicked_handler() {
 			e := ErrorEvent{Message: __err.Error()}
 			_ = e
 			m.caught = "c"
+			gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
 			if m.caught == "c" {
 				return
 			}
 			m.caught = "never"
+			gtk4rt.LabelSetText(m.__n0, ((m.caught + "|") + m.after))
 		}()
 	}
 	m.after = (m.after + "b")
@@ -452,6 +456,6 @@ func (m *Model) badClick() {
 -- run/go/bubbletea --
 pass sha256:caae766dea21ebf12e8f36b21f523d76
 -- run/go/fyne --
-pass sha256:abfcf4ffc7b939b28c6dfcf5f8efca4d
+pass sha256:40fe7af2d13abba34d13cf99c0e069b9
 -- run/go/gtk4 --
-pass sha256:55a25b412f4709b77ec0f0e6b24a9d16
+pass sha256:8a9a0ee3730cb66ea77b48790a34cc85

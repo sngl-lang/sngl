@@ -1,0 +1,11 @@
+// `output(entry = …)` named the window a build opened at, which was a page's
+// question asked of a window. A stack starts at the page at "/", or its first,
+// so there is no entry left to name and the prop is gone.
+
+import ui "sngl:ui"
+
+output(entry=home) // ERROR(check) "unknown prop \"entry\" on component output"
+
+ui.window #home(title="Home") {
+    ui.text(value="hi")
+}

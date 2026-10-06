@@ -54,9 +54,13 @@ const (
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 
-	// The three trees the compiler itself has to name, each marked on the
-	// struct that declares it so no phase spells a package and a name.
+	// The families the compiler itself has to name, each marked on the
+	// component that declares it so no phase spells a package and a name.
 	//
+	// TreeFamily is `sngl:build`'s `family`, the family of families: every
+	// family is a component that is a member of it, and it is the one member of
+	// itself. The mark is where that regress stops.
+	BuiltinTreeFamily BuiltinKind = "treeFamily"
 	// TreeRoot is the tree a package body accepts: the windows a program opens
 	// and the build directive saying what it compiles to. It is what makes
 	// those top-level without a syntactic rule naming them.
@@ -69,19 +73,32 @@ const (
 	// TreeShape is the drawing tree. A node hosting its members is a canvas,
 	// whose shapes passShapeDraw turns into the statements that paint them.
 	BuiltinTreeShape BuiltinKind = "treeShape"
+	// TreeLanguage and TreePlatform are `sngl:build`'s `language` and
+	// `platform`: the families a build-target node is a member of, which is
+	// what makes a component a target and says which tier it is.
+	BuiltinTreeLanguage BuiltinKind = "treeLanguage"
+	BuiltinTreePlatform BuiltinKind = "treePlatform"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
-	// matching compiler construct (ir.Window, ir.ErrorBoundary) when
+	// matching compiler construct (ir.ErrorBoundary, ir.ContextProvider) when
 	// its target resolves to the marked component,
 	// rather than matching a literal name.
-	BuiltinWindow        BuiltinKind = "window"
 	BuiltinContext       BuiltinKind = "context"
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 	// Effect brackets a lifetime: @mount when the node enters the tree,
 	// @unmount when it leaves. `on` makes the bracket a keyed identity, so a
 	// changed value ends one lifetime and begins the next. See sngl:builtin.
 	BuiltinEffect BuiltinKind = "effect"
+	// NavStack, NavPage and NavLink are sngl:ui/nav's stack, page and link,
+	// which the compiler answers rather than a body: passNavigation lowers them
+	// to plain UI on a target that does not declare `navigation`, and a target
+	// that does renders them in its own codegen. A platform package may still
+	// override one, which is how sngl:platform/none hands them to the
+	// interpreter.
+	BuiltinNavStack BuiltinKind = "navStack"
+	BuiltinNavPage  BuiltinKind = "navPage"
+	BuiltinNavLink  BuiltinKind = "navLink"
 
 	BuiltinOutput BuiltinKind = "output"
 	// GenInputs is `sngl:x/gen/cache`'s `inputs`: what a generated file was
@@ -90,8 +107,28 @@ const (
 	// source of its own.
 	BuiltinGenInputs BuiltinKind = "genInputs"
 
-	// Target identities. An opaque value type each of whose values is a const
-	// the compiler synthesizes into one target's package -- html.platform,
+	// GenEmit and GenNode are `sngl:x/gen`'s `emit` and `node`: what a
+	// family's override and a member's override say about the file a build
+	// writes for the family. Neither is rendered; the emitter pass reads them
+	// where they are written and nowhere else.
+	BuiltinGenEmit BuiltinKind = "genEmit"
+	BuiltinGenNode BuiltinKind = "genNode"
+	// GenScheme is `sngl:x/gen`'s `scheme`: an import scheme a package
+	// declares. Read where it is written and taken out of the package before
+	// anything renders it.
+	BuiltinGenScheme BuiltinKind = "genScheme"
+	// GenRun and GenBuild are `sngl:x/gen`'s `run` and `build`: what `sngl
+	// run` and `sngl build` do with a target's output, written in the body of
+	// the target's build-tree node and read from there by the command.
+	BuiltinGenRun   BuiltinKind = "genRun"
+	BuiltinGenBuild BuiltinKind = "genBuild"
+	// CLink is `sngl:x/c`'s `link`: a header and the flags a C preamble
+	// includes for the package's `#[cnative]` declarations. Read into
+	// Package.CLinks rather than rendered.
+	BuiltinCLink BuiltinKind = "cLink"
+
+	// Target identities. An opaque value type each of whose values is one
+	// target's build-tree node read as a value -- html.platform,
 	// go.language. There is no literal, so a string cannot stand in for one,
 	// which is the reason the type exists rather than the name being a string.
 	BuiltinPlatform BuiltinKind = "platform"
@@ -149,13 +186,15 @@ func (b BuiltinKind) IsSlotBound() bool {
 	return b == BuiltinTreeOne
 }
 
-// IsTreeRole reports whether the kind marks a tree the compiler itself has to
-// name. Three do -- the package body's, the widget family, and the drawing
-// tree -- because a phase asks after each by role rather than by declaration.
-// Every other tree is compared by declaration and never spelled.
+// IsTreeRole reports whether the kind marks a family the compiler itself has
+// to name. Six do -- the family of families, the package body's, the widget
+// family, the drawing family and the two build-target tiers -- because a phase
+// asks after each by role rather than by declaration. Every other family is compared by declaration
+// and never spelled.
 func (b BuiltinKind) IsTreeRole() bool {
 	switch b {
-	case BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape:
+	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
+		BuiltinTreeLanguage, BuiltinTreePlatform:
 		return true
 	}
 	return false
@@ -175,7 +214,8 @@ func (b BuiltinKind) IsGeneric() bool {
 // stamped on component declarations, not structs.
 func (b BuiltinKind) IsNode() bool {
 	switch b {
-	case BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect:
+	case BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink:
 		return true
 	}
 	return false
@@ -185,7 +225,18 @@ func (b BuiltinKind) IsNode() bool {
 // root instantiates to say something to the compiler, which is read rather
 // than rendered.
 func (b BuiltinKind) IsDirective() bool {
-	return b == BuiltinOutput || b == BuiltinGenInputs
+	return b == BuiltinOutput || b == BuiltinGenInputs || b == BuiltinGenScheme || b == BuiltinCLink
+}
+
+// IsEmitter reports whether the kind marks one of the declarations an emitter
+// is written from.
+func (b BuiltinKind) IsEmitter() bool {
+	return b == BuiltinGenEmit || b == BuiltinGenNode
+}
+
+// IsCommand reports whether the kind marks a command a target's node holds.
+func (b BuiltinKind) IsCommand() bool {
+	return b == BuiltinGenRun || b == BuiltinGenBuild
 }
 
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
@@ -206,9 +257,11 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
-		BuiltinTreeOne, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
-		BuiltinOutput, BuiltinGenInputs,
+		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
+		BuiltinTreeLanguage, BuiltinTreePlatform,
+		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
+		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
@@ -218,5 +271,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsTargetID() || b.IsConst()
 }

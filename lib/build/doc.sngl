@@ -1,16 +1,21 @@
-// The build-target tree: the two families an `output` directive is written
-// from.
+// Families, and the build-target tree: the two families an `output`
+// directive is written from.
+//
+// A family is a component that is a member of `family`:
+// `component shape build.family` declares one, and a component joins it by
+// naming it in its return position, `component circle(…) shape`. A slot says
+// which family it accepts by naming one as its type. Families are declared
+// here, rather than in `sngl:tree`, because a family is the build's business:
+// it is what a target renders, and a target's support for one is an override
+// of it.
 //
 // A build directive is a component tree like any other. `output` hosts
 // languages, a language hosts platforms, and neither family accepts the
-// other's members — which is the shape `sngl:tree` describes, so the nesting
-// rule is a slot's type rather than a rule written in the compiler.
+// other's members, so the nesting rule is a slot's type rather than a rule
+// written in the compiler.
 //
 // A target declares its own node in its own package: `sngl:language/go`
 // declares `go`, `sngl:platform/html` declares `html`, and each names the
 // family it belongs to here. The build options a target accepts are that
 // node's props, so a misspelled option is an unknown prop and a misspelled
 // target is an unresolved name.
-//
-// Nothing here is written by an application. It is imported by `sngl:builtin`,
-// which declares `output`, and by every target package.

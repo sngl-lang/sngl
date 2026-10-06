@@ -1,0 +1,63 @@
+# A program started with no window on screen puts one there with `open`, and
+# only then. On gtk4 the Wayland protocol log says whether a toplevel was ever
+# created: none without --open, one with it. fyne reaches the display through
+# Xwayland, so its runs assert only that `open` ran and the program ended as
+# written.
+#
+# testdata/window_open.txtar is the code.
+
+[!headless] skip 'needs the headless compositor go tool verify provides'
+
+[gtk4] sngl build --lang go --platform gtk4 -o gtk4 app.sngl
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/app 2>&1 | grep -c "xdg_toplevel.*set_title" || true'
+[gtk4] stdout '^0$'
+[gtk4] exec sh -c 'WAYLAND_DEBUG=1 ./gtk4/app --open 2>&1 | grep -c "xdg_toplevel.*set_title" || true'
+[gtk4] ! stdout '^0$'
+
+sngl build --lang go --platform fyne -o fyne app.sngl
+exec ./fyne/app
+exec ./fyne/app --open
+
+-- app.sngl --
+import go "sngl:language/go"
+import time "sngl:time"
+import ui "sngl:ui"
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+output {
+    go {
+        gtk4(@run(args, run) {
+            wanted = args.contains("--open")
+        })
+        fyne(@run(args, run) {
+            wanted = args.contains("--open")
+        })
+    }
+}
+
+var (
+    wanted = false
+    ticks = 0
+)
+
+// The first tick opens the window when asked to, and the second ends the
+// program -- so whether a window reached the screen is the whole difference
+// between the two runs.
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks == 1 && wanted {
+        details.open()
+    }
+    if ticks == 2 {
+        exit(0)
+    }
+})
+
+ui.window #details(title="Details") {
+    ui.text(value="{ticks}")
+    ui.button(text="Close", @click {
+        details.close()
+    })
+}

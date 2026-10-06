@@ -27,14 +27,19 @@ func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
 import . "sngl:ui"
+import nav "sngl:ui/nav"
 import "go:reactiveslot/srv"
 import "sngl:platform/html"
 
 var hits = 0
 
-window #page(title="t", href="/p") {
-    html.button(innerText="go", @click { hits = srv.Bump(hits) })
-    if hits > 0 {
-        html.span(innerText="hit")
+window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #page(href="/p", title="t") {
+            html.button(innerText="go", @click { hits = srv.Bump(hits) })
+            if hits > 0 {
+                html.span(innerText="hit")
+            }
+        }
     }
 }

@@ -100,6 +100,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 
 	// Register every language and platform, so a fixture's output block can
 	// name any of them, and every import scheme, so a fixture may import a
@@ -349,6 +350,9 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 		Main:      main,
 		Lang:      lang,
 		Platform:  plat,
+		// The fixtures are this repository's own, and evaluating their go:
+		// imports is what a golden of one records.
+		Trust: trust.AllowAll(),
 	})
 	if err != nil {
 		return nil, nil, 0, err

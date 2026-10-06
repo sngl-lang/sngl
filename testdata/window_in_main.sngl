@@ -13,12 +13,12 @@ import . "sngl:ui"
 var count = 0
 
 component pages() root {
-    window #home(title="Home", href="/") {
+    window #home(title="Home") {
         text(value="Count: {count}")
         button(text="+", @click { count += 1 })
     }
 
-    window #settings(title="Settings", href="/settings.html") {
+    window #settings(title="Settings") {
         text(value="Config")
     }
 }

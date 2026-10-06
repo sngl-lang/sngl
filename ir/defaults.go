@@ -166,9 +166,6 @@ func Normalize(pkg *Package) {
 	for _, c := range pkg.Components {
 		normalizeComponent(c)
 	}
-	for _, w := range pkg.Windows {
-		normalizeStmt(w)
-	}
 	pkg.Body = normalizeStmts(pkg.Body)
 }
 

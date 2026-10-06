@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-window #demo(title="Demo", href="/") {
+window #demo(title="Demo") {
     vbox(style={gap=8, padding=16}) {
         text(value="hi", style={color=#ff0000})
         text(value="hi", style={color=#00ff00})

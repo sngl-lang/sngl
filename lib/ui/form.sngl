@@ -27,8 +27,9 @@ component _example_button node {
     }
 }
 
-// Single-line text input field. `value` is a two-way bound prop — write
-// to update the field, read to observe edits. `placeholder` shows when
+// Single-line text input field. `value` is a two-way prop: bound with
+// `:value=v`, the field shows `v` and writes edits back to it; left unbound,
+// the field keeps its own text, starting from a one-way `value=` if given. `placeholder` shows when
 // empty; `readonly` disables edits while keeping focus/selection; set
 // `type` to "password", "search", "email", etc. for appropriate platform
 // behavior. `@input` fires on every keystroke, `@change` on commit
@@ -52,7 +53,7 @@ component input(
 component _example_input node {
     var name = ""
     vbox(style={gap=8, padding=16}) {
-        input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
+        input(placeholder="Enter your name", :value=name)
         input(placeholder="Password", type="password")
         input(placeholder="Search...", type="search")
         text(value="Hello, " + name)
@@ -81,14 +82,15 @@ component textarea(
 component _example_textarea node {
     var notes = ""
     vbox(style={gap=8, padding=16}) {
-        textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
+        textarea(placeholder="Write some notes...", rows=4, :value=notes)
         text(value="Length: " + string(notes.length()))
     }
 }
 
-// Boolean toggle rendered as a checkmark box. `checked` is two-way
-// bound — toggling the box updates it, and writes to it update the
-// rendered state. `label` is rendered next to the box; omit it for
+// Boolean toggle rendered as a checkmark box. `checked` is two-way:
+// bound with `:checked=v`, toggling the box writes `v` and writes to `v`
+// update the box; left unbound, the box keeps its own state, starting from a
+// one-way `checked=` if given. `label` is rendered next to the box; omit it for
 // a bare checkbox. `@change` fires each time the user toggles, and
 // carries the new state.
 component checkbox(
@@ -103,7 +105,7 @@ component checkbox(
 component _example_checkbox node {
     var darkMode = false
     vbox(style={gap=8, padding=16}) {
-        checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
+        checkbox(:checked=darkMode, label="Dark mode")
         text(value=darkMode ? "Dark mode on" : "Dark mode off")
     }
 }
@@ -125,7 +127,7 @@ component radio(
 component _example_radio node {
     var size = "medium"
     vbox(style={gap=8, padding=16}) {
-        radio(options=["small", "medium", "large"], value=size, direction="horizontal")
+        radio(options=["small", "medium", "large"], :value=size, direction="horizontal")
         text(value="Selected: " + size)
     }
 }
@@ -145,7 +147,7 @@ component toggle(
 component _example_toggle node {
     var notifications = false
     vbox(style={gap=8, padding=16}) {
-        toggle(checked=notifications, label="Notifications", @change { notifications!! })
+        toggle(:checked=notifications, label="Notifications")
         text(value=notifications ? "Enabled" : "Disabled")
     }
 }
@@ -170,7 +172,7 @@ component select(
 component _example_select node {
     var fruit = ""
     vbox(style={gap=8, padding=16}) {
-        select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", value=fruit)
+        select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", :value=fruit)
         text(value="Selected: " + fruit)
     }
 }

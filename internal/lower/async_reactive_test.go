@@ -430,13 +430,13 @@ func TestLowerAsyncReactive_InlineHoist(t *testing.T) {
 			{Name: "text", Value: textExpr},
 		},
 	}
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name:     "Main",
 		Children: []ir.Stmt{node},
 	}
 	pkg := &ir.Package{
 		Funcs:          []*ir.Func{fetchHello},
-		Windows:        []*ir.Window{win},
+		Body:           []ir.Stmt{win},
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}
@@ -507,13 +507,13 @@ func TestLowerAsyncReactive_HoistSkipsLocalCapture(t *testing.T) {
 			{Name: "text", Value: asyncCall},
 		},
 	}
-	win := &ir.Window{
+	win := &ir.NodeInst{
 		Name:     "Main",
 		Children: []ir.Stmt{node},
 	}
 	pkg := &ir.Package{
 		Funcs:          []*ir.Func{fetchUser},
-		Windows:        []*ir.Window{win},
+		Body:           []ir.Stmt{win},
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
 	}

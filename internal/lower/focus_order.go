@@ -50,9 +50,6 @@ func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
 	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
-	for _, w := range pkg.Windows {
-		lowerFocusInOwner(w.Children, &pkg.Vars, &pkg.Funcs)
-	}
 	return nil
 }
 

@@ -82,31 +82,13 @@ func (s *refSearch) node(id, target string, block *ast.StmtBlock, k ir.RefCount)
 	if id == s.id && comp != nil && s.host == nil {
 		s.host, s.count = comp, k
 	}
-	if comp == nil {
-		s.walk(content, k)
-		return
-	}
-	switch comp.Builtin {
-	case ir.BuiltinErrorBoundary:
-		// The fallback is placed where the content was, in this body, so its
-		// ids are this component's; either half may be the one showing.
-		if populatesFallback(comp, pops) {
-			k = joinRef(k, ir.RefOption)
-		}
-		s.walk(content, k)
-		for _, cd := range pops {
-			s.walk(cd.Body.Stmts, k)
-		}
-	case ir.BuiltinWindow:
-		// A window may not be open. Its content population is its body.
+	// A population's ids are its own, reached through the node it populates
+	// (populationHost). Content beside a boundary's fallback may be what the
+	// fallback replaced.
+	if comp != nil && comp.Builtin == ir.BuiltinErrorBoundary && populatesFallback(comp, pops) {
 		k = joinRef(k, ir.RefOption)
-		s.walk(content, k)
-		for _, cd := range pops {
-			s.walk(cd.Body.Stmts, k)
-		}
-	default:
-		s.walk(content, k)
 	}
+	s.walk(content, k)
 }
 
 // populatesFallback reports whether a boundary's populations include its
@@ -165,11 +147,7 @@ func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
 			if n.ID == s.id && n.Component != nil && s.host == nil {
 				s.host, s.count = n.Component, k
 			}
-			inner := k
-			if ir.IsWindowNode(n) {
-				inner = joinRef(k, ir.RefOption)
-			}
-			s.walkIR(n.Children, inner)
+			s.walkIR(n.Children, k)
 		case *ir.SlotInst:
 			s.walkIR(n.Children, joinRef(k, ir.RefOption))
 		case *ir.If:
@@ -184,7 +162,6 @@ func (s *refSearch) walkIR(stmts []ir.Stmt, k ir.RefCount) {
 				inner = joinRef(k, ir.RefOption)
 			}
 			s.walkIR(n.Children, inner)
-			s.walkIR(n.Failed, inner)
 		case *ir.ContextProvider:
 			s.walkIR(n.Children, k)
 		}

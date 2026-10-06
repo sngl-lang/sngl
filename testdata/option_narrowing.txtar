@@ -62,8 +62,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	maybe__inst0 *int
-	__focusID    int
+	maybe__inst0   *int
+	visible__inst1 bool
+	__focusID      int
 
 	width, height int
 }
@@ -72,6 +73,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.maybe__inst0 = nil
+	m.visible__inst1 = true
 	m.__focusID = 0
 	return m
 }
@@ -109,6 +111,21 @@ func SetMaybe__inst0Cmd(v *int) tea.Cmd {
 	return func() tea.Msg { return setMaybe__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -120,13 +137,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setMaybe__inst0Msg:
 		m = m.SetMaybe__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -139,30 +164,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst1 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("clear"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		if m.maybe__inst0 != nil {
+			contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe__inst0)) * 2))))
+		}
+		if contentPart_1 != "" {
+			contentParts = append(contentParts, contentPart_1)
+		}
+		var contentPart_2 string
+		if (m.maybe__inst0 != nil) && ((*(m.maybe__inst0)) > 2) {
+			contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint("big"))
+		}
+		if contentPart_2 != "" {
+			contentParts = append(contentParts, contentPart_2)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("clear"))
-	parts = append(parts, part0)
-	var part1 string
-	if m.maybe__inst0 != nil {
-		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe__inst0)) * 2))))
-	}
-	if part1 != "" {
-		parts = append(parts, part1)
-	}
-	var part2 string
-	if (m.maybe__inst0 != nil) && ((*(m.maybe__inst0)) > 2) {
-		part2 = lipgloss.NewStyle().Render(fmt.Sprint("big"))
-	}
-	if part2 != "" {
-		parts = append(parts, part2)
-	}
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -201,6 +229,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -213,18 +244,28 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var maybe__inst0 by remember { mutableStateOf<Int?>(null) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        Button(onClick = {
-            maybe__inst0 = null
-        }, modifier = Modifier.safeDrawingPadding()) {
-            Text(text = "clear", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
         }
-        if ((maybe__inst0 != null)) {
-            Text(text = (maybe__inst0!! * 2).toString(), modifier = Modifier.safeDrawingPadding())
-        }
-        if (((maybe__inst0 != null) && (maybe__inst0!! > 2))) {
-            Text(text = "big", modifier = Modifier.safeDrawingPadding())
+        Column {
+            Button(onClick = {
+                maybe__inst0 = null
+            }, modifier = Modifier.safeDrawingPadding()) {
+                Text(text = "clear", modifier = Modifier)
+            }
+            if ((maybe__inst0 != null)) {
+                Text(text = (maybe__inst0!! * 2).toString(), modifier = Modifier.safeDrawingPadding())
+            }
+            if (((maybe__inst0 != null) && (maybe__inst0!! > 2))) {
+                Text(text = "big", modifier = Modifier.safeDrawingPadding())
+            }
         }
     }
 }
@@ -250,27 +291,70 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { maybe__inst0: null };
+  var state = { maybe__inst0: null, visible__inst1: true };
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    let __slot12 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = String(__prop___p0 * 2);
+    }
+    let __n0 = document.createElement("span");
+    __n0.textContent = String(__prop___p0 * 2);
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   var __slot1 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     if (state.maybe__inst0 !== null) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = String(state.maybe__inst0 * 2);
+      let __n2 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set___p0(state.maybe__inst0);
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n2__new = __cf___child0({ __p0: state.maybe__inst0 });
+        __n2 = __n2__new;
+      }
+      __inst1_next.push(__n2);
+      __inst1_i = __inst1_i + 1;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n2__el);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -278,26 +362,26 @@ body { font-family: system-ui, sans-serif; }
     }
   }
   function __renderSlot1(parent) {
-    let __place1_prev = __slot1;
-    let __place1_i = 0;
+    let __place2_prev = __slot1;
+    let __place2_i = 0;
     __slot1 = [];
     if (state.maybe__inst0 !== null && state.maybe__inst0 > 2) {
-      let __n1 = document.createElement("span");
-      __n1.textContent = "big";
-      let __place1_i_ref0 = null;
-      if (__place1_i < __place1_prev.length) {
-        __place1_i_ref0 = __place1_prev[__place1_i];
+      let __n3 = document.createElement("span");
+      __n3.textContent = "big";
+      let __place2_i_ref0 = null;
+      if (__place2_i < __place2_prev.length) {
+        __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place1_i_ref0 === __n1) {
-        __place1_i = __place1_i + 1;
+      if (__place2_i_ref0 === __n3) {
+        __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n1, __place1_i_ref0);
+        parent.insertBefore(__n3, __place2_i_ref0);
       }
-      __slot1.push(__n1);
+      __slot1.push(__n3);
     }
-    for (const __place1_prev_e of __place1_prev) {
-      if (__slot1.indexOf(__place1_prev_e) < 0) {
-        parent.removeChild(__place1_prev_e);
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot1.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
       }
     }
   }
@@ -318,8 +402,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ce5aff859b51c72daeca3334334231c8
+pass sha256:e5219e27d93e7dbab997c5803b37852e
 -- run/kotlin/android --
-pass sha256:308fdecd4a4759c4860b97076e573f6d
+pass sha256:bc8b1cce13fcc010547d8c1cd0d26306
 -- run/none/html --
-pass sha256:089288fc41f63f4dc37d2d3b02fb99e8
+pass sha256:0eb9ec8c884f0d2c7b7db82c53cf7fae

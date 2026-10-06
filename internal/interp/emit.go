@@ -64,5 +64,16 @@ func (env *Env) runHandler(fn *ir.Func, argEnv *Env, args []ir.CallArg) error {
 		}
 		env.Set(p, v)
 	}
-	return env.ExecBlock(fn.Block)
+	// A raise a boundary caught ends the handler that emitted too, as it does on
+	// a compiled target, where this body is inlined into that one.
+	for _, stmt := range fn.Block {
+		err := env.Exec(stmt)
+		if ret, ok := err.(*returnSignal); ok && !ret.raised {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
