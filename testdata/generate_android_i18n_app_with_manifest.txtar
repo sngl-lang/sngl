@@ -56,6 +56,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import us.duckfam.git.jonathan.sngl.i18n.I18n
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 fun _snglFloatStr(v: Double): String =
@@ -69,8 +72,18 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var __ctx_locale__inst0 by remember { mutableStateOf(I18n.defaultLocale()) }
     var msg__inst0 by remember { mutableStateOf(I18n.translate(__ctx_locale__inst0, "Hello", "Hello", mapOf())) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Text(text = msg__inst0, modifier = Modifier.safeDrawingPadding())
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
+            }
+        }
+        Text(text = msg__inst0, modifier = Modifier.safeDrawingPadding())
+    }
 }
 -- out/kotlin/android/app/src/main/kotlin/us/duckfam/git/jonathan/sngl/i18n/I18n.kt --
 // Kotlin runtime for the SNGL i18n stdlib package.
@@ -558,4 +571,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:b72f35a48439c5b8f0313cc806aed306
+pass sha256:5ec43324572a0e9e2d38df0c4dc1ba45

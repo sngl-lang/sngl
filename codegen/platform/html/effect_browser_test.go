@@ -45,7 +45,7 @@ component App() node {
     }
     text(value="[" + log.join(",") + "]")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -82,7 +82,7 @@ component App() node {
     }
     text(value="[" + log.join(",") + "]")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -117,7 +117,7 @@ component App() node {
     }
     text(value="[" + log.join(",") + "]")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -145,7 +145,7 @@ component App() node {
     effect(on=n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

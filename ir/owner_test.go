@@ -2,41 +2,26 @@ package ir
 
 import "testing"
 
-// testWindow is what buildWindow produces, minus everything these tests do not
-// read: the id the program wrote, and the declaration whose #[builtin("window")]
-// mark is what IsWindowNode matches. A literal without the second is an
-// ordinary node, which is the whole of what makes a window one now.
-func testWindow(id string, body ...Stmt) *Window {
-	return &Window{
-		Name:      "window",
-		ID:        id,
-		Component: &Component{Name: "window", Builtin: BuiltinWindow},
-		Children:  body,
-	}
-}
-
 // Owners is the answer to "which declarations can own state", and the whole
 // point of having one is that a consumer cannot get a different one. So this
-// asserts the three kinds are all reported, each carrying its own vars and its
-// own body -- a window missing from this list is exactly the shape of #133.
+// asserts both kinds are reported, each carrying its own vars and its own
+// body.
 func TestOwnersReportsEveryKind(t *testing.T) {
 	pkgVar := &Var{Name: "pkgVar"}
 	pkgConst := &Var{Name: "pkgConst", IsConst: true}
 	compVar := &Var{Name: "compVar"}
 
 	comp := &Component{Name: "counter", Vars: []*Var{compVar}, Body: []Stmt{&Return{}}}
-	win := testWindow("home", &Return{})
 	pkg := &Package{
 		Vars:       []*Var{pkgVar},
 		Consts:     []*Var{pkgConst},
 		Body:       []Stmt{&Return{}},
 		Components: []*Component{comp},
-		Windows:    []*Window{win},
 	}
 
 	got := Owners(pkg)
-	if len(got) != 3 {
-		t.Fatalf("Owners returned %d owners; want 3 (package, component, window)", len(got))
+	if len(got) != 2 {
+		t.Fatalf("Owners returned %d owners; want 2 (package, component)", len(got))
 	}
 
 	if p := got[0]; !p.IsPackage() || p.Name() != "" {
@@ -60,14 +45,6 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 	} else if len(c.Vars) != 1 || c.Vars[0] != compVar {
 		t.Errorf("component owner Vars = %v; want just compVar", c.Vars)
 	}
-
-	// A window is listed and owns nothing: it is a rendering root rather than
-	// a storage level, so what its body declares belongs to its container.
-	if w := got[2]; w.Win != win || w.IsPackage() || w.Name() != "home" {
-		t.Errorf("owner 2 = %q; want the window", w.Name())
-	} else if len(w.Vars) != 0 || len(w.Funcs) != 0 {
-		t.Errorf("window owner declares %v/%v; want nothing", w.Vars, w.Funcs)
-	}
 }
 
 func TestOwnersOfNilPackage(t *testing.T) {
@@ -76,102 +53,11 @@ func TestOwnersOfNilPackage(t *testing.T) {
 	}
 }
 
-// A window is a statement wherever the root tree reaches, and the package body
-// is one of those places: `if ship { window #a {} }` at the root of a file
-// leaves the window there for the whole build, and every consumer that wants
-// the windows asks Owners rather than the pkg.Windows field.
-func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
-	inPkg := testWindow("fromPkgBody")
-	inComp := testWindow("fromCompBody")
-	inWin := testWindow("fromWindowBody")
-	listed := testWindow("listed", inWin)
-
-	pkg := &Package{
-		Body:       []Stmt{&If{Body: []Stmt{inPkg}}},
-		Components: []*Component{{Name: "root", Body: []Stmt{inComp}}},
-		Windows:    []*Window{listed},
-	}
-
-	found := map[string]bool{}
-	for _, o := range Owners(pkg) {
-		if o.Win != nil {
-			found[o.Win.ID] = true
-		}
-	}
-	for _, want := range []string{"listed", "fromPkgBody", "fromCompBody", "fromWindowBody"} {
-		if !found[want] {
-			t.Errorf("Owners did not report window %q", want)
-		}
-	}
-}
-
-// WindowsFlat is a proof carried from the pass that refused the program which
-// would falsify it, so Owners stops looking for what cannot be there. What it
-// must not do is skip the windows a body legitimately declares, which is every
-// window this finds but the nested one.
-func TestOwnersSkipsTheNestedSearchOnceWindowsAreFlat(t *testing.T) {
-	newPkg := func() *Package {
-		return &Package{
-			Body:       []Stmt{&If{Body: []Stmt{testWindow("fromPkgBody")}}},
-			Components: []*Component{{Name: "root", Body: []Stmt{testWindow("fromCompBody")}}},
-			Windows:    []*Window{testWindow("listed", testWindow("nested"))},
-		}
-	}
-	names := func(pkg *Package) map[string]bool {
-		out := map[string]bool{}
-		for _, o := range Owners(pkg) {
-			if o.Win != nil {
-				out[o.Win.ID] = true
-			}
-		}
-		return out
-	}
-
-	unproven := names(newPkg())
-	if !unproven["nested"] {
-		t.Error("an unflattened package must still report a nested window: the passes before the guard are what report it")
-	}
-
-	flat := newPkg()
-	flat.WindowsFlat = true
-	got := names(flat)
-	for _, want := range []string{"listed", "fromPkgBody", "fromCompBody"} {
-		if !got[want] {
-			t.Errorf("WindowsFlat dropped window %q, which no window's body declared", want)
-		}
-	}
-	if got["nested"] {
-		t.Error("WindowsFlat did not skip the nested-window search")
-	}
-}
-
-// A window's @error is an imperative block it owns, and it reaches a consumer
-// the same way its funcs and timers do -- collected by hand beside the
-// enumeration, it was the half of blocks.go's window arm that went missing.
-func TestOwnersCarriesTheWindowErrorHandler(t *testing.T) {
-	h := &EventHandler{Name: "error", Func: &Func{}}
-	home := testWindow("home")
-	home.ErrorHandler = h
-	pkg := &Package{Windows: []*Window{home}}
-
-	got := Owners(pkg)
-	if len(got) != 2 {
-		t.Fatalf("Owners returned %d owners; want 2", len(got))
-	}
-	if len(got[1].Handlers) != 1 || got[1].Handlers[0] != h {
-		t.Errorf("window owner Handlers = %v; want the @error handler", got[1].Handlers)
-	}
-	if len(got[0].Handlers) != 0 {
-		t.Errorf("package owner Handlers = %v; want none", got[0].Handlers)
-	}
-}
-
 // Vars reads as a snapshot and writes through AddVars, which is the half a
 // consumer gets wrong silently: appending to Owner.Vars reaches a copy.
 func TestOwnerAddVarsReachesTheDeclaration(t *testing.T) {
 	comp := &Component{Name: "counter"}
-	win := testWindow("home")
-	pkg := &Package{Components: []*Component{comp}, Windows: []*Window{win}}
+	pkg := &Package{Components: []*Component{comp}}
 
 	for _, o := range Owners(pkg) {
 		o.AddVars(&Var{Name: "added"})
@@ -184,10 +70,7 @@ func TestOwnerAddVarsReachesTheDeclaration(t *testing.T) {
 	if len(comp.Vars) != 1 || comp.Vars[0].Name != "added" {
 		t.Errorf("component vars = %v; want the one added var", comp.Vars)
 	}
-	// Two: its own, and the window's. A window owns nothing, so what a pass
-	// adds while walking one belongs to the window's container -- which for a
-	// root-only construct is the package.
-	if len(pkg.Vars) != 2 {
-		t.Errorf("package vars = %d; want its own plus the window's", len(pkg.Vars))
+	if len(pkg.Vars) != 1 {
+		t.Errorf("package vars = %d; want the one added var", len(pkg.Vars))
 	}
 }

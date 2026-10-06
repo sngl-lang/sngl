@@ -13,7 +13,9 @@ import (
 )
 
 // SiteComponent is what a directory import hands the program: one component
-// whose slot is the layout, inserted once per page.
+// rendering a nav.page per file, each the layout inserted around the file's
+// content. It renders pages without being one, so it is written among a
+// nav.stack's pages.
 const SiteComponent = "site"
 
 // generatedFile is the file the directory's own .sngl files sit beside.
@@ -53,6 +55,13 @@ func convertDir(fsys fs.FS, label string) (fs.FS, error) {
 		switch {
 		case err != nil:
 			return err
+		case strings.HasPrefix(d.Name(), "_") && p != ".":
+			// A name starting with `_` is the directory's own material rather
+			// than a page -- a template, a tutorial's source -- as Go skips one.
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		case d.IsDir():
 			return nil
 		case isMarkdown(p):
@@ -98,7 +107,7 @@ func convertDir(fsys fs.FS, label string) (fs.FS, error) {
 		}
 		pages = root.walk()
 	}
-	out[generatedFile] = &fstest.MapFile{Data: []byte(site(state, label, root, pages, fields))}
+	out[generatedFile] = &fstest.MapFile{Data: []byte(site(state, label, root, pages, fields, hasTitle(out, fields)))}
 	return out, nil
 }
 
@@ -226,13 +235,36 @@ func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, 
 
 var zeros = map[string]string{"string": `""`, "int": "0", "float": "0.0", "bool": "false"}
 
+// hasTitle reports whether the site's Frontmatter has a `title`, which is what
+// each page is titled with: the synthesized struct's fields, or the declared
+// one's.
+func hasTitle(pkg fstest.MapFS, fields []field) bool {
+	if fields != nil {
+		return slices.ContainsFunc(fields, func(f field) bool { return f.name == "title" && f.typ == "string" })
+	}
+	for name, f := range pkg {
+		doc, err := parser.Parse(name, f.Data)
+		if err != nil {
+			continue
+		}
+		for _, s := range doc.Stmts {
+			if sd, ok := s.(*snglast.StructDef); ok && sd.Name == "Frontmatter" {
+				return slices.ContainsFunc(sd.Fields(), func(f *snglast.StructField) bool { return slices.Contains(f.Names, "title") })
+			}
+		}
+	}
+	return false
+}
+
 // site writes the generated file: the page vocabulary, the tree as data, a
-// component per page, and the site that inserts the layout once per page.
-func site(state *docState, label string, root *page, pages []*page, fields []field) string {
+// component per page, and the site that renders a page per file with the
+// layout around it.
+func site(state *docState, label string, root *page, pages []*page, fields []field, titled bool) string {
 	e := &emitter{doc: state}
 	e.linef("// Generated from %s by the md: import scheme; DO NOT EDIT.", label)
 	e.line("")
 	e.header()
+	e.line(`import nav "sngl:ui/nav"`)
 	if fields != nil {
 		e.line("")
 		e.line("struct Frontmatter {")
@@ -255,11 +287,18 @@ func site(state *docState, label string, root *page, pages []*page, fields []fie
 		e.component(p.name, p.blocks)
 	}
 	e.line("")
-	e.line("component " + SiteComponent + "<T>(layout component(page Page, content component ui.node) T) T {")
+	e.line("component " + SiteComponent + "(layout component(page Page, content component ui.node) ui.node) {")
 	for _, p := range pages {
-		e.line("    layout(" + pageRef(root, p) + ") {")
-		e.line("        component content {")
-		e.line("            " + p.name)
+		ref := pageRef(root, p)
+		title := ""
+		if titled {
+			title = ", title=" + ref + ".frontmatter.title"
+		}
+		e.line("    nav.page(href=" + ref + ".href" + title + ") {")
+		e.line("        layout(" + ref + ") {")
+		e.line("            component content {")
+		e.line("                " + p.name)
+		e.line("            }")
 		e.line("        }")
 		e.line("    }")
 	}

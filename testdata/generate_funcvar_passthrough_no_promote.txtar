@@ -61,7 +61,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function syncHello() {
     return "sync";
   }
@@ -80,4 +80,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:135ba55b1f7cea251b7ed1f8cbdc1897
+pass sha256:67acef428a609ae994aed11068e62f2d

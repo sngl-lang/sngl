@@ -40,6 +40,7 @@ type Model struct {
 	__ctx_locale__inst0 string
 	n__inst0            int
 	s__inst0            string
+	visible__inst1      bool
 
 	width, height int
 }
@@ -50,6 +51,7 @@ func New() Model {
 	m.__ctx_locale__inst0 = i18n.DefaultLocale()
 	m.n__inst0 = 1234
 	m.s__inst0 = i18n.NumberInt(m.__ctx_locale__inst0, m.n__inst0, "decimal")
+	m.visible__inst1 = true
 	return m
 }
 
@@ -89,6 +91,21 @@ func SetS__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setS__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -102,13 +119,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetN__inst0(msg.value)
 	case setS__inst0Msg:
 		m = m.SetS__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -116,7 +141,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(m.s__inst0))
+	if m.visible__inst1 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(m.s__inst0))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -131,4 +158,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:ff54a361484d96340b8b0822e2f7bc8d
+pass sha256:3f0d92b862b5dfe97d05817af286c1ef

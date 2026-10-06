@@ -56,10 +56,10 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
-    <span id="__n1" data-sngl-id="__n1">
+    <span id="__n2" data-sngl-id="__n2">
     </span>
   </button>
 </div>
@@ -67,11 +67,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst1: 0, running__inst1: false, handle__inst0__inst1: 0 };
+  var state = { seconds__inst1: 0, running__inst1: false, handle__inst0__inst1: 0, visible__inst2: true };
   function __effect0_mount() {
     state.handle__inst0__inst1 = setInterval(() => {
       state.seconds__inst1 += 1;
-      __n0.textContent = String(state.seconds__inst1) + " s";
+      __n1.textContent = String(state.seconds__inst1) + " s";
     }, __effect0_key);
   }
   function __effect0_unmount() {
@@ -148,16 +148,16 @@ body { font-family: system-ui, sans-serif; }
     return "" + v;
   }
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $1.addEventListener("click", function() {
     state.running__inst1 = !state.running__inst1;
-    __n1.textContent = state.running__inst1 ? "Pause" : "Start";
+    __n2.textContent = state.running__inst1 ? "Pause" : "Start";
     __effects0_settle();
   });
   function __sngl_init() {
-    __n0.textContent = String(state.seconds__inst1) + " s";
-    __n1.textContent = state.running__inst1 ? "Pause" : "Start";
+    __n1.textContent = String(state.seconds__inst1) + " s";
+    __n2.textContent = state.running__inst1 ? "Pause" : "Start";
   }
   __sngl_init();
   __effects0_settle();
@@ -166,4 +166,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:573cfecaf779e03d87fb13b80709089f
+pass sha256:50e8bbe2d10061cfdf9364933d8b93e2

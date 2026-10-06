@@ -73,6 +73,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
@@ -95,35 +98,53 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("medium") }
     var chosen__inst0 by remember { mutableStateOf("") }
     val more__inst0 = remember { mutableStateListOf("a", "b") }
+    var visible__inst1 by remember { mutableStateOf(true) }
+    var value__inst2 by remember { mutableStateOf(pick__inst0) }
+    var value__inst3 by remember { mutableStateOf(pick__inst0) }
+    var value__inst4 by remember { mutableStateOf(pick__inst0) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Row(modifier = Modifier.padding(4.dp)) {
-            for (opt in listOf("small", "medium", "large")) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {
-                        chosen__inst0 = opt
-                    })
-                    Text(text = opt, modifier = Modifier)
-                }
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Column(modifier = Modifier.padding(5.dp)) {
-            for (opt in listOf("one", "two")) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {})
-                    Text(text = opt, modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Row(modifier = Modifier.padding(4.dp)) {
+                for (opt in listOf("small", "medium", "large")) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst2 == opt), onClick = {
+                            value__inst2 = opt
+                            chosen__inst0 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
                 }
             }
-        }
-        Column(modifier = Modifier) {
-            for (opt in more__inst0) {
-                Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick__inst0 == opt), onClick = {})
-                    Text(text = opt, modifier = Modifier)
+            Column(modifier = Modifier.padding(5.dp)) {
+                for (opt in listOf("one", "two")) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst3 == opt), onClick = {
+                            value__inst3 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
+                }
+            }
+            Column(modifier = Modifier) {
+                for (opt in more__inst0) {
+                    Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = (value__inst4 == opt), onClick = {
+                            value__inst4 = opt
+                        })
+                        Text(text = opt, modifier = Modifier)
+                    }
                 }
             }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:4f1b62c169c3ad2ecc2e6ac99465b264
+pass sha256:e2438d18df23b59cc5ef4b111205a0fa

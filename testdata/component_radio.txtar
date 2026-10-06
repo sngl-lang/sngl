@@ -10,7 +10,7 @@ import . "sngl:test"
 // changes the selected radio option.
 component main node {
     var sel = "medium"
-    radio(options=["small", "medium", "large"], value=sel, direction="horizontal")
+    radio(options=["small", "medium", "large"], :value=sel, direction="horizontal")
 }
 
 func testRadioValueMutates(t Test, c main) {
@@ -167,6 +167,10 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __n0_value_handler(__value string) {
+	m.sel = __value
+}
+
 func (m *Model) Sel() string {
 	return m.sel
 }
@@ -261,7 +265,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Row(modifier = Modifier.safeDrawingPadding()) {
         for (opt in listOf("small", "medium", "large")) {
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = (state.sel == opt), onClick = {})
+                RadioButton(selected = (state.sel == opt), onClick = {
+                    state.sel = opt
+                })
                 Text(text = opt, modifier = Modifier)
             }
         }
@@ -351,36 +357,111 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testRadioValueMutates });
   }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __p1 = props.__p1;
+    let __on0 = props.__on0 ?? ((__e0) => {
+    });
+    let __prop___p0 = __p0;
+    let __prop___p1 = __p1;
+    let __prop___on0 = __on0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.value = __prop___p0;
+      __n0.checked = __prop___p0 === __prop___p1;
+      __n1.textContent = __prop___p0;
+    }
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __n0.checked = __prop___p0 === __prop___p1;
+    }
+    function __set___on0(__v) {
+      __prop___on0 = __v;
+    }
+    let __n4 = document.createElement("label");
+    __n4.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+    let __n0 = document.createElement("input");
+    __n0.value = __prop___p0;
+    __n0.checked = __prop___p0 === __prop___p1;
+    __n0.disabled = false;
+    __n0.setAttribute("type", "radio");
+    __n0.addEventListener("change", (__on0_0) => {
+      __prop___on0(__on0_0);
+    });
+    __n4.appendChild(__n0);
+    let __n1 = document.createElement("span");
+    __n1.textContent = __prop___p0;
+    __n4.appendChild(__n1);
+    __root.appendChild(__n4);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0,
+      __set___p1,
+      __set___on0
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     for (const opt of ["small", "medium", "large"]) {
-      let __n0 = document.createElement("label");
-      __n0.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
-      let __n1 = document.createElement("input");
-      __n1.value = opt;
-      __n1.checked = opt === state.sel;
-      __n1.disabled = false;
-      __n1.setAttribute("type", "radio");
-      __n1.addEventListener("change", () => {
-      });
-      __n0.appendChild(__n1);
-      let __n2 = document.createElement("span");
-      __n2.textContent = opt;
-      __n0.appendChild(__n2);
+      let __n2 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set___p0(opt);
+        __n2.__set___p1(state.sel);
+        __n2.__set___on0((__event) => {
+          state.sel = __event.value;
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+          }
+          ;
+        });
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: (__event) => {
+          state.sel = __event.value;
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p1(state.sel);
+          }
+          ;
+        } });
+        __n2 = __n2__new;
+      }
+      __inst1_next.push(__n2);
+      __inst1_i = __inst1_i + 1;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n2__el);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -397,8 +478,8 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:984e7f369b862c28d153b7a804dd078f
 -- run/go/fyne --
-pass sha256:2c36fcf71c3aa926078ec9cdd5270d1d
+pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
-pass sha256:51e0f7415584236ad360e19336735471
+pass sha256:d6182b44f38d98379c05d91c0398ad26
 -- run/none/html --
-pass sha256:2f2923bfcc8d440452b7418829adcf60
+pass sha256:5d7b4b31c0ed4b525339c235a4598631

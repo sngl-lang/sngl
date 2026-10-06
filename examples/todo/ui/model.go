@@ -28,6 +28,8 @@ type Todo struct {
 type Model struct {
 	newTodo             string
 	todos               []Todo
+	checked__inst0      map[string]bool
+	visible__inst1      bool
 	__focusID           int
 	__focusLoop2_cursor int
 
@@ -41,6 +43,8 @@ func New() Model {
 	m := Model{}
 	m.newTodo = ""
 	m.todos = []Todo{Todo{Text: "Buy groceries", Done: false}, Todo{Text: "Walk the dog", Done: true}, Todo{Text: "Write SNGL docs", Done: false}}
+	m.checked__inst0 = map[string]bool{}
+	m.visible__inst1 = true
 	m.__focusID = 0
 	m.__focusLoop2_cursor = 0
 	m.widget0 = textinput.New()
@@ -154,6 +158,36 @@ func SetTodosCmd(v []Todo) tea.Cmd {
 	return func() tea.Msg { return setTodosMsg{value: v} }
 }
 
+func (m Model) Checked__inst0() map[string]bool {
+	return m.checked__inst0
+}
+
+func (m Model) SetChecked__inst0(v map[string]bool) Model {
+	m.checked__inst0 = v
+	return m
+}
+
+type setChecked__inst0Msg struct{ value map[string]bool }
+
+func SetChecked__inst0Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
+}
+
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -167,6 +201,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetNewTodo(msg.value)
 	case setTodosMsg:
 		m = m.SetTodos(msg.value)
+	case setChecked__inst0Msg:
+		m = m.SetChecked__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -174,7 +212,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 			if m.__focusID == 0 {
@@ -199,6 +243,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
+						__bound_checked := !func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
+						__cell1_checked__inst0 := func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
+						__cell1_checked__inst0 = __bound_checked
+						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
 						return
 					}
@@ -212,83 +270,75 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if m.__focusID == 0 {
-		__prev := m.widget0.Value()
 		m.widget0, cmd = m.widget0.Update(msg)
 		cmds = append(cmds, cmd)
 		m.newTodo = m.widget0.Value()
-		if __v := m.widget0.Value(); __v != __prev {
-			m.__widget0_input(__v)
-		}
 	}
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) __widget0_input(__v string) {
-	e := struct{ Value string }{Value: __v}
-	_ = e
-	m.newTodo = e.Value
-}
-
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().
-		Bold(true).Render(fmt.Sprint(m.status()))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	var content_1Children []string
-	var content_1_0 string
-	content_1_0 = m.widget0.View()
-	content_1Children = append(content_1Children, content_1_0)
-	var content_1_1 string
-	content_1_1Focused := (m.__focusID == 1)
-	content_1_1Prefix := " "
-	if content_1_1Focused {
-		content_1_1Prefix = ">"
-	}
-	content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
-	content_1Children = append(content_1Children, content_1_1)
-	content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
-	content_1 = lipgloss.NewStyle().
-		AlignHorizontal(lipgloss.Center).Render(content_1)
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	var content_2Children []string
-	var content_2_0 string
-	__focusPos2 := 0
-	_ = __focusPos2
-	var content_2_0Items []string
-	for index, item := range m.todos {
-		_ = index
-		_ = item
-		var content_2_0Item string
-		content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
-		content_2_0ItemPrefix := " "
-		if content_2_0ItemFocused {
-			content_2_0ItemPrefix = ">"
+	if m.visible__inst1 {
+		var contentChildren []string
+		var content_0 string
+		content_0 = lipgloss.NewStyle().
+			Bold(true).Render(fmt.Sprint(m.status()))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		var content_1Children []string
+		var content_1_0 string
+		content_1_0 = m.widget0.View()
+		content_1Children = append(content_1Children, content_1_0)
+		var content_1_1 string
+		content_1_1Focused := (m.__focusID == 1)
+		content_1_1Prefix := " "
+		if content_1_1Focused {
+			content_1_1Prefix = ">"
 		}
-		content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
-		__focusPos2++
-		content_2_0Items = append(content_2_0Items, content_2_0Item)
+		content_1_1 = lipgloss.NewStyle().Render(content_1_1Prefix + " " + fmt.Sprint("Add"))
+		content_1Children = append(content_1Children, content_1_1)
+		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
+		content_1 = lipgloss.NewStyle().
+			AlignHorizontal(lipgloss.Center).Render(content_1)
+		contentChildren = append(contentChildren, content_1)
+		var content_2 string
+		var content_2Children []string
+		var content_2_0 string
+		__focusPos2 := 0
+		_ = __focusPos2
+		var content_2_0Items []string
+		for index, item := range m.todos {
+			_ = index
+			_ = item
+			var content_2_0Item string
+			content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
+			content_2_0ItemPrefix := " "
+			if content_2_0ItemFocused {
+				content_2_0ItemPrefix = ">"
+			}
+			content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+			__focusPos2++
+			content_2_0Items = append(content_2_0Items, content_2_0Item)
+		}
+		content_2_0 = strings.Join(content_2_0Items, "\n")
+		if content_2_0 != "" {
+			content_2Children = append(content_2Children, content_2_0)
+		}
+		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+		contentChildren = append(contentChildren, content_2)
+		var content_3 string
+		content_3Focused := (m.__focusID == 3)
+		content_3Prefix := " "
+		if content_3Focused {
+			content_3Prefix = ">"
+		}
+		content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("Remove"))
+		contentChildren = append(contentChildren, content_3)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
+		content = lipgloss.NewStyle().
+			Padding(2).Render(content)
 	}
-	content_2_0 = strings.Join(content_2_0Items, "\n")
-	if content_2_0 != "" {
-		content_2Children = append(content_2Children, content_2_0)
-	}
-	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
-	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	content_3Focused := (m.__focusID == 3)
-	content_3Prefix := " "
-	if content_3Focused {
-		content_3Prefix = ">"
-	}
-	content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("Remove"))
-	contentChildren = append(contentChildren, content_3)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
-	content = lipgloss.NewStyle().
-		Padding(2).Render(content)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

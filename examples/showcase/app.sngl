@@ -2,7 +2,7 @@
 // Learn SNGL in Y minutes
 //
 // SNGL is a declarative UI language that compiles to multiple platforms
-// (HTML+JS, BubbleTea TUI, Fyne desktop, Android). One source -> many
+// (HTML+JS, BubbleTea TUI, Fyne and GTK 4 desktop, Android). One source -> many
 // targets. The same file is a tutorial, a playground, and a portability
 // test: every section below passes `sngl check` and runs on every
 // platform listed in the `output` block.
@@ -10,12 +10,12 @@
 // Read top to bottom. Each section introduces one feature with the
 // smallest piece of working code that demonstrates it.
 //
-//     Project: https://sngl.dev   |   Source: git.duckfam.us/jonathan/sngl
+//     Source: https://git.duckfam.us/jonathan/sngl
 // =====================================================================
 
 import ui "sngl:ui"
-import . "sngl:time"
-import . "sngl:dialog"
+import time "sngl:time"
+import dialog "sngl:dialog"
 import test "sngl:test"
 import "sngl:i18n"
 
@@ -109,7 +109,7 @@ func makeBadge(b struct {
 // ----- 9. Child component with prop + event sink -------------------
 // Components are declared at top level. Props live in the header.
 // `@event` props let the parent receive events emitted by the child.
-component LabeledCounter(label = "Clicks", start = 0, @changed) ui.node {
+component LabeledCounter(label = "Clicks", start = 0, @changed int) ui.node {
     var n = start
 
     ui.hbox(style={gap=8, alignItems=center}) {
@@ -161,7 +161,7 @@ component I18nDemo ui.node {
     var unread = 5
     var role = "admin"
     var price = 1234
-    var party date = date("2026-05-09")
+    var party time.date = time.date("2026-05-09")
 
     ui.vbox(style={gap=4}) {
         ui.text(value=$"Welcome, {who}!")
@@ -212,12 +212,12 @@ component ContextDemo ui.node {
     }
 }
 
-// ----- 13. The main component: every feature wired up --------------
-// State (`var`) is reactive: changing it re-runs computed funcs and
+// ----- 13. The Tour component: every feature wired up --------------
+// State (`var`) is reactive: changing it re-evaluates the funcs that read it and
 // patches the visual tree. The visual block below mirrors the original
 // stdlib-component showcase; the language-feature sections cross-
 // reference the relevant earlier section.
-component main ui.node {
+component Tour ui.node {
     // --- Primitive state (with explicit + inferred types) ---------
     var (
         count = 0
@@ -233,7 +233,7 @@ component main ui.node {
         notes = ""
         sliderVal float = 0
         animating = true
-        birthday date = date("2000-01-01")
+        birthday time.date = time.date("2000-01-01")
         clicks = 0
     )
 
@@ -285,7 +285,7 @@ component main ui.node {
     }
 
     // --- Timer drives the animated progress bar ------------------
-    timer(interval=50ms, enabled=animating, @tick {
+    time.timer(interval=50ms, enabled=animating, @tick {
         sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     })
 
@@ -302,7 +302,7 @@ component main ui.node {
     ui.vbox(
         scroll=true,
         refreshing=false,
-        @refresh { Alert.toast("Refreshed!", "info") },
+        @refresh { dialog.Alert.toast("Refreshed!", "info") },
         style={gap=24, maxWidth=900, padding=24},
     ) {
         // --- Heading ---------------------------------------------
@@ -313,7 +313,7 @@ component main ui.node {
         )
         ui.divider
 
-        // --- Text + button + computed (§ — `greeting` is computed) ---
+        // --- Text + button + derived value (`greeting` reads `name`) ---
         ui.text(value="Text & Button", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={alignItems=center, gap=12}) {
             ui.text(value=greeting, style={fontSize=18})
@@ -357,7 +357,7 @@ component main ui.node {
                 label="Dark mode",
                 @change { darkMode!! },
             )
-            ui.toggle(checked=toggleOn, label="Notifications")
+            ui.toggle(:checked=toggleOn, label="Notifications")
             ui.radio(
                 direction="horizontal",
                 options=["small", "medium", "large"],
@@ -392,7 +392,7 @@ component main ui.node {
         // --- Link / Chip / Avatar --------------------------------
         ui.text(value="Link & Chip", style={fontSize=20, fontWeight=bold})
         ui.hbox(style={alignItems=center, gap=8}) {
-            ui.link(href="https://sngl.dev", text="SNGL Website")
+            ui.link(href="https://git.duckfam.us/jonathan/sngl", text="SNGL Source")
             ui.chip(label="Tag")
             ui.chip(label="Removable", removable=true)
             ui.chip(label="Success", variant="success")
@@ -430,7 +430,7 @@ component main ui.node {
             ui.button(text="Open Drawer", @click { showDrawer = true })
             ui.button(
                 text="Show Toast",
-                @click { Alert.toast("Action completed!", "success") },
+                @click { dialog.Alert.toast("Action completed!", "success") },
             )
         }
         ui.modal(closable=true, open=showModal, title="Example Modal") {
@@ -577,20 +577,19 @@ component main ui.node {
 // A window at the root of the file is what a build renders; a component
 // is not one. `href` is the route the html target serves it at.
 
-ui.window #tour(title=APP_NAME, href="/") {
-    main
+ui.window #tour(title=APP_NAME) {
+    Tour()
 }
 
 // ----- 15. Tests (kept minimal) -------------------------------------
-// Any platform that implements the TestRunner interface can execute
-// these. `go tool verify` runs them via the `none` interpreter; other
-// platforms wire them into their own runners. See `internal/testutil`
-// for the framework. Per-feature coverage lives in `testdata/`.
+// `sngl test examples/showcase` runs them on the `none` interpreter;
+// `--platform` runs them on another target's own harness. A test whose
+// second parameter is a component gets a mounted instance of it.
 
-func testInitialCount(t test.Test, c main) {
+func testInitialCount(t test.Test, c Tour) {
     t.assert(c.count == 0)
 }
 
-func testGreetingDefault(t test.Test, c main) {
+func testGreetingDefault(t test.Test, c Tour) {
     t.assert(c.greeting == "Hello, World!")
 }

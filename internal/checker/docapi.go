@@ -3,7 +3,6 @@ package checker
 import (
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -122,12 +121,34 @@ func PackageSchema(pkg string) SchemaRegistry {
 }
 
 // PackageExamples is the `_example_`-prefixed components of one library
-// package, keyed by the declaration each documents.
+// package, keyed by the declaration each documents. Each is written the way a
+// program outside the package would write it: the package imported under its
+// last path segment and every component it declares named through that. Only
+// component names are qualified, so an example names the package's types,
+// enums and funcs through an expected type or not at all.
 func PackageExamples(pkg string) map[string][]string {
+	docs := PackageSource(pkg)
+	own := map[string]bool{}
+	for _, doc := range docs {
+		for _, stmt := range doc.Stmts {
+			if comp, ok := stmt.(*ast.ComponentDecl); ok && comp.Target == nil {
+				own[comp.Name] = true
+			}
+		}
+	}
+	path := "sngl:" + pkg
+	alias := pkg[strings.LastIndex(pkg, "/")+1:]
 	out := map[string][]string{}
-	for _, doc := range PackageSource(pkg) {
-		for name, src := range PrefixedExamples(doc) {
-			out[name] = append(out[name], src)
+	for _, doc := range docs {
+		for name, comp := range prefixedExampleDecls(doc) {
+			imports := []*ast.Import{{Path: path, Alias: alias}}
+			for _, imp := range docImports(doc) {
+				if !strings.HasPrefix(imp.Path, "sngl:internal/") {
+					imports = append(imports, imp)
+				}
+			}
+			imports, ui := withUI(imports)
+			out[name] = append(out[name], exampleProgram(imports, ui, comp, alias, own))
 		}
 	}
 	return out
@@ -211,13 +232,23 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 // PrefixedExamples extracts `_example_<name>` prefixed components from a
 // document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
-// for each example, with the wrapper renamed to `main` so what a reader is
-// shown does not repeat the `_example_` prefix, and so ExampleProgram has one
-// name to instantiate. The leading underscore marks examples as
-// unexported — they are not part of the public API but the doc tooling
-// still extracts them from the AST for gallery rendering.
+// for each example: the document's imports and the example's body placed in
+// a window, so the snippet is a complete, runnable app. A window body is not a
+// component body, so an example declares no parameters and nests no component
+// at its root. The leading underscore marks examples as unexported — they are
+// not part of the public API but the doc tooling still extracts them from the
+// AST for gallery rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {
+	imports, ui := withUI(docImports(doc))
 	result := make(map[string]string)
+	for name, comp := range prefixedExampleDecls(doc) {
+		result[name] = exampleProgram(imports, ui, comp, "", nil)
+	}
+	return result
+}
+
+func prefixedExampleDecls(doc *ast.Document) map[string]*ast.ComponentDecl {
+	result := make(map[string]*ast.ComponentDecl)
 	for _, stmt := range doc.Stmts {
 		comp, ok := stmt.(*ast.ComponentDecl)
 		if !ok {
@@ -230,52 +261,109 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 		if i := strings.Index(target, "_"); i >= 0 {
 			target = target[:i]
 		}
-		if _, exists := result[target]; exists {
-			continue
+		if _, exists := result[target]; !exists {
+			result[target] = comp
 		}
-		display := *comp
-		display.Name = "main"
-		exDoc := &ast.Document{Stmts: []ast.Stmt{&display}}
-		result[target] = strings.TrimSpace(parser.Format(exDoc))
 	}
 	return result
 }
 
-// ExampleProgram turns an example PrefixedExamples returned into a program:
-// imports stands in for the scope the example was written in, and a window
-// renders it. The window is reached through an alias of its own so it resolves
-// whether imports qualify sngl:ui or flatten it.
-func ExampleProgram(imports, example string) string {
-	var b strings.Builder
-	if imports != "" {
-		b.WriteString(imports)
-		b.WriteString("\n")
-	}
-	b.WriteString("import snglexampleui \"sngl:ui\"\n\n")
-	b.WriteString(example)
-	b.WriteString("\n\nsnglexampleui.window {\n    main()\n}\n")
-	return b.String()
-}
-
-// PackageExampleImports is the scope an example written inside library
-// package pkg has: that package's own declarations, unqualified.
-func PackageExampleImports(pkg string) string {
-	return "import . " + strconv.Quote(pkg)
-}
-
-// DocumentExampleImports is the scope an example written in doc has, as far
-// as a program built outside that file can reproduce it: the file's imports.
-func DocumentExampleImports(doc *ast.Document) string {
-	var imps []ast.Stmt
-	for _, s := range doc.Stmts {
-		if imp, ok := s.(*ast.Import); ok {
-			imps = append(imps, imp)
+func docImports(doc *ast.Document) []*ast.Import {
+	var out []*ast.Import
+	for _, stmt := range doc.Stmts {
+		if imp, ok := stmt.(*ast.Import); ok {
+			out = append(out, imp)
 		}
 	}
-	if len(imps) == 0 {
-		return ""
+	return out
+}
+
+// withUI returns imports with sngl:ui added when none of them names it, and
+// the name a window is reached through under the result.
+func withUI(imports []*ast.Import) ([]*ast.Import, string) {
+	if ui := uiAliasFor(imports); ui != "" {
+		return imports, ui
 	}
-	return strings.TrimSpace(parser.Format(&ast.Document{Stmts: imps}))
+	return append(imports, &ast.Import{Path: "sngl:ui", Alias: "ui"}), "ui"
+}
+
+// uiAliasFor is the name a window is reached through under imports: "" when
+// nothing imports sngl:ui, and "." for a dot import.
+func uiAliasFor(imports []*ast.Import) string {
+	for _, imp := range imports {
+		if imp.Path == "sngl:ui" {
+			if imp.Alias == "" {
+				return "ui"
+			}
+			return imp.Alias
+		}
+	}
+	return ""
+}
+
+// exampleProgram builds a program from imports and a window holding comp's
+// body. A node naming one of own is qualified with alias. The AST is shared
+// once parsed, so every node on the path to a rewrite is copied.
+func exampleProgram(imports []*ast.Import, ui string, comp *ast.ComponentDecl, alias string, own map[string]bool) string {
+	var window ast.TargetExpr = &ast.IdentExpr{Name: "window"}
+	if ui != "." {
+		window = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: ui}, Field: "window"}
+	}
+	head := make([]ast.Stmt, 0, len(imports))
+	for _, imp := range imports {
+		head = append(head, imp)
+	}
+	body := comp.Body
+	body.Stmts = qualifyNodes(comp.Body.Stmts, alias, own)
+	body.IsMultiline = true
+	win := &ast.Document{Stmts: []ast.Stmt{&ast.VisualNode{Target: window, Block: body}}}
+	return strings.TrimSpace(parser.Format(&ast.Document{Stmts: head})) + "\n\n" + strings.TrimSpace(parser.Format(win))
+}
+
+func qualifyNodes(stmts []ast.Stmt, alias string, own map[string]bool) []ast.Stmt {
+	if len(own) == 0 {
+		return stmts
+	}
+	out := make([]ast.Stmt, len(stmts))
+	for i, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.VisualNode:
+			n := *s
+			if id, ok := s.Target.(*ast.IdentExpr); ok && own[id.Name] {
+				n.Target = &ast.SelectExpr{Pos: id.Pos, Operand: &ast.IdentExpr{Pos: id.Pos, Name: alias}, Field: id.Name}
+			}
+			n.Block.Stmts = qualifyNodes(s.Block.Stmts, alias, own)
+			out[i] = &n
+		case *ast.CallStmt:
+			id, ok := s.Call.Func.(*ast.IdentExpr)
+			if !ok || !own[id.Name] {
+				out[i] = stmt
+				continue
+			}
+			call := *s.Call
+			call.Func = &ast.SelectExpr{Pos: id.Pos, Operand: &ast.IdentExpr{Pos: id.Pos, Name: alias}, Field: id.Name}
+			n := *s
+			n.Call = &call
+			out[i] = &n
+		case *ast.IfStmt:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			n.Else.Stmts = qualifyNodes(s.Else.Stmts, alias, own)
+			out[i] = &n
+		case *ast.ForStmt:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			n.Else.Stmts = qualifyNodes(s.Else.Stmts, alias, own)
+			out[i] = &n
+		case *ast.ComponentDecl:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			out[i] = &n
+		default:
+			out[i] = stmt
+		}
+	}
+	return out
 }
 
 // ExtractPackageDocs walks a document's statements and returns doc info
@@ -372,8 +460,8 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // package prose is easy to leave in by accident: three files in lib/remote
 // opened with a file header, and the package read as whichever the directory
 // listed first. A stored file is the same accident made by a program, since
-// every one opens with a "Code generated" header and gtk4 serves one as part of
-// its package.
+// every one opens with a "Code generated" header, the gir: scheme's widget
+// file included.
 const PackageDocFile = "doc.sngl"
 
 // DocumentFile is the base name of the file a parsed document came from. An

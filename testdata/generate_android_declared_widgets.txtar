@@ -79,6 +79,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class Measurement(
@@ -99,30 +102,40 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var n__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column(modifier = Modifier.safeDrawingPadding()) {
-        Button(onClick = {
-            n__inst0 += 1
-        }, modifier = Modifier.padding(4.dp)) {
-            Text(text = "bump", modifier = Modifier)
-        }
-        Button(onClick = {}, modifier = Modifier) {
-            Text(text = "quiet", modifier = Modifier)
-        }
-        Badge(modifier = Modifier.padding(6.dp)) {
-            Text(text = "7", modifier = Modifier)
-        }
-        Text(text = "Home", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier)
-        Text(text = "Tag", modifier = Modifier)
-        Column(modifier = Modifier.padding(9.dp)) {
-            Button(onClick = {}, modifier = Modifier) {
-                Text(text = "New", modifier = Modifier)
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Text(text = "", modifier = Modifier)
-        Text(text = "", modifier = Modifier)
+        Column(modifier = Modifier.safeDrawingPadding()) {
+            Button(onClick = {
+                n__inst0 += 1
+            }, modifier = Modifier.padding(4.dp)) {
+                Text(text = "bump", modifier = Modifier)
+            }
+            Button(onClick = {}, modifier = Modifier) {
+                Text(text = "quiet", modifier = Modifier)
+            }
+            Badge(modifier = Modifier.padding(6.dp)) {
+                Text(text = "7", modifier = Modifier)
+            }
+            Text(text = "Home", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier)
+            Text(text = "Tag", modifier = Modifier)
+            Column(modifier = Modifier.padding(9.dp)) {
+                Button(onClick = {}, modifier = Modifier) {
+                    Text(text = "New", modifier = Modifier)
+                }
+            }
+            Text(text = "", modifier = Modifier)
+            Text(text = "", modifier = Modifier)
+        }
     }
 }
 -- run/kotlin/android --
-pass sha256:dd9ea1c8f4848c2c9f0f6f0b41c04533
+pass sha256:3ecee763497f61d4f0f7d8b5d6771181

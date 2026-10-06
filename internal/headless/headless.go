@@ -61,13 +61,37 @@ func RuntimeDir() (dir string, cleanup func(), err error) {
 // Env returns the environment a cage child needs: the wlroots headless backend
 // and software renderer, so it runs with no real output and no GPU, plus the
 // private runtime directory and the marker that stops descendants re-wrapping.
+//
+// Accessibility is off. Each GTK application otherwise starts an at-spi bus
+// launcher, which starts a dbus-daemon of its own; nothing here reads the
+// accessibility tree, and those daemons outlived the run.
 func Env(runtimeDir string) []string {
 	return []string{
 		"WLR_BACKENDS=headless",
 		"WLR_RENDERER=pixman",
 		ActiveEnv + "=1",
 		"XDG_RUNTIME_DIR=" + runtimeDir,
+		"GTK_A11Y=none",
+		"NO_AT_BRIDGE=1",
 	}
+}
+
+// sessionBus returns dbus-run-session, or "" when it is not installed.
+//
+// A cage child has no session bus, so the first GTK application in it
+// autolaunched one through dbus-launch -- a daemon that detaches to init and
+// survives the compositor, along with every service it activated (the desktop
+// portal, the permission store, dconf). One test run left ten of each, and a
+// container accumulates them until it runs out of pids, at which point
+// Chromium cannot fork and the html browser tests hang or fail at random.
+// dbus-run-session gives the run a bus of its own and stops it when the
+// command exits.
+func sessionBus() string {
+	path, err := exec.LookPath("dbus-run-session")
+	if err != nil {
+		return ""
+	}
+	return path
 }
 
 // CanStart reports whether cage runs a trivial command to completion here.
@@ -105,7 +129,11 @@ func Wrap(command string, args []string) (cmd string, wrapped []string, env []st
 		fmt.Fprintln(os.Stderr, "note: cage is installed but will not start here; GUI tests will skip.")
 		return command, args, nil, func() {}
 	}
-	return compositor, append([]string{"--", command}, args...), env, cleanup
+	wrapped = append([]string{"--", command}, args...)
+	if bus := sessionBus(); bus != "" {
+		return bus, append([]string{"--", compositor}, wrapped...), env, cleanup
+	}
+	return compositor, wrapped, env, cleanup
 }
 
 // SkipReason returns a non-empty reason when code that presents real windows

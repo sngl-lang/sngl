@@ -39,7 +39,7 @@ component App() node {
     }
     text(value="fast=" + string(fast) + " slow=" + string(slow))
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

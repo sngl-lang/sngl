@@ -6,7 +6,7 @@ import . "sngl:ui"
 // byte-identical as the front/back-end placement feature lands.
 output { go { html } }
 
-window #app(title="t", href="/") {
+window #app(title="t") {
     var count = 0
 
     vbox {

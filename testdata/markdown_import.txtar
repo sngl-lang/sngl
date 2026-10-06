@@ -96,7 +96,7 @@ body { font-family: system-ui, sans-serif; }
       </div>
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
         <label style="align-items:center;display:inline-flex;gap:4px">
-          <input checked disabled type="checkbox"/>
+          <input id="__n1" data-sngl-id="__n1" disabled type="checkbox"/>
           <span>
           </span>
         </label>
@@ -120,7 +120,7 @@ body { font-family: system-ui, sans-serif; }
       </div>
     </div>
     <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>twice</span></span><span class="sngl-tok-punctuation"><span>(</span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-punctuation"><span>)</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{</span></span><span class="sngl-tok-plain"><span>&#10;    </span></span><span class="sngl-tok-variable"><span>return</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>*</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>2</span></span><span class="sngl-tok-plain"><span>&#10;</span></span><span class="sngl-tok-punctuation"><span>}</span></span></code></pre>
-    <table style="border-collapse:collapse;width:100%">
+    <table id="$46" style="border-collapse:collapse;width:100%">
       <thead>
         <tr>
           <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Name</th>
@@ -152,9 +152,22 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst1: true, checked__inst3: true, selected__inst6: 0 };
+  var $46 = document.getElementById("$46");
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  __n1.addEventListener("change", function(e) {
+    state.checked__inst3 = e.target.checked;
+    __n1.checked = state.checked__inst3;
+  });
+  $46.addEventListener("selected", function(e) {
+    state.selected__inst6 = e;
+  });
+  function __sngl_init() {
+    __n1.checked = state.checked__inst3;
+  }
+  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:eb6ce30faa390217353a7da2668cf99e
+pass sha256:0f137f404fd3001f87432d0cff78e2de

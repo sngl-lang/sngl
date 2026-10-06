@@ -1,0 +1,133 @@
+# What html cannot answer of sngl:ui/nav is refused where it is written,
+# rather than written out as a page nobody can reach.
+#
+# A page's params travel in its path, so a field its href names no placeholder
+# for has nowhere to travel. A static site writes one document per page: a page
+# whose href names a placeholder is a pattern no file can be, so a page there
+# has no params at all, and nothing can hand it any. Two pages one request
+# could reach are two routes conflicting, and two pages at one path on a static
+# site are one file.
+#
+# A window's documents are its pages, so it holds one stack, and holds it where
+# a document can be decided -- not under an `if` that reads state.
+
+! sngl generate --platform html --lang none -o out pattern.sngl
+stderr 'pattern.sngl:12:22: page "pkg" is served at /p/\{name\}, a pattern: a static site writes one document per page and cannot serve one; compile with a server language \(e.g. --lang go\)'
+
+! sngl generate --platform html --lang go -o out unnamed.sngl
+stderr 'unnamed.sngl:13:22: page "pkg"''s params have a field "kind" its href /p/\{name\} names no placeholder for; a page''s params travel in its path'
+
+! sngl generate --platform html --lang go -o out conflict.sngl
+stderr 'html: page "a" and page "b" both serve /p/\{id\}'
+
+! sngl generate --platform html --lang none -o out samepath.sngl
+stderr 'html: page "b" is written to about/index.html, as page "a" is'
+
+! sngl generate --platform html --lang none -o out twostacks.sngl
+stderr 'twostacks.sngl:12:12: a window''s documents are its pages, and this is a second nav.stack in it; the first is at twostacks.sngl:7:12'
+
+! sngl generate --platform html --lang none -o out underif.sngl
+stderr 'underif.sngl:9:16: a nav.stack under an `if` that reads state cannot be decided per document; write the `if` inside a page'
+
+-- pattern.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+ui.window(title="Pattern") {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", params=Pkg{name="first"}) {
+        }
+    }
+}
+-- unnamed.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+    kind string
+}
+
+ui.window(title="Unnamed") {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", params=Pkg{name="first"}) {
+        }
+    }
+}
+-- conflict.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct ByName {
+    name string
+}
+
+struct ById {
+    id string
+}
+
+ui.window(title="Conflict") {
+    nav.stack #pages {
+        nav.page #a(href=`/p/{name}`, title="A", params=ByName{}) {
+        }
+        nav.page #b(href=`/p/{id}`, title="B", params=ById{}) {
+        }
+    }
+}
+-- samepath.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+ui.window(title="Same") {
+    nav.stack #pages {
+        nav.page #a(href="/about", title="A") {
+        }
+        nav.page #b(href="/about/", title="B") {
+        }
+    }
+}
+-- twostacks.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+ui.window(title="Two") {
+    ui.vbox {
+        ui.text(value="x")
+        nav.stack #left {
+            nav.page #a(href="/", title="A") {
+            }
+        }
+        ui.text(value="y")
+        nav.stack #right {
+            nav.page #b(href="/b", title="B") {
+            }
+        }
+    }
+}
+-- underif.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+var shown = true
+
+ui.window(title="If") {
+    ui.vbox {
+        if shown {
+            nav.stack #pages {
+                nav.page #a(href="/", title="A") {
+                }
+            }
+        }
+        ui.button(text="Toggle", @click {
+            shown = !shown
+        })
+    }
+}

@@ -1,0 +1,54 @@
+// A slot population is a scope of its own, as a component's body is: the ids
+// its nodes declare are hoisted there, a node's children included, so a
+// sibling reads one written inside a vbox or a canvas. Checked as a plain
+// block, only an id at the population's top level was bound, and `label` and
+// `dot` below were undefined.
+import ui "sngl:ui"
+import . "sngl:test"
+import draw "sngl:ui/draw"
+
+component card(top component() ui.node) ui.node {
+    ui.vbox {
+        top()
+    }
+}
+
+ui.window(title="t") {
+    card {
+        component top {
+            ui.vbox {
+                ui.text #label(value="inside")
+            }
+            draw.canvas(width=10px, height=10px) {
+                draw.circle #dot(cx=5.0, cy=5.0, r=5.0)
+            }
+            ui.text(value="radius {dot.r}")
+        }
+    }
+}
+
+component reads ui.node {
+    card {
+        component top {
+            ui.vbox {
+                ui.text #inner(value="x")
+            }
+            ui.text(value="read {inner.value}")
+        }
+    }
+}
+
+// A test reaches a node in a population through the node it populates.
+component reached ui.node {
+    ui.text #own(value="outer")
+    card #holder {
+        component top {
+            ui.text #inside(value="population")
+        }
+    }
+}
+
+func testAPopulationsNodeIsReachedThroughItsTarget(t Test, c reached) {
+    t.assert(c.own.value == "outer")
+    t.assert(c.holder.inside.value == "population")
+}

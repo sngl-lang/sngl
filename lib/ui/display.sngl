@@ -35,7 +35,7 @@ component image(
 
 component _example_image node {
     vbox(style={gap=8, padding=16}) {
-        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
+        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=contain)
     }
 }
 

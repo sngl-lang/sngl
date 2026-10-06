@@ -9,8 +9,8 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <input id="__n0" data-sngl-id="__n0" placeholder="Type here" type=""/>
-  <span id="__n1" data-sngl-id="__n1">
+  <input id="__n1" data-sngl-id="__n1" placeholder="Type here" type=""/>
+  <span id="__n2" data-sngl-id="__n2">
   </span>
   <button id="$1">
     <span>Clear</span>
@@ -20,23 +20,28 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name: "" };
+  var state = { name: "", visible__inst0: true };
   var $1 = document.getElementById("$1");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  __n0.addEventListener("input", function(e) {
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  __n1.addEventListener("input", function(e) {
     state.name = e.target.value;
-    __n0.value = state.name;
-    __n1.textContent = "Hello, " + state.name + "!";
+    __n1.value = state.name;
+    __n2.textContent = "Hello, " + state.name + "!";
+  });
+  __n1.addEventListener("change", function(e) {
+    state.name = e.target.value;
+    __n1.value = state.name;
+    __n2.textContent = "Hello, " + state.name + "!";
   });
   $1.addEventListener("click", function() {
     state.name = "";
-    __n0.value = state.name;
-    __n1.textContent = "Hello, " + state.name + "!";
+    __n1.value = state.name;
+    __n2.textContent = "Hello, " + state.name + "!";
   });
   function __sngl_init() {
-    __n0.value = state.name;
-    __n1.textContent = "Hello, " + state.name + "!";
+    __n1.value = state.name;
+    __n2.textContent = "Hello, " + state.name + "!";
   }
   __sngl_init();
 })();

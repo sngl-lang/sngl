@@ -67,7 +67,7 @@ func checkGtk4(t *testing.T, src string) []string {
 // gtk4Window wraps one platform-gtk4 body in the smallest program that
 // reaches the emitter.
 func gtk4Window(body string) string {
-	return "\nimport . \"sngl:ui\"\nimport \"sngl:platform/gtk4\"\n\nwindow(title=\"t\") {\n" + body + "\n}\n"
+	return "\nimport . \"sngl:ui\"\nimport gtk \"gir:Gtk-4.0\"\n\nwindow(title=\"t\") {\n" + body + "\n}\n"
 }
 
 // setterlessSource sets four GTK properties GIR names no setter for — one of
@@ -78,14 +78,14 @@ func gtk4Window(body string) string {
 // path too.
 const setterlessSource = `
 import . "sngl:ui"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 
 window(title="t") {
-    gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
-    gtk4.GtkLabel(label="hi", accessibleRole="button") {}
-    gtk4.GtkTextBuffer(text="hi") {}
-    gtk4.GtkCellRendererText(alignSet=true, scale=0.25) {}
-    gtk4.GtkGrid(columnSpacing=4) {}
+    gtk.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
+    gtk.GtkLabel(label="hi", accessibleRole="button") {}
+    gtk.GtkTextBuffer(text="hi") {}
+    gtk.GtkCellRendererText(alignSet=true, scale=0.25) {}
+    gtk.GtkGrid(columnSpacing=4) {}
 }
 `
 
@@ -104,23 +104,23 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 		"static void sngl_set_prop(void *obj, const char *name, GValue *src)",
 		"g_object_set_property(o, name, &dst);",
 		// The property's GObject name is its GIR name, hyphens and all.
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n0), C.CString("primary-icon-name"), C.CString("edit-find"))`,
-		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n0), C.CString("enable-emoji-completion"), C.int(boolToInt(true)))`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n1), C.CString("primary-icon-name"), C.CString("edit-find"))`,
+		`C.sngl_set_prop_bool(unsafe.Pointer(m.__n1), C.CString("enable-emoji-completion"), C.int(boolToInt(true)))`,
 		// An enum-typed property with no setter takes its member's C
 		// constant through the int helper.
-		`C.sngl_set_prop_int(unsafe.Pointer(m.__n1), C.CString("accessible-role"), C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
+		`C.sngl_set_prop_int(unsafe.Pointer(m.__n2), C.CString("accessible-role"), C.int(C.GTK_ACCESSIBLE_ROLE_BUTTON))`,
 		// A property whose GIR setter takes two values takes the generic
 		// path, and its object-pointer constructor parameter is nil rather
 		// than a bare 0 no cgo pointer type accepts.
-		`C.sngl_set_prop_string(unsafe.Pointer(m.__n2), C.CString("text"), C.CString("hi"))`,
+		`C.sngl_set_prop_string(unsafe.Pointer(m.__n3), C.CString("text"), C.CString("hi"))`,
 		`C.gtk_text_buffer_new(nil)`,
-		`C.sngl_set_prop_double(unsafe.Pointer(m.__n3), C.CString("scale"), C.double(0.25))`,
+		`C.sngl_set_prop_double(unsafe.Pointer(m.__n4), C.CString("scale"), C.double(0.25))`,
 		// A property that does have a setter still calls it directly.
-		`C.gtk_entry_set_max_length((*C.GtkEntry)(unsafe.Pointer(m.__n0)), C.int(12))`,
+		`C.gtk_entry_set_max_length((*C.GtkEntry)(unsafe.Pointer(m.__n1)), C.int(12))`,
 		// The value is cast to what the setter's parameter is declared as,
 		// which GIR does not promise is the property's own type: a gint
 		// property whose setter takes a guint.
-		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n4)), C.guint(4))`,
+		`C.gtk_grid_set_column_spacing((*C.GtkGrid)(unsafe.Pointer(m.__n5)), C.guint(4))`,
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("model.go is missing:\n\t%s", want)
@@ -148,10 +148,10 @@ func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := generateGtk4(t, `
 import . "sngl:ui"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 
 window(title="t") {
-    gtk4.GtkGrid(columnSpacing=4) {}
+    gtk.GtkGrid(columnSpacing=4) {}
 }
 `)
 	if err != nil {
@@ -174,10 +174,10 @@ func TestUnsettableProp_FailsTheBuild(t *testing.T) {
 	skipWithoutGIR(t)
 	_, err := generateGtk4(t, `
 import . "sngl:ui"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 
 window(title="t") {
-    gtk4.GtkLabel(label="hi", ellipsize="end") {}
+    gtk.GtkLabel(label="hi", ellipsize="end") {}
 }
 `)
 	if err == nil {
@@ -196,10 +196,10 @@ func TestEnumProp_RejectsUnknownMember(t *testing.T) {
 	skipWithoutGIR(t)
 	_, err := generateGtk4(t, `
 import . "sngl:ui"
-import "sngl:platform/gtk4"
+import gtk "gir:Gtk-4.0"
 
 window(title="t") {
-    gtk4.GtkLabel(label="hi", justify="middle") {}
+    gtk.GtkLabel(label="hi", justify="middle") {}
 }
 `)
 	if err == nil {
@@ -235,8 +235,8 @@ func TestDispatchIsBoundedBothWays(t *testing.T) {
 	skipWithoutGIR(t)
 	// GtkGrid is outside the wrapped gtk4rt surface, which puts the whole
 	// program on the inline-cgo path where snglGoDispatch exists at all.
-	files, err := generateGtk4(t, gtk4Window(`            gtk4.GtkGrid(columnSpacing=4) {}
-            gtk4.GtkButton(label="go", @clicked { }) {}`))
+	files, err := generateGtk4(t, gtk4Window(`            gtk.GtkGrid(columnSpacing=4) {}
+            gtk.GtkButton(label="go", @clicked { }) {}`))
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestDispatchIsBoundedBothWays(t *testing.T) {
 // nothing.
 func TestConstructOnlyProp_IsNotDeclared(t *testing.T) {
 	skipWithoutGIR(t)
-	msgs := checkGtk4(t, gtk4Window(`            gtk4.GtkAssistant(useHeaderBar=1) {}`))
+	msgs := checkGtk4(t, gtk4Window(`            gtk.GtkAssistant(useHeaderBar=1) {}`))
 	if len(msgs) == 0 {
 		t.Fatal("useHeaderBar type-checked; GtkAssistant.use-header-bar is construct-only and nothing can set it")
 	}
@@ -268,7 +268,7 @@ func TestConstructOnlyProp_IsNotDeclared(t *testing.T) {
 	// (construct-only), so nothing on it can show that the rejection above is
 	// about being construct-only rather than about being rejected at all.
 	// GtkLabel.label is writable, not construct-only, and carries a setter.
-	if msgs := checkGtk4(t, gtk4Window(`            gtk4.GtkLabel(label="x") {}`)); len(msgs) != 0 {
+	if msgs := checkGtk4(t, gtk4Window(`            gtk.GtkLabel(label="x") {}`)); len(msgs) != 0 {
 		t.Errorf("GtkLabel.label is writable and not construct-only, so it must type-check: %v", msgs)
 	}
 }
@@ -281,11 +281,11 @@ func TestNonConnectableSignal_IsNotDeclared(t *testing.T) {
 	skipWithoutGIR(t)
 	for _, tc := range []struct{ node, event string }{
 		// One extra argument (GtkEntryIconPosition).
-		{`gtk4.GtkEntry(@iconPress { })`, "iconPress"},
+		{`gtk.GtkEntry(@iconPress { })`, "iconPress"},
 		// One extra argument (the activated GtkListBoxRow).
-		{`gtk4.GtkListBox(@rowActivated { })`, "rowActivated"},
+		{`gtk.GtkListBox(@rowActivated { })`, "rowActivated"},
 		// No arguments, but returns a gboolean the trampoline cannot supply.
-		{`gtk4.GtkWindow(@closeRequest { })`, "closeRequest"},
+		{`gtk.GtkWindow(@closeRequest { })`, "closeRequest"},
 	} {
 		t.Run(tc.event, func(t *testing.T) {
 			msgs := checkGtk4(t, gtk4Window("            "+tc.node+" {}"))
@@ -299,9 +299,9 @@ func TestNonConnectableSignal_IsNotDeclared(t *testing.T) {
 	}
 	// The three signals the stdlib overrides actually use must survive.
 	for _, ok := range []string{
-		`gtk4.GtkButton(@clicked { })`,
-		`gtk4.GtkEntry(@changed { })`,
-		`gtk4.GtkCheckButton(@toggled { })`,
+		`gtk.GtkButton(@clicked { })`,
+		`gtk.GtkEntry(@changed { })`,
+		`gtk.GtkCheckButton(@toggled { })`,
 	} {
 		if msgs := checkGtk4(t, gtk4Window("            "+ok+" {}")); len(msgs) != 0 {
 			t.Errorf("%s was refused: %v", ok, msgs)
@@ -318,12 +318,12 @@ func TestUnconstructibleClass_FailsTheBuild(t *testing.T) {
 	skipWithoutGIR(t)
 	for _, tc := range []struct{ node, want string }{
 		// Abstract base: GTK ships no gtk_widget_new to link against.
-		{"gtk4.GtkWidget", "no constructor"},
+		{"gtk.GtkWidget", "no constructor"},
 		// gtk_drop_target_new(GType, GdkDragAction) — neither zero is
 		// spellable from Gtk-4.0.gir alone.
-		{"gtk4.GtkDropTarget", "namespace this platform does not parse"},
+		{"gtk.GtkDropTarget", "namespace this platform does not parse"},
 		// gtk_list_store_new is variadic.
-		{"gtk4.GtkListStore", "no C type of its own"},
+		{"gtk.GtkListStore", "no C type of its own"},
 	} {
 		t.Run(tc.node, func(t *testing.T) {
 			_, err := generateGtk4(t, gtk4Window("            "+tc.node+"() {}"))

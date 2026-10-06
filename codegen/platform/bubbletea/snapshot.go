@@ -20,7 +20,7 @@ type htmlSnapshotter interface {
 }
 
 // snapshotGoMod builds the go.mod for a snapshot harness module. It mirrors the
-// language RunDir path: codegen.DetectHostGoMod supplies the host Go version and
+// go.buildModule path: codegen.DetectHostGoMod supplies the host Go version and
 // — critically — a `replace git.duckfam.us/jonathan/sngl => <repo>` directive
 // when run from inside the sngl source tree. Without that replace the harness
 // resolves pkg/go/tui to the *published* module, so any tui helper added in an

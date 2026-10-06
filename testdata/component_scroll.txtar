@@ -286,8 +286,6 @@ import (
 type Model struct {
 	x      float64
 	y      float64
-	__n0   gtk4rt.Handle
-	__n1   gtk4rt.Handle
 	__root gtk4rt.Handle
 }
 
@@ -321,11 +319,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.ScrolledWindowNew()
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, "content")
-	gtk4rt.ScrolledWindowSetChild(m.__n0, m.__n1)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	__n0 := gtk4rt.ScrolledWindowNew()
+	__n1 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n1, "content")
+	gtk4rt.ScrolledWindowSetChild(__n0, __n1)
+	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -478,7 +476,7 @@ pass sha256:818994cb2c8484c2f187d25abecfeb5e
 -- run/go/fyne --
 pass sha256:187312da50ab5fda4852a6829244b75d
 -- run/go/gtk4 --
-pass sha256:c3d2a56d6ad21a53a923ed9dba55c669
+pass sha256:f0cf0fe7d1f43d0d6391fdd0fa7b2976
 -- run/kotlin/android --
 pass sha256:543ea9dfdb1213f323b54d131bb5b089
 -- run/none/html --

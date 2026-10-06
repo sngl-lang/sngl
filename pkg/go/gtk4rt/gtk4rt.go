@@ -276,11 +276,22 @@ func BoxNew(o Orientation, spacing int) Handle {
 	return Handle(unsafe.Pointer(C.gtk_box_new(C.GtkOrientation(o), C.int(spacing))))
 }
 
+// BoxAppend and the three calls below it are also what a render slot at the
+// root of the package body calls with App as its parent, which attaches or
+// detaches a toplevel instead of placing a widget.
 func BoxAppend(box, child Handle) {
+	if box == App {
+		AppAttach(child)
+		return
+	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
 }
 
 func BoxRemove(box, child Handle) {
+	if box == App {
+		AppDetach(child)
+		return
+	}
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
 }
 
@@ -288,6 +299,10 @@ func BoxRemove(box, child Handle) {
 // when box holds it, or a new hidden child appended to box. The slot's first
 // render runs while box is being built, at the position the slot was written.
 func SlotAnchor(box, a Handle) Handle {
+	// The application's children are in no order a window shows.
+	if box == App {
+		return nil
+	}
 	if a != nil && C.gtk_widget_get_parent(widget(a)) == widget(box) {
 		return a
 	}
@@ -317,7 +332,7 @@ func ParentOf(w Handle) Handle {
 // InsertBefore puts child into box immediately before anchor, or at the end
 // of box when box does not hold anchor.
 func InsertBefore(box, anchor, child Handle) {
-	if anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+	if box == App || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
 		BoxAppend(box, child)
 		return
 	}
@@ -553,13 +568,24 @@ func snglGoDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
 
 var activateFn func(app Handle) Handle
 
+// hidden says the window activate builds is not to be presented. It is still
+// added to the application, which is what keeps the loop running.
+var hidden bool
+
 //export snglActivate
 func snglActivate(app *C.GtkApplication, _ C.gpointer) {
 	if activateFn == nil {
 		return
 	}
 	win := activateFn(Handle(unsafe.Pointer(app)))
-	if win != nil {
+	switch {
+	case win == nil:
+	case hidden:
+		// Started with no window on screen, the program does not end when the
+		// window it later opens is closed: the close hides it, and `open`
+		// brings it back.
+		C.gtk_window_set_hide_on_close((*C.GtkWindow)(p(win)), 1)
+	default:
 		C.gtk_window_present((*C.GtkWindow)(p(win)))
 	}
 }
@@ -581,6 +607,35 @@ func Run(build func(app Handle) Handle) int {
 	)
 	return int(C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil))
 }
+
+// RunHidden is Run without presenting the window build returns: the loop runs
+// -- timers, idle callbacks, posted work -- and nothing is on screen. A
+// program whose `@run` handler never called `run` starts this way. The window
+// is created all the same, since an application with a window added is one
+// that keeps running.
+func RunHidden(build func(app Handle) Handle) int {
+	hidden = true
+	return Run(build)
+}
+
+// WindowPresent puts win on screen and in front. Nil is a window the program
+// has not built yet, and is left alone.
+func WindowPresent(win Handle) {
+	if win != nil {
+		C.gtk_window_present((*C.GtkWindow)(p(win)))
+	}
+}
+
+// WindowHide takes win off screen; WindowPresent brings it back as it was.
+func WindowHide(win Handle) {
+	if win != nil {
+		C.gtk_widget_set_visible((*C.GtkWidget)(p(win)), 0)
+	}
+}
+
+// Args is the command line after the program's name, which is what a `@run`
+// handler is handed.
+func Args() []string { return os.Args[1:] }
 
 // Init initializes GTK. It is idempotent (gtk_init may be called repeatedly)
 // and is used by the test-agent harness to materialise widgets outside a

@@ -32,7 +32,7 @@ component Toolbar node {
     text(value=label())
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     theme("dark") {
         Toolbar()
     }
@@ -51,12 +51,15 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst1 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst1 = true
 	return m
 }
 
@@ -70,6 +73,21 @@ func Label(__ctx_theme string) string {
 	return ("theme=" + __ctx_theme)
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -79,13 +97,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -93,7 +119,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(Label("dark")))
+	if m.visible__inst1 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(Label("dark")))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -108,4 +136,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:f118568187569e083c3920711af61c6a
+pass sha256:4968830e9b8f3f4ddc2457ed743822fa

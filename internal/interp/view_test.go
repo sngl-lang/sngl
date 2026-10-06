@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,10 +64,10 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 				oldMaps := normalizeRefs(old)
 				// The tree finds strictly more than the walk did: content a
 				// call site supplies to a user component is now mounted, and
-				// the walk never reached it. That is the one intentional
-				// divergence, so it is subtracted here rather than the
-				// comparison being loosened -- everything else must still
-				// match exactly.
+				// the walk never reached it. That is one intentional
+				// divergence (nodeMaps holds the other), so it is subtracted
+				// here rather than the comparison being loosened --
+				// everything else must still match exactly.
 				visible, fromSlot := splitSupplied(view.Find(id))
 				supplied += fromSlot
 				newMaps := nodeMaps(visible)
@@ -339,7 +340,50 @@ func splitSupplied(nodes []*Node) (visible []*Node, fromSlot int) {
 func nodeMaps(nodes []*Node) []map[string]any {
 	out := make([]map[string]any, 0, len(nodes))
 	for _, n := range nodes {
-		out = append(out, n.Map())
+		m := n.Map()
+		// The boundaries a node is mounted under ride with its contexts, and
+		// the frozen walk predates them: a second intentional divergence.
+		if ctx, ok := m["__ownerContext"].(map[*ir.Context]any); ok && ctx[raiseScope] != nil {
+			ctx = maps.Clone(ctx)
+			delete(ctx, raiseScope)
+			m["__ownerContext"] = ctx
+		}
+		// The instance's own scope, which is where the cell of an unbound
+		// two-way prop is written: a third, and the frozen walk has no cells.
+		delete(m, "__compEnv")
+		// And the cell's value, which the node shows for a prop its call site
+		// neither bound nor gave: the walk had no cell to read it from.
+		if inst, _ := m["__inst"].(*ir.NodeInst); inst != nil {
+			for _, name := range unboundTwoWay(inst) {
+				delete(m, name)
+			}
+		}
+		// The node itself, which a component's event reaches through to
+		// what it renders: a fourth, and the walk had no nodes.
+		delete(m, "__node")
+		out = append(out, m)
+	}
+	return out
+}
+
+// unboundTwoWay is the two-way props of inst's component that its call site
+// neither binds nor gives a value.
+func unboundTwoWay(inst *ir.NodeInst) []string {
+	if inst.Component == nil {
+		return nil
+	}
+	var out []string
+	for _, p := range inst.Component.Props {
+		if !p.Bidirectional || inst.Prop(p.Name) != nil {
+			continue
+		}
+		bound := false
+		for _, b := range inst.Bindings {
+			bound = bound || b.PropName == p.Name
+		}
+		if !bound {
+			out = append(out, p.Name)
+		}
 	}
 	return out
 }

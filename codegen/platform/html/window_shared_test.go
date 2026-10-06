@@ -15,9 +15,9 @@ import (
 func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 	pkg := &ir.Package{
 		Vars: []*ir.Var{{Name: "count", Type: ir.TypInt}},
-		Windows: []*ir.Window{
-			{Name: "alpha"},
-			{Name: "beta"},
+		Body: []ir.Stmt{
+			&ir.NodeInst{Name: "alpha"},
+			&ir.NodeInst{Name: "beta"},
 		},
 	}
 	shared := newWindowShared("", nil)
@@ -42,8 +42,8 @@ func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 	if again := shared.ownerList(pkg); len(owners) == 0 || len(again) == 0 || &owners[0] != &again[0] {
 		t.Error("the owner list is re-walked per call")
 	}
-	if len(owners) != 3 {
-		t.Errorf("ownerList = %d owners, want 3 (package + two windows)", len(owners))
+	if len(owners) != 1 {
+		t.Errorf("ownerList = %d owners, want 1 (the package)", len(owners))
 	}
 
 	// And the analysis, alone among them, is a copy: html writes to one
@@ -73,8 +73,8 @@ func sameCanvasMap(x, y map[string]*canvasutil.Meta) bool {
 func TestVarRegistrySharesTheModelVarsAndNotThePlaceholders(t *testing.T) {
 	count := &ir.Var{Name: "count"}
 	pkg := &ir.Package{
-		Vars:    []*ir.Var{count},
-		Windows: []*ir.Window{{Name: "alpha"}, {Name: "beta"}},
+		Vars: []*ir.Var{count},
+		Body: []ir.Stmt{&ir.NodeInst{Name: "alpha"}, &ir.NodeInst{Name: "beta"}},
 	}
 	shared := newWindowShared("", nil)
 

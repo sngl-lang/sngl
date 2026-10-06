@@ -39,7 +39,18 @@ func SlotNames(slots map[string]*SlotContent) []string {
 // NodeInst is a resolved component or platform-element instantiation.
 // Component is non-nil when instantiating a user-defined component.
 type NodeInst struct {
-	AST       ast.Stmt       // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	AST ast.Stmt // original *ast.VisualNode (or *ast.CallStmt for Foo() that's a component)
+	// Site is the node a program wrote that this one stands for, where a
+	// platform override's body was substituted for it: AST is then the
+	// override's node, in the platform package, and a diagnostic about what
+	// the program wrote belongs at Site. Nil for a node written where it
+	// stands. NodePos reads it.
+	Site ast.Stmt `json:"-"`
+	// Crosses is `#[tree.crosses]` on this placement: the node may stand
+	// where its family is not the one accepted. Only the membership check of
+	// the position is lifted; the node's own body, slots and children are
+	// held to their families as ever.
+	Crosses   bool           `json:",omitempty"`
 	Name      string         // resolved element/component name
 	Component *Component     // non-nil for user component; nil for platform element
 	Props     []Arg          // property assignments (positional and named)
@@ -65,47 +76,43 @@ type NodeInst struct {
 	Key    Expr // key expression for list diffing (nil → implicit index)
 	Ref    Expr // ref binding (nil if none)
 
-	// The three below are a window's and nil on every other node, which is the
-	// price of a window being a NodeInst rather than a type of its own. It is
-	// three nil fields against the 79 `case *ir.Window:` arms the separate type
-	// cost, and none of them is a *body owner* -- Vars, Funcs and Timers stay
-	// off NodeInst, which is the distinction PLAN.md's first fork turns on.
-
-	// ErrorHandler is the @error this node declared: the outermost error
-	// boundary for the tree it renders. Separate from Handlers because those
-	// are the events a platform wires to a widget and nothing wires this one.
-	ErrorHandler *EventHandler `json:",omitempty"`
-	// Params is the binding a window's scoped rest slot hands its body: one
-	// struct value holding what the route knows per request, typed by the
-	// `params` prop the call site wrote. Nil where the body wrote no
-	// population, and so asked for nothing.
+	// Params is the params cell of a nav.page: the parameter its content's
+	// population binds, one struct value holding what the page is shown with,
+	// typed by the `params` prop the call site wrote. passNavigationHrefs puts
+	// it on the page, the node a target's own primitive for the page carries
+	// it onward (AttachNodeSite), and html's documentsOf moves it onto the
+	// window of the document written for the page, which a route then binds
+	// from the request. Nil where the content wrote no population, and so
+	// asked for nothing.
 	//
-	// The fields are the path's `{name}` placeholders, which is why nothing
-	// here reads the href: the struct is the contract, and the path is a plain
-	// string html holds to it.
+	// The fields are the href's `{name}` placeholders, every one of them: the
+	// struct is the contract, and the path is a plain string the lowering
+	// holds to it.
 	//
 	// The *ir.Param the population declares, like every other population's
 	// binding. That a target *stores* it -- one cell filled in before the body
-	// renders, a Model field on a target with no request -- is codegen's
-	// answer and is written down there (CodegenCtx.ModelState); the checker
-	// makes no distinction, having none to make.
+	// renders -- is codegen's answer and is written down there
+	// (CodegenCtx.ModelState); the checker makes no distinction, having none
+	// to make.
 	Params *Param `json:"-"`
-	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
-	// only): the set of synthesized widget ref ids (__nN) created in this
-	// node's children that do NOT escape to any other scope. A node has one
-	// when it is a render scope of its own, which today means a window. See
-	// internal/lower/node_escape.go and Component.LocalRefs.
-	LocalRefs map[string]bool `json:"-"`
+	// Record is the node's value as a lowering spelled it, for a node whose
+	// handle reads as a value: a nav.page's record of its family's props and
+	// its id (lower's passNavigationValues). Nil on every other node.
+	Record Expr `json:"-"`
+	// Start is a nav.stack's: the record of the page it starts at, where that
+	// is a copy of a page under a `for` or an `if` and so is not written
+	// anywhere one could point at, for a target that declares the stack in
+	// its own code (android) rather than lowering it. Nil on every other node.
+	Start Expr `json:"-"`
+	// Document marks the surface a target writes its document from (lower's
+	// findSurfaces, on a target whose surfaces are documents): decided once,
+	// before inlining, where navigation is decided per surface, and read by
+	// the target where it writes the document, so the two cannot answer
+	// differently. AttachNodeSite carries it onto the primitive standing for
+	// the node.
+	Document bool `json:",omitempty"`
 }
 
-// Prop is the value written for name, or nil if the call site did not write
-// it. checkAndSplitArgs binds a positional arg to its declared name before the
-// slice reaches here, so a lookup by name finds what was written positionally.
-//
-// Nil-safe on the receiver, and two callers depend on it:
-// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
-// harness-isolated root component, so html and gtk4 ask a window that is not
-// there rather than guarding first.
 // VisualNode is the source node n was built from, or nil where it was
 // synthesized or came from a call statement.
 //
@@ -122,6 +129,10 @@ func (n *NodeInst) VisualNode() *ast.VisualNode {
 	return vn
 }
 
+// Prop is the value written for name, or nil if the call site did not write
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+// Nil-safe on the receiver.
 func (n *NodeInst) Prop(name string) Expr {
 	if n == nil {
 		return nil
@@ -160,6 +171,36 @@ type PropBinding struct {
 	Target   Expr // must satisfy isAssignableTarget in checker
 }
 
+// UnboundProps is each two-way prop of comp that bindings leave unbound.
+//
+// Such a prop is state of the instance: a cell that starts from the value the
+// call site gave the prop -- a one-way value says where it starts, not what it
+// holds -- or from the prop's default, and that the host's reports write, as
+// if comp had declared a `var` for it. So a checkbox nobody binds keeps what
+// it is clicked to, and a read of `box.checked` reads that cell.
+func UnboundProps(comp *Component, bindings []PropBinding) []*Prop {
+	if comp == nil {
+		return nil
+	}
+	var out []*Prop
+	for _, p := range comp.Props {
+		if !p.Bidirectional || p.Wildcard != "" {
+			continue
+		}
+		bound := false
+		for _, b := range bindings {
+			if b.PropName == p.Name {
+				bound = true
+				break
+			}
+		}
+		if !bound {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func (*NodeInst) stmtNode() {}
 
 // CallStmt is a void function call — definitively not a component.
@@ -174,6 +215,9 @@ func (*CallStmt) stmtNode() {}
 type SlotInst struct {
 	AST  *ast.VisualNode
 	Name string
+	// Crosses is `#[tree.crosses]` on this insertion: what the slot takes may
+	// stand where its family is not the one accepted (NodeInst.Crosses).
+	Crosses bool `json:",omitempty"`
 	// Rest mirrors the declaration's: this insertion renders the children a
 	// caller wrote bare, which arrive on NodeInst.Children rather than through
 	// its Slots map.
@@ -320,6 +364,13 @@ type If struct {
 	// and render only its NodeInst children) must emit it as imperative control
 	// flow so the temp is assigned in scope for the consuming widget.
 	FromTernary bool `json:"-"`
+	// Catch makes this a catch block rather than a conditional, set by
+	// passErrorCatch: Body runs, and a raise that escapes it runs Catch with the
+	// error and then carries on after the If. Cond is the literal true, so a
+	// walk that does not know the field still reads Body as run once. Catch is
+	// an alias -- the handler belongs to a call, a boundary or a window, and
+	// walks reach it there.
+	Catch *EventHandler `json:"-"`
 }
 
 func (*If) stmtNode() {}
@@ -341,10 +392,6 @@ type For struct {
 	// for a name-only loop a codegen backend emits for itself.
 	KeySym   *LoopVar
 	ValueSym *LoopVar
-	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
-	// declared inside this loop's body. optimize.Documents binds each to the
-	// list of windows the loop declares, one per iteration.
-	HoistedWindowIDs []*Var
 	// LoweredSlotID is set by passReactivity to the slot ID assigned when
 	// the For's Iter depends on a reactive Var. "" when the construct is not
 	// reactive. Pass-2 of passReactivity rewrites these into CallStmt

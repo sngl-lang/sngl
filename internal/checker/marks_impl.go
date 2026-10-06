@@ -16,15 +16,15 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"tree", "kind"}:                markTreeKind,
 	{"tree", "none"}:                markTreeNone,
+	{"tree", "crosses"}:             markTreeCrosses,
+	{"tree", "eventless"}:           markTreeEventless,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "cnative"}:            markCNative,
 	{"macro", "unusable"}:           markUnusable,
 	{"language/kotlin", "native"}:   markKotlinNative,
-	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
 	{"language/js", "native"}:       markJSNative,
@@ -32,6 +32,8 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "cannot"}:             markGenCannot,
 	{"x/gen", "wants"}:              markGenWants,
 	{"x/gen", "renders"}:            markGenRenders,
+	{"x/gen", "name"}:               markGenName,
+	{"x/gen", "native"}:             markGenNative,
 	{"ui/markup/md", "order"}:       markMdOrder,
 }
 
@@ -334,6 +336,7 @@ const (
 	flagMutates         = "mutates"
 	flagReadonly        = "readonly"
 	flagMutatesReceiver = "mutatesReceiver"
+	flagBuild           = "build"
 )
 
 // markIntrinsic implements #[intrinsic("Id", flags...)], stamping the id and
@@ -374,6 +377,7 @@ func markIntrinsic(m *mark) error {
 	}
 	fn.Intrinsic = id
 	fn.MutatesReceiver = slices.Contains(flags, flagMutatesReceiver)
+	fn.BuildOnly = slices.Contains(flags, flagBuild)
 	switch {
 	case slices.Contains(flags, flagMutates):
 		fn.Purity = ir.PurityMutates
@@ -564,18 +568,6 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 	return flags, nil
 }
 
-func markTreeKind(m *mark) error {
-	sd, ok := m.sym.(*ir.StructDef)
-	if !ok {
-		return fmt.Errorf("#[tree.kind] cannot mark %s; a tree is named by a struct", ast.DeclFormName(m.decl))
-	}
-	if decl, ok := m.decl.(*ast.StructDef); ok && len(decl.Body) > 0 {
-		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
-	}
-	sd.IsTree = true
-	return nil
-}
-
 // markTreeNone implements #[tree.none]: this component belongs to no family.
 //
 // It has to be written rather than left out, because leaving the return
@@ -589,6 +581,39 @@ func markTreeNone(m *mark) error {
 	}
 	comp.Treeless = true
 	return nil
+}
+
+// markTreeEventless implements #[tree.eventless]: the members of this family
+// raise no events (checkFamilyMember).
+func markTreeEventless(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[tree.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
+	}
+	comp.Eventless = true
+	return nil
+}
+
+// markTreeCrosses implements #[tree.crosses]: this placement may stand where
+// its family is not the one accepted. It marks the placement and never the
+// declaration, so a platform says exactly which use of a node it permits.
+func markTreeCrosses(m *mark) error {
+	switch s := m.sym.(type) {
+	case *ir.NodeInst:
+		s.Crosses = true
+		return nil
+	case *ir.SlotInst:
+		s.Crosses = true
+		return nil
+	}
+	form := ast.DeclFormName(m.decl)
+	switch m.sym.(type) {
+	case *ir.ErrorBoundary:
+		form = "a boundary"
+	case *ir.ContextProvider:
+		form = "a context override"
+	}
+	return fmt.Errorf("#[tree.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a tree", form)
 }
 
 // markWildcard implements #[macro.wildcard("pattern")], which says what a
@@ -741,64 +766,6 @@ func (c *checker) checkConstructProps() {
 	}
 }
 
-// markIdentity implements #[identity], which names the const carrying a
-// target's own identity.
-//
-// The const is named for the type it has -- `platform`, `language` -- so it
-// cannot annotate itself: the annotation would resolve to the const being
-// declared rather than to the builtin struct it shadows. The mark supplies the
-// type instead, choosing it by that name, and retypes the literal with it so
-// the value compares equal to nothing but another identity of the same kind.
-func markIdentity(m *mark) error {
-	v, ok := m.sym.(*ir.Var)
-	if !ok || !v.IsConst {
-		return fmt.Errorf("#[identity] cannot mark %s; only a const carries a target identity", ast.DeclFormName(m.decl))
-	}
-	var typ *ir.StructDef
-	switch v.Name {
-	case "platform":
-		typ = m.c.platformType
-	case "language":
-		typ = m.c.languageType
-	default:
-		return fmt.Errorf("#[identity] on %q: a target identity is named for its type, `platform` or `language`", v.Name)
-	}
-	if typ == nil {
-		return fmt.Errorf("#[identity]: sngl:builtin declares no %q type", v.Name)
-	}
-	// Read the value from the source rather than the IR: a const's initialiser
-	// is checked in a deferred pass, so at mark time there is nothing on the
-	// var yet. Supplying both halves here is also what takes this const out of
-	// that pass, which would otherwise check a string against a target type.
-	decl, ok := m.decl.(*ast.ConstDecl)
-	if !ok {
-		return fmt.Errorf("#[identity] cannot mark %s", ast.DeclFormName(m.decl))
-	}
-	name, ok := identityLiteral(decl, v.Name)
-	if !ok {
-		return fmt.Errorf("#[identity] on %q: the value is the target's name, written as a string literal", v.Name)
-	}
-	v.Type = typ.SymType()
-	v.Init = &ir.Literal{Type: typ.SymType(), Value: name}
-	v.Synthesized = true
-	return nil
-}
-
-// identityLiteral is the string a const declaration gives the named const.
-func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
-	for _, spec := range decl.Specs {
-		if !slices.Contains(spec.Names, name) {
-			continue
-		}
-		lit, ok := spec.Default.(*ast.LiteralExpr)
-		if !ok {
-			return "", false
-		}
-		return lit.StringValue()
-	}
-	return "", false
-}
-
 // claimForeign records fm on a declaration that has no host identity yet.
 //
 // A second native mark is refused rather than overwriting the first: ir.Foreign
@@ -827,6 +794,51 @@ func markGenCan(m *mark) error     { return markGen(m, "can") }
 func markGenCannot(m *mark) error  { return markGen(m, "cannot") }
 func markGenWants(m *mark) error   { return markGen(m, "wants") }
 func markGenRenders(m *mark) error { return markGen(m, "renders") }
+
+// markGenName implements #[gen.name]: the string a build-target node is known
+// by outside SNGL. Where it may be written -- a build-target node, and only
+// one -- is finishTreeMarks' question, for the reason the other gen marks'
+// placement is.
+func markGenName(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[gen.name] cannot mark %s; it belongs on the build-tree node a target package declares", ast.DeclFormName(m.decl))
+	}
+	name := m.args.String("target")
+	if name == "" {
+		return fmt.Errorf("#[gen.name] requires a non-empty name")
+	}
+	if comp.Gen == nil {
+		comp.Gen = &ir.GenCaps{}
+	}
+	if comp.Gen.TargetName != "" {
+		return fmt.Errorf("#[gen.name(%q)]: already named %q", name, comp.Gen.TargetName)
+	}
+	comp.Gen.TargetName = name
+	return nil
+}
+
+// markGenNative implements #[gen.native]: the key of the Go generator a
+// build-target node's target is generated by. Placement is finishTreeMarks',
+// as #[gen.name]'s is.
+func markGenNative(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[gen.native] cannot mark %s; it belongs on the build-tree node a target package declares", ast.DeclFormName(m.decl))
+	}
+	key := m.args.String("generator")
+	if key == "" {
+		return fmt.Errorf("#[gen.native] requires a non-empty generator")
+	}
+	if comp.Gen == nil {
+		comp.Gen = &ir.GenCaps{}
+	}
+	if comp.Gen.Native != "" {
+		return fmt.Errorf("#[gen.native(%q)]: already generated by %q", key, comp.Gen.Native)
+	}
+	comp.Gen.Native = key
+	return nil
+}
 
 func markGen(m *mark, kind string) error {
 	comp, ok := m.sym.(*ir.Component)

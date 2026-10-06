@@ -1,0 +1,50 @@
+// A window is an ordinary node, so what its body declares is hoisted the way
+// any node's is: plainly, with no count for the window. A sibling window reads
+// it as one node -- every target holds every window in one process or one
+// document -- where it used to be `option<T>`, "a window may not be open".
+//
+// And a node's #id at the root of a file is the package's, visible from a
+// package func as a window's handle always was: `poke` reads `a`, the handle
+// of a root component instance, which used to be in scope only among the
+// package body's own statements.
+
+import ui "sngl:ui"
+
+component counter ui.node {
+    var hits = 0
+
+    func bump() {
+        hits = hits + 1
+    }
+
+    ui.text(value="{hits}")
+}
+
+component app root {
+    var n = 0
+
+    func bump() {
+        n = n + 1
+    }
+
+    ui.window(title="app") {
+        ui.text(value="{n}")
+    }
+}
+
+func poke() {
+    a.bump()
+}
+
+app #a()
+
+ui.window #one(title="one") {
+    counter #tally()
+}
+
+ui.window #two(title="two") {
+    ui.button(text="bump", @click {
+        tally.bump()
+        poke()
+    })
+}

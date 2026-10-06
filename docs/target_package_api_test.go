@@ -9,17 +9,18 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
-// A target's library package is not under lib/ -- the plugin serves it -- so
-// the package-level readers have to reach it through the registry rather than
-// through the embedded tiers. These assert the three things that silently
-// returned nothing when they did not: the option schema every `--opt` table is
-// built from, the source that schema's declaration is found in, and the
-// language half of the same question.
+// A target's library package is a lib/ directory (codegen/declared.go), and
+// the package-level readers reach it through the registry as well as through
+// the embedded tiers. These assert the three things that silently returned
+// nothing when they did not: the option schema every `--opt` table is built
+// from, the source that schema's declaration is found in, and the language
+// half of the same question. gtk4 is the one whose package imports another --
+// its widgets are the gir: scheme's.
 func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
-	for _, uri := range []string{"platform/html", "language/go"} {
+	for _, uri := range []string{"platform/html", "language/go", "platform/gtk4"} {
 		t.Run(uri, func(t *testing.T) {
-			if checker.HasPackage(uri) {
-				t.Fatalf("%s is embedded under lib/ after all; this test no longer proves anything", uri)
+			if !checker.HasPackage(uri) {
+				t.Fatalf("%s is not under lib/", uri)
 			}
 			comp := checker.TargetNode(uri)
 			if comp == nil {
@@ -49,8 +50,8 @@ func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
 	}
 }
 
-// LangDocs is the language half of PlatformDocs, and go's package moved out of
-// lib/languages with everything else.
+// LangDocs is the language half of PlatformDocs, and go's package is
+// lib/language/go.
 func TestLangDocsReadsTheServedPackage(t *testing.T) {
 	l := codegen.LookupLang("go")
 	if l == nil {

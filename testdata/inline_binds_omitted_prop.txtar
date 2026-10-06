@@ -66,9 +66,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst1: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b49fe7f90a18653174bdda5a87cd4b46
+pass sha256:8e9ae7e12584a9f35c80af721063a10f

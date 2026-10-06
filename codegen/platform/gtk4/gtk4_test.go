@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 func TestPlatformRegistered(t *testing.T) {
@@ -44,14 +44,23 @@ func TestConfigureGIR_ProvidesDeclarations(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cfg.Configure(map[string]string{}) })
 
-	docs := checker.ProvidedDocs(gen)
-	if len(docs) != 3 {
-		t.Fatalf("ProvidedDocs = %d docs; want 3 (doc.sngl, the written half and the generated one)", len(docs))
+	// The declarations are the gir: scheme's package, resolved here with no
+	// build around the check as `sngl doc` resolves it.
+	doc, err := parser.Parse("t.sngl", []byte("import gtk \"gir:Gtk-4.0\"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{})
+	for _, d := range diags {
+		t.Errorf("%s: %s", d.Pos, d.Msg)
 	}
 	var names []string
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			if c, ok := stmt.(*ast.ComponentDecl); ok && strings.HasPrefix(c.Name, "Gtk") {
+	for _, imp := range pkg.Imports {
+		if imp.Path != "gir:Gtk-4.0" || imp.Pkg == nil {
+			continue
+		}
+		for _, c := range imp.Pkg.Components {
+			if strings.HasPrefix(c.Name, "Gtk") {
 				names = append(names, c.Name)
 			}
 		}

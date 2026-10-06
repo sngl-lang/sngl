@@ -377,11 +377,12 @@ func __styleLipgloss(s Style) lipgloss.Style {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	s         Style
-	on        bool
-	kept      []Style
-	rows      []string
-	__focusID int
+	s              Style
+	on             bool
+	kept           []Style
+	rows           []string
+	visible__inst0 bool
+	__focusID      int
 
 	width, height int
 }
@@ -393,6 +394,7 @@ func New() Model {
 	m.on = false
 	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
 	m.rows = []string{"a"}
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -483,6 +485,21 @@ func SetRowsCmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setRowsMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -500,13 +517,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetKept(msg.value)
 	case setRowsMsg:
 		m = m.SetRows(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -523,51 +548,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0Focused := (m.__focusID == 0)
-	part0Prefix := " "
-	if part0Focused {
-		part0Prefix = ">"
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0Focused := (m.__focusID == 0)
+		contentPart_0Prefix := " "
+		if contentPart_0Focused {
+			contentPart_0Prefix = ">"
+		}
+		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("swap"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1Focused := (m.__focusID == 1)
+		contentPart_1Prefix := " "
+		if contentPart_1Focused {
+			contentPart_1Prefix = ">"
+		}
+		contentPart_1 = lipgloss.NewStyle().Render(contentPart_1Prefix + " " + fmt.Sprint("tint"))
+		contentParts = append(contentParts, contentPart_1)
+		var contentPart_2 string
+		contentPart_2 = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint("styled"))
+		contentParts = append(contentParts, contentPart_2)
+		var __lt0 Style
+		if m.on {
+			__lt0 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
+		} else {
+			__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
+		}
+		var contentPart_5 string
+		contentPart_5 = __styleLipgloss(__merge_Style(Style{}, __lt0)).Render(fmt.Sprint("picked"))
+		contentParts = append(contentParts, contentPart_5)
+		var contentPart_6 string
+		contentPart_6 = __styleLipgloss(__merge_Style(Style{}, m.kept[0])).Render(fmt.Sprint("kept"))
+		contentParts = append(contentParts, contentPart_6)
+		var contentPart_7 string
+		var contentPart_7Items []string
+		for _, r := range m.rows {
+			_ = r
+			var contentPart_7Item string
+			contentPart_7Item = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint(r))
+			contentPart_7Items = append(contentPart_7Items, contentPart_7Item)
+		}
+		contentPart_7 = strings.Join(contentPart_7Items, "")
+		if contentPart_7 != "" {
+			contentParts = append(contentParts, contentPart_7)
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
-	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("swap"))
-	parts = append(parts, part0)
-	var part1 string
-	part1Focused := (m.__focusID == 1)
-	part1Prefix := " "
-	if part1Focused {
-		part1Prefix = ">"
-	}
-	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("tint"))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint("styled"))
-	parts = append(parts, part2)
-	var __lt0 Style
-	if m.on {
-		__lt0 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
-	} else {
-		__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
-	}
-	var part5 string
-	part5 = __styleLipgloss(__merge_Style(Style{}, __lt0)).Render(fmt.Sprint("picked"))
-	parts = append(parts, part5)
-	var part6 string
-	part6 = __styleLipgloss(__merge_Style(Style{}, m.kept[0])).Render(fmt.Sprint("kept"))
-	parts = append(parts, part6)
-	var part7 string
-	var part7Items []string
-	for _, r := range m.rows {
-		_ = r
-		var part7Item string
-		part7Item = __styleLipgloss(__merge_Style(Style{}, m.s)).Render(fmt.Sprint(r))
-		part7Items = append(part7Items, part7Item)
-	}
-	part7 = strings.Join(part7Items, "")
-	if part7 != "" {
-		parts = append(parts, part7)
-	}
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -834,22 +862,25 @@ type Style struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	s          Style
-	on         bool
-	kept       []Style
-	rows       []string
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
+	s              Style
+	on             bool
+	kept           []Style
+	rows           []string
+	visible__inst0 bool
+	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
+	__inst0_live   []*__child0Instance
 
-	__n4        *widget.Button
-	__n5        *widget.Button
-	__n0        *widget.Label
-	__n0__theme *container.ThemeOverride
-	__n1        *widget.Label
-	__n1__theme *container.ThemeOverride
+	__n1        *fynelayout.Toplevel
+	__n6        *widget.Button
+	__n7        *widget.Button
 	__n2        *widget.Label
 	__n2__theme *container.ThemeOverride
+	__n3        *widget.Label
+	__n3__theme *container.ThemeOverride
+	__n4        *widget.Label
+	__n4__theme *container.ThemeOverride
+	__built     bool
 }
 
 // New creates a Model with default values.
@@ -859,34 +890,64 @@ func New() *Model {
 	m.on = false
 	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
 	m.rows = []string{"a"}
-	m.__root = container.NewVBox()
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
 	return m
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
 	for _, r := range m.rows {
-		__n3 := widget.NewLabel("")
-		__n3__theme := container.NewThemeOverride(__n3, fynetheme.New(theme.DefaultTheme()))
-		__n3.SetText(r)
-		__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-		__n3__theme.Refresh()
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__theme)
-		m.__slot0 = append(m.__slot0, __n3__theme)
+		var __n5 *__child0Instance
+		if len(m.__inst0_live) > __inst0_i {
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.Set__p0(r)
+			__n5.Set__p1(m.s)
+		} else {
+			if len(m.__inst0_live) > __inst0_i {
+				m.__inst0_live[__inst0_i].Destroy()
+			}
+			__n5__new := new__child0Instance(m, r, m.s)
+			__n5 = __n5__new
+		}
+		__inst0_next = append(__inst0_next, __n5)
+		__inst0_i = (__inst0_i + 1)
+		__n5__el := __n5.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n4_click_handler() {
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.__n1.SetVisible(m.visible__inst0)
+}
+
+func (m *Model) __n6_click_handler() {
 	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
-	m.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n0__theme.Refresh()
-	m.__renderSlot0(m.__root)
+	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
+	m.__n2__theme.Refresh()
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
+	}
 	m.on = !m.on
 	var __lt0 Style
 	if m.on {
@@ -894,17 +955,19 @@ func (m *Model) __n4_click_handler() {
 	} else {
 		__lt0 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n1__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt0)))
-	m.__n1__theme.Refresh()
+	m.__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt0)))
+	m.__n3__theme.Refresh()
 }
 
-func (m *Model) __n5_click_handler() {
+func (m *Model) __n7_click_handler() {
 	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-	m.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n0__theme.Refresh()
-	m.__renderSlot0(m.__root)
+	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
+	m.__n2__theme.Refresh()
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
+	}
 	m.rows = []string{"a", "b"}
-	m.__renderSlot0(m.__root)
+	m.__renderSlot0(m.__n1.Container)
 }
 
 func (m *Model) S() Style {
@@ -939,53 +1002,108 @@ func (m *Model) SetRows(v []string) {
 	m.rows = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = widget.NewButton("", nil)
-	m.__n4.SetText("swap")
-	m.__n4.OnTapped = m.__n4_click_handler
-	m.__n5 = widget.NewButton("", nil)
-	m.__n5.SetText("tint")
-	m.__n5.OnTapped = m.__n5_click_handler
-	m.__n0 = widget.NewLabel("")
-	m.__n0__theme = container.NewThemeOverride(m.__n0, fynetheme.New(theme.DefaultTheme()))
-	m.__n0.SetText("styled")
-	m.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
-	m.__n0__theme.Refresh()
+	if m.__built {
+		return m.__n1.Container
+	}
+	m.__built = true
+	m.__n1 = fynelayout.NewToplevel()
+	m.__n1.SetVisible(m.visible__inst0)
+	m.__n1.OnClosed = m.__n1_closed_handler
+	m.__n1.OnVisible = m.__n1_visible_handler
+	m.__n6 = widget.NewButton("", nil)
+	m.__n6.SetText("swap")
+	m.__n6.OnTapped = m.__n6_click_handler
+	m.__n1.Add(m.__n6)
+	m.__n7 = widget.NewButton("", nil)
+	m.__n7.SetText("tint")
+	m.__n7.OnTapped = m.__n7_click_handler
+	m.__n1.Add(m.__n7)
+	m.__n2 = widget.NewLabel("")
+	m.__n2__theme = container.NewThemeOverride(m.__n2, fynetheme.New(theme.DefaultTheme()))
+	m.__n2.SetText("styled")
+	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.s)))
+	m.__n2__theme.Refresh()
+	m.__n1.Add(m.__n2__theme)
 	var __lt1 Style
 	if m.on {
 		__lt1 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
 		__lt1 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n1 = widget.NewLabel("")
-	m.__n1__theme = container.NewThemeOverride(m.__n1, fynetheme.New(theme.DefaultTheme()))
-	m.__n1.SetText("picked")
-	m.__n1__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt1)))
-	m.__n1__theme.Refresh()
-	m.__n2 = widget.NewLabel("")
-	m.__n2__theme = container.NewThemeOverride(m.__n2, fynetheme.New(theme.DefaultTheme()))
-	m.__n2.SetText("kept")
-	m.__n2__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.kept[0])))
-	m.__n2__theme.Refresh()
-	m.__renderSlot0(m.__root)
-	var parts []fyne.CanvasObject
-	parts = append(parts, m.__n4)
-	parts = append(parts, m.__n5)
-	parts = append(parts, m.__n0__theme)
-	parts = append(parts, m.__n1__theme)
-	parts = append(parts, m.__n2__theme)
-	m.__root.Objects = parts
-	return m.__root
+	m.__n3 = widget.NewLabel("")
+	m.__n3__theme = container.NewThemeOverride(m.__n3, fynetheme.New(theme.DefaultTheme()))
+	m.__n3.SetText("picked")
+	m.__n3__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, __lt1)))
+	m.__n3__theme.Refresh()
+	m.__n1.Add(m.__n3__theme)
+	m.__n4 = widget.NewLabel("")
+	m.__n4__theme = container.NewThemeOverride(m.__n4, fynetheme.New(theme.DefaultTheme()))
+	m.__n4.SetText("kept")
+	m.__n4__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, m.kept[0])))
+	m.__n4__theme.Refresh()
+	m.__n1.Add(m.__n4__theme)
+	m.__renderSlot0(m.__n1.Container)
+	fynelayout.AppAttach(m.__n1)
+	return m.__n1.Container
 }
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        fyne.CanvasObject
+	__model     *Model
+	__prop___p0 string
+	__prop___p1 Style
+	__root      *fyne.Container
+	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
+	__n0        *widget.Label
+	__n0__theme *container.ThemeOverride
+}
+
+func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__n0 = widget.NewLabel("")
+	c.__n0__theme = container.NewThemeOverride(c.__n0, fynetheme.New(theme.DefaultTheme()))
+	c.__n0.SetText(c.__prop___p0)
+	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, c.__prop___p1)))
+	c.__n0__theme.Refresh()
+	c.Root = c.__n0__theme
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v string) {
+	c.__prop___p0 = __v
+	c.__n0.SetText(c.__prop___p0)
+}
+
+func (c *__child0Instance) Set__p1(__v Style) {
+	c.__prop___p1 = __v
+	c.__n0__theme.Theme = __styleTheme(__merge_Style(Style{}, __merge_Style(Style{}, c.__prop___p1)))
+	c.__n0__theme.Refresh()
+}
+
+func (c *__child0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -996,9 +1114,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from style.sngl; DO NOT EDIT.
@@ -1235,18 +1354,21 @@ type Style struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	s          Style
-	on         bool
-	kept       []Style
-	rows       []string
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__n4       gtk4rt.Handle
-	__n5       gtk4rt.Handle
-	__n0       gtk4rt.Handle
-	__n1       gtk4rt.Handle
-	__n2       gtk4rt.Handle
+	s              Style
+	on             bool
+	kept           []Style
+	rows           []string
+	visible__inst0 bool
+	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
+	__inst0_live   []*__child0Instance
+	__n1           gtk4rt.Handle
+	__n6           gtk4rt.Handle
+	__n7           gtk4rt.Handle
+	__n2           gtk4rt.Handle
+	__n3           gtk4rt.Handle
+	__n4           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
@@ -1257,9 +1379,10 @@ func New() *Model {
 	m.on = false
 	m.kept = []Style{Style{Background: snglcolor.Color{R: 0, G: 255, B: 255, A: 255}}}
 	m.rows = []string{"a"}
-	m.__root = nil
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
 	return m
 }
 
@@ -1269,17 +1392,49 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
 	for _, r := range m.rows {
-		__n3 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n3, r)
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3)
-		m.__slot0 = append(m.__slot0, __n3)
+		var __n5 *__child0Instance
+		if len(m.__inst0_live) > __inst0_i {
+			__n5 = m.__inst0_live[__inst0_i]
+			__n5.Set__p0(r)
+			__n5.Set__p1(m.s)
+		} else {
+			if len(m.__inst0_live) > __inst0_i {
+				m.__inst0_live[__inst0_i].Destroy()
+			}
+			__n5__new := new__child0Instance(m, r, m.s)
+			__n5 = __n5__new
+		}
+		__inst0_next = append(__inst0_next, __n5)
+		__inst0_i = (__inst0_i + 1)
+		__n5__el := __n5.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n5__el)
+		m.__slot0 = append(m.__slot0, __n5__el)
 	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __n4_clicked_handler() {
+func (m *Model) __n1_closed_handler() {
+}
+
+func (m *Model) __n1_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+}
+
+func (m *Model) __n6_clicked_handler() {
 	m.s = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}, FontSize: Measurement{Px: 20}, FontWeight: "bold"}
-	m.__renderSlot0(m.__root)
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
+	}
 	m.on = !m.on
 	var __lt0 Style
 	if m.on {
@@ -1290,11 +1445,58 @@ func (m *Model) __n4_clicked_handler() {
 	_ = __lt0
 }
 
-func (m *Model) __n5_clicked_handler() {
+func (m *Model) __n7_clicked_handler() {
 	m.s.Color = snglcolor.Color{R: 0, G: 255, B: 0, A: 255}
-	m.__renderSlot0(m.__root)
+	for __inst0_live_ui, _ := range m.__inst0_live {
+		m.__inst0_live[__inst0_live_ui].Set__p1(m.s)
+	}
 	m.rows = []string{"a", "b"}
-	m.__renderSlot0(m.__root)
+	m.__renderSlot0(m.__n1)
+}
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root        gtk4rt.Handle
+	__model     *Model
+	__prop___p0 string
+	__prop___p1 Style
+	__root      gtk4rt.Handle
+	__slot0     []gtk4rt.Handle
+	__slot0_at  gtk4rt.Handle
+	__n0        gtk4rt.Handle
+}
+
+func new__child0Instance(__model *Model, __a___p0 string, __a___p1 Style) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__slot0 = nil
+	c.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v string) {
+	c.__prop___p0 = __v
+	gtk4rt.LabelSetText(c.__n0, c.__prop___p0)
+}
+
+func (c *__child0Instance) Set__p1(__v Style) {
+	c.__prop___p1 = __v
+}
+
+func (c *__child0Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
 }
 
 func (m *Model) S() Style {
@@ -1329,45 +1531,56 @@ func (m *Model) SetRows(v []string) {
 	m.rows = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n4, "swap")
-	gtk4rt.Connect(m.__n4, "clicked", m.__n4_clicked_handler)
-	m.__n5 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n5, "tint")
-	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, "styled")
+	m.__built = true
+	m.__n1 = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
+	m.__n6 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n6, "swap")
+	gtk4rt.Connect(m.__n6, "clicked", m.__n6_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n6)
+	m.__n7 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n7, "tint")
+	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n7)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, "styled")
+	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	var __lt1 Style
 	if m.on {
 		__lt1 = Style{Color: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}}
 	} else {
 		__lt1 = Style{Color: snglcolor.Color{R: 0, G: 0, B: 255, A: 255}}
 	}
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, "picked")
+	m.__n3 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n3, "picked")
 	_ = __lt1
-	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, "kept")
-	m.__renderSlot0(m.__root)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
-	gtk4rt.BoxAppend(m.__root, m.__n5)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n1)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(m.__n1, m.__n3)
+	m.__n4 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n4, "kept")
+	gtk4rt.BoxAppend(m.__n1, m.__n4)
+	m.__renderSlot0(m.__n1)
+	gtk4rt.AppAttach(m.__n1)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from style.sngl; DO NOT EDIT. -->
@@ -1388,15 +1601,15 @@ body { font-family: system-ui, sans-serif; }
 <button id="$1">
   <span>tint</span>
 </button>
-<span id="__n1" data-sngl-id="__n1">styled</span>
-<span id="__n2" data-sngl-id="__n2">picked</span>
-<span id="__n3" data-sngl-id="__n3">kept</span>
+<span id="__n2" data-sngl-id="__n2">styled</span>
+<span id="__n3" data-sngl-id="__n3">picked</span>
+<span id="__n4" data-sngl-id="__n4">kept</span>
 <span data-sngl-slot="0" style="display:contents"></span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { s: null, on: false, kept: null, rows: ["a"] };
+  var state = { s: null, on: false, kept: null, rows: ["a"], visible__inst0: true };
   state.s = { color: { r: 255, g: 0, b: 0, a: 255 }, fontSize: { px: 14, em: 0, vw: 0, vh: 0, pct: 0 } };
   state.kept = [{ background: { r: 0, g: 255, b: 255, a: 255 } }];
   function __merge_Style(base, ov) {
@@ -1492,31 +1705,31 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const r of state.rows) {
-      let __n4 = null;
+      let __n5 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n4 = __inst1_live[__inst1_i];
-        __n4.__set___p0(r);
-        __n4.__set___p1(state.s);
+        __n5 = __inst1_live[__inst1_i];
+        __n5.__set___p0(r);
+        __n5.__set___p1(state.s);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n4__new = __cf___child0({ __p0: r, __p1: state.s });
-        __n4 = __n4__new;
+        let __n5__new = __cf___child0({ __p0: r, __p1: state.s });
+        __n5 = __n5__new;
       }
-      __inst1_next.push(__n4);
+      __inst1_next.push(__n5);
       __inst1_i = __inst1_i + 1;
-      let __n4__el = __n4.__root;
+      let __n5__el = __n5.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n4__el) {
+      if (__place0_i_ref0 === __n5__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n4__el, __place0_i_ref0);
+        parent.insertBefore(__n5__el, __place0_i_ref0);
       }
-      __slot0.push(__n4__el);
+      __slot0.push(__n5__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -1611,39 +1824,47 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
     state.s = { color: { r: 0, g: 0, b: 255, a: 255 }, fontSize: { px: 20, em: 0, vw: 0, vh: 0, pct: 0 }, fontWeight: "bold" };
-    __n1.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
-    __renderSlot0(__slotAnchor_0);
+    __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      ;
+      __inst1_live[__inst1_live_ui].__set___p1(state.s);
+    }
+    ;
     state.on = !state.on;
-    __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
+    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
   });
   $1.addEventListener("click", function() {
     state.s.color = { r: 0, g: 255, b: 0, a: 255 };
-    __n1.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
-    __renderSlot0(__slotAnchor_0);
+    __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
+    for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+      ;
+      __inst1_live[__inst1_live_ui].__set___p1(state.s);
+    }
+    ;
     state.rows = ["a", "b"];
     __renderSlot0(__slotAnchor_0);
   });
   function __sngl_init() {
-    __n1.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
-    __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
-    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.kept[0]));
+    __n2.style.cssText = _snglStyleCSS(__merge_Style({}, state.s));
+    __n3.style.cssText = _snglStyleCSS(__merge_Style({}, state.on ? { color: { r: 255, g: 0, b: 0, a: 255 } } : { color: { r: 0, g: 0, b: 255, a: 255 } }));
+    __n4.style.cssText = _snglStyleCSS(__merge_Style({}, state.kept[0]));
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a9e6525a8f014520b8c287f0775c47e0
+pass sha256:23131639f6588f37eb9365823539a65e
 -- run/go/fyne --
-pass sha256:e811543e79a863e06451201b666cd963
+pass sha256:a70030616fbe2f15a8758bd8f620326c
 -- run/go/gtk4 --
-pass sha256:3f8ac7c976febf8269e384e4a12404e1
+pass sha256:c28df13b3ba9181d41e9e59da1053591
 -- run/none/html --
-pass sha256:08b406f84886d53538a13c678df81a01
+pass sha256:4598225aed7ab58ad008e290fdc416e2

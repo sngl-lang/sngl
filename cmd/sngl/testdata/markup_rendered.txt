@@ -69,7 +69,7 @@ window {
     main
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:a0ac5349a87d1d29b0337cc1ff263c46
+sha256:8b2f4fa6736af4839bdcdcfdf8fcf8f5
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:a0ac5349a87d1d29b0337cc1ff263c46
   }
 }
 -- testrun/html/none/app.sngl/main/2 --
-sha256:1935b4c9b40228ab0b7026349b494ca1
+sha256:20dc22516c0f40cb03053f282f0384c6
 {
   "results": [
     {

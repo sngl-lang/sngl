@@ -76,21 +76,30 @@ import (
 	"time"
 )
 
-type timerTickMsg0 struct{}
+type timerTickMsg0 struct {
+	key string
+	gen int
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	level__inst0 float64
-	rung__inst0  int
+	level__inst0   float64
+	rung__inst0    int
+	visible__inst1 bool
 
+	__timer0      map[string]int
+	__timer0Seq   map[string]int
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.__timer0 = map[string]int{}
+	m.__timer0Seq = map[string]int{}
 	m.level__inst0 = 0.0
 	m.rung__inst0 = 0
+	m.visible__inst1 = true
 	return m
 }
 
@@ -130,9 +139,24 @@ func SetRung__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setRung__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
+	cmds = append(cmds, m.__timer0Sync()...)
 	return tea.Batch(cmds...)
 }
 
@@ -145,35 +169,69 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLevel__inst0(msg.value)
 	case setRung__inst0Msg:
 		m = m.SetRung__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case timerTickMsg0:
-		var __lt0 float64
-		if m.level__inst0 >= 1.0 {
-			__lt0 = 0.0
-		} else {
-			__lt0 = (m.level__inst0 + 0.01)
+		if m.__timer0[msg.key] == msg.gen && true {
+			var __lt0 float64
+			if m.level__inst0 >= 1.0 {
+				__lt0 = 0.0
+			} else {
+				__lt0 = (m.level__inst0 + 0.01)
+			}
+			m.level__inst0 = __lt0
+			var __iterIdx0 int = -1
+			for x := range slices.Values([]int{0, 1, 2}) {
+				__iterIdx0 += 1
+				m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
+			}
+			cmds = append(cmds, tea.Tick(time.Duration(50)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 		}
-		m.level__inst0 = __lt0
-		var __iterIdx0 int = -1
-		for x := range slices.Values([]int{0, 1, 2}) {
-			__iterIdx0 += 1
-			m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
-		}
-		cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
+	cmds = append(cmds, m.__timer0Sync()...)
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __timer0Sync() []tea.Cmd {
+	var cmds []tea.Cmd
+	seen := map[string]bool{}
+	key := ""
+	if true {
+		seen[key] = true
+		if _, ok := m.__timer0[key]; !ok {
+			m.__timer0Seq[key]++
+			gen := m.__timer0Seq[key]
+			m.__timer0[key] = gen
+			cmds = append(cmds, tea.Tick(time.Duration(50)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+		}
+	}
+	for key := range m.__timer0 {
+		if !seen[key] {
+			delete(m.__timer0, key)
+		}
+	}
+	return cmds
 }
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0))))
+	if m.visible__inst1 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0))))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -197,6 +255,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"slices"
 	"time"
@@ -215,6 +274,7 @@ type Model struct {
 	done__inst0__inst1   chan bool
 	live__inst0__inst1   bool
 	gen__inst0__inst1    int
+	visible__inst2       bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -222,7 +282,9 @@ type Model struct {
 	__effects0_pending   bool
 	__effects0_steps     int
 
-	__n0 *widget.Label
+	main    *fynelayout.Toplevel
+	__n0    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
@@ -234,6 +296,7 @@ func New() *Model {
 	m.done__inst0__inst1 = nil
 	m.live__inst0__inst1 = false
 	m.gen__inst0__inst1 = 0
+	m.visible__inst2 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -356,6 +419,30 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
+func (m *Model) main_closed_handler() {
+}
+
+func (m *Model) main_visible_handler(__visible bool) {
+	m.visible__inst2 = __visible
+	m.main.SetVisible(m.visible__inst2)
+}
+
+// mainClosed invokes the OnClosed callback on the #main widget; for tests.
+func (m *Model) mainClosed() {
+	if m.main.OnClosed != nil {
+		m.main.OnClosed()
+	}
+}
+
+// mainVisible invokes the OnVisible callback on the #main widget; for tests.
+func (m *Model) mainVisible(__visible bool) {
+	if cb := m.main.OnVisible; cb != nil {
+		m.main.OnVisible = nil
+		cb(__visible)
+		m.main.OnVisible = cb
+	}
+}
+
 func (m *Model) Level__inst1() float64 {
 	return m.level__inst1
 }
@@ -404,26 +491,42 @@ func (m *Model) SetGen__inst0__inst1(v int) {
 	m.gen__inst0__inst1 = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) Visible__inst2() bool {
+	return m.visible__inst2
+}
+
+func (m *Model) SetVisible__inst2(v bool) {
+	m.visible__inst2 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.main.Container
+	}
+	m.__built = true
+	m.main = fynelayout.NewToplevel()
+	m.main.SetTitle("tick")
+	m.main.SetVisible(m.visible__inst2)
+	m.main.OnClosed = m.main_closed_handler
+	m.main.OnVisible = m.main_visible_handler
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+	m.main.Add(m.__n0)
+	fynelayout.AppAttach(m.main)
 	m.__effects0_settle()
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	return m.main.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	m.__snglTeardown()
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:437b0c42e52e472699a65a5f9c4939ef
+pass sha256:66d8a0592cd37672823cc57c94903232
 -- run/go/fyne --
-pass sha256:1012bfbc07b24d23fa8b11c2ea360bd7
+pass sha256:03e54e1fd1ed999f9cdb0917f9407b35

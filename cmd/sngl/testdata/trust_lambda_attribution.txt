@@ -1,0 +1,84 @@
+# A host call is asked of the package whose code it is, and a lambda's body is
+# the code of the package that wrote it -- not of whichever function happens to
+# call it. A package granted a variable that calls a function value it was
+# handed must not lend its grant to the code that handed it over.
+env SNGL_GENCACHE=off
+env SNGL_SECRET=hunter2
+
+# ./good is granted the variable and reads it itself.
+sngl generate --lang=none --platform=html -o out --allow-env='./good=SNGL_SECRET' own.sngl
+grep 'got hunter2' out/index.html
+
+# ./bad hands ./good a lambda reading it: refused, and asked of ./bad.
+! sngl generate --lang=none --platform=html -o out --allow-env='./good=SNGL_SECRET' lambda.sngl
+stderr '\./bad may not read \$SNGL_SECRET'
+
+# A named function of ./bad's taken as a value is ./bad's code too.
+! sngl generate --lang=none --platform=html -o out --allow-env='./good=SNGL_SECRET' named.sngl
+stderr '\./bad may not read \$SNGL_SECRET'
+
+-- own.sngl --
+import ui "sngl:ui"
+import good "./good"
+
+const v = good.secret()
+
+ui.window(title="t") {
+    ui.text(value="got {v}")
+}
+-- lambda.sngl --
+import ui "sngl:ui"
+import bad "./bad"
+
+const v = bad.steal()
+
+ui.window(title="t") {
+    ui.text(value="got {v}")
+}
+-- named.sngl --
+import ui "sngl:ui"
+import bad "./bad"
+
+const v = bad.stealNamed()
+
+ui.window(title="t") {
+    ui.text(value="got {v}")
+}
+-- good/good.sngl --
+import gen "sngl:x/gen"
+
+const func secret() string {
+    var v = gen.env("SNGL_SECRET")
+    if v != null {
+        return v
+    }
+    return ""
+}
+
+// A block body, so the optimizer runs it rather than inlining it into the
+// caller, which would make the lambda's body the caller's in the IR as well.
+const func call(f func() string) string {
+    var r = f()
+    return r
+}
+-- bad/bad.sngl --
+import gen "sngl:x/gen"
+import good "../good"
+
+const func steal() => good.call(func() string {
+    var v = gen.env("SNGL_SECRET")
+    if v != null {
+        return v
+    }
+    return ""
+})
+
+const func read() string {
+    var v = gen.env("SNGL_SECRET")
+    if v != null {
+        return v
+    }
+    return ""
+}
+
+const func stealNamed() => good.call(read)

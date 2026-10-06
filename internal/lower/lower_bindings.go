@@ -26,34 +26,50 @@ func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 	walkPackage(pkg, walkFuncs{
 		stmts: rewritePropBindingStmts,
 	})
+	// A library component's body is no body of the package's, and a binding
+	// written there -- an override handing its own two-way prop on to the
+	// primitive it renders, `Toplevel(:visible=visible)` -- is spliced into
+	// the program with the rest of that body, after this pass. So each one
+	// the program renders is lowered here too, and the bodies those render.
+	// Idempotent, as it has to be for a declaration every build shares:
+	// lowering a binding clears it.
+	own := make(map[*ir.Component]bool, len(pkg.Components))
+	for _, c := range pkg.Components {
+		own[c] = true
+	}
+	seen := map[*ir.Component]bool{}
+	var visit func(root any)
+	visit = func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Component == nil || own[inst.Component] || seen[inst.Component] {
+				return nil
+			}
+			c := inst.Component
+			seen[c] = true
+			if len(c.Body) == 0 {
+				return nil
+			}
+			c.Body = rewritePropBindingStmts(c.Body)
+			visit(c.Body)
+			return nil
+		})
+	}
+	visit(pkg)
 	return nil
 }
 
-// rewritePropBindingStmts walks a statement list, recursing into nested
-// scopes, and lowers any NodeInst that carries Bindings.
+// rewritePropBindingStmts lowers every node in a view that carries Bindings,
+// wherever it stands in the view: a slot's population and a boundary's
+// fallback are content the program wrote as much as a node's children are.
+// Handlers are walked by walkPackage.
 func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if len(n.Bindings) > 0 {
-				lowerPropBindings(n)
-			}
-			// Recurse into children (handlers already walked by walkPackage).
-			n.Children = rewritePropBindingStmts(n.Children)
-		case *ir.If:
-			n.Body = rewritePropBindingStmts(n.Body)
-			n.Else = rewritePropBindingStmts(n.Else)
-		case *ir.For:
-			n.Body = rewritePropBindingStmts(n.Body)
-			n.Else = rewritePropBindingStmts(n.Else)
-		case *ir.SlotInst:
-			n.Children = rewritePropBindingStmts(n.Children)
-		case *ir.ErrorBoundary:
-			n.Children = rewritePropBindingStmts(n.Children)
-		case *ir.ContextProvider:
-			n.Children = rewritePropBindingStmts(n.Children)
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok && len(n.Bindings) > 0 {
+			lowerPropBindings(n)
 		}
-	}
+		return true
+	})
 	return stmts
 }
 
@@ -87,7 +103,13 @@ func lowerPropBindings(inst *ir.NodeInst) {
 				Name:   b.PropName,
 				Params: []*ir.Param{{Type: prop.Type}},
 			})
-			// 2. Rewrite prop assignments/toggles → emit in component.
+			// 2. Rewrite prop assignments/toggles → emit in component. A body
+			// handing the prop on to what it renders -- an override's
+			// `Toplevel(:visible=visible)` -- writes it through that binding,
+			// which is lowered first so the write it becomes is one of these:
+			// left for later, it was a second report of the prop beside the
+			// emit, and the node carried the handler twice.
+			comp.Body = rewritePropBindingStmts(comp.Body)
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
 
 			// 2a. If the component body has no @propName emits after the
@@ -127,6 +149,7 @@ func lowerPropBindings(inst *ir.NodeInst) {
 // with the given name. Used to detect whether rewritePropMutationsToEmit
 // actually inserted any emits for the prop.
 func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
+	has := func(f *ir.Func) bool { return f != nil && bodyHasEmitFor(f.Block, name) }
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.Emit:
@@ -134,33 +157,21 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 				return true
 			}
 		case *ir.NodeInst:
-			if bodyHasEmitFor(n.Children, name) {
-				return true
-			}
 			for _, h := range n.Handlers {
-				if h.Func != nil && bodyHasEmitFor(h.Func.Block, name) {
+				if has(h.Func) {
 					return true
 				}
 			}
-			for _, f := range propLambdas(n) {
-				if bodyHasEmitFor(f.Block, name) {
-					return true
-				}
-			}
-		case *ir.If:
-			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
-				return true
-			}
-		case *ir.For:
-			if bodyHasEmitFor(n.Body, name) || bodyHasEmitFor(n.Else, name) {
-				return true
-			}
-		case *ir.SlotInst:
-			if bodyHasEmitFor(n.Children, name) {
+			if slices.ContainsFunc(propLambdas(n), has) {
 				return true
 			}
 		case *ir.ErrorBoundary:
-			if bodyHasEmitFor(n.Children, name) {
+			if n.Handler != nil && has(n.Handler.Func) {
+				return true
+			}
+		}
+		for _, b := range ir.ViewBlocks(s) {
+			if bodyHasEmitFor(*b, name) {
 				return true
 			}
 		}
@@ -379,42 +390,33 @@ func injectBind(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, ca
 // taken -- so the live one emitted `onClick = {}` and the binding did nothing.
 func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr, propType *ir.Type) bool {
 	injected := false
+	inject := func(f *ir.Func, reports bool) {
+		if f != nil && reports {
+			injectBind(f, propName, evtType, value, candidates, propType)
+			injected = true
+		}
+	}
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			for i := range n.Handlers {
 				h := &n.Handlers[i]
-				if h.Func == nil {
-					continue
-				}
-				if handlerReportsValueChange(h, candidates) {
-					injectBind(h.Func, propName, evtType, value, candidates, propType)
-					injected = true
-				}
+				inject(h.Func, h.Func != nil && handlerReportsValueChange(h, candidates))
 			}
 			// A callback passed as a func-typed prop reports the change the
 			// same way a handler does — by emitting the SNGL event from its
 			// body — so the write-back belongs in it for the same reason.
 			for _, f := range propLambdas(n) {
-				if !lambdaReportsValueChange(f, candidates) {
-					continue
-				}
-				injectBind(f, propName, evtType, value, candidates, propType)
-				injected = true
+				inject(f, lambdaReportsValueChange(f, candidates))
 			}
-			// Recurse into children.
-			if injectEmitIntoHandlers(n.Children, candidates, propName, evtType, value, propType) {
-				injected = true
+		case *ir.ErrorBoundary:
+			if h := n.Handler; h != nil {
+				inject(h.Func, h.Func != nil && handlerReportsValueChange(h, candidates))
 			}
-		case *ir.For:
-			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value, propType) {
-				injected = true
-			}
-		case *ir.If:
-			if injectEmitIntoHandlers(n.Body, candidates, propName, evtType, value, propType) {
-				injected = true
-			}
-			if injectEmitIntoHandlers(n.Else, candidates, propName, evtType, value, propType) {
+		}
+		// Children, populations, a fallback, a provider's content.
+		for _, b := range ir.ViewBlocks(s) {
+			if injectEmitIntoHandlers(*b, candidates, propName, evtType, value, propType) {
 				injected = true
 			}
 		}

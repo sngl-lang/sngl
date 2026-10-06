@@ -62,7 +62,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { __async_greeting: "" };
+  var state = { __async_greeting: "", visible__inst0: true };
   function greeting() {
     return state.__async_greeting;
   }
@@ -79,4 +79,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:776364b4da7ac3fc16c9384b0228f45f
+pass sha256:997051f40772525c5322907aae7ecfc4

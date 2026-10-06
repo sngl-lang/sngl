@@ -10,7 +10,7 @@ import (
 
 func TestRenderDocAsHTML_SimpleWindow(t *testing.T) {
 	src := `
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="hello world")
 }
 `
@@ -37,7 +37,7 @@ window #home(title="Home", href="/") {
 }
 
 func TestRenderDocAsHTML_UnknownWindow(t *testing.T) {
-	src := `window #home(title="x", href="/") { text(value="hi") }`
+	src := `window #home(title="x") { text(value="hi") }`
 	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	dir, _ := filepath.Abs("../../testdata/lsp")
 	pkg, _ := checkPreviewDoc(doc, dir)
@@ -51,7 +51,7 @@ func TestRenderDocAsHTML_UnknownWindow(t *testing.T) {
 }
 
 func TestRenderDocAsHTML_InjectsReloadScript(t *testing.T) {
-	src := `window #home(title="x", href="/") { text(value="hi") }`
+	src := `window #home(title="x") { text(value="hi") }`
 	doc, _ := parser.Parse("t.sngl", []byte(withStdSrc(src)))
 	dir, _ := filepath.Abs("../../testdata/lsp")
 	pkg, _ := checkPreviewDoc(doc, dir)

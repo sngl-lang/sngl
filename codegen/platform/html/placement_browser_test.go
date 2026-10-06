@@ -41,7 +41,7 @@ component App() node {
     }
     button(text="add", @click { rows = ["a", "b", "c"] })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

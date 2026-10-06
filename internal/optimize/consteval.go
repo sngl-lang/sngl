@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,6 +33,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 		if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 			return true
 		}
+		if _, _, ok := ir.TargetNode(x.Sym); ok {
+			return true // a target's identity is its name
+		}
 		if _, ok := x.Sym.(*ir.Namespace); ok {
 			return true // namespace refs are compile-time resolvable
 		}
@@ -57,6 +61,11 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Ternary:
 		return isConstExpr(x.Cond, ctx) && isConstExpr(x.Then, ctx) && isConstExpr(x.Else, ctx)
 	case *ir.Call:
+		if x.Func != nil && x.Func.Intrinsic != "" {
+			if _, ok := ctx.answers[x.Func.Intrinsic]; ok {
+				return true // answered for this fold: the page a document is for
+			}
+		}
 		for _, a := range x.Args {
 			if !isConstExpr(a.Value, ctx) {
 				return false
@@ -91,6 +100,9 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	case *ir.Select:
 		if v, ok := nsConst(x); ok {
 			return v.Init != nil || v.Builtin.IsConst()
+		}
+		if _, ok := nsTarget(x); ok {
+			return true
 		}
 		return isConstExpr(x.Operand, ctx)
 	case *ir.Index:
@@ -241,9 +253,17 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		if v, ok := nsConst(x); ok {
 			return evalIdent(&ir.Ident{Name: x.Field, Sym: v}, ctx)
 		}
+		if name, ok := nsTarget(x); ok {
+			return name, true
+		}
 		recv, ok := evalExpr(x.Operand, ctx)
 		if !ok {
 			return nil, false
+		}
+		if x.Field == "length" {
+			if n, ok := constLength(x.Operand.ExprType(), recv); ok {
+				return n, true
+			}
 		}
 		if s, ok := recv.(*interp.Struct); ok {
 			if v, exists := s.Get(x.Field); exists {
@@ -288,6 +308,11 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 	// supplies the value. The build target is keyed off the #[builtin] mark
 	// rather than the name, so a declaration shadowing PLATFORM is an
 	// ordinary const and folds to whatever it was declared as.
+	// A build-target node read as a value is the target's identity, and that
+	// is its registered name -- the value PLATFORM and LANGUAGE fold to.
+	if _, name, ok := ir.TargetNode(x.Sym); ok {
+		return name, true
+	}
 	if v, ok := x.Sym.(*ir.Var); ok && v.IsConst {
 		switch v.Builtin {
 		case ir.BuiltinTargetPlatform:
@@ -339,10 +364,24 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 }
 
 func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
-	// Collect argument values.
+	// What this fold answers the intrinsic with: in a document written for
+	// one page of a stack, what the stack shows is that page, whatever handle
+	// names the stack.
+	if call.Func != nil && call.Func.Intrinsic != "" {
+		if v, ok := ctx.answers[call.Func.Intrinsic]; ok {
+			return v, true
+		}
+	}
+	// Collect argument values. An argument is consumed as a value and never
+	// rebuilt into an expression, so a T promoted to option<T> is its
+	// operand's: the wrap evalConversion declines changes nothing here.
 	args := make([]any, 0, len(call.Args))
 	for _, a := range call.Args {
-		v, ok := evalExpr(a.Value, ctx)
+		e := a.Value
+		if c, ok := e.(*ir.Conversion); ok && ir.IsOptionWrap(c) {
+			e = c.Operand
+		}
+		v, ok := evalExpr(e, ctx)
 		if !ok {
 			return nil, false
 		}
@@ -435,6 +474,8 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 		return opeval.Sequence(start, end, step), true
 	}
 	switch id {
+	case ir.NavHrefID:
+		return foldNavHref(args)
 	case "seq.count":
 		if a, ok := ints(1); ok {
 			return seq(0, a[0], 1)
@@ -535,6 +576,11 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 			// in hand.
 			return nil, false
 		case nativeFailed:
+			// Refused rather than failed: tallied per package and reported
+			// once, as a warning or as the error that stops the target.
+			if ctx.noteRefused(call, scheme, err) {
+				return nil, false
+			}
 			// A failed compile-time evaluation can only be tolerated when
 			// the target can recompute the value at runtime instead. That
 			// requires the target language to call this scheme natively
@@ -562,6 +608,11 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	// gain by folding it either: the operand folds on its own.
 	if ir.IsOptionWrap(conv) {
 		return nil, false
+	}
+	if conv.Type.Kind == ir.TypeString {
+		if s, ok := multiBaseUnitString(conv.Operand); ok {
+			return s, true
+		}
 	}
 	operand, ok := evalExpr(conv.Operand, ctx)
 	if !ok {
@@ -1063,6 +1114,11 @@ func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) 
 	}
 	f := ctx.evalCache().file(dirPath, filename)
 	if f.err != nil {
+		// A symlink out of the asset directory is not a file that is
+		// missing: left unfolded, the call would render nothing in silence.
+		if strings.Contains(f.err.Error(), "path escapes") {
+			ctx.fail(fmt.Errorf("file: %s in %s is a link to something outside it", filename, dirPath))
+		}
 		return nil, false
 	}
 
@@ -1110,6 +1166,30 @@ func fileNames(dirPath, pattern string) (any, bool) {
 }
 
 // --- Helper functions ---
+
+// constLength folds the `.length` select the checker types as int on a list,
+// a map or a string. Asked of the operand's type, since a map value may hold a
+// "length" key.
+func constLength(t *ir.Type, v any) (int, bool) {
+	if t == nil {
+		return 0, false
+	}
+	switch t.Kind {
+	case ir.TypeList:
+		if l, ok := v.([]any); ok {
+			return len(l), true
+		}
+	case ir.TypeMap:
+		if m, ok := v.(map[string]any); ok {
+			return len(m), true
+		}
+	case ir.TypeString:
+		if s, ok := v.(string); ok {
+			return utf8.RuneCountInString(s), true
+		}
+	}
+	return 0, false
+}
 
 func toInt(v any) (int, bool) {
 	if n, ok := v.(int); ok {
@@ -1160,6 +1240,25 @@ func nsConst(x *ir.Select) (*ir.Var, bool) {
 	return v, true
 }
 
+// nsTarget is the registered name of the build-target node a package member
+// select names, as in `html.platform`.
+func nsTarget(x *ir.Select) (string, bool) {
+	id, ok := x.Operand.(*ir.Ident)
+	if !ok {
+		return "", false
+	}
+	ns, ok := id.Sym.(*ir.Namespace)
+	if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+		return "", false
+	}
+	sym, ok := ns.Pkg.Symbols.LookupMember(x.Field)
+	if !ok {
+		return "", false
+	}
+	_, name, ok := ir.TargetNode(sym)
+	return name, ok
+}
+
 // unitConversionString spells a folded unit value the way every target
 // displays one. Only a single-base unit reaches it: evalLiteral declines to
 // reduce a multi-base value to a number at all, so one never folds.
@@ -1181,4 +1280,103 @@ func unitConversionString(conv *ir.Conversion, operand any) (string, bool) {
 		return "", false
 	}
 	return ir.FormatUnitTerm(mag, ud.Bases()[0].Name), true
+}
+
+// multiBaseUnitString displays a constant multi-base unit value, which
+// evalLiteral declines to reduce to a number and so never reaches
+// unitConversionString.
+func multiBaseUnitString(e ir.Expr) (string, bool) {
+	ud := ir.UnitDeclOf(e.ExprType())
+	if ud == nil || ud.IsSingleBase() {
+		return "", false
+	}
+	amounts := map[string]float64{}
+	if !unitAmounts(e, 1, amounts, map[*ir.Var]bool{}) {
+		return "", false
+	}
+	var terms []string
+	for _, b := range ud.Bases() {
+		if m := amounts[b.Name]; m != 0 {
+			terms = append(terms, ir.FormatUnitTerm(m, b.Name))
+		}
+	}
+	if len(terms) == 0 {
+		return ir.FormatUnitZero(ud), true
+	}
+	return strings.Join(terms, ir.UnitTermSep), true
+}
+
+// unitAmounts adds sign times e's magnitude per base into out, for the
+// literals, consts, sums and differences a constant unit value is written as.
+func unitAmounts(e ir.Expr, sign float64, out map[string]float64, seen map[*ir.Var]bool) bool {
+	switch x := e.(type) {
+	case *ir.Literal:
+		mag, base, ok := ir.UnitMagnitude(x)
+		if ok {
+			out[base] += sign * mag
+		}
+		return ok
+	case *ir.Ident:
+		v, ok := x.Sym.(*ir.Var)
+		if !ok || !v.IsConst || v.Init == nil || seen[v] {
+			return false
+		}
+		seen[v] = true
+		defer delete(seen, v)
+		return unitAmounts(v.Init, sign, out, seen)
+	case *ir.Binary:
+		switch x.Op {
+		case ast.BinAdd:
+			return unitAmounts(x.Left, sign, out, seen) && unitAmounts(x.Right, sign, out, seen)
+		case ast.BinSub:
+			return unitAmounts(x.Left, sign, out, seen) && unitAmounts(x.Right, -sign, out, seen)
+		}
+	}
+	return false
+}
+
+// foldNavHref is `nav.href(to, params)` where both are known: the page's href
+// with each `{name}` filled from the params' field of that name, escaped as a
+// path segment -- what html's emitter writes for one it is handed at run time.
+// A float field is left to run time, whose spelling of one is the target's.
+func foldNavHref(args []any) (any, bool) {
+	if len(args) < 1 {
+		return nil, false
+	}
+	rec, ok := args[0].(*interp.Struct)
+	if !ok {
+		return nil, false
+	}
+	hv, _ := rec.Get("href")
+	href, ok := hv.(string)
+	if !ok {
+		return nil, false
+	}
+	var params *interp.Struct
+	if len(args) > 1 && args[1] != nil {
+		if params, ok = args[1].(*interp.Struct); !ok {
+			return nil, false
+		}
+	}
+	filled, ok := ir.FillHref(href, func(name string) (string, bool) {
+		if params == nil {
+			return "", false
+		}
+		v, ok := params.Get(name)
+		if !ok {
+			return "", false
+		}
+		switch x := v.(type) {
+		case string:
+			return url.PathEscape(x), true
+		case int64:
+			return strconv.FormatInt(x, 10), true
+		case int:
+			return strconv.Itoa(x), true
+		case bool:
+			return strconv.FormatBool(x), true
+		}
+		return "", false
+	})
+	return filled, ok
 }

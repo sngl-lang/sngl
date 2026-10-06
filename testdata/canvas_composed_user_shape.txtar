@@ -98,12 +98,15 @@ type PathCmd struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -151,6 +154,21 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -160,13 +178,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
@@ -175,11 +201,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = tui.RenderTerminal(40, 10, 1, func() image.Image {
-		__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
-		m._canvasDraw0(__c)
-		return __c.Result()
-	})
+	if m.visible__inst0 {
+		content = tui.RenderTerminal(40, 10, 1, func() image.Image {
+			__c := _canvasSurface0.Begin(40, 20, 0, 0, "")
+			m._canvasDraw0(__c)
+			return __c.Result()
+		})
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -212,7 +240,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(255,0,0,1)";
@@ -271,6 +299,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:112c0f7a1a1bf9fc12fe3ee64075233d
+pass sha256:e1687af58526a309acdc04290fe28fa6
 -- run/none/html --
-pass sha256:a16db8dae76677141ae0a6655906bf44
+pass sha256:c21aa94d300d397f6313a95a3037a99d

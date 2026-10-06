@@ -1,0 +1,24 @@
+# A pure js: function is run by node over the project's modules at build time,
+# which is the project's code running: refused unasked, like go:'s.
+[!node] skip
+
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr '^app.sngl:4:18: 1 call into js:./lib was not evaluated, and a "none" build cannot call it at run time: running it needs --allow-eval="js:\./lib" \(or `sngl trust --allow-eval="js:\./lib"` to record it\)$'
+
+sngl generate --lang=none --platform=html -o out --allow-eval=js:./lib app.sngl
+grep 'HELLO' out/index.html
+
+-- app.sngl --
+import ui "sngl:ui"
+import lib "js:./lib"
+
+const greeting = lib.shout("hello")
+
+ui.window(title="t") {
+    ui.text(value=greeting)
+}
+-- lib/index.ts --
+/** @sngl-pure */
+export function shout(s: string): string {
+    return s.toUpperCase();
+}

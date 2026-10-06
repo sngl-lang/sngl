@@ -22,6 +22,8 @@ type irComposeContext struct {
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
 	parentAxis string
+	// screen is the window the view draws, which the system back closes.
+	screen *codegen.Screen
 	// atRoot marks the window's own content, which is the node the display
 	// cutout has to be kept out of.
 	atRoot bool
@@ -30,6 +32,9 @@ type irComposeContext struct {
 	// there is no such divergence between the current combos, so nothing
 	// branches on it yet — it's the wired hook, not dead weight.
 	combo androidtc.Combo
+	// nav is the stacks the program renders, answered here rather than
+	// lowered (nav.go).
+	nav *androidNav
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -42,14 +47,15 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
-		}
 		// A schedule is not a composable. The timer primitive stays in the
 		// tree so the branch around it is answered there; AnalyzeCommon reads
 		// it and the LaunchedEffect it becomes is emitted with the model,
 		// not here.
 		if ir.IsTimerPrimitive(s.Component) {
+			return
+		}
+		if cc.screen != nil && s == cc.screen.Node {
+			cc.renderScreen(s)
 			return
 		}
 		cc.renderNode(s)
@@ -118,6 +124,17 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
+	if n.Component != nil {
+		switch n.Component.Builtin {
+		case ir.BuiltinNavStack:
+			cc.renderNavStack(n)
+			return
+		}
+		if n.Component.Intrinsic == intrinsicNS+"Link" {
+			cc.renderNavLink(n)
+			return
+		}
+	}
 	if isEffectNode(n) {
 		cc.renderEffect(n)
 		return

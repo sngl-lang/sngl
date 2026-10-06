@@ -3,6 +3,7 @@ package git
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -31,6 +32,11 @@ type Importer struct{}
 func (g *Importer) Scheme() string { return "git" }
 
 func (g *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
+	return g.ResolveFSNet(uri, dir, nil)
+}
+
+// ResolveFSNet resolves uri, asking gate before a clone contacts its host.
+func (g *Importer) ResolveFSNet(uri, dir string, gate codegen.NetGate) (fs.FS, error) {
 	parsed, err := parseGitURI(uri)
 	if err != nil {
 		return nil, err
@@ -49,6 +55,9 @@ func (g *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
 	}
 
 	// Clone into cache
+	if err := codegen.AskNet(gate, parsed.host); err != nil {
+		return nil, err
+	}
 	if err := gitClone(parsed, cacheDir); err != nil {
 		return nil, fmt.Errorf("git clone: %w", err)
 	}
@@ -93,6 +102,13 @@ func parseGitURI(uri string) (*gitURI, error) {
 
 	// Split host/path
 	if before, after, ok := strings.Cut(rest, "/"); ok {
+		// Each part becomes a directory under the cache, so none may name the
+		// directory above it: `git:host/../../x@v` would clone outside.
+		for _, part := range []struct{ what, v string }{{"host", before}, {"path", after}, {"ref", ref}} {
+			if err := cacheSafe(part.v); err != nil {
+				return nil, fmt.Errorf("git:// URI %s %q: %w", part.what, part.v, err)
+			}
+		}
 		return &gitURI{
 			host: before,
 			path: after,
@@ -102,6 +118,25 @@ func parseGitURI(uri string) (*gitURI, error) {
 	}
 
 	return nil, fmt.Errorf("git:// URI requires host/path (e.g., git://github.com/user/repo)")
+}
+
+// cacheSafe refuses a URI part that would leave the directory it is joined
+// under: an empty, `.` or `..` segment, a backslash, or a leading `-`, which
+// git would read as an option.
+func cacheSafe(v string) error {
+	if strings.HasPrefix(v, "-") {
+		return errors.New("may not begin with '-'")
+	}
+	if strings.ContainsAny(v, "\\\x00") {
+		return errors.New("may not hold a backslash or NUL")
+	}
+	for seg := range strings.SplitSeq(v, "/") {
+		switch seg {
+		case "", ".", "..":
+			return fmt.Errorf("has a %q segment", seg)
+		}
+	}
+	return nil
 }
 
 func gitCacheDir(host, repoPath, ref string) string {
@@ -115,7 +150,9 @@ func gitClone(parsed *gitURI, destDir string) error {
 
 	repoURL := "https://" + parsed.host + "/" + parsed.path + ".git"
 	slog.Info("exec", "cmd", "git clone", "repo", repoURL, "ref", parsed.ref, "dest", destDir)
-	cmd := exec.Command("git", "clone", "--depth=1", "--branch="+parsed.ref, repoURL, destDir)
+	// No redirect is followed: the host was what was granted, and a redirect
+	// would contact another one nothing asked about.
+	cmd := exec.Command("git", "-c", "http.followRedirects=false", "clone", "--depth=1", "--branch="+parsed.ref, repoURL, destDir)
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }

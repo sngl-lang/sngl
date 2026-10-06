@@ -20,17 +20,18 @@
 # declaration, so nothing lifts its windows and one nobody instantiates draws
 # nothing. The instantiation is also the whole of what separates the two pages
 # now -- the inliner renames what a spliced body declares per instantiation, so
-# the nested spelling's `hits` is `hits__inst0`. That rename is undone below
-# rather than asserted around, because the claim this fixture makes is that the
-# two pages are otherwise the same byte for byte.
+# the nested spelling's `hits` is `hits__inst0`, and the window's own `visible`
+# cell is numbered after it. Those renames are undone below rather than asserted
+# around, because the claim this fixture makes is that the two pages are
+# otherwise the same byte for byte.
 
 sngl generate --platform html -o out_nested nested.sngl
 sngl generate --platform html -o out_root root.sngl
-exec sed -i 's/__inst0//g' out_nested/index.html
+exec sed -i -E 's/__inst[0-9]+//g' out_nested/index.html out_root/index.html
 cmpgen out_nested/index.html out_root/index.html
 
 # The window's own var is the page's state, and the handler writes it there.
-grep 'var state = \{ hits: 0 \}' out_nested/index.html
+grep 'var state = \{ hits: 0[,}]' out_nested/index.html
 grep 'state.hits = state.hits \+ 1' out_nested/index.html
 
 # The reactive slot is declared before it is read, and re-fired by the write.

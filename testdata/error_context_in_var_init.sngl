@@ -2,7 +2,7 @@ import . "sngl:ui"
 
 context #theme("light")
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     var t = theme // ERROR(check) "context value cannot be captured into a local var (read at use site instead)"
     text(value=t)
 }

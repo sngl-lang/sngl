@@ -712,8 +712,6 @@ type Model struct {
 	ps        []P
 	holes     []*int
 	leading   []*int
-	__n0      gtk4rt.Handle
-	__n1      gtk4rt.Handle
 	__root    gtk4rt.Handle
 }
 
@@ -844,13 +842,13 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ((fmt.Sprint(m.aroundLen) + " ") + "4"))
-	m.__n1 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n1, "scribble")
-	gtk4rt.Connect(m.__n1, "clicked", m.__n1_clicked_handler)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
-	gtk4rt.BoxAppend(m.__root, m.__n1)
+	__n0 := gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(__n0, ((fmt.Sprint(m.aroundLen) + " ") + "4"))
+	__n1 := gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(__n1, "scribble")
+	gtk4rt.Connect(__n1, "clicked", m.__n1_clicked_handler)
+	gtk4rt.BoxAppend(m.__root, __n0)
+	gtk4rt.BoxAppend(m.__root, __n1)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1091,7 +1089,7 @@ pass sha256:266b2a0e57ca777503f14935e492c2c7
 -- run/go/fyne --
 pass sha256:d3464c58dbb8e7de7df35e4adf46a8bf
 -- run/go/gtk4 --
-pass sha256:d3fc83a7b05048309f26e107fb85c3e8
+pass sha256:efb6f7bbcc5be2e53e19ac46e9430060
 -- run/kotlin/android --
 pass sha256:aa5616096ebc269dc2f8daa8ee1b1ae7
 -- run/none/html --

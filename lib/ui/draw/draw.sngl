@@ -1,14 +1,15 @@
-// std is qualified rather than dot-imported: a lib package is loaded into the
+// sngl:ui is qualified rather than dot-imported: a lib package is loaded into the
 // checker's own symbol table, so names it lifts become indistinguishable from
 // names it declares and would be re-lifted by `import . "sngl:ui/draw"`. User
 // packages do not re-export a dot import, and neither should this one.
-import std "sngl:ui"
+import ui "sngl:ui"
 
-// `#[tree.kind]` is what marks the shape struct below as naming a tree, and
-// `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
-import tree "sngl:tree"
+// `shape` below is a family because it is a member of `build.family`, and
+// `#[marks.builtin("treeShape")]` is how the compiler names that one family.
+import build "sngl:build"
 import math "sngl:math"
 import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
@@ -45,11 +46,13 @@ struct PathCmd {
 // The builtin mark is the one thing this family has that an ordinary one does
 // not: passShapeDraw turns a canvas's children into the calls that paint them,
 // so the compiler has to name the tree those rules are about. It names it by the mark rather than by
-// the pair "sngl:ui/draw" and "shape", so a program declaring `struct shape`
-// of its own is a different family and is not painted.
-#[tree.kind]
+// the pair "sngl:ui/draw" and "shape", so a program declaring a `shape` family
+// of its own is a different one and is not painted. `#[tree.eventless]` is
+// what a painted shape cannot do -- raise an event -- said by the family, so
+// the checker holds its members to it without knowing what drawing is.
 #[marks.builtin("treeShape")]
-struct shape {}
+#[tree.eventless]
+component shape build.family
 
 // How a canvas is shown when the room it is given is not the size it draws at.
 // `width` and `height` are the coordinate space the shapes are placed in;
@@ -72,13 +75,13 @@ enum ScalingMode { center, fit, fill, stretch }
 // Those two are the coordinate space and not the size on screen: a canvas laid
 // out bigger than it draws shows the picture per `scalingMode`.
 component canvas(
-    width std.measurement,
-    height std.measurement,
+    width ui.measurement,
+    height ui.measurement,
     scalingMode ScalingMode,
     style CanvasStyle,
-    @click std.ClickEvent,
+    @click ui.ClickEvent,
     shapes ...component shape,
-) std.node {}
+) ui.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) shape
@@ -101,7 +104,7 @@ component path(cmds list<PathCmd>, style CanvasStyle) shape
 component canvasText(x float, y float, content string, style CanvasStyle) shape
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
-// or asset path as `std.image`.
+// or asset path as `ui.image`.
 component canvasImage(x float, y float, w float, h float, src string) shape
 
 // --- Geometry ---

@@ -1,0 +1,63 @@
+# `c:pkg:<library>/<header>` resolves through the library's own plugin,
+# written in SNGL: it runs pkg-config with gen.exec -- trusted, since it ships
+# in the sngl: tree -- and writes the `c.link` a Go target's cgo preamble is
+# made from. The Go importer that parsed headers is gone; the program declares
+# what it calls with `#[cnative]`.
+env SNGL_GENCACHE_DIR=$WORK/store
+
+# A library pkg-config does not know fails the import, saying so.
+! sngl check missing/app.sngl
+stderr 'missing/app.sngl:1:1: import "c:pkg:nonexistent-lib-xyz-9999/x.h": scheme "c": pkg-config --cflags nonexistent-lib-xyz-9999 failed'
+
+# An import naming no header cannot be included.
+! sngl check noheader/app.sngl
+stderr 'import "c:pkg:gtk4": scheme "c": c:pkg:gtk4 names no header: write c:pkg:<library>/<header>'
+
+# The library name is the repository's, and pkg-config runs unasked for this
+# plugin: one that reads as a flag is refused rather than handed over.
+! sngl check flag/app.sngl
+stderr 'c:pkg:--with-path=/tmp/x.h names no library: "--with-path=" reads as a pkg-config flag'
+
+[!gtk4] skip 'needs pkg-config and GTK 4'
+
+sngl generate --platform=fyne --lang=go -o out --debug gtk/app.sngl
+grep '^#cgo CFLAGS: .*-I/[^ ]*gtk-4' out/model.go
+grep '^#cgo LDFLAGS: .*-lgtk-4' out/model.go
+grep '^#include <gtk/gtk.h>$' out/model.go
+grep 'm.v = int\(C.gtk_get_major_version\(\)\)' out/model.go
+! stderr 'gencache hit" req="sngl.scheme'
+
+# The package the plugin wrote is stored, behind the .pc file pkg-config read:
+# a second build runs no pkg-config.
+sngl generate --platform=fyne --lang=go -o out --debug gtk/app.sngl
+stderr 'gencache hit" req="sngl.scheme'
+! stderr 'exec.*pkg-config'
+
+-- missing/app.sngl --
+import "c:pkg:nonexistent-lib-xyz-9999/x.h"
+
+const v = 1
+-- noheader/app.sngl --
+import "c:pkg:gtk4"
+
+const v = 1
+-- flag/app.sngl --
+import "c:pkg:--with-path=/tmp/x.h"
+
+const v = 1
+-- gtk/app.sngl --
+import ui "sngl:ui"
+import macro "sngl:macro"
+import "c:pkg:gtk4/gtk/gtk.h"
+
+// GTK's major version, from the library the program links.
+#[macro.cnative("gtk_get_major_version")]
+func gtkMajor() int
+
+var v = 0
+
+ui.window(title="t") {
+    ui.button(text="v{v}", @click {
+        v = gtkMajor()
+    })
+}

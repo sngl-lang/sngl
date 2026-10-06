@@ -61,17 +61,17 @@ func TestInstanceCanvasBelongsToTheRecord(t *testing.T) {
 		{
 			name: "unscaled",
 			want: []string{
-				"c.__n1Ctx = snglcanvas.New(100, 100)",
-				"c._canvasDraw0(c.__n1Ctx)",
-				"c.__n1 = canvas.NewImageFromImage(c.__n1Ctx.Result())",
+				"c.__n2Ctx = snglcanvas.New(100, 100)",
+				"c._canvasDraw0(c.__n2Ctx)",
+				"c.__n2 = canvas.NewImageFromImage(c.__n2Ctx.Result())",
 			},
 		},
 		{
 			name:    "scaled",
 			scaling: "fit",
 			want: []string{
-				"c.__n1 = canvas.NewRaster(",
-				`ctx := c.__n1Surface.Begin(pw, ph, 100, 100, "fit")`,
+				"c.__n2 = canvas.NewRaster(",
+				`ctx := c.__n2Surface.Begin(pw, ph, 100, 100, "fit")`,
 				"c._canvasDraw0(ctx)",
 			},
 		},
@@ -89,7 +89,7 @@ func TestInstanceCanvasBelongsToTheRecord(t *testing.T) {
 				}
 			}
 			// The Model has no receiver inside the record's ctor.
-			for _, leak := range []string{"m._canvasDraw0(", "m.__n1"} {
+			for _, leak := range []string{"m._canvasDraw0(", "m.__n2"} {
 				if strings.Contains(model, leak) {
 					t.Errorf("the canvas still reaches the Model as %q\n--- model.go ---\n%s", leak, model)
 				}

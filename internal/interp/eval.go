@@ -26,10 +26,20 @@ type LambdaValue struct {
 	// body reads wherever it is later called -- the answer passContext gives,
 	// since a call through a value cannot know what to pass.
 	ctx map[*ir.Context]any
+	// site is the function whose code the body is, for the build host to ask
+	// a host call in it of: the function a lambda was written in, or a named
+	// function taken as a value. Nil is the root's code.
+	site *ir.Func
 }
 
+// newLambda is a lambda written where env is running.
 func newLambda(fn *ir.Func, env *Env) *LambdaValue {
-	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env)}
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env), site: env.runningFunc()}
+}
+
+// funcValue is the named function fn taken as a value.
+func funcValue(fn *ir.Func, env *Env) *LambdaValue {
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env), site: fn}
 }
 
 // call invokes the lambda with the given values.
@@ -50,6 +60,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 			child.Set(p, args[i])
 		}
 	}
+	defer child.enterFrame(lv.site)()
 	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
 	return res, err
@@ -62,6 +73,7 @@ func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 			env.Set(p, args[i])
 		}
 	}
+	defer env.enterFrame(lv.site)()
 	return env.underContext(lv.ctx, func() (any, error) { return env.execBlockForResult(lv.fn.Block) })
 }
 
@@ -325,12 +337,25 @@ type Env struct {
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
+	// handling counts the event handlers running, shared by every env of one
+	// program so that a nested dispatch can tell it is one.
+	handling *int
+	// build answers sngl:x/gen's host API, set only by the build's evaluator
+	// (stream.go).
+	build *buildFrame
+	// nav is what a stack's instance keeps across mounts (nav.go), navStack
+	// the stack a page's instance registered with, and navParams the params
+	// that page is showing with, nil for its own.
+	nav       *navState
+	navStack  *Env
+	navParams *navParams
 }
 
 func NewEnv() *Env {
 	return &Env{
 		vals:      map[ir.Symbol]any{},
 		childEnvs: map[childKey]*Env{},
+		handling:  new(int),
 	}
 }
 
@@ -478,6 +503,8 @@ func (env *Env) Snapshot() *Env {
 		inst:       env.inst,
 		origin:     env,
 		spreadVals: env.spreadVals,
+		handling:   env.handling,
+		build:      env.build,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
@@ -487,9 +514,17 @@ func (env *Env) Snapshot() *Env {
 // from, the way LambdaValue.Call does for a callback. A node mounted in a loop
 // iteration or a scoped slot's population holds a snapshot, so a handler run
 // in it wrote only the copy.
+//
+// A scope above the snapshot may be a snapshot too, and a write the handler
+// made to a binding that scope holds landed in it rather than in the handler's
+// own: a block that declares a `var` mounts in a scope of its own (blockEnv)
+// whose parent is the loop iteration's snapshot. So every snapshot on the way
+// up carries what it was written back to where it was taken from.
 func (env *Env) writeBack() {
-	for o := env.origin; o != nil; o = o.origin {
-		o.RebindFrom(env)
+	for e := env; e != nil; e = e.parent {
+		for o := e.origin; o != nil; o = o.origin {
+			o.RebindFrom(e)
+		}
 	}
 }
 
@@ -1036,6 +1071,10 @@ func (env *Env) evalIdent(e *ir.Ident) (any, error) {
 	if e.Member != "" {
 		return e.Member, nil
 	}
+	// A build-target node read as a value, bare inside its own package.
+	if _, name, ok := ir.TargetNode(e.Sym); ok {
+		return name, nil
+	}
 	if e.Sym != nil {
 		if v, ok := env.Value(e.Sym); ok {
 			return v, nil
@@ -1176,7 +1215,7 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 			(effective == 1 && fn.Params[0].Receiver) {
 			return env.EvalUserFunc(fn, nil)
 		}
-		return newLambda(fn, env), nil
+		return funcValue(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
 	// value: a constant from a library package, which is in no list this
@@ -1217,17 +1256,53 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
 	}
+	if t := e.Operand.ExprType(); e.Field == "length" && t != nil {
+		if id, ok := lengthIntrinsics[t.Kind]; ok {
+			return intrinsics[id]([]any{obj})
+		}
+	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
 		return v, nil
 	}
 	if m, ok := obj.(map[string]any); ok {
+		// A computed the handle's declaration answers natively, selected
+		// bare: `pages.current` off a stack.
+		if fn := intrinsicMethod(e.Operand.ExprType(), e.Field); fn != nil {
+			return fn([]any{obj})
+		}
 		return m[e.Field], nil
 	}
 	if u, ok := obj.(unitValue); ok {
 		return u.baseAmount(e.Field)
 	}
+	// The checker types `.length` on a string or list as a select, not a call.
+	if e.Field == "length" {
+		switch obj.(type) {
+		case string:
+			return intrinsics["string.length"]([]any{obj})
+		case []any:
+			return intrinsics["list.length"]([]any{obj})
+		}
+	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+// intrinsicMethod is the intrinsic behind a component type's method named
+// field, or nil.
+func intrinsicMethod(t *ir.Type, field string) func([]any) (any, error) {
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := t.Decl.(*ir.Component)
+	if !ok {
+		return nil
+	}
+	fn := comp.Methods[field]
+	if fn == nil || fn.Intrinsic == "" {
+		return nil
+	}
+	return intrinsics[fn.Intrinsic]
 }
 
 // namespaceMember evaluates `alias.member` where alias names an imported
@@ -1241,6 +1316,11 @@ func (env *Env) namespaceMember(ns *ir.Namespace, field string) (any, error) {
 	sym, ok := ns.Pkg.Symbols.LookupMember(field)
 	if !ok {
 		return nil, fmt.Errorf("undefined: %s.%s", ns.Name, field)
+	}
+	// A build-target node read as a value is the target's identity: its
+	// registered name, which is what PLATFORM holds.
+	if _, name, ok := ir.TargetNode(sym); ok {
+		return name, nil
 	}
 	v, isVar := sym.(*ir.Var)
 	if !isVar {
@@ -1569,6 +1649,17 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	v, err := env.evalCallSite(call)
+	if raised, ok := err.(*RaisedError); ok {
+		return nil, env.dispatchRaise(call, raised)
+	}
+	return v, err
+}
+
+func (env *Env) evalCallSite(call *ir.Call) (any, error) {
+	if call.Func != nil && call.Func.BuildOnly {
+		return env.callBuildOnly(call)
+	}
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
 	// the wrapper is inlined, so neither is reliably a namespace call by the
@@ -1597,6 +1688,17 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 	}
 
 	if call.Func != nil {
+		// An intrinsic this interpreter implements answers a bare call too,
+		// as it does a qualified one: `follow(to, params)` in the package that
+		// declares it. The declaration's body is a placeholder.
+		if _, ok := intrinsics[call.Func.Intrinsic]; ok && call.Func.Intrinsic != "" {
+			args, err := env.evalCallArgs(call.Args)
+			if err != nil {
+				return nil, err
+			}
+			result, _, err := runIntrinsic(call.Func.Intrinsic, args)
+			return result, err
+		}
 		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
 
@@ -1690,6 +1792,15 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		// A method called through a node's `#id` runs in the instance the
+		// handle names, where its props and the cells of its unbound two-way
+		// props are: `details.open()` writes the window's own `visible`.
+		if m, ok := recv.(map[string]any); ok {
+			inst, _ := m["__inst"].(*ir.NodeInst)
+			if ce, ok := m["__compEnv"].(*Env); ok && ce != nil && inst != nil && inst.Component != nil && slices.Contains(inst.Component.Funcs, call.Func) {
+				return ce.callUserFuncArgValues(call.Func, call.Args[1:], rest)
+			}
+		}
 		evalArgs = append([]any{recv}, rest...)
 	}
 
@@ -1776,40 +1887,19 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			explicitEvent := strings.HasPrefix(method, "@")
 			event := strings.TrimPrefix(method, "@")
 			if m, ok := recv.(map[string]any); ok {
-				h, _ := m["@"+event].(*ir.Func)
-				inst, _ := m["__inst"].(*ir.NodeInst)
-				if h != nil || boundByEvent(inst, event) {
-					handlerEnv := env
-					if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
-						handlerEnv = oe
-					}
-					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
-						handlerEnv.SetReceiver(owner)
-					}
-					vals, err := env.evalCallArgs(call.Args)
-					if err != nil {
-						return nil, err
-					}
-					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
-					res, err := handlerEnv.underContext(provided, func() (any, error) {
-						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
-							return nil, err
-						}
-						if h == nil {
-							return nil, nil
-						}
-						for i, p := range h.Params {
-							if i < len(vals) {
-								handlerEnv.Set(p, vals[i])
-							}
-						}
-						return handlerEnv.execBlockForResult(h.Block)
-					})
-					handlerEnv.writeBack()
+				res, handled, err := env.InvokeElementEvent(m, event, func() ([]any, error) { return env.evalCallArgs(call.Args) })
+				if handled {
 					return res, err
 				}
 			}
 			if explicitEvent {
+				// A component instance answers for itself: what it renders
+				// may report the event.
+				if cv, ok := recv.(ComponentValue); ok {
+					if result, handled, err := cv.InvokeMethod(env, method, call.Args); handled {
+						return result, err
+					}
+				}
 				// Checker tagged this as an event but no handler is installed:
 				// the caller never bound it, so the invocation is a no-op.
 				return nil, nil
@@ -2008,6 +2098,57 @@ func boundPayloadField(inst *ir.NodeInst, b ir.PropBinding, event string) string
 		}
 	}
 	return ""
+}
+
+// cellByEvent reports whether event writes one of the cells an instance keeps
+// for the two-way props its call site left unbound (ir.UnboundProps). env is
+// the instance's own scope, and nil for a node that is no component's.
+func (env *Env) cellByEvent(inst *ir.NodeInst, event string) bool {
+	if env == nil || inst == nil {
+		return false
+	}
+	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+		if boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// writeCells is writeBindings for those cells: the payload's field of the
+// prop's type, written into the instance's scope, where bindProps leaves it
+// on every mount after the first.
+func (env *Env) writeCells(inst *ir.NodeInst, event string, vals []any) {
+	if env == nil || inst == nil || len(vals) == 0 {
+		return
+	}
+	st, ok := vals[0].(*Struct)
+	if !ok {
+		return
+	}
+	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
+		if field := boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event); field != "" {
+			v, _ := st.Get(field)
+			env.Set(p.Sym, v)
+			// The node's `#id` is bound to what the last mount showed
+			// (bindHandle); the handler about to run reads it before the
+			// next one does.
+			if inst.Handle != nil {
+				if m, ok := env.parentValue(inst.Handle).(map[string]any); ok {
+					m[p.Name] = v
+				}
+			}
+		}
+	}
+}
+
+// parentValue is sym's value in the scope env was mounted from, or nil.
+func (env *Env) parentValue(sym ir.Symbol) any {
+	if env.parent == nil {
+		return nil
+	}
+	v, _ := env.parent.Value(sym)
+	return v
 }
 
 // writeBindings writes an event's payload back through the node's bindings
@@ -2291,6 +2432,7 @@ func argExprs(args []ir.CallArg) []ir.Expr {
 // (no expression evaluation needed). Used by the optimizer's interpretFunc
 // adapter, which already has folded constant values in hand.
 func (env *Env) CallUserFuncValues(fn *ir.Func, args []any) (any, error) {
+	defer env.enterFunc(fn)()
 	child := env.Snapshot()
 	for i, p := range fn.Params {
 		if i < len(args) {
@@ -2386,7 +2528,7 @@ func (env *Env) callUserFuncArgValues(fn *ir.Func, callArgs []ir.CallArg, values
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
-
+	defer env.enterFunc(fn)()
 	env.depth++
 	if env.depth > maxCallDepth {
 		env.depth--
@@ -2674,6 +2816,11 @@ func equals(a, b any) bool {
 		}
 		return true
 	}
+	// A handle read as a value is its instance, and two are equal when they
+	// are one instance: the scope the interpreter keeps for it.
+	if ae, be := instanceEnv(a), instanceEnv(b); ae != nil || be != nil {
+		return ae == be
+	}
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
@@ -2837,6 +2984,15 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 	}, nil
 }
 
+// lengthIntrinsics answers the `.length` the checker types as int on a list, a
+// map or a string. Chosen by the checked type, because evalSelect otherwise
+// reads a map[string]any by key and a map may hold a "length" key.
+var lengthIntrinsics = map[ir.TypeKind]string{
+	ir.TypeList:   "list.length",
+	ir.TypeMap:    "map.length",
+	ir.TypeString: "string.length",
+}
+
 // underContext runs fn with vals provided over whatever env already holds.
 // A handler or an effect runs after the mount that placed it has unwound
 // every provider, so it carries the values it was mounted under and is run
@@ -2852,4 +3008,75 @@ func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (
 	}
 	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
 	return fn()
+}
+
+// underHandler is underContext for an event handler's entry. A raise the
+// handler lets out is offered to the frames it was mounted under -- but only by
+// the outermost one, since a handler run from inside another (an emitted event)
+// is part of the raise that one is making.
+func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (any, error) {
+	if env.handling == nil {
+		env.handling = new(int)
+	}
+	*env.handling++
+	res, err := env.underContext(vals, fn)
+	*env.handling--
+	if *env.handling == 0 {
+		err = catchEscaped(vals, err)
+	}
+	return res, err
+}
+
+// InvokeElementEvent runs the handler a rendered node carries for event, the
+// way a host reporting it would: the binding and the cell it writes first, then
+// the handler, in the scope the node was written in. It reports false when the
+// node handles nothing of the event.
+//
+// A component whose call site handled nothing of the event still renders
+// something that reports it: the event reaches that, and the component's own
+// forwarding emit, if it has one, runs the call site's handler from there.
+func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	h, _ := m["@"+event].(*ir.Func)
+	inst, _ := m["__inst"].(*ir.NodeInst)
+	cells, _ := m["__compEnv"].(*Env)
+	if h == nil && !boundByEvent(inst, event) && !cells.cellByEvent(inst, event) {
+		n, ok := m["__node"].(*Node)
+		if !ok || !n.Expanded {
+			return nil, false, nil
+		}
+		d := handlingDescendant(n, event)
+		if d == nil {
+			return nil, false, nil
+		}
+		return env.InvokeElementEvent(d.Map(), event, args)
+	}
+	handlerEnv := env
+	if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
+		handlerEnv = oe
+	}
+	if owner, ok := m["__ownerComponent"]; ok && owner != nil {
+		handlerEnv.SetReceiver(owner)
+	}
+	vals, err := args()
+	if err != nil {
+		return nil, true, err
+	}
+	provided, _ := m["__ownerContext"].(map[*ir.Context]any)
+	res, err := handlerEnv.underHandler(provided, func() (any, error) {
+		cells.writeCells(inst, event, vals)
+		if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
+			return nil, err
+		}
+		if h == nil {
+			return nil, nil
+		}
+		for i, p := range h.Params {
+			if i < len(vals) {
+				handlerEnv.Set(p, vals[i])
+			}
+		}
+		return handlerEnv.execBlockForResult(h.Block)
+	})
+	handlerEnv.writeBack()
+	return res, true, err
 }

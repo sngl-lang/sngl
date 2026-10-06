@@ -115,9 +115,8 @@ func snapshotExamplesFile(path string, platforms []string, width, height int, fo
 	if len(examples) == 0 {
 		return nil
 	}
-	imports := checker.DocumentExampleImports(doc)
 	for name, src := range examples {
-		examples[name] = exampleSource(imports, src, platforms)
+		examples[name] = exampleSource(src, platforms)
 	}
 
 	dir := filepath.Dir(path)
@@ -141,10 +140,9 @@ func snapshotStdlibExamples(platforms []string, width, height int, force bool) e
 func stdlibExampleSources(platforms []string) map[string]string {
 	flat := map[string]string{}
 	for _, pkg := range lib.PublicPackages() {
-		imports := checker.PackageExampleImports("sngl:" + pkg)
 		for name, srcs := range checker.PackageExamples(pkg) {
 			if len(srcs) > 0 {
-				flat[name] = exampleSource(imports, srcs[0], platforms)
+				flat[name] = exampleSource(srcs[0], platforms)
 			}
 		}
 	}
@@ -152,9 +150,9 @@ func stdlibExampleSources(platforms []string) map[string]string {
 }
 
 // exampleSource is an example as a file snapshot.Generate builds for platforms.
-func exampleSource(imports, example string, platforms []string) string {
+func exampleSource(example string, platforms []string) string {
 	var b strings.Builder
-	b.WriteString(checker.ExampleProgram(imports, example))
+	b.WriteString(example)
 	b.WriteString("\noutput {\n")
 	for _, plat := range platforms {
 		fmt.Fprintf(&b, "    %s { %s }\n", snapshot.LangForPlatform(plat), plat)
@@ -198,6 +196,7 @@ func renderExamples(examples map[string]string, outDir string, platforms []strin
 		}
 
 		results, err := snapshot.Generate(snapshot.Config{
+			Trust:      cliTrust,
 			SourceFile: tmpFile,
 			Platforms:  platforms,
 			Width:      width,

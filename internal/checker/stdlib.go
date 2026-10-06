@@ -43,7 +43,7 @@ func PackageSource(name string) []*ast.Document {
 	if docs, ok := packageSourceCache[name]; ok {
 		return docs
 	}
-	docs := append(PackageDocsFor(name), ProvidedDocs(registeredTarget(name))...)
+	docs := PackageDocsFor(name)
 	packageSourceCache[name] = docs
 	return docs
 }
@@ -129,7 +129,9 @@ func parseStdlibDocs() []*ast.Document {
 				if err != nil {
 					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
 				}
-				if !targetTier(tier) {
+				// A plugin is not a declaration library: it is checked as a
+				// package of its own when its scheme is asked for.
+				if !targetTier(tier) && !strings.HasPrefix(tier, SchemeTier) {
 					stdlibDocs = append(stdlibDocs, doc)
 				}
 				stdlibTierDocs[tier] = append(stdlibTierDocs[tier], doc)
@@ -203,9 +205,9 @@ func (c *checker) adoptAmbient(pkg *ir.Package) {
 	}
 }
 
-// libDocs returns the parsed source of lib package name: what lib/ embeds,
-// plus what the target of that name synthesizes (providedDocs). Config.LibSources
-// substitutes the whole package instead, for the in-test stubs.
+// libDocs returns the parsed source of lib package name: what lib/ embeds.
+// Config.LibSources substitutes the whole package instead, for the in-test
+// stubs.
 func (c *checker) libDocs(name string) []*ast.Document {
 	var docs []*ast.Document
 	if c.cfg != nil {
@@ -214,101 +216,9 @@ func (c *checker) libDocs(name string) []*ast.Document {
 		}
 	}
 	if docs == nil {
-		docs = append(PackageDocsFor(name), c.providedDocs(name)...)
+		docs = PackageDocsFor(name)
 	}
-	return append(docs, c.identityDoc(name)...)
-}
-
-// identityFile is the name the generated identity declaration is mounted
-// under. The prefix keeps it clear of anything a plugin would write, and it
-// reads as a file of the package because it is one.
-const identityFile = "sngl__identity.sngl"
-
-// identityDoc is the target identity mounted into a target's package: one
-// generated file declaring the const that `[platform]` names.
-//
-// It is added here rather than to the fs.FS a plugin serves, because that is
-// not the only way a target package's source arrives -- Config.LibSources
-// substitutes the whole package for the in-test stubs, and a stub is as much a
-// target as a plugin is. This is the one place they meet.
-//
-// Generated rather than injected into the loaded IR: the identity is then an
-// ordinary declaration of the package, parsed, registered and documented like
-// everything else it serves, and nothing downstream has to know the compiler
-// wrote it.
-func (c *checker) identityDoc(pkgName string) []*ast.Document {
-	member, ok := targetNamespaceMember(pkgName)
-	if !ok {
-		return nil
-	}
-	name, _ := targetNamespaceName(pkgName)
-	// Qualified, not dot-imported: imports are file scope, so a dot import
-	// here would collide with nothing -- it would just lift the package's
-	// names into a file that uses one mark and declares one const.
-	src := fmt.Sprintf(`import macro "sngl:macro"
-
-// The %s %s, as a value: compare %s against it. The comparison folds at
-// build time, so the branch not taken is removed.
-#[macro.identity]
-const %s = %q
-`, name, member, targetConstName(member), member, name)
-	doc, err := parser.Parse(identityFile, []byte(src))
-	if err != nil {
-		panic("sngl: generated target identity does not parse: " + err.Error())
-	}
-	return []*ast.Document{doc}
-}
-
-// targetNamespaceMember is the identity const a package of this name carries:
-// `platform` for a platform tier, `language` for a language one.
-func targetNamespaceMember(pkgName string) (string, bool) {
-	switch {
-	case strings.HasPrefix(pkgName, "platform/"):
-		return "platform", true
-	case strings.HasPrefix(pkgName, "language/"):
-		return "language", true
-	}
-	return "", false
-}
-
-// providedDocs is the source the registered target of this package name
-// provides, or nil for any other package.
-func (c *checker) providedDocs(name string) []*ast.Document {
-	if c.cfg == nil {
-		return nil
-	}
-	// Both tiers: a language declares its foreign-type surface the way a
-	// platform declares its widgets. Within its own tier, though -- a language
-	// asked for its platform package answers with itself, and the package then
-	// exists under a name no target has.
-	target, kind, ok := targetTierName(name)
-	if !ok {
-		return nil
-	}
-	// This config's targets and no others. A check is defined by the targets
-	// it was configured with, so a target absent from them contributes
-	// nothing here even when it is registered process-wide -- PackageSource is
-	// where the registry answers, for readers that have no config to carry.
-	//
-	// Memoized for the life of this checker and no longer. ProvidedDocs
-	// re-reads the target's files on every call (the parse behind them is
-	// shared, parseProvided), and one check asks about the same package
-	// around 26 times -- hasLibPkg on each lookup, targetPkgScope, libDocs,
-	// libPkg, mergeTargetExtensions.
-	//
-	// Per-checker because a target may be reconfigured between checks, and a
-	// check must see one answer throughout: the callers are meant to see the
-	// same ASTs -- they previously got a different *ast.Document for the same
-	// package depending on which of them asked.
-	if docs, ok := c.providedCache[name]; ok {
-		return slices.Clone(docs)
-	}
-	docs := ProvidedDocs(c.lookupTargetIn(target, kind))
-	if c.providedCache == nil {
-		c.providedCache = map[string][]*ast.Document{}
-	}
-	c.providedCache[name] = docs
-	return slices.Clone(docs)
+	return docs
 }
 
 // Targets that serve a library package, keyed by its `sngl:<uri>`. A
@@ -355,92 +265,13 @@ func registeredTarget(uri string) any {
 	return targetPkgs[uri]
 }
 
-// ProvidedDocs parses the .sngl source a target synthesizes for its own
-// library package, which it provides as an fs.FS the way lib.FS is one.
-//
-// A target whose declarations are derived from the host cannot embed them:
-// gtk4's widget set is whatever the GTK introspection data installed here
-// describes. The interface is matched structurally, as PlatformAvailability is,
-// because codegen imports this package.
-func ProvidedDocs(t any) []*ast.Document {
-	p, ok := t.(interface{ PackageFS() fs.FS })
-	if !ok {
-		return nil
-	}
-	// The package a file's name is qualified by, from the target's own
-	// identity: `ProvidedDocs` is handed the target and not its URI.
-	prefix := "target"
-	switch id := t.(type) {
-	case ir.Platform:
-		prefix = "platform/" + id.PlatformIdentifier()
-	case ir.Language:
-		prefix = "language/" + id.LanguageIdentifier()
-	}
-	fsys := p.PackageFS()
-	if fsys == nil {
-		return nil
-	}
-	entries, err := fs.ReadDir(fsys, ".")
-	if err != nil {
-		panic(fmt.Sprintf("sngl: reading target-provided source: %v", err))
-	}
-	var docs []*ast.Document
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
-			continue
-		}
-		data, err := fs.ReadFile(fsys, e.Name())
-		if err != nil {
-			panic(fmt.Sprintf("sngl: reading target-provided file %q: %v", e.Name(), err))
-		}
-		// Qualified for the reason the embedded tiers are: a target's own
-		// source must not share a file name with the program's.
-		docs = append(docs, parseProvided(prefix+"/"+e.Name(), data))
-	}
-	return docs
-}
-
-// providedParses memoizes parseProvided for the life of the process.
-var (
-	providedParseMu sync.Mutex
-	providedParses  = map[providedKey]*ast.Document{}
-)
-
-// providedKey is a file by name and content. The content is part of the key
-// because a target can be reconfigured to serve a different package -- gtk4
-// against another GIR generates another widget file under the same name --
-// and that has to be a new parse, while the same bytes are the same AST.
-type providedKey struct{ name, data string }
-
-// parseProvided parses one file of a target's package, once per content.
-//
-// Shared across checks the way the embedded tiers (parseStdlibDocs) always
-// have been: nothing downstream of the parser writes to an AST, which
-// TestProvidedDocsSurviveChecks holds it to. Re-parsing was a tenth of the
-// bytes a build allocated -- html.sngl alone is 31KB of source, read again by
-// every check that targets html.
-func parseProvided(name string, data []byte) *ast.Document {
-	key := providedKey{name, string(data)}
-	providedParseMu.Lock()
-	defer providedParseMu.Unlock()
-	if doc, ok := providedParses[key]; ok {
-		return doc
-	}
-	doc, err := parser.Parse(name, data)
-	if err != nil {
-		panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", name, err))
-	}
-	providedParses[key] = doc
-	return doc
-}
-
 func (c *checker) hasLibPkg(name string) bool {
 	if c.cfg != nil {
 		if _, ok := c.cfg.LibSources[name]; ok {
 			return true
 		}
 	}
-	return len(PackageDocsFor(name)) > 0 || len(c.providedDocs(name)) > 0
+	return len(PackageDocsFor(name)) > 0
 }
 
 // targetUnavailable reports why a platform cannot be used in this
@@ -541,9 +372,26 @@ func targetNamespaceName(pkgName string) (string, bool) {
 // merged corpus had no package to belong to.
 func (c *checker) inLibSource() bool { return c.libDepth > 0 }
 
+// enterDeclSet starts a declaration set of its own: the work a package's bodies
+// defer to the end of its check. A library package loads part-way through a
+// program's check, on the same checker, so the program's deferred work is put
+// aside while the library's is done and comes back untouched.
+func (c *checker) enterDeclSet() func() {
+	bodyComps, viewSpreads, nestedOrder := c.bodyComps, c.viewSpreads, c.nestedOrder
+	treeChecks, narrowChecks, constAsserts := c.treeChecks, c.narrowChecks, c.constAsserts
+	constArgs, constSlotNodes := c.constArgs, c.constSlotNodes
+	c.bodyComps, c.viewSpreads, c.nestedOrder = nil, nil, nil
+	c.treeChecks, c.narrowChecks, c.constAsserts = nil, nil, nil
+	c.constArgs, c.constSlotNodes = nil, nil
+	return func() {
+		c.bodyComps, c.viewSpreads, c.nestedOrder = bodyComps, viewSpreads, nestedOrder
+		c.treeChecks, c.narrowChecks, c.constAsserts = treeChecks, narrowChecks, constAsserts
+		c.constArgs, c.constSlotNodes = constArgs, constSlotNodes
+	}
+}
+
 func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.libDepth++
-	constArgMark, constSlotMark := len(c.constArgs), len(c.constSlotNodes)
 	savedPkgName := c.libPkgName
 	c.libPkgName = "sngl:" + pkgName
 	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
@@ -586,11 +434,10 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// Running it means running everything it resets, which is why the restore
 	// covers more than the documents: see enterPackage.
 	defer c.enterPackage(docs)()
+	// Its own declaration set from the first registration on: pass1 defers
+	// work as well as the bodies.
+	defer c.enterDeclSet()()
 	c.pass1()
-	// A field default is a value expression, so it waits until every name it
-	// could refer to is registered. pass2 does this for a program; a library
-	// package does not get one, so it happens here.
-	c.checkStructFieldDefaults()
 
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
@@ -602,85 +449,33 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		}
 	}
 
-	// Library funcs are not body-checked by pass2, which walks a program's own
-	// declarations, so their bodies are checked below. An expression body
-	// (`=> expr`) is lowered into ir.Block, and a block body is lowered too so
-	// the optimizer can fold through it; a bodyless signature has nothing to
-	// check.
-	type stdlibFuncBody struct {
-		ast *ast.FuncDef
-		fn  *ir.Func
-	}
-	var pendingBodies []stdlibFuncBody
-	for _, fn := range stdlibPkg.Funcs {
-		if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) {
-			pendingBodies = append(pendingBodies, stdlibFuncBody{ast: fn.AST, fn: fn})
-		}
-	}
-
-	// Phase 2: check deferred stdlib expression-body wrappers. Run last so
-	// that bodies can read freshly-registered context decls (e.g. the
-	// `#locale` context used by i18n.* wrappers).
-	for _, pb := range pendingBodies {
-		c.checkFuncBody(pb.fn)
-	}
-
-	// Phase 2b: refine stdlib function purity by propagating from called
-	// functions. The Pure seed registerFunc gives a bodied library func is a
-	// placeholder;
-	// now that every body is checked, lift each func's purity to
-	// max(self, max(called.Purity)) and iterate to a fixed point. This
-	// makes wrappers like `i18n.defaultLocale() => intl.DefaultLocale()`
-	// inherit PurityReadonly from the intrinsic, which prevents the
-	// optimizer from folding them.
-	for changed := true; changed; {
-		changed = false
-		for _, pb := range pendingBodies {
-			bodyPurity := highestCalledPurity(pb.fn)
-			if bodyPurity > pb.fn.Purity {
-				pb.fn.Purity = bodyPurity
-				changed = true
-			}
-		}
-	}
-	c.checkConstFuncs(stdlibPkg.Funcs)
-	c.runConstArgChecksFrom(constArgMark)
-	c.runConstSlotChecksFrom(constSlotMark)
-
-	// A platform or language package may ship its own body-bearing
-	// components (the wrappers lower's strict InlinePure pass is written
-	// against), and pass2 only walks the program's own components, so their
-	// bodies are checked here. A `component sngl.X` extension declaration is
-	// not one of those: mergePlatformExtensions splices its platform blocks
-	// into the component it names and checkPendingExtensions checks them
-	// there.
+	// The same two declaration halves a program's pass2 runs, with nothing
+	// between them: a library has no tests, no package body and no build
+	// directive. Its own bodies are judged as one declaration set, apart from
+	// the program it loaded part-way through (enterDeclSet, above).
 	//
-	// The body's own declarations were collected when the component was
-	// registered, as a program's are: registerComponent does that for every
-	// tier, so this only has to check what is already there.
+	// Every component body, not only the target tiers'. A body is what a
+	// component renders, and a bodied component nobody checks renders
+	// *nothing*: the conversion happens here or not at all, so
+	// `sngl:ui/markup`'s blocks reached every backend as empty declarations
+	// and `md.list { … }` emitted its children and neither body. A bodyless
+	// declaration is checked too: its props' defaults are read here, and a
+	// target node with no command to write has no body, so skipped it lost
+	// every option default it declared.
 	//
-	// Every tier, not only the target ones. A body is what a component
-	// renders, and a bodied component nobody checks renders *nothing*: the
-	// conversion happens here or not at all, so `sngl:ui/markup`'s blocks
-	// reached every backend as empty declarations and `md.list { … }` emitted
-	// its children and neither body. The library's own scope is the right one
-	// to resolve them against -- it is the scope they were written in -- which
-	// is also what makes the first check of them catch a `Role` member the
-	// enum never declared.
-	for _, irComp := range stdlibPkg.Components {
-		if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
-			continue
-		}
-		c.checkComponentBody(irComp)
-	}
+	// A library names its family, so nothing is inferred: the membership
+	// checks its bodies deferred are drained by finishDeclarations.
+	c.checkDeclarationBodies(stdlibPkg, nil)
+	c.finishDeclarations(stdlibPkg)
+
 	if _, ok := targetNamespaceName(pkgName); ok {
 		c.checkTargetComponentsConst(stdlibPkg)
 	}
 
-	// Phase 3: refine stdlib context types from their default expressions.
-	// Context decls run BEFORE wrapper body checks (so wrapper bodies can
-	// read them), at which point a default like `i18n.defaultLocale()` still
-	// types as dyn. After Phase 2 the wrapper has its concrete return type,
+	// Refine stdlib context types from their default expressions. Context
+	// decls run BEFORE wrapper body checks (so wrapper bodies can read them),
+	// at which point a default like `i18n.defaultLocale()` still types as dyn.
+	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
 	for _, ctx := range c.pkg.Contexts {
 		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
@@ -696,22 +491,21 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 // TargetNode returns the build-directive node `sngl:<uri>` declares -- the
 // component an output block writes to name that target -- or nil when the
-// package declares none. A target package names its node after itself, which
-// is what an output block writes.
+// package declares none. The node is found by its family and carries the
+// target's name in #[gen.name], which is what an output block writes.
 func TargetNode(uri string) *ir.Component {
 	pkg := LibPackage(uri)
 	if pkg == nil || pkg.Symbols == nil {
 		return nil
 	}
-	name := uri
-	if i := strings.LastIndexByte(uri, '/'); i >= 0 {
-		name = uri[i+1:]
-	}
-	sym, ok := pkg.Symbols.LookupRootComponent(name)
+	name, kind, ok := targetTierName(uri)
 	if !ok {
 		return nil
 	}
-	comp, _ := sym.(*ir.Component)
+	comp := ir.TargetNodeOf(pkg, kind)
+	if comp == nil || comp.Gen.TargetName != name {
+		return nil
+	}
 	return comp
 }
 
@@ -835,6 +629,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		TypeParams:      intrinsicTypeParamNames(fn),
 		Purity:          fn.Purity,
 		MutatesReceiver: fn.MutatesReceiver,
+		BuildOnly:       fn.BuildOnly,
 		Pkg:             c.libPkgName,
 		DeclaredAs:      funcDeclName(fn),
 	})
@@ -880,6 +675,9 @@ func intrinsicTypeParamNames(fn *ir.Func) []string {
 // the overrides have to be spliced before anything reads a stdlib component's
 // body, and that is earlier than checking an output block.
 func (c *checker) targetPackages() []string {
+	if c.cfg.noTargets {
+		return nil
+	}
 	seen := map[string]bool{}
 	var out []string
 	addPkg := func(p string) {
@@ -1170,6 +968,10 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
 		return
 	}
+	var userPkg *ir.Package
+	if user {
+		userPkg = c.declPkg()
+	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		pos:       pos,
@@ -1180,6 +982,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		selection: selection,
 		isConst:   isConst,
 		name:      qualifiedComponentName(ns, local),
+		pkg:       userPkg,
 	})
 }
 
@@ -1319,6 +1122,10 @@ type pendingExtension struct {
 	// what it overrides.
 	isConst bool
 	name    string
+	// pkg is the package a user override is written in: who a handler in it
+	// runs as when the build runs one. Nil for a target package's, which is
+	// library source.
+	pkg *ir.Package
 }
 
 // Runs after user pass1, so user-declared symbols are in scope. Each extension
@@ -1419,7 +1226,11 @@ func (c *checker) checkPendingExtensions() {
 			// checkComponentBody checks comp.Funcs in the component's own
 			// scope, so the override's are checked with its vars and props
 			// visible by having been appended above.
+			if pe.user {
+				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+			}
 			c.checkComponentBody(pe.comp)
+			c.overrideFile = overrideFile{}
 			// While the override's state is still installed, because that is
 			// the body a component nested in it was written in. Left to
 			// pass2's checkComponentBodies it runs after the restore below,
@@ -1434,6 +1245,7 @@ func (c *checker) checkPendingExtensions() {
 				Funcs:     pe.comp.Funcs,
 				Methods:   pe.comp.Methods,
 				Const:     pe.isConst,
+				Pkg:       pe.pkg,
 			}
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
@@ -1697,10 +1509,6 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
-	// A membership check a library body deferred is drained by the pass2 of
-	// the program that loaded the package, and this entry point has no
-	// program. Nothing to infer first: a library declaration names its family.
-	c.runTreeChecks()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }
@@ -1724,10 +1532,8 @@ func ownTarget(name string) []ir.StaticTarget {
 }
 
 // Packages lists the `sngl:` packages this process can reach: the public
-// tiers embedded under lib/, plus the package each registered target serves
-// for itself. A target that cannot serve one — gtk4 with no introspection
-// data — contributes nothing, so the list is what is actually addressable
-// here rather than what the build could in principle offer.
+// tiers embedded under lib/, plus each registered target's package that has
+// source to read.
 func Packages() []string {
 	out := lib.PublicPackages()
 	targetPkgMu.RLock()

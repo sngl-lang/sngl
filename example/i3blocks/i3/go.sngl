@@ -1,0 +1,108 @@
+import async "sngl:async"
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+
+// The block family, generated for Go.
+//
+// A *language* override, because none of this depends on the host: gtk4 and
+// fyne both pick it, and compile what it becomes the way they compile any
+// other SNGL. `render` is what makes it code rather than a file: the build
+// writes a function returning each block's `Entry`, re-evaluates `encode` over
+// it whenever state a block reads changes, and runs `@change` with the new
+// line when it differs.
+//
+// `@start` writes the header, which has to reach stdout before the first
+// status line, and starts the reader before any click can be lost.
+component block[go.language] {
+    gen.emit(
+        render=encode,
+        @start(members) {
+            print(header)
+            async.spawn(func() {
+                readClicks(members)
+            })
+        },
+        @change(line) {
+            print(line + "\n")
+        },
+    )
+}
+
+// A member says what it contributes, with its props in scope -- and its
+// events, each a func running the handler the call site wrote.
+component text[go.language] {
+    gen.node(value=Entry{
+        name = name,
+        full = full,
+        short = short,
+        color = color,
+        background = background,
+        urgent = urgent,
+        minWidth = minWidth,
+        align = align,
+        separator = separator,
+        click = click,
+    })
+}
+
+component gap[go.language] {
+    gen.node(value=Entry{
+        full = "",
+        separator = false,
+        separatorWidth = width,
+        click = func(button int, x int, y int) {},
+    })
+}
+
+// Clicks arrive on stdin, off the drawing thread, and are posted onto it. A
+// click asks for the members again rather than keeping the ones it rendered:
+// a handler is a closure over the iteration that wrote it, and the members
+// now are the ones the line i3bar last showed was built from. When stdin
+// closes i3bar has gone, and so does the program -- posted, so every click
+// read before it runs first.
+func readClicks(members func() list<Entry>) {
+    var in = newScanner(stdin)
+    for in.scan() {
+        var line = in.text()
+        var instance = clickField(line, "instance")
+        if instance != "" {
+            var button = int.parse(clickField(line, "button"), 10)
+            var x = int.parse(clickField(line, "relative_x"), 10)
+            var y = int.parse(clickField(line, "relative_y"), 10)
+            async.post(func() {
+                var ms = members()
+                var i = int.parse(instance, 10)
+                if i >= 0 && i < ms.length {
+                    ms[i].click(button, x, y)
+                }
+            })
+        }
+    }
+    async.post(func() {
+        exit(0)
+    })
+}
+
+#[go.native("os", "*os.File")]
+struct File {}
+
+#[go.native("os", "os.Stdin")]
+const stdin File
+
+#[go.native("bufio", "*bufio.Scanner")]
+struct Scanner {}
+
+#[go.native("bufio", "bufio.NewScanner")]
+func newScanner(f File) Scanner
+
+#[go.native("bufio", "bufio.Scanner.Scan", method)]
+func Scanner.scan() bool
+
+#[go.native("bufio", "bufio.Scanner.Text", method)]
+func Scanner.text() string
+
+#[go.native("os", "os.Exit")]
+func exit(code int)
+
+#[go.native("fmt", "fmt.Print")]
+func print(s string)

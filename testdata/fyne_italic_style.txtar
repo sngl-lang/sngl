@@ -44,6 +44,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
 	"os"
 )
@@ -52,34 +53,79 @@ var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Italic: true}
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *fyne.Container
-	__n1 *widget.Label
+	visible__inst0 bool
+
+	home    *fynelayout.Toplevel
+	__n0    *fyne.Container
+	__n1    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("doc")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = container.NewVBox()
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText("slanted")
 	m.__n0.Add(container.NewThemeOverride(m.__n1, _snglTheme0))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.home.Add(m.__n0)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:bc8c95213171bb381e2ddd1ca64933a6
+pass sha256:d0731c7dc1896ec3c00b84c5deeb6db9

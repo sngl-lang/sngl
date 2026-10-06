@@ -24,7 +24,7 @@ import (
 func exprSlots() []string {
 	types := []reflect.Type{
 		reflect.TypeFor[Package](), reflect.TypeFor[Component](),
-		reflect.TypeFor[Window](), reflect.TypeFor[Func](),
+		reflect.TypeFor[Func](),
 		reflect.TypeFor[Var](),
 		reflect.TypeFor[Output](), reflect.TypeFor[Context](),
 		reflect.TypeFor[ContextProvider](), reflect.TypeFor[Prop](),
@@ -126,21 +126,16 @@ func markedPackage() *Package {
 					Children: []Stmt{},
 				},
 				&NodeInst{
-					Key: mark("NodeInst.Key"),
-					Ref: mark("NodeInst.Ref"),
+					Key:    mark("NodeInst.Key"),
+					Ref:    mark("NodeInst.Ref"),
+					Record: mark("NodeInst.Record"),
+					Start:  mark("NodeInst.Start"),
 					Slots: map[string]*SlotContent{
 						"s": {Body: []Stmt{&Return{Value: mark("SlotContent.Body")}}},
 					},
 				},
 				&SlotInst{Args: []Expr{mark("SlotInst.Args")}},
 			},
-		}},
-		Windows: []*Window{{
-			Props: []Arg{
-				{Name: WindowHref, Value: mark("Window.Props[0]")},
-				{Name: WindowTitle, Value: mark("Window.Props[1]")},
-			},
-			ErrorHandler: &EventHandler{Func: fn("Window.ErrorHandler")},
 		}},
 	}
 }
@@ -162,7 +157,7 @@ func TestRewriteVisitsEveryExprSlot(t *testing.T) {
 		indirect := map[string]bool{
 			"Lambda.Func":       true,
 			"EventHandler.Func": true, "Var.Handlers": true,
-			"Window.ErrorHandler": true, "Output.Options": true,
+			"Output.Options": true,
 		}
 
 		for _, slot := range exprSlots() {

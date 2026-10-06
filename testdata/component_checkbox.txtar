@@ -10,7 +10,7 @@ import . "sngl:test"
 // var propagates to the checkbox.
 component main node {
     var on = false
-    checkbox(checked=on, label="Enable")
+    checkbox(:checked=on, label="Enable")
 }
 
 func testCheckboxToggles(t Test, c main) {
@@ -121,6 +121,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
+		case msg.Code == tea.KeySpace && m.__focusID == 0:
+			__bound_checked := !m.on
+			m.on = __bound_checked
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -191,6 +194,8 @@ func New() *Model {
 }
 
 func (m *Model) __n0_change_handler(b bool) {
+	m.on = b
+	m.__n0.SetChecked(m.on)
 }
 
 func (m *Model) On() bool {
@@ -283,6 +288,8 @@ func New() *Model {
 }
 
 func (m *Model) __n0_toggled_handler() {
+	m.on = gtk4rt.CheckButtonGetActive(m.__n0)
+	gtk4rt.CheckButtonSetActive(m.__n0, m.on)
 }
 
 func (m *Model) On() bool {
@@ -355,7 +362,9 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = state.on, onCheckedChange = {})
+        Checkbox(checked = state.on, onCheckedChange = { on ->
+            state.on = on
+        })
         Text(text = "Enable", modifier = Modifier)
     }
 }
@@ -445,6 +454,10 @@ window.__sngl_boot = () => {
     Object.assign(window, { testCheckboxToggles });
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  __n0.addEventListener("change", function(e) {
+    state.on = e.target.checked;
+    __n0.checked = state.on;
+  });
   function __sngl_init() {
     __n0.checked = state.on;
   }
@@ -455,12 +468,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7780bc8042162de1989ff43eca13275a
+pass sha256:4f80403ed8c761e6a4c0460ff20a82fa
 -- run/go/fyne --
-pass sha256:908f148b24c09af66ddd88e6b9763be3
+pass sha256:4ee3ad56ac885fdb6fc3d5d554cfaabd
 -- run/go/gtk4 --
-pass sha256:ec0d6a646cddfdb6dd90e11947b06c5f
+pass sha256:03b945448ab37068c37ed3a044c87b70
 -- run/kotlin/android --
-pass sha256:0afa28e7a3bc1747427ae249eab4411b
+pass sha256:4d35de8fe2345e4d9bdc2f4dc0e0bde5
 -- run/none/html --
-pass sha256:a800368c39023731be21c713502342f4
+pass sha256:0d6b1fe2daba23fcaf9b8224d8aba8ac
