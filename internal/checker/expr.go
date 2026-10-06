@@ -2390,11 +2390,6 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		val := c.checkExprExpecting(f.Value, expected)
 		if field != nil {
 			val = c.checkFieldValue(f.Value, val, field, sd)
-			// `TreeNode{left = leaf1}` against `left option<TreeNode>` reached
-			// codegen as a bare TreeNode, and Go's option is *T -- the one
-			// assignment position that read the declared type and then threw
-			// the conversion away.
-			val = wrapOptionIfNeeded(val, expected)
 		}
 		// Validate field exists on struct. An unexported field of another
 		// package is already reported by structField.
@@ -2440,29 +2435,23 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
 }
 
-// checkFieldValue holds a struct literal's field value to the rule an
-// initializer of the field's type is held to.
+// checkFieldValue holds a struct literal's field value to the rule every
+// slot is held to. The field keeps the shape it was written in but for the
+// option promotion: `TreeNode{left = leaf1}` against `left option<TreeNode>`
+// reached codegen as a bare TreeNode, and Go's option is *T.
 func (c *checker) checkFieldValue(written ast.Expr, val ir.Expr, field *ir.StructField, sd *ir.StructDef) ir.Expr {
-	want := c.boundFieldType(field, sd)
-	if mentionsTypeParam(want) {
-		return val
-	}
-	got := exprType(val)
-	// A Go nil slice or map encodes as null, and is the empty collection.
-	nilCollection := c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
-	if propTypeMismatch(got, want) && !nilCollection {
-		if adapted, ok := adaptLiteralZero(val, want); ok {
-			return adapted
-		}
-		if call, _ := c.implicitCall(written, got, want); call != nil {
-			return c.checkFieldValue(call, c.checkExprExpecting(call, want), field, sd)
-		}
-		w, g := ir.Contrast(want, got)
-		c.error(*written.ExprPos(), "cannot use %s as %s for field %q of %s", g, w, field.Name, sd.Name)
-		return val
-	}
-	c.validateStringDomainLiteral(*written.ExprPos(), want, val)
-	return val
+	return c.coerce(written, val, c.boundFieldType(field, sd), slot{
+		later:     true,
+		keepShape: true,
+		// A Go nil slice or map encodes as null, and is the empty collection.
+		accept: func(_ ir.Expr, got *ir.Type) bool {
+			want := field.Type
+			return c.nativeValues && got.Kind == ir.TypeNull && (want.Kind == ir.TypeList || want.Kind == ir.TypeMap)
+		},
+		mismatch: func(want, got string) string {
+			return fmt.Sprintf("cannot use %s as %s for field %q of %s", got, want, field.Name, sd.Name)
+		},
+	})
 }
 
 // boundFieldType is the field's type with the literal's type arguments
@@ -2803,6 +2792,13 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		// one, so it says the same thing here.
 		restoreNarrow := c.clearNarrowings()
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+			// A return type taken from context may still name a parameter the
+			// call is inferring.
+			s := returnSlot(*x.Body.ExprPos())
+			s.later = true
+			bodyExpr = c.coerce(x.Body, bodyExpr, fn.Return, s)
+		}
 		restoreNarrow()
 		if fn.Return == nil {
 			// Expression-body lambda with no annotation and no contextual
@@ -3095,26 +3091,11 @@ func typeParamZero(def ir.Expr) bool {
 }
 
 func (c *checker) checkArgExpr(value ast.Expr, p *ir.Param) ir.Expr {
-	expr := c.checkExprExpecting(value, p.Type)
-	actual := exprType(expr)
-	c.requireValueType(actual, *value.ExprPos())
-	if p.Type != nil && actual.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn && !actual.IsAssignableTo(p.Type) {
-		if adapted, ok := adaptLiteralZero(expr, p.Type); ok {
-			expr = adapted
-		} else if callExpr, _ := c.implicitCall(value, actual, p.Type); callExpr != nil {
-			expr = c.checkExpr(callExpr)
-		} else if c.coerceValueToRef(actual, p, *value.ExprPos()) {
-			// The value stands as it is, and is not wrapped in a conversion to
-			// ref<T>: see refcoerce.go for why the argument keeps its own type.
-			return expr
-		} else {
-			c.error(*value.ExprPos(), "cannot pass %s as %s", actual, p.Type)
-		}
-	}
-	if p.Type != nil {
-		expr = wrapIfNeeded(expr, p.Type)
-	}
-	return expr
+	s := passSlot()
+	// A plain value stands for a ref<T>, and is not wrapped in a conversion to
+	// it: see refcoerce.go for why the argument keeps its own type.
+	s.accept = func(_ ir.Expr, got *ir.Type) bool { return c.coerceValueToRef(got, p, *value.ExprPos()) }
+	return c.checkExprAs(value, p.Type, s)
 }
 
 // checkCallArgs type-checks all arguments in an ArgList and returns resolved CallArgs.
@@ -3340,17 +3321,9 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
+			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
 			initType := exprType(initExpr)
-			if typ.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(typ) {
-				if adapted, ok := adaptLiteralZero(initExpr, typ); ok {
-					initExpr = adapted
-				} else {
-					want, got := ir.Contrast(typ, initType)
-					c.error(decl.Pos, "cannot initialize %s with %s", want, got)
-				}
-			}
-			c.validateStringDomainLiteral(decl.Pos, typ, initExpr)
-			if c.requireValueType(initType, decl.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Prevent void propagation into an inferred var type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -3412,19 +3385,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
-		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
-			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
-				if adapted, ok := adaptLiteralZero(valueExpr, targetType); ok {
-					valueExpr = adapted
-				} else {
-					c.error(x.Pos, "cannot assign %s to %s", valueType, targetType)
-				}
-			}
-			if targetType.Kind != ir.TypeDyn {
-				valueExpr = wrapIfNeeded(valueExpr, targetType)
-			}
-		} else {
+			valueExpr = c.coerce(x.Value, valueExpr, targetType, slot{pos: x.Pos, mismatch: func(want, got string) string {
+				return "cannot assign " + got + " to " + want
+			}})
+		} else if !c.requireValueType(valueType, x.Pos) {
 			// Compound assignment: both sides must be numeric (or string for +=).
 			// The value type must be assignable to the target type so that any
 			// implicit numeric widening is materialized as ir.Conversion.
@@ -3491,8 +3456,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if _, ok := initExpr.(*ir.ContextRead); ok {
 				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
+			initExpr = c.coerce(x.Init, initExpr, typ, initSlot(x.Pos))
 			initType := exprType(initExpr)
-			if c.requireValueType(initType, x.Pos) {
+			if initType.Kind == ir.TypeVoid {
 				// Avoid propagating void into an inferred var type.
 			} else if typ.Kind == ir.TypeDyn {
 				typ = initType
@@ -3508,19 +3474,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	case *ast.ReturnStmt:
 		var valExpr ir.Expr
 		if x.Value != nil {
-			valExpr = c.checkExprExpecting(x.Value, c.returnType)
-			valType := exprType(valExpr)
-			c.requireValueType(valType, x.Pos)
-			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn && valType.Kind != ir.TypeDyn && !valType.IsAssignableTo(c.returnType) {
-				if adapted, ok := adaptLiteralZero(valExpr, c.returnType); ok {
-					valExpr = adapted
-				} else {
-					c.error(x.Pos, "cannot return %s as %s", valType, c.returnType)
-				}
-			}
-			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn {
-				valExpr = wrapIfNeeded(valExpr, c.returnType)
-			}
+			valExpr = c.checkExprAs(x.Value, c.returnType, returnSlot(x.Pos))
 		}
 		if c.rejectStmtInViewBody(x.Pos, "a return") {
 			return nil
@@ -4467,11 +4421,10 @@ func (c *checker) implicitCall(expr ast.Expr, actual, expected *ir.Type) (ast.Ex
 	if len(actual.Sig.Params) != 0 || actual.Sig.Return == nil {
 		return nil, actual
 	}
-	// The call is implied when its result can reach the expected type, not
-	// only when it already is that type: `text(value=doubled)` where doubled
-	// returns an int calls it and converts, as `text(value=doubled())` does.
-	if !actual.Sig.Return.IsAssignableTo(expected) &&
-		!primitiveConvertible(actual.Sig.Return, expected) {
+	// The call is implied only when its result is what is wanted. A result
+	// that would need a conversion is not: `var s string = count` is a
+	// function where a string is wanted, not `string(count())`.
+	if !actual.Sig.Return.IsAssignableTo(expected) {
 		return nil, actual
 	}
 	call := &ast.CallExpr{Pos: *expr.ExprPos(), Func: expr}
@@ -4617,23 +4570,6 @@ func wildcardTarget(comp *ir.Component, name string) *ir.Prop {
 		return nil
 	}
 	return p
-}
-
-// propTypeMismatch reports whether a prop value cannot reach its prop's type.
-// wrapIfNeeded would otherwise mint a Conversion for it, and the language has
-// no such cast: the same expression written out is a checker error.
-func propTypeMismatch(got, expected *ir.Type) bool {
-	if got == nil || expected == nil || got.Kind == ir.TypeDyn || expected.Kind == ir.TypeDyn {
-		return false
-	}
-	if got.IsAssignableTo(expected) {
-		return false
-	}
-	// An unresolved type parameter is the tail of an earlier error.
-	if got.Kind == ir.TypeTypeParam || expected.Kind == ir.TypeTypeParam {
-		return false
-	}
-	return true
 }
 
 // onComponent names the component in a diagnostic when there is one to name.
@@ -4850,31 +4786,15 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 
 			var val ir.Expr
 			if arg.Value != nil {
-				val = c.checkExprExpecting(arg.Value, expected)
-				c.requireValueType(exprType(val), *arg.Value.ExprPos())
-				// Implicit call: func() T used where T is expected.
-				if expected != nil {
-					actual := exprType(val)
-					if actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-						if adapted, ok := adaptLiteralZero(val, expected); ok {
-							val = adapted
-						} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
-							val = c.checkExpr(callExpr)
-						}
-					}
-					// Nothing adapted it, and wrapIfNeeded would mint a cast
-					// to a struct — which the language does not have, so the
-					// same expression written out (Style("hi")) is a checker
-					// error. Left alone it reached lowering as a panic when
-					// the spread pass tried to resolve the struct type.
-					if got := exprType(val); propTypeMismatch(got, expected) {
-						c.error(*arg.Value.ExprPos(), "cannot use %s as %s for prop %q%s",
-							got, expected, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
-						continue
-					}
-					if expected.Kind != ir.TypeDyn {
-						val = wrapIfNeeded(val, expected)
-					}
+				mismatched := false
+				val = c.checkExprAs(arg.Value, expected, slot{later: true, mismatch: func(want, got string) string {
+					mismatched = true
+					return fmt.Sprintf("cannot use %s as %s for prop %q%s", got, want, strings.TrimPrefix(resolvedName, ":"), onComponent(comp))
+				}})
+				// A mismatched value binds nothing: wrapped, it reached lowering
+				// as a cast to a struct, which the language does not have.
+				if mismatched {
+					continue
 				}
 			}
 			if comp != nil && resolvedName != "" {
@@ -5087,21 +5007,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 					c.error(arg.NamePos, "prop %q already provided on component %s", resolvedName, comp.Name)
 					continue
 				}
-				argExpr := c.checkExprExpecting(arg.Value, expected)
-				actual := exprType(argExpr)
-				c.requireValueType(actual, *arg.Value.ExprPos())
-				if expected != nil && actual.Kind != ir.TypeDyn && expected.Kind != ir.TypeDyn && !actual.IsAssignableTo(expected) {
-					if adapted, ok := adaptLiteralZero(argExpr, expected); ok {
-						argExpr = adapted
-					} else if callExpr, _ := c.implicitCall(arg.Value, actual, expected); callExpr != nil {
-						argExpr = c.checkExpr(callExpr)
-					} else {
-						c.error(*arg.Value.ExprPos(), "cannot pass %s as %s", actual, expected)
-					}
-				}
-				if expected != nil && expected.Kind != ir.TypeDyn {
-					argExpr = wrapIfNeeded(argExpr, expected)
-				}
+				argExpr := c.checkExprAs(arg.Value, expected, passSlot())
 				c.deferConstProp(*arg.Value.ExprPos(), argExpr, comp, boundKey)
 				result = append(result, ir.CallArg{Name: resolvedName, NamePos: arg.NamePos, Value: argExpr})
 				if boundKey != "" {

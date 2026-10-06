@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -43,18 +44,9 @@ func (c *checker) buildContextProvider(vn *ast.VisualNode, ctx *ir.Context) *ir.
 		c.error(vn.Pos, "context provider %q argument must be positional", ctx.Name)
 		return &ir.ContextProvider{AST: vn, Ref: ctx}
 	}
-	val := c.checkExpr(a.Value)
-	if val != nil && ctx.Typ != nil {
-		valType := val.ExprType()
-		if valType != nil && valType.Kind != ir.TypeDyn && ctx.Typ.Kind != ir.TypeDyn && !valType.IsAssignableTo(ctx.Typ) {
-			pos := vn.Pos
-			if p := a.Value.ExprPos(); p != nil {
-				pos = *p
-			}
-			got, want := ir.Contrast(valType, ctx.Typ)
-			c.error(pos, "context %q: value type %v is not assignable to context type %v", ctx.Name, got, want)
-		}
-	}
+	val := c.checkExprAs(a.Value, ctx.Typ, slot{mismatch: func(want, got string) string {
+		return fmt.Sprintf("context %q: value type %v is not assignable to context type %v", ctx.Name, got, want)
+	}})
 	children := c.checkBlockIR(&vn.Block)
 	return &ir.ContextProvider{AST: vn, Ref: ctx, Value: val, Children: children}
 }

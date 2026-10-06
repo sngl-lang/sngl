@@ -16,7 +16,7 @@ func inner() int {
         a int
     }
 
-    return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local as Local"
+    return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local (error_body_local_type_identity.sngl:15:5) as Local (error_body_local_type_identity.sngl:3:1)"
 }
 
 component main node {
