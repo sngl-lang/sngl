@@ -85,7 +85,7 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar).
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
@@ -246,19 +246,28 @@ func rootRefLine(cFunc, rtFunc string, wrapped bool) string {
 	return fmt.Sprintf("C.%s(C.gpointer(unsafe.Pointer(%s)))", cFunc, root)
 }
 
-// instanceRootBinding assigns the widget the instance renders as: whatever the
-// body left unattached, boxed when it left several, because a parent holds one
-// child per instance.
-//
-// The container a reactive slot in the body renders into counts as one of
-// those: the subtree is built into it rather than named by a ref, so it
-// reaches tr.topLevel through withSlotRoot, at the position the slot was
-// written. Reading tr.topLevel without it left that box parented nowhere and
-// its whole subtree invisible.
+// instanceRootBinding assigns the widget the instance renders as: the box its
+// reactive slots render into when the body has one, holding the body's own
+// widgets in written order, and otherwise whatever the body left unattached,
+// boxed when it left several, because a parent holds one child per instance.
 func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bool) string {
 	root := instanceReceiver + "." + golang.ComponentRootField
 	nodeRef := func(id string) ir.Expr {
 		return tr.qualifyNodeExpr(&ir.Ident{Name: id, IsElementRef: true, Synthesized: true})
+	}
+	if tr.renderedRoot != nil {
+		var b strings.Builder
+		for _, stmt := range tr.addTopsTo(context.Background(), tr.renderedRoot) {
+			for _, line := range igc.EvalStmt(stmt) {
+				fmt.Fprintf(&b, "\t%s\n", line)
+			}
+		}
+		box := tr.qualifyNodeExpr(tr.renderedRoot)
+		if !wrapped {
+			box = &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: box}
+		}
+		fmt.Fprintf(&b, "\t%s = %s\n", root, igc.EvalExpr(box))
+		return b.String()
 	}
 	tops := tr.topLevel
 	switch {

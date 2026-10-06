@@ -109,14 +109,15 @@ type gtk4Translator struct {
 	// reactive one and is what re-writes it.
 	builtSpans map[string]bool
 	topLevel   []string
-	// slotRoot is the box a reactive slot in this scope's body renders into,
-	// when this scope owns one. A call to that slot's renderer holds a place in
-	// the tree exactly as a created widget does -- the subtree is built into
-	// the box rather than named by a ref -- so OnDefault records the box in
-	// topLevel at that position. Empty in a scope whose root is decided some
-	// other way, which is every Model scope: the Model's own __root is the
-	// wrapper buildWidgetTree already parents into.
-	slotRoot string
+	// rootRenders are the calls written directly in this scope's body that
+	// render a slot into the scope's own box; renderedRoot is that box once one
+	// has run. Every slot in a body renders into the one box, so the body's own
+	// widgets go into it too, in written order, or a widget between two slots
+	// lands after both. Empty in a scope whose root is decided some other way,
+	// which is every Model scope: the Model's own __root is the wrapper
+	// buildWidgetTree already parents into.
+	rootRenders  map[ir.Stmt]bool
+	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot, in wrapped mode.
 	slotAnchor ir.Expr
@@ -173,23 +174,21 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	return t
 }
 
-func (t *gtk4Translator) withSlotRoot(name string) *gtk4Translator {
-	t.slotRoot = name
+func (t *gtk4Translator) withSlotRoot(name string, body []ir.Stmt) *gtk4Translator {
+	t.rootRenders = codegen.RootSlotRenders(body, name)
 	return t
 }
 
-// recordsSlotRoot reports whether stmt is the call that renders this scope's
-// own slot box, which is what puts that box in the tree.
-func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
-	if t.slotRoot == "" {
-		return false
+// addTopsTo places the top-level widgets written so far into root, ahead of
+// the slot render that follows: a slot's first render appends at the end of
+// its box, and lowering finishes a node's subtree before anything later.
+func (t *gtk4Translator) addTopsTo(ctx context.Context, root ir.Expr) []ir.Stmt {
+	var stmts []ir.Stmt
+	for _, ref := range slices.Clone(t.topLevel) {
+		stmts = append(stmts, t.OnAppendChild(ctx, root, &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true})...)
 	}
-	cs, ok := stmt.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
-		return false
-	}
-	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
-	return ok && id.Name == t.slotRoot
+	t.topLevel = nil
+	return stmts
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
@@ -1281,9 +1280,14 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
-		t.topLevel = append(t.topLevel, t.slotRoot)
+	if t.rootRenders[stmt] {
+		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
+		return append(t.addTopsTo(ctx, t.renderedRoot), t.translateDefault(stmt)...)
 	}
+	return t.translateDefault(stmt)
+}
+
+func (t *gtk4Translator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)

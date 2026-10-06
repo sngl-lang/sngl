@@ -196,8 +196,9 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 		c.open = !c.open
 		c.__renderSlot0(c.__root)
 	}
+	c.__root.Add(c.__n0)
 	c.__renderSlot0(c.__root)
-	c.Root = container.NewVBox(c.__n0, c.__root)
+	c.Root = c.__root
 	return c
 }
 
@@ -410,11 +411,9 @@ func newCardInstance(__model *Model, __a_name string) *CardInstance {
 		c.open = !c.open
 		c.__renderSlot0(c.__root)
 	})
+	gtk4rt.BoxAppend(c.__root, c.__n0)
 	c.__renderSlot0(c.__root)
-	__box := gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	gtk4rt.BoxAppend(__box, c.__n0)
-	gtk4rt.BoxAppend(__box, c.__root)
-	c.Root = __box
+	c.Root = c.__root
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -565,6 +564,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/fyne --
-pass sha256:9ecaf766fb11d3d984e8d081929abc03
+pass sha256:882773746dd04c2a833d5e517a33df2f
 -- run/go/gtk4 --
-pass sha256:c268ec673f287a71e6a26ae3e513c062
+pass sha256:007e37a74ba1b417d6bfccd00248b706

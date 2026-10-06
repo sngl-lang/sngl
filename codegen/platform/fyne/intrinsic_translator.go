@@ -51,14 +51,15 @@ type fyneTranslator struct {
 	// appChildren are the nodes this scope attached to the application, in
 	// order.
 	appChildren []string
-	// slotRoot is the container a reactive slot in this scope's body renders
-	// into, when this scope owns one. A call to that slot's renderer holds a
-	// place in the tree exactly as a created widget does -- the subtree is
-	// built into the container rather than named by a ref -- so OnDefault
-	// records the container in topLevel at that position. Empty in a scope
-	// whose root is decided some other way, which is every Model scope: the
-	// Model's own __root is the wrapper its BuildUI already returns.
-	slotRoot string
+	// rootRenders are the calls written directly in this scope's body that
+	// render a slot into the scope's own container; renderedRoot is that
+	// container once one has run. Every slot in a body renders into the one
+	// container, so the body's own widgets go into it too, in written order,
+	// or a widget between two slots lands after both. Empty in a scope whose
+	// root is decided some other way, which is every Model scope: the Model's
+	// own __root is the wrapper its BuildUI already returns.
+	rootRenders  map[ir.Stmt]bool
+	renderedRoot ir.Expr
 	// slotAnchor is the anchor field of the slot this render func renders,
 	// set when the func resets its slot.
 	slotAnchor ir.Expr
@@ -162,23 +163,21 @@ func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
 	return t
 }
 
-func (t *fyneTranslator) withSlotRoot(name string) *fyneTranslator {
-	t.slotRoot = name
+func (t *fyneTranslator) withSlotRoot(name string, body []ir.Stmt) *fyneTranslator {
+	t.rootRenders = codegen.RootSlotRenders(body, name)
 	return t
 }
 
-// recordsSlotRoot reports whether stmt is the call that renders this scope's
-// own slot container, which is what puts that container in the tree.
-func (t *fyneTranslator) recordsSlotRoot(stmt ir.Stmt) bool {
-	if t.slotRoot == "" {
-		return false
+// addTopsTo places the top-level widgets written so far into root, ahead of
+// the slot render that follows: a slot's first render appends at the end of
+// its container, and lowering finishes a node's subtree before anything later.
+func (t *fyneTranslator) addTopsTo(root ir.Expr) []ir.Stmt {
+	stmts := make([]ir.Stmt, 0, len(t.topLevel))
+	for _, ref := range t.topLevel {
+		stmts = append(stmts, &ir.CallStmt{Call: methodCall(root, "Add", []ir.Expr{topRef(t, ref)}, ir.TypVoid)})
 	}
-	cs, ok := stmt.(*ir.CallStmt)
-	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
-		return false
-	}
-	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
-	return ok && id.Name == t.slotRoot
+	t.topLevel = nil
+	return stmts
 }
 
 // isLocalRef reports whether id is a non-escaping ref that should be emitted
@@ -735,9 +734,14 @@ func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
-	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
-		t.topLevel = append(t.topLevel, t.slotRoot)
+	if t.rootRenders[stmt] {
+		t.renderedRoot = stmt.(*ir.CallStmt).Call.Args[0].Value
+		return append(t.addTopsTo(t.renderedRoot), t.translateDefault(stmt)...)
 	}
+	return t.translateDefault(stmt)
+}
+
+func (t *fyneTranslator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)

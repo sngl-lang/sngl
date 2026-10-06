@@ -66,7 +66,7 @@ func emitComponentInstance(
 	// it last, which is the one on screen.
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar).
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
@@ -80,7 +80,11 @@ func emitComponentInstance(
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
-	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, instanceRootExpr(tr, cgc))
+	rootLines, root := instanceRootExpr(tr, cgc)
+	for _, line := range rootLines {
+		fmt.Fprintf(&ctorBody, "\t%s\n", line)
+	}
+	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, root)
 	exposed := map[string]bool{}
 	for _, inv := range invokers {
 		widget := inv.IDLabel
@@ -270,30 +274,32 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext) string {
 	return golang.LowerVarInit(v, igc)
 }
 
-// instanceRootExpr is the widget the instance renders as: whatever the body
-// left unattached, the container a reactive slot in it renders into included.
+// instanceRootExpr is the widget the instance renders as: the container its
+// reactive slots render into when the body has one, holding the body's own
+// widgets in written order, and otherwise whatever the body left unattached.
 // Wrapped when the body left several, because a parent holds one child per
 // instance and an instance with two top-level nodes has no single widget to be.
-//
-// That container reaches tr.topLevel through withSlotRoot, at the position the
-// slot was written. Reading tr.topLevel without it left the container parented
-// nowhere and its whole subtree invisible, and appending it after the fact put
-// it in the wrong place among the body's own widgets.
-func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) string {
+func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) (lines []string, root string) {
+	if tr.renderedRoot != nil {
+		for _, stmt := range tr.addTopsTo(tr.renderedRoot) {
+			lines = append(lines, igc.EvalStmt(stmt)...)
+		}
+		return lines, igc.EvalExpr(tr.renderedRoot)
+	}
 	tops := tr.topLevel
 	switch len(tops) {
 	case 0:
 		igc.RequireImport("fyne.io/fyne/v2/widget")
-		return `widget.NewLabel("")`
+		return nil, `widget.NewLabel("")`
 	case 1:
-		return igc.EvalExpr(topRef(tr, tops[0]))
+		return nil, igc.EvalExpr(topRef(tr, tops[0]))
 	}
 	igc.RequireImport("fyne.io/fyne/v2/container")
 	parts := make([]string, len(tops))
 	for i, ref := range tops {
 		parts[i] = igc.EvalExpr(topRef(tr, ref))
 	}
-	return "container.NewVBox(" + strings.Join(parts, ", ") + ")"
+	return nil, "container.NewVBox(" + strings.Join(parts, ", ") + ")"
 }
 
 // instanceRootVar is the container a reactive slot in a component body renders
