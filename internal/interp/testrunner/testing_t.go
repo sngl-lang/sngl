@@ -629,3 +629,11 @@ func (cv *componentValue) writableFieldSym(field string) (ir.Symbol, error) {
 	}
 	return sym, nil
 }
+
+// The interpreter is the none language's test harness, and the reference: it
+// answers every sngl:test method, the ones no compiled harness lowers yet
+// included.
+func init() {
+	codegen.DeclareLangImplements("none", ir.TestAssertID, ir.TestMustID, ir.TestSetLocaleID,
+		ir.TestSetContextID, ir.TestWaitID, ir.TestSnapshotID)
+}

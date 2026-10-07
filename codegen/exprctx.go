@@ -366,7 +366,7 @@ func TestComponentParam(fn *ir.Func) string {
 // argument names a context rather than reading one; unlowered it is still the
 // read.
 func TestSetContext(c *ir.Call) (name string, value ir.Expr, ok bool) {
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" || len(c.Args) < 2 {
+	if !ir.IsTestCall(c, ir.TestSetContextID) || len(c.Args) < 2 {
 		return "", nil, false
 	}
 	switch x := c.Args[len(c.Args)-2].Value.(type) {

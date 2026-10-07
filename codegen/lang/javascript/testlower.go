@@ -162,7 +162,7 @@ func lowerTestAssert(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	if !ok || cs.Call == nil || cs.Call.Func == nil {
 		return "", false
 	}
-	if cs.Call.Func.Receiver != "Test" || cs.Call.Func.Name != "assert" {
+	if !ir.IsTestCall(cs.Call, ir.TestAssertID) {
 		return "", false
 	}
 	if len(cs.Call.Args) != 2 {
@@ -183,7 +183,7 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	if !ok || cs.Call == nil || cs.Call.Func == nil {
 		return "", false
 	}
-	if cs.Call.Func.Receiver != "Test" || cs.Call.Func.Name != "snapshot" {
+	if !ir.IsTestCall(cs.Call, ir.TestSnapshotID) {
 		return "", false
 	}
 	if len(cs.Call.Args) != 2 {

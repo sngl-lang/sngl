@@ -65,7 +65,7 @@ func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 		if line, ok := lowerEventTrigger(call, gc); ok {
 			return []string{line}
 		}
-		if c := call.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+		if c := call.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, gc); ok {
 				return lines
 			}
@@ -300,7 +300,7 @@ func emptyPayload(t *ir.Type) bool {
 // runtime exposed by *testing.T-style wrappers (testagent.T.Snapshot in
 // agent mode; native mode uses a small shim — see platform code).
 func lowerTestSnapshot(c *ir.Call, gc *GoIRContext) (string, bool) {
-	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "snapshot" {
+	if !ir.IsTestCall(c, ir.TestSnapshotID) {
 		return "", false
 	}
 	// Args[0] is the t receiver; Args[1] is the snapshot name.
@@ -316,7 +316,7 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	if c == nil || c.Func == nil {
 		return "", false
 	}
-	if c.Func.Receiver != "Test" || c.Func.Name != "assert" {
+	if !ir.IsTestCall(c, ir.TestAssertID) {
 		return "", false
 	}
 	// Args[0] is the t receiver; assert expression is Args[1].
@@ -432,4 +432,10 @@ func wrapperHeader(suffix string, mode TestEmitMode) (funcName, paramType string
 		return "test" + suffix, "testagent.T"
 	}
 	return "Test" + suffix, "testing.T"
+}
+
+// A test body's sngl:test calls are answered here, where the body is lowered,
+// rather than by an emitter.
+func init() {
+	codegen.DeclareLangImplements(langGo, ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }

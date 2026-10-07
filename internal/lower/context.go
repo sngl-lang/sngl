@@ -1175,7 +1175,7 @@ func testSetContext(c *ir.Call) (*ir.Context, *ir.CallArg) {
 // setContextArg is the index of the argument naming the context
 // `t.setContext` sets, and that context.
 func setContextArg(c *ir.Call) (int, *ir.Context) {
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+	if !ir.IsTestCall(c, ir.TestSetContextID) {
 		return 0, nil
 	}
 	for i := range c.Args {

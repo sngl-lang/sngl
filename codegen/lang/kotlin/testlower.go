@@ -37,7 +37,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 		if line, ok := lowerEventTrigger(n); ok {
 			return []string{line}
 		}
-		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver == "Test" {
+		if c := n.Call; ir.IsTestMethodCall(c) {
 			if lines, ok := lowerTestSetContext(c, ctxCounts); ok {
 				return lines
 			}
@@ -45,7 +45,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			// runtime's T.snapshot which invokes the platform-registered
 			// capture and posts a snapshotAssert RPC. Native mode has no
 			// snapshot story today, so it remains a TODO.
-			if c.Func.Name == "snapshot" && mode == TestEmitAgent && len(c.Args) >= 2 {
+			if ir.IsTestCall(c, ir.TestSnapshotID) && mode == TestEmitAgent && len(c.Args) >= 2 {
 				name := lowerTestExpr(c.Args[1].Value, TestSurface{}, nil)
 				return []string{fmt.Sprintf("t.snapshot(%s)", name)}
 			}
@@ -157,7 +157,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 
 func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
 	c := call.Call
-	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "assert" {
+	if !ir.IsTestCall(c, ir.TestAssertID) {
 		return "", false
 	}
 	if len(c.Args) != 2 {
@@ -657,4 +657,10 @@ func (surf TestSurface) translator() *KtIRContext {
 		return surf.kt
 	}
 	return testIRContext()
+}
+
+// A test body's sngl:test calls are answered here, where the body is lowered,
+// rather than by an emitter.
+func init() {
+	codegen.DeclareLangImplements("kotlin", ir.TestAssertID, ir.TestSnapshotID, ir.TestSetContextID)
 }

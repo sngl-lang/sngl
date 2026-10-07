@@ -16,6 +16,8 @@ import (
 	// only the function half.
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	// The interpreter answers sngl:test, as the none language's harness.
+	_ "git.duckfam.us/jonathan/sngl/internal/interp/testrunner"
 )
 
 // TestEveryIntrinsicIsDeclared: loading every package registers every marked
