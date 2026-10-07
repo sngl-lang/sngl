@@ -138,8 +138,8 @@ struct Size {
 // expression body cannot carry an annotation to say otherwise.
 const func Point.polar(center Point, radius float, angle float) Point {
     return Point{
-        x = center.x + radius * float.cos(angle),
-        y = center.y + radius * float.sin(angle),
+        x = center.x + radius * math.cos(angle),
+        y = center.y + radius * math.sin(angle),
     }
 }
 
@@ -159,10 +159,10 @@ const func Point.lerp(a Point, b Point, t float) Point {
 }
 
 // The distance between two points.
-const func Point.distance(a Point, b Point) => float.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+const func Point.distance(a Point, b Point) => math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
 
 // The angle from a to b, in radians, as `Point.polar` measures it.
-const func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
+const func Point.angle(a Point, b Point) => math.atan2(b.y - a.y, b.x - a.x)
 
 // The even scale that puts all of `inner` inside `outer`, and the one that
 // leaves none of `outer` uncovered. These are `ScalingMode.fit` and
@@ -227,10 +227,10 @@ const func tangentArc(from Point, corner Point, to Point, r float) Arc {
     // Tangent points sit `r / tan(half)` along each ray from the corner, and
     // the centre `r / sin(half)` along the bisector. The arc between them
     // subtends `pi - |turn|`, turning against the corner's own bend.
-    var reach = r / float.tan(half)
+    var reach = r / math.tan(half)
     var t1 = Point.polar(corner, reach, a1)
     var t2 = Point.polar(corner, reach, a2)
-    var c = Point.polar(corner, r / float.sin(half), a1 + turn / 2.0)
+    var c = Point.polar(corner, r / math.sin(half), a1 + turn / 2.0)
     var sweep = math.pi - float.abs(turn)
     if turn > 0.0 {
         sweep = -sweep

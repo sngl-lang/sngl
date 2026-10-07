@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import math "sngl:math"
 
 component methodfold node {
     // int methods (qualified)
@@ -15,7 +16,7 @@ component methodfold node {
     var fflr = float.floor(3.7)    // FOLD 3
     var fceil = float.ceil(3.2)    // FOLD 4
     var frnd = float.round(3.5)    // FOLD 4
-    var fsqrt = float.sqrt(4.0)    // FOLD 2.0
+    var fsqrt = math.sqrt(4.0)     // FOLD 2.0
 
     // string methods (qualified)
     var sup = string.upper("hello")             // FOLD "HELLO"

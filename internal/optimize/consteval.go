@@ -413,9 +413,14 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// Resolved function call. Type-attached methods (including both
 	// "x.upper()" and "string.upper(x)" syntaxes) are normalized so that
 	// Func.Receiver is set and the receiver value is Args[0].
+	// An intrinsic is asked by its id, which is what a package function such
+	// as math.sin has in place of a receiver.
 	if call.Func != nil {
-		if call.Func.Receiver != "" {
-			qualName := call.Func.Receiver + "." + call.Func.Name
+		qualName := call.Func.Intrinsic
+		if qualName == "" && call.Func.Receiver != "" {
+			qualName = call.Func.Receiver + "." + call.Func.Name
+		}
+		if qualName != "" {
 			if v, ok := evalQualifiedMethod(qualName, args); ok {
 				return v, true
 			}
@@ -993,48 +998,48 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if ok {
 			return int(math.Round(x)), true
 		}
-	case "float.sqrt":
+	case "math.sqrt":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Sqrt(x), true
 		}
-	case "float.sin":
+	case "math.sin":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Sin(x), true
 		}
-	case "float.cos":
+	case "math.cos":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Cos(x), true
 		}
-	case "float.tan":
+	case "math.tan":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Tan(x), true
 		}
-	case "float.asin":
+	case "math.asin":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Asin(x), true
 		}
-	case "float.acos":
+	case "math.acos":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Acos(x), true
 		}
-	case "float.atan":
+	case "math.atan":
 		x, ok := toFloat(args[0])
 		if ok {
 			return math.Atan(x), true
 		}
-	case "float.atan2":
+	case "math.atan2":
 		y, yok := toFloat(args[0])
 		x, xok := toFloat(args[1])
 		if yok && xok {
 			return math.Atan2(y, x), true
 		}
-	case "float.pow":
+	case "math.pow":
 		x, xok := toFloat(args[0])
 		y, yok := toFloat(args[1])
 		if xok && yok {

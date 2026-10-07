@@ -772,7 +772,7 @@ func (c *checker) checkConstructProps() {
 // holds one scheme and one name, so `#[go.native]` and `#[js.native]` written
 // on one declaration kept whichever ran last, silently, and the *Go* output
 // said `Math.PI`. A value each language spells differently is an
-// `#[marks.intrinsic]`, which is what `float.sin` already is.
+// `#[marks.intrinsic]`, which is what `math.sin` already is.
 func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 	if dst.Name != "" {
 		return fmt.Errorf("#[native(%q)] is a second host identity; %q already names this declaration's, and a declaration names one identifier", name, dst.Name)

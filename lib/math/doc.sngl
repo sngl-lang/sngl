@@ -1,10 +1,10 @@
-// Mathematical constants.
+// Mathematical constants and functions.
 //
 // A package of its own rather than methods on `float`: a constant has no
 // receiver and no arguments, and a zero-parameter static method has neither a
 // value to resolve against nor anything to fold, so one survived only where
 // the optimizer ran.
 //
-// TODO The functions in `sngl:builtin`'s `float` — `sin`, `atan2`, `sqrt` and the
-// rest — belong here too and will move. They are intrinsics with per-language
-// emitters, so moving them is its own change.
+// The functions -- `sqrt`, `pow` and the trigonometry -- live here too: each
+// takes a float without being about one, so a call reads `math.sin(x)` rather
+// than as a static method of the type.

@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import math "sngl:math"
 
 component main node {
     text(value="test")
@@ -43,27 +44,27 @@ func testFloatFloorCeilRound(t Test, c main) {
 }
 
 func testFloatSqrt(t Test, c main) {
-    t.assert(float.sqrt(4.0) == 2.0)
-    t.assert(float.sqrt(9.0) == 3.0)
-    t.assert(float.sqrt(0.0) == 0.0)
+    t.assert(math.sqrt(4.0) == 2.0)
+    t.assert(math.sqrt(9.0) == 3.0)
+    t.assert(math.sqrt(0.0) == 0.0)
 }
 
 func testFloatPow(t Test, c main) {
-    t.assert(float.pow(2.0, 3.0) == 8.0)
-    t.assert(float.pow(3.0, 2.0) == 9.0)
-    t.assert(float.pow(2.0, 0.0) == 1.0)
+    t.assert(math.pow(2.0, 3.0) == 8.0)
+    t.assert(math.pow(3.0, 2.0) == 9.0)
+    t.assert(math.pow(2.0, 0.0) == 1.0)
 }
 
 func testFloatTrig(t Test, c main) {
-    t.assert(float.sin(0.0) == 0.0)
-    t.assert(float.cos(0.0) == 1.0)
-    t.assert(float.tan(0.0) == 0.0)
+    t.assert(math.sin(0.0) == 0.0)
+    t.assert(math.cos(0.0) == 1.0)
+    t.assert(math.tan(0.0) == 0.0)
 }
 
 func testFloatInverseTrig(t Test, c main) {
-    t.assert(float.asin(0.0) == 0.0)
-    t.assert(float.acos(1.0) == 0.0)
-    t.assert(float.atan(0.0) == 0.0)
+    t.assert(math.asin(0.0) == 0.0)
+    t.assert(math.acos(1.0) == 0.0)
+    t.assert(math.atan(0.0) == 0.0)
 }
 
 func testStringLength(t Test, c main) {

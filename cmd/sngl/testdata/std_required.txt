@@ -98,7 +98,7 @@ import ui "sngl:ui"
 
 component main ui.node {
     var n int = int.max(1, 2)
-    var f float = float.sqrt(2.0)
+    var f float = float.abs(-2.0)
     var s string = string.upper("hi")
     var c color = color.rgb(1, 2, 3)
 }
