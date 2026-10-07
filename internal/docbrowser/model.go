@@ -465,7 +465,7 @@ func (m Model) View() tea.View {
 			for _, sl := range m.entry().ComponentDoc.Slots {
 				_ = sl
 				var content_3_5Item string
-				content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + sl.Name) + "  ") + sl.Type)))
+				content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((((("  " + sl.Name) + "  ") + sl.Type) + "  ") + sl.Doc)))
 				content_3_5Items = append(content_3_5Items, content_3_5Item)
 			}
 			content_3_5 = strings.Join(content_3_5Items, "\n")
@@ -482,7 +482,7 @@ func (m Model) View() tea.View {
 			for _, e := range m.entry().ComponentDoc.Events {
 				_ = e
 				var content_3_7Item string
-				content_3_7Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
+				content_3_7Item = lipgloss.NewStyle().Render(fmt.Sprint(((((("  @" + e.Name) + "  ") + e.Payload) + "  ") + e.Doc)))
 				content_3_7Items = append(content_3_7Items, content_3_7Item)
 			}
 			content_3_7 = strings.Join(content_3_7Items, "\n")

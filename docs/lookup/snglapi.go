@@ -641,10 +641,11 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 				Name:    n,
 				IsEvent: true,
 				Payload: c.Schema.Events[n],
+				Doc:     c.Schema.EventDocs[n],
 			})
 		}
 		for _, sl := range c.Schema.Slots {
-			v.Slots = append(v.Slots, PropView{Name: sl.Name, Type: formatType(sl.Type)})
+			v.Slots = append(v.Slots, PropView{Name: sl.Name, Type: formatType(sl.Type), Doc: sl.Doc})
 		}
 		if c.Schema.Children != nil {
 			v.Children = c.Schema.Children.String()
@@ -659,6 +660,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 						v.Slots = append(v.Slots, PropView{
 							Name: pd.Name,
 							Type: formatType(pd.Type),
+							Doc:  pd.Doc(),
 						})
 					}
 					continue
@@ -667,6 +669,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 					v.Props = append(v.Props, PropView{
 						Name: pd.Name,
 						Type: formatType(pd.Type),
+						Doc:  pd.Doc(),
 					})
 				}
 			case ast.EventDecl:
@@ -675,6 +678,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 						Name:    pd.Name,
 						IsEvent: true,
 						Payload: parser.FormatEventSignature(pd),
+						Doc:     pd.Doc(),
 					})
 				}
 			}

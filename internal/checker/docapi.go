@@ -17,6 +17,9 @@ type ComponentSchema struct {
 	Doc    string
 	Props  map[string]PropSchema
 	Events map[string]string
+	// EventDocs is the comment written on each event that has one, keyed as
+	// Events is.
+	EventDocs map[string]string
 	// Slots are in declaration order, unlike Props and Events: a slot list
 	// reads as the author arranged it, and the rest slot conventionally ends it.
 	Slots    []SlotSchema
@@ -26,6 +29,8 @@ type ComponentSchema struct {
 // SlotSchema describes one slot of a component for documentation.
 type SlotSchema struct {
 	Name string
+	// Doc is the comment written on the slot.
+	Doc string
 	// Type is the declaration's own type expression rather than a rendering of
 	// the resolved ir.SlotDecl, so it documents what the author wrote: the
 	// `...` marking the slot bare children land in, and the names on its
@@ -186,19 +191,24 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 			continue
 		}
 		schema := &ComponentSchema{
-			Doc:      compDocs[comp.Name],
-			Props:    make(map[string]PropSchema),
-			Events:   make(map[string]string),
-			Slots:    slotSchemas(comp),
-			Children: comp.ChildrenType,
+			Doc:       compDocs[comp.Name],
+			Props:     make(map[string]PropSchema),
+			Events:    make(map[string]string),
+			EventDocs: make(map[string]string),
+			Slots:     slotSchemas(comp),
+			Children:  comp.ChildrenType,
 		}
 		for _, p := range comp.Props {
 			schema.Props[p.Name] = PropSchema{
 				Type: *p.Type,
+				Doc:  p.Doc,
 			}
 		}
 		for _, e := range comp.Events {
 			schema.Events[e.Name] = EventSignature(e)
+			if e.Doc != "" {
+				schema.EventDocs[e.Name] = e.Doc
+			}
 		}
 		reg[comp.Name] = schema
 	}
@@ -212,7 +222,7 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 	if comp.AST == nil {
 		out := make([]SlotSchema, 0, len(comp.Slots))
 		for _, s := range comp.Slots {
-			out = append(out, SlotSchema{Name: s.Name, Rest: s.Rest})
+			out = append(out, SlotSchema{Name: s.Name, Rest: s.Rest, Doc: s.Doc})
 		}
 		return out
 	}
@@ -223,7 +233,7 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 			continue
 		}
 		if _, rest, isSlot := ast.SlotType(pd.Type); isSlot {
-			out = append(out, SlotSchema{Name: pd.Name, Type: pd.Type, Rest: rest})
+			out = append(out, SlotSchema{Name: pd.Name, Type: pd.Type, Rest: rest, Doc: pd.Doc()})
 		}
 	}
 	return out

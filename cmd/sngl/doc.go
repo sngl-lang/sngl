@@ -492,6 +492,9 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 				typ = "component"
 			}
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, typ))
+			if sl.Doc != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", sl.Doc))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -511,6 +514,9 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 		})
 		for _, e := range events {
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", e.name, e.payload))
+			if d := schema.EventDocs[e.name]; d != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", d))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -666,6 +672,9 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 				pType = "any"
 			}
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, pType))
+			if d := p.Doc(); d != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", d))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -674,6 +683,9 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 		sb.WriteString("## Slots\n\n```\n")
 		for _, sl := range slots {
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, parser.FormatType(sl.Type)))
+			if d := sl.Doc(); d != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", d))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -683,6 +695,9 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 		for _, e := range events {
 			payload := parser.FormatEventSignature(e)
 			sb.WriteString(fmt.Sprintf("@%-15s %s\n", e.Name, payload))
+			if d := e.Doc(); d != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", d))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -788,6 +803,9 @@ func renderFuncDoc(f *ast.FuncDef, doc string) string {
 				ptype = "any"
 			}
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, ptype))
+			if d := p.Doc(); d != "" {
+				sb.WriteString(fmt.Sprintf("                 %s\n", d))
+			}
 		}
 		sb.WriteString("```\n\n")
 	}

@@ -69,9 +69,9 @@ const func optionRows(opts list<docs.OptionDoc>) => opts.map(func(o docs.OptionD
 
 const func propRows(props list<docs.ComponentProp>) => props.map(func(p docs.ComponentProp) => [p.name, p.type, p.doc])
 
-const func slotRows(slots list<docs.ComponentSlot>) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type])
+const func slotRows(slots list<docs.ComponentSlot>) => slots.map(func(sl docs.ComponentSlot) => [sl.name, sl.type, sl.doc])
 
-const func eventRows(events list<docs.ComponentEvent>) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType])
+const func eventRows(events list<docs.ComponentEvent>) => events.map(func(e docs.ComponentEvent) => [e.name, e.payloadType, e.doc])
 
 component NavSidebar(currentHref = "") ui.node {
     docui.Sidebar(homeHref="/index.html", logo=logo) {
@@ -367,9 +367,9 @@ component site() root {
                         markup.heading2 { markup.text(value="Properties") }
                         ui.table(columns=["Name", "Type", "Description"], rows=propRows(comp.props))
                         markup.heading2 { markup.text(value="Slots") }
-                        ui.table(columns=["Name", "Type"], rows=slotRows(comp.slots))
+                        ui.table(columns=["Name", "Type", "Description"], rows=slotRows(comp.slots))
                         markup.heading2 { markup.text(value="Events") }
-                        ui.table(columns=["Name", "Payload Type"], rows=eventRows(comp.events))
+                        ui.table(columns=["Name", "Payload Type", "Description"], rows=eventRows(comp.events))
                         markup.paragraph { markup.text(value="Children: " + comp.children) }
                     }
                 }

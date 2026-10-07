@@ -185,7 +185,8 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             for var sl = detail.slots {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value=sl.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=sl.type, style={color="#58a6ff"})
+                    text(value=sl.type, style={color="#58a6ff", minWidth=100px})
+                    text(value=sl.doc, style={color="#aaa"})
                 }
             }
         }
@@ -194,7 +195,8 @@ component ComponentView(detail lookup.ComponentDetailView) node {
             for var e = detail.events {
                 hbox(style={gap=12px, padding=2px}) {
                     text(value="@" + e.name, style={fontFamily="monospace", minWidth=120px})
-                    text(value=e.payload, style={color="#58a6ff"})
+                    text(value=e.payload, style={color="#58a6ff", minWidth=100px})
+                    text(value=e.doc, style={color="#aaa"})
                 }
             }
         }

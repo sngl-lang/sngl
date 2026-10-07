@@ -952,6 +952,9 @@ type Prop struct {
 	// Const is the `const` prefix: the argument at every call site is a
 	// compile-time value, and so is the default. Sym.Const mirrors it.
 	Const bool `json:",omitempty"`
+	// Doc is the comment written on the prop in its declaration
+	// (ast.CommentDoc).
+	Doc string `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so
@@ -972,6 +975,8 @@ type EventDecl struct {
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
+	// Doc is the comment written on the event in its declaration.
+	Doc string `json:",omitempty"`
 }
 
 // Payload is the type of the event's only parameter, or nil when it does not
@@ -989,6 +994,8 @@ func (e *EventDecl) Payload() *Type {
 // component type.
 type SlotDecl struct {
 	Name string
+	// Doc is the comment written on the slot in its declaration.
+	Doc string `json:",omitempty"`
 	// Params are what the slot is invoked with. They carry names as well as
 	// types, the way FuncSig.Params does, because a slot's structural match is
 	// by name -- so a name written in the type is part of the contract and
@@ -1106,6 +1113,8 @@ type Param struct {
 	// into a list literal at each call, so nothing after it sees anything
 	// but an ordinary list argument.
 	Variadic bool `json:",omitempty"`
+	// Doc is the comment written on a declared function's parameter.
+	Doc string `json:",omitempty"`
 }
 
 func (p *Param) SymName() string { return p.Name }

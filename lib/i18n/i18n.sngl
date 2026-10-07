@@ -44,18 +44,51 @@ enum NumberStyle { decimal, percent, currency, scientific }
 // numeric form to its longest.
 enum DateStyle { short, medium, long, full }
 
-// TODO docs should be on each function/prop so sngl doc can see them
+// An integer written for the active locale: its digit grouping, and its
+// percent sign or currency where the style asks for one.
 #[marks.intrinsic("i18n.numberInt")]
-func numberInt(n int, style NumberStyle = decimal) string { return _numberInt(locale, n, string(style)) }
-#[marks.intrinsic("i18n.numberFloat")]
-func numberFloat(n float, style NumberStyle = decimal) string { return _numberFloat(locale, n, string(style)) }
+func numberInt(
+    n int,
+    style NumberStyle = decimal, // how the number is written
+) string {
+    return _numberInt(locale, n, string(style))
+}
 
+// A fractional number written for the active locale, as numberInt writes an
+// integer.
+#[marks.intrinsic("i18n.numberFloat")]
+func numberFloat(
+    n float,
+    style NumberStyle = decimal, // how the number is written
+) string {
+    return _numberFloat(locale, n, string(style))
+}
+
+// A date written for the active locale.
 #[marks.intrinsic("i18n.date")]
-func date(d clock.date, style DateStyle = medium) string { return _date(locale, d, string(style)) }
+func date(
+    d clock.date,
+    style DateStyle = medium, // how much of the date is written
+) string {
+    return _date(locale, d, string(style))
+}
+
+// A time of day written for the active locale.
 #[marks.intrinsic("i18n.time")]
-func time(t clock.time, style DateStyle = medium) string { return _time(locale, t, string(style)) }
+func time(
+    t clock.time,
+    style DateStyle = medium, // how much of the time is written
+) string {
+    return _time(locale, t, string(style))
+}
+
+// A date and time written together for the active locale.
 #[marks.intrinsic("i18n.datetime")]
-func datetime(dt clock.datetime, dateStyle DateStyle = medium, timeStyle DateStyle = medium) string {
+func datetime(
+    dt clock.datetime,
+    dateStyle DateStyle = medium, // how much of the date is written
+    timeStyle DateStyle = medium, // how much of the time is written
+) string {
     return _dateTime(locale, dt, string(dateStyle), string(timeStyle))
 }
 

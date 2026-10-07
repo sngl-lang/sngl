@@ -155,11 +155,14 @@ func formatStdlibComponent(c *ir.Component) string {
 			if t == "" {
 				t = "dyn"
 			}
+			line := fmt.Sprintf("- `%s` %s", p.Name, t)
 			if p.Default == nil {
-				fmt.Fprintf(&sb, "- `%s` %s (required)\n", p.Name, t)
-			} else {
-				fmt.Fprintf(&sb, "- `%s` %s\n", p.Name, t)
+				line += " (required)"
 			}
+			if p.Doc != "" {
+				line += " — " + p.Doc
+			}
+			sb.WriteString(line + "\n")
 		}
 	}
 	sb.WriteString("\n> stdlib\n")
@@ -246,7 +249,11 @@ func formatProp(comp *ir.Component, p *ir.Prop) string {
 	if p.Default != nil {
 		required = "optional"
 	}
-	return fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\n%s prop on `component %s`.\n", comp.Name, p.Name, t, required, comp.Name)
+	out := fmt.Sprintf("```sngl\n%s.%s: %s\n```\n\n", comp.Name, p.Name, t)
+	if p.Doc != "" {
+		out += p.Doc + "\n\n"
+	}
+	return out + fmt.Sprintf("%s prop on `component %s`.\n", required, comp.Name)
 }
 
 // lookupStructFieldType finds field on the struct named structName

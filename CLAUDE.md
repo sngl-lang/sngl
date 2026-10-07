@@ -626,6 +626,15 @@ at the top of its `doc.sngl`, separated from what follows by a blank line
 text is markdown, and `sngl doc` renders it as the package description — so
 adding a `lib/` directory with a package comment needs no code change.
 
+**A parameter documents itself the same way**: a prop, event, slot or function
+parameter written in a list across lines carries the line comments directly
+above it, or with none the comment after it on its line (`ast.CommentDoc`, read
+as `ast.Param.Doc()` and onto `ir.Prop.Doc`, `ir.EventDecl.Doc`,
+`ir.SlotDecl.Doc` and `ir.Param.Doc`). A comment opening with `TODO` documents
+nothing. `sngl doc`, the docs site, the doc browser and hover all print it
+beside the name, so a declaration's own comment says what the component is and
+each parameter says what it takes.
+
 **Only `doc.sngl` answers** (`checker.PackageDocFile`, enforced in
 `checker.PackageDoc`), which is where Go's semantics are dropped: every file's
 comment counting, in a load order nothing guarantees, published whichever file

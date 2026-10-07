@@ -69,15 +69,15 @@ func componentMD(c *ComponentDetail) string {
 		}
 		if len(c.Schema.Events) > 0 {
 			sb.WriteString("## Events\n\n")
-			sb.WriteString("| Name | Payload |\n")
-			sb.WriteString("|------|---------|\n")
+			sb.WriteString("| Name | Payload | Description |\n")
+			sb.WriteString("|------|---------|-------------|\n")
 			enames := make([]string, 0, len(c.Schema.Events))
 			for n := range c.Schema.Events {
 				enames = append(enames, n)
 			}
 			sort.Strings(enames)
 			for _, n := range enames {
-				sb.WriteString(fmt.Sprintf("| `@%s` | %s |\n", n, c.Schema.Events[n]))
+				sb.WriteString(fmt.Sprintf("| `@%s` | %s | %s |\n", n, c.Schema.Events[n], escapeMD(c.Schema.EventDocs[n])))
 			}
 			sb.WriteString("\n")
 		}

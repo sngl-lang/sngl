@@ -2762,7 +2762,7 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
 // component type.
 func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
-	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const}
+	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const, Doc: pd.Doc()}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
@@ -2902,6 +2902,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				Type:          c.resolveType(pd.Type),
 				Bidirectional: pd.Bidirectional,
 				Const:         pd.Const,
+				Doc:           pd.Doc(),
 			}
 			c.applyParamMarks(pd, prop)
 			c.checkConstProp(pd, prop)
@@ -2919,6 +2920,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			evt := &ir.EventDecl{
 				Name:   pd.Name,
 				Params: c.eventParams(pd),
+				Doc:    pd.Doc(),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)

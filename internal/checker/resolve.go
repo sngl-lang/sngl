@@ -675,6 +675,7 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			Default:  def,
 			Const:    p.Const,
 			Variadic: variadic,
+			Doc:      p.Doc(),
 		}
 	}
 	return params

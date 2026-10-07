@@ -286,11 +286,13 @@ type ComponentSlot struct {
 	Name string
 	Type string
 	Rest bool
+	Doc  string
 }
 
 type ComponentEvent struct {
 	Name        string
 	PayloadType string
+	Doc         string
 }
 
 // LibraryComponents is every exported component of every public library
@@ -405,12 +407,14 @@ func packageComponents(uri string, snapshots []string) []Component {
 				Name: sl.Name,
 				Type: parser.FormatType(sl.Type),
 				Rest: sl.Rest,
+				Doc:  sl.Doc,
 			})
 		}
 		for ename, payload := range schema.Events {
 			c.Events = append(c.Events, ComponentEvent{
 				Name:        ename,
 				PayloadType: payload,
+				Doc:         schema.EventDocs[ename],
 			})
 		}
 		sort.Slice(c.Events, func(i, j int) bool { return c.Events[i].Name < c.Events[j].Name })
