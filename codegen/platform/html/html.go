@@ -2210,8 +2210,25 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 
 	emittedFuncs := false
+	buildOnly := map[*ir.Func]bool{}
 	for _, fn := range funcs {
+		// A function only the build answers is folded wherever a document
+		// calls it, and a call the fold could not answer is refused there
+		// (codegen.RefuseUnfoldedBuildCalls): the script never calls one.
+		if ir.IsBuildCall(fn, buildOnly) {
+			continue
+		}
+		// A library function the view called may have been folded away in
+		// every document -- `md.document`'s helpers are -- so it is declared
+		// only where the script still names it.
+		lib := fn.Pkg != "" && fn.Receiver == ""
+		if lib {
+			openDecl(b, fn.Name)
+		}
 		g.emitJSFunc(b, fn)
+		if lib {
+			closeDecl(b)
+		}
 		emittedFuncs = true
 	}
 	if emittedFuncs {

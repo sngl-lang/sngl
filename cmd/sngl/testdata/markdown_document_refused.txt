@@ -1,0 +1,51 @@
+# md.document parses its source while the program builds, so a source the
+# build cannot know is refused where md.document is written.
+#
+# State is never known: refused right after the first optimize, at the call
+# site, before a lowering can move the parse into a function it synthesized.
+#
+# A page's loop variable is known only to a target that writes a document per
+# page (html, testdata/markdown_document_pages.txtar). bubbletea runs the loop,
+# so the parse would be the program's to make.
+
+! sngl generate --platform html --lang none -o out state.sngl
+stderr 'state.sngl:8:17: document''s source is read while the program builds, and draft is state, which it does not have until the program runs'
+
+! sngl generate --platform bubbletea --lang go -o out pages.sngl
+stderr 'pages.sngl:17:28: md.parse is answered only while the program builds, and this call was left for the program to make: call it with arguments known at build time'
+
+sngl generate --platform html --lang none -o out pages.sngl
+exists out/a.html out/b.html
+
+-- state.sngl --
+import ui "sngl:ui"
+import md "sngl:ui/markup/md"
+
+var draft = "# hi"
+
+ui.window(title="t") {
+    ui.button(text="edit", @click { draft = "# bye" })
+    md.document(source=draft)
+}
+-- pages.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import md "sngl:ui/markup/md"
+
+struct Doc {
+    href string
+    body string
+}
+
+const docs = [Doc{href="/a.html", body="# A"}, Doc{href="/b.html", body="# B"}]
+
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        for var d = docs {
+            nav.page(href=d.href, title=d.href) {
+                // The parse needs the page, which only a document per page has.
+                md.document(source=d.body)
+            }
+        }
+    }
+}

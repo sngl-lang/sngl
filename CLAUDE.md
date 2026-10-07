@@ -2797,6 +2797,40 @@ collapsed only when identical, since rewriting an alias would be checking. A
 mistake inside one reports the markdown file and line, because the position the
 checker has is the `import` that read the document.
 
+**`md.document(source=…)` parses markdown written as a string** -- the
+hand-written door to the same tree, for a source that is a value rather than a
+file (`lib/ui/markup/md/document.sngl`). The parse is the build intrinsic
+`md.parse`, answered by `codegen/scheme/markdown/parse.go` with the scheme's
+goldmark and highlighter, and wrapped in a `const func` the optimizer folds as
+a producer: a literal folds in the first optimize, and a page's loop variable
+in html's per-document fold, which has the build host for exactly that. What
+comes back is data -- `_Block`, `_Item`, `_Run` -- that the declaration's own
+components lay out with loops and `if`s, which on html unroll to markup. Three
+things follow from the tree being rendered rather than written out:
+
+- **Nothing in it keeps state.** A component with state under a `for` is
+  built at run time, so `markup.listItem` (its task box is a `ui.checkbox`
+  cell) and `ui.table` (its selection) are not used: a list is laid out as
+  their default bodies lay one out, a task is a glyph, and a table is rows of
+  text, which bubbletea can also hold in a loop.
+- **A list nests three deep**, one component per level, since a component
+  calling itself is built at run time; deeper items are laid out in their
+  parent's place. A fence's `mode=` is not read: every fence is a sample.
+- **The source must be known while the program builds.** An argument reading
+  state is refused at the argument right after the first optimize
+  (`refuseStateIntoBuildCalls`); a call no fold answered is refused at the node
+  the program wrote (`refuseBuildOnlyCalls`, which on html leaves a view's
+  calls to the fold and `codegen.RefuseUnfoldedBuildCalls` asks after each
+  document). `testdata/markdown_document.txtar`, `markdown_document_pages.txtar`
+  and `cmd/sngl/testdata/markdown_document_refused.txt`.
+
+Four general changes it needed: the optimizer does not inline a function that
+reaches the build host (it is folded whole, as a producer, or the bare
+intrinsic is left for nothing to fold); `promoteForeignStructs` declares a
+promoted struct's field types too; a library body may render its own
+unexported components; and a registered build intrinsic is handed its call, so
+it can build values of its declared return type.
+
 ### Plugins
 
 A new family, language, platform or import scheme is a SNGL package rather than

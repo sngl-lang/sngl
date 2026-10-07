@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -39,6 +40,13 @@ func NewFold(pkg *ir.Package, cfg *Config) *Fold {
 		root:       pkg,
 		writes:     newWritesAnalysis(cfg.Platform, cfg.Language),
 		interpEnvs: map[*ir.Package]*interp.Env{},
+		hostMemo:   map[*ir.Func]bool{},
+	}
+	// A document folds what only it binds -- a page's loop variable -- so a
+	// build-time function of one (`md.document`'s parse) is answered here
+	// rather than by the optimizer, and needs the host the optimizer has.
+	if cfg.Dir != "" {
+		run.host = buildhost.New(cfg.Trust, cfg.Dir, pkg, nil)
 	}
 	ctx := run.newCtx(pkg)
 	ctx.unroll, ctx.spliced = true, true

@@ -3,6 +3,7 @@ package gtk4
 import (
 	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"git.duckfam.us/jonathan/sngl/ir"
 	// The library runner: sngl:platform/gtk4 imports gir:, and a check with
 	// no build around it resolves that through the runner internal/plugin
 	// registers.
@@ -25,7 +26,7 @@ func registerGIRScheme(g *Generator) {
 	gencache.RegisterSetting(girSetting, g.girOption)
 }
 
-func (g *Generator) girWidgets(rec *buildhost.Recorder, _ []any) (any, error) {
+func (g *Generator) girWidgets(rec *buildhost.Recorder, _ *ir.Call, _ []any) (any, error) {
 	req, err := girRequest(widgetsProducer, g.girOption())
 	if err != nil {
 		return nil, err
