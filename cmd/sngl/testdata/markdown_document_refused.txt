@@ -1,0 +1,79 @@
+# md.document parses its source while the program builds, so a source the
+# build cannot know is refused where md.document is written.
+#
+# State is never known: refused right after the first optimize, at the call
+# site, before a lowering can move the parse into a function it synthesized.
+#
+# A page's loop variable is known only to a target that writes a document per
+# page (html, testdata/markdown_document_pages.txtar). bubbletea runs the loop,
+# so the parse would be the program's to make.
+
+! sngl generate --platform html --lang none -o out state.sngl
+stderr 'state.sngl:8:17: document''s source is read while the program builds, and draft is state, which it does not have until the program runs'
+
+! sngl generate --platform bubbletea --lang go -o out pages.sngl
+stderr 'pages.sngl:17:28: md.parse is answered only while the program builds, and this call was left for the program to make: call it with arguments known at build time'
+
+sngl generate --platform html --lang none -o out pages.sngl
+exists out/a.html out/b.html
+
+# A live fence is source the program compiles, and a string parsed while it
+# builds is read after the check, so md.document refuses one where the scheme
+# would compile it -- at the node the program wrote, since the parse that
+# failed is the library's, and naming the line of the markdown it is on.
+# Saying `view`, the default, is not refused.
+! sngl generate --platform html --lang none -o out live.sngl
+stderr 'live.sngl:7:16: md.parse: line 3: a fence with mode=island is live'
+sngl generate --platform html --lang none -o out view.sngl
+
+-- live.sngl --
+import ui "sngl:ui"
+import md "sngl:ui/markup/md"
+
+const src = "# Live\n\n```sngl mode=island\nvar n = 0\n```\n"
+
+ui.window(title="t") {
+    md.document(source=src)
+}
+-- view.sngl --
+import ui "sngl:ui"
+import md "sngl:ui/markup/md"
+
+const src = "# View\n\n```sngl mode=view\nvar n = 0\n```\n"
+
+ui.window(title="t") {
+    md.document(source=src)
+}
+
+-- state.sngl --
+import ui "sngl:ui"
+import md "sngl:ui/markup/md"
+
+var draft = "# hi"
+
+ui.window(title="t") {
+    ui.button(text="edit", @click { draft = "# bye" })
+    md.document(source=draft)
+}
+-- pages.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import md "sngl:ui/markup/md"
+
+struct Doc {
+    href string
+    body string
+}
+
+const docs = [Doc{href="/a.html", body="# A"}, Doc{href="/b.html", body="# B"}]
+
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        for var d = docs {
+            nav.page(href=d.href, title=d.href) {
+                // The parse needs the page, which only a document per page has.
+                md.document(source=d.body)
+            }
+        }
+    }
+}

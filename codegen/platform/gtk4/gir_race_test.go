@@ -24,7 +24,7 @@ func TestGIROptionIsSafeConcurrently(t *testing.T) {
 				case 1:
 					_, _ = g.useGIR(girBuiltin)
 				case 2:
-					_, _ = g.girWidgets(buildhost.NewRecorder(), nil)
+					_, _ = g.girWidgets(buildhost.NewRecorder(), nil, nil)
 				case 3:
 					_ = g.Unavailable()
 				case 4:

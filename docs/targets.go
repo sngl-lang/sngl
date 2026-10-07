@@ -61,6 +61,33 @@ type TargetCatalog struct {
 	GlobalOptions []OptionDoc
 	Platforms     []PlatformTarget
 	Languages     []LanguageTarget
+	// PlatformMatrix and LanguageMatrix are the capability tables as a table
+	// takes them: a name column, then one per capability, "—" where a target
+	// has none.
+	PlatformMatrix CapabilityMatrix
+	LanguageMatrix CapabilityMatrix
+}
+
+// CapabilityMatrix is a table of targets by capability.
+type CapabilityMatrix struct {
+	Columns []string
+	Rows    [][]string
+}
+
+func capabilityMatrix(first string, columns []string, names []string, caps [][]Capability) CapabilityMatrix {
+	m := CapabilityMatrix{Columns: append([]string{first}, columns...)}
+	for i, name := range names {
+		row := []string{name}
+		for _, c := range caps[i] {
+			v := c.Value
+			if v == "" {
+				v = "—"
+			}
+			row = append(row, v)
+		}
+		m.Rows = append(m.Rows, row)
+	}
+	return m
 }
 
 // Probes every built-in target for the optional codegen interfaces it
@@ -107,6 +134,17 @@ func Targets() TargetCatalog {
 		})
 	}
 
+	var names []string
+	var caps [][]Capability
+	for _, p := range cat.Platforms {
+		names, caps = append(names, p.Name), append(caps, p.Capabilities)
+	}
+	cat.PlatformMatrix = capabilityMatrix("Platform", cat.PlatformCapabilities, names, caps)
+	names, caps = nil, nil
+	for _, l := range cat.Languages {
+		names, caps = append(names, l.Name), append(caps, l.Capabilities)
+	}
+	cat.LanguageMatrix = capabilityMatrix("Language", cat.LanguageCapabilities, names, caps)
 	return cat
 }
 

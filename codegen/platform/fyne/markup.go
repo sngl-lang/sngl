@@ -54,6 +54,11 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["href"] = "SetHref"
+		// A style the constructor could read off a literal is said there; one
+		// computed while the program runs -- a run's styles read from data, as
+		// md.document's are -- arrives through this, field by field.
+		sp.Setters["spanStyle"] = "SetSpanStyle"
+		sp.SetterArgs = map[string]func(ir.Expr) []ir.Expr{"spanStyle": spanStyleArgs}
 		if c, ok := props["color"]; ok && !codegen.SpanStyleKnownColor(c) {
 			sp.Setters["color"] = "SetColor"
 		} else {
@@ -63,6 +68,53 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		return nil, fmt.Errorf("fyne: %s is not a markup primitive", tag)
 	}
 	return sp, nil
+}
+
+// spanStyleArgs is a `markup.SpanStyle` value as the arguments of
+// `fynetext.Span.SetSpanStyle`, in its order: weight, slant and family as the
+// strings Go spells their values with, the two decorations, the size in px
+// and the color. A literal hands over its fields; anything else is read a
+// field at a time.
+func spanStyleArgs(v ir.Expr) []ir.Expr {
+	def, _ := v.ExprType().Decl.(*ir.StructDef)
+	field := func(name string) ir.Expr {
+		var decl *ir.StructField
+		if def != nil {
+			for _, f := range def.Fields {
+				if f.Name == name {
+					decl = f
+				}
+			}
+		}
+		if sl, ok := v.(*ir.StructLit); ok {
+			for _, f := range sl.Fields {
+				if f.Name == name {
+					return f.Value
+				}
+			}
+			if decl != nil && decl.Default != nil {
+				return decl.Default
+			}
+			if decl != nil {
+				return ir.ZeroExpr(decl.Type)
+			}
+		}
+		var t *ir.Type
+		if decl != nil {
+			t = decl.Type
+		}
+		return &ir.Select{Operand: v, Field: name, Type: t}
+	}
+	size := field("fontSize")
+	return []ir.Expr{
+		field("fontWeight"),
+		field("fontStyle"),
+		field("fontFamily"),
+		field("underline"),
+		field("strike"),
+		&ir.Select{Operand: size, Field: "px", Type: ir.TypFloat},
+		field("color"),
+	}
 }
 
 // spanStyleChain is the builder call that follows `fynetext.Style`, written

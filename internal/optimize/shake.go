@@ -105,7 +105,16 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		haveEnum[ed] = true
 	}
 	var addedEnums []*ir.EnumDef
-	want := func(t *ir.Type) {
+	var want func(t *ir.Type)
+	want = func(t *ir.Type) {
+		// A list, option or map of a library struct names the struct as much
+		// as a parameter of it does.
+		if t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeOption || t.Kind == ir.TypeMap || t.Kind == ir.TypeIter) {
+			for _, el := range t.Elems {
+				want(el)
+			}
+			return
+		}
 		if t != nil && t.Kind == ir.TypeEnum {
 			// Kotlin emits an enum as a class of its own, so a helper taking
 			// `markup.Token` named a type the file never declared.
@@ -124,6 +133,26 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		have[sd] = true
 		added = append(added, sd)
+		// A promoted struct's declaration names its fields' types, which
+		// have to be declared beside it: `_Item` holds `list<_Block>`. A
+		// builtin kind's (`color`) is each backend's own to spell.
+		for _, f := range sd.Fields {
+			if !namesBuiltinStruct(f.Type) {
+				want(f.Type)
+			}
+		}
+	}
+	// A loop a target runs holds its iterable as a value, and a Go literal
+	// spells its type: `for b := range []_Block{…}` is md.document's on
+	// bubbletea. It used to be declared only because a helper's signature
+	// happened to name it.
+	for _, o := range ir.Owners(pkg) {
+		ir.WalkView(*o.Body, func(s ir.Stmt) bool {
+			if f, ok := s.(*ir.For); ok && f.Iter != nil {
+				want(f.Iter.ExprType())
+			}
+			return true
+		})
 	}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || fn.Pkg == "" {
@@ -163,6 +192,32 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	pkg.Structs = append(pkg.Structs, added...)
 	pkg.Enums = append(pkg.Enums, addedEnums...)
 	return nil
+}
+
+// namesBuiltinStruct reports whether t is, or holds, a struct of a builtin
+// kind -- `color`, `date` -- which each backend spells itself.
+func namesBuiltinStruct(t *ir.Type) bool {
+	for t != nil {
+		switch t.Kind {
+		case ir.TypeList, ir.TypeOption, ir.TypeIter:
+			if len(t.Elems) == 0 {
+				return false
+			}
+			t = t.Elems[0]
+			continue
+		case ir.TypeMap:
+			if len(t.Elems) < 2 {
+				return false
+			}
+			t = t.Elems[1]
+			continue
+		case ir.TypeStruct:
+			sd, ok := t.Decl.(*ir.StructDef)
+			return ok && sd != nil && sd.Builtin != ir.BuiltinNone
+		}
+		return false
+	}
+	return false
 }
 
 // handlerPayloadTypes is the payload type of every event handler the program

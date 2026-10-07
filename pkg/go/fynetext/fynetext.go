@@ -245,6 +245,46 @@ func (s *Span) SetColor(c snglcolor.Color) {
 	s.refresh()
 }
 
+// SetSpanStyle replaces what this run says about its words with a style the
+// program computed while it runs -- a `markup.SpanStyle` handed over a field at
+// a time, the generated code having no type the runtime knows. Weight, slant
+// and family are the names SNGL gives their values, an unrecognised one
+// (`inherit`) leaving the run to its parent, and a zero size or a transparent
+// color is the run naming none. The token a run was built with is kept: it is
+// what the run is, not how it looks.
+func (s *Span) SetSpanStyle(weight, slant, family string, underline, strike bool, sizePx float64, c snglcolor.Color) {
+	st := Style().WithToken(s.Style.Token)
+	switch weight {
+	case "bold", "bolder":
+		st = st.WithBold()
+	case "normal", "lighter":
+		st = st.NoBold()
+	}
+	switch slant {
+	case "italic", "oblique":
+		st = st.WithItalic()
+	case "normal":
+		st = st.NoItalic()
+	}
+	if family == "monospace" {
+		st = st.WithMono()
+	}
+	if underline {
+		st = st.WithUnderline()
+	}
+	if strike {
+		st = st.WithStrike()
+	}
+	if sizePx > 0 {
+		st = st.WithSize(float32(sizePx))
+	}
+	if c.A != 0 {
+		st = st.WithRGBA(uint8(c.R), uint8(c.G), uint8(c.B), uint8(c.A))
+	}
+	s.Style = st
+	s.refresh()
+}
+
 // SetHref replaces where this run leads.
 func (s *Span) SetHref(href string) {
 	s.Href = href

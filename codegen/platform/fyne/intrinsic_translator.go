@@ -685,7 +685,11 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		return nil
 	}
 	nodeRef := t.nodeRefFor(bareID)
-	set := &ir.CallStmt{Call: methodCall(nodeRef, methodName, []ir.Expr{value}, ir.TypVoid)}
+	args := []ir.Expr{value}
+	if split := sp.SetterArgs[prop]; split != nil {
+		args = split(value)
+	}
+	set := &ir.CallStmt{Call: methodCall(nodeRef, methodName, args, ir.TypVoid)}
 	if cur := sp.Currents[prop]; cur != "" {
 		return []ir.Stmt{&ir.If{
 			Cond: &ir.Binary{Op: ast.BinNeq, Type: ir.TypBool,

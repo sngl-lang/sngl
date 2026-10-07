@@ -2729,7 +2729,13 @@ The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
 `role` and style set, or a `vbox` — so a platform implements the two
 primitives and inherits every block. `role` is what a flow is *for*, and a
 prop rather than a component per role, so it reaches every emitter through the
-node they already render.
+node they already render. html is the one target overriding a block: `list`
+and `listItem` are `<ul>`/`<ol start>` and `<li>`, so the browser numbers the
+list and picks a nested bullet, and a task item is a disabled
+`<input type=checkbox>` in a flex `<li>`, which drops the marker. Every other
+target renders the bodies. An override's prop defaults are the declaration's,
+checked in its file: re-read in the override's, `task Task = Task.none` named a
+type html.sngl never imported (`installedOverride`).
 
 **`md:` imports markdown as SNGL source.** `codegen/scheme/markdown` is an
 `FSSchemeImporter`, the seam `git:` and `http:` use, rather than a native
@@ -2738,7 +2744,12 @@ package, so a bad import can be dumped and read and a round-trip is assertable.
 The document is read through the filesystem the program is checked against
 (`codegen.ProjectFSScheme`), because it is a file of the project and an
 in-memory package has no other. It parses with the same goldmark configuration
-the doc site uses, so two readings of one document cannot differ.
+the doc site uses, so two readings of one document cannot differ -- heading
+ids included: a heading is written with the `anchor` goldmark's
+`WithAutoHeadingID` gave it, repeats numbered per document, so an in-page `#`
+link resolves (`anchor_test.go` holds it to the doc site's rendering). The
+anchor is `richText`'s; html writes it as the element's `id`, an empty one
+writing none, and the other targets have nothing a link could land on.
 
 - **A file**, `import doc "md:./guide.md"`, is a package holding one component,
   **`document`**, whatever the file is called: a name derived from the path
@@ -2796,6 +2807,62 @@ live fence does not also show its source. Imports are hoisted as written and
 collapsed only when identical, since rewriting an alias would be checking. A
 mistake inside one reports the markdown file and line, because the position the
 checker has is the `import` that read the document.
+
+**`md.document(source=…)` parses markdown written as a string** -- the
+hand-written door to the same tree, for a source that is a value rather than a
+file (`lib/ui/markup/md/document.sngl`). The parse is the build intrinsic
+`md.parse`, answered by `codegen/scheme/markdown/parse.go` with the scheme's
+goldmark and highlighter, and wrapped in a `const func` the optimizer folds as
+a producer: a literal folds in the first optimize, and a page's loop variable
+in html's per-document fold, which has the build host for exactly that. What
+comes back is data -- `_Block`, `_Item`, `_Run` -- that the declaration's own
+components lay out with loops and `if`s, which on html unroll to markup. What
+follows from the tree being rendered rather than written out:
+
+- **It is the scheme's tree**, so on html the markup is the importer's byte
+  for byte (`testdata/markdown_document_matches_scheme.txtar`, compared by
+  `TestMarkdownDocumentMatchesScheme`): headings carry the scheme's `anchor`,
+  a list is `markup.list`/`markup.listItem` -- html's `<ul>`/`<ol>`/`<li>`
+  and a task's disabled checkbox -- and a run is bare `markup.text` or the
+  one span member the scheme writes around it. Three things differ. A run
+  under two spans is one `markup.run` carrying both, the parse handing it its
+  styles rather than their nesting. A table is rows of text: `ui.table`
+  renders nothing on fyne or android and has no gtk4 implementation. And a
+  list nests three deep, one component per level, since a component calling
+  itself is built at run time; deeper items are laid out in their parent's
+  place.
+- **A run's style may be computed.** `listItem` reads the `listDepth`
+  context, which passContext lowers to a `var` of the component, so under a
+  `for` the item is an instance built at run time; there the two-span
+  `markup.run`'s style, read from the data, reaches fyne as a write after
+  construction. fyne's span answers it with `SetSpanStyle`, the
+  `markup.SpanStyle` handed over a field at a time (`spanStyleArgs`, the
+  spec's `SetterArgs`) since the runtime has no type for it, and the flow
+  rebuilds its segments. gtk4 refuses every `md.document`, a label's markup
+  being one expression that a `for` among spans cannot be.
+- **A loop's library structs are declared.** A target that runs the loop
+  holds `[]_Block{…}` as a value, and Go's literal names its type, so
+  `promoteForeignStructs` declares the element types of every view loop's
+  iterable -- not only the types a function signature names.
+- **A live fence is refused.** `mode=island`, `package` or `body` is source
+  the program compiles, and a string parsed here is read after the check; the
+  error names the markdown line and is reported at the program's node rather
+  than the library's call (`evalCtx.site`, set where the optimizer splices a
+  library body). `mode=view` is the default and passes.
+- **The source must be known while the program builds.** An argument reading
+  state is refused at the argument right after the first optimize
+  (`refuseStateIntoBuildCalls`); a call no fold answered is refused at the node
+  the program wrote (`refuseBuildOnlyCalls`, which on html leaves a view's
+  calls to the fold and `codegen.RefuseUnfoldedBuildCalls` asks after each
+  document). `testdata/markdown_document.txtar`, `markdown_document_pages.txtar`
+  and `cmd/sngl/testdata/markdown_document_refused.txt`.
+
+Four general changes it needed: the optimizer does not inline a function that
+reaches the build host (it is folded whole, as a producer, or the bare
+intrinsic is left for nothing to fold); `promoteForeignStructs` declares a
+promoted struct's field types too; a library body may render its own
+unexported components; and a registered build intrinsic is handed its call, so
+it can build values of its declared return type.
 
 ### Plugins
 

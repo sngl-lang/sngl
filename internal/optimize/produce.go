@@ -20,43 +20,9 @@ import (
 // genProducer names the values stored for a fold that read the host.
 const genProducer = "sngl.eval"
 
-// reachesHost reports whether fn's body can call sngl:x/gen's host API: a
-// build-only intrinsic, directly or through any function or lambda it names.
-// It errs toward yes, since a call that reaches the host outside a producer is
-// refused rather than recorded.
-func reachesHost(fn *ir.Func, memo map[*ir.Func]bool) bool {
-	if v, ok := memo[fn]; ok {
-		return v
-	}
-	memo[fn] = false
-	found := false
-	visit := func(f *ir.Func) {
-		if found || f == nil {
-			return
-		}
-		if f.BuildOnly || reachesHost(f, memo) {
-			found = true
-		}
-	}
-	ir.Walk(fn.Block, func(n ir.Node) error {
-		if found {
-			return ir.SkipAll
-		}
-		switch x := n.(type) {
-		case *ir.Call:
-			visit(x.Func)
-		case *ir.Ident:
-			if f, ok := x.Sym.(*ir.Func); ok {
-				visit(f)
-			}
-		case *ir.Lambda:
-			visit(x.Func)
-		}
-		return nil
-	})
-	memo[fn] = found
-	return found
-}
+// reachesHost reports whether fn's body can call sngl:x/gen's host API; see
+// ir.ReachesBuildHost.
+func reachesHost(fn *ir.Func, memo map[*ir.Func]bool) bool { return ir.ReachesBuildHost(fn, memo) }
 
 // produce folds a call of fn that reaches the host: answered from the store
 // when every input the last run recorded still holds and the code that read
@@ -138,7 +104,11 @@ func (ctx *evalCtx) fail(err error) {
 	}
 	var he *buildhost.Error
 	if errors.As(err, &he) && he.Pos().IsValid() {
-		err = ir.Diagnostic{Pos: he.Pos(), Msg: he.Err().Error(), Severity: ir.Error}
+		pos := he.Pos()
+		if ctx.site.IsValid() {
+			pos = ctx.site
+		}
+		err = ir.Diagnostic{Pos: pos, Msg: he.Err().Error(), Severity: ir.Error}
 	}
 	ctx.err = err
 }
@@ -372,3 +342,12 @@ func decodeValue(j any, t *ir.Type) (any, error) {
 // its request by build-time values asks it, so two producers cannot spell one
 // value two ways.
 func EncodeValue(v any, t *ir.Type) (any, bool) { return encodeValue(v, t) }
+
+// hostMemoOrNew is the run's memo of which functions reach the host, or a
+// fresh one for a context built without a run.
+func (ctx *evalCtx) hostMemoOrNew() map[*ir.Func]bool {
+	if ctx == nil || ctx.hostMemo == nil {
+		return map[*ir.Func]bool{}
+	}
+	return ctx.hostMemo
+}

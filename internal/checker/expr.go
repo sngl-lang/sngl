@@ -3538,7 +3538,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		var comp *ir.Component
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
-				if c.rejectUnexported(x.Pos, sym) {
+				if !c.inLibSource() && !c.resolvedInPackage(id.Name) && c.rejectUnexported(x.Pos, sym) {
 					return nil
 				}
 				if co, ok := sym.(*ir.Component); ok {
@@ -4215,7 +4215,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 			return nil
 		}
 	} else if sym, ok := c.lookupComponentInScope(vn.Pos, name); ok {
-		if c.rejectUnexported(vn.Pos, sym) {
+		// The export rule is between packages, as it is for a type name: a
+		// library body renders its own unexported components.
+		if !c.inLibSource() && !c.resolvedInPackage(name) && c.rejectUnexported(vn.Pos, sym) {
 			return nil
 		}
 		if co, ok := sym.(*ir.Component); ok {

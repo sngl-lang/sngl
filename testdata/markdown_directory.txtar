@@ -134,7 +134,7 @@ body { font-family: system-ui, sans-serif; }
   <span>weight 2</span>
   <span>child: Intro</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>How to use it.</span></p>
     <span id="__n2" data-sngl-id="__n2">
     </span>
@@ -173,7 +173,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span>weight 0</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Intro</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="intro"><span>Intro</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>Where to start.</span></p>
   </div>
 </div>
@@ -204,7 +204,7 @@ body { font-family: system-ui, sans-serif; }
   <span>child: Guide</span>
   <span>child: Reference</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Welcome</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="welcome"><span>Welcome</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>The home page.</span></p>
     <span id="__n1" data-sngl-id="__n1">
     </span>
@@ -244,7 +244,7 @@ body { font-family: system-ui, sans-serif; }
   <span>weight 3</span>
   <span>child: Types</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Reference</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="reference"><span>Reference</span></h1>
   </div>
 </div>
 
@@ -272,7 +272,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span>weight 0</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Types</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="types"><span>Types</span></h1>
   </div>
 </div>
 
@@ -284,4 +284,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7810310706b7dd5602c9d41a9955e225
+pass sha256:c9f2935a50d5c3999bae6080fd9827b1
