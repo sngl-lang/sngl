@@ -22,3 +22,7 @@ func testPickWritesTheBinding(t Test, c picker) {
     t.assert(c.picked == null)
     t.assert(c.changes == 2)
 }
+
+window {
+    picker()
+}

@@ -456,6 +456,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
     GtkWidget *w = gtk_label_new(NULL);
@@ -764,4 +776,4 @@ func (m *Model) boxChange(v string) {
 -- run/go/fyne --
 pass sha256:c22ba7f8c15e17586df82e5fcf37fbc2
 -- run/go/gtk4 --
-pass sha256:5496095a7990ed4ef423eb24479b625f
+pass sha256:342757107459d494f05d6d08897c6704

@@ -321,6 +321,36 @@ import (
 
 func currentTestModel() *Model { return currentModel }
 
+// snglSnapshotApp is the application every snapshot in this test process
+// builds its window in. One, because a registered application stays exported
+// on the session bus while a window holds it, and a second registered at the
+// same path fails with "An object is already exported".
+var snglSnapshotApp *C.GtkApplication
+
+// snglSnapshotApplication registers snglSnapshotApp the first time, without
+// running its main loop, so BuildUI and the pump execute on the current
+// (locked) OS thread without re-entrancy.
+func snglSnapshotApplication() (*C.GtkApplication, error) {
+	if snglSnapshotApp != nil {
+		return snglSnapshotApp, nil
+	}
+	cAppID := C.CString("dev.sngl.test.snapshot")
+	defer C.free(unsafe.Pointer(cAppID))
+	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "no reason given"
+		if gerr != nil {
+			msg = C.GoString(gerr.message)
+			C.g_error_free(gerr)
+		}
+		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
+	}
+	snglSnapshotApp = app
+	return app, nil
+}
+
 func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -336,25 +366,28 @@ func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	cAppID := C.CString("dev.sngl.test.snapshot")
-	defer C.free(unsafe.Pointer(cAppID))
-	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
-	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-
-	// Register without running the main loop so BuildUI and the pump
-	// execute in the current (locked) OS thread without re-entrancy.
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		if gerr != nil {
-			C.g_error_free(gerr)
-		}
-		return "", nil, fmt.Errorf("g_application_register failed")
+	app, err := snglSnapshotApplication()
+	if err != nil {
+		return "", nil, err
 	}
 
 	win := m.BuildUI(app)
 	if win == nil {
 		return "", nil, fmt.Errorf("BuildUI returned nil")
 	}
+	// The Model keeps its widget tree across snapshots and BuildUI hands the
+	// same root to a new window each time, so the root is taken back out of
+	// this one -- held, since the window was what kept it alive -- before the
+	// window goes. Left in it, the next window was given a widget that
+	// already had a parent and captured nothing.
+	defer func() {
+		w := (*C.GtkWindow)(unsafe.Pointer(win))
+		if child := C.gtk_window_get_child(w); child != nil {
+			C.g_object_ref(C.gpointer(unsafe.Pointer(child)))
+			C.gtk_window_set_child(w, nil)
+		}
+		C.gtk_window_destroy(w)
+	}()
 	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
 	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
 	C.sngl_pump_until_mapped(win, 1000)

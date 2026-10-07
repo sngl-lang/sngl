@@ -1,0 +1,74 @@
+# A date, a time and a datetime written as text, run on four backends.
+#
+# JavaScript and Kotlin hold each as the string the literal was written as, so
+# `string(d)` and `"{d}"` print it back. Go holds a time.Time, and spelled the
+# conversion fmt.Sprint, which prints "2024-03-05 00:00:00 +0000 UTC" for a
+# date. It now writes the literal's spelling back: 2006-01-02 for a date,
+# RFC 3339 for a datetime, and HH:MM, or HH:MM:SS where it has seconds, for a
+# time -- the two spellings a time literal takes.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import time "sngl:time"
+
+component main node {
+    var d time.date = "2024-03-05"
+    var t time.time = "09:30"
+    var s time.time = "09:30:15"
+    var dt time.datetime = "2024-03-05T09:30:00Z"
+    text(value=string(d) + " {t} {s} " + string(dt))
+}
+
+func testSpelling(t Test, c main) {
+    t.assert(string(c.d) == "2024-03-05")
+    t.assert("{c.t}" == "09:30")
+    t.assert(string(c.s) == "09:30:15")
+    t.assert(string(c.dt) == "2024-03-05T09:30:00Z")
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:66e75e3e4c1e92112ede3e4907c0b73f
+{
+  "results": [
+    {
+      "Desc": "Spelling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:422bfc7e7f50b3416c235928ede5dcbe
+{
+  "results": [
+    {
+      "Desc": "Spelling",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:782f83082754bd6bfc9e3e3a84ba4415
+{
+  "results": [
+    {
+      "Desc": "Spelling",
+      "Passed": true
+    }
+  ]
+}

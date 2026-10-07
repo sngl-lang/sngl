@@ -197,9 +197,15 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
+		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+			return err
+		}
+		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		testAgentInc := ""
@@ -240,6 +246,9 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		}
 	} else {
 		if err := writeAndroidSourceFile(sink, "MainScreen.kt", req.Lang, ktOpts, src); err != nil {
+			return err
+		}
+		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
 		for _, f := range directBuildFiles(cfg, usesI18n, deviceAgent) {

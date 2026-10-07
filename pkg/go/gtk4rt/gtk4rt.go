@@ -103,6 +103,17 @@ static void sngl_emit(gpointer instance, const char *signal) {
 // re-enter itself from inside the emission until the stack ran out.
 static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t);
 
+// Selects a day the way a click on it does. select_day is the call every GTK
+// 4 has; 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -412,6 +423,15 @@ func CalendarGetDate(calendar Handle) *time.Time {
 	return &t
 }
 
+// CalendarSelectDate selects t's day on a GtkCalendar, as a click on it does;
+// nil selects nothing.
+func CalendarSelectDate(calendar Handle, t *time.Time) {
+	if t == nil {
+		return
+	}
+	C.sngl_calendar_select((*C.GtkCalendar)(p(calendar)), C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
+}
+
 // ---- Entry / Editable ----
 
 func EntryNew() Handle {
@@ -683,7 +703,17 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 	if win == nil {
 		return nil, fmt.Errorf("build returned nil window")
 	}
-	defer C.gtk_window_destroy((*C.GtkWindow)(p(win)))
+	// The Model keeps its widget tree across snapshots, and build hands the
+	// same root to a new window each time: it is taken back out of this one,
+	// held since the window was what kept it alive, before the window goes.
+	defer func() {
+		w := (*C.GtkWindow)(p(win))
+		if child := C.gtk_window_get_child(w); child != nil {
+			C.g_object_ref(C.gpointer(unsafe.Pointer(child)))
+			C.gtk_window_set_child(w, nil)
+		}
+		C.gtk_window_destroy(w)
+	}()
 	C.gtk_window_set_default_size((*C.GtkWindow)(p(win)), C.int(width), C.int(height))
 	C.gtk_window_present((*C.GtkWindow)(p(win)))
 	C.sngl_pump_until_mapped(widget(win), 1000)

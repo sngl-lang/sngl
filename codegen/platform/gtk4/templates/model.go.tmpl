@@ -57,6 +57,18 @@ static void sngl_emit(gpointer instance, const char *signal) {
 static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
+
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
 {{- if .NeedsSlotAnchor}}
 
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
@@ -210,6 +222,14 @@ func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	t := time.Date(int(C.g_date_time_get_year(dt)), time.Month(C.g_date_time_get_month(dt)),
 		int(C.g_date_time_get_day_of_month(dt)), 0, 0, 0, 0, time.UTC)
 	return &t
+}
+
+// snglCalendarSelect selects t's day on a GtkCalendar; nil selects nothing.
+func snglCalendarSelect(c *C.GtkCalendar, t *time.Time) {
+	if t == nil {
+		return
+	}
+	C.sngl_calendar_select(c, C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
 }
 {{end}}
 {{- if .NeedsBoolToInt}}

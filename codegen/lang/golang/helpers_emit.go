@@ -47,6 +47,8 @@ type HelperSet struct {
 	// legal on an addressable operand, so the box is a helper rather than an
 	// operator -- see the IsOptionWrap arm of evalConversion.
 	NeedSome bool
+	// NeedOptEq: an option compared with a value of its element (OptionCompare).
+	NeedOptEq bool
 	// UnitStrings are the unit decls some string conversion renders, in the
 	// order first seen. One helper each rather than one shared: a unit's bases
 	// are per declaration, so the terms have to be written out.
@@ -144,6 +146,10 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 				h.NeedSome = true
 			}
 			h.needUnitString(UnitStringConversion(n))
+		case *ir.Binary:
+			if _, _, ok := OptionCompare(n); ok {
+				h.NeedOptEq = true
+			}
 		}
 		return nil
 	})
@@ -270,6 +276,14 @@ func (h HelperSet) Emit() string {
 		// option. It is also what makes a non-addressable operand work.
 		b.WriteString(`func snglSome[T any](v T) *T {
 	return &v
+}
+
+`)
+	}
+	if h.NeedOptEq {
+		// An option equals a value when it holds one and that one is equal.
+		b.WriteString(`func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
 }
 
 `)

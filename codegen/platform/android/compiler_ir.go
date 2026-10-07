@@ -182,10 +182,16 @@ type irAndroidBind struct {
 }
 
 // stateTypeArg returns an explicit type argument ("<String?>") for
-// mutableStateOf when Kotlin can't infer the element type from the
-// initializer — i.e. when the init is `null`. The bind's ktType already
-// carries the nullable form (option<T> → "T?", dyn → "Any?").
+// mutableStateOf when Kotlin would infer the wrong type from the initializer:
+// a nullable var, whatever it starts as, and a `null` initializer. The bind's
+// ktType already carries the nullable form (option<T> → "T?", dyn → "Any?").
 func stateTypeArg(bind irAndroidBind, initVal string) string {
+	// An option var starts from whatever its initializer is, which may be a
+	// value: Kotlin infers the state's type from it, and a later write of null
+	// does not compile. `datepicker(value=d)` keeps such a cell.
+	if strings.HasSuffix(bind.ktType, "?") {
+		return "<" + bind.ktType + ">"
+	}
 	if strings.TrimSpace(initVal) == "null" {
 		t := bind.ktType
 		if t == "" {

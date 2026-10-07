@@ -37,6 +37,7 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/widget.NewLabel":             widget.NewLabel,
 	"fyne.io/fyne/v2/widget.NewButton":            widget.NewButton,
 	"fyne.io/fyne/v2/widget.NewCheck":             widget.NewCheck,
+	"fyne.io/fyne/v2/widget.NewDateEntry":         widget.NewDateEntry,
 	"fyne.io/fyne/v2/widget.NewEntry":             widget.NewEntry,
 	"fyne.io/fyne/v2/widget.NewMultiLineEntry":    widget.NewMultiLineEntry,
 	"fyne.io/fyne/v2/widget.NewHyperlink":         widget.NewHyperlink,

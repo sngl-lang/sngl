@@ -42,9 +42,11 @@ output {
 package main
 
 import (
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 	"time"
 )
@@ -60,7 +62,11 @@ func mustParseDate(s string) time.Time {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	picked__inst0  *time.Time
+	changes__inst0 int
 	visible__inst1 bool
+	__focusID      int
+
+	widget0 tui.DateInput
 
 	width, height int
 }
@@ -69,7 +75,12 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.picked__inst0 = nil
+	m.changes__inst0 = 0
 	m.visible__inst1 = true
+	m.__focusID = 0
+	m.widget0 = tui.NewDateInput()
+	m.widget0.SetDate(m.picked__inst0)
+	m.resizeWidgets()
 	return m
 }
 
@@ -77,6 +88,24 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+	m.resizeWidgets()
+}
+
+// resizeWidgets sizes each bubbles widget to the current terminal extent.
+func (m *Model) resizeWidgets() {
+	m.widget0.SetWidth(tui.WidgetWidth(m.width))
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		m.__focusID = 0
+	}
 }
 
 func (m Model) Picked__inst0() *time.Time {
@@ -85,6 +114,7 @@ func (m Model) Picked__inst0() *time.Time {
 
 func (m Model) SetPicked__inst0(v *time.Time) Model {
 	m.picked__inst0 = v
+	m.widget0.SetDate(m.picked__inst0)
 	return m
 }
 
@@ -92,6 +122,21 @@ type setPicked__inst0Msg struct{ value *time.Time }
 
 func SetPicked__inst0Cmd(v *time.Time) tea.Cmd {
 	return func() tea.Msg { return setPicked__inst0Msg{value: v} }
+}
+
+func (m Model) Changes__inst0() int {
+	return m.changes__inst0
+}
+
+func (m Model) SetChanges__inst0(v int) Model {
+	m.changes__inst0 = v
+	return m
+}
+
+type setChanges__inst0Msg struct{ value int }
+
+func SetChanges__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setChanges__inst0Msg{value: v} }
 }
 
 func (m Model) Visible__inst1() bool {
@@ -110,7 +155,7 @@ func SetVisible__inst1Cmd(v bool) tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -120,11 +165,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setPicked__inst0Msg:
 		m = m.SetPicked__inst0(msg.value)
+	case setChanges__inst0Msg:
+		m = m.SetChanges__inst0(msg.value)
 	case setVisible__inst1Msg:
 		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.resizeWidgets()
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
@@ -135,9 +183,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m, nil
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		}
+	}
+	if m.__focusID == 0 {
+		m.widget0, cmd = m.widget0.Update(msg)
+		cmds = append(cmds, cmd)
+		m.picked__inst0 = m.widget0.Date()
+		if __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {
+			m.__widget0_change(m.widget0.Date())
 		}
 	}
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) __widget0_change(__v *time.Time) {
+	m.changes__inst0 += 1
+}
+
+// dChange types v into the #d widget and runs its @change; for tests.
+func (m *Model) dChange(v *time.Time) {
+	m.widget0.SetDate(v)
+	m.picked__inst0 = m.widget0.Date()
+	m.__widget0_change(v)
 }
 
 func (m Model) View() tea.View {
@@ -145,17 +216,11 @@ func (m Model) View() tea.View {
 	if m.visible__inst1 {
 		var contentChildren []string
 		var content_0 string
-		if m.picked__inst0 != nil {
-			content_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((*(m.picked__inst0)))))
-		} else {
-			content_0 = lipgloss.NewStyle().Render(fmt.Sprint(""))
-		}
-		if content_0 != "" {
-			contentChildren = append(contentChildren, content_0)
-		}
+		content_0 = m.widget0.View()
+		contentChildren = append(contentChildren, content_0)
 		var __lt0 string
 		if m.picked__inst0 != nil {
-			__lt0 = fmt.Sprint((*(m.picked__inst0)))
+			__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
 		} else {
 			__lt0 = "none"
 		}
@@ -183,7 +248,6 @@ func main() {
 package main
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -209,7 +273,7 @@ type Model struct {
 
 	__n0    *fynelayout.Toplevel
 	__n2    *fyne.Container
-	d       *widget.Label
+	d       *widget.DateEntry
 	__n1    *widget.Label
 	__built bool
 }
@@ -231,19 +295,26 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	m.__n0.SetVisible(m.visible__inst1)
 }
 
-func (m *Model) d_change_handler() {
-	m.changes__inst0 += 1
-}
-
-func (m *Model) d_value_handler(__value *time.Time) {
-	m.picked__inst0 = __value
+func (m *Model) d_change_handler(d *time.Time) {
+	m.picked__inst0 = d
+	m.d.SetDate(m.picked__inst0)
 	var __lt0 string
 	if m.picked__inst0 != nil {
-		__lt0 = fmt.Sprint((*(m.picked__inst0)))
+		__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
 		__lt0 = "none"
 	}
 	m.__n1.SetText(__lt0)
+	m.changes__inst0 += 1
+}
+
+// dChange invokes the OnChanged callback on the #d widget; for tests.
+func (m *Model) dChange(d *time.Time) {
+	if cb := m.d.OnChanged; cb != nil {
+		m.d.OnChanged = nil
+		cb(d)
+		m.d.OnChanged = cb
+	}
 }
 
 func (m *Model) Picked__inst0() *time.Time {
@@ -281,12 +352,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n2 = container.NewVBox()
-	m.d = widget.NewLabel("")
-	m.d.SetText("")
+	m.d = widget.NewDateEntry()
+	m.d.SetDate(m.picked__inst0)
+	m.d.SetPlaceHolder("")
+	m.d.OnChanged = m.d_change_handler
 	m.__n2.Add(m.d)
 	var __lt1 string
 	if m.picked__inst0 != nil {
-		__lt1 = fmt.Sprint((*(m.picked__inst0)))
+		__lt1 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
 		__lt1 = "none"
 	}
@@ -432,6 +505,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -452,7 +537,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 import "C"
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 	"unsafe"
 )
@@ -465,6 +550,11 @@ func mustParseDate(s string) time.Time {
 	return t
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
 // option<date> is in Go. A calendar always has a day selected.
 func snglCalendarDate(c *C.GtkCalendar) *time.Time {
@@ -473,6 +563,14 @@ func snglCalendarDate(c *C.GtkCalendar) *time.Time {
 	t := time.Date(int(C.g_date_time_get_year(dt)), time.Month(C.g_date_time_get_month(dt)),
 		int(C.g_date_time_get_day_of_month(dt)), 0, 0, 0, 0, time.UTC)
 	return &t
+}
+
+// snglCalendarSelect selects t's day on a GtkCalendar; nil selects nothing.
+func snglCalendarSelect(c *C.GtkCalendar, t *time.Time) {
+	if t == nil {
+		return
+	}
+	C.sngl_calendar_select(c, C.int(t.Year()), C.int(t.Month()), C.int(t.Day()))
 }
 
 func boolToInt(b bool) int {
@@ -484,14 +582,20 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	picked__inst0  *time.Time
-	changes__inst0 int
-	visible__inst1 bool
-	__n0           *C.GtkBox
-	__n2           *C.GtkBox
-	d              *C.GtkCalendar
-	__n1           *C.GtkLabel
-	__root         *C.GtkBox
+	picked__inst0       *time.Time
+	changes__inst0      int
+	visible__inst1      bool
+	__effect0_key       *time.Time
+	__effect0_live      []*time.Time
+	__effect0_desired   []*time.Time
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
+	__n0                *C.GtkBox
+	__n2                *C.GtkBox
+	d                   *C.GtkCalendar
+	__n1                *C.GtkLabel
+	__root              *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
@@ -501,7 +605,68 @@ func New() *Model {
 	m.picked__inst0 = nil
 	m.changes__inst0 = 0
 	m.visible__inst1 = true
+	m.__effect0_key = nil
+	m.__effect0_live = []*time.Time{}
+	m.__effect0_desired = []*time.Time{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	if m.__effect0_key != nil {
+		C.sngl_calendar_select(m.d, C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10, 64)
+			return int(__v)
+		}()), C.int(func() int {
+			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10, 64)
+			return int(__v)
+		}()))
+	}
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []*time.Time{}
+	m.__effect0_desired = append(m.__effect0_desired, m.picked__inst0)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -515,11 +680,12 @@ func (m *Model) d_daySelected_handler() {
 	m.picked__inst0 = snglCalendarDate((*C.GtkCalendar)(unsafe.Pointer(m.d)))
 	var __lt0 string
 	if m.picked__inst0 != nil {
-		__lt0 = fmt.Sprint((*(m.picked__inst0)))
+		__lt0 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
 		__lt0 = "none"
 	}
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt0))
+	m.__effects0_settle()
 	m.changes__inst0 += 1
 }
 
@@ -563,7 +729,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.d)))
 	var __lt1 string
 	if m.picked__inst0 != nil {
-		__lt1 = fmt.Sprint((*(m.picked__inst0)))
+		__lt1 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
 		__lt1 = "none"
 	}
@@ -571,6 +737,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n1)), C.CString(__lt1))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n2)), (*C.GtkWidget)(unsafe.Pointer(m.__n1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
+	m.__effects0_settle()
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }
 
@@ -584,7 +751,8 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 }
 
 // dChange fires the "day-selected" signal on the #d widget; for tests.
-func (m *Model) dChange() {
+func (m *Model) dChange(v *time.Time) {
+	snglCalendarSelect((*C.GtkCalendar)(unsafe.Pointer(m.d)), v)
 	sig := C.CString("day-selected")
 	defer C.free(unsafe.Pointer(sig))
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.d)), sig)
@@ -641,11 +809,101 @@ fun MainScreen() {
             }
         }
         Column(modifier = Modifier.safeDrawingPadding()) {
-            OutlinedTextField(value = (if ((picked__inst0 != null)) picked__inst0!!.toString() else ""), readOnly = true, modifier = Modifier.testTag("d"), onValueChange = {})
+            SnglDateField(value = picked__inst0, label = "", enabled = true, modifier = Modifier.testTag("d"), onValueChange = { v ->
+                picked__inst0 = v
+                changes__inst0 += 1
+            })
             Text(text = (if ((picked__inst0 != null)) picked__inst0!!.toString() else "none"), modifier = Modifier)
         }
     }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglDateField.kt --
+package test.sngl.app
+
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeParseException
+
+// SnglDateField is sngl:ui's datepicker: a field a date is typed into, as the
+// "YYYY-MM-DD" a SNGL date is on this target, with a button beside it opening
+// Material's date picker. What is typed is reported once it is a date, and
+// clearing the field reports none; the dialog's OK reports the day picked and
+// Cancel nothing.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SnglDateField(
+    value: String?,
+    label: String,
+    enabled: Boolean,
+    modifier: Modifier,
+    onValueChange: (String?) -> Unit,
+) {
+    // The text is the field's own while it is half a date, and starts again
+    // from the value whenever the value changes from outside.
+    var text by remember(value) { mutableStateOf(value ?: "") }
+    var open by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            text = typed
+            if (typed.isEmpty()) {
+                onValueChange(null)
+            } else {
+                parseDate(typed)?.let { onValueChange(it) }
+            }
+        },
+        enabled = enabled,
+        singleLine = true,
+        label = if (label.isEmpty()) null else ({ Text(label) }),
+        trailingIcon = {
+            TextButton(onClick = { open = true }, enabled = enabled) { Text("Pick") }
+        },
+        modifier = modifier,
+    )
+    if (open) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = (value?.let { parseDate(it) })?.let {
+                LocalDate.parse(it).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    open = false
+                    state.selectedDateMillis?.let {
+                        onValueChange(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString())
+                    }
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = state)
+        }
+    }
+}
+
+// The date s is in "YYYY-MM-DD", or null when it is not one.
+private fun parseDate(s: String): String? =
+    try {
+        LocalDate.parse(s).toString()
+    } catch (e: DateTimeParseException) {
+        null
+    }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from datepicker_two_way.sngl; DO NOT EDIT. -->
 
@@ -690,12 +948,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:23379b7446b31f995528c23ada21c61e
+pass sha256:8caf753c0d64b94362e7010fc2ad7237
 -- run/go/fyne --
-pass sha256:1c9aa0c35f256a991ba3289b3b28ca41
+pass sha256:7e92ed6641bf93986c30f43e498d2273
 -- run/go/gtk4 --
-pass sha256:958e441c2ccecd1caf7ff9150eb30352
+pass sha256:9828414ec7d6ab14c99c11233c3f2eb7
 -- run/kotlin/android --
-pass sha256:d145beaefaad72e4aedecb78b5e25be0
+pass sha256:c38d91fe23b27866961fd61e22fb70b2
 -- run/none/html --
 pass sha256:02fe5dd5ca0f2482321ba29abd52b061

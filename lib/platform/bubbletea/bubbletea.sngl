@@ -285,14 +285,24 @@ const component ui.textarea[platform] {
     ) {}
 }
 
-// An unpicked date has nothing to show, so the field falls back to its
-// placeholder rather than to the zero date.
+// A date is typed, as YYYY-MM-DD, into tui.DateInput: a text field read as
+// the *time.Time an option<date> is in Go, nil until what is typed is a date.
 const component ui.datepicker[platform] {
-    if value != null {
-        Styled(content=string(value), style={...style}) {}
-    } else {
-        Styled(content=placeholder, style={...style}) {}
-    }
+    Widget(
+        model = Model{
+            type = "tui.DateInput",
+            new = "tui.NewDateInput()",
+            view = ".View()",
+            update = ".Update(msg)",
+            init = "textinput.Blink",
+            pkg = "charm.land/bubbles/v2/textinput",
+            resize = ".SetWidth($\{w\})",
+        },
+        focus = Focus{enabled=true},
+        binds = [Bind{prop="value", get=".Date()", set=".SetDate"}],
+        placeholder = placeholder,
+        style = {...style},
+    ) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---

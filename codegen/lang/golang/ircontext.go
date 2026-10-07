@@ -220,6 +220,19 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
 		return out
 	}
+	// option<T> against a T: Go's option is *T, and comparing the pointer
+	// with a value does not compile. Each operand is evaluated once.
+	if optLeft, _, ok := OptionCompare(n); ok {
+		opt, val := left, right
+		if !optLeft {
+			opt, val = right, left
+		}
+		eq := "snglOptEq(" + opt + ", " + val + ")"
+		if n.Op == ast.BinNeq {
+			return "!" + eq
+		}
+		return eq
+	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
 }
 
@@ -1610,6 +1623,17 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 				return s
 			}
 		}
+		// And a computed string the same way: the helper is what reads one.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeString {
+			switch {
+			case ir.IsDateStruct(n.Type):
+				return "mustParseDate(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsTimeStruct(n.Type):
+				return "mustParseTime(" + gc.EvalExpr(n.Operand) + ")"
+			case ir.IsDateTimeStruct(n.Type):
+				return "mustParseDateTime(" + gc.EvalExpr(n.Operand) + ")"
+			}
+		}
 	}
 	// `null` into a nillable target takes Go's untyped nil directly: plain
 	// conversion would give `*string(nil)`, which is not valid Go.
@@ -1662,6 +1686,24 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		// An enum value is the string of its member's name already.
 		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeEnum {
 			return operand
+		}
+		// A date, time or datetime is the literal it was written as on every
+		// other target, since each holds it as that string. Go holds a
+		// time.Time, so it writes the same spelling back: fmt.Sprint wrote
+		// "2024-03-05 00:00:00 +0000 UTC".
+		if src := n.Operand.ExprType(); src != nil {
+			switch {
+			case ir.IsDateStruct(src):
+				return operand + `.Format("2006-01-02")`
+			case ir.IsDateTimeStruct(src):
+				gc.RequireImport("time")
+				return operand + ".Format(time.RFC3339)"
+			case ir.IsTimeStruct(src):
+				// HH:MM, or HH:MM:SS where it has seconds: the two spellings
+				// a time literal takes.
+				gc.RequireImport("time")
+				return "func(t time.Time) string { if t.Second() == 0 { return t.Format(\"15:04\") }; return t.Format(\"15:04:05\") }(" + operand + ")"
+			}
 		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
@@ -2452,4 +2494,26 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 		cp.Value = "_"
 	}
 	return &cp
+}
+
+// OptionCompare reports whether n compares an option with a value of its
+// element type (== or !=), and whether the option is the left operand. A
+// comparison with null, or of two options, is the pointer comparison Go
+// already spells.
+func OptionCompare(n *ir.Binary) (optionLeft, valueRight, ok bool) {
+	if n == nil || (n.Op != ast.BinEq && n.Op != ast.BinNeq) {
+		return false, false, false
+	}
+	lt, rt := n.Left.ExprType(), n.Right.ExprType()
+	isOpt := func(t *ir.Type) bool { return t != nil && t.Kind == ir.TypeOption }
+	isVal := func(t *ir.Type) bool {
+		return t != nil && t.Kind != ir.TypeOption && t.Kind != ir.TypeNull && t.Kind != ir.TypeDyn
+	}
+	switch {
+	case isOpt(lt) && isVal(rt):
+		return true, true, true
+	case isOpt(rt) && isVal(lt):
+		return false, true, true
+	}
+	return false, false, false
 }

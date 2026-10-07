@@ -335,9 +335,9 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:row">
-  <span style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px">JD</span>
-  <img style="border-radius:4px;height:40px;width:40px" alt="" src="https://example.com/a.png"/>
-  <span style="align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px">XY</span>
+  <span class="sngl-avatar sngl-avatar-medium sngl-avatar-circle" style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;width:40px">JD</span>
+  <img class="sngl-avatar sngl-avatar-medium sngl-avatar-square" style="border-radius:4px;height:40px;width:40px" alt="" src="https://example.com/a.png"/>
+  <span class="sngl-avatar sngl-avatar-large sngl-avatar-circle" style="align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;width:64px">XY</span>
 </div>
 
 <script>
@@ -354,4 +354,4 @@ pass sha256:d8e06546423ab5fb227261278e385a16
 -- run/kotlin/android --
 pass sha256:750037fe93b8adb59f85e03582441768
 -- run/none/html --
-pass sha256:2c4cced03fd15eba70bc9a2718074d84
+pass sha256:ce1ec6245bf3878e338ab4cd8f7db967

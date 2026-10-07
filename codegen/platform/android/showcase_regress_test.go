@@ -217,11 +217,10 @@ ui.window {
 	if !strings.Contains(out, "RadioButton(selected = (size == opt)") {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
-	// datepicker: a field showing the value (not bare Text). `value` is an
-	// option<date>, so what the field shows is the date under a null test --
-	// a date nobody picked shows nothing rather than the zero date.
-	if !strings.Contains(out, "OutlinedTextField(") || !strings.Contains(out, "dob != null") {
-		t.Errorf("datepicker not rendered as a value-bound field:\n%s", out)
+	// datepicker: SnglDateField, the field a date is typed or picked in,
+	// handed the bound option<date> itself and writing a pick back to it.
+	if !strings.Contains(out, "SnglDateField(value = dob") || !strings.Contains(out, "dob = v") {
+		t.Errorf("datepicker not rendered as a value-bound SnglDateField:\n%s", out)
 	}
 }
 

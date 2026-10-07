@@ -1,0 +1,103 @@
+# A test drives a datepicker on every target: `c.d.change({value = day})`
+# commits a date, which the `:value` binding writes back.
+#
+# Each target's datepicker is an input with a value a test can put there:
+# html's date input, gtk4's GtkCalendar (the invoker selects the day, then
+# fires day-selected), fyne's DateEntry, bubbletea's tui.DateInput (a
+# YYYY-MM-DD text field), android's SnglDateField and the interpreter's own.
+# bubbletea and fyne used to render a label, which nothing could drive.
+#
+# gtk4's override names its calendar `#cal` for the effect that selects the
+# bound date, and the call site names it `#d`: the effect's read of `cal`
+# follows the node to the call site's handle, or it named a field nothing
+# builds.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import time "sngl:time"
+
+component picker node {
+    var picked option<time.date> = null
+    datepicker #d(:value=picked)
+}
+
+func testPick(t Test, c picker) {
+    var day time.date = "2024-03-05"
+    c.d.change({value = day})
+    t.assert(c.picked == day)
+}
+-- testrun/android/kotlin/app.sngl/picker/1 --
+sha256:4523baf012c7a8eb9b8a22ec7360bd5d
+{
+  "results": [
+    {
+      "Desc": "Pick",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/picker/1 --
+sha256:af90fee4f436fc2a57b47bebfbe8f5cd
+{
+  "results": [
+    {
+      "Desc": "Pick",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/picker/1 --
+sha256:a0dd27614547201f48281877fe573059
+{
+  "results": [
+    {
+      "Desc": "Pick",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/picker/1 --
+sha256:cf9681788dd3582bd513160af2f234a8
+{
+  "results": [
+    {
+      "Desc": "Pick",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/picker/1 --
+sha256:4bfcee6c76eeb11eda4a52abe84f0bbc
+{
+  "results": [
+    {
+      "Desc": "Pick",
+      "Passed": true
+    }
+  ]
+}

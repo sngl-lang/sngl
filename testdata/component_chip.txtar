@@ -389,18 +389,16 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:row">
-  <div style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:flex;flex-direction:row;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+  <span class="sngl-chip" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Tag</span>
-  </div>
-  <div style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:flex;flex-direction:row;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+  </span>
+  <span class="sngl-chip" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Removable</span>
-    <button>
-      <span>×</span>
-    </button>
-  </div>
-  <div style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:flex;flex-direction:row;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
+    <button class="sngl-chip-remove">×</button>
+  </span>
+  <span class="sngl-chip sngl-chip-success" style="align-items:center;border-color:#cccccc;border-radius:16px;border-width:1px;border-style:solid;display:inline-flex;gap:4px;opacity:1;padding-left:12px;padding-right:12px;padding-top:4px;padding-bottom:4px">
     <span>Success</span>
-  </div>
+  </span>
 </div>
 
 <script>
@@ -417,4 +415,4 @@ pass sha256:e0fe5bf7d06d371eb758c93325d56913
 -- run/kotlin/android --
 pass sha256:b9023704353c4c24ebac486c7b67bdfe
 -- run/none/html --
-pass sha256:63057098d259661ebfd243c58c3b9177
+pass sha256:be53fdf14e7d01ce332e06ea00848b80

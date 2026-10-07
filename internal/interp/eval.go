@@ -2611,15 +2611,18 @@ func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {
 				break
 			}
 			if lv, ok := stmt.(*ir.LocalVar); ok {
+				// A local written with no initializer is bound all the same,
+				// as Exec binds one: skipped, a read of it found nothing.
+				var v any
 				if lv.Init != nil {
-					v, err := execEnv.Eval(lv.Init)
-					if err != nil {
+					var err error
+					if v, err = execEnv.Eval(lv.Init); err != nil {
 						restoreVoid()
 						return nil, err
 					}
-					execEnv.Set(lv.Sym, CopyValue(v))
-					localVars = append(localVars, lv.Sym)
 				}
+				execEnv.Set(lv.Sym, CopyValue(v))
+				localVars = append(localVars, lv.Sym)
 				continue
 			}
 			if err := execEnv.Exec(stmt); err != nil {

@@ -450,6 +450,18 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+// Selects a day the way a click on it does, for gtk4's datepicker override
+// (selectDay) and a test's invoker. select_day is the call every GTK 4 has;
+// 4.20 deprecates it for set_date, which the older ones lack.
+static void sngl_calendar_select(GtkCalendar *c, int y, int m, int d) {
+    GDateTime *dt = g_date_time_new_utc(y, m, d, 0, 0, 0);
+    if (dt == NULL) return;
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(c, dt);
+    G_GNUC_END_IGNORE_DEPRECATIONS
+    g_date_time_unref(dt);
+}
+
 static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
     if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
     GtkWidget *w = gtk_label_new(NULL);
@@ -817,7 +829,7 @@ pass sha256:1e5220570df317fa47637c48a85a35c5
 -- run/go/fyne --
 pass sha256:f2ce1d7ee03866d5d93631252e843fee
 -- run/go/gtk4 --
-pass sha256:abe97216fd6cbd75b4e5fad002e566f2
+pass sha256:06902010e580b7f8063e749c7eb12a69
 -- run/kotlin/android --
 pass sha256:fdef94f62b1b9847544fab17cb438d99
 -- run/none/html --

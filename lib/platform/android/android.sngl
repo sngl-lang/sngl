@@ -254,6 +254,22 @@ component OutlinedTextField(
     label         component ui.node,
 ) ui.node
 
+// A field a date is typed into, with a button opening Material's date picker.
+// It is Kotlin the platform ships with the app (codegen/platform/android/
+// datefield.kt), since the half-typed text and whether the dialog is open are
+// state its render reads, and a const override has nowhere to hold that.
+// `onValueChange` is a date once one is typed or picked, or null when the
+// field is cleared.
+#[gen.renders(identity)]
+#[intrinsic("android:SnglDateField")]
+component SnglDateField(
+    value         option<time.date>,
+    label         string,
+    enabled       bool,
+    modifier      ui.Style,
+    onValueChange func(value option<time.date>),
+) ui.node
+
 #[gen.renders(identity)]
 #[intrinsic("android:Dialog")]
 component Dialog(

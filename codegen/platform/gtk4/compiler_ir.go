@@ -483,6 +483,12 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 	var eventInvokersBuf strings.Builder
 	emitEventInvokers(&eventInvokersBuf, vc.eventInvokers, c.wrapped)
+	for _, inv := range vc.eventInvokers {
+		// A calendar's invoker selects the day through the template's helper.
+		if inv.WidgetType == "GtkCalendar" {
+			c.shared.calendarDate = true
+		}
+	}
 
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {
@@ -778,8 +784,12 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 }
 
 // calendarDateHelper is the template's Go function reading a GtkCalendar's
-// selected day; emitShared.calendarDate says it is called.
-const calendarDateHelper = "snglCalendarDate"
+// selected day, and calendarSelectHelper the one selecting a day;
+// emitShared.calendarDate says they are called.
+const (
+	calendarDateHelper   = "snglCalendarDate"
+	calendarSelectHelper = "snglCalendarSelect"
+)
 
 // cgoGBoolean calls a getter returning gboolean, which cgo types as C.int: Go
 // converts no integer to bool, so the read is a comparison.
@@ -1393,6 +1403,16 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 				preFire = fmt.Sprintf("gtk4rt.EditableSetTextQuiet(m.%s, v)", inv.FieldName)
 			} else {
 				preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.%s)), __v)", inv.FieldName)
+			}
+		}
+		// A calendar's carries the day picked, which the invoker selects
+		// before firing day-selected, as a click on the day does.
+		if inv.WidgetType == "GtkCalendar" {
+			valueParam = "v *time.Time"
+			if wrapped {
+				preFire = fmt.Sprintf("gtk4rt.CalendarSelectDate(m.%s, v)", inv.FieldName)
+			} else {
+				preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(m.%s)), v)", calendarSelectHelper, inv.FieldName)
 			}
 		}
 		switch {

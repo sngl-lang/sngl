@@ -161,6 +161,7 @@ component Widget(
     number      int,
     flag        bool,
     options     list<string>,
+    date        option<time.date>,
     style       ui.Style,
     @click      ui.ClickEvent,
     @change     ui.ChangeEvent,
@@ -569,8 +570,33 @@ const component ui.progress[platform] {
 // reports a selection: Fyne has no date widget among the twelve wrapped here,
 // so the Label is a stub standing in for one rather than a picker whose value
 // has nowhere to go.
+// Fyne's DateEntry takes a typed date or one picked from its calendar button,
+// and reports it as the *time.Time an option<date> is in Go, nil when cleared.
+const component DateEntry(
+    value       option<time.date>,
+    placeholder string,
+    style       ui.Style,
+    @change     ui.DateEvent,
+) ui.node {
+    Widget(
+        spec = Spec{
+            new = Native{path="fyne.io/fyne/v2/widget", name="NewDateEntry"},
+            goType = Native{path="fyne.io/fyne/v2/widget", name="*DateEntry"},
+            setters = [
+                Setter{prop="date", call="SetDate"},
+                Setter{prop="placeholder", call="SetPlaceHolder"},
+            ],
+            handlers = [Handler{on="change", field="OnChanged", signature="func(d *time.Time)", param="d"}],
+        },
+        date = value,
+        placeholder = placeholder,
+        style = {...style},
+        @change { change() },
+    ) {}
+}
+
 const component ui.datepicker[platform] {
-    Label(text=placeholder, style={...style}) {}
+    DateEntry(value=value, placeholder=placeholder, style={...style}, @change { change() }) {}
 }
 
 // --- Controls ---

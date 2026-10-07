@@ -174,34 +174,20 @@ const component ui.textarea[platform] {
     // takes the value rather than the other event.
 }
 
-// A read-only field showing the date, not a calendar: Material3's date-picker
-// dialog is a second surface with its own open state, which an override cannot
-// hold (see select). An unpicked date shows nothing -- the `option` is what
-// distinguishes that from the zero date, which would otherwise pre-fill every
-// field with the first day of year one. Compose's onValueChange is not
-// optional even on a read-only field, so the argument is written and never
-// reached.
-//
-// A ternary here rather than the two calls the other platforms' progress
-// overrides write: Kotlin has a conditional expression, so nothing lowers this
-// one to a temporary, and duplicating the call would duplicate the label slot
-// with it.
-// The field is read-only and opens no picker, so the user never picks a date
-// here and nothing reports one: a write-back from the field's own text event
-// would put its text in a date.
+// A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
+// button beside the field. The half-typed text and the dialog's open state are
+// SnglDateField's own, in Kotlin, because a const override has nowhere to hold
+// state its render reads (see select). An
+// unpicked date shows nothing -- the `option` is what distinguishes that from
+// the zero date, the first day of year one.
 const component ui.datepicker[platform] {
-    OutlinedTextField(
-        value = (value != null ? string(value) : ""),
-        readOnly = true,
+    SnglDateField(
+        value = value,
+        label = placeholder,
+        enabled = disabled == false,
         modifier = {...style},
-        onValueChange = func(e) {},
-    ) {
-        component label {
-            if placeholder != "" {
-                Text(text=placeholder) {}
-            }
-        }
-    }
+        onValueChange = func(v) { change({value=v}) },
+    ) {}
 }
 
 // --- Tier 2: Feedback & Navigation ---

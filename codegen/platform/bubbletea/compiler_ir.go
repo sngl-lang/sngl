@@ -92,6 +92,8 @@ func bindReadBack(field, get string) string {
 var widgetSyncGoTypes = map[string]struct{}{
 	"string": {},
 	"int":    {},
+	// An option<date>, which tui.DateInput reads and writes.
+	"*time.Time": {},
 }
 
 // bindTargetSyncs keeps the constructor seed, the Set* setter and the Update
@@ -1018,7 +1020,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		} else {
 			fmt.Fprintf(b, "%s{\n", fwdIndent)
 		}
-		get, hasInput, hasChange := widgetPayloadEvents(w)
+		val, hasInput, hasChange := widgetPayloadEvents(w)
+		get := val.get
 		if hasInput {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
@@ -1256,28 +1259,47 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads
 	}
 }
 
-// widgetPayloadEvents reports which of a text widget's payload events the
-// program handles, and the getter its value is read back through. @input
-// fires when an Update changed the text; @change, on Enter in a single-line
-// input, is the commit. Only a widget read back with .Value() carries text.
-func widgetPayloadEvents(w widgetInfo) (get string, input, change bool) {
+// widgetValue is the value a widget's events carry: how it is read back from
+// the widget and written into it, and its Go type.
+type widgetValue struct {
+	get, set, goType string
+}
+
+// widgetValues are the binds a widget's events carry the value of: a text
+// field's text, and tui.DateInput's date as the *time.Time an option<date>
+// is in Go.
+var widgetValues = []widgetValue{
+	{get: ".Value()", set: ".SetValue", goType: "string"},
+	{get: ".Date()", set: ".SetDate", goType: "*time.Time"},
+}
+
+// widgetPayloadEvents reports which of a widget's payload events the program
+// handles, and the value they carry. @input fires when an Update changed the
+// value; @change, on Enter in a single-line field, is the commit. Only a
+// widget bound through one of widgetValues carries a value.
+func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 	if w.node == nil {
-		return "", false, false
+		return widgetValue{}, false, false
 	}
 	for _, bd := range w.binds {
-		if bd.get == ".Value()" && bd.set == ".SetValue" {
-			get = bd.get
+		for _, wv := range widgetValues {
+			if bd.get == wv.get && bd.set == wv.set {
+				val = wv
+			}
+		}
+		if val.get != "" {
 			break
 		}
 	}
-	if get == "" {
-		return "", false, false
+	if val.get == "" {
+		return widgetValue{}, false, false
 	}
 	has := func(event string) bool {
 		h := codegen.NodeHandler(w.node, event)
 		return h != nil && h.Func != nil
 	}
-	return get, has("input"), has("change") && w.model.Type == "textinput.Model"
+	singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
+	return val, has("input"), has("change") && singleLine
 }
 
 func widgetEventMethod(w widgetInfo, event string) string {
@@ -1293,15 +1315,30 @@ func widgetEventMethod(w widgetInfo, event string) string {
 // carries: the event types are declarations nothing else here emits.
 func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	for _, w := range info.widgets {
-		get, hasInput, hasChange := widgetPayloadEvents(w)
-		// A text widget whose only subscriber is its binding -- a cell the
-		// call site left unbound, or a `:value` with no @input -- still takes
-		// a test's typing: into the widget, and back into the var the way
+		val, hasInput, hasChange := widgetPayloadEvents(w)
+		get := val.get
+		if strings.Contains(val.goType, "time.") {
+			gc.RequireImport("time")
+		}
+		// A widget whose only subscriber is its binding -- a cell the call
+		// site left unbound, or a `:value` with no handler -- still takes a
+		// test's value: into the widget, and back into the var the way
 		// Update writes it.
-		if get != "" && !hasInput && w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n") {
-			fmt.Fprintf(b, "// %sInput types v into the #%s widget; for tests.\n", w.node.ID, w.node.ID)
-			fmt.Fprintf(b, "func (m *Model) %sInput(v string) {\n", w.node.ID)
-			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+		named := w.node.ID != "" && !strings.HasPrefix(w.node.ID, "__n")
+		singleLine := w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput"
+		for _, ev := range []struct {
+			name string
+			want bool
+		}{
+			{"input", get != "" && !hasInput && val.goType == "string"},
+			{"change", get != "" && !hasChange && singleLine},
+		} {
+			if !ev.want || !named {
+				continue
+			}
+			fmt.Fprintf(b, "// %s%s puts v in the #%s widget; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v %s) {\n", w.node.ID, golang.ExportName(ev.name), val.goType)
+			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			for _, bd := range w.binds {
 				if bindTargetSyncs(info.binds, bd.target) {
 					fmt.Fprintf(b, "\tm.%s = %s\n", bd.target, bindReadBack(w.fieldName, bd.get))
@@ -1318,11 +1355,11 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			}
 			h := codegen.NodeHandler(w.node, ev.name)
 			hgc := gc
-			fmt.Fprintf(b, "func (m *Model) %s(__v string) {\n", widgetEventMethod(w, ev.name))
+			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", widgetEventMethod(w, ev.name), val.goType)
 			if len(h.Func.Params) > 0 {
 				name := h.Func.Params[0].Name
 				hgc = gc.WithLocal(name)
-				fmt.Fprintf(b, "\t%s := struct{ Value string }{Value: __v}\n\t_ = %s\n", name, name)
+				fmt.Fprintf(b, "\t%s := struct{ Value %s }{Value: __v}\n\t_ = %s\n", name, val.goType, name)
 			}
 			for _, stmt := range h.Func.Block {
 				for _, line := range hgc.EvalStmt(stmt) {
@@ -1335,8 +1372,8 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 				continue
 			}
 			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
-			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
-			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v %s) {\n", w.node.ID, golang.ExportName(ev.name), val.goType)
+			fmt.Fprintf(b, "\tm.%s%s(v)\n", w.fieldName, val.set)
 			// What Update writes back from the widget before it runs the
 			// handler, so a handler reading the bound var reads the text.
 			for _, bd := range w.binds {

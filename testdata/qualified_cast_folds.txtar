@@ -292,22 +292,32 @@ func (m Model) View() tea.View {
 	if m.visible__inst2 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst0)))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.d__inst0.Format("2006-01-02")))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst0)))
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(func(t time.Time) string {
+			if t.Second() == 0 {
+				return t.Format("15:04")
+			}
+			return t.Format("15:04:05")
+		}(m.t__inst0)))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
-		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst0)))
+		contentPart_2 = lipgloss.NewStyle().Render(fmt.Sprint(m.dt__inst0.Format(time.RFC3339)))
 		contentParts = append(contentParts, contentPart_2)
 		var contentPart_3 string
-		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d__inst1)))
+		contentPart_3 = lipgloss.NewStyle().Render(fmt.Sprint(m.d__inst1.Format("2006-01-02")))
 		contentParts = append(contentParts, contentPart_3)
 		var contentPart_4 string
-		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.t__inst1)))
+		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(func(t time.Time) string {
+			if t.Second() == 0 {
+				return t.Format("15:04")
+			}
+			return t.Format("15:04:05")
+		}(m.t__inst1)))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.dt__inst1)))
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(m.dt__inst1.Format(time.RFC3339)))
 		contentParts = append(contentParts, contentPart_5)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
@@ -441,7 +451,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8dc067f356bfa33459fe1232277dca93
+pass sha256:d4265dca71aba1632c3824bb7d20e926
 -- run/kotlin/android --
 pass sha256:7ac28414c5de6a6c9e6a5f6bfabb7984
 -- run/none/html --

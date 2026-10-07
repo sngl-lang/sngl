@@ -26,6 +26,23 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	if m := enumMemberIdent(val, typ); m != nil {
 		return m
 	}
+	if typ != nil && val != nil {
+		// A value in an option position is the element promoted, which the
+		// checker writes as a conversion around the element: Go's option is a
+		// pointer, and the bare value there does not compile.
+		if typ.Kind == ir.TypeOption && len(typ.Elems) == 1 && typ.Elems[0] != nil {
+			if inner := irFromValue(val, typ.Elems[0]); inner != nil {
+				return &ir.Conversion{Type: typ, Operand: inner}
+			}
+		}
+		// A date, time or datetime evaluates to the string it is written as,
+		// and goes back as a literal of its own type rather than a string's:
+		// a target holding a time.Time parses one where it is written, and a
+		// bare string there is a type error.
+		if s, ok := val.(string); ok && ir.StringReprStruct(typ) && !ir.IsColorStruct(typ) {
+			return &ir.Literal{Type: typ, Value: s}
+		}
+	}
 	if amounts, ok := interp.UnitAmounts(val); ok {
 		return unitValueExpr(amounts, typ)
 	}
