@@ -537,7 +537,7 @@ func collectActions(pkg *ir.Package, win *codegen.ViewCtx, targets map[*ir.Func]
 		actions = append(actions, codegen.HTTPAction{
 			Name:             fmt.Sprintf("action%d", len(actions)),
 			Mutations:        h.Func.Block,
-			LogicalMutations: logicalMutations(h.Func.Block),
+			LogicalMutations: codegen.LogicalMutations(h.Func.Block),
 		})
 	}
 	// Vars first, and the order is the contract: an action's index is the

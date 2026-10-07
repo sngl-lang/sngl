@@ -524,173 +524,65 @@ func walkFunc(f *ir.Func, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 }
 
 func walkStmts(stmts []ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	for _, s := range stmts {
-		walkStmt(s, used, walk)
-	}
+	walkNames(stmts, walk)
 }
 
 func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	if s == nil {
 		return
 	}
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		walkNode(n, used, walk)
-		walkStmts(n.Children, used, walk)
-		walkSlots(n.Slots, used, walk)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			walkCallExpr(n.Call, used, walk)
-		}
-	case *ir.SlotInst:
-		for _, a := range n.Args {
-			walkExpr(a, used, walk)
-		}
-		walkStmts(n.Children, used, walk)
-		walkSlots(n.Slots, used, walk)
-	case *ir.Assign:
-		walkExpr(n.Target, used, walk)
-		walkExpr(n.Value, used, walk)
-	case *ir.Toggle:
-		walkExpr(n.Target, used, walk)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			walkExpr(a.Value, used, walk)
-		}
-	case *ir.LocalVar:
-		walkType(n.Type, used, walk)
-		walkExpr(n.Init, used, walk)
-		// A flattened canvas carries the statements that paint it on the node
-		// it replaced. They call what the platform package's shapes call --
-		// fyne's applyStyle, gtk4's paint -- and reaching them is what keeps
-		// those declarations from being shaken as unreferenced.
-		if n.CanvasNode != nil {
-			walkStmts(n.CanvasNode.Children, used, walk)
-		}
-	case *ir.Return:
-		walkExpr(n.Value, used, walk)
-	case *ir.If:
-		walkExpr(n.Cond, used, walk)
-		walkStmts(n.Body, used, walk)
-		walkStmts(n.Else, used, walk)
-		// A catch block renders its handler where it stands, so what the handler
-		// names is used here whether or not its owner survived.
-		if n.Catch != nil && n.Catch.Func != nil {
-			walkStmts(n.Catch.Func.Block, used, walk)
-		}
-	case *ir.For:
-		walkExpr(n.Iter, used, walk)
-		walkStmts(n.Body, used, walk)
-		walkStmts(n.Else, used, walk)
-	case *ir.ContextProvider:
-		walkExpr(n.Value, used, walk)
-		walkStmts(n.Children, used, walk)
-	case *ir.ErrorBoundary:
-		if n.Handler != nil && n.Handler.Func != nil {
-			walkFunc(n.Handler.Func, used, walk)
-		}
-		walkStmts(n.Children, used, walk)
-		// The fallback renders once a raise reaches the boundary, and what it
-		// names is as used as what the content names.
-		walkStmts(n.Failed, used, walk)
-	case *ir.CanvasRedrawStmt:
-		// Carries only NodeInst/Func pointers already tracked by other walk paths.
-	case *ir.Break, *ir.Continue:
-		// A loop escape names no declaration.
-	default:
-		panic(fmt.Sprintf("walkStmt: unhandled stmt %T", n))
-	}
+	walkNames(s, walk)
 }
 
 func walkExpr(e ir.Expr, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	if e == nil {
 		return
 	}
-	switch x := e.(type) {
-	case *ir.Ident:
-		if x.Sym != nil {
-			walk(x.Sym)
-		}
-	case *ir.Binary:
-		walkExpr(x.Left, used, walk)
-		walkExpr(x.Right, used, walk)
-	case *ir.Unary:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Ternary:
-		walkExpr(x.Cond, used, walk)
-		walkExpr(x.Then, used, walk)
-		walkExpr(x.Else, used, walk)
-	case *ir.Call:
-		walkCallExpr(x, used, walk)
-	case *ir.Conversion:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Select:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Index:
-		walkExpr(x.Operand, used, walk)
-		walkExpr(x.Idx, used, walk)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			walkExpr(el, used, walk)
-		}
-	case *ir.StructLit:
-		if x.Def != nil {
-			walk(x.Def)
-		}
-		for _, f := range x.Fields {
-			walkExpr(f.Value, used, walk)
-		}
-	case *ir.Spread:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Lambda:
-		if x.Func != nil {
-			walkFunc(x.Func, used, walk)
-		}
-	case *ir.Closure:
-		if x.Func != nil {
-			walkFunc(x.Func, used, walk)
-		}
-		if x.State != nil {
-			walkExpr(x.State, used, walk)
-		}
-	case *ir.MapLitIR:
-		for _, kv := range x.Entries {
-			walkExpr(kv.Key, used, walk)
-			walkExpr(kv.Value, used, walk)
-		}
-	case *ir.ContextRead:
-		if x.Ref != nil {
-			walk(x.Ref)
-		}
-	case *ir.Literal:
-		// No subexpressions or referenced symbols.
-	default:
-		panic(fmt.Sprintf("walkExpr: unhandled expr %T", x))
-	}
+	walkNames(e, walk)
 }
 
-func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if call.Func != nil {
-		walk(call.Func)
-	}
-	walkExpr(call.Receiver, used, walk)
-	// Callee is where a call to something other than a declaration keeps its
-	// target: `h.run()` on a func-valued struct field is a Select on `h`, and
-	// Func is nil. Missed here, nothing reached `h` and the var was shaken
-	// while the handler that calls it kept naming it -- `await h__inst0.run()`
-	// against a `state` object with no such field, in emitted JS that a golden
-	// records as passing because nothing runs it.
-	walkExpr(call.Callee, used, walk)
-	for _, a := range call.Args {
-		walkExpr(a.Value, used, walk)
-	}
-	// A call's own @error is rendered at the call (catchAtCall), so what it
-	// names is used there. Missed, a var only the handler wrote was shaken
-	// while the handler kept writing it: `problem__inst2 = …` against a Model
-	// with no such field.
-	if call.ErrorHandler != nil {
-		walkFunc(call.ErrorHandler.Func, used, walk)
-	}
+// walkNames hands walk every declaration root names. ir.Walk reaches every
+// statement and expression below it -- a call's callee and @error, a lambda's
+// body, a node's key, ref and nav record -- and the visit adds what the walk
+// does not follow because root refers to it rather than owning it: a call's
+// declaration, an ident's symbol, a literal's struct, a closure's body, a
+// catch block's handler, a node's component, and the types a local or a
+// node's route parameters name. A hand-written descent here missed a node's
+// record and start, which a stack's lowering leaves the page's values in.
+func walkNames(root any, walk func(ir.Symbol)) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if x.Sym != nil {
+				walk(x.Sym)
+			}
+		case *ir.Call:
+			if x.Func != nil {
+				walk(x.Func)
+			}
+		case *ir.StructLit:
+			if x.Def != nil {
+				walk(x.Def)
+			}
+		case *ir.ContextRead:
+			if x.Ref != nil {
+				walk(x.Ref)
+			}
+		case *ir.Closure:
+			walkFunc(x.Func, nil, walk)
+		case *ir.LocalVar:
+			walkType(x.Type, nil, walk)
+		case *ir.If:
+			// A catch block renders its handler where it stands, so what the
+			// handler names is used here whether or not its owner survived.
+			if x.Catch != nil && x.Catch.Func != nil {
+				walkStmts(x.Catch.Func.Block, nil, walk)
+			}
+		case *ir.NodeInst:
+			walkNodeRefs(x, walk)
+		}
+		return nil
+	})
 }
 
 func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
@@ -757,23 +649,34 @@ func walkSlots(slots map[string]*ir.SlotContent, used map[ir.Symbol]bool, walk f
 	}
 }
 
-// walkNode walks what a node names itself: its component, props, handlers
-// and route parameters, and not its children.
+// walkNode walks what a node names itself and not its children, which a view
+// walk reads on its own terms: its props, handlers, key, ref and nav record,
+// and walkNodeRefs.
 func walkNode(n *ir.NodeInst, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if n.Component != nil {
-		walk(n.Component)
-	}
+	walkNodeRefs(n, walk)
 	for _, p := range n.Props {
 		walkExpr(p.Value, used, walk)
 	}
 	for _, h := range n.Handlers {
 		walkFunc(h.Func, used, walk)
 	}
-	// A window's route parameters name a struct the program may declare
-	// and never construct: the request fills the cell, and a target with
-	// no request renders its zero. Nothing else reaches that declaration,
-	// so without this the page read `v.pkg` off a type no file declared.
+	walkExpr(n.Key, used, walk)
+	walkExpr(n.Ref, used, walk)
+	walkExpr(n.Record, used, walk)
+	walkExpr(n.Start, used, walk)
+}
+
+// walkNodeRefs walks what a node refers to rather than holds: its component,
+// and the type of its route parameters. A window's route parameters name a
+// struct the program may declare and never construct: the request fills the
+// cell, and a target with no request renders its zero. Nothing else reaches
+// that declaration, so without this the page read `v.pkg` off a type no file
+// declared.
+func walkNodeRefs(n *ir.NodeInst, walk func(ir.Symbol)) {
+	if n.Component != nil {
+		walk(n.Component)
+	}
 	if n.Params != nil {
-		walkType(n.Params.Type, used, walk)
+		walkType(n.Params.Type, nil, walk)
 	}
 }

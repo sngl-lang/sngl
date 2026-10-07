@@ -1267,6 +1267,17 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedFuncDepth, savedLoopDepth := c.funcDepth, c.loopDepth
 	savedComp := c.currentComponent
 	c.funcDepth, c.loopDepth, c.currentComponent = 0, 0, nil
+	// The same holds for the expression the load interrupted. An undefined
+	// name's hint loads every public package from inside the expression it was
+	// read in, and `r=nope` on a float prop left `float` expected: the loaded
+	// package's `f.trim().length() > 0` then checked its `0` as a float and
+	// reported a library error in place of the program's.
+	savedExpected, savedReturn, savedOutput := c.expected, c.returnType, c.outputDepth
+	savedStmtCall := c.stmtCall
+	savedFunc, savedOuter, savedNested := c.currentFunc, c.funcOuterScope, c.nestedScope
+	c.expected, c.returnType, c.outputDepth, c.stmtCall = nil, nil, 0, nil
+	c.currentFunc, c.funcOuterScope, c.nestedScope = nil, nil, nil
+	restoreNarrow := c.clearNarrowings()
 	restoreFile := c.saveFile()
 	c.docs = docs
 	// A library package is its own declaration set: a name the program already
@@ -1285,6 +1296,10 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.shellMarks = savedShellMarks
 		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
 		c.currentComponent = savedComp
+		c.expected, c.returnType, c.outputDepth = savedExpected, savedReturn, savedOutput
+		c.stmtCall = savedStmtCall
+		c.currentFunc, c.funcOuterScope, c.nestedScope = savedFunc, savedOuter, savedNested
+		restoreNarrow()
 	}
 }
 

@@ -811,6 +811,10 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 		return false
 	}
 	// Platform primitives and stdlib wrappers with no body cannot be inlined.
+	// Asked of what the declaration holds now, not of comp.Bodyless: that says
+	// how it was written, and stays true once specializeComp has swapped an
+	// override's body in -- every `ui.text` a target implements is bodyless
+	// and has a body to splice by here.
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
