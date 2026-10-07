@@ -35,7 +35,7 @@ component main node {
     vbox {
         radio(
             style={padding=4px},
-            direction="horizontal",
+            direction=horizontal,
             options=["small", "medium", "large"],
             value=pick,
             @change(e) { chosen = e.value },

@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -25,11 +26,17 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	if m := enumMemberIdent(val, typ); m != nil {
 		return m
 	}
+	if amounts, ok := interp.UnitAmounts(val); ok {
+		return unitValueExpr(amounts, typ)
+	}
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	case bool, int, uint64, float64, string:
-		return irLiteral(v, typ)
+		if lit := irLiteral(v, typ); lit != nil {
+			return lit
+		}
+		return nil
 	case *interp.Struct:
 		sd, t := v.Def, v.Type
 		if sd == nil {
@@ -408,4 +415,35 @@ func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	}
 	ctx.interpEnvs[ctx.pkg] = env
 	return env, nil
+}
+
+// unitValueExpr spells a unit value back as the sum of a literal per base it
+// carries, in the order the unit declares them: `3px + 2em`. A value carrying
+// none is the zero in the first base. Nil when typ is no unit to spell it in.
+func unitValueExpr(amounts map[string]float64, typ *ir.Type) ir.Expr {
+	ud := ir.UnitDeclOf(typ)
+	if ud == nil {
+		return nil
+	}
+	var sum ir.Expr
+	for _, b := range ud.Bases() {
+		m, ok := amounts[b.Name]
+		if !ok || m == 0 {
+			continue
+		}
+		lit := &ir.Literal{Type: typ, Value: ir.FormatUnitMagnitude(m), Suffix: b.Name}
+		if sum == nil {
+			sum = lit
+		} else {
+			sum = &ir.Binary{Op: ast.BinAdd, Left: sum, Right: lit, Type: typ}
+		}
+	}
+	if sum == nil {
+		bases := ud.Bases()
+		if len(bases) == 0 {
+			return nil
+		}
+		return &ir.Literal{Type: typ, Value: "0", Suffix: bases[0].Name}
+	}
+	return sum
 }

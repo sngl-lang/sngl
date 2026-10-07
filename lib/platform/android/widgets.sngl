@@ -116,7 +116,7 @@ const component ui.checkbox[platform] {
 // beside its label. onClick is passed nothing, so the override builds the
 // ChangeEvent itself from the option it looped over.
 const component ui.radio[platform] {
-    if direction == "horizontal" {
+    if direction == ui.Orientation.horizontal {
         Row(modifier={...style}) {
             for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {

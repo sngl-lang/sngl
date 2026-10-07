@@ -1,12 +1,16 @@
+// Where a followed link opens: in place of the current view, or in a new
+// window.
+enum LinkTarget { self, blank }
+
 // Navigational hyperlink. `href` is the destination — an external
 // URL, an in-app route, or a file path depending on the platform.
-// `target` ("self" or "blank") controls whether navigation replaces
+// `target` controls whether navigation replaces
 // the current view or opens a new window. `@click` runs before
 // navigation and can short-circuit it by raising an error.
 component link(
     text string,
     href string,
-    target string, // TODO enum
+    target LinkTarget,
     disabled bool,
     focusable bool = true,
     style Style,
@@ -16,20 +20,23 @@ component link(
 component _example_link node {
     hbox(style={gap=16px, padding=16px}) {
         link(href="https://example.com", text="Example Site")
-        link(href="https://example.com", text="New Tab", target="blank")
+        link(href="https://example.com", text="New Tab", target=blank)
     }
 }
+
+// How a tab strip marks the selected tab.
+enum TabsVariant { underline, pills }
 
 // Tabbed navigation. `items` labels each tab; `selected` is the
 // 0-based index of the active tab and is two-way bound. Children of
 // `tabs` are the panels: one per item, in the same order. `variant`
-// styles the tab strip ("underline", "pills"); `@change` fires with
+// styles the tab strip; `@change` fires with
 // the newly selected index.
 // TODO Use families pass the tabs as children
 component tabs(
     items list<string>,
     selected int,
-    variant string, // TODO enum
+    variant TabsVariant,
     style Style,
     @change SelectEvent,
     panels ...component,

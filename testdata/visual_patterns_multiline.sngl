@@ -11,7 +11,7 @@ component main node {
     input(
         value="test",
         placeholder="Enter text",
-        type="email",
+        type=email,
         disabled=false,
         @input { count = count + 1 },
         @change(e) { name = e.value },

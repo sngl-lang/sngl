@@ -523,7 +523,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span>user widget</span>
-<input id="__n1" data-sngl-id="__n1" placeholder="" type=""/>
+<input id="__n1" data-sngl-id="__n1" placeholder="" type="text"/>
 
 <script>
 (() => {
@@ -555,4 +555,4 @@ pass sha256:73b400f8a2d7d0cf2ed3fa3095ffb8c0
 -- run/kotlin/android --
 pass sha256:cf0ce440d3f203ba2561312e88a75c34
 -- run/none/html --
-pass sha256:25656ce69bcf885d3a8972dc24980edd
+pass sha256:53288f150aef850270a3fe1327a34a44

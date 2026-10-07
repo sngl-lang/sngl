@@ -10,7 +10,7 @@ import . "sngl:ui"
 component main node {
     hbox {
         link(href="https://example.com", text="Example")
-        link(href="https://example.com", text="New tab", target="blank")
+        link(href="https://example.com", text="New tab", target=blank)
     }
 }
 

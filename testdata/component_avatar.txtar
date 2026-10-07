@@ -9,8 +9,8 @@ import . "sngl:ui"
 component main node {
     hbox {
         avatar(initials="JD")
-        avatar(src="https://example.com/a.png", initials="AB", variant="square")
-        avatar(initials="XY", size="large")
+        avatar(src="https://example.com/a.png", initials="AB", variant=square)
+        avatar(initials="XY", size=large)
     }
 }
 
@@ -133,9 +133,9 @@ func (m Model) View() tea.View {
 		var content_2 string
 		content_2 = lipgloss.NewStyle().
 			Background(lipgloss.Color("#cccccc")).
-			Height(5).
+			Height(8).
 			AlignHorizontal(lipgloss.Center).
-			Width(5).Render(fmt.Sprint("XY"))
+			Width(8).Render(fmt.Sprint("XY"))
 		contentChildren = append(contentChildren, content_2)
 		content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
 	}
@@ -172,6 +172,7 @@ import (
 
 var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
 var _snglTheme1 = fynetheme.Theme{Theme: theme.DefaultTheme(), Radius: 4}
+var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 32}
 
 type Measurement struct {
 	Px  float64
@@ -243,7 +244,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.Add(container.NewThemeOverride(m.__n3, _snglTheme1))
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText("XY")
-	m.__n1.Add(container.NewThemeOverride(m.__n4, _snglTheme0))
+	m.__n1.Add(container.NewThemeOverride(m.__n4, _snglTheme2))
 	m.__n0.Add(m.__n1)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
@@ -316,7 +317,7 @@ fun MainScreen() {
         Row(modifier = Modifier.safeDrawingPadding()) {
             Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
             Spacer(modifier = Modifier.width(40.dp).height(40.dp))
-            Text(text = "XY", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            Text(text = "XY", modifier = Modifier.width(64.dp).height(64.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
         }
     }
 }
@@ -336,7 +337,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:row">
   <span style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px">JD</span>
   <img style="border-radius:4px;height:40px;width:40px" alt="" src="https://example.com/a.png"/>
-  <span style="align-items:center;background-color:#cccccc;border-radius:20px;display:inline-flex;height:40px;justify-content:center;text-align:center;width:40px">XY</span>
+  <span style="align-items:center;background-color:#cccccc;border-radius:32px;display:inline-flex;height:64px;justify-content:center;text-align:center;width:64px">XY</span>
 </div>
 
 <script>
@@ -347,10 +348,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:179ab4f356127b124b9d193c6d50da80
+pass sha256:179bedcb08c52f17e33a7d11286e470c
 -- run/go/fyne --
-pass sha256:7516ab18f9b131f916d30f2b02fcf33a
+pass sha256:d8e06546423ab5fb227261278e385a16
 -- run/kotlin/android --
-pass sha256:fc06f01213e305764fc30fd85d211d6e
+pass sha256:750037fe93b8adb59f85e03582441768
 -- run/none/html --
-pass sha256:068c4b0b180d2f4878e3b6f2894af09e
+pass sha256:2c4cced03fd15eba70bc9a2718074d84

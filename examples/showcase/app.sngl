@@ -334,8 +334,8 @@ component Tour ui.node {
                 value=name,
                 @input(e) { name = e.value },
             )
-            ui.input(placeholder="Password", type="password")
-            ui.input(placeholder="Search...", type="search")
+            ui.input(placeholder="Password", type=password)
+            ui.input(placeholder="Search...", type=search)
         }
         ui.text(value="Textarea", style={fontSize=20px, fontWeight=bold})
         ui.textarea(
@@ -359,7 +359,7 @@ component Tour ui.node {
             )
             ui.toggle(:checked=toggleOn, label="Notifications")
             ui.radio(
-                direction="horizontal",
+                direction=horizontal,
                 options=["small", "medium", "large"],
                 value=selectedRadio,
             )
@@ -400,7 +400,7 @@ component Tour ui.node {
         ui.text(value="Avatar", style={fontSize=20px, fontWeight=bold})
         ui.hbox(style={gap=8px}) {
             ui.avatar(initials="JD")
-            ui.avatar(initials="AB", variant="square")
+            ui.avatar(initials="AB", variant=square)
             ui.avatar(alt="User")
         }
         ui.divider

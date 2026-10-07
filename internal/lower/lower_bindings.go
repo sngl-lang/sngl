@@ -386,7 +386,7 @@ func injectBind(f *ir.Func, propName string, evtType *ir.Type, value ir.Expr, ca
 // injectEmitIntoHandlers injects into *every* handler that reports the change,
 // not the first. Stopping at the first put the write-back wherever the walk
 // reached it soonest, which for a platform body written as
-// `if direction == "horizontal" { ... } else { ... }` is the branch that is not
+// `if direction == ui.Orientation.horizontal { ... } else { ... }` is the branch that is not
 // taken -- so the live one emitted `onClick = {}` and the binding did nothing.
 func injectEmitIntoHandlers(stmts []ir.Stmt, candidates []string, propName string, evtType *ir.Type, value ir.Expr, propType *ir.Type) bool {
 	injected := false

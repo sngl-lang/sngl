@@ -10,7 +10,7 @@ import . "sngl:test"
 // changes the selected radio option.
 component main node {
     var sel = "medium"
-    radio(options=["small", "medium", "large"], :value=sel, direction="horizontal")
+    radio(options=["small", "medium", "large"], :value=sel, direction=horizontal)
 }
 
 func testRadioValueMutates(t Test, c main) {

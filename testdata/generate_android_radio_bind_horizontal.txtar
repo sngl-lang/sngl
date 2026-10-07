@@ -10,7 +10,7 @@ The write-back is `pick = opt`: the loop variable, in the loop. It used to
 read `pick = "a"` and `pick = "b"` because a literal `options` was unrolled
 here; Kotlin emits the loop now, so `opt` is what the assignment names.
 
-`direction="horizontal"` takes the then-branch of the override's if/else and
+`direction=horizontal` takes the then-branch of the override's if/else and
 lays the options out in a Row. Both branches are fixtures because the
 injection used to stop at the first match it walked into, which is the branch
 that is not taken; the vertical one is generate_android_radio_bind_vertical.txtar.
@@ -28,7 +28,7 @@ output {
 
 component main node {
     var pick string = "a"
-    radio(:value=pick, options=["a", "b"], direction="horizontal")
+    radio(:value=pick, options=["a", "b"], direction=horizontal)
     text(value=pick)
 }
 

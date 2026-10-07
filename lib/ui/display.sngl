@@ -100,21 +100,38 @@ component _example_chip node {
     }
 }
 
+// A preset size for a component that offers three.
+enum SizePreset { small, medium, large }
+
+// The outline an avatar is clipped to.
+enum AvatarVariant { circle, square }
+
 // User profile image with fallback. Renders `src` when available;
-// otherwise displays `initials` in a styled placeholder. `size` is
-// a preset ("small", "medium", "large") or a length; `variant` is
-// "circle" (default) or "square".
+// otherwise displays `initials` in a styled placeholder. `size` picks a
+// preset (`style.width` and `style.height` set any other); `variant` is
+// the outline it is clipped to.
 component avatar(
     initials string,
-    size string,    // TODO enum
-    variant string, // TODO: Enum
+    size SizePreset = medium,
+    variant AvatarVariant,
     src string,
     alt string,
     style Style,
     @click ClickEvent,
 ) node {
     if src != "" {
-        image(src=src, alt=alt, fit=cover, style={width=40px, height=40px, borderRadius=variant == "square" ? 4px : 20px, ...style}, @click { click() })
+        image(
+            src=src,
+            alt=alt,
+            fit=cover,
+            style={
+                width = _avatarSide(size),
+                height = _avatarSide(size),
+                borderRadius = _avatarRadius(size, variant),
+                ...style,
+            },
+            @click { click() },
+        )
     } else {
         text(
             value=initials,
@@ -122,10 +139,10 @@ component avatar(
                 display = inlineFlex,
                 alignItems = center,
                 justifyContent = center,
-                width = 40px,
-                height = 40px,
+                width = _avatarSide(size),
+                height = _avatarSide(size),
                 textAlign = center,
-                borderRadius = variant == "square" ? 4px : 20px,
+                borderRadius = _avatarRadius(size, variant),
                 background = #CCCCCC,
                 ...style,
             },
@@ -134,11 +151,30 @@ component avatar(
     }
 }
 
+// The side of an avatar of each preset size.
+const func _avatarSide(size SizePreset) measurement {
+    if size == SizePreset.small {
+        return 24px
+    }
+    if size == SizePreset.large {
+        return 64px
+    }
+    return 40px
+}
+
+// A circle's radius is half its side; a square keeps a small rounding.
+const func _avatarRadius(size SizePreset, variant AvatarVariant) measurement {
+    if variant == AvatarVariant.square {
+        return 4px
+    }
+    return _avatarSide(size) * 0.5
+}
+
 component _example_avatar node {
     hbox(style={gap=8px, padding=16px}) {
         avatar(initials="JD")
-        avatar(initials="AB", variant="square")
-        avatar(initials="XY", size="large")
+        avatar(initials="AB", variant=square)
+        avatar(initials="XY", size=large)
     }
 }
 
@@ -172,31 +208,35 @@ component _example_progress node {
     }
 }
 
+// The shape a spinner turns in.
+enum SpinnerVariant { circle, bar }
+
 // Indeterminate loading indicator. Use when progress cannot be
-// measured. `variant` is "bar" or "circle"; `size` is "small",
-// "medium", or "large". `label` adds an accessible description
-// announced by screen readers.
+// measured. `variant` is its shape and `size` a preset. `label` adds an
+// accessible description announced by screen readers.
 component spinner(
     label string,
-    variant string, // TODO enum
-    size string,    // TODO enum
+    variant SpinnerVariant,
+    size SizePreset = medium,
     style Style,
 ) node
 
 component _example_spinner node {
     hbox(style={gap=16px, padding=16px, alignItems=center}) {
         spinner(label="Loading...")
-        spinner(variant="circle", size="large")
+        spinner(variant=circle, size=large)
     }
 }
+
+// Which way a table's sorted column runs, if it is sorted at all.
+enum SortDirection { none, asc, desc }
 
 // Tabular data display. `columns` is the list of column headers;
 // `rows` is the cell grid — one inner `list<string>` per row, each
 // cell aligned to its column by position (defaults to no rows).
 // Enable `selectable` for row selection with `selected` as
 // the 0-based row index (two-way bound). Enable `sortable` to let the
-// user re-order by column; `sortColumn` and `sortDirection` ("asc" or
-// "desc") reflect the current sort and are two-way bound. `@sort`
+// user re-order by column; `sortColumn` and `sortDirection` reflect the current sort and are two-way bound. `@sort`
 // fires when the user changes sort, `@select` when the selection
 // changes.
 // TODO should use families to define rows as children
@@ -208,7 +248,7 @@ component table(
     :selected int,
     sortable bool,
     sortColumn string,
-    sortDirection string, // TODO enum
+    sortDirection SortDirection,
     @select SelectEvent,
     @sort ChangeEvent,
 ) node

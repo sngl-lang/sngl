@@ -100,6 +100,16 @@ type unitValue struct {
 	Table  *unitTable
 }
 
+// UnitAmounts reports v's magnitude per base when v is a unit value. The map
+// is the value's own and must not be written.
+func UnitAmounts(v any) (map[string]float64, bool) {
+	u, ok := v.(unitValue)
+	if !ok {
+		return nil, false
+	}
+	return u.Amounts, true
+}
+
 // newUnitValue takes ownership of amounts, so every caller passes a map it
 // built.
 func newUnitValue(table *unitTable, suffix string, amounts map[string]float64) unitValue {

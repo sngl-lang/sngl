@@ -777,7 +777,7 @@ var name = ""
 
 ```sngl
 ui.button(text="Submit", disabled=count <= 0)
-ui.input(value=name, placeholder="Enter name", type="email")
+ui.input(value=name, placeholder="Enter name", type=email)
 ui.image(src="photo.png", alt="Profile", fit=cover)
 ```
 
@@ -1446,7 +1446,7 @@ ui.window {
     var email = ""
     func valid() => email.contains("@") && email.length() > 3
     ui.vbox(style={padding=16px, gap=8px}) {
-        ui.input(:value=email, placeholder="Email", type="email")
+        ui.input(:value=email, placeholder="Email", type=ui.InputType.email)
         if !valid {
             ui.text(value="Enter a valid email", style={color=#CC0000, fontSize=12px})
         }

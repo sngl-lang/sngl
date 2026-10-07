@@ -495,7 +495,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <input id="__n0" data-sngl-id="__n0" placeholder="Enter your name" type=""/>
+  <input id="__n0" data-sngl-id="__n0" placeholder="Enter your name" type="text"/>
   <span id="__n1" data-sngl-id="__n1">
   </span>
 </div>
@@ -559,4 +559,4 @@ pass sha256:0e3d2df5ec534cd5253f45902d9e23e6
 -- run/kotlin/android --
 pass sha256:314c0c2a6d761f58033f63a883939e6c
 -- run/none/html --
-pass sha256:07a44e6459c2826aeb628bea7e6d261f
+pass sha256:cc6a983ee1053dcf53116f0345177967

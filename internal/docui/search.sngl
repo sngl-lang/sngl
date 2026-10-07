@@ -8,7 +8,7 @@ component SearchBox(entries list<docs.SearchEntry> = []) node {
     var query = ""
 
     vbox(style={gap=4px, padding=4px}) {
-        input(:value=query, placeholder="Search docs…", type="search")
+        input(:value=query, placeholder="Search docs…", type=search)
         if query != "" {
             vbox(style={gap=2px}) {
                 for var entry = entries {

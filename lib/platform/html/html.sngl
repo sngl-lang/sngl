@@ -226,7 +226,7 @@ const component ui.image[platform] {
 }
 
 const component ui.input[platform] {
-    html.input(type=type, placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
+    html.input(type=string(type), placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
 }
 
 const component ui.checkbox[platform] {
@@ -239,7 +239,7 @@ const component ui.checkbox[platform] {
 // --- Tier 1: Core Input ---
 
 const component ui.radio[platform] {
-    html.fieldset(style={display=flex, flexDirection=(direction == "horizontal" ? row : column), gap=8px, border="none", padding=0, ...style}) {
+    html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
                 html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })

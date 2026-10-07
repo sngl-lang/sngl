@@ -32,7 +32,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<input id="__n1" data-sngl-id="__n1" placeholder="" type=""/>
+<input id="__n1" data-sngl-id="__n1" placeholder="" type="text"/>
 <span id="__n2" data-sngl-id="__n2">
 </span>
 
@@ -62,4 +62,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9a80e83e04b6d9aac511b80215ce1779
+pass sha256:bc7f601a2a0b694200547bd6ec089841
