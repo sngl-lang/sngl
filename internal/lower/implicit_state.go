@@ -78,6 +78,44 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	})
 }
 
+// hostReports is whether this target can write p of an instance of comp: a
+// cell is what the host's reports land in, and a prop nothing reports needs
+// none. Without one, the node stays a plain node -- static markup under a
+// const `for` rather than a component built at run time.
+//
+// The host is what this target renders comp as, which by now is its
+// override's body (passPlatformExtensionBody). A primitive is the host
+// itself, and a bodyless declaration with no override is one this build
+// cannot see into; both may report anything. Otherwise the body has to name
+// the prop for a report to reach it -- read it, bind a primitive's prop to
+// it, or name it in a descriptor, which is how bubbletea's `Widget.binds`
+// says which handler writes which prop (`Bind{prop="selected"}`). A name
+// matched rather than a symbol errs towards a cell, which is the safe side.
+//
+// Only asked of a node with no `#id`: a read of the prop through the handle
+// names the cell, so a node something reads keeps one.
+func hostReports(comp *ir.Component, p *ir.Prop) bool {
+	if isPrimitiveComponent(comp) || len(comp.Body) == 0 {
+		return true
+	}
+	named := false
+	_ = ir.Walk(comp.Body, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			named = x.Name == p.Name
+		case *ir.Literal:
+			named = x.Value == p.Name
+		case *ir.NodeInst:
+			named = slices.ContainsFunc(x.Bindings, func(b ir.PropBinding) bool { return b.PropName == p.Name })
+		}
+		if named {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return named
+}
+
 // handleThrough is the node handle e names: the handle itself, or a select of
 // it through an instance of the component that declares it -- a test's
 // `c.box` -- whose read of `c.box.checked` is the same cell's.
@@ -137,6 +175,9 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		return nil, nil
 	}
 	unbound := ir.UnboundProps(comp, n.Bindings)
+	if n.Handle == nil && n.ID == "" {
+		unbound = slices.DeleteFunc(unbound, func(p *ir.Prop) bool { return !hostReports(comp, p) })
+	}
 	if len(unbound) == 0 {
 		return nil, nil
 	}
