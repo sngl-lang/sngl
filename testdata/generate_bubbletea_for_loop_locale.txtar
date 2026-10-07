@@ -17,7 +17,7 @@ component main node {
     var n = 1234
     for var l = locales {
         i18n.locale(l) {
-            text(value=i18n.numberInt(n, "decimal"))
+            text(value=i18n.numberInt(n, decimal))
         }
     }
 }

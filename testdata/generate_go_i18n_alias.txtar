@@ -15,7 +15,7 @@ output { go { bubbletea } }
 
 component main node {
     var n int = 1234
-    var s = t.numberInt(n, "decimal")
+    var s = t.numberInt(n, decimal)
     text(value=s)
 }
 

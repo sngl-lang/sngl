@@ -16,7 +16,7 @@ output { go { bubbletea } }
 component main node {
     var n = 1234
     i18n.locale("es-MX") {
-        var price = i18n.numberInt(n, "decimal")
+        var price = i18n.numberInt(n, decimal)
         text(value=price)
     }
 }

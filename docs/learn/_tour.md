@@ -949,7 +949,7 @@ import ui "sngl:ui"
 component Cart(count = 0, price = 0) ui.node {
     ui.vbox(style={gap=4px, padding=8px}) {
         ui.text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
-        ui.text(value="total: " + i18n.numberInt(price, "decimal"))
+        ui.text(value="total: " + i18n.numberInt(price, decimal))
     }
 }
 

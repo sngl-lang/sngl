@@ -36,22 +36,28 @@ func format(template string, args map<string, dyn>) string { return _format(loca
 
 // --- Direct formatters ---
 
-// Style: "decimal" (default), "percent", "currency", "scientific".
-// TODO style should be an enum
+// How a number is written: plainly, as a percentage, as an amount of the
+// locale's currency, or in scientific notation.
+enum NumberStyle { decimal, percent, currency, scientific }
+
+// How much of a date or a time is written, from the locale's shortest
+// numeric form to its longest.
+enum DateStyle { short, medium, long, full }
+
 // TODO docs should be on each function/prop so sngl doc can see them
 #[marks.intrinsic("i18n.numberInt")]
-func numberInt(n int, style string) string { return _numberInt(locale, n, style) }
+func numberInt(n int, style NumberStyle = decimal) string { return _numberInt(locale, n, string(style)) }
 #[marks.intrinsic("i18n.numberFloat")]
-func numberFloat(n float, style string) string { return _numberFloat(locale, n, style) }
+func numberFloat(n float, style NumberStyle = decimal) string { return _numberFloat(locale, n, string(style)) }
 
-// Style: "short", "medium" (default), "long", "full".
-// TODO style should be an enum
 #[marks.intrinsic("i18n.date")]
-func date(d clock.date, style string) string { return _date(locale, d, style) }
+func date(d clock.date, style DateStyle = medium) string { return _date(locale, d, string(style)) }
 #[marks.intrinsic("i18n.time")]
-func time(t clock.time, style string) string { return _time(locale, t, style) }
+func time(t clock.time, style DateStyle = medium) string { return _time(locale, t, string(style)) }
 #[marks.intrinsic("i18n.datetime")]
-func datetime(dt clock.datetime, dateStyle string, timeStyle string) string { return _dateTime(locale, dt, dateStyle, timeStyle) }
+func datetime(dt clock.datetime, dateStyle DateStyle = medium, timeStyle DateStyle = medium) string {
+    return _dateTime(locale, dt, string(dateStyle), string(timeStyle))
+}
 
 // --- Direct selectors ---
 

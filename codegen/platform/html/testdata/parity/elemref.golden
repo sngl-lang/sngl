@@ -9,7 +9,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <input id="__n1" data-sngl-id="__n1" placeholder="Type here" type=""/>
+  <input id="__n1" data-sngl-id="__n1" placeholder="Type here" type="text"/>
   <span id="__n2" data-sngl-id="__n2">
   </span>
   <button id="$1">

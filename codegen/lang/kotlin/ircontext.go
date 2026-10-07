@@ -1446,6 +1446,9 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		}
 		return "null"
 	}
+	// An i18n style is an enum, which the runtime takes as the member's name:
+	// a Kotlin enum class's toString.
+	str := func(i int) string { return a(i) + ".toString()" }
 
 	switch qualName {
 	// Alert.* → Android Toast. The android backend gates the `Toast` import
@@ -1492,30 +1495,30 @@ func kotlinBuiltinMethodFromArgs(qualName string, argExprs []string) string {
 		return "I18n.getTranslator().format(" + a(0) + ", " + a(1) + ")"
 	case "i18n.numberInt":
 		if len(argExprs) >= 3 {
-			return "I18n.numberInt(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.numberInt(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().numberInt(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().numberInt(" + a(0) + ", " + str(1) + ")"
 	case "i18n.numberFloat":
 		if len(argExprs) >= 3 {
-			return "I18n.numberFloat(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.numberFloat(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().numberFloat(" + a(0) + ", " + str(1) + ")"
 	case "i18n.date":
 		if len(argExprs) >= 3 {
-			return "I18n.date(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.date(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().date(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().date(" + a(0) + ", " + str(1) + ")"
 	case "i18n.time":
 		if len(argExprs) >= 3 {
-			return "I18n.time(" + a(2) + ", " + a(0) + ", " + a(1) + ")"
+			return "I18n.time(" + a(2) + ", " + a(0) + ", " + str(1) + ")"
 		}
-		return "I18n.getTranslator().time(" + a(0) + ", " + a(1) + ")"
+		return "I18n.getTranslator().time(" + a(0) + ", " + str(1) + ")"
 	case "i18n.datetime":
 		// Wrapper params: (dt, dateStyle, timeStyle, __ctx_locale).
 		if len(argExprs) >= 4 {
-			return "I18n.datetime(" + a(3) + ", " + a(0) + ", " + a(1) + ", " + a(2) + ")"
+			return "I18n.datetime(" + a(3) + ", " + a(0) + ", " + str(1) + ", " + str(2) + ")"
 		}
-		return "I18n.getTranslator().datetime(" + a(0) + ", " + a(1) + ", " + a(2) + ")"
+		return "I18n.getTranslator().datetime(" + a(0) + ", " + str(1) + ", " + str(2) + ")"
 	case "i18n.select":
 		// Kotlin runtime exposes selectStr (avoiding the `select` keyword clash).
 		if len(argExprs) >= 3 {
