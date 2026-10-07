@@ -315,9 +315,13 @@ func markBuiltin(m *mark) error {
 	}
 	switch d := m.sym.(type) {
 	case *ir.Component:
-		d.Builtin = kind
+		if err := checkStampedKind(d.Builtin, kind); err != nil {
+			return err
+		}
 	case *ir.StructDef:
-		d.Builtin = kind
+		if err := checkStampedKind(d.Builtin, kind); err != nil {
+			return err
+		}
 	case *ir.Var:
 		d.Builtin = kind
 	case *ir.UnitDef:
@@ -326,6 +330,18 @@ func markBuiltin(m *mark) error {
 		return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 	}
 	m.c.bindBuiltinRole(kind, m.sym.(ir.Symbol))
+	return nil
+}
+
+// checkStampedKind holds a struct's or component's mark to the kind its
+// registration read off the source (writtenBuiltinKind). The kind is needed
+// before the mark runs, so a mark that registration could not read would
+// leave every type resolved against the declaration until now resolved as a
+// plain struct, silently.
+func checkStampedKind(stamped, kind ir.BuiltinKind) error {
+	if stamped != kind {
+		return fmt.Errorf("#[builtin(%q)] was not read as the declaration registered (read %q): write it #[_builtin(kind)] in sngl:builtin or #[marks.builtin(\"kind\")] under an import of sngl:%s", kind, stamped, marksPkg)
+	}
 	return nil
 }
 

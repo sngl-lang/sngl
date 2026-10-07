@@ -1396,18 +1396,7 @@ func (c *checker) pass1() {
 	// type comes from the package declaring `ir.Macro`, which is imported.
 	// Nothing else about a macro is special, so what makes one is still
 	// `macroFrom` asking the registered func what it returns.
-	//
-	// A macro whose signature names a struct this package marks waits for the
-	// marks instead: sngl:builtin's `_intrinsic(id string, …)` names the
-	// `string` its own `_builtin(string)` makes a scalar, and resolved before
-	// that mark ran it would take the bare struct.
-	marked := markedStructNames(c.docs)
 	macroDecls := map[*ast.FuncDef]bool{}
-	type lateMacro struct {
-		doc *ast.Document
-		f   *ast.FuncDef
-	}
-	var late []lateMacro
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
@@ -1416,18 +1405,10 @@ func (c *checker) pass1() {
 				continue
 			}
 			macroDecls[f] = true
-			if namesMarkedStruct(f, marked) {
-				late = append(late, lateMacro{d, f})
-				continue
-			}
 			c.registerFunc(f)
 		}
 	}
 	c.runShellMarks()
-	for _, m := range late {
-		c.resumeFile(m.doc)
-		c.registerFunc(m.f)
-	}
 
 	membersMark := len(c.familyMembers)
 	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
@@ -1928,7 +1909,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName, Builtin: c.stampBuiltinKind(s.Attrs)}
 	c.applyMarksOnShell(s, sd)
 	c.declPkg().Structs = append(c.declPkg().Structs, sd)
 	c.bindDeclared(claimed, sd)
@@ -1978,6 +1959,7 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 		return c.registerComponentDecl(s, true)
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
+		sd.Builtin = c.stampBuiltinKind(s.Attrs)
 		sd.BodyOwner = owner
 		c.applyMarks(s, sd)
 		c.declPkg().Structs = append(c.declPkg().Structs, sd)
@@ -2886,6 +2868,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Bodyless:   !comp.Body.IsDefined(),
 		Const:      comp.Const,
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
+		Builtin:    c.stampBuiltinKind(comp.Attrs),
 	}
 	c.applyMarks(comp, irComp)
 	// The converse of the rule reportBodylessComponents applies: #[intrinsic]
@@ -4888,41 +4871,6 @@ func (c *checker) runShellMarks() {
 		}
 		c.runShellMark(m)
 	}
-}
-
-// markedStructNames is the structs of docs that carry a mark, by name.
-func markedStructNames(docs []*ast.Document) map[string]bool {
-	names := map[string]bool{}
-	for _, d := range docs {
-		for _, stmt := range d.Stmts {
-			if sd, ok := stmt.(*ast.StructDef); ok && len(sd.Attrs) > 0 {
-				names[sd.Name] = true
-			}
-		}
-	}
-	return names
-}
-
-// namesMarkedStruct reports whether a parameter of f names, unqualified, one
-// of the marked structs, at any depth of its type.
-func namesMarkedStruct(f *ast.FuncDef, marked map[string]bool) bool {
-	var names func(t ast.TypeExpr) bool
-	names = func(t ast.TypeExpr) bool {
-		nt, ok := t.(*ast.NamedType)
-		if !ok {
-			return false
-		}
-		if nt.Package == "" && marked[nt.Name] {
-			return true
-		}
-		return slices.ContainsFunc(nt.TypeArgs, names)
-	}
-	for _, p := range f.Params.Params {
-		if names(p.Type) {
-			return true
-		}
-	}
-	return false
 }
 
 // looksLikeMacroDecl is the cheap syntactic gate on registering a func early,
