@@ -347,10 +347,6 @@ const component ui.spinner[platform] {
     ) {}
 }
 
-const component ui.badge[platform] {
-    Styled(content=value, style={...style}) {}
-}
-
 const component ui.divider[platform] {
     Styled(content="─", style={...style}) {}
 }
@@ -483,10 +479,6 @@ const component ui.toolbar[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
         controls
     }
-}
-
-const component ui.avatar[platform] {
-    Styled(content=initials, style={...style}) {}
 }
 
 // A recurring deadline. Not a blueprint primitive: a timer renders nothing, so

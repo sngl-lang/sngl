@@ -292,12 +292,6 @@ const component ui.spinner[platform] {
     }
 }
 
-const component ui.badge[platform] {
-    html.span(style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style}) {
-        html.span(textContent=value) {}
-    }
-}
-
 const component ui.tabs[platform] {
     html.div(style={...style, display=flex, flexDirection=column}) {
         html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
@@ -447,18 +441,6 @@ const component ui.datepicker[platform] {
         html.input(type="date", value=string(value), disabled=disabled, style={...style}, @change { change() }) {}
     } else {
         html.input(type="date", value="", disabled=disabled, style={...style}, @change { change() }) {}
-    }
-}
-
-const component ui.chip[platform] {
-    html.span(style={display=inlineFlex, alignItems=center, paddingY=4px, paddingX=12px, borderRadius=16px, border="1px solid #ccc", ...style}) {
-        html.span(textContent=label) {}
-    }
-}
-
-const component ui.avatar[platform] {
-    html.div(style={display=inlineFlex, alignItems=center, justifyContent=center, borderRadius=50pct, width=40px, height=40px, background="#ccc", overflow=hidden, ...style}) {
-        html.span(textContent=initials) {}
     }
 }
 

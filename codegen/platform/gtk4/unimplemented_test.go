@@ -46,7 +46,7 @@ func buildForGtk4(t *testing.T, src string) (map[string][]byte, error) {
 // A stdlib component with no `platform gtk4` body has nothing to emit. Before
 // this was an error the node was dropped and the build succeeded, so the window
 // came out missing widgets the source asked for with no diagnostic anywhere.
-// The checker refuses it now, since `avatar` is bodyless: the platform's own
+// The checker refuses it now, since `menubar` is bodyless: the platform's own
 // refusal is the backstop for IR the checker did not see.
 func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 	skipWithoutGIR(t)
@@ -54,7 +54,7 @@ func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 import . "sngl:ui"
 window {
     text(value="visible")
-    avatar(initials="ab")
+    menubar(items=["a"])
 }
 `)
 	if err == nil {
@@ -63,7 +63,7 @@ window {
 	msg := err.Error()
 	// The message has to name both halves: which component, and which target
 	// does not have it.
-	for _, want := range []string{`"avatar"`, "gtk4"} {
+	for _, want := range []string{`"menubar"`, "gtk4"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("diagnostic %q does not mention %s", msg, want)
 		}

@@ -47,7 +47,9 @@ component badge(
     variant string,
     size string,
     style Style,
-) node // TODO Define in terms of text as a deafult
+) node {
+    text(value=value, style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style})
+}
 
 component _example_badge node {
     hbox(style={gap=8px, padding=16px, alignItems=center}) {
@@ -71,7 +73,24 @@ component chip(
     style Style,
     @click ClickEvent,
     @remove DismissEvent,
-) node // TODO Define in terms of text as a default
+) node {
+    hbox(style={
+        alignItems = center,
+        gap = 4px,
+        paddingY = 4px,
+        paddingX = 12px,
+        borderRadius = 16px,
+        borderWidth = 1px,
+        borderColor = selected ? #0066CC : #CCCCCC,
+        opacity = disabled ? 0.5 : 1.0,
+        ...style,
+    }) {
+        text(value=label, @click { click() })
+        if removable {
+            button(text="×", disabled=disabled, focusable=focusable, @click { remove({}) })
+        }
+    }
+}
 
 component _example_chip node {
     hbox(style={gap=8px, padding=16px}) {
@@ -93,7 +112,27 @@ component avatar(
     alt string,
     style Style,
     @click ClickEvent,
-) node // TODO define in terms of image and text
+) node {
+    if src != "" {
+        image(src=src, alt=alt, fit=cover, style={width=40px, height=40px, borderRadius=variant == "square" ? 4px : 20px, ...style}, @click { click() })
+    } else {
+        text(
+            value=initials,
+            style={
+                display = inlineFlex,
+                alignItems = center,
+                justifyContent = center,
+                width = 40px,
+                height = 40px,
+                textAlign = center,
+                borderRadius = variant == "square" ? 4px : 20px,
+                background = #CCCCCC,
+                ...style,
+            },
+            @click { click() },
+        )
+    }
+}
 
 component _example_avatar node {
     hbox(style={gap=8px, padding=16px}) {

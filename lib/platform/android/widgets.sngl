@@ -241,10 +241,6 @@ const component ui.card[platform] {
     }
 }
 
-const component ui.chip[platform] {
-    Text(text=label) {}
-}
-
 const component ui.link[platform] {
     Text(
         text=text,
@@ -318,10 +314,6 @@ const component ui.toolbar[platform] {
     Column(modifier={...style}) {
         controls
     }
-}
-
-const component ui.avatar[platform] {
-    Text(text="") {}
 }
 
 // --- The timer ---

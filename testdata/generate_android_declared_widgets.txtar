@@ -126,16 +126,18 @@ fun MainScreen() {
             }
             Text(text = "Home", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier)
-            Text(text = "Tag", modifier = Modifier)
+            Row(modifier = Modifier.alpha(1.0f)) {
+                Text(text = "Tag", modifier = Modifier)
+            }
             Column(modifier = Modifier.padding(9.dp)) {
                 Button(onClick = {}, modifier = Modifier) {
                     Text(text = "New", modifier = Modifier)
                 }
             }
             Text(text = "", modifier = Modifier)
-            Text(text = "", modifier = Modifier)
+            Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:3ecee763497f61d4f0f7d8b5d6771181
+pass sha256:05e7abd6a12dca46958eb53947b05b55

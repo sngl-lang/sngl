@@ -83,12 +83,6 @@ const component ui.text[platform] {}
 
 const component ui.image[platform] {}
 
-const component ui.badge[platform] {}
-
-const component ui.chip[platform] {}
-
-const component ui.avatar[platform] {}
-
 const component ui.progress[platform] {}
 
 const component ui.spinner[platform] {}

@@ -545,22 +545,8 @@ const component ui.text[platform] {
     Label(text=value, style={...style}) {}
 }
 
-const component ui.badge[platform] {
-    Label(text=value, style={...style}) {}
-}
-
-const component ui.chip[platform] {
-    Label(text=label, style={...style}) {}
-}
-
 const component ui.divider[platform] {
     Label(text=label, style={...style}) {}
-}
-
-// `initials` rather than `src`: `canvas.Image` needs a URI, and the fallback
-// is the half of an avatar this platform can render.
-const component ui.avatar[platform] {
-    Label(text=initials, style={...style}) {}
 }
 
 const component ui.spinner[platform] {
