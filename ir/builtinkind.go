@@ -27,6 +27,19 @@ const (
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
 
+	// The sized numerics, each a scalar of the width and signedness its name
+	// says (TypInt8 … TypFloat64).
+	BuiltinInt8    BuiltinKind = "int8"
+	BuiltinInt16   BuiltinKind = "int16"
+	BuiltinInt32   BuiltinKind = "int32"
+	BuiltinInt64   BuiltinKind = "int64"
+	BuiltinUint8   BuiltinKind = "uint8"
+	BuiltinUint16  BuiltinKind = "uint16"
+	BuiltinUint32  BuiltinKind = "uint32"
+	BuiltinUint64  BuiltinKind = "uint64"
+	BuiltinFloat32 BuiltinKind = "float32"
+	BuiltinFloat64 BuiltinKind = "float64"
+
 	// String-representable value types.
 	BuiltinColor    BuiltinKind = "color"
 	BuiltinDate     BuiltinKind = "date"
@@ -155,10 +168,14 @@ func (b BuiltinKind) IsTargetID() bool {
 	return false
 }
 
-// IsPrimitive reports whether the kind is a scalar primitive (int/float/string).
+// IsPrimitive reports whether the kind is a scalar primitive: int, float and
+// string, and the sized numerics.
 func (b BuiltinKind) IsPrimitive() bool {
 	switch b {
-	case BuiltinInt, BuiltinFloat, BuiltinString:
+	case BuiltinInt, BuiltinFloat, BuiltinString,
+		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
+		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
+		BuiltinFloat32, BuiltinFloat64:
 		return true
 	}
 	return false
@@ -254,6 +271,9 @@ func (b BuiltinKind) IsConst() bool {
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
 		BuiltinInt, BuiltinFloat, BuiltinString,
+		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
+		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
+		BuiltinFloat32, BuiltinFloat64,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,

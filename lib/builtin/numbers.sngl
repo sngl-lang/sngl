@@ -1,7 +1,5 @@
 import marks "sngl:internal/marks"
 
-//TODO We should have (u)int(8|16|32|64) and float(32|64) defined in here too.
-
 // 64-bit signed integer. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
@@ -108,3 +106,55 @@ const func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? fl
 // and round(-0.5) == -1.0.
 #[marks.intrinsic("float.round")]
 const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
+
+// --- Sized numerics ---
+//
+// A number of a stated width, for a value whose width is part of what it
+// means: a colour channel is a byte, and a host API handing over an int32
+// hands over 32 bits. Each is its own type: arithmetic mixes none of them with
+// another or with int and float, and a conversion, `int32(x)`, is how one
+// becomes another. A literal takes the type the position wants. Each target
+// spells one in its own sized type where it has one -- Go's int8 … float64,
+// Kotlin's Byte, Short, Int, Long and their unsigned twins, Float and Double --
+// and JavaScript holds a number, a uint64 a BigInt.
+
+// 8-bit signed integer.
+#[marks.builtin("int8")]
+struct int8 {}
+
+// 16-bit signed integer.
+#[marks.builtin("int16")]
+struct int16 {}
+
+// 32-bit signed integer.
+#[marks.builtin("int32")]
+struct int32 {}
+
+// 64-bit signed integer: `int` at a width stated rather than assumed.
+#[marks.builtin("int64")]
+struct int64 {}
+
+// 8-bit unsigned integer, a byte: the channels of a `color`.
+#[marks.builtin("uint8")]
+struct uint8 {}
+
+// 16-bit unsigned integer.
+#[marks.builtin("uint16")]
+struct uint16 {}
+
+// 32-bit unsigned integer.
+#[marks.builtin("uint32")]
+struct uint32 {}
+
+// 64-bit unsigned integer.
+#[marks.builtin("uint64")]
+struct uint64 {}
+
+// 32-bit IEEE-754 floating-point number.
+#[marks.builtin("float32")]
+struct float32 {}
+
+// 64-bit IEEE-754 floating-point number: `float` at a width stated rather
+// than assumed.
+#[marks.builtin("float64")]
+struct float64 {}
