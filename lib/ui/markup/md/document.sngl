@@ -140,14 +140,14 @@ component _leaf(b _Block) ui.node {
 component _table(b _Block) ui.node {
     ui.vbox(style={gap=4px}) {
         ui.hbox(style={gap=16px}) {
-            for var c = b.columns {
-                ui.text(value=c, style={fontWeight=ui.FontWeight.bold, minWidth=80px})
+            for var cell = b.columns {
+                ui.text(value=cell, style={fontWeight=ui.FontWeight.bold, minWidth=80px})
             }
         }
         for var r = b.rows {
             ui.hbox(style={gap=16px}) {
-                for var c = r {
-                    ui.text(value=c, style={minWidth=80px})
+                for var cell = r {
+                    ui.text(value=cell, style={minWidth=80px})
                 }
             }
         }
@@ -165,11 +165,11 @@ component _list1(b _Block) ui.node {
     markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
             markup.listItem(marker=it.marker, task=it.task) {
-                for var c = it.blocks {
-                    if c.kind == _Kind.list {
-                        _list2(b=c)
+                for var inner = it.blocks {
+                    if inner.kind == _Kind.list {
+                        _list2(b=inner)
                     } else {
-                        _leaf(b=c)
+                        _leaf(b=inner)
                     }
                 }
             }
@@ -181,11 +181,11 @@ component _list2(b _Block) ui.node {
     markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
             markup.listItem(marker=it.marker, task=it.task) {
-                for var c = it.blocks {
-                    if c.kind == _Kind.list {
-                        _list3(b=c)
+                for var inner = it.blocks {
+                    if inner.kind == _Kind.list {
+                        _list3(b=inner)
                     } else {
-                        _leaf(b=c)
+                        _leaf(b=inner)
                     }
                 }
             }
@@ -197,8 +197,8 @@ component _list3(b _Block) ui.node {
     markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
             markup.listItem(marker=it.marker, task=it.task) {
-                for var c = it.blocks {
-                    _leaf(b=c)
+                for var inner = it.blocks {
+                    _leaf(b=inner)
                 }
             }
         }

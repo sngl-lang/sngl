@@ -82,6 +82,10 @@ type fyneSpec struct {
 	// receiver: "SetText" emits `w.SetText(v)`. A prop absent here has no
 	// Fyne surface to reach, so the assignment is dropped.
 	Setters map[string]string
+	// SetterArgs splits a prop's value into the setter's arguments, for a
+	// setter that takes a record's fields rather than the record: a span's
+	// style is a SNGL struct the runtime has no type for.
+	SetterArgs map[string]func(ir.Expr) []ir.Expr
 	// Currents maps a prop to the Go field holding the value its setter
 	// writes, for a widget whose setter fires its own change callback even
 	// when the value is the one it holds: the assignment is skipped then, or

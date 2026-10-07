@@ -2831,13 +2831,15 @@ follows from the tree being rendered rather than written out:
   list nests three deep, one component per level, since a component calling
   itself is built at run time; deeper items are laid out in their parent's
   place.
-- **fyne does not render a document holding a list.** `listItem` reads the
-  `listDepth` context, which passContext lowers to a `var` of the component;
-  a `var` under a `for` makes the item an instance built at run time, and
-  there the two-span `markup.run`, whose style is read from the data, is a
-  write to a span fyne takes a style for only at construction. gtk4 refuses
-  every `md.document`, a label's markup being one expression that a `for`
-  among spans cannot be.
+- **A run's style may be computed.** `listItem` reads the `listDepth`
+  context, which passContext lowers to a `var` of the component, so under a
+  `for` the item is an instance built at run time; there the two-span
+  `markup.run`'s style, read from the data, reaches fyne as a write after
+  construction. fyne's span answers it with `SetSpanStyle`, the
+  `markup.SpanStyle` handed over a field at a time (`spanStyleArgs`, the
+  spec's `SetterArgs`) since the runtime has no type for it, and the flow
+  rebuilds its segments. gtk4 refuses every `md.document`, a label's markup
+  being one expression that a `for` among spans cannot be.
 - **A loop's library structs are declared.** A target that runs the loop
   holds `[]_Block{…}` as a value, and Go's literal names its type, so
   `promoteForeignStructs` declares the element types of every view loop's
