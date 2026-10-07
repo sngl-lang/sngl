@@ -91,12 +91,16 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	if name != "" {
 		c.declare(s.Pos, ctx)
 	}
-	def := c.checkExpr(a.Value)
-	c.reportSelfReferentialDefault(s.Pos, ctx, def)
-	ctx.Default = def
-	if def != nil {
-		ctx.Typ = def.ExprType()
-	}
+	// Checked once every declaration is registered and marked, with the
+	// package's other initializers (checkPendingInits).
+	c.deferInit(s.Pos, func() {
+		def := c.checkExpr(a.Value)
+		c.reportSelfReferentialDefault(s.Pos, ctx, def)
+		ctx.Default = def
+		if def != nil {
+			ctx.Typ = def.ExprType()
+		}
+	})
 	// A context is program-global whichever tier declared it: the one sngl:i18n
 	// declares has to reach the program's own codegen, which reads
 	// c.pkg.Contexts.

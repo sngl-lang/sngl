@@ -654,6 +654,23 @@ type checker struct {
 	// sub-pass after every const shell (and func) is registered, so a const
 	// may forward-reference another const or use a bare enum member.
 	pendingConstInits []pendingConstInit
+
+	// pendingInits holds pass1's other initializers -- a package var's, a
+	// context's default -- in the order written, checked once every
+	// declaration is registered and marked (checkPendingInits). An
+	// initializer is an expression, and an expression reads what marks say
+	// about the declarations it names: that a struct is a host pointer no
+	// literal builds, that a func is unusable. Nil outside pass1's
+	// registration, where an initializer is checked as it is reached.
+	pendingInits *[]pendingInit
+}
+
+// pendingInit is one initializer pass1 registered and did not check: the
+// position it was written at, which says which file's imports it reads, and
+// the check.
+type pendingInit struct {
+	pos   ast.Pos
+	check func()
 }
 
 // constAssertion captures a const(expr) use site and the IR expression to
@@ -1259,7 +1276,7 @@ func (c *checker) stmts() []ast.Stmt {
 func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
-	savedPkgDecls := c.pkgDecls
+	savedPkgDecls, savedInits := c.pkgDecls, c.pendingInits
 	// The queue pass1 holds its shell marks in. A lib package's own pass1 arms
 	// a fresh one, so the program's -- still filling, since the load happened
 	// from inside it -- has to come back.
@@ -1295,11 +1312,12 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	// the program's. No lib package writes one today, which is the only reason
 	// that is a latent leak rather than a live one.
 	c.pendingPkgBody = nil
+	c.pendingInits = nil
 	return func() {
 		restoreFile()
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
-		c.pkgDecls = savedPkgDecls
+		c.pkgDecls, c.pendingInits = savedPkgDecls, savedInits
 		c.shellMarks = savedShellMarks
 		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
 		c.currentComponent = savedComp
@@ -1369,6 +1387,7 @@ func (c *checker) pass1() {
 	var structShells []pendingShell
 	var pendingComponents []pendingComp
 	c.shellMarks = &[]pendingMark{}
+	c.pendingInits = &[]pendingInit{}
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
@@ -1477,6 +1496,7 @@ func (c *checker) pass1() {
 	// and func is registered (enables forward references between consts and
 	// bare enum members in const initializers).
 	c.checkPendingConstInits()
+	c.checkPendingInits()
 }
 
 func (c *checker) registerImport(imp *ast.Import) {
@@ -2306,33 +2326,7 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 func (c *checker) registerVars(decl *ast.VarDecl) {
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
-		var initExpr ir.Expr
-		if spec.Default != nil {
-			initExpr = c.checkExprExpecting(spec.Default, typ)
-			// Capturing a context into a var would freeze the value and miss
-			// reactive updates. Reject here; read the context at each use site.
-			if _, ok := initExpr.(*ir.ContextRead); ok {
-				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
-			}
-			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			// Infer type from init if not declared.
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
-		} else if sd, ok := structDeclOf(typ); ok {
-			// A struct var with no initializer is that struct's zero value,
-			// which is its fields' defaults -- not an empty struct. Built here
-			// so every consumer sees what a written `Counter{}` already gives
-			// them: left empty, `var c Counter` read back undefined on the web
-			// and its declared defaults everywhere else.
-			lit := &ir.StructLit{Type: typ, Def: sd}
-			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
-				initExpr = lit
-			}
-		}
+		var vars []*ir.Var
 		for _, name := range spec.Names {
 			if _, exists := c.scope.LookupLocal(name); exists {
 				c.error(decl.Pos, "duplicate declaration of %q", name)
@@ -2342,7 +2336,6 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
-				Init: initExpr,
 			}
 			c.applyMarks(decl, v)
 			for i := range spec.Handlers {
@@ -2356,7 +2349,70 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			}
 			c.declPkg().Vars = append(c.declPkg().Vars, v)
 			c.bindVar(decl.Pos, v)
+			vars = append(vars, v)
 		}
+		c.deferInit(decl.Pos, func() { c.checkVarInit(decl, spec, typ, vars) })
+	}
+}
+
+// checkVarInit checks a package var's initializer and settles the type of
+// every name the spec declares from it.
+func (c *checker) checkVarInit(decl *ast.VarDecl, spec ast.VarSpec, typ *ir.Type, vars []*ir.Var) {
+	var initExpr ir.Expr
+	if spec.Default != nil {
+		initExpr = c.checkExprExpecting(spec.Default, typ)
+		// Capturing a context into a var would freeze the value and miss
+		// reactive updates. Reject here; read the context at each use site.
+		if _, ok := initExpr.(*ir.ContextRead); ok {
+			c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
+		}
+		initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
+		initType := exprType(initExpr)
+		// Infer type from init if not declared.
+		if initType.Kind == ir.TypeVoid {
+			// Don't propagate void into an inferred type.
+		} else if typ.Kind == ir.TypeDyn {
+			typ = initType
+		}
+	} else if sd, ok := structDeclOf(typ); ok {
+		// A struct var with no initializer is that struct's zero value,
+		// which is its fields' defaults -- not an empty struct. Built here
+		// so every consumer sees what a written `Counter{}` already gives
+		// them: left empty, `var c Counter` read back undefined on the web
+		// and its declared defaults everywhere else.
+		lit := &ir.StructLit{Type: typ, Def: sd}
+		if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+			initExpr = lit
+		}
+	}
+	for _, v := range vars {
+		v.Type, v.Init = typ, initExpr
+	}
+}
+
+// deferInit holds an initializer's check for checkPendingInits during pass1's
+// registration, and runs it at once anywhere else.
+func (c *checker) deferInit(pos ast.Pos, check func()) {
+	if c.pendingInits == nil {
+		check()
+		return
+	}
+	*c.pendingInits = append(*c.pendingInits, pendingInit{pos, check})
+}
+
+// checkPendingInits checks what pass1 held back in pendingInits, each in the
+// file it was written in, in the order written: a var's inferred type is what
+// an initializer below it reads.
+func (c *checker) checkPendingInits() {
+	pending := c.pendingInits
+	c.pendingInits = nil
+	if pending == nil {
+		return
+	}
+	for _, p := range *pending {
+		restore := c.fileOf(p.pos)
+		p.check()
+		restore()
 	}
 }
 
