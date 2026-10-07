@@ -18,7 +18,7 @@ func TestLibraryExamplesRenderPreviews(t *testing.T) {
 		if strings.Contains(src, "import . ") {
 			t.Errorf("%s: example dot-imports:\n%s", c.Name, src)
 		}
-		if c.PreviewHTML == "" {
+		if c.PreviewDoc == "" {
 			t.Errorf("%s: example does not compile to a preview:\n%s", c.Name, src)
 		}
 	}

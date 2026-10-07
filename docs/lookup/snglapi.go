@@ -218,16 +218,16 @@ type PackageEntry struct {
 
 // DeclPage is one generated documentation page for a decl. Pkg + Kind + Name
 // (+ optional Ident2) identify the lookup target; Href is the URL the website
-// uses to host the page; Body is the rendered HTML body to drop into the
+// uses to host the page; Markdown is the source of the body to render into the
 // page's article element.
 type DeclPage struct {
-	Pkg    string // "sngl", "android", ...
-	Kind   string // "components" | "types" | "enums" | "functions" | "constants" | "data" | "overrides" | "platform-types"
-	Name   string
-	Ident2 string // method name (for types) / member name (for enums); empty for top-level
-	Href   string // generated URL, e.g. "/docs/sngl/types/color/darken.html"
-	Title  string // page title
-	Body   string // rendered HTML body (already markdown-converted)
+	Pkg      string // "sngl", "android", ...
+	Kind     string // "components" | "types" | "enums" | "functions" | "constants" | "data" | "overrides" | "platform-types"
+	Name     string
+	Ident2   string // method name (for types) / member name (for enums); empty for top-level
+	Href     string // generated URL, e.g. "/docs/sngl/types/color/darken.html"
+	Title    string // page title
+	Markdown string // the page body's markdown source, which md.document renders
 }
 
 // --- Public sngl entry points ---
@@ -380,16 +380,16 @@ func AllDeclPages() []DeclPage {
 				idents = append(idents, ident2)
 			}
 			if r, err := Lookup(pkg.Path, idents...); err == nil {
-				body = renderDeclBody(pkg.Path, r)
+				body = buildDeclMarkdown(pkg.Path, r)
 			}
 			out = append(out, DeclPage{
-				Pkg:    pkg.Path,
-				Kind:   kind,
-				Name:   name,
-				Ident2: ident2,
-				Href:   declPageHref(pkg.Path, kind, name, ident2),
-				Title:  declPageTitle(name, ident2),
-				Body:   body,
+				Pkg:      pkg.Path,
+				Kind:     kind,
+				Name:     name,
+				Ident2:   ident2,
+				Href:     declPageHref(pkg.Path, kind, name, ident2),
+				Title:    declPageTitle(name, ident2),
+				Markdown: body,
 			})
 		}
 		for _, c := range idx.Components {
