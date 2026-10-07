@@ -11,8 +11,8 @@
 
 sngl dump --stage checked --format sngl win.sngl
 stdout 'window #home\('
-stdout 'title="Hi"'
-stdout 'favicon="f.ico"'
+stdout 'title ?= ?"Hi"'
+stdout 'favicon ?= ?"f.ico"'
 stdout '@error\(e error\)'
 
 cp stdout out.sngl
@@ -20,9 +20,9 @@ sngl check out.sngl
 stdout 'out.sngl: ok'
 
 sngl dump --stage checked --format sngl route.sngl
-stdout 'title="User"'
-stdout 'href="/u/\\{id\\}"'
-stdout 'params=PageParams\{\}'
+stdout 'title ?= ?"User"'
+stdout 'href ?= ?"/u/\\{id\\}"'
+stdout 'params ?= ?PageParams\{\}'
 stdout 'component content\(v\)'
 
 # Not checked again: a node written qualified (`nav.page`) dumps under its local

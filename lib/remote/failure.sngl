@@ -7,14 +7,14 @@
 // raises an `app.error` from a `Failure` itself, which keeps the choice at the
 // call site instead of in the adapter.
 struct Failure {
-    kind FailureKind
+    kind    FailureKind
     message string
     // The adapter's own code, verbatim: an HTTP status, a SQLSTATE, a gRPC
     // status name, a GraphQL error code. Carried untouched because the only
     // code that can interpret it is code that knows which adapter produced it,
     // and folding it into `kind` would throw away exactly what that code
     // needs.
-    code string
+    code    string
 }
 
 // The failure classes every adapter can produce.

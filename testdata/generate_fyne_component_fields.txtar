@@ -12,9 +12,9 @@ import . "sngl:ui"
 output { go { fyne } }
 
 struct Issue {
-    key string
-    summary string
-    status string
+    key      string
+    summary  string
+    status   string
     assignee string
 }
 

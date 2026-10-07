@@ -49,8 +49,8 @@ func rows() list<list<Key>> {
 // span of its row, and every row claims an equal share of the keypad.
 component KeyCap(entry Key, @press Key) ui.node {
     ui.button(
-        text=entry.label,
-        style={
+        text = entry.label,
+        style = {
             flex = entry.span,
             background = bgOf(entry.tone()),
             color = KEY_FG,

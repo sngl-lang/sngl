@@ -20,13 +20,13 @@ enum LineJoin { miter, round, bevel }
 // `fontFamily` apply to `canvasText` only.
 // TODO Should this be just called "Style"? draw.Style and ui.Style are easy to tell apart.
 struct CanvasStyle {
-    fill color = color{a=0}
-    stroke color = color{a=0}
+    fill        color = color{a=0}
+    stroke      color = color{a=0}
     strokeWidth float = 1.0
-    lineCap LineCap = butt
-    lineJoin LineJoin = miter
-    fontSize float = 16.0
-    fontFamily string = "sans-serif"
+    lineCap     LineCap = butt
+    lineJoin    LineJoin = miter
+    fontSize    float = 16.0
+    fontFamily  string = "sans-serif"
 }
 
 // What one step of a path does.
@@ -36,14 +36,14 @@ enum PathOp { moveTo, lineTo, bezierTo, arcTo, close }
 // both control points and the end point, `arcTo` one control point, the end
 // point and the radius `r`. The rest keep their zero value.
 struct PathCmd {
-    op PathOp
-    x float = 0.0
-    y float = 0.0
+    op  PathOp
+    x   float = 0.0
+    y   float = 0.0
     cx1 float = 0.0
     cy1 float = 0.0
     cx2 float = 0.0
     cy2 float = 0.0
-    r float = 0.0
+    r   float = 0.0
 }
 
 // The tree the shapes form. Declaring it here is what makes `shape` a name a
@@ -82,12 +82,12 @@ enum ScalingMode { center, fit, fill, stretch }
 // Those two are the coordinate space and not the size on screen: a canvas laid
 // out bigger than it draws shows the picture per `scalingMode`.
 component canvas(
-    width ui.measurement,
-    height ui.measurement,
+    width       ui.measurement,
+    height      ui.measurement,
     scalingMode ScalingMode,
-    style CanvasStyle,
-    @click ui.ClickEvent,
-    shapes ...component shape,
+    style       CanvasStyle,
+    @click      ui.ClickEvent,
+    shapes      ...component shape,
 ) ui.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
@@ -131,7 +131,7 @@ struct Point {
 // An extent in the same space. Named for its fields rather than `w`/`h` so a
 // call site reads as the prop it fills.
 struct Size {
-    width float = 0.0
+    width  float = 0.0
     height float = 0.0
 }
 
@@ -202,14 +202,14 @@ struct Arc {
     // Where the incoming line stops and where the outgoing one starts. The
     // path is left at `tangent2` -- not at `to`, which is the same place
     // Canvas2D leaves it and what a following command measures from.
-    tangent1 Point = Point{}
-    tangent2 Point = Point{}
-    center Point = Point{}
+    tangent1   Point = Point{}
+    tangent2   Point = Point{}
+    center     Point = Point{}
     // The arc's start angle in radians and its signed sweep. A negative sweep
     // turns the other way, which is `cairo_arc_negative` on one target and a
     // negative `sweepAngleDegrees` on the other.
-    start float = 0.0
-    sweep float = 0.0
+    start      float = 0.0
+    sweep      float = 0.0
 }
 
 // Named for what it solves, and the struct for what it is: SNGL tells a

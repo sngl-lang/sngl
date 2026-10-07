@@ -30,7 +30,7 @@ output {
 }
 
 struct Item {
-    n int = 0
+    n    int = 0
     span float = 1
 
     func label() string {

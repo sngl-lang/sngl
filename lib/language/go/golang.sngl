@@ -34,14 +34,14 @@ import gen "sngl:x/gen"
 component language(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.
-    const goVersion string,
+    const goVersion  string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
     // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     const goModExtra string,
-    const platforms ...component build.platform,
+    const platforms  ...component build.platform,
 ) build.language {
     gen.run(@run(dir, args) {
         var cmd = [buildModule(dir, dir + ".app", goVersion, goModExtra)]
@@ -231,8 +231,8 @@ func DrawContext.image(x float, y float, w float, h float, src string)
 // What a `@draw` handler is handed: the context to paint through, and the
 // coordinate space the shapes were placed in.
 struct DrawEvent {
-    ctx DrawContext
-    width int
+    ctx    DrawContext
+    width  int
     height int
 }
 

@@ -32,7 +32,7 @@ output {
 
 struct Entry {
     title string
-    href string
+    href  string
 }
 
 const entries = [Entry{title="Home", href="/"}, Entry{title="About", href="/about.html"}]

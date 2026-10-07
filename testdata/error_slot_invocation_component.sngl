@@ -6,7 +6,7 @@ import . "sngl:ui"
 
 component site(
     layout component(title string, content component node) node,
-    plain component(string) node,
+    plain  component(string) node,
 ) node {
     vbox {
         layout("a") {

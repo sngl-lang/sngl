@@ -6,7 +6,7 @@ import . "sngl:ui"
 import tr "sngl:tree"
 
 struct Pair<A, B = string> {
-    left A
+    left  A
     right B
 }
 
@@ -29,7 +29,7 @@ struct Later {
 // scope while any of it resolves. The function form always could; the struct
 // form resolved its defaults outside that scope and reported A as unknown.
 struct Sibling<A, B = A> {
-    left A
+    left  A
     right B
 }
 
@@ -38,9 +38,9 @@ func idr<T, U = T>(a T, b U) => a
 // `Pair<int>` fills B from its default; `Boxed` fills its only parameter and
 // needs no argument list at all.
 component show(
-    p Pair<int> = {left=1, right="s"},
-    q Pair<int, bool> = {left=2, right=true},
-    b Boxed = {v=3},
+    p    Pair<int> = {left=1, right="s"},
+    q    Pair<int, bool> = {left=2, right=true},
+    b    Boxed = {v=3},
     // tr.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
     body component tr.one,

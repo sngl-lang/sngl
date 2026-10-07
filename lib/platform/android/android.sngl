@@ -23,30 +23,30 @@ import gen "sngl:x/gen"
 #[gen.native("android")]
 component platform(
     // Kotlin package / Android application ID.
-    const package string,
+    const package       string,
     // Display name used in AndroidManifest.xml.
-    const appName string,
+    const appName       string,
     // Path to a launcher icon asset.
-    const icon string,
+    const icon          string,
     // Emit a full Gradle project or just Compose sources.
-    const main bool,
+    const main          bool,
     // Include Gradle wrapper + build scripts (default: true; set "false" to skip).
-    const gradle bool,
+    const gradle        bool,
     // Theme accent color (hex).
-    const color string,
+    const color         string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    const projectDir string,
+    const projectDir    string,
     // Which Android runtime to test against under `sngl test`.
     //   "robolectric": JVM simulation, fast, no emulator (default).
     //   "device":      APK on a real emulator/device via adb.
-    const testRunner string,
+    const testRunner    string,
     // Toolchain combo — a known-good set of Gradle/AGP/Kotlin/Compose/SDK
     // versions (see internal/androidtc). "stable" (default) or "next".
-    const toolchain string,
+    const toolchain     string,
     // Override compileSdk / targetSdk (0 = combo default).
-    const sdk int,
+    const sdk           int,
     // Override minSdk (0 = default 26).
-    const minSdk int,
+    const minSdk        int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
 ) build.platform {
@@ -110,8 +110,8 @@ func install(dir string)
 // activity finishes when no screen is drawn after it.
 #[intrinsic("android:Screen")]
 component Screen(
-    visible bool = true,
-    onBack func(),
+    visible  bool = true,
+    onBack   func(),
     children ...component ui.node,
 ) root
 
@@ -119,7 +119,7 @@ component Screen(
 #[intrinsic("android:Column")]
 component Column(
     modifier ui.Style,
-    chain list<string>,
+    chain    list<string>,
     children ...component,
 ) ui.node
 
@@ -127,7 +127,7 @@ component Column(
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
-    chain list<string>,
+    chain    list<string>,
     children ...component,
 ) ui.node
 
@@ -135,8 +135,8 @@ component Box(
 #[intrinsic("android:Row")]
 component Row(
     modifier ui.Style,
-    chain list<string>,
-    args list<string>,
+    chain    list<string>,
+    args     list<string>,
     children ...component,
 ) ui.node
 
@@ -144,18 +144,18 @@ component Row(
 #[intrinsic("android:Spacer")]
 component Spacer(
     modifier ui.Style,
-    chain list<string>,
+    chain    list<string>,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("android:Text")]
 component Text(
-    text string,
+    text     string,
     modifier ui.Style,
     // Typography, as Compose's own `style` argument: a TextStyle built from
     // the Style's font and colour fields.
-    style ui.Style,
-    args list<string>,
+    style    ui.Style,
+    args     list<string>,
 ) ui.node
 
 #[gen.renders(identity)]
@@ -188,10 +188,10 @@ component LinearProgressIndicator(
 #[gen.renders(identity)]
 #[intrinsic("android:Button")]
 component Button(
-    onClick func(),
+    onClick  func(),
     modifier ui.Style,
-    colors ui.Style,
-    shape ui.Style,
+    colors   ui.Style,
+    shape    ui.Style,
     children ...component,
 ) ui.node
 
@@ -213,20 +213,20 @@ component Card(
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
-    children ...component,
+    children         ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("android:Checkbox")]
 component Checkbox(
-    checked bool,
+    checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("android:Switch")]
 component Switch(
-    checked bool,
+    checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
@@ -234,7 +234,7 @@ component Switch(
 #[intrinsic("android:RadioButton")]
 component RadioButton(
     selected bool,
-    onClick func(),
+    onClick  func(),
 ) ui.node
 
 // `label` is the floating caption, and it is a slot rather than a prop
@@ -244,26 +244,26 @@ component RadioButton(
 #[gen.renders(identity)]
 #[intrinsic("android:OutlinedTextField")]
 component OutlinedTextField(
-    value string,
-    minLines int,
-    readOnly bool,
-    modifier ui.Style,
+    value         string,
+    minLines      int,
+    readOnly      bool,
+    modifier      ui.Style,
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
     onValueChange func(e ui.InputEvent),
-    label component ui.node,
+    label         component ui.node,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
-    children ...component,
+    children         ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("android:Surface")]
 component Surface(
-    args list<string>,
+    args     list<string>,
     children ...component,
 ) ui.node

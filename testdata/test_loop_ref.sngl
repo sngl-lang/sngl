@@ -9,7 +9,7 @@ import . "sngl:test"
 
 struct Task {
     label string = ""
-    done bool = false
+    done  bool = false
 }
 
 component main node {

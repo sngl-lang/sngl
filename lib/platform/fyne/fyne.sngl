@@ -27,7 +27,7 @@ component platform(
     // Go package name for the generated files.
     const package string,
     // Emit a standalone main() or a library-style module.
-    const main bool,
+    const main    bool,
     // The process start, wrapped: what the handler does before calling `run`
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
@@ -47,10 +47,10 @@ component platform(
 // manager's close is reported as `visible = false` followed by `@closed`.
 #[intrinsic("fyne:Toplevel")]
 component Toplevel(
-    title string,
+    title    string,
     :visible bool = true,
     @closed(),
-    content ...component ui.node,
+    content  ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
@@ -73,7 +73,7 @@ const component ui.window[platform] {
 // out — a Fyne constructor takes its content up front, so the argument still
 // has to be *something*.
 struct Arg {
-    raw string
+    raw  string
     prop string
 }
 
@@ -81,8 +81,8 @@ struct Arg {
 // call="SetText"}` emits `w.SetText(v)`. A prop with no Setter has no Fyne
 // surface to reach, so the assignment is dropped.
 struct Setter {
-    prop string
-    call string
+    prop    string
+    call    string
     // current is the Go field holding what `call` writes, for a widget whose
     // setter fires its own change callback even for the value it holds:
     // the write is skipped then.
@@ -97,10 +97,10 @@ struct Setter {
 // promoted handler's two-way write-back reads the value from it (`m.name = s`)
 // rather than off an event struct the closure never receives.
 struct Handler {
-    on string
-    field string
+    on        string
+    field     string
     signature string
-    param string
+    param     string
 }
 
 // Everything the Go emitter needs to build one Fyne widget.
@@ -136,14 +136,14 @@ struct Native {
 }
 
 struct Spec {
-    new Native
-    args list<Arg>
-    goType Native
-    add string
-    content string
-    setters list<Setter>
+    new      Native
+    args     list<Arg>
+    goType   Native
+    add      string
+    content  string
+    setters  list<Setter>
     handlers list<Handler>
-    axis string
+    axis     string
 }
 
 // --- The primitives ---
@@ -155,48 +155,48 @@ struct Spec {
 #[gen.renders(identity)]
 #[intrinsic("fyne:Widget")]
 component Widget(
-    const spec Spec,
-    text string,
+    const spec  Spec,
+    text        string,
     placeholder string,
-    number int,
-    flag bool,
-    options list<string>,
-    style ui.Style,
-    @click ui.ClickEvent,
-    @change ui.ChangeEvent,
-    @input ui.InputEvent,
+    number      int,
+    flag        bool,
+    options     list<string>,
+    style       ui.Style,
+    @click      ui.ClickEvent,
+    @change     ui.ChangeEvent,
+    @input      ui.InputEvent,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("fyne:Container")]
 component Container(
-    const spec Spec,
-    text string,
+    const spec  Spec,
+    text        string,
     placeholder string,
-    number int,
-    flag bool,
-    options list<string>,
-    style ui.Style,
-    @click ui.ClickEvent,
-    @change ui.ChangeEvent,
-    @input ui.InputEvent,
-    children ...component,
+    number      int,
+    flag        bool,
+    options     list<string>,
+    style       ui.Style,
+    @click      ui.ClickEvent,
+    @change     ui.ChangeEvent,
+    @input      ui.InputEvent,
+    children    ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
-    const spec Spec,
-    text string,
+    const spec  Spec,
+    text        string,
     placeholder string,
-    number int,
-    flag bool,
-    options list<string>,
-    style ui.Style,
-    @click ui.ClickEvent,
-    @change ui.ChangeEvent,
-    @input ui.InputEvent,
-    content ...component tr.one,
+    number      int,
+    flag        bool,
+    options     list<string>,
+    style       ui.Style,
+    @click      ui.ClickEvent,
+    @change     ui.ChangeEvent,
+    @input      ui.InputEvent,
+    content     ...component tr.one,
 ) ui.node
 
 // --- The Fyne widgets ---
@@ -209,35 +209,35 @@ component Wrapper(
 
 const component Label(text string, style ui.Style) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
             args = [Arg{raw=`""`}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Label"},
             setters = [Setter{prop="text", call="SetText"}],
         },
-        text=text,
-        style={...style},
+        text = text,
+        style = {...style},
     ) {}
 }
 
 const component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
             args = [Arg{raw=`""`}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Button"},
             setters = [Setter{prop="text", call="SetText"}],
             handlers = [Handler{on="click", field="OnTapped", signature="func()"}],
         },
-        text=text,
-        style={...style},
+        text = text,
+        style = {...style},
         @click { click() },
     ) {}
 }
 
 const component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent, @change ui.ChangeEvent) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
             setters = [
@@ -249,24 +249,24 @@ const component Entry(text string, placeholder string, style ui.Style, @input ui
                 Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
             ],
         },
-        text=text,
-        placeholder=placeholder,
-        style={...style},
+        text = text,
+        placeholder = placeholder,
+        style = {...style},
         @input { input() },
         @change { change() },
     ) {}
 }
 
 const component MultiLineEntry(
-    text string,
+    text        string,
     placeholder string,
-    rows int,
-    style ui.Style,
-    @input ui.InputEvent,
-    @change ui.ChangeEvent,
+    rows        int,
+    style       ui.Style,
+    @input      ui.InputEvent,
+    @change     ui.ChangeEvent,
 ) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Entry"},
             setters = [
@@ -279,10 +279,10 @@ const component MultiLineEntry(
                 Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
             ],
         },
-        text=text,
-        placeholder=placeholder,
-        number=rows,
-        style={...style},
+        text = text,
+        placeholder = placeholder,
+        number = rows,
+        style = {...style},
         @input { input() },
         @change { change() },
     ) {}
@@ -290,7 +290,7 @@ const component MultiLineEntry(
 
 const component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
             args = [Arg{raw=`""`}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Check"},
@@ -300,9 +300,9 @@ const component Check(text string, checked bool, style ui.Style, @change ui.Togg
             ],
             handlers = [Handler{on="change", field="OnChanged", signature="func(b bool)", param="b"}],
         },
-        text=text,
-        flag=checked,
-        style={...style},
+        text = text,
+        flag = checked,
+        style = {...style},
         @change { change() },
     ) {}
 }
@@ -313,12 +313,12 @@ const component Check(text string, checked bool, style ui.Style, @change ui.Togg
 // choices.
 const component Select(
     selected string,
-    options list<string>,
-    style ui.Style,
-    @change ui.ChangeEvent,
+    options  list<string>,
+    style    ui.Style,
+    @change  ui.ChangeEvent,
 ) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
             args = [Arg{raw="nil"}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
@@ -328,9 +328,9 @@ const component Select(
             ],
             handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
         },
-        options=options,
-        text=selected,
-        style={...style},
+        options = options,
+        text = selected,
+        style = {...style},
         @change { change() },
     ) {}
 }
@@ -340,12 +340,12 @@ const component Select(
 // package can spell, so the link renders empty.
 const component Hyperlink(style ui.Style) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
             args = [Arg{raw=`""`}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Hyperlink"},
         },
-        style={...style},
+        style = {...style},
     ) {}
 }
 
@@ -355,34 +355,34 @@ const component Hyperlink(style ui.Style) ui.node {
 // the only one available here.
 const component Image(style ui.Style) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
             args = [Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
         },
-        style={...style},
+        style = {...style},
     ) {}
 }
 
 const component Spacer(style ui.Style) ui.node {
     Widget(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
             goType = Native{path="fyne.io/fyne/v2", name="CanvasObject"},
         },
-        style={...style},
+        style = {...style},
     ) {}
 }
 
 const component VBox(style ui.Style, children ...component) ui.node {
     Container(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
             axis = "vertical",
         },
-        style={...style},
+        style = {...style},
     ) {
         children
     }
@@ -390,13 +390,13 @@ const component VBox(style ui.Style, children ...component) ui.node {
 
 const component HBox(style ui.Style, children ...component) ui.node {
     Container(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
             goType = Native{path="fyne.io/fyne/v2", name="*Container"},
             add = "Add",
             axis = "horizontal",
         },
-        style={...style},
+        style = {...style},
     ) {
         children
     }
@@ -404,13 +404,13 @@ const component HBox(style ui.Style, children ...component) ui.node {
 
 const component VScroll(style ui.Style, content ...component tr.one) ui.node {
     Wrapper(
-        spec=Spec{
+        spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
             args = [Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/container", name="*Scroll"},
             content = "Content",
         },
-        style={...style},
+        style = {...style},
     ) {
         content
     }
@@ -610,10 +610,10 @@ const component ui.input[platform] {
 
 const component ui.textarea[platform] {
     MultiLineEntry(
-        text=value,
-        placeholder=placeholder,
-        rows=rows,
-        style={...style},
+        text = value,
+        placeholder = placeholder,
+        rows = rows,
+        style = {...style},
         @input { input() },
         @change { change() },
     ) {}
@@ -666,7 +666,7 @@ const component time.timer[platform] {
 
     if enabled {
         effect(
-            on=interval,
+            on = interval,
             @mount(d) {
                 if d > 0ms {
                     live = true
@@ -748,7 +748,7 @@ const component time.timer[platform] {
 // taken, there being nothing in Fyne that a heading announces itself to.
 #[intrinsic("fyne:Flow")]
 component Flow(
-    style ui.Style,
+    style   ui.Style,
     content ...component markup.span,
 ) ui.node
 
@@ -759,12 +759,12 @@ component Flow(
 // literal where the build knows it and set where the program does.
 #[intrinsic("fyne:Span")]
 component Span(
-    text string,
-    href string,
+    text      string,
+    href      string,
     spanStyle markup.SpanStyle,
-    kind markup.Token,
-    color color,
-    content ...component markup.span,
+    kind      markup.Token,
+    color     color,
+    content   ...component markup.span,
 ) markup.span
 
 const component markup.richText[platform] {

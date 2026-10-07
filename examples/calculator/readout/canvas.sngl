@@ -44,10 +44,10 @@ component Cell(glyph Glyph, x = 0.0, y = 0.0) draw.shape {
 
 component SegmentReadout(entry = "0") ui.node {
     draw.canvas(
-        width=WIDTH_PX * 1px,
-        height=HEIGHT_PX * 1px,
-        scalingMode=draw.ScalingMode.fit,
-        style=draw.CanvasStyle{fill=BACKING},
+        width = WIDTH_PX * 1px,
+        height = HEIGHT_PX * 1px,
+        scalingMode = draw.ScalingMode.fit,
+        style = draw.CanvasStyle{fill=BACKING},
     ) {
         draw.rect(x=0.0, y=0.0, w=WIDTH_PX, h=HEIGHT_PX, style=draw.CanvasStyle{fill=BACKING})
         for var i, glyph = cells(entry) {

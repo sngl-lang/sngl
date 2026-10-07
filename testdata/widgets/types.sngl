@@ -3,6 +3,6 @@ import . "sngl:ui"
 enum Theme { light, dark, system }
 
 struct Config {
-    name string = ""
+    name    string = ""
     enabled bool = false
 }

@@ -12,10 +12,10 @@ enum Action { digit, point, operate, equals, clear, negate, percent, backspace }
 // rest. That is cheaper than eight structs, and the alternative -- one string
 // field reinterpreted per action -- is the thing this type exists to prevent.
 struct Key {
-    label string = ""
+    label  string = ""
     action Action = Action.digit
-    digit string = ""
-    op calc.Op = calc.Op.none
+    digit  string = ""
+    op     calc.Op = calc.Op.none
 
     // Weight in its row. The zero key is two keys wide, as it is on every
     // calculator ever made.

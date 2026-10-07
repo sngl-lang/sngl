@@ -12,9 +12,9 @@
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
-stdout 'header component tr.one'
-stdout 'children \.\.\.component,'
-stdout 'cell component\(row Row\)'
+stdout 'header +component tr.one'
+stdout 'children +\.\.\.component,'
+stdout 'cell +component\(row Row\)'
 
 cp stdout out.sngl
 sngl check out.sngl

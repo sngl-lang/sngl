@@ -6,8 +6,8 @@ import remote "sngl:remote"
 // something `fetch` guesses at. `body` is the payload as text, which is what a
 // caller needs to hand to whatever does know how to read it.
 struct Result {
-    status int
-    body string
+    status  int
+    body    string
     headers map<string, string>
 }
 

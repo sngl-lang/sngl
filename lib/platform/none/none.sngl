@@ -38,7 +38,7 @@ component platform() build.platform
 #[intrinsic("none:Timer")]
 component Timer(
     interval time.duration,
-    enabled bool,
+    enabled  bool,
     @tick,
 )
 
@@ -151,7 +151,7 @@ const component ui.modal[platform] {}
 // flow *means*, which is the half a test asserts on.
 #[intrinsic("none:flow")]
 component flow(
-    role markup.Role,
+    role    markup.Role,
     content ...component markup.span,
 ) ui.node
 
@@ -161,9 +161,9 @@ component flow(
 // it.
 #[intrinsic("none:inline")]
 component inline(
-    style markup.SpanStyle,
-    href string,
-    kind markup.Token,
+    style   markup.SpanStyle,
+    href    string,
+    kind    markup.Token,
     content ...component markup.span,
 ) markup.span
 

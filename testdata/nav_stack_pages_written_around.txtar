@@ -43,7 +43,7 @@ output {
 }
 
 struct Item {
-    slug string
+    slug  string
     title string
 }
 

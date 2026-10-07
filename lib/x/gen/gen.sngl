@@ -178,13 +178,13 @@ func renders(these list<Rendered>) ir.Macro
 #[marks.builtin("genEmit")]
 #[tree.none]
 component emit<T = struct {}>(
-    file string = "",
-    open string = "",
-    close string = "",
+    file    string = "",
+    open    string = "",
+    close   string = "",
     // The defaults are never read: code mode needs a `render`, and the build
     // always supplies `members`. They are typed by T's default because a
     // default is checked against what T stands for in the declaration.
-    render func(members list<T>) string = func(members list<struct {}>) => "",
+    render  func(members list<T>) string = func(members list<struct {}>) => "",
     members func() list<T> = func() list<struct {}> {
         return []
     },
@@ -204,7 +204,7 @@ component emit<T = struct {}>(
 // read at build time with its props bound, and the members it holds, in the
 // order they are written.
 struct Member<T> {
-    value T
+    value    T
     children list<Member<T>>
 }
 

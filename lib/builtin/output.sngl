@@ -45,19 +45,19 @@ import marks "sngl:internal/marks"
 #[marks.builtin("output")]
 component output(
     // Display name for the app; used as window title and platform-native app name.
-    const name string,
+    const name        string,
     // Path to a launcher / favicon icon (SVG or PNG), relative to the project dir.
-    const icon string,
+    const icon        string,
     // Short app description (Android description, HTML <meta description>, etc.).
     const description string,
     // Semantic version string (Android versionName, HTML meta, etc.).
-    const version string,
+    const version     string,
     // When true, generate source maps for target languages that support them
     // (Go //line directives, JS .map sidecars).
-    const maps bool,
+    const maps        bool,
     // When true, the generator emits unit tests in the target language
     // alongside the application code, using that language's native test
     // runner (Go's testing, Kotlin's JUnit, JS's Jest/Vitest).
-    const test bool,
-    const targets ...component build.language,
+    const test        bool,
+    const targets     ...component build.language,
 ) root {}

@@ -47,7 +47,7 @@ component bar(blocks ...component block) root
 
 // What one member contributes: its data, and the handler a click on it runs.
 struct Entry {
-    full string
+    full  string
     color string
     click func(button int)
 }
@@ -108,7 +108,7 @@ func readClicks(members func() list<Entry>) {
 
 component block[go.language] {
     gen.emit(
-        render=encode,
+        render = encode,
         @start(members) {
             print("start\n")
             async.start(func() {

@@ -2,7 +2,7 @@ import . "sngl:test"
 import ui "sngl:ui"
 
 struct Config {
-    name string
+    name     string
     greeting string
 }
 struct Point {

@@ -48,7 +48,7 @@ enum DateStyle { short, medium, long, full }
 // percent sign or currency where the style asks for one.
 #[marks.intrinsic("i18n.numberInt")]
 func numberInt(
-    n int,
+    n     int,
     style NumberStyle = decimal, // how the number is written
 ) string {
     return _numberInt(locale, n, string(style))
@@ -58,7 +58,7 @@ func numberInt(
 // integer.
 #[marks.intrinsic("i18n.numberFloat")]
 func numberFloat(
-    n float,
+    n     float,
     style NumberStyle = decimal, // how the number is written
 ) string {
     return _numberFloat(locale, n, string(style))
@@ -67,7 +67,7 @@ func numberFloat(
 // A date written for the active locale.
 #[marks.intrinsic("i18n.date")]
 func date(
-    d clock.date,
+    d     clock.date,
     style DateStyle = medium, // how much of the date is written
 ) string {
     return _date(locale, d, string(style))
@@ -76,7 +76,7 @@ func date(
 // A time of day written for the active locale.
 #[marks.intrinsic("i18n.time")]
 func time(
-    t clock.time,
+    t     clock.time,
     style DateStyle = medium, // how much of the time is written
 ) string {
     return _time(locale, t, string(style))
@@ -85,7 +85,7 @@ func time(
 // A date and time written together for the active locale.
 #[marks.intrinsic("i18n.datetime")]
 func datetime(
-    dt clock.datetime,
+    dt        clock.datetime,
     dateStyle DateStyle = medium, // how much of the date is written
     timeStyle DateStyle = medium, // how much of the time is written
 ) string {
@@ -157,7 +157,7 @@ const func _select(locale string, value string, cases map<string, string>) strin
 // i18n.exactly(n); the fields are the runtime's business.
 // TODO Should PluralKey be anynomous?
 struct PluralKey {
-    n int
+    n     int
     exact bool
 }
 

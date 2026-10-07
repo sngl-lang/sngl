@@ -17,7 +17,7 @@ struct Payload {
 }
 
 component emitter(
-    @one Payload,
+    @one  Payload,
     @none FocusEvent,
 ) node {
     text(value="a", @click { one({value="x"}) })

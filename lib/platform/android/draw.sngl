@@ -190,7 +190,7 @@ const func degrees(radians float) => radians * 180.0 / math.pi
 component draw(@draw DrawEvent) shapes.shape
 
 struct DrawEvent {
-    width int
+    width  int
     height int
 }
 

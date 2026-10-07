@@ -23,7 +23,7 @@ struct PkgParams {
 }
 
 struct DeclParams {
-    pkg string
+    pkg  string
     name string
 }
 
@@ -43,8 +43,8 @@ if PLATFORM == html.platform {
                     }
                     vbox(style={padding=24px, flex=1}) {
                         text(
-                            value="SNGL Documentation",
-                            style={fontSize=28px, fontWeight=bold},
+                            value = "SNGL Documentation",
+                            style = {fontSize=28px, fontWeight=bold},
                         )
                         docui.EntryView(path="sngl")
                     }
@@ -57,9 +57,9 @@ if PLATFORM == html.platform {
                         docui.Sidebar(homeHref="/") {
                             for var p = lookup.Packages() {
                                 docui.NavItem(
-                                    text=p.title,
-                                    href="/p/" + p.path,
-                                    active=p.path == v.pkg,
+                                    text = p.title,
+                                    href = "/p/" + p.path,
+                                    active = p.path == v.pkg,
                                 )
                             }
                         }
@@ -76,17 +76,17 @@ if PLATFORM == html.platform {
                         docui.Sidebar(homeHref="/") {
                             for var p = lookup.Packages() {
                                 docui.NavItem(
-                                    text=p.title,
-                                    href="/p/" + p.path,
-                                    active=p.path == v.pkg,
+                                    text = p.title,
+                                    href = "/p/" + p.path,
+                                    active = p.path == v.pkg,
                                 )
                             }
                         }
                         vbox(style={padding=24px, flex=1}) {
                             docui.EntryView(
-                                path=v.pkg,
-                                ident1=v.name,
-                                hrefPrefix="/p/" + v.pkg + "/",
+                                path = v.pkg,
+                                ident1 = v.name,
+                                hrefPrefix = "/p/" + v.pkg + "/",
                             )
                         }
                     }
@@ -120,8 +120,8 @@ if PLATFORM == html.platform {
                     text(value=entry().index.description, style={color="#aaa"})
                     if entry().index.isNative && entry().index.nativeImportPath != "" {
                         text(
-                            value="Import: " + entry().index.nativeImportPath,
-                            style={color="#888", fontFamily="monospace"},
+                            value = "Import: " + entry().index.nativeImportPath,
+                            style = {color="#888", fontFamily="monospace"},
                         )
                     }
                     text(value="")
@@ -226,8 +226,8 @@ if PLATFORM == html.platform {
             if entry().kind == "prop" {
                 vbox {
                     text(
-                        value=entry().propDoc.componentName + "." + entry().propDoc.name,
-                        style={fontWeight=bold},
+                        value = entry().propDoc.componentName + "." + entry().propDoc.name,
+                        style = {fontWeight=bold},
                     )
                     text(value=entry().propDoc.type)
                     text(value=entry().propDoc.doc)
@@ -237,8 +237,8 @@ if PLATFORM == html.platform {
             if entry().kind == "field" {
                 vbox {
                     text(
-                        value=entry().fieldDoc.type + "." + entry().fieldDoc.name,
-                        style={fontWeight=bold},
+                        value = entry().fieldDoc.type + "." + entry().fieldDoc.name,
+                        style = {fontWeight=bold},
                     )
                     text(value=entry().fieldDoc.expr)
                 }
@@ -247,8 +247,8 @@ if PLATFORM == html.platform {
             if entry().kind == "member" {
                 vbox {
                     text(
-                        value=entry().memberDoc.enumName + "." + entry().memberDoc.name,
-                        style={fontWeight=bold},
+                        value = entry().memberDoc.enumName + "." + entry().memberDoc.name,
+                        style = {fontWeight=bold},
                     )
                     text(value=entry().memberDoc.doc)
                 }

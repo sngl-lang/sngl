@@ -46,7 +46,7 @@ func encode(members list<Entry>) string {
 
 component block[go.language] {
     gen.emit(
-        render=encode,
+        render = encode,
         @start(members) {
             print("start\n")
         },

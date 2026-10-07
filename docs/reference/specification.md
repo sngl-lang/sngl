@@ -1791,7 +1791,7 @@ ui.window {
     var log = ""
 
     effect(
-        on=room,
+        on = room,
         @mount(r) {
             log = "joined {r}"
         },

@@ -317,7 +317,7 @@ Structs are values, not references, and a struct cannot be `null`: `var u User =
 import ui "sngl:ui"
 
 struct User {
-    name string = "anonymous"
+    name  string = "anonymous"
     score int = 0
 }
 
@@ -369,7 +369,7 @@ import ui "sngl:ui"
 
 struct Task {
     label string = ""
-    done bool = false
+    done  bool = false
 }
 
 ui.window {

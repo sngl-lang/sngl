@@ -16,8 +16,8 @@ import . "sngl:ui"
 import . "sngl:test"
 
 struct Row {
-    title string
-    count int
+    title  string
+    count  int
     unused bool = false
 }
 

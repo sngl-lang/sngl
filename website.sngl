@@ -108,42 +108,42 @@ component PlatformCarousel() ui.node {
         ui.stack {
             if active == 0 {
                 ui.image(
-                    src=screenshotWeb,
-                    alt="SNGL Todo App on Web",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
+                    src = screenshotWeb,
+                    alt = "SNGL Todo App on Web",
+                    fit = contain,
+                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 1 {
                 ui.image(
-                    src=screenshotTerminal,
-                    alt="SNGL Todo App in Terminal",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
+                    src = screenshotTerminal,
+                    alt = "SNGL Todo App in Terminal",
+                    fit = contain,
+                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 2 {
                 ui.image(
-                    src=screenshotDesktop,
-                    alt="SNGL Todo App on Desktop",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
+                    src = screenshotDesktop,
+                    alt = "SNGL Todo App on Desktop",
+                    fit = contain,
+                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
             if active == 3 {
                 ui.image(
-                    src=screenshotAndroid,
-                    alt="SNGL Todo App on Android",
-                    fit=contain,
-                    style={maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
+                    src = screenshotAndroid,
+                    alt = "SNGL Todo App on Android",
+                    fit = contain,
+                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
                 )
             }
         }
         ui.hbox(style={gap=8px}) {
             ui.button(
-                text="Web",
+                text = "Web",
                 @click { active = 0 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 0 ? #2196f3 : #f5f5f5,
@@ -151,9 +151,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Terminal",
+                text = "Terminal",
                 @click { active = 1 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 1 ? #2196f3 : #f5f5f5,
@@ -161,9 +161,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Desktop",
+                text = "Desktop",
                 @click { active = 2 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 2 ? #2196f3 : #f5f5f5,
@@ -171,9 +171,9 @@ component PlatformCarousel() ui.node {
                 },
             )
             ui.button(
-                text="Android",
+                text = "Android",
                 @click { active = 3 },
-                style={
+                style = {
                     paddingX = 20px,
                     borderRadius = 20px,
                     background = active == 3 ? #2196f3 : #f5f5f5,
@@ -197,8 +197,8 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
                 html.footer(class="site-footer") {
                     // docsgen replaces the year marker with the commit's year.
                     html.span(
-                        class="copyright",
-                        innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
+                        class = "copyright",
+                        innerHTML = "&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
                     )
                     html.span(class="footer-meta") {
                         html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")

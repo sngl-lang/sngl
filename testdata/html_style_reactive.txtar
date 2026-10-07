@@ -29,8 +29,8 @@ component row(label string) ui.node {
     var on = false
 
     ui.button(
-        text=label,
-        style={
+        text = label,
+        style = {
             fontWeight = on ? bold : normal,
             paddingX = on ? 8px : 2px,
             borderWidth = on ? 2px : 0px,

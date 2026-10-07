@@ -6,7 +6,7 @@ component editor node {
     var lastCommit = ""
 
     input #field(
-        value=name,
+        value = name,
         @input(e) { name = e.value },
         @change(e) { lastCommit = e.value },
     )

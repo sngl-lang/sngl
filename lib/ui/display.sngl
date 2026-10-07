@@ -1,10 +1,10 @@
 // Displays a text string. Typography -- size, weight, color, alignment,
 // `maxLines` truncation -- is driven entirely by `style`.
 component text(
-    value string,    // the text shown
-    selectable bool, // lets the platform offer copy
-    style Style,
-    @click ClickEvent, // a tap or click, for text used as an action
+    value      string, // the text shown
+    selectable bool,   // lets the platform offer copy
+    style      Style,
+    @click     ClickEvent, // a tap or click, for text used as an action
 ) node
 
 component _example_text node {
@@ -17,12 +17,12 @@ component _example_text node {
 
 // Displays an image from a URL or asset path.
 component image(
-    src string,    // the URL or asset path
-    alt string,    // the accessibility label
-    fit ObjectFit, // how the image is scaled into its frame
-    style Style,
+    src    string,    // the URL or asset path
+    alt    string,    // the accessibility label
+    fit    ObjectFit, // how the image is scaled into its frame
+    style  Style,
     @click ClickEvent,
-    @load LoadEvent, // decoding completed
+    @load  LoadEvent, // decoding completed
     // Fetching or decoding failed. The payload is the ambient `error` --
     // the value `error.raise` throws and a `boundary` catches, because a
     // failure is a failure whoever noticed it.
@@ -38,10 +38,10 @@ component _example_image node {
 // Small status label — a compact chip showing a status, count, or
 // category tag.
 component badge(
-    value string,   // the text shown
+    value   string, // the text shown
     variant string, // the color: "primary", "success", "warning", "error" or "neutral"
-    size string,    // "small" or "medium"
-    style Style,
+    size    string, // "small" or "medium"
+    style   Style,
 ) node {
     text(value=value, style={display=inlineBlock, paddingY=2px, paddingX=8px, borderRadius=12px, ...style})
 }
@@ -56,15 +56,15 @@ component _example_badge node {
 
 // Compact interactive tag.
 component chip(
-    label string,   // the text shown
-    variant string, // the color
-    removable bool, // shows a remove affordance, which fires `@remove`
-    selected bool,  // styles the chip as active, as a filter that is on
-    disabled bool,
+    label     string, // the text shown
+    variant   string, // the color
+    removable bool,   // shows a remove affordance, which fires `@remove`
+    selected  bool,   // styles the chip as active, as a filter that is on
+    disabled  bool,
     focusable bool = true,
-    style Style,
-    @click ClickEvent,
-    @remove DismissEvent, // the remove affordance was used
+    style     Style,
+    @click    ClickEvent,
+    @remove   DismissEvent, // the remove affordance was used
 ) node {
     hbox(style={
         alignItems = center,
@@ -101,20 +101,20 @@ enum AvatarVariant { circle, square }
 // User profile image with fallback: the image where there is one, and the
 // initials in a styled placeholder otherwise.
 component avatar(
-    initials string,          // shown when there is no `src`
-    size SizePreset = medium, // a preset; `style.width` and `style.height` set any other size
-    variant AvatarVariant,    // the outline it is clipped to
-    src string,               // the image, a URL or asset path
-    alt string,               // the image's accessibility label
-    style Style,
-    @click ClickEvent,
+    initials string,              // shown when there is no `src`
+    size     SizePreset = medium, // a preset; `style.width` and `style.height` set any other size
+    variant  AvatarVariant,       // the outline it is clipped to
+    src      string,              // the image, a URL or asset path
+    alt      string,              // the image's accessibility label
+    style    Style,
+    @click   ClickEvent,
 ) node {
     if src != "" {
         image(
-            src=src,
-            alt=alt,
-            fit=cover,
-            style={
+            src = src,
+            alt = alt,
+            fit = cover,
+            style = {
                 width = _avatarSide(size),
                 height = _avatarSide(size),
                 borderRadius = _avatarRadius(size, variant),
@@ -124,8 +124,8 @@ component avatar(
         )
     } else {
         text(
-            value=initials,
-            style={
+            value = initials,
+            style = {
                 display = inlineFlex,
                 alignItems = center,
                 justifyContent = center,
@@ -175,16 +175,16 @@ component _example_avatar node {
 // zero is a legitimate fraction and cannot double as "not known", and each
 // platform has its own shape for the indeterminate one.
 component progress(
-    style Style,
-    value option<float>, // how far along; none for work of unknown length
+    style     Style,
+    value     option<float>, // how far along; none for work of unknown length
     // The value `value` is measured against. One rather than zero, because a
     // platform that wants a fraction divides by it and every platform that
     // does not still has to render something: `<progress max="0">` is invalid
     // HTML, and a GTK fraction of value/0 is not a number.
-    max float = 1,
-    label string,   // a short description of the work
-    variant string, // the color: "primary", "success", "warning" or "error"
-    showValue bool, // shows a numeric read-out beside the bar
+    max       float = 1,
+    label     string, // a short description of the work
+    variant   string, // the color: "primary", "success", "warning" or "error"
+    showValue bool,   // shows a numeric read-out beside the bar
 ) node
 
 component _example_progress node {
@@ -200,10 +200,10 @@ enum SpinnerVariant { circle, bar }
 
 // Indeterminate loading indicator. Use when progress cannot be measured.
 component spinner(
-    label string,           // an accessible description, announced by screen readers
+    label   string,         // an accessible description, announced by screen readers
     variant SpinnerVariant, // the shape it turns in
-    size SizePreset = medium,
-    style Style,
+    size    SizePreset = medium,
+    style   Style,
 ) node
 
 component _example_spinner node {
@@ -219,18 +219,18 @@ enum SortDirection { none, asc, desc }
 // Tabular data display.
 // TODO should use families to define rows as children
 component table(
-    style Style,
-    columns list<string>, // the column headers
+    style         Style,
+    columns       list<string>, // the column headers
     // The cell grid: one list per row, each cell aligned to its column by
     // position.
-    rows list<list<string>> = [],
-    selectable bool,             // lets the user select a row
-    :selected int,               // the selected row's index from 0
-    sortable bool,               // lets the user re-order by a column
-    sortColumn string,           // the column the rows are sorted by
+    rows          list<list<string>> = [],
+    selectable    bool,          // lets the user select a row
+    :selected     int,           // the selected row's index from 0
+    sortable      bool,          // lets the user re-order by a column
+    sortColumn    string,        // the column the rows are sorted by
     sortDirection SortDirection, // which way the sorted column runs
-    @select SelectEvent,         // the selection changed
-    @sort ChangeEvent,           // the user changed the sort
+    @select       SelectEvent,   // the selection changed
+    @sort         ChangeEvent,   // the user changed the sort
 ) node
 
 component _example_table node {
@@ -242,12 +242,12 @@ component _example_table node {
 // Hierarchical data display.
 // TODO should use families to define nodes as children
 component tree(
-    style Style,
-    items list<string>,  // the visible row labels, in traversal order
-    :selected string,    // the label of the selected row
-    expanded list<int>,  // the indices of the expanded nodes
-    @select SelectEvent, // a row was picked
-    @expand ExpandEvent, // the user expanded or collapsed a node
+    style     Style,
+    items     list<string>, // the visible row labels, in traversal order
+    :selected string,       // the label of the selected row
+    expanded  list<int>,    // the indices of the expanded nodes
+    @select   SelectEvent,  // a row was picked
+    @expand   ExpandEvent,  // the user expanded or collapsed a node
 ) node
 
 component _example_tree node {
@@ -256,8 +256,6 @@ component _example_tree node {
     }
 }
 
-// TODO The formatter should add spaces similar to structs to make the props easier to read
-//
 // TODO Components take positional arguments. We prefer putting the ones that make sense early,
 // but a user could use them all that way. We should make a way to cut off positional arguments.
 // (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)

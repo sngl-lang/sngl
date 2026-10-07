@@ -43,7 +43,7 @@ component main node {
     })
 
     effect(
-        on=k,
+        on = k,
         @mount {
             log.push("+A")
         },
@@ -52,7 +52,7 @@ component main node {
         },
     )
     effect(
-        on=k,
+        on = k,
         @mount {
             log.push("+B")
         },

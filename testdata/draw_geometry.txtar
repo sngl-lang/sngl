@@ -30,18 +30,18 @@ component dial(angle float) ui.node {
 
     draw.canvas(width=100px, height=100px) {
         draw.line(
-            x1=c.x,
-            y1=c.y,
-            x2=draw.Point.polar(c, 40.0, angle).x,
-            y2=draw.Point.polar(c, 40.0, angle).y,
-            style=draw.CanvasStyle{stroke=color{r=255}, strokeWidth=2.0},
+            x1 = c.x,
+            y1 = c.y,
+            x2 = draw.Point.polar(c, 40.0, angle).x,
+            y2 = draw.Point.polar(c, 40.0, angle).y,
+            style = draw.CanvasStyle{stroke=color{r=255}, strokeWidth=2.0},
         )
         for var i = seq.count(6) {
             draw.circle(
-                cx=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).x,
-                cy=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).y,
-                r=2.0,
-                style=draw.CanvasStyle{fill=color{b=255}},
+                cx = draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).x,
+                cy = draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).y,
+                r = 2.0,
+                style = draw.CanvasStyle{fill=color{b=255}},
             )
         }
     }

@@ -9,17 +9,17 @@ component main node {
 
     // Multi-line props — should stay multi-line
     input(
-        value="test",
-        placeholder="Enter text",
-        type=email,
-        disabled=false,
+        value = "test",
+        placeholder = "Enter text",
+        type = email,
+        disabled = false,
         @input { count = count + 1 },
         @change(e) { name = e.value },
     )
 
     // Multi-line with style
     vbox(
-        style={
+        style = {
             padding = 16px,
             gap = 8px,
             background = #f0f0f0,

@@ -38,13 +38,13 @@ var reading = "42"
 window {
     vbox {
         Shown(
-            spec=fyne.Spec{
+            spec = fyne.Spec{
                 new = widget("NewLabel"),
                 args = labelArgs,
                 goType = widget("*Label"),
                 setters = [fyne.Setter{prop="text", call="SetText"}],
             },
-            text=reading,
+            text = reading,
         )
     }
 }

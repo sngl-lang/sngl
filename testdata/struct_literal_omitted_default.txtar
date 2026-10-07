@@ -30,9 +30,9 @@ output {
 }
 
 struct Frontmatter {
-    title string = ""
+    title  string = ""
     weight int = 0
-    limit int = maxWeight
+    limit  int = maxWeight
 }
 
 var fm = Frontmatter{title="Home"}

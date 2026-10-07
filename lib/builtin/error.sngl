@@ -5,7 +5,7 @@ import marks "sngl:internal/marks"
 // programmatically ("network", "decode", "validation").
 struct error {
     message string
-    kind string
+    kind    string
 }
 
 // Raises a runtime error. The error propagates to the nearest enclosing
@@ -28,7 +28,7 @@ func error.raise(message string, kind string)
 //
 #[marks.builtin("errorBoundary")]
 component boundary<T>(
-    @error error,
+    @error  error,
     content ...component T,
-    failed component(error error) T,
+    failed  component(error error) T,
 ) T

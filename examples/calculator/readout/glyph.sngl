@@ -20,13 +20,13 @@ import "../calc"
 // folded into glyphs rather than padded character by character: "3.5" lights
 // two cells, not three.
 struct Glyph {
-    a bool = false
-    b bool = false
-    c bool = false
-    d bool = false
-    e bool = false
-    f bool = false
-    g bool = false
+    a     bool = false
+    b     bool = false
+    c     bool = false
+    d     bool = false
+    e     bool = false
+    f     bool = false
+    g     bool = false
     point bool = false
 }
 

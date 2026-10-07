@@ -34,7 +34,7 @@ ui.window(title=pages.current.title) {
 import md "sngl:ui/markup/md"
 
 struct Frontmatter {
-    title string = ""
+    title  string = ""
     #[md.order]
     weight int = 2
 }

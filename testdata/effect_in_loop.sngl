@@ -21,7 +21,7 @@ component main node {
 
     for var it = items {
         effect(
-            on=it,
+            on = it,
             @mount(v) {
                 log.push("+{v}")
             },

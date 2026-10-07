@@ -28,7 +28,7 @@ component platform(
     // Go package name for the generated files.
     const package string,
     // Emit a standalone main() or a library-style module.
-    const main bool,
+    const main    bool,
     // The process start, wrapped: what the handler does before calling `run`
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
@@ -39,7 +39,7 @@ component platform(
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
-    const gir string,
+    const gir     string,
 ) build.platform
 
 // --- Windows ---
@@ -52,10 +52,10 @@ component platform(
 // manager's close is reported as `visible = false` followed by `@closed`.
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(
-    title string,
+    title    string,
     :visible bool = true,
     @closed(),
-    content ...component ui.node,
+    content  ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
@@ -240,7 +240,7 @@ const component time.timer[platform] {
 
     if enabled {
         effect(
-            on=interval,
+            on = interval,
             @mount(d) { handle = every(int(d), tick) },
             @unmount(d) {
                 handle.cancel()
@@ -366,8 +366,8 @@ func CairoContext.showText(text string)
 // What a `@draw` handler is handed: the context, and the coordinate space the
 // shapes were placed in.
 struct DrawEvent {
-    ctx CairoContext
-    width int
+    ctx    CairoContext
+    width  int
     height int
 }
 
@@ -618,7 +618,7 @@ const component shapes.canvasImage[platform] {
 
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
-    style ui.Style,
+    style   ui.Style,
     content ...component markup.span,
 ) ui.node
 
@@ -627,10 +627,10 @@ component Flow(
 // other target -- and becomes the Pango tags wrapped around this run's content.
 #[marks.intrinsic("gtk4:Span")]
 component Span(
-    text string,
-    href string,
+    text      string,
+    href      string,
     spanStyle markup.SpanStyle,
-    content ...component markup.span,
+    content   ...component markup.span,
 ) markup.span
 
 const component markup.richText[platform] {

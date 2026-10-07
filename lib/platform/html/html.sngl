@@ -45,23 +45,23 @@ func serve(dir string, listen string)
 #[gen.native("html")]
 component platform(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
-    const preview bool,
+    const preview     bool,
     // Emit a test harness instead of the normal app bundle.
-    const test bool,
+    const test        bool,
     // Relative path to a CSS file included in every page.
-    const stylesheet string,
+    const stylesheet  string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    const projectDir string,
+    const projectDir  string,
     // Route mode: target Go package name (default "ui", or "main" when main=true).
-    const package string,
+    const package     string,
     // Route mode: emit a main() that calls ListenAndServe.
-    const main bool,
+    const main        bool,
     // Route mode: HTTP framework (default "net/http").
-    const framework string,
+    const framework   string,
     // Route mode: host:port for `sngl run` to listen on.
-    const listen string,
+    const listen      string,
     // Minify emitted HTML and inline JS via esbuild.
-    const minify bool,
+    const minify      bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
     const noCacheBust bool,
 ) build.platform {
@@ -103,30 +103,30 @@ component element(
     // the element rather than describing it, so it is never an attribute.
     tag string,
 
-    style ui.Style,
-    class string,
-    id string,
+    style       ui.Style,
+    class       string,
+    id          string,
     textContent string,
-    innerText string,
-    innerHTML string,
+    innerText   string,
+    innerHTML   string,
 
     disabled bool,
-    checked bool,
+    checked  bool,
     readonly bool,
     selected bool,
-    hidden bool,
-    open bool,
+    hidden   bool,
+    open     bool,
 
     // An attribute is written as it is emitted, so a caller holding a number
     // converts: `component ui.progress` spells string(value). These were
     // declared `int` and so were written by two paths that disagreed -- the
     // static render rendered the literal and the server render had no string to
     // write, because there is no attribute type here to convert through.
-    rows string,
-    width string,
+    rows   string,
+    width  string,
     height string,
-    value string,
-    max string,
+    value  string,
+    max    string,
 
     // Every other attribute, keyed by the name it was written under -- an
     // attribute a standard adds after this file was written among them.
@@ -140,16 +140,16 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
-    @click ui.ClickEvent,
-    @input ui.InputEvent,
+    @click  ui.ClickEvent,
+    @input  ui.InputEvent,
     @change ui.ChangeEvent,
-    @focus ui.FocusEvent,
-    @blur ui.FocusEvent,
+    @focus  ui.FocusEvent,
+    @blur   ui.FocusEvent,
     @submit ui.SubmitEvent,
     @scroll ui.ScrollEvent,
-    @load ui.LoadEvent,
-    @error error,
-    @close ui.DismissEvent,
+    @load   ui.LoadEvent,
+    @error  error,
+    @close  ui.DismissEvent,
     @select ui.SelectEvent,
 
     // Every other DOM event. The event set is as open as the element set and
@@ -330,11 +330,11 @@ const component ui.divider[platform] {
 #[gen.renders(surface)]
 #[intrinsic("html:window")]
 component Window(
-    title string,
-    favicon string,
+    title    string,
+    favicon  string,
     :visible bool = true,
     @closed(),
-    content ...component ui.node,
+    content  ...component ui.node,
 ) root
 
 // The window's `@error` is the outermost boundary of what it renders, and
@@ -440,10 +440,10 @@ const component ui.toolbar[platform] {
 // when cleared, so the payload is built from it here.
 const component ui.datepicker[platform] {
     html.input(
-        type="date",
-        value=(value != null ? string(value) : ""),
-        disabled=disabled,
-        style={...style},
+        type = "date",
+        value = (value != null ? string(value) : ""),
+        disabled = disabled,
+        style = {...style},
         @change(e) { change({value=e.value == "" ? null : time.date(e.value)}) },
     ) {}
 }
@@ -480,38 +480,38 @@ const component ui.card[platform] {
 // is a table of tags rather than a declaration per element.
 #[intrinsic("html:flow")]
 component flow(
-    tag string,
-    style ui.Style,
+    tag            string,
+    style          ui.Style,
     // The element's id, for an in-page link. Empty writes none: an id
     // attribute may not be empty.
-    id string,
-    class string,
+    id             string,
+    class          string,
     // The rule `class` stands for, as on `inline`.
-    classStyle ui.Style,
+    classStyle     ui.Style,
     classStyleDark ui.Style,
-    content ...component markup.span,
+    content        ...component markup.span,
 ) ui.node
 
 #[intrinsic("html:inline")]
 component inline(
-    tag string,
-    style ui.Style,
+    tag            string,
+    style          ui.Style,
     // What a `run` says about its own words. A `SpanStyle` and not a
     // `ui.Style`: its five typography fields lead with a state that means "the
     // span set nothing", and only a value carrying that distinction can be
     // turned into CSS that leaves the enclosing words alone. `spanStyleCSS`
     // is the half of this platform that reads it.
-    spanStyle markup.SpanStyle,
-    class string,
+    spanStyle      markup.SpanStyle,
+    class          string,
     // The rule `class` stands for, light and dark, written to the page's
     // stylesheet rather than onto the element. Read by `classRules`.
-    classStyle markup.SpanStyle,
+    classStyle     markup.SpanStyle,
     classStyleDark markup.SpanStyle,
-    href string,
-    src string,
-    alt string,
-    textContent string,
-    content ...component markup.span,
+    href           string,
+    src            string,
+    alt            string,
+    textContent    string,
+    content        ...component markup.span,
 ) markup.span
 
 // The element a flow's role names. A heading announces as one, a quotation is
@@ -554,11 +554,11 @@ const component markup.richText[platform] {
 // a page's own `pre` rule can still restyle it.
 const component markup.codeBlock[platform] {
     flow(
-        tag="pre",
-        class="sngl-code",
-        classStyle={padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
-        classStyleDark={background=#161B22, color=#E6EDF3},
-        style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
+        tag = "pre",
+        class = "sngl-code",
+        classStyle = {padding=12px, background=#F5F5F5, color=#1F2328, borderRadius=4px},
+        classStyleDark = {background=#161B22, color=#E6EDF3},
+        style = {margin=0px, whiteSpace=ui.WhiteSpace.preWrap},
     ) {
         markup.monospace {
             content
@@ -618,11 +618,11 @@ const component markup.image[platform] {
 // the element instead, since it wins over everything.
 const component markup.token[platform] {
     inline(
-        tag="span",
-        class="sngl-tok-" + string(kind),
-        classStyle={color=markup.tokenColor(markup.lightPalette, kind)},
-        classStyleDark={color=markup.tokenColor(markup.darkPalette, kind)},
-        spanStyle={color=markup.tokenColor(markup.palette, kind)},
+        tag = "span",
+        class = "sngl-tok-" + string(kind),
+        classStyle = {color=markup.tokenColor(markup.lightPalette, kind)},
+        classStyleDark = {color=markup.tokenColor(markup.darkPalette, kind)},
+        spanStyle = {color=markup.tokenColor(markup.palette, kind)},
     ) {
         content
     }
@@ -714,7 +714,7 @@ const component time.timer[platform] {
 
     if enabled {
         effect(
-            on=interval,
+            on = interval,
             @mount(d) { handle = setInterval(tick, d) },
             @unmount(d) {
                 clearInterval(handle)
@@ -737,12 +737,12 @@ struct DrawContext {
     // Canvas2D sets style by property assignment rather than by method, so
     // these are fields. The SNGL names are the DOM names, so nothing has to
     // map them.
-    fillStyle string
+    fillStyle   string
     strokeStyle string
-    lineWidth float
-    lineCap string
-    lineJoin string
-    font string
+    lineWidth   float
+    lineCap     string
+    lineJoin    string
+    font        string
 }
 
 #[js.native("save", "", method)]
@@ -803,8 +803,8 @@ func DrawContext.strokeText(text string, x float, y float)
 // coordinate space the shapes were placed in. The size is the canvas's own
 // declared width and height, so it arrives as a literal.
 struct DrawEvent {
-    ctx DrawContext
-    width int
+    ctx    DrawContext
+    width  int
     height int
 }
 

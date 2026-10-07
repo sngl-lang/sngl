@@ -9,5 +9,5 @@ import . "sngl:ui"
 // A user account.
 struct User {
     name string
-    age int
+    age  int
 }

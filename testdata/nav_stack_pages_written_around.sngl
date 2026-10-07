@@ -13,7 +13,7 @@ import nav "sngl:ui/nav"
 import ui "sngl:ui"
 
 struct Item {
-    slug string
+    slug  string
     title string
 }
 

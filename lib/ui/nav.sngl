@@ -8,13 +8,13 @@ enum LinkTarget { self, blank }
 // the current view or opens a new window. `@click` runs before
 // navigation and can short-circuit it by raising an error.
 component link(
-    text string,
-    href string,
-    target LinkTarget,
-    disabled bool,
+    text      string,
+    href      string,
+    target    LinkTarget,
+    disabled  bool,
     focusable bool = true,
-    style Style,
-    @click ClickEvent,
+    style     Style,
+    @click    ClickEvent,
 ) node
 
 component _example_link node {
@@ -34,12 +34,12 @@ enum TabsVariant { underline, pills }
 // the newly selected index.
 // TODO Use families pass the tabs as children
 component tabs(
-    items list<string>,
+    items    list<string>,
     selected int,
-    variant TabsVariant,
-    style Style,
-    @change SelectEvent,
-    panels ...component,
+    variant  TabsVariant,
+    style    Style,
+    @change  SelectEvent,
+    panels   ...component,
 ) node
 
 component _example_tabs node {
@@ -59,11 +59,11 @@ component _example_tabs node {
 // outside, Escape).
 // TODO Use families pass the items as children
 component menu(
-    style Style,
-    items list<string>,
-    open bool,
+    style   Style,
+    items   list<string>,
+    open    bool,
     @select MenuEvent,
-    @close DismissEvent,
+    @close  DismissEvent,
 ) node
 
 component _example_menu node {
@@ -80,8 +80,8 @@ component _example_menu node {
 // integration. `@select` fires with the activated menu path.
 // TODO Use families pass the items as children
 component menubar(
-    style Style,
-    items list<string>,
+    style   Style,
+    items   list<string>,
     @select MenuEvent,
 ) node
 
@@ -97,9 +97,9 @@ component _example_menubar node {
 // item from `items` is activated.
 // TODO Use families pass the items as children
 component toolbar(
-    style Style,
-    items list<string>,
-    @select MenuEvent,
+    style    Style,
+    items    list<string>,
+    @select  MenuEvent,
     controls ...component,
 ) node
 

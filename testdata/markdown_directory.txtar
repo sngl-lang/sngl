@@ -58,7 +58,7 @@ ui.window(title=pages.current.title) {
 }
 -- docs/meta.sngl --
 struct Frontmatter {
-    title string = ""
+    title  string = ""
     weight int = 0
 }
 -- docs/index.md --

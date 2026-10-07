@@ -39,9 +39,9 @@ component span build.family
 // html page) writes it; the rest have nothing a link could land on, and ignore
 // it.
 component richText(
-    style ui.Style,
-    role Role,
-    anchor string = "",
+    style   ui.Style,
+    role    Role,
+    anchor  string = "",
     content ...component span,
 ) ui.node
 
@@ -110,13 +110,13 @@ component text(value string) span
 // inside one that turned it on. No markup asks to, and a fourth state per
 // field to express it would be paid for on every run.
 struct SpanStyle {
-    color color = color{a=0}
-    fontSize ui.measurement = 0px
+    color      color = color{a=0}
+    fontSize   ui.measurement = 0px
     fontFamily string = ""
     fontWeight Weight = Weight.inherit
-    fontStyle Slant = Slant.inherit
-    underline bool = false
-    strike bool = false
+    fontStyle  Slant = Slant.inherit
+    underline  bool = false
+    strike     bool = false
 }
 
 // Weight of a run, with `inherit` first so an unset one leaves its parent's
@@ -135,7 +135,7 @@ enum Slant { inherit, normal, italic, oblique }
 // reaches for it directly is saying it wants those exact letters rather than
 // what the wrappers name.
 component run(
-    style SpanStyle,
+    style   SpanStyle,
     content ...component span,
 ) span
 
@@ -220,16 +220,16 @@ component token(kind Token, content ...component span) span
 // a kind the palette does not answer: the words keep the color around them,
 // or take the host's where the palette is the one a program set.
 struct Palette {
-    plain color = color{a=0}
-    keyword color = color{a=0}
-    type color = color{a=0}
-    function color = color{a=0}
-    variable color = color{a=0}
-    constant color = color{a=0}
-    string color = color{a=0}
-    number color = color{a=0}
-    comment color = color{a=0}
-    operator color = color{a=0}
+    plain       color = color{a=0}
+    keyword     color = color{a=0}
+    type        color = color{a=0}
+    function    color = color{a=0}
+    variable    color = color{a=0}
+    constant    color = color{a=0}
+    string      color = color{a=0}
+    number      color = color{a=0}
+    comment     color = color{a=0}
+    operator    color = color{a=0}
     punctuation color = color{a=0}
 }
 
@@ -484,8 +484,8 @@ component list(ordered bool = false, start int = 1, items ...component) ui.node 
 // list is. It is not interactive: a document describes state rather than
 // holding it, and an application that wants a real checkbox writes one.
 component listItem(
-    marker string = "",
-    task Task = Task.none,
+    marker  string = "",
+    task    Task = Task.none,
     content ...component,
 ) ui.node {
     ui.hbox(style={gap=8px, alignItems=ui.Alignment.start}) {

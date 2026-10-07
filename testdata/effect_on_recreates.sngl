@@ -16,7 +16,7 @@ component main node {
     )
 
     effect(
-        on=n,
+        on = n,
         @mount {
             log.push("mount")
         },

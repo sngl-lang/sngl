@@ -24,8 +24,8 @@ output {
 }
 
 struct Point {
-    x int
-    y int
+    x   int
+    y   int
     tag string = "none"
 }
 

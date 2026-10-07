@@ -11,19 +11,19 @@ const header = `{"version":1,"click_events":true}` + "\n[\n"
 // What one member of the family contributes: the block's fields, and the
 // handler a click on it runs.
 struct Entry {
-    name string
-    full string
-    short string
-    color color = #00000000
-    background color = #00000000
-    urgent bool
-    minWidth int
-    align Align
-    separator bool = true
+    name           string
+    full           string
+    short          string
+    color          color = #00000000
+    background     color = #00000000
+    urgent         bool
+    minWidth       int
+    align          Align
+    separator      bool = true
     // The space after the block, where it draws no separator; -1 is the
     // protocol's own.
     separatorWidth int = -1
-    click func(button int, x int, y int)
+    click          func(button int, x int, y int)
 }
 
 func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""

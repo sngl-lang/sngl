@@ -22,7 +22,7 @@ output {
 
 struct Item {
     value int = 0
-    next dyn = null
+    next  dyn = null
 }
 
 component show(node dyn = null) node {

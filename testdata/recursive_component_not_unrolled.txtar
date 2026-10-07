@@ -39,7 +39,7 @@ output {
 
 struct Node {
     value int = 0
-    left dyn = null
+    left  dyn = null
     right dyn = null
 }
 

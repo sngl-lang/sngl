@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 
 struct Item {
-    id int = 0
+    id   int = 0
     name string = ""
 }
 

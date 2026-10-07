@@ -7,10 +7,10 @@ import . "sngl:test"
 // items. `args list<string>` therefore ran into the field below it and the
 // struct failed to parse. Every field here but the last one is the case.
 struct Cmd {
-    args list<string>
-    env map<string, string>
+    args   list<string>
+    env    map<string, string>
     nested list<list<int>>
-    name string
+    name   string
 }
 
 component main node { text(value="x") }

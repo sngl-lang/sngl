@@ -14,10 +14,10 @@ func add(
 }
 
 component sums(
-    left int,
-    right int,
-    :total int = 0,
-    @done ClickEvent,
+    left     int,
+    right    int,
+    :total   int = 0,
+    @done    ClickEvent,
     children ...component,
 ) node {
     vbox {

@@ -11,14 +11,14 @@ component art ui.node {
     draw.canvas(width=60px, height=40px) {
         draw.line(x1=4.0, y1=4.0, x2=56.0, y2=4.0, style={stroke=#336699, strokeWidth=4.0, lineCap=round})
         draw.path(
-            cmds=[
+            cmds = [
                 draw.PathCmd{op=moveTo, x=4.0, y=12.0},
                 draw.PathCmd{op=lineTo, x=30.0, y=36.0},
                 draw.PathCmd{op=bezierTo, cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0},
                 draw.PathCmd{op=arcTo, cx1=56.0, cy1=12.0, x=40.0, y=12.0, r=4.0},
                 draw.PathCmd{op=close},
             ],
-            style={stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel},
+            style = {stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel},
         )
     }
 }

@@ -6,13 +6,13 @@ import time "sngl:time"
 // `@click` fires on activation; `@longPress` fires after a sustained
 // press on pointer/touch platforms.
 component button(
-    text string,
-    disabled bool,
-    focusable bool = true,
-    style Style,
-    @click ClickEvent,
+    text       string,
+    disabled   bool,
+    focusable  bool = true,
+    style      Style,
+    @click     ClickEvent,
     @longPress LongPressEvent,
-    content ...component,
+    content    ...component,
 ) node
 
 component _example_button node {
@@ -39,18 +39,18 @@ enum InputType { text, password, search, email, number, tel, url }
 // (blur or Enter), `@submit` on Enter. `maxLength` caps accepted input.
 component input(
     placeholder string,
-    readonly bool,
-    :value string,
-    disabled bool,
-    type InputType,
-    maxLength int,
-    focusable bool = true,
-    style Style,
-    @input InputEvent,
-    @change ChangeEvent,
-    @focus FocusEvent,
-    @blur FocusEvent,
-    @submit SubmitEvent,
+    readonly    bool,
+    :value      string,
+    disabled    bool,
+    type        InputType,
+    maxLength   int,
+    focusable   bool = true,
+    style       Style,
+    @input      InputEvent,
+    @change     ChangeEvent,
+    @focus      FocusEvent,
+    @blur       FocusEvent,
+    @submit     SubmitEvent,
 ) node
 
 component _example_input node {
@@ -69,17 +69,17 @@ component _example_input node {
 // the editor still scrolls when content exceeds it.
 component textarea(
     placeholder string,
-    readonly bool,
-    :value string,
-    disabled bool,
-    rows int,
-    maxLength int,
-    focusable bool = true,
-    style Style,
-    @input InputEvent,
-    @change ChangeEvent,
-    @focus FocusEvent,
-    @blur FocusEvent,
+    readonly    bool,
+    :value      string,
+    disabled    bool,
+    rows        int,
+    maxLength   int,
+    focusable   bool = true,
+    style       Style,
+    @input      InputEvent,
+    @change     ChangeEvent,
+    @focus      FocusEvent,
+    @blur       FocusEvent,
 ) node
 
 component _example_textarea node {
@@ -97,12 +97,12 @@ component _example_textarea node {
 // a bare checkbox. `@change` fires each time the user toggles, and
 // carries the new state.
 component checkbox(
-    label string,
-    :checked bool,
-    disabled bool,
+    label     string,
+    :checked  bool,
+    disabled  bool,
     focusable bool = true,
-    style Style,
-    @change ToggleEvent,
+    style     Style,
+    @change   ToggleEvent,
 ) node
 
 component _example_checkbox node {
@@ -122,12 +122,12 @@ enum Orientation { vertical, horizontal }
 // value on user selection.
 // TODO Should this use children for the options?
 component radio(
-    options list<string>,
-    :value string,
-    disabled bool,
+    options   list<string>,
+    :value    string,
+    disabled  bool,
     direction Orientation,
-    style Style,
-    @change ChangeEvent,
+    style     Style,
+    @change   ChangeEvent,
 ) node
 
 component _example_radio node {
@@ -142,12 +142,12 @@ component _example_radio node {
 // equivalent to `checkbox` but rendered as a switch affordance on
 // platforms that distinguish the two.
 component toggle(
-    label string,
-    :checked bool,
-    disabled bool,
+    label     string,
+    :checked  bool,
+    disabled  bool,
     focusable bool = true,
-    style Style,
-    @change ToggleEvent,
+    style     Style,
+    @change   ToggleEvent,
 ) node
 
 component _example_toggle node {
@@ -164,16 +164,16 @@ component _example_toggle node {
 // selected labels). `placeholder` shows when nothing is selected.
 // TODO Should this use children for the options?
 component select(
-    options list<string>,
+    options     list<string>,
     placeholder string,
-    :value string,
-    disabled bool,
-    multiple bool,
-    focusable bool = true,
-    style Style,
-    @change ChangeEvent,
-    @focus FocusEvent,
-    @blur FocusEvent,
+    :value      string,
+    disabled    bool,
+    multiple    bool,
+    focusable   bool = true,
+    style       Style,
+    @change     ChangeEvent,
+    @focus      FocusEvent,
+    @blur       FocusEvent,
 ) node
 
 component _example_select node {
@@ -194,14 +194,14 @@ component _example_select node {
 // one, which is a date a picker would happily show.
 component datepicker(
     placeholder string,
-    min option<time.date>,
-    max option<time.date>,
-    :value option<time.date>,
-    disabled bool,
-    style Style,
-    @change DateEvent,
-    @focus FocusEvent,
-    @blur FocusEvent,
+    min         option<time.date>,
+    max         option<time.date>,
+    :value      option<time.date>,
+    disabled    bool,
+    style       Style,
+    @change     DateEvent,
+    @focus      FocusEvent,
+    @blur       FocusEvent,
 ) node
 
 component _example_datepicker node {

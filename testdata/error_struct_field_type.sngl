@@ -22,8 +22,8 @@ struct S {
 }
 
 struct Box<T> {
-    v T
-    o option<T>
+    v  T
+    o  option<T>
     xs list<T>
 }
 

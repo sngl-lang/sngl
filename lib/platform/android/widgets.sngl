@@ -49,8 +49,8 @@ const component ui.spacer[platform] {
 
 const component ui.scroll[platform] {
     Column(
-        modifier={...style},
-        chain=["verticalScroll(rememberScrollState())"],
+        modifier = {...style},
+        chain = ["verticalScroll(rememberScrollState())"],
     ) {
         content
     }
@@ -84,10 +84,10 @@ const component ui.image[platform] {
 // notched, uncaptioned field the fold exists to avoid.
 const component ui.input[platform] {
     OutlinedTextField(
-        value=value,
-        readOnly=readonly,
-        modifier={...style},
-        onValueChange=func(e) {
+        value = value,
+        readOnly = readonly,
+        modifier = {...style},
+        onValueChange = func(e) {
             input(e)
             change({value=e.value})
         },
@@ -161,10 +161,10 @@ const component ui.select() {
 
 const component ui.textarea[platform] {
     OutlinedTextField(
-        value=value,
-        minLines=3,
-        modifier={...style},
-        onValueChange=func(e) {
+        value = value,
+        minLines = 3,
+        modifier = {...style},
+        onValueChange = func(e) {
             input(e)
             change({value=e.value})
         },
@@ -191,10 +191,10 @@ const component ui.textarea[platform] {
 // would put its text in a date.
 const component ui.datepicker[platform] {
     OutlinedTextField(
-        value=(value != null ? string(value) : ""),
-        readOnly=true,
-        modifier={...style},
-        onValueChange=func(e) {},
+        value = (value != null ? string(value) : ""),
+        readOnly = true,
+        modifier = {...style},
+        onValueChange = func(e) {},
     ) {
         component label {
             if placeholder != "" {
@@ -216,8 +216,8 @@ const component ui.progress[platform] {
         // assume a binding still holds what it held when it was written. The
         // branch the outer `if` already settled is the unreachable one.
         LinearProgressIndicator(
-            progress=func() => (value != null ? float32(value / max) : float32(0.0)),
-            modifier={...style},
+            progress = func() => (value != null ? float32(value / max) : float32(0.0)),
+            modifier = {...style},
         ) {}
     } else {
         LinearProgressIndicator(modifier={...style}) {}
@@ -246,9 +246,9 @@ const component ui.card[platform] {
 
 const component ui.link[platform] {
     Text(
-        text=text,
-        style={...style},
-        args=["color = MaterialTheme.colorScheme.primary"],
+        text = text,
+        style = {...style},
+        args = ["color = MaterialTheme.colorScheme.primary"],
     ) {}
 }
 
@@ -333,7 +333,7 @@ const component ui.toolbar[platform] {
 #[intrinsic("android:Timer")]
 component Timer(
     interval time.duration,
-    enabled bool,
+    enabled  bool,
     @tick,
 )
 

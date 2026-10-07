@@ -14,7 +14,7 @@ const (
 
 struct Todo {
     title string
-    done bool
+    done  bool
 }
 
 enum Color { red, green, blue }

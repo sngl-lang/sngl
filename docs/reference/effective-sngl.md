@@ -1404,7 +1404,7 @@ The standard library's own components are lower camelCase (`ui.vbox`, `ui.datepi
 import ui "sngl:ui"
 
 struct Todo {
-    id int = 0
+    id   int = 0
     text string = ""
     done bool = false
 }
@@ -1507,7 +1507,7 @@ ui.window {
 import ui "sngl:ui"
 
 struct Todo {
-    id int = 0
+    id   int = 0
     text string = ""
     done bool = false
 }

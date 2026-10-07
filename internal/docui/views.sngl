@@ -16,8 +16,10 @@ component SummaryRow(name = "", doc = "", href = "", active = false) node {
         }
     } else {
         hbox(style={gap=8px, padding=4px}) {
-            text(value=active ? "> " + name : "  " + name,
-                 style={fontWeight=active ? bold : normal, minWidth=140px})
+            text(
+                value = active ? "> " + name : "  " + name,
+                style = {fontWeight=active ? bold : normal, minWidth=140px},
+            )
             text(value=doc, style={color="#888"})
         }
     }
@@ -65,8 +67,10 @@ component PackagePageView(view lookup.PackageView, baseHref = "") node {
             text(value=view.description, style={color="#888"})
         }
         if view.isNative && view.nativeImportPath != "" {
-            text(value="Import path: " + view.nativeImportPath,
-                 style={color="#888", fontFamily="monospace"})
+            text(
+                value = "Import path: " + view.nativeImportPath,
+                style = {color="#888", fontFamily="monospace"},
+            )
         }
         KindSection(title="Components", items=view.components, hrefPrefix=baseHref)
         KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref)
@@ -107,8 +111,10 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
             text(value=view.description, style={color="#888"})
         }
         if view.isNative && view.nativeImportPath != "" {
-            text(value="Import path: " + view.nativeImportPath,
-                 style={color="#888", fontFamily="monospace"})
+            text(
+                value = "Import path: " + view.nativeImportPath,
+                style = {color="#888", fontFamily="monospace"},
+            )
         }
 
         if view.components.length() > 0 {
@@ -218,8 +224,10 @@ component TypeView(detail lookup.TypeDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
         text(value=detail.name, style={fontSize=22px, fontWeight=bold})
         if detail.isNative && detail.nativeName != "" {
-            text(value="Native: " + detail.nativeName,
-                 style={color="#888", fontFamily="monospace"})
+            text(
+                value = "Native: " + detail.nativeName,
+                style = {color="#888", fontFamily="monospace"},
+            )
         }
         if detail.doc != "" {
             text(value=detail.doc)
@@ -269,8 +277,10 @@ component FuncView(detail lookup.FuncDetailView) node {
             text(value=detail.signature, style={fontFamily="monospace", padding=12px, background="#1e1e1e", color="#d4d4d4"})
         }
         if detail.isNative && detail.nativeName != "" {
-            text(value="Native: " + detail.nativeName,
-                 style={color="#888", fontFamily="monospace"})
+            text(
+                value = "Native: " + detail.nativeName,
+                style = {color="#888", fontFamily="monospace"},
+            )
         }
         if detail.doc != "" {
             text(value=detail.doc)
@@ -293,14 +303,18 @@ component FuncView(detail lookup.FuncDetailView) node {
 // ValueView renders a const or var declaration.
 component ValueView(detail lookup.ValueDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
-        text(value=(detail.isConst ? "const " : "var ") + detail.name,
-             style={fontSize=22px, fontWeight=bold})
+        text(
+            value = (detail.isConst ? "const " : "var ") + detail.name,
+            style = {fontSize=22px, fontWeight=bold},
+        )
         if detail.type != "" {
             text(value="Type: " + detail.type, style={color="#888", fontFamily="monospace"})
         }
         if detail.isNative && detail.nativeName != "" {
-            text(value="Native: " + detail.nativeName,
-                 style={color="#888", fontFamily="monospace"})
+            text(
+                value = "Native: " + detail.nativeName,
+                style = {color="#888", fontFamily="monospace"},
+            )
         }
         if detail.doc != "" {
             text(value=detail.doc)
@@ -311,8 +325,10 @@ component ValueView(detail lookup.ValueDetailView) node {
 // PropView renders a single component prop or event.
 component PropDocView(detail lookup.PropDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
-        text(value=detail.componentName + "." + detail.name + (detail.isEvent ? " (event)" : ""),
-             style={fontSize=22px, fontWeight=bold})
+        text(
+            value = detail.componentName + "." + detail.name + (detail.isEvent ? " (event)" : ""),
+            style = {fontSize=22px, fontWeight=bold},
+        )
         if detail.type != "" {
             text(value="Type: " + detail.type, style={color="#58a6ff"})
         }
@@ -334,8 +350,10 @@ component PropDocView(detail lookup.PropDetailView) node {
 // FieldDocView renders a single struct field.
 component FieldDocView(detail lookup.FieldDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
-        text(value=detail.type + "." + detail.name,
-             style={fontSize=22px, fontWeight=bold})
+        text(
+            value = detail.type + "." + detail.name,
+            style = {fontSize=22px, fontWeight=bold},
+        )
         if detail.expr != "" {
             text(value="Type: " + detail.expr, style={color="#58a6ff"})
         }
@@ -348,8 +366,10 @@ component FieldDocView(detail lookup.FieldDetailView) node {
 // MemberDocView renders a single enum member.
 component MemberDocView(detail lookup.MemberDetailView) node {
     vbox(style={gap=8px, padding=8px}) {
-        text(value=detail.enumName + "." + detail.name,
-             style={fontSize=22px, fontWeight=bold})
+        text(
+            value = detail.enumName + "." + detail.name,
+            style = {fontSize=22px, fontWeight=bold},
+        )
         if detail.doc != "" {
             text(value=detail.doc)
         }
@@ -360,10 +380,18 @@ component MemberDocView(detail lookup.MemberDetailView) node {
 // resulting kind. Callers pass strings only so no struct-typed arguments cross
 // the package boundary (sngl's checker resolves native Go types per import —
 // struct identity doesn't survive nested checker invocations).
-component EntryView(path = "", ident1 = "", ident2 = "",
-                    hrefPrefix = "", activeName = "") node {
-    EntryViewInner(entry=lookup.Resolve(path, ident1, ident2),
-                   hrefPrefix=hrefPrefix, activeName=activeName)
+component EntryView(
+    path = "",
+    ident1 = "",
+    ident2 = "",
+    hrefPrefix = "",
+    activeName = "",
+) node {
+    EntryViewInner(
+        entry = lookup.Resolve(path, ident1, ident2),
+        hrefPrefix = hrefPrefix,
+        activeName = activeName,
+    )
 }
 
 // EntryViewInner is the dispatch body. Internal to docui — keeps struct args

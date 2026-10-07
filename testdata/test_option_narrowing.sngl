@@ -3,7 +3,7 @@ import . "sngl:test"
 
 struct Node {
     value int = 0
-    next option<Node> = null
+    next  option<Node> = null
 }
 
 func double(n int) int {
