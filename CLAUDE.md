@@ -2816,22 +2816,32 @@ goldmark and highlighter, and wrapped in a `const func` the optimizer folds as
 a producer: a literal folds in the first optimize, and a page's loop variable
 in html's per-document fold, which has the build host for exactly that. What
 comes back is data -- `_Block`, `_Item`, `_Run` -- that the declaration's own
-components lay out with loops and `if`s, which on html unroll to markup. Three
-things follow from the tree being rendered rather than written out:
+components lay out with loops and `if`s, which on html unroll to markup. What
+follows from the tree being rendered rather than written out:
 
-- **Nothing in it keeps state.** A component with state under a `for` is
-  built at run time, so `markup.listItem` (its task box is a `ui.checkbox`
-  cell) and `ui.table` (its selection) are not used: a list is laid out as
-  their default bodies lay one out, a task is a glyph, and a table is rows of
-  text, which bubbletea can also hold in a loop.
-- **A list nests three deep**, one component per level, since a component
-  calling itself is built at run time; deeper items are laid out in their
-  parent's place.
-- **Prose is the scheme's tree**: a run is bare `markup.text` or the one span
-  member the scheme writes around it (`markup.bold`, `italic`, `strike`,
-  `monospace`), so the html is the importer's byte for byte. Only a run under
-  two spans differs -- the parse hands it its styles rather than their
-  nesting -- and is one `markup.run` carrying both.
+- **It is the scheme's tree**, so on html the markup is the importer's byte
+  for byte (`testdata/markdown_document_matches_scheme.txtar`, compared by
+  `TestMarkdownDocumentMatchesScheme`): headings carry the scheme's `anchor`,
+  a list is `markup.list`/`markup.listItem` -- html's `<ul>`/`<ol>`/`<li>`
+  and a task's disabled checkbox -- and a run is bare `markup.text` or the
+  one span member the scheme writes around it. Three things differ. A run
+  under two spans is one `markup.run` carrying both, the parse handing it its
+  styles rather than their nesting. A table is rows of text: `ui.table`
+  renders nothing on fyne or android and has no gtk4 implementation. And a
+  list nests three deep, one component per level, since a component calling
+  itself is built at run time; deeper items are laid out in their parent's
+  place.
+- **fyne does not render a document holding a list.** `listItem` reads the
+  `listDepth` context, which passContext lowers to a `var` of the component;
+  a `var` under a `for` makes the item an instance built at run time, and
+  there the two-span `markup.run`, whose style is read from the data, is a
+  write to a span fyne takes a style for only at construction. gtk4 refuses
+  every `md.document`, a label's markup being one expression that a `for`
+  among spans cannot be.
+- **A loop's library structs are declared.** A target that runs the loop
+  holds `[]_Block{…}` as a value, and Go's literal names its type, so
+  `promoteForeignStructs` declares the element types of every view loop's
+  iterable -- not only the types a function signature names.
 - **A live fence is refused.** `mode=island`, `package` or `body` is source
   the program compiles, and a string parsed here is read after the check; the
   error names the markdown line and is reported at the program's node rather

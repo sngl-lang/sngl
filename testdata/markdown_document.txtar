@@ -56,14 +56,9 @@ type Measurement struct {
 	Pct float64
 }
 
-type _Item struct {
-	Marker string
-	Task   string
-	Blocks []_Block
-}
-
 type _Block struct {
 	Kind    string
+	Anchor  string
 	Runs    []_Run
 	Ordered bool
 	Start   int
@@ -82,6 +77,12 @@ type _Run struct {
 	Image  string
 	Token  string
 	Parts  []_Run
+}
+
+type _Item struct {
+	Marker string
+	Task   string
+	Blocks []_Block
 }
 
 type Palette struct {
@@ -107,7 +108,12 @@ type Color struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	visible__inst0 bool
+	visible__inst1      bool
+	checked__inst5      map[string]bool
+	checked__inst9      map[string]bool
+	checked__inst12     map[string]bool
+	__focusID           int
+	__focusLoop0_cursor int
 
 	width, height int
 }
@@ -115,7 +121,12 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.visible__inst0 = true
+	m.visible__inst1 = true
+	m.checked__inst5 = map[string]bool{}
+	m.checked__inst9 = map[string]bool{}
+	m.checked__inst12 = map[string]bool{}
+	m.__focusID = 0
+	m.__focusLoop0_cursor = 0
 	return m
 }
 
@@ -123,19 +134,6 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
-}
-
-func _marker(it _Item, depth int) string {
-	if it.Task == "done" {
-		return "☑"
-	}
-	if it.Task == "todo" {
-		return "☐"
-	}
-	if it.Marker != "" {
-		return it.Marker
-	}
-	return BulletAt(depth)
 }
 
 func TokenColor(p Palette, kind string) snglcolor.Color {
@@ -172,26 +170,123 @@ func TokenColor(p Palette, kind string) snglcolor.Color {
 	return p.Plain
 }
 
-func BulletAt(depth int) string {
-	if depth <= 1 {
-		return "•"
+func (m *Model) __focusLoop0_len() int {
+	var __focusCount int = 0
+	for _, b := range []_Block{_Block{Kind: "heading1", Anchor: "guide", Runs: []_Run{_Run{Text: "Guide", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "Some ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Bold: false, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Bold: false, Italic: false, Strike: false, Mono: true, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "", Bold: false, Italic: false, Strike: false, Mono: false, Href: "/x", Image: "", Token: "plain", Parts: []_Run{_Run{Text: "a link", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}}, _Run{Text: ".", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 1, Items: []_Item{_Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "one", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "two", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "nested", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "done", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Anchor: "", Runs: []_Run{_Run{Text: "x", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "number", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
+		if b.Kind == "list" {
+			for _, it := range b.Items {
+				if it.Task == "none" {
+				} else {
+					__focusCount = (__focusCount + 1)
+				}
+				for _, c := range it.Blocks {
+					if c.Kind == "list" {
+						for _, it := range c.Items {
+							if it.Task == "none" {
+							} else {
+								__focusCount = (__focusCount + 1)
+							}
+							for _, c := range it.Blocks {
+								if c.Kind == "list" {
+									for _, it := range c.Items {
+										if it.Task == "none" {
+										} else {
+											__focusCount = (__focusCount + 1)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-	return []string{"•", "◦", "▪"}[((depth - 1) % 3)]
+	return __focusCount
 }
 
-func (m Model) Visible__inst0() bool {
-	return m.visible__inst0
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		var __focusLen int = m.__focusLoop0_len()
+		if (m.__focusLoop0_cursor + 1) < __focusLen {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
+		} else {
+			m.__focusID = 0
+			m.__focusLoop0_cursor = 0
+		}
+	}
 }
 
-func (m Model) SetVisible__inst0(v bool) Model {
-	m.visible__inst0 = v
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		if m.__focusLoop0_cursor > 0 {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
+		} else {
+			var __focusLen int = m.__focusLoop0_len()
+			m.__focusID = 0
+			m.__focusLoop0_cursor = (__focusLen - 1)
+		}
+	}
+}
+
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
 	return m
 }
 
-type setVisible__inst0Msg struct{ value bool }
+type setVisible__inst1Msg struct{ value bool }
 
-func SetVisible__inst0Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
+func (m Model) Checked__inst5() map[string]bool {
+	return m.checked__inst5
+}
+
+func (m Model) SetChecked__inst5(v map[string]bool) Model {
+	m.checked__inst5 = v
+	return m
+}
+
+type setChecked__inst5Msg struct{ value map[string]bool }
+
+func SetChecked__inst5Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst5Msg{value: v} }
+}
+
+func (m Model) Checked__inst9() map[string]bool {
+	return m.checked__inst9
+}
+
+func (m Model) SetChecked__inst9(v map[string]bool) Model {
+	m.checked__inst9 = v
+	return m
+}
+
+type setChecked__inst9Msg struct{ value map[string]bool }
+
+func SetChecked__inst9Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst9Msg{value: v} }
+}
+
+func (m Model) Checked__inst12() map[string]bool {
+	return m.checked__inst12
+}
+
+func (m Model) SetChecked__inst12(v map[string]bool) Model {
+	m.checked__inst12 = v
+	return m
+}
+
+type setChecked__inst12Msg struct{ value map[string]bool }
+
+func SetChecked__inst12Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst12Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -203,21 +298,128 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setVisible__inst0Msg:
-		m = m.SetVisible__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
+	case setChecked__inst5Msg:
+		m = m.SetChecked__inst5(msg.value)
+	case setChecked__inst9Msg:
+		m = m.SetChecked__inst9(msg.value)
+	case setChecked__inst12Msg:
+		m = m.SetChecked__inst12(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst0 {
-				m.visible__inst0 = false
+			if m.visible__inst1 {
+				m.visible__inst1 = false
 			}
-			if !(m.visible__inst0) {
+			if !(m.visible__inst1) {
 				return m, tea.Quit
 			}
 			return m, nil
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeySpace && m.__focusID == 0:
+			func() {
+				__focusPos0 := 0
+				for __copy0, b := range []_Block{_Block{Kind: "heading1", Anchor: "guide", Runs: []_Run{_Run{Text: "Guide", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "Some ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Bold: false, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Bold: false, Italic: false, Strike: false, Mono: true, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "", Bold: false, Italic: false, Strike: false, Mono: false, Href: "/x", Image: "", Token: "plain", Parts: []_Run{_Run{Text: "a link", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}}, _Run{Text: ".", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 1, Items: []_Item{_Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "one", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "two", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "nested", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "done", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Anchor: "", Runs: []_Run{_Run{Text: "x", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "number", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
+					_ = __copy0
+					_ = b
+					if b.Kind == "list" {
+						for __copy1, it := range b.Items {
+							_ = __copy1
+							_ = it
+							if it.Task == "none" {
+							} else {
+								if m.__focusLoop0_cursor == __focusPos0 {
+									__bound_checked := !func() bool {
+										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+											return __v
+										}
+										return (it.Task == "done")
+									}()
+									__cell1_checked__inst5 := func() bool {
+										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+											return __v
+										}
+										return (it.Task == "done")
+									}()
+									__cell1_checked__inst5 = __bound_checked
+									m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst5
+									return
+								}
+								__focusPos0++
+							}
+							for __copy2, c := range it.Blocks {
+								_ = __copy2
+								_ = c
+								if c.Kind == "list" {
+									for __copy3, it := range c.Items {
+										_ = __copy3
+										_ = it
+										if it.Task == "none" {
+										} else {
+											if m.__focusLoop0_cursor == __focusPos0 {
+												__bound_checked := !func() bool {
+													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+														return __v
+													}
+													return (it.Task == "done")
+												}()
+												__cell1_checked__inst9 := func() bool {
+													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+														return __v
+													}
+													return (it.Task == "done")
+												}()
+												__cell1_checked__inst9 = __bound_checked
+												m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst9
+												return
+											}
+											__focusPos0++
+										}
+										for __copy4, c := range it.Blocks {
+											_ = __copy4
+											_ = c
+											if c.Kind == "list" {
+												for __copy5, it := range c.Items {
+													_ = __copy5
+													_ = it
+													if it.Task == "none" {
+													} else {
+														if m.__focusLoop0_cursor == __focusPos0 {
+															__bound_checked := !func() bool {
+																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+																	return __v
+																}
+																return (it.Task == "done")
+															}()
+															__cell1_checked__inst12 := func() bool {
+																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+																	return __v
+																}
+																return (it.Task == "done")
+															}()
+															__cell1_checked__inst12 = __bound_checked
+															m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst12
+															return
+														}
+														__focusPos0++
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -225,60 +427,122 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst0 {
+	if m.visible__inst1 {
 		var contentChildren []string
 		var content_0 string
+		__focusPos0 := 0
+		_ = __focusPos0
 		var content_0Items []string
-		for _, b := range []_Block{_Block{Kind: "heading1", Runs: []_Run{_Run{Text: "Guide", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "Some ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Bold: false, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Bold: false, Italic: false, Strike: false, Mono: true, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "", Bold: false, Italic: false, Strike: false, Mono: false, Href: "/x", Image: "", Token: "plain", Parts: []_Run{_Run{Text: "a link", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}}, _Run{Text: ".", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Runs: []_Run{}, Ordered: false, Start: 1, Items: []_Item{_Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "one", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "two", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "nested", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Runs: []_Run{_Run{Text: "done", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Runs: []_Run{_Run{Text: "x", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "number", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Runs: []_Run{}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
+		for __copy0, b := range []_Block{_Block{Kind: "heading1", Anchor: "guide", Runs: []_Run{_Run{Text: "Guide", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "Some ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "emphasis", Bold: false, Italic: true, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "weight", Bold: true, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: " and ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "code", Bold: false, Italic: false, Strike: false, Mono: true, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ", with ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "", Bold: false, Italic: false, Strike: false, Mono: false, Href: "/x", Image: "", Token: "plain", Parts: []_Run{_Run{Text: "a link", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}}, _Run{Text: ".", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 1, Items: []_Item{_Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "one", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "two", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "list", Anchor: "", Runs: []_Run{}, Ordered: true, Start: 1, Items: []_Item{_Item{Marker: "1.", Task: "none", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "nested", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}}}, _Item{Marker: "", Task: "done", Blocks: []_Block{_Block{Kind: "paragraph", Anchor: "", Runs: []_Run{_Run{Text: "done", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}}}}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "code", Anchor: "", Runs: []_Run{_Run{Text: "x", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "variable", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: ":=", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "operator", Parts: []_Run{}}, _Run{Text: " ", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "plain", Parts: []_Run{}}, _Run{Text: "1", Bold: false, Italic: false, Strike: false, Mono: false, Href: "", Image: "", Token: "number", Parts: []_Run{}}}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{}, Rows: [][]string{}}, _Block{Kind: "table", Anchor: "", Runs: []_Run{}, Ordered: false, Start: 0, Items: []_Item{}, Columns: []string{"a", "b"}, Rows: [][]string{[]string{"1", "2"}}}} {
+			_ = __copy0
 			_ = b
 			var content_0Item string
 			if b.Kind == "list" {
 				var content_0ItemChildren []string
 				var content_0Item_0 string
 				var content_0Item_0Items []string
-				for _, it := range b.Items {
+				for __copy1, it := range b.Items {
+					_ = __copy1
 					_ = it
 					var content_0Item_0Item string
 					var content_0Item_0ItemChildren []string
 					var content_0Item_0Item_0 string
-					content_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(_marker(it, 1)))
-					content_0Item_0ItemChildren = append(content_0Item_0ItemChildren, content_0Item_0Item_0)
+					if it.Task == "none" {
+						var __lt0 string
+						if it.Marker == "" {
+							__lt0 = "•"
+						} else {
+							__lt0 = it.Marker
+						}
+						content_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+					} else {
+						content_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+						content_0Item_0Item_0Prefix := " "
+						if content_0Item_0Item_0Focused {
+							content_0Item_0Item_0Prefix = ">"
+						}
+						content_0Item_0Item_0 = lipgloss.NewStyle().Render(content_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+						__focusPos0++
+					}
+					if content_0Item_0Item_0 != "" {
+						content_0Item_0ItemChildren = append(content_0Item_0ItemChildren, content_0Item_0Item_0)
+					}
 					var content_0Item_0Item_1 string
 					var content_0Item_0Item_1Children []string
 					var content_0Item_0Item_1_0 string
 					var content_0Item_0Item_1_0Items []string
-					for _, c := range it.Blocks {
+					for __copy2, c := range it.Blocks {
+						_ = __copy2
 						_ = c
 						var content_0Item_0Item_1_0Item string
 						if c.Kind == "list" {
 							var content_0Item_0Item_1_0ItemChildren []string
 							var content_0Item_0Item_1_0Item_0 string
 							var content_0Item_0Item_1_0Item_0Items []string
-							for _, it := range c.Items {
+							for __copy3, it := range c.Items {
+								_ = __copy3
 								_ = it
 								var content_0Item_0Item_1_0Item_0Item string
 								var content_0Item_0Item_1_0Item_0ItemChildren []string
 								var content_0Item_0Item_1_0Item_0Item_0 string
-								content_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(_marker(it, 2)))
-								content_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_0)
+								if it.Task == "none" {
+									var __lt1 string
+									if it.Marker == "" {
+										__lt1 = "◦"
+									} else {
+										__lt1 = it.Marker
+									}
+									content_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+								} else {
+									content_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+									content_0Item_0Item_1_0Item_0Item_0Prefix := " "
+									if content_0Item_0Item_1_0Item_0Item_0Focused {
+										content_0Item_0Item_1_0Item_0Item_0Prefix = ">"
+									}
+									content_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(content_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+									__focusPos0++
+								}
+								if content_0Item_0Item_1_0Item_0Item_0 != "" {
+									content_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_0)
+								}
 								var content_0Item_0Item_1_0Item_0Item_1 string
 								var content_0Item_0Item_1_0Item_0Item_1Children []string
 								var content_0Item_0Item_1_0Item_0Item_1_0 string
 								var content_0Item_0Item_1_0Item_0Item_1_0Items []string
-								for _, c := range it.Blocks {
+								for __copy4, c := range it.Blocks {
+									_ = __copy4
 									_ = c
 									var content_0Item_0Item_1_0Item_0Item_1_0Item string
 									if c.Kind == "list" {
 										var content_0Item_0Item_1_0Item_0Item_1_0ItemChildren []string
 										var content_0Item_0Item_1_0Item_0Item_1_0Item_0 string
 										var content_0Item_0Item_1_0Item_0Item_1_0Item_0Items []string
-										for _, it := range c.Items {
+										for __copy5, it := range c.Items {
+											_ = __copy5
 											_ = it
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item string
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren []string
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 string
-											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(_marker(it, 3)))
-											content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0)
+											if it.Task == "none" {
+												var __lt2 string
+												if it.Marker == "" {
+													__lt2 = "▪"
+												} else {
+													__lt2 = it.Marker
+												}
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+											} else {
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix := " "
+												if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Focused {
+													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix = ">"
+												}
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 = lipgloss.NewStyle().Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0Prefix + " " + fmt.Sprint(""))
+												__focusPos0++
+											}
+											if content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0 != "" {
+												content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren = append(content_0Item_0Item_1_0Item_0Item_1_0Item_0ItemChildren, content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_0)
+											}
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1 string
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1Children []string
 											var content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0 string
@@ -309,26 +573,26 @@ func (m Model) View() tea.View {
 																					if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																					} else {
-																						var __lt0 string
+																						var __lt3 string
 																						if p.Bold {
-																							__lt0 = "bold"
+																							__lt3 = "bold"
 																						} else {
-																							__lt0 = "inherit"
+																							__lt3 = "inherit"
 																						}
-																						var __lt1 string
+																						var __lt4 string
 																						if p.Italic {
-																							__lt1 = "italic"
+																							__lt4 = "italic"
 																						} else {
-																							__lt1 = "inherit"
+																							__lt4 = "inherit"
 																						}
-																						var __lt2 string
+																						var __lt5 string
 																						if p.Mono {
-																							__lt2 = "monospace"
+																							__lt5 = "monospace"
 																						} else {
-																							__lt2 = ""
+																							__lt5 = ""
 																						}
-																						_ = __lt2
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt0 == "bold" || __lt0 == "bolder")).Italic((__lt1 == "italic" || __lt1 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt0 == "lighter")).Render(fmt.Sprint(p.Text))
+																						_ = __lt5
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt3 == "bold" || __lt3 == "bolder")).Italic((__lt4 == "italic" || __lt4 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt3 == "lighter")).Render(fmt.Sprint(p.Text))
 																					}
 																				}
 																			}
@@ -351,26 +615,26 @@ func (m Model) View() tea.View {
 																				if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Strikethrough(true).Render(fmt.Sprint(r.Text))
 																				} else {
-																					var __lt3 string
+																					var __lt6 string
 																					if r.Bold {
-																						__lt3 = "bold"
+																						__lt6 = "bold"
 																					} else {
-																						__lt3 = "inherit"
+																						__lt6 = "inherit"
 																					}
-																					var __lt4 string
+																					var __lt7 string
 																					if r.Italic {
-																						__lt4 = "italic"
+																						__lt7 = "italic"
 																					} else {
-																						__lt4 = "inherit"
+																						__lt7 = "inherit"
 																					}
-																					var __lt5 string
+																					var __lt8 string
 																					if r.Mono {
-																						__lt5 = "monospace"
+																						__lt8 = "monospace"
 																					} else {
-																						__lt5 = ""
+																						__lt8 = ""
 																					}
-																					_ = __lt5
-																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt3 == "bold" || __lt3 == "bolder")).Italic((__lt4 == "italic" || __lt4 == "oblique")).Strikethrough(r.Strike).Faint((__lt3 == "lighter")).Render(fmt.Sprint(r.Text))
+																					_ = __lt8
+																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt6 == "bold" || __lt6 == "bolder")).Italic((__lt7 == "italic" || __lt7 == "oblique")).Strikethrough(r.Strike).Faint((__lt6 == "lighter")).Render(fmt.Sprint(r.Text))
 																				}
 																			}
 																		}
@@ -403,26 +667,26 @@ func (m Model) View() tea.View {
 																						if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																						} else {
-																							var __lt6 string
+																							var __lt9 string
 																							if p.Bold {
-																								__lt6 = "bold"
+																								__lt9 = "bold"
 																							} else {
-																								__lt6 = "inherit"
+																								__lt9 = "inherit"
 																							}
-																							var __lt7 string
+																							var __lt10 string
 																							if p.Italic {
-																								__lt7 = "italic"
+																								__lt10 = "italic"
 																							} else {
-																								__lt7 = "inherit"
+																								__lt10 = "inherit"
 																							}
-																							var __lt8 string
+																							var __lt11 string
 																							if p.Mono {
-																								__lt8 = "monospace"
+																								__lt11 = "monospace"
 																							} else {
-																								__lt8 = ""
+																								__lt11 = ""
 																							}
-																							_ = __lt8
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt6 == "bold" || __lt6 == "bolder" || __lt6 != "normal")).Italic((__lt7 == "italic" || __lt7 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt6 == "lighter")).Render(fmt.Sprint(p.Text))
+																							_ = __lt11
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt9 == "bold" || __lt9 == "bolder" || __lt9 != "normal")).Italic((__lt10 == "italic" || __lt10 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt9 == "lighter")).Render(fmt.Sprint(p.Text))
 																						}
 																					}
 																				}
@@ -445,26 +709,26 @@ func (m Model) View() tea.View {
 																					if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																					} else {
-																						var __lt9 string
+																						var __lt12 string
 																						if r.Bold {
-																							__lt9 = "bold"
+																							__lt12 = "bold"
 																						} else {
-																							__lt9 = "inherit"
+																							__lt12 = "inherit"
 																						}
-																						var __lt10 string
+																						var __lt13 string
 																						if r.Italic {
-																							__lt10 = "italic"
+																							__lt13 = "italic"
 																						} else {
-																							__lt10 = "inherit"
+																							__lt13 = "inherit"
 																						}
-																						var __lt11 string
+																						var __lt14 string
 																						if r.Mono {
-																							__lt11 = "monospace"
+																							__lt14 = "monospace"
 																						} else {
-																							__lt11 = ""
+																							__lt14 = ""
 																						}
-																						_ = __lt11
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt9 == "bold" || __lt9 == "bolder" || __lt9 != "normal")).Italic((__lt10 == "italic" || __lt10 == "oblique")).Strikethrough(r.Strike).Faint((__lt9 == "lighter")).Render(fmt.Sprint(r.Text))
+																						_ = __lt14
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt12 == "bold" || __lt12 == "bolder" || __lt12 != "normal")).Italic((__lt13 == "italic" || __lt13 == "oblique")).Strikethrough(r.Strike).Faint((__lt12 == "lighter")).Render(fmt.Sprint(r.Text))
 																					}
 																				}
 																			}
@@ -497,26 +761,26 @@ func (m Model) View() tea.View {
 																							if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																							} else {
-																								var __lt12 string
+																								var __lt15 string
 																								if p.Bold {
-																									__lt12 = "bold"
+																									__lt15 = "bold"
 																								} else {
-																									__lt12 = "inherit"
+																									__lt15 = "inherit"
 																								}
-																								var __lt13 string
+																								var __lt16 string
 																								if p.Italic {
-																									__lt13 = "italic"
+																									__lt16 = "italic"
 																								} else {
-																									__lt13 = "inherit"
+																									__lt16 = "inherit"
 																								}
-																								var __lt14 string
+																								var __lt17 string
 																								if p.Mono {
-																									__lt14 = "monospace"
+																									__lt17 = "monospace"
 																								} else {
-																									__lt14 = ""
+																									__lt17 = ""
 																								}
-																								_ = __lt14
-																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt12 == "bold" || __lt12 == "bolder" || __lt12 != "normal")).Italic((__lt13 == "italic" || __lt13 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt12 == "lighter")).Render(fmt.Sprint(p.Text))
+																								_ = __lt17
+																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt15 == "bold" || __lt15 == "bolder" || __lt15 != "normal")).Italic((__lt16 == "italic" || __lt16 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt15 == "lighter")).Render(fmt.Sprint(p.Text))
 																							}
 																						}
 																					}
@@ -539,26 +803,26 @@ func (m Model) View() tea.View {
 																						if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																						} else {
-																							var __lt15 string
+																							var __lt18 string
 																							if r.Bold {
-																								__lt15 = "bold"
+																								__lt18 = "bold"
 																							} else {
-																								__lt15 = "inherit"
+																								__lt18 = "inherit"
 																							}
-																							var __lt16 string
+																							var __lt19 string
 																							if r.Italic {
-																								__lt16 = "italic"
+																								__lt19 = "italic"
 																							} else {
-																								__lt16 = "inherit"
+																								__lt19 = "inherit"
 																							}
-																							var __lt17 string
+																							var __lt20 string
 																							if r.Mono {
-																								__lt17 = "monospace"
+																								__lt20 = "monospace"
 																							} else {
-																								__lt17 = ""
+																								__lt20 = ""
 																							}
-																							_ = __lt17
-																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt15 == "bold" || __lt15 == "bolder" || __lt15 != "normal")).Italic((__lt16 == "italic" || __lt16 == "oblique")).Strikethrough(r.Strike).Faint((__lt15 == "lighter")).Render(fmt.Sprint(r.Text))
+																							_ = __lt20
+																							content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt18 == "bold" || __lt18 == "bolder" || __lt18 != "normal")).Italic((__lt19 == "italic" || __lt19 == "oblique")).Strikethrough(r.Strike).Faint((__lt18 == "lighter")).Render(fmt.Sprint(r.Text))
 																						}
 																					}
 																				}
@@ -591,26 +855,26 @@ func (m Model) View() tea.View {
 																								if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																								} else {
-																									var __lt18 string
+																									var __lt21 string
 																									if p.Bold {
-																										__lt18 = "bold"
+																										__lt21 = "bold"
 																									} else {
-																										__lt18 = "inherit"
+																										__lt21 = "inherit"
 																									}
-																									var __lt19 string
+																									var __lt22 string
 																									if p.Italic {
-																										__lt19 = "italic"
+																										__lt22 = "italic"
 																									} else {
-																										__lt19 = "inherit"
+																										__lt22 = "inherit"
 																									}
-																									var __lt20 string
+																									var __lt23 string
 																									if p.Mono {
-																										__lt20 = "monospace"
+																										__lt23 = "monospace"
 																									} else {
-																										__lt20 = ""
+																										__lt23 = ""
 																									}
-																									_ = __lt20
-																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt18 == "bold" || __lt18 == "bolder" || __lt18 != "normal")).Italic((__lt19 == "italic" || __lt19 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt18 == "lighter")).Render(fmt.Sprint(p.Text))
+																									_ = __lt23
+																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt21 == "bold" || __lt21 == "bolder" || __lt21 != "normal")).Italic((__lt22 == "italic" || __lt22 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt21 == "lighter")).Render(fmt.Sprint(p.Text))
 																								}
 																							}
 																						}
@@ -633,26 +897,26 @@ func (m Model) View() tea.View {
 																							if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																							} else {
-																								var __lt21 string
+																								var __lt24 string
 																								if r.Bold {
-																									__lt21 = "bold"
+																									__lt24 = "bold"
 																								} else {
-																									__lt21 = "inherit"
+																									__lt24 = "inherit"
 																								}
-																								var __lt22 string
+																								var __lt25 string
 																								if r.Italic {
-																									__lt22 = "italic"
+																									__lt25 = "italic"
 																								} else {
-																									__lt22 = "inherit"
+																									__lt25 = "inherit"
 																								}
-																								var __lt23 string
+																								var __lt26 string
 																								if r.Mono {
-																									__lt23 = "monospace"
+																									__lt26 = "monospace"
 																								} else {
-																									__lt23 = ""
+																									__lt26 = ""
 																								}
-																								_ = __lt23
-																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt21 == "bold" || __lt21 == "bolder" || __lt21 != "normal")).Italic((__lt22 == "italic" || __lt22 == "oblique")).Strikethrough(r.Strike).Faint((__lt21 == "lighter")).Render(fmt.Sprint(r.Text))
+																								_ = __lt26
+																								content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt24 == "bold" || __lt24 == "bolder" || __lt24 != "normal")).Italic((__lt25 == "italic" || __lt25 == "oblique")).Strikethrough(r.Strike).Faint((__lt24 == "lighter")).Render(fmt.Sprint(r.Text))
 																							}
 																						}
 																					}
@@ -685,26 +949,26 @@ func (m Model) View() tea.View {
 																									if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																									} else {
-																										var __lt24 string
+																										var __lt27 string
 																										if p.Bold {
-																											__lt24 = "bold"
+																											__lt27 = "bold"
 																										} else {
-																											__lt24 = "inherit"
+																											__lt27 = "inherit"
 																										}
-																										var __lt25 string
+																										var __lt28 string
 																										if p.Italic {
-																											__lt25 = "italic"
+																											__lt28 = "italic"
 																										} else {
-																											__lt25 = "inherit"
+																											__lt28 = "inherit"
 																										}
-																										var __lt26 string
+																										var __lt29 string
 																										if p.Mono {
-																											__lt26 = "monospace"
+																											__lt29 = "monospace"
 																										} else {
-																											__lt26 = ""
+																											__lt29 = ""
 																										}
-																										_ = __lt26
-																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt24 == "bold" || __lt24 == "bolder" || __lt24 != "normal")).Italic((__lt25 == "italic" || __lt25 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt24 == "lighter")).Render(fmt.Sprint(p.Text))
+																										_ = __lt29
+																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt27 == "bold" || __lt27 == "bolder" || __lt27 != "normal")).Italic((__lt28 == "italic" || __lt28 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt27 == "lighter")).Render(fmt.Sprint(p.Text))
 																									}
 																								}
 																							}
@@ -727,26 +991,26 @@ func (m Model) View() tea.View {
 																								if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																								} else {
-																									var __lt27 string
+																									var __lt30 string
 																									if r.Bold {
-																										__lt27 = "bold"
+																										__lt30 = "bold"
 																									} else {
-																										__lt27 = "inherit"
+																										__lt30 = "inherit"
 																									}
-																									var __lt28 string
+																									var __lt31 string
 																									if r.Italic {
-																										__lt28 = "italic"
+																										__lt31 = "italic"
 																									} else {
-																										__lt28 = "inherit"
+																										__lt31 = "inherit"
 																									}
-																									var __lt29 string
+																									var __lt32 string
 																									if r.Mono {
-																										__lt29 = "monospace"
+																										__lt32 = "monospace"
 																									} else {
-																										__lt29 = ""
+																										__lt32 = ""
 																									}
-																									_ = __lt29
-																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt27 == "bold" || __lt27 == "bolder" || __lt27 != "normal")).Italic((__lt28 == "italic" || __lt28 == "oblique")).Strikethrough(r.Strike).Faint((__lt27 == "lighter")).Render(fmt.Sprint(r.Text))
+																									_ = __lt32
+																									content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt30 == "bold" || __lt30 == "bolder" || __lt30 != "normal")).Italic((__lt31 == "italic" || __lt31 == "oblique")).Strikethrough(r.Strike).Faint((__lt30 == "lighter")).Render(fmt.Sprint(r.Text))
 																								}
 																							}
 																						}
@@ -779,26 +1043,26 @@ func (m Model) View() tea.View {
 																										if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																										} else {
-																											var __lt30 string
+																											var __lt33 string
 																											if p.Bold {
-																												__lt30 = "bold"
+																												__lt33 = "bold"
 																											} else {
-																												__lt30 = "inherit"
+																												__lt33 = "inherit"
 																											}
-																											var __lt31 string
+																											var __lt34 string
 																											if p.Italic {
-																												__lt31 = "italic"
+																												__lt34 = "italic"
 																											} else {
-																												__lt31 = "inherit"
+																												__lt34 = "inherit"
 																											}
-																											var __lt32 string
+																											var __lt35 string
 																											if p.Mono {
-																												__lt32 = "monospace"
+																												__lt35 = "monospace"
 																											} else {
-																												__lt32 = ""
+																												__lt35 = ""
 																											}
-																											_ = __lt32
-																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt30 == "bold" || __lt30 == "bolder" || __lt30 != "normal")).Italic((__lt31 == "italic" || __lt31 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt30 == "lighter")).Render(fmt.Sprint(p.Text))
+																											_ = __lt35
+																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt33 == "bold" || __lt33 == "bolder" || __lt33 != "normal")).Italic((__lt34 == "italic" || __lt34 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt33 == "lighter")).Render(fmt.Sprint(p.Text))
 																										}
 																									}
 																								}
@@ -821,26 +1085,26 @@ func (m Model) View() tea.View {
 																									if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																									} else {
-																										var __lt33 string
+																										var __lt36 string
 																										if r.Bold {
-																											__lt33 = "bold"
+																											__lt36 = "bold"
 																										} else {
-																											__lt33 = "inherit"
+																											__lt36 = "inherit"
 																										}
-																										var __lt34 string
+																										var __lt37 string
 																										if r.Italic {
-																											__lt34 = "italic"
+																											__lt37 = "italic"
 																										} else {
-																											__lt34 = "inherit"
+																											__lt37 = "inherit"
 																										}
-																										var __lt35 string
+																										var __lt38 string
 																										if r.Mono {
-																											__lt35 = "monospace"
+																											__lt38 = "monospace"
 																										} else {
-																											__lt35 = ""
+																											__lt38 = ""
 																										}
-																										_ = __lt35
-																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt33 == "bold" || __lt33 == "bolder" || __lt33 != "normal")).Italic((__lt34 == "italic" || __lt34 == "oblique")).Strikethrough(r.Strike).Faint((__lt33 == "lighter")).Render(fmt.Sprint(r.Text))
+																										_ = __lt38
+																										content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt36 == "bold" || __lt36 == "bolder" || __lt36 != "normal")).Italic((__lt37 == "italic" || __lt37 == "oblique")).Strikethrough(r.Strike).Faint((__lt36 == "lighter")).Render(fmt.Sprint(r.Text))
 																									}
 																								}
 																							}
@@ -873,26 +1137,26 @@ func (m Model) View() tea.View {
 																											if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																											} else {
-																												var __lt36 string
+																												var __lt39 string
 																												if p.Bold {
-																													__lt36 = "bold"
+																													__lt39 = "bold"
 																												} else {
-																													__lt36 = "inherit"
+																													__lt39 = "inherit"
 																												}
-																												var __lt37 string
+																												var __lt40 string
 																												if p.Italic {
-																													__lt37 = "italic"
+																													__lt40 = "italic"
 																												} else {
-																													__lt37 = "inherit"
+																													__lt40 = "inherit"
 																												}
-																												var __lt38 string
+																												var __lt41 string
 																												if p.Mono {
-																													__lt38 = "monospace"
+																													__lt41 = "monospace"
 																												} else {
-																													__lt38 = ""
+																													__lt41 = ""
 																												}
-																												_ = __lt38
-																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt36 == "bold" || __lt36 == "bolder" || __lt36 != "normal")).Italic((__lt37 == "italic" || __lt37 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt36 == "lighter")).Render(fmt.Sprint(p.Text))
+																												_ = __lt41
+																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt39 == "bold" || __lt39 == "bolder" || __lt39 != "normal")).Italic((__lt40 == "italic" || __lt40 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt39 == "lighter")).Render(fmt.Sprint(p.Text))
 																											}
 																										}
 																									}
@@ -915,26 +1179,26 @@ func (m Model) View() tea.View {
 																										if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																										} else {
-																											var __lt39 string
+																											var __lt42 string
 																											if r.Bold {
-																												__lt39 = "bold"
+																												__lt42 = "bold"
 																											} else {
-																												__lt39 = "inherit"
+																												__lt42 = "inherit"
 																											}
-																											var __lt40 string
+																											var __lt43 string
 																											if r.Italic {
-																												__lt40 = "italic"
+																												__lt43 = "italic"
 																											} else {
-																												__lt40 = "inherit"
+																												__lt43 = "inherit"
 																											}
-																											var __lt41 string
+																											var __lt44 string
 																											if r.Mono {
-																												__lt41 = "monospace"
+																												__lt44 = "monospace"
 																											} else {
-																												__lt41 = ""
+																												__lt44 = ""
 																											}
-																											_ = __lt41
-																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt39 == "bold" || __lt39 == "bolder" || __lt39 != "normal")).Italic((__lt40 == "italic" || __lt40 == "oblique")).Strikethrough(r.Strike).Faint((__lt39 == "lighter")).Render(fmt.Sprint(r.Text))
+																											_ = __lt44
+																											content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt42 == "bold" || __lt42 == "bolder" || __lt42 != "normal")).Italic((__lt43 == "italic" || __lt43 == "oblique")).Strikethrough(r.Strike).Faint((__lt42 == "lighter")).Render(fmt.Sprint(r.Text))
 																										}
 																									}
 																								}
@@ -967,26 +1231,26 @@ func (m Model) View() tea.View {
 																												if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																												} else {
-																													var __lt42 string
+																													var __lt45 string
 																													if p.Bold {
-																														__lt42 = "bold"
+																														__lt45 = "bold"
 																													} else {
-																														__lt42 = "inherit"
+																														__lt45 = "inherit"
 																													}
-																													var __lt43 string
+																													var __lt46 string
 																													if p.Italic {
-																														__lt43 = "italic"
+																														__lt46 = "italic"
 																													} else {
-																														__lt43 = "inherit"
+																														__lt46 = "inherit"
 																													}
-																													var __lt44 string
+																													var __lt47 string
 																													if p.Mono {
-																														__lt44 = "monospace"
+																														__lt47 = "monospace"
 																													} else {
-																														__lt44 = ""
+																														__lt47 = ""
 																													}
-																													_ = __lt44
-																													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt42 == "bold" || __lt42 == "bolder")).Italic((__lt43 == "italic" || __lt43 == "oblique" || __lt43 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt42 == "lighter")).Render(fmt.Sprint(p.Text))
+																													_ = __lt47
+																													content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt45 == "bold" || __lt45 == "bolder")).Italic((__lt46 == "italic" || __lt46 == "oblique" || __lt46 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt45 == "lighter")).Render(fmt.Sprint(p.Text))
 																												}
 																											}
 																										}
@@ -1009,26 +1273,26 @@ func (m Model) View() tea.View {
 																											if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																											} else {
-																												var __lt45 string
+																												var __lt48 string
 																												if r.Bold {
-																													__lt45 = "bold"
+																													__lt48 = "bold"
 																												} else {
-																													__lt45 = "inherit"
+																													__lt48 = "inherit"
 																												}
-																												var __lt46 string
+																												var __lt49 string
 																												if r.Italic {
-																													__lt46 = "italic"
+																													__lt49 = "italic"
 																												} else {
-																													__lt46 = "inherit"
+																													__lt49 = "inherit"
 																												}
-																												var __lt47 string
+																												var __lt50 string
 																												if r.Mono {
-																													__lt47 = "monospace"
+																													__lt50 = "monospace"
 																												} else {
-																													__lt47 = ""
+																													__lt50 = ""
 																												}
-																												_ = __lt47
-																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt45 == "bold" || __lt45 == "bolder")).Italic((__lt46 == "italic" || __lt46 == "oblique" || __lt46 != "normal")).Strikethrough(r.Strike).Faint((__lt45 == "lighter")).Render(fmt.Sprint(r.Text))
+																												_ = __lt50
+																												content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt48 == "bold" || __lt48 == "bolder")).Italic((__lt49 == "italic" || __lt49 == "oblique" || __lt49 != "normal")).Strikethrough(r.Strike).Faint((__lt48 == "lighter")).Render(fmt.Sprint(r.Text))
 																											}
 																										}
 																									}
@@ -1150,26 +1414,26 @@ func (m Model) View() tea.View {
 																			if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																			} else {
-																				var __lt48 string
+																				var __lt51 string
 																				if p.Bold {
-																					__lt48 = "bold"
+																					__lt51 = "bold"
 																				} else {
-																					__lt48 = "inherit"
+																					__lt51 = "inherit"
 																				}
-																				var __lt49 string
+																				var __lt52 string
 																				if p.Italic {
-																					__lt49 = "italic"
+																					__lt52 = "italic"
 																				} else {
-																					__lt49 = "inherit"
+																					__lt52 = "inherit"
 																				}
-																				var __lt50 string
+																				var __lt53 string
 																				if p.Mono {
-																					__lt50 = "monospace"
+																					__lt53 = "monospace"
 																				} else {
-																					__lt50 = ""
+																					__lt53 = ""
 																				}
-																				_ = __lt50
-																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt48 == "bold" || __lt48 == "bolder")).Italic((__lt49 == "italic" || __lt49 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt48 == "lighter")).Render(fmt.Sprint(p.Text))
+																				_ = __lt53
+																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt51 == "bold" || __lt51 == "bolder")).Italic((__lt52 == "italic" || __lt52 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt51 == "lighter")).Render(fmt.Sprint(p.Text))
 																			}
 																		}
 																	}
@@ -1192,26 +1456,26 @@ func (m Model) View() tea.View {
 																		if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																			content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Strikethrough(true).Render(fmt.Sprint(r.Text))
 																		} else {
-																			var __lt51 string
+																			var __lt54 string
 																			if r.Bold {
-																				__lt51 = "bold"
+																				__lt54 = "bold"
 																			} else {
-																				__lt51 = "inherit"
+																				__lt54 = "inherit"
 																			}
-																			var __lt52 string
+																			var __lt55 string
 																			if r.Italic {
-																				__lt52 = "italic"
+																				__lt55 = "italic"
 																			} else {
-																				__lt52 = "inherit"
+																				__lt55 = "inherit"
 																			}
-																			var __lt53 string
+																			var __lt56 string
 																			if r.Mono {
-																				__lt53 = "monospace"
+																				__lt56 = "monospace"
 																			} else {
-																				__lt53 = ""
+																				__lt56 = ""
 																			}
-																			_ = __lt53
-																			content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt51 == "bold" || __lt51 == "bolder")).Italic((__lt52 == "italic" || __lt52 == "oblique")).Strikethrough(r.Strike).Faint((__lt51 == "lighter")).Render(fmt.Sprint(r.Text))
+																			_ = __lt56
+																			content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt54 == "bold" || __lt54 == "bolder")).Italic((__lt55 == "italic" || __lt55 == "oblique")).Strikethrough(r.Strike).Faint((__lt54 == "lighter")).Render(fmt.Sprint(r.Text))
 																		}
 																	}
 																}
@@ -1244,26 +1508,26 @@ func (m Model) View() tea.View {
 																				if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																				} else {
-																					var __lt54 string
+																					var __lt57 string
 																					if p.Bold {
-																						__lt54 = "bold"
+																						__lt57 = "bold"
 																					} else {
-																						__lt54 = "inherit"
+																						__lt57 = "inherit"
 																					}
-																					var __lt55 string
+																					var __lt58 string
 																					if p.Italic {
-																						__lt55 = "italic"
+																						__lt58 = "italic"
 																					} else {
-																						__lt55 = "inherit"
+																						__lt58 = "inherit"
 																					}
-																					var __lt56 string
+																					var __lt59 string
 																					if p.Mono {
-																						__lt56 = "monospace"
+																						__lt59 = "monospace"
 																					} else {
-																						__lt56 = ""
+																						__lt59 = ""
 																					}
-																					_ = __lt56
-																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt54 == "bold" || __lt54 == "bolder" || __lt54 != "normal")).Italic((__lt55 == "italic" || __lt55 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt54 == "lighter")).Render(fmt.Sprint(p.Text))
+																					_ = __lt59
+																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt57 == "bold" || __lt57 == "bolder" || __lt57 != "normal")).Italic((__lt58 == "italic" || __lt58 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt57 == "lighter")).Render(fmt.Sprint(p.Text))
 																				}
 																			}
 																		}
@@ -1286,26 +1550,26 @@ func (m Model) View() tea.View {
 																			if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																			} else {
-																				var __lt57 string
+																				var __lt60 string
 																				if r.Bold {
-																					__lt57 = "bold"
+																					__lt60 = "bold"
 																				} else {
-																					__lt57 = "inherit"
+																					__lt60 = "inherit"
 																				}
-																				var __lt58 string
+																				var __lt61 string
 																				if r.Italic {
-																					__lt58 = "italic"
+																					__lt61 = "italic"
 																				} else {
-																					__lt58 = "inherit"
+																					__lt61 = "inherit"
 																				}
-																				var __lt59 string
+																				var __lt62 string
 																				if r.Mono {
-																					__lt59 = "monospace"
+																					__lt62 = "monospace"
 																				} else {
-																					__lt59 = ""
+																					__lt62 = ""
 																				}
-																				_ = __lt59
-																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt57 == "bold" || __lt57 == "bolder" || __lt57 != "normal")).Italic((__lt58 == "italic" || __lt58 == "oblique")).Strikethrough(r.Strike).Faint((__lt57 == "lighter")).Render(fmt.Sprint(r.Text))
+																				_ = __lt62
+																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt60 == "bold" || __lt60 == "bolder" || __lt60 != "normal")).Italic((__lt61 == "italic" || __lt61 == "oblique")).Strikethrough(r.Strike).Faint((__lt60 == "lighter")).Render(fmt.Sprint(r.Text))
 																			}
 																		}
 																	}
@@ -1338,26 +1602,26 @@ func (m Model) View() tea.View {
 																					if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																					} else {
-																						var __lt60 string
+																						var __lt63 string
 																						if p.Bold {
-																							__lt60 = "bold"
+																							__lt63 = "bold"
 																						} else {
-																							__lt60 = "inherit"
+																							__lt63 = "inherit"
 																						}
-																						var __lt61 string
+																						var __lt64 string
 																						if p.Italic {
-																							__lt61 = "italic"
+																							__lt64 = "italic"
 																						} else {
-																							__lt61 = "inherit"
+																							__lt64 = "inherit"
 																						}
-																						var __lt62 string
+																						var __lt65 string
 																						if p.Mono {
-																							__lt62 = "monospace"
+																							__lt65 = "monospace"
 																						} else {
-																							__lt62 = ""
+																							__lt65 = ""
 																						}
-																						_ = __lt62
-																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt60 == "bold" || __lt60 == "bolder" || __lt60 != "normal")).Italic((__lt61 == "italic" || __lt61 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt60 == "lighter")).Render(fmt.Sprint(p.Text))
+																						_ = __lt65
+																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt63 == "bold" || __lt63 == "bolder" || __lt63 != "normal")).Italic((__lt64 == "italic" || __lt64 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt63 == "lighter")).Render(fmt.Sprint(p.Text))
 																					}
 																				}
 																			}
@@ -1380,26 +1644,26 @@ func (m Model) View() tea.View {
 																				if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																				} else {
-																					var __lt63 string
+																					var __lt66 string
 																					if r.Bold {
-																						__lt63 = "bold"
+																						__lt66 = "bold"
 																					} else {
-																						__lt63 = "inherit"
+																						__lt66 = "inherit"
 																					}
-																					var __lt64 string
+																					var __lt67 string
 																					if r.Italic {
-																						__lt64 = "italic"
+																						__lt67 = "italic"
 																					} else {
-																						__lt64 = "inherit"
+																						__lt67 = "inherit"
 																					}
-																					var __lt65 string
+																					var __lt68 string
 																					if r.Mono {
-																						__lt65 = "monospace"
+																						__lt68 = "monospace"
 																					} else {
-																						__lt65 = ""
+																						__lt68 = ""
 																					}
-																					_ = __lt65
-																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt63 == "bold" || __lt63 == "bolder" || __lt63 != "normal")).Italic((__lt64 == "italic" || __lt64 == "oblique")).Strikethrough(r.Strike).Faint((__lt63 == "lighter")).Render(fmt.Sprint(r.Text))
+																					_ = __lt68
+																					content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt66 == "bold" || __lt66 == "bolder" || __lt66 != "normal")).Italic((__lt67 == "italic" || __lt67 == "oblique")).Strikethrough(r.Strike).Faint((__lt66 == "lighter")).Render(fmt.Sprint(r.Text))
 																				}
 																			}
 																		}
@@ -1432,26 +1696,26 @@ func (m Model) View() tea.View {
 																						if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																						} else {
-																							var __lt66 string
+																							var __lt69 string
 																							if p.Bold {
-																								__lt66 = "bold"
+																								__lt69 = "bold"
 																							} else {
-																								__lt66 = "inherit"
+																								__lt69 = "inherit"
 																							}
-																							var __lt67 string
+																							var __lt70 string
 																							if p.Italic {
-																								__lt67 = "italic"
+																								__lt70 = "italic"
 																							} else {
-																								__lt67 = "inherit"
+																								__lt70 = "inherit"
 																							}
-																							var __lt68 string
+																							var __lt71 string
 																							if p.Mono {
-																								__lt68 = "monospace"
+																								__lt71 = "monospace"
 																							} else {
-																								__lt68 = ""
+																								__lt71 = ""
 																							}
-																							_ = __lt68
-																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt66 == "bold" || __lt66 == "bolder" || __lt66 != "normal")).Italic((__lt67 == "italic" || __lt67 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt66 == "lighter")).Render(fmt.Sprint(p.Text))
+																							_ = __lt71
+																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt69 == "bold" || __lt69 == "bolder" || __lt69 != "normal")).Italic((__lt70 == "italic" || __lt70 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt69 == "lighter")).Render(fmt.Sprint(p.Text))
 																						}
 																					}
 																				}
@@ -1474,26 +1738,26 @@ func (m Model) View() tea.View {
 																					if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																					} else {
-																						var __lt69 string
+																						var __lt72 string
 																						if r.Bold {
-																							__lt69 = "bold"
+																							__lt72 = "bold"
 																						} else {
-																							__lt69 = "inherit"
+																							__lt72 = "inherit"
 																						}
-																						var __lt70 string
+																						var __lt73 string
 																						if r.Italic {
-																							__lt70 = "italic"
+																							__lt73 = "italic"
 																						} else {
-																							__lt70 = "inherit"
+																							__lt73 = "inherit"
 																						}
-																						var __lt71 string
+																						var __lt74 string
 																						if r.Mono {
-																							__lt71 = "monospace"
+																							__lt74 = "monospace"
 																						} else {
-																							__lt71 = ""
+																							__lt74 = ""
 																						}
-																						_ = __lt71
-																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt69 == "bold" || __lt69 == "bolder" || __lt69 != "normal")).Italic((__lt70 == "italic" || __lt70 == "oblique")).Strikethrough(r.Strike).Faint((__lt69 == "lighter")).Render(fmt.Sprint(r.Text))
+																						_ = __lt74
+																						content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt72 == "bold" || __lt72 == "bolder" || __lt72 != "normal")).Italic((__lt73 == "italic" || __lt73 == "oblique")).Strikethrough(r.Strike).Faint((__lt72 == "lighter")).Render(fmt.Sprint(r.Text))
 																					}
 																				}
 																			}
@@ -1526,26 +1790,26 @@ func (m Model) View() tea.View {
 																							if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																							} else {
-																								var __lt72 string
+																								var __lt75 string
 																								if p.Bold {
-																									__lt72 = "bold"
+																									__lt75 = "bold"
 																								} else {
-																									__lt72 = "inherit"
+																									__lt75 = "inherit"
 																								}
-																								var __lt73 string
+																								var __lt76 string
 																								if p.Italic {
-																									__lt73 = "italic"
+																									__lt76 = "italic"
 																								} else {
-																									__lt73 = "inherit"
+																									__lt76 = "inherit"
 																								}
-																								var __lt74 string
+																								var __lt77 string
 																								if p.Mono {
-																									__lt74 = "monospace"
+																									__lt77 = "monospace"
 																								} else {
-																									__lt74 = ""
+																									__lt77 = ""
 																								}
-																								_ = __lt74
-																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt72 == "bold" || __lt72 == "bolder" || __lt72 != "normal")).Italic((__lt73 == "italic" || __lt73 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt72 == "lighter")).Render(fmt.Sprint(p.Text))
+																								_ = __lt77
+																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt75 == "bold" || __lt75 == "bolder" || __lt75 != "normal")).Italic((__lt76 == "italic" || __lt76 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt75 == "lighter")).Render(fmt.Sprint(p.Text))
 																							}
 																						}
 																					}
@@ -1568,26 +1832,26 @@ func (m Model) View() tea.View {
 																						if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																						} else {
-																							var __lt75 string
+																							var __lt78 string
 																							if r.Bold {
-																								__lt75 = "bold"
+																								__lt78 = "bold"
 																							} else {
-																								__lt75 = "inherit"
+																								__lt78 = "inherit"
 																							}
-																							var __lt76 string
+																							var __lt79 string
 																							if r.Italic {
-																								__lt76 = "italic"
+																								__lt79 = "italic"
 																							} else {
-																								__lt76 = "inherit"
+																								__lt79 = "inherit"
 																							}
-																							var __lt77 string
+																							var __lt80 string
 																							if r.Mono {
-																								__lt77 = "monospace"
+																								__lt80 = "monospace"
 																							} else {
-																								__lt77 = ""
+																								__lt80 = ""
 																							}
-																							_ = __lt77
-																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt75 == "bold" || __lt75 == "bolder" || __lt75 != "normal")).Italic((__lt76 == "italic" || __lt76 == "oblique")).Strikethrough(r.Strike).Faint((__lt75 == "lighter")).Render(fmt.Sprint(r.Text))
+																							_ = __lt80
+																							content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt78 == "bold" || __lt78 == "bolder" || __lt78 != "normal")).Italic((__lt79 == "italic" || __lt79 == "oblique")).Strikethrough(r.Strike).Faint((__lt78 == "lighter")).Render(fmt.Sprint(r.Text))
 																						}
 																					}
 																				}
@@ -1620,26 +1884,26 @@ func (m Model) View() tea.View {
 																								if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																								} else {
-																									var __lt78 string
+																									var __lt81 string
 																									if p.Bold {
-																										__lt78 = "bold"
+																										__lt81 = "bold"
 																									} else {
-																										__lt78 = "inherit"
+																										__lt81 = "inherit"
 																									}
-																									var __lt79 string
+																									var __lt82 string
 																									if p.Italic {
-																										__lt79 = "italic"
+																										__lt82 = "italic"
 																									} else {
-																										__lt79 = "inherit"
+																										__lt82 = "inherit"
 																									}
-																									var __lt80 string
+																									var __lt83 string
 																									if p.Mono {
-																										__lt80 = "monospace"
+																										__lt83 = "monospace"
 																									} else {
-																										__lt80 = ""
+																										__lt83 = ""
 																									}
-																									_ = __lt80
-																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt78 == "bold" || __lt78 == "bolder" || __lt78 != "normal")).Italic((__lt79 == "italic" || __lt79 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt78 == "lighter")).Render(fmt.Sprint(p.Text))
+																									_ = __lt83
+																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt81 == "bold" || __lt81 == "bolder" || __lt81 != "normal")).Italic((__lt82 == "italic" || __lt82 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt81 == "lighter")).Render(fmt.Sprint(p.Text))
 																								}
 																							}
 																						}
@@ -1662,26 +1926,26 @@ func (m Model) View() tea.View {
 																							if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																							} else {
-																								var __lt81 string
+																								var __lt84 string
 																								if r.Bold {
-																									__lt81 = "bold"
+																									__lt84 = "bold"
 																								} else {
-																									__lt81 = "inherit"
+																									__lt84 = "inherit"
 																								}
-																								var __lt82 string
+																								var __lt85 string
 																								if r.Italic {
-																									__lt82 = "italic"
+																									__lt85 = "italic"
 																								} else {
-																									__lt82 = "inherit"
+																									__lt85 = "inherit"
 																								}
-																								var __lt83 string
+																								var __lt86 string
 																								if r.Mono {
-																									__lt83 = "monospace"
+																									__lt86 = "monospace"
 																								} else {
-																									__lt83 = ""
+																									__lt86 = ""
 																								}
-																								_ = __lt83
-																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt81 == "bold" || __lt81 == "bolder" || __lt81 != "normal")).Italic((__lt82 == "italic" || __lt82 == "oblique")).Strikethrough(r.Strike).Faint((__lt81 == "lighter")).Render(fmt.Sprint(r.Text))
+																								_ = __lt86
+																								content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt84 == "bold" || __lt84 == "bolder" || __lt84 != "normal")).Italic((__lt85 == "italic" || __lt85 == "oblique")).Strikethrough(r.Strike).Faint((__lt84 == "lighter")).Render(fmt.Sprint(r.Text))
 																							}
 																						}
 																					}
@@ -1714,26 +1978,26 @@ func (m Model) View() tea.View {
 																									if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																									} else {
-																										var __lt84 string
+																										var __lt87 string
 																										if p.Bold {
-																											__lt84 = "bold"
+																											__lt87 = "bold"
 																										} else {
-																											__lt84 = "inherit"
+																											__lt87 = "inherit"
 																										}
-																										var __lt85 string
+																										var __lt88 string
 																										if p.Italic {
-																											__lt85 = "italic"
+																											__lt88 = "italic"
 																										} else {
-																											__lt85 = "inherit"
+																											__lt88 = "inherit"
 																										}
-																										var __lt86 string
+																										var __lt89 string
 																										if p.Mono {
-																											__lt86 = "monospace"
+																											__lt89 = "monospace"
 																										} else {
-																											__lt86 = ""
+																											__lt89 = ""
 																										}
-																										_ = __lt86
-																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt84 == "bold" || __lt84 == "bolder" || __lt84 != "normal")).Italic((__lt85 == "italic" || __lt85 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt84 == "lighter")).Render(fmt.Sprint(p.Text))
+																										_ = __lt89
+																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt87 == "bold" || __lt87 == "bolder" || __lt87 != "normal")).Italic((__lt88 == "italic" || __lt88 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt87 == "lighter")).Render(fmt.Sprint(p.Text))
 																									}
 																								}
 																							}
@@ -1756,26 +2020,26 @@ func (m Model) View() tea.View {
 																								if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																								} else {
-																									var __lt87 string
+																									var __lt90 string
 																									if r.Bold {
-																										__lt87 = "bold"
+																										__lt90 = "bold"
 																									} else {
-																										__lt87 = "inherit"
+																										__lt90 = "inherit"
 																									}
-																									var __lt88 string
+																									var __lt91 string
 																									if r.Italic {
-																										__lt88 = "italic"
+																										__lt91 = "italic"
 																									} else {
-																										__lt88 = "inherit"
+																										__lt91 = "inherit"
 																									}
-																									var __lt89 string
+																									var __lt92 string
 																									if r.Mono {
-																										__lt89 = "monospace"
+																										__lt92 = "monospace"
 																									} else {
-																										__lt89 = ""
+																										__lt92 = ""
 																									}
-																									_ = __lt89
-																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt87 == "bold" || __lt87 == "bolder" || __lt87 != "normal")).Italic((__lt88 == "italic" || __lt88 == "oblique")).Strikethrough(r.Strike).Faint((__lt87 == "lighter")).Render(fmt.Sprint(r.Text))
+																									_ = __lt92
+																									content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt90 == "bold" || __lt90 == "bolder" || __lt90 != "normal")).Italic((__lt91 == "italic" || __lt91 == "oblique")).Strikethrough(r.Strike).Faint((__lt90 == "lighter")).Render(fmt.Sprint(r.Text))
 																								}
 																							}
 																						}
@@ -1808,26 +2072,26 @@ func (m Model) View() tea.View {
 																										if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																											content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																										} else {
-																											var __lt90 string
+																											var __lt93 string
 																											if p.Bold {
-																												__lt90 = "bold"
+																												__lt93 = "bold"
 																											} else {
-																												__lt90 = "inherit"
+																												__lt93 = "inherit"
 																											}
-																											var __lt91 string
+																											var __lt94 string
 																											if p.Italic {
-																												__lt91 = "italic"
+																												__lt94 = "italic"
 																											} else {
-																												__lt91 = "inherit"
+																												__lt94 = "inherit"
 																											}
-																											var __lt92 string
+																											var __lt95 string
 																											if p.Mono {
-																												__lt92 = "monospace"
+																												__lt95 = "monospace"
 																											} else {
-																												__lt92 = ""
+																												__lt95 = ""
 																											}
-																											_ = __lt92
-																											content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt90 == "bold" || __lt90 == "bolder")).Italic((__lt91 == "italic" || __lt91 == "oblique" || __lt91 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt90 == "lighter")).Render(fmt.Sprint(p.Text))
+																											_ = __lt95
+																											content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt93 == "bold" || __lt93 == "bolder")).Italic((__lt94 == "italic" || __lt94 == "oblique" || __lt94 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt93 == "lighter")).Render(fmt.Sprint(p.Text))
 																										}
 																									}
 																								}
@@ -1850,26 +2114,26 @@ func (m Model) View() tea.View {
 																									if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																									} else {
-																										var __lt93 string
+																										var __lt96 string
 																										if r.Bold {
-																											__lt93 = "bold"
+																											__lt96 = "bold"
 																										} else {
-																											__lt93 = "inherit"
+																											__lt96 = "inherit"
 																										}
-																										var __lt94 string
+																										var __lt97 string
 																										if r.Italic {
-																											__lt94 = "italic"
+																											__lt97 = "italic"
 																										} else {
-																											__lt94 = "inherit"
+																											__lt97 = "inherit"
 																										}
-																										var __lt95 string
+																										var __lt98 string
 																										if r.Mono {
-																											__lt95 = "monospace"
+																											__lt98 = "monospace"
 																										} else {
-																											__lt95 = ""
+																											__lt98 = ""
 																										}
-																										_ = __lt95
-																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt93 == "bold" || __lt93 == "bolder")).Italic((__lt94 == "italic" || __lt94 == "oblique" || __lt94 != "normal")).Strikethrough(r.Strike).Faint((__lt93 == "lighter")).Render(fmt.Sprint(r.Text))
+																										_ = __lt98
+																										content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt96 == "bold" || __lt96 == "bolder")).Italic((__lt97 == "italic" || __lt97 == "oblique" || __lt97 != "normal")).Strikethrough(r.Strike).Faint((__lt96 == "lighter")).Render(fmt.Sprint(r.Text))
 																									}
 																								}
 																							}
@@ -1992,26 +2256,26 @@ func (m Model) View() tea.View {
 																if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																} else {
-																	var __lt96 string
+																	var __lt99 string
 																	if p.Bold {
-																		__lt96 = "bold"
+																		__lt99 = "bold"
 																	} else {
-																		__lt96 = "inherit"
+																		__lt99 = "inherit"
 																	}
-																	var __lt97 string
+																	var __lt100 string
 																	if p.Italic {
-																		__lt97 = "italic"
+																		__lt100 = "italic"
 																	} else {
-																		__lt97 = "inherit"
+																		__lt100 = "inherit"
 																	}
-																	var __lt98 string
+																	var __lt101 string
 																	if p.Mono {
-																		__lt98 = "monospace"
+																		__lt101 = "monospace"
 																	} else {
-																		__lt98 = ""
+																		__lt101 = ""
 																	}
-																	_ = __lt98
-																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt96 == "bold" || __lt96 == "bolder")).Italic((__lt97 == "italic" || __lt97 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt96 == "lighter")).Render(fmt.Sprint(p.Text))
+																	_ = __lt101
+																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt99 == "bold" || __lt99 == "bolder")).Italic((__lt100 == "italic" || __lt100 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt99 == "lighter")).Render(fmt.Sprint(p.Text))
 																}
 															}
 														}
@@ -2034,26 +2298,26 @@ func (m Model) View() tea.View {
 															if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																content_0Item_0Item_1_0Item += lipgloss.NewStyle().Strikethrough(true).Render(fmt.Sprint(r.Text))
 															} else {
-																var __lt99 string
+																var __lt102 string
 																if r.Bold {
-																	__lt99 = "bold"
+																	__lt102 = "bold"
 																} else {
-																	__lt99 = "inherit"
+																	__lt102 = "inherit"
 																}
-																var __lt100 string
+																var __lt103 string
 																if r.Italic {
-																	__lt100 = "italic"
+																	__lt103 = "italic"
 																} else {
-																	__lt100 = "inherit"
+																	__lt103 = "inherit"
 																}
-																var __lt101 string
+																var __lt104 string
 																if r.Mono {
-																	__lt101 = "monospace"
+																	__lt104 = "monospace"
 																} else {
-																	__lt101 = ""
+																	__lt104 = ""
 																}
-																_ = __lt101
-																content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt99 == "bold" || __lt99 == "bolder")).Italic((__lt100 == "italic" || __lt100 == "oblique")).Strikethrough(r.Strike).Faint((__lt99 == "lighter")).Render(fmt.Sprint(r.Text))
+																_ = __lt104
+																content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt102 == "bold" || __lt102 == "bolder")).Italic((__lt103 == "italic" || __lt103 == "oblique")).Strikethrough(r.Strike).Faint((__lt102 == "lighter")).Render(fmt.Sprint(r.Text))
 															}
 														}
 													}
@@ -2086,26 +2350,26 @@ func (m Model) View() tea.View {
 																	if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																	} else {
-																		var __lt102 string
+																		var __lt105 string
 																		if p.Bold {
-																			__lt102 = "bold"
+																			__lt105 = "bold"
 																		} else {
-																			__lt102 = "inherit"
+																			__lt105 = "inherit"
 																		}
-																		var __lt103 string
+																		var __lt106 string
 																		if p.Italic {
-																			__lt103 = "italic"
+																			__lt106 = "italic"
 																		} else {
-																			__lt103 = "inherit"
+																			__lt106 = "inherit"
 																		}
-																		var __lt104 string
+																		var __lt107 string
 																		if p.Mono {
-																			__lt104 = "monospace"
+																			__lt107 = "monospace"
 																		} else {
-																			__lt104 = ""
+																			__lt107 = ""
 																		}
-																		_ = __lt104
-																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt102 == "bold" || __lt102 == "bolder" || __lt102 != "normal")).Italic((__lt103 == "italic" || __lt103 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt102 == "lighter")).Render(fmt.Sprint(p.Text))
+																		_ = __lt107
+																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt105 == "bold" || __lt105 == "bolder" || __lt105 != "normal")).Italic((__lt106 == "italic" || __lt106 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt105 == "lighter")).Render(fmt.Sprint(p.Text))
 																	}
 																}
 															}
@@ -2128,26 +2392,26 @@ func (m Model) View() tea.View {
 																if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																} else {
-																	var __lt105 string
+																	var __lt108 string
 																	if r.Bold {
-																		__lt105 = "bold"
+																		__lt108 = "bold"
 																	} else {
-																		__lt105 = "inherit"
+																		__lt108 = "inherit"
 																	}
-																	var __lt106 string
+																	var __lt109 string
 																	if r.Italic {
-																		__lt106 = "italic"
+																		__lt109 = "italic"
 																	} else {
-																		__lt106 = "inherit"
+																		__lt109 = "inherit"
 																	}
-																	var __lt107 string
+																	var __lt110 string
 																	if r.Mono {
-																		__lt107 = "monospace"
+																		__lt110 = "monospace"
 																	} else {
-																		__lt107 = ""
+																		__lt110 = ""
 																	}
-																	_ = __lt107
-																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt105 == "bold" || __lt105 == "bolder" || __lt105 != "normal")).Italic((__lt106 == "italic" || __lt106 == "oblique")).Strikethrough(r.Strike).Faint((__lt105 == "lighter")).Render(fmt.Sprint(r.Text))
+																	_ = __lt110
+																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt108 == "bold" || __lt108 == "bolder" || __lt108 != "normal")).Italic((__lt109 == "italic" || __lt109 == "oblique")).Strikethrough(r.Strike).Faint((__lt108 == "lighter")).Render(fmt.Sprint(r.Text))
 																}
 															}
 														}
@@ -2180,26 +2444,26 @@ func (m Model) View() tea.View {
 																		if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																		} else {
-																			var __lt108 string
+																			var __lt111 string
 																			if p.Bold {
-																				__lt108 = "bold"
+																				__lt111 = "bold"
 																			} else {
-																				__lt108 = "inherit"
+																				__lt111 = "inherit"
 																			}
-																			var __lt109 string
+																			var __lt112 string
 																			if p.Italic {
-																				__lt109 = "italic"
+																				__lt112 = "italic"
 																			} else {
-																				__lt109 = "inherit"
+																				__lt112 = "inherit"
 																			}
-																			var __lt110 string
+																			var __lt113 string
 																			if p.Mono {
-																				__lt110 = "monospace"
+																				__lt113 = "monospace"
 																			} else {
-																				__lt110 = ""
+																				__lt113 = ""
 																			}
-																			_ = __lt110
-																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt108 == "bold" || __lt108 == "bolder" || __lt108 != "normal")).Italic((__lt109 == "italic" || __lt109 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt108 == "lighter")).Render(fmt.Sprint(p.Text))
+																			_ = __lt113
+																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt111 == "bold" || __lt111 == "bolder" || __lt111 != "normal")).Italic((__lt112 == "italic" || __lt112 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt111 == "lighter")).Render(fmt.Sprint(p.Text))
 																		}
 																	}
 																}
@@ -2222,26 +2486,26 @@ func (m Model) View() tea.View {
 																	if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																	} else {
-																		var __lt111 string
+																		var __lt114 string
 																		if r.Bold {
-																			__lt111 = "bold"
+																			__lt114 = "bold"
 																		} else {
-																			__lt111 = "inherit"
+																			__lt114 = "inherit"
 																		}
-																		var __lt112 string
+																		var __lt115 string
 																		if r.Italic {
-																			__lt112 = "italic"
+																			__lt115 = "italic"
 																		} else {
-																			__lt112 = "inherit"
+																			__lt115 = "inherit"
 																		}
-																		var __lt113 string
+																		var __lt116 string
 																		if r.Mono {
-																			__lt113 = "monospace"
+																			__lt116 = "monospace"
 																		} else {
-																			__lt113 = ""
+																			__lt116 = ""
 																		}
-																		_ = __lt113
-																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt111 == "bold" || __lt111 == "bolder" || __lt111 != "normal")).Italic((__lt112 == "italic" || __lt112 == "oblique")).Strikethrough(r.Strike).Faint((__lt111 == "lighter")).Render(fmt.Sprint(r.Text))
+																		_ = __lt116
+																		content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt114 == "bold" || __lt114 == "bolder" || __lt114 != "normal")).Italic((__lt115 == "italic" || __lt115 == "oblique")).Strikethrough(r.Strike).Faint((__lt114 == "lighter")).Render(fmt.Sprint(r.Text))
 																	}
 																}
 															}
@@ -2274,26 +2538,26 @@ func (m Model) View() tea.View {
 																			if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																			} else {
-																				var __lt114 string
+																				var __lt117 string
 																				if p.Bold {
-																					__lt114 = "bold"
+																					__lt117 = "bold"
 																				} else {
-																					__lt114 = "inherit"
+																					__lt117 = "inherit"
 																				}
-																				var __lt115 string
+																				var __lt118 string
 																				if p.Italic {
-																					__lt115 = "italic"
+																					__lt118 = "italic"
 																				} else {
-																					__lt115 = "inherit"
+																					__lt118 = "inherit"
 																				}
-																				var __lt116 string
+																				var __lt119 string
 																				if p.Mono {
-																					__lt116 = "monospace"
+																					__lt119 = "monospace"
 																				} else {
-																					__lt116 = ""
+																					__lt119 = ""
 																				}
-																				_ = __lt116
-																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt114 == "bold" || __lt114 == "bolder" || __lt114 != "normal")).Italic((__lt115 == "italic" || __lt115 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt114 == "lighter")).Render(fmt.Sprint(p.Text))
+																				_ = __lt119
+																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt117 == "bold" || __lt117 == "bolder" || __lt117 != "normal")).Italic((__lt118 == "italic" || __lt118 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt117 == "lighter")).Render(fmt.Sprint(p.Text))
 																			}
 																		}
 																	}
@@ -2316,26 +2580,26 @@ func (m Model) View() tea.View {
 																		if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																		} else {
-																			var __lt117 string
+																			var __lt120 string
 																			if r.Bold {
-																				__lt117 = "bold"
+																				__lt120 = "bold"
 																			} else {
-																				__lt117 = "inherit"
+																				__lt120 = "inherit"
 																			}
-																			var __lt118 string
+																			var __lt121 string
 																			if r.Italic {
-																				__lt118 = "italic"
+																				__lt121 = "italic"
 																			} else {
-																				__lt118 = "inherit"
+																				__lt121 = "inherit"
 																			}
-																			var __lt119 string
+																			var __lt122 string
 																			if r.Mono {
-																				__lt119 = "monospace"
+																				__lt122 = "monospace"
 																			} else {
-																				__lt119 = ""
+																				__lt122 = ""
 																			}
-																			_ = __lt119
-																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt117 == "bold" || __lt117 == "bolder" || __lt117 != "normal")).Italic((__lt118 == "italic" || __lt118 == "oblique")).Strikethrough(r.Strike).Faint((__lt117 == "lighter")).Render(fmt.Sprint(r.Text))
+																			_ = __lt122
+																			content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt120 == "bold" || __lt120 == "bolder" || __lt120 != "normal")).Italic((__lt121 == "italic" || __lt121 == "oblique")).Strikethrough(r.Strike).Faint((__lt120 == "lighter")).Render(fmt.Sprint(r.Text))
 																		}
 																	}
 																}
@@ -2368,26 +2632,26 @@ func (m Model) View() tea.View {
 																				if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																				} else {
-																					var __lt120 string
+																					var __lt123 string
 																					if p.Bold {
-																						__lt120 = "bold"
+																						__lt123 = "bold"
 																					} else {
-																						__lt120 = "inherit"
+																						__lt123 = "inherit"
 																					}
-																					var __lt121 string
+																					var __lt124 string
 																					if p.Italic {
-																						__lt121 = "italic"
+																						__lt124 = "italic"
 																					} else {
-																						__lt121 = "inherit"
+																						__lt124 = "inherit"
 																					}
-																					var __lt122 string
+																					var __lt125 string
 																					if p.Mono {
-																						__lt122 = "monospace"
+																						__lt125 = "monospace"
 																					} else {
-																						__lt122 = ""
+																						__lt125 = ""
 																					}
-																					_ = __lt122
-																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt120 == "bold" || __lt120 == "bolder" || __lt120 != "normal")).Italic((__lt121 == "italic" || __lt121 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt120 == "lighter")).Render(fmt.Sprint(p.Text))
+																					_ = __lt125
+																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt123 == "bold" || __lt123 == "bolder" || __lt123 != "normal")).Italic((__lt124 == "italic" || __lt124 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt123 == "lighter")).Render(fmt.Sprint(p.Text))
 																				}
 																			}
 																		}
@@ -2410,26 +2674,26 @@ func (m Model) View() tea.View {
 																			if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																			} else {
-																				var __lt123 string
+																				var __lt126 string
 																				if r.Bold {
-																					__lt123 = "bold"
+																					__lt126 = "bold"
 																				} else {
-																					__lt123 = "inherit"
+																					__lt126 = "inherit"
 																				}
-																				var __lt124 string
+																				var __lt127 string
 																				if r.Italic {
-																					__lt124 = "italic"
+																					__lt127 = "italic"
 																				} else {
-																					__lt124 = "inherit"
+																					__lt127 = "inherit"
 																				}
-																				var __lt125 string
+																				var __lt128 string
 																				if r.Mono {
-																					__lt125 = "monospace"
+																					__lt128 = "monospace"
 																				} else {
-																					__lt125 = ""
+																					__lt128 = ""
 																				}
-																				_ = __lt125
-																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt123 == "bold" || __lt123 == "bolder" || __lt123 != "normal")).Italic((__lt124 == "italic" || __lt124 == "oblique")).Strikethrough(r.Strike).Faint((__lt123 == "lighter")).Render(fmt.Sprint(r.Text))
+																				_ = __lt128
+																				content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt126 == "bold" || __lt126 == "bolder" || __lt126 != "normal")).Italic((__lt127 == "italic" || __lt127 == "oblique")).Strikethrough(r.Strike).Faint((__lt126 == "lighter")).Render(fmt.Sprint(r.Text))
 																			}
 																		}
 																	}
@@ -2462,26 +2726,26 @@ func (m Model) View() tea.View {
 																					if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																					} else {
-																						var __lt126 string
+																						var __lt129 string
 																						if p.Bold {
-																							__lt126 = "bold"
+																							__lt129 = "bold"
 																						} else {
-																							__lt126 = "inherit"
+																							__lt129 = "inherit"
 																						}
-																						var __lt127 string
+																						var __lt130 string
 																						if p.Italic {
-																							__lt127 = "italic"
+																							__lt130 = "italic"
 																						} else {
-																							__lt127 = "inherit"
+																							__lt130 = "inherit"
 																						}
-																						var __lt128 string
+																						var __lt131 string
 																						if p.Mono {
-																							__lt128 = "monospace"
+																							__lt131 = "monospace"
 																						} else {
-																							__lt128 = ""
+																							__lt131 = ""
 																						}
-																						_ = __lt128
-																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt126 == "bold" || __lt126 == "bolder" || __lt126 != "normal")).Italic((__lt127 == "italic" || __lt127 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt126 == "lighter")).Render(fmt.Sprint(p.Text))
+																						_ = __lt131
+																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt129 == "bold" || __lt129 == "bolder" || __lt129 != "normal")).Italic((__lt130 == "italic" || __lt130 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt129 == "lighter")).Render(fmt.Sprint(p.Text))
 																					}
 																				}
 																			}
@@ -2504,26 +2768,26 @@ func (m Model) View() tea.View {
 																				if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																				} else {
-																					var __lt129 string
+																					var __lt132 string
 																					if r.Bold {
-																						__lt129 = "bold"
+																						__lt132 = "bold"
 																					} else {
-																						__lt129 = "inherit"
+																						__lt132 = "inherit"
 																					}
-																					var __lt130 string
+																					var __lt133 string
 																					if r.Italic {
-																						__lt130 = "italic"
+																						__lt133 = "italic"
 																					} else {
-																						__lt130 = "inherit"
+																						__lt133 = "inherit"
 																					}
-																					var __lt131 string
+																					var __lt134 string
 																					if r.Mono {
-																						__lt131 = "monospace"
+																						__lt134 = "monospace"
 																					} else {
-																						__lt131 = ""
+																						__lt134 = ""
 																					}
-																					_ = __lt131
-																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt129 == "bold" || __lt129 == "bolder" || __lt129 != "normal")).Italic((__lt130 == "italic" || __lt130 == "oblique")).Strikethrough(r.Strike).Faint((__lt129 == "lighter")).Render(fmt.Sprint(r.Text))
+																					_ = __lt134
+																					content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt132 == "bold" || __lt132 == "bolder" || __lt132 != "normal")).Italic((__lt133 == "italic" || __lt133 == "oblique")).Strikethrough(r.Strike).Faint((__lt132 == "lighter")).Render(fmt.Sprint(r.Text))
 																				}
 																			}
 																		}
@@ -2556,26 +2820,26 @@ func (m Model) View() tea.View {
 																						if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																						} else {
-																							var __lt132 string
+																							var __lt135 string
 																							if p.Bold {
-																								__lt132 = "bold"
+																								__lt135 = "bold"
 																							} else {
-																								__lt132 = "inherit"
+																								__lt135 = "inherit"
 																							}
-																							var __lt133 string
+																							var __lt136 string
 																							if p.Italic {
-																								__lt133 = "italic"
+																								__lt136 = "italic"
 																							} else {
-																								__lt133 = "inherit"
+																								__lt136 = "inherit"
 																							}
-																							var __lt134 string
+																							var __lt137 string
 																							if p.Mono {
-																								__lt134 = "monospace"
+																								__lt137 = "monospace"
 																							} else {
-																								__lt134 = ""
+																								__lt137 = ""
 																							}
-																							_ = __lt134
-																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt132 == "bold" || __lt132 == "bolder" || __lt132 != "normal")).Italic((__lt133 == "italic" || __lt133 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt132 == "lighter")).Render(fmt.Sprint(p.Text))
+																							_ = __lt137
+																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt135 == "bold" || __lt135 == "bolder" || __lt135 != "normal")).Italic((__lt136 == "italic" || __lt136 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt135 == "lighter")).Render(fmt.Sprint(p.Text))
 																						}
 																					}
 																				}
@@ -2598,26 +2862,26 @@ func (m Model) View() tea.View {
 																					if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																					} else {
-																						var __lt135 string
+																						var __lt138 string
 																						if r.Bold {
-																							__lt135 = "bold"
+																							__lt138 = "bold"
 																						} else {
-																							__lt135 = "inherit"
+																							__lt138 = "inherit"
 																						}
-																						var __lt136 string
+																						var __lt139 string
 																						if r.Italic {
-																							__lt136 = "italic"
+																							__lt139 = "italic"
 																						} else {
-																							__lt136 = "inherit"
+																							__lt139 = "inherit"
 																						}
-																						var __lt137 string
+																						var __lt140 string
 																						if r.Mono {
-																							__lt137 = "monospace"
+																							__lt140 = "monospace"
 																						} else {
-																							__lt137 = ""
+																							__lt140 = ""
 																						}
-																						_ = __lt137
-																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt135 == "bold" || __lt135 == "bolder" || __lt135 != "normal")).Italic((__lt136 == "italic" || __lt136 == "oblique")).Strikethrough(r.Strike).Faint((__lt135 == "lighter")).Render(fmt.Sprint(r.Text))
+																						_ = __lt140
+																						content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt138 == "bold" || __lt138 == "bolder" || __lt138 != "normal")).Italic((__lt139 == "italic" || __lt139 == "oblique")).Strikethrough(r.Strike).Faint((__lt138 == "lighter")).Render(fmt.Sprint(r.Text))
 																					}
 																				}
 																			}
@@ -2650,26 +2914,26 @@ func (m Model) View() tea.View {
 																							if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																								content_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																							} else {
-																								var __lt138 string
+																								var __lt141 string
 																								if p.Bold {
-																									__lt138 = "bold"
+																									__lt141 = "bold"
 																								} else {
-																									__lt138 = "inherit"
+																									__lt141 = "inherit"
 																								}
-																								var __lt139 string
+																								var __lt142 string
 																								if p.Italic {
-																									__lt139 = "italic"
+																									__lt142 = "italic"
 																								} else {
-																									__lt139 = "inherit"
+																									__lt142 = "inherit"
 																								}
-																								var __lt140 string
+																								var __lt143 string
 																								if p.Mono {
-																									__lt140 = "monospace"
+																									__lt143 = "monospace"
 																								} else {
-																									__lt140 = ""
+																									__lt143 = ""
 																								}
-																								_ = __lt140
-																								content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt138 == "bold" || __lt138 == "bolder")).Italic((__lt139 == "italic" || __lt139 == "oblique" || __lt139 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt138 == "lighter")).Render(fmt.Sprint(p.Text))
+																								_ = __lt143
+																								content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt141 == "bold" || __lt141 == "bolder")).Italic((__lt142 == "italic" || __lt142 == "oblique" || __lt142 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt141 == "lighter")).Render(fmt.Sprint(p.Text))
 																							}
 																						}
 																					}
@@ -2692,26 +2956,26 @@ func (m Model) View() tea.View {
 																						if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Italic(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																						} else {
-																							var __lt141 string
+																							var __lt144 string
 																							if r.Bold {
-																								__lt141 = "bold"
+																								__lt144 = "bold"
 																							} else {
-																								__lt141 = "inherit"
+																								__lt144 = "inherit"
 																							}
-																							var __lt142 string
+																							var __lt145 string
 																							if r.Italic {
-																								__lt142 = "italic"
+																								__lt145 = "italic"
 																							} else {
-																								__lt142 = "inherit"
+																								__lt145 = "inherit"
 																							}
-																							var __lt143 string
+																							var __lt146 string
 																							if r.Mono {
-																								__lt143 = "monospace"
+																								__lt146 = "monospace"
 																							} else {
-																								__lt143 = ""
+																								__lt146 = ""
 																							}
-																							_ = __lt143
-																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt141 == "bold" || __lt141 == "bolder")).Italic((__lt142 == "italic" || __lt142 == "oblique" || __lt142 != "normal")).Strikethrough(r.Strike).Faint((__lt141 == "lighter")).Render(fmt.Sprint(r.Text))
+																							_ = __lt146
+																							content_0Item_0Item_1_0Item += lipgloss.NewStyle().Bold((__lt144 == "bold" || __lt144 == "bolder")).Italic((__lt145 == "italic" || __lt145 == "oblique" || __lt145 != "normal")).Strikethrough(r.Strike).Faint((__lt144 == "lighter")).Render(fmt.Sprint(r.Text))
 																						}
 																					}
 																				}
@@ -2834,26 +3098,26 @@ func (m Model) View() tea.View {
 													if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 														content_0Item += lipgloss.NewStyle().Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 													} else {
-														var __lt144 string
+														var __lt147 string
 														if p.Bold {
-															__lt144 = "bold"
+															__lt147 = "bold"
 														} else {
-															__lt144 = "inherit"
+															__lt147 = "inherit"
 														}
-														var __lt145 string
+														var __lt148 string
 														if p.Italic {
-															__lt145 = "italic"
+															__lt148 = "italic"
 														} else {
-															__lt145 = "inherit"
+															__lt148 = "inherit"
 														}
-														var __lt146 string
+														var __lt149 string
 														if p.Mono {
-															__lt146 = "monospace"
+															__lt149 = "monospace"
 														} else {
-															__lt146 = ""
+															__lt149 = ""
 														}
-														_ = __lt146
-														content_0Item += lipgloss.NewStyle().Bold((__lt144 == "bold" || __lt144 == "bolder")).Italic((__lt145 == "italic" || __lt145 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt144 == "lighter")).Render(fmt.Sprint(p.Text))
+														_ = __lt149
+														content_0Item += lipgloss.NewStyle().Bold((__lt147 == "bold" || __lt147 == "bolder")).Italic((__lt148 == "italic" || __lt148 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt147 == "lighter")).Render(fmt.Sprint(p.Text))
 													}
 												}
 											}
@@ -2876,26 +3140,26 @@ func (m Model) View() tea.View {
 												if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 													content_0Item += lipgloss.NewStyle().Strikethrough(true).Render(fmt.Sprint(r.Text))
 												} else {
-													var __lt147 string
+													var __lt150 string
 													if r.Bold {
-														__lt147 = "bold"
+														__lt150 = "bold"
 													} else {
-														__lt147 = "inherit"
+														__lt150 = "inherit"
 													}
-													var __lt148 string
+													var __lt151 string
 													if r.Italic {
-														__lt148 = "italic"
+														__lt151 = "italic"
 													} else {
-														__lt148 = "inherit"
+														__lt151 = "inherit"
 													}
-													var __lt149 string
+													var __lt152 string
 													if r.Mono {
-														__lt149 = "monospace"
+														__lt152 = "monospace"
 													} else {
-														__lt149 = ""
+														__lt152 = ""
 													}
-													_ = __lt149
-													content_0Item += lipgloss.NewStyle().Bold((__lt147 == "bold" || __lt147 == "bolder")).Italic((__lt148 == "italic" || __lt148 == "oblique")).Strikethrough(r.Strike).Faint((__lt147 == "lighter")).Render(fmt.Sprint(r.Text))
+													_ = __lt152
+													content_0Item += lipgloss.NewStyle().Bold((__lt150 == "bold" || __lt150 == "bolder")).Italic((__lt151 == "italic" || __lt151 == "oblique")).Strikethrough(r.Strike).Faint((__lt150 == "lighter")).Render(fmt.Sprint(r.Text))
 												}
 											}
 										}
@@ -2928,26 +3192,26 @@ func (m Model) View() tea.View {
 														if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 															content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 														} else {
-															var __lt150 string
+															var __lt153 string
 															if p.Bold {
-																__lt150 = "bold"
+																__lt153 = "bold"
 															} else {
-																__lt150 = "inherit"
+																__lt153 = "inherit"
 															}
-															var __lt151 string
+															var __lt154 string
 															if p.Italic {
-																__lt151 = "italic"
+																__lt154 = "italic"
 															} else {
-																__lt151 = "inherit"
+																__lt154 = "inherit"
 															}
-															var __lt152 string
+															var __lt155 string
 															if p.Mono {
-																__lt152 = "monospace"
+																__lt155 = "monospace"
 															} else {
-																__lt152 = ""
+																__lt155 = ""
 															}
-															_ = __lt152
-															content_0Item += lipgloss.NewStyle().Bold((__lt150 == "bold" || __lt150 == "bolder" || __lt150 != "normal")).Italic((__lt151 == "italic" || __lt151 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt150 == "lighter")).Render(fmt.Sprint(p.Text))
+															_ = __lt155
+															content_0Item += lipgloss.NewStyle().Bold((__lt153 == "bold" || __lt153 == "bolder" || __lt153 != "normal")).Italic((__lt154 == "italic" || __lt154 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt153 == "lighter")).Render(fmt.Sprint(p.Text))
 														}
 													}
 												}
@@ -2970,26 +3234,26 @@ func (m Model) View() tea.View {
 													if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 														content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 													} else {
-														var __lt153 string
+														var __lt156 string
 														if r.Bold {
-															__lt153 = "bold"
+															__lt156 = "bold"
 														} else {
-															__lt153 = "inherit"
+															__lt156 = "inherit"
 														}
-														var __lt154 string
+														var __lt157 string
 														if r.Italic {
-															__lt154 = "italic"
+															__lt157 = "italic"
 														} else {
-															__lt154 = "inherit"
+															__lt157 = "inherit"
 														}
-														var __lt155 string
+														var __lt158 string
 														if r.Mono {
-															__lt155 = "monospace"
+															__lt158 = "monospace"
 														} else {
-															__lt155 = ""
+															__lt158 = ""
 														}
-														_ = __lt155
-														content_0Item += lipgloss.NewStyle().Bold((__lt153 == "bold" || __lt153 == "bolder" || __lt153 != "normal")).Italic((__lt154 == "italic" || __lt154 == "oblique")).Strikethrough(r.Strike).Faint((__lt153 == "lighter")).Render(fmt.Sprint(r.Text))
+														_ = __lt158
+														content_0Item += lipgloss.NewStyle().Bold((__lt156 == "bold" || __lt156 == "bolder" || __lt156 != "normal")).Italic((__lt157 == "italic" || __lt157 == "oblique")).Strikethrough(r.Strike).Faint((__lt156 == "lighter")).Render(fmt.Sprint(r.Text))
 													}
 												}
 											}
@@ -3022,26 +3286,26 @@ func (m Model) View() tea.View {
 															if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 															} else {
-																var __lt156 string
+																var __lt159 string
 																if p.Bold {
-																	__lt156 = "bold"
+																	__lt159 = "bold"
 																} else {
-																	__lt156 = "inherit"
+																	__lt159 = "inherit"
 																}
-																var __lt157 string
+																var __lt160 string
 																if p.Italic {
-																	__lt157 = "italic"
+																	__lt160 = "italic"
 																} else {
-																	__lt157 = "inherit"
+																	__lt160 = "inherit"
 																}
-																var __lt158 string
+																var __lt161 string
 																if p.Mono {
-																	__lt158 = "monospace"
+																	__lt161 = "monospace"
 																} else {
-																	__lt158 = ""
+																	__lt161 = ""
 																}
-																_ = __lt158
-																content_0Item += lipgloss.NewStyle().Bold((__lt156 == "bold" || __lt156 == "bolder" || __lt156 != "normal")).Italic((__lt157 == "italic" || __lt157 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt156 == "lighter")).Render(fmt.Sprint(p.Text))
+																_ = __lt161
+																content_0Item += lipgloss.NewStyle().Bold((__lt159 == "bold" || __lt159 == "bolder" || __lt159 != "normal")).Italic((__lt160 == "italic" || __lt160 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt159 == "lighter")).Render(fmt.Sprint(p.Text))
 															}
 														}
 													}
@@ -3064,26 +3328,26 @@ func (m Model) View() tea.View {
 														if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 															content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 														} else {
-															var __lt159 string
+															var __lt162 string
 															if r.Bold {
-																__lt159 = "bold"
+																__lt162 = "bold"
 															} else {
-																__lt159 = "inherit"
+																__lt162 = "inherit"
 															}
-															var __lt160 string
+															var __lt163 string
 															if r.Italic {
-																__lt160 = "italic"
+																__lt163 = "italic"
 															} else {
-																__lt160 = "inherit"
+																__lt163 = "inherit"
 															}
-															var __lt161 string
+															var __lt164 string
 															if r.Mono {
-																__lt161 = "monospace"
+																__lt164 = "monospace"
 															} else {
-																__lt161 = ""
+																__lt164 = ""
 															}
-															_ = __lt161
-															content_0Item += lipgloss.NewStyle().Bold((__lt159 == "bold" || __lt159 == "bolder" || __lt159 != "normal")).Italic((__lt160 == "italic" || __lt160 == "oblique")).Strikethrough(r.Strike).Faint((__lt159 == "lighter")).Render(fmt.Sprint(r.Text))
+															_ = __lt164
+															content_0Item += lipgloss.NewStyle().Bold((__lt162 == "bold" || __lt162 == "bolder" || __lt162 != "normal")).Italic((__lt163 == "italic" || __lt163 == "oblique")).Strikethrough(r.Strike).Faint((__lt162 == "lighter")).Render(fmt.Sprint(r.Text))
 														}
 													}
 												}
@@ -3116,26 +3380,26 @@ func (m Model) View() tea.View {
 																if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																	content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																} else {
-																	var __lt162 string
+																	var __lt165 string
 																	if p.Bold {
-																		__lt162 = "bold"
+																		__lt165 = "bold"
 																	} else {
-																		__lt162 = "inherit"
+																		__lt165 = "inherit"
 																	}
-																	var __lt163 string
+																	var __lt166 string
 																	if p.Italic {
-																		__lt163 = "italic"
+																		__lt166 = "italic"
 																	} else {
-																		__lt163 = "inherit"
+																		__lt166 = "inherit"
 																	}
-																	var __lt164 string
+																	var __lt167 string
 																	if p.Mono {
-																		__lt164 = "monospace"
+																		__lt167 = "monospace"
 																	} else {
-																		__lt164 = ""
+																		__lt167 = ""
 																	}
-																	_ = __lt164
-																	content_0Item += lipgloss.NewStyle().Bold((__lt162 == "bold" || __lt162 == "bolder" || __lt162 != "normal")).Italic((__lt163 == "italic" || __lt163 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt162 == "lighter")).Render(fmt.Sprint(p.Text))
+																	_ = __lt167
+																	content_0Item += lipgloss.NewStyle().Bold((__lt165 == "bold" || __lt165 == "bolder" || __lt165 != "normal")).Italic((__lt166 == "italic" || __lt166 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt165 == "lighter")).Render(fmt.Sprint(p.Text))
 																}
 															}
 														}
@@ -3158,26 +3422,26 @@ func (m Model) View() tea.View {
 															if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 															} else {
-																var __lt165 string
+																var __lt168 string
 																if r.Bold {
-																	__lt165 = "bold"
+																	__lt168 = "bold"
 																} else {
-																	__lt165 = "inherit"
+																	__lt168 = "inherit"
 																}
-																var __lt166 string
+																var __lt169 string
 																if r.Italic {
-																	__lt166 = "italic"
+																	__lt169 = "italic"
 																} else {
-																	__lt166 = "inherit"
+																	__lt169 = "inherit"
 																}
-																var __lt167 string
+																var __lt170 string
 																if r.Mono {
-																	__lt167 = "monospace"
+																	__lt170 = "monospace"
 																} else {
-																	__lt167 = ""
+																	__lt170 = ""
 																}
-																_ = __lt167
-																content_0Item += lipgloss.NewStyle().Bold((__lt165 == "bold" || __lt165 == "bolder" || __lt165 != "normal")).Italic((__lt166 == "italic" || __lt166 == "oblique")).Strikethrough(r.Strike).Faint((__lt165 == "lighter")).Render(fmt.Sprint(r.Text))
+																_ = __lt170
+																content_0Item += lipgloss.NewStyle().Bold((__lt168 == "bold" || __lt168 == "bolder" || __lt168 != "normal")).Italic((__lt169 == "italic" || __lt169 == "oblique")).Strikethrough(r.Strike).Faint((__lt168 == "lighter")).Render(fmt.Sprint(r.Text))
 															}
 														}
 													}
@@ -3210,26 +3474,26 @@ func (m Model) View() tea.View {
 																	if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																		content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																	} else {
-																		var __lt168 string
+																		var __lt171 string
 																		if p.Bold {
-																			__lt168 = "bold"
+																			__lt171 = "bold"
 																		} else {
-																			__lt168 = "inherit"
+																			__lt171 = "inherit"
 																		}
-																		var __lt169 string
+																		var __lt172 string
 																		if p.Italic {
-																			__lt169 = "italic"
+																			__lt172 = "italic"
 																		} else {
-																			__lt169 = "inherit"
+																			__lt172 = "inherit"
 																		}
-																		var __lt170 string
+																		var __lt173 string
 																		if p.Mono {
-																			__lt170 = "monospace"
+																			__lt173 = "monospace"
 																		} else {
-																			__lt170 = ""
+																			__lt173 = ""
 																		}
-																		_ = __lt170
-																		content_0Item += lipgloss.NewStyle().Bold((__lt168 == "bold" || __lt168 == "bolder" || __lt168 != "normal")).Italic((__lt169 == "italic" || __lt169 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt168 == "lighter")).Render(fmt.Sprint(p.Text))
+																		_ = __lt173
+																		content_0Item += lipgloss.NewStyle().Bold((__lt171 == "bold" || __lt171 == "bolder" || __lt171 != "normal")).Italic((__lt172 == "italic" || __lt172 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt171 == "lighter")).Render(fmt.Sprint(p.Text))
 																	}
 																}
 															}
@@ -3252,26 +3516,26 @@ func (m Model) View() tea.View {
 																if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																	content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																} else {
-																	var __lt171 string
+																	var __lt174 string
 																	if r.Bold {
-																		__lt171 = "bold"
+																		__lt174 = "bold"
 																	} else {
-																		__lt171 = "inherit"
+																		__lt174 = "inherit"
 																	}
-																	var __lt172 string
+																	var __lt175 string
 																	if r.Italic {
-																		__lt172 = "italic"
+																		__lt175 = "italic"
 																	} else {
-																		__lt172 = "inherit"
+																		__lt175 = "inherit"
 																	}
-																	var __lt173 string
+																	var __lt176 string
 																	if r.Mono {
-																		__lt173 = "monospace"
+																		__lt176 = "monospace"
 																	} else {
-																		__lt173 = ""
+																		__lt176 = ""
 																	}
-																	_ = __lt173
-																	content_0Item += lipgloss.NewStyle().Bold((__lt171 == "bold" || __lt171 == "bolder" || __lt171 != "normal")).Italic((__lt172 == "italic" || __lt172 == "oblique")).Strikethrough(r.Strike).Faint((__lt171 == "lighter")).Render(fmt.Sprint(r.Text))
+																	_ = __lt176
+																	content_0Item += lipgloss.NewStyle().Bold((__lt174 == "bold" || __lt174 == "bolder" || __lt174 != "normal")).Italic((__lt175 == "italic" || __lt175 == "oblique")).Strikethrough(r.Strike).Faint((__lt174 == "lighter")).Render(fmt.Sprint(r.Text))
 																}
 															}
 														}
@@ -3304,26 +3568,26 @@ func (m Model) View() tea.View {
 																		if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																			content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																		} else {
-																			var __lt174 string
+																			var __lt177 string
 																			if p.Bold {
-																				__lt174 = "bold"
+																				__lt177 = "bold"
 																			} else {
-																				__lt174 = "inherit"
+																				__lt177 = "inherit"
 																			}
-																			var __lt175 string
+																			var __lt178 string
 																			if p.Italic {
-																				__lt175 = "italic"
+																				__lt178 = "italic"
 																			} else {
-																				__lt175 = "inherit"
+																				__lt178 = "inherit"
 																			}
-																			var __lt176 string
+																			var __lt179 string
 																			if p.Mono {
-																				__lt176 = "monospace"
+																				__lt179 = "monospace"
 																			} else {
-																				__lt176 = ""
+																				__lt179 = ""
 																			}
-																			_ = __lt176
-																			content_0Item += lipgloss.NewStyle().Bold((__lt174 == "bold" || __lt174 == "bolder" || __lt174 != "normal")).Italic((__lt175 == "italic" || __lt175 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt174 == "lighter")).Render(fmt.Sprint(p.Text))
+																			_ = __lt179
+																			content_0Item += lipgloss.NewStyle().Bold((__lt177 == "bold" || __lt177 == "bolder" || __lt177 != "normal")).Italic((__lt178 == "italic" || __lt178 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt177 == "lighter")).Render(fmt.Sprint(p.Text))
 																		}
 																	}
 																}
@@ -3346,26 +3610,26 @@ func (m Model) View() tea.View {
 																	if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																		content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																	} else {
-																		var __lt177 string
+																		var __lt180 string
 																		if r.Bold {
-																			__lt177 = "bold"
+																			__lt180 = "bold"
 																		} else {
-																			__lt177 = "inherit"
+																			__lt180 = "inherit"
 																		}
-																		var __lt178 string
+																		var __lt181 string
 																		if r.Italic {
-																			__lt178 = "italic"
+																			__lt181 = "italic"
 																		} else {
-																			__lt178 = "inherit"
+																			__lt181 = "inherit"
 																		}
-																		var __lt179 string
+																		var __lt182 string
 																		if r.Mono {
-																			__lt179 = "monospace"
+																			__lt182 = "monospace"
 																		} else {
-																			__lt179 = ""
+																			__lt182 = ""
 																		}
-																		_ = __lt179
-																		content_0Item += lipgloss.NewStyle().Bold((__lt177 == "bold" || __lt177 == "bolder" || __lt177 != "normal")).Italic((__lt178 == "italic" || __lt178 == "oblique")).Strikethrough(r.Strike).Faint((__lt177 == "lighter")).Render(fmt.Sprint(r.Text))
+																		_ = __lt182
+																		content_0Item += lipgloss.NewStyle().Bold((__lt180 == "bold" || __lt180 == "bolder" || __lt180 != "normal")).Italic((__lt181 == "italic" || __lt181 == "oblique")).Strikethrough(r.Strike).Faint((__lt180 == "lighter")).Render(fmt.Sprint(r.Text))
 																	}
 																}
 															}
@@ -3398,26 +3662,26 @@ func (m Model) View() tea.View {
 																			if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																				content_0Item += lipgloss.NewStyle().Bold(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																			} else {
-																				var __lt180 string
+																				var __lt183 string
 																				if p.Bold {
-																					__lt180 = "bold"
+																					__lt183 = "bold"
 																				} else {
-																					__lt180 = "inherit"
+																					__lt183 = "inherit"
 																				}
-																				var __lt181 string
+																				var __lt184 string
 																				if p.Italic {
-																					__lt181 = "italic"
+																					__lt184 = "italic"
 																				} else {
-																					__lt181 = "inherit"
+																					__lt184 = "inherit"
 																				}
-																				var __lt182 string
+																				var __lt185 string
 																				if p.Mono {
-																					__lt182 = "monospace"
+																					__lt185 = "monospace"
 																				} else {
-																					__lt182 = ""
+																					__lt185 = ""
 																				}
-																				_ = __lt182
-																				content_0Item += lipgloss.NewStyle().Bold((__lt180 == "bold" || __lt180 == "bolder" || __lt180 != "normal")).Italic((__lt181 == "italic" || __lt181 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt180 == "lighter")).Render(fmt.Sprint(p.Text))
+																				_ = __lt185
+																				content_0Item += lipgloss.NewStyle().Bold((__lt183 == "bold" || __lt183 == "bolder" || __lt183 != "normal")).Italic((__lt184 == "italic" || __lt184 == "oblique")).Underline(true).Strikethrough(p.Strike).Faint((__lt183 == "lighter")).Render(fmt.Sprint(p.Text))
 																			}
 																		}
 																	}
@@ -3440,26 +3704,26 @@ func (m Model) View() tea.View {
 																		if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																			content_0Item += lipgloss.NewStyle().Bold(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																		} else {
-																			var __lt183 string
+																			var __lt186 string
 																			if r.Bold {
-																				__lt183 = "bold"
+																				__lt186 = "bold"
 																			} else {
-																				__lt183 = "inherit"
+																				__lt186 = "inherit"
 																			}
-																			var __lt184 string
+																			var __lt187 string
 																			if r.Italic {
-																				__lt184 = "italic"
+																				__lt187 = "italic"
 																			} else {
-																				__lt184 = "inherit"
+																				__lt187 = "inherit"
 																			}
-																			var __lt185 string
+																			var __lt188 string
 																			if r.Mono {
-																				__lt185 = "monospace"
+																				__lt188 = "monospace"
 																			} else {
-																				__lt185 = ""
+																				__lt188 = ""
 																			}
-																			_ = __lt185
-																			content_0Item += lipgloss.NewStyle().Bold((__lt183 == "bold" || __lt183 == "bolder" || __lt183 != "normal")).Italic((__lt184 == "italic" || __lt184 == "oblique")).Strikethrough(r.Strike).Faint((__lt183 == "lighter")).Render(fmt.Sprint(r.Text))
+																			_ = __lt188
+																			content_0Item += lipgloss.NewStyle().Bold((__lt186 == "bold" || __lt186 == "bolder" || __lt186 != "normal")).Italic((__lt187 == "italic" || __lt187 == "oblique")).Strikethrough(r.Strike).Faint((__lt186 == "lighter")).Render(fmt.Sprint(r.Text))
 																		}
 																	}
 																}
@@ -3492,26 +3756,26 @@ func (m Model) View() tea.View {
 																				if ((p.Strike && !p.Bold) && !p.Italic) && !p.Mono {
 																					content_0Item += lipgloss.NewStyle().Italic(true).Underline(true).Strikethrough(true).Render(fmt.Sprint(p.Text))
 																				} else {
-																					var __lt186 string
+																					var __lt189 string
 																					if p.Bold {
-																						__lt186 = "bold"
+																						__lt189 = "bold"
 																					} else {
-																						__lt186 = "inherit"
+																						__lt189 = "inherit"
 																					}
-																					var __lt187 string
+																					var __lt190 string
 																					if p.Italic {
-																						__lt187 = "italic"
+																						__lt190 = "italic"
 																					} else {
-																						__lt187 = "inherit"
+																						__lt190 = "inherit"
 																					}
-																					var __lt188 string
+																					var __lt191 string
 																					if p.Mono {
-																						__lt188 = "monospace"
+																						__lt191 = "monospace"
 																					} else {
-																						__lt188 = ""
+																						__lt191 = ""
 																					}
-																					_ = __lt188
-																					content_0Item += lipgloss.NewStyle().Bold((__lt186 == "bold" || __lt186 == "bolder")).Italic((__lt187 == "italic" || __lt187 == "oblique" || __lt187 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt186 == "lighter")).Render(fmt.Sprint(p.Text))
+																					_ = __lt191
+																					content_0Item += lipgloss.NewStyle().Bold((__lt189 == "bold" || __lt189 == "bolder")).Italic((__lt190 == "italic" || __lt190 == "oblique" || __lt190 != "normal")).Underline(true).Strikethrough(p.Strike).Faint((__lt189 == "lighter")).Render(fmt.Sprint(p.Text))
 																				}
 																			}
 																		}
@@ -3534,26 +3798,26 @@ func (m Model) View() tea.View {
 																			if ((r.Strike && !r.Bold) && !r.Italic) && !r.Mono {
 																				content_0Item += lipgloss.NewStyle().Italic(true).Strikethrough(true).Render(fmt.Sprint(r.Text))
 																			} else {
-																				var __lt189 string
+																				var __lt192 string
 																				if r.Bold {
-																					__lt189 = "bold"
+																					__lt192 = "bold"
 																				} else {
-																					__lt189 = "inherit"
+																					__lt192 = "inherit"
 																				}
-																				var __lt190 string
+																				var __lt193 string
 																				if r.Italic {
-																					__lt190 = "italic"
+																					__lt193 = "italic"
 																				} else {
-																					__lt190 = "inherit"
+																					__lt193 = "inherit"
 																				}
-																				var __lt191 string
+																				var __lt194 string
 																				if r.Mono {
-																					__lt191 = "monospace"
+																					__lt194 = "monospace"
 																				} else {
-																					__lt191 = ""
+																					__lt194 = ""
 																				}
-																				_ = __lt191
-																				content_0Item += lipgloss.NewStyle().Bold((__lt189 == "bold" || __lt189 == "bolder")).Italic((__lt190 == "italic" || __lt190 == "oblique" || __lt190 != "normal")).Strikethrough(r.Strike).Faint((__lt189 == "lighter")).Render(fmt.Sprint(r.Text))
+																				_ = __lt194
+																				content_0Item += lipgloss.NewStyle().Bold((__lt192 == "bold" || __lt192 == "bolder")).Italic((__lt193 == "italic" || __lt193 == "oblique" || __lt193 != "normal")).Strikethrough(r.Strike).Faint((__lt192 == "lighter")).Render(fmt.Sprint(r.Text))
 																			}
 																		}
 																	}
@@ -3670,36 +3934,27 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
   <p style="margin:0px;white-space:pre-wrap"><span>Some </span><em><span>emphasis</span></em><span>, </span><strong><span>weight</span></strong><span> and </span><code><span>code</span></code><span>, with </span><a href="/x"><span>a link</span></a><span>.</span></p>
-  <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-    <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-      <span>•</span>
-      <div style="display:flex;flex-direction:column">
-        <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
-      </div>
-    </div>
-    <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-      <span>•</span>
-      <div style="display:flex;flex-direction:column">
-        <p style="margin:0px;white-space:pre-wrap"><span>two</span></p>
-        <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-          <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-            <span>1.</span>
-            <div style="display:flex;flex-direction:column">
-              <p style="margin:0px;white-space:pre-wrap"><span>nested</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-      <span>☑</span>
+  <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+    <li>
+      <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
+    </li>
+    <li>
+      <p style="margin:0px;white-space:pre-wrap"><span>two</span></p>
+      <ol style="display:flex;flex-direction:column;gap:4px;padding-left:2em" start="1">
+        <li>
+          <p style="margin:0px;white-space:pre-wrap"><span>nested</span></p>
+        </li>
+      </ol>
+    </li>
+    <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+      <input checked disabled type="checkbox"/>
       <div style="display:flex;flex-direction:column">
         <p style="margin:0px;white-space:pre-wrap"><span>done</span></p>
       </div>
-    </div>
-  </div>
+    </li>
+  </ul>
   <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-variable"><span>x</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>:=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
   <div style="display:flex;flex-direction:column;gap:4px">
     <div style="display:flex;flex-direction:row;gap:16px">
@@ -3727,6 +3982,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1e056a321854908b68ae272e6c4a89ee
+pass sha256:15ecc0a2e9839648e2eb48290b5a315e
 -- run/none/html --
-pass sha256:50fcc33274b332bf76a07c605f30e1f1
+pass sha256:716f6d1b1b07b604137f8d9870d1e5dd

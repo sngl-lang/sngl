@@ -142,6 +142,18 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			}
 		}
 	}
+	// A loop a target runs holds its iterable as a value, and a Go literal
+	// spells its type: `for b := range []_Block{…}` is md.document's on
+	// bubbletea. It used to be declared only because a helper's signature
+	// happened to name it.
+	for _, o := range ir.Owners(pkg) {
+		ir.WalkView(*o.Body, func(s ir.Stmt) bool {
+			if f, ok := s.(*ir.For); ok && f.Iter != nil {
+				want(f.Iter.ExprType())
+			}
+			return true
+		})
+	}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || fn.Pkg == "" {
 			continue

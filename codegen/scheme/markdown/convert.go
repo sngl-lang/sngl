@@ -222,15 +222,21 @@ func (e *emitter) block(n gast.Node, quoted bool) {
 // WithAutoHeadingID gave it, deduplicated per document as goldmark does, so a
 // `#` link written against the rendered page finds it.
 func headingAnchor(n *gast.Heading) string {
+	id := anchorOf(n)
+	if id == "" {
+		return ""
+	}
+	return "anchor=" + str(id)
+}
+
+// anchorOf is the id goldmark's WithAutoHeadingID gave a heading, or "".
+func anchorOf(n *gast.Heading) string {
 	id, ok := n.AttributeString("id")
 	if !ok {
 		return ""
 	}
-	b, ok := id.([]byte)
-	if !ok || len(b) == 0 {
-		return ""
-	}
-	return "anchor=" + str(string(b))
+	b, _ := id.([]byte)
+	return string(b)
 }
 
 func (e *emitter) paragraph(n gast.Node, quoted bool) {

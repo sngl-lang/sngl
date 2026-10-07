@@ -10,6 +10,7 @@ import (
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	east "github.com/yuin/goldmark/extension/ast"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 
 	"git.duckfam.us/jonathan/sngl/internal/buildhost"
@@ -32,6 +33,7 @@ const maxListDepth = 3
 // Block is one block of a parsed document, the Go side of `md._Block`.
 type Block struct {
 	Kind    string // a member of md._Kind
+	Anchor  string // a heading's id, as the scheme gives it
 	Runs    []Run
 	Ordered bool
 	Start   int
@@ -59,7 +61,10 @@ type Run struct {
 // Parse reads markdown into blocks. A fence's `mode=` is not read: every
 // fence is a sample here, since a live example has no program to join.
 func Parse(src []byte) ([]Block, error) {
-	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(src))
+	doc := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+	).Parser().Parse(text.NewReader(src))
 	p := &mdParser{src: src}
 	blocks := p.blocks(doc, false, 0)
 	return blocks, p.err
@@ -88,7 +93,7 @@ func (p *mdParser) blocks(n gast.Node, quoted bool, depth int) []Block {
 func (p *mdParser) block(n gast.Node, quoted bool, depth int) []Block {
 	switch n := n.(type) {
 	case *gast.Heading:
-		return []Block{{Kind: fmt.Sprintf("heading%d", n.Level), Runs: p.inlines(n)}}
+		return []Block{{Kind: fmt.Sprintf("heading%d", n.Level), Anchor: anchorOf(n), Runs: p.inlines(n)}}
 	case *gast.Paragraph, *gast.TextBlock:
 		kind := "paragraph"
 		if quoted {
@@ -337,6 +342,7 @@ func (tb *types) blocks(bs []Block) []any {
 	for i, b := range bs {
 		s := newStruct(tb.block)
 		s.Set("kind", b.Kind)
+		s.Set("anchor", b.Anchor)
 		s.Set("runs", tb.runs(b.Runs))
 		s.Set("ordered", b.Ordered)
 		s.Set("start", b.Start)

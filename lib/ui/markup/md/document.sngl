@@ -18,10 +18,13 @@ import marks "sngl:internal/marks"
 // program compiles, and a string parsed here is read after the check. It
 // belongs in a file the scheme imports.
 //
-// The tree is the scheme's in every respect but one. A list nests three deep
+// The tree is the scheme's in every respect but three. A list nests three deep
 // here, and a list inside the third is laid out in its item's place: the tree
 // is rendered by components that cannot call themselves, which is what keeps
-// it markup a target writes out rather than code that builds it at run time.
+// it markup a target writes out rather than code that builds it at run time. A
+// run under two spans is one `markup.run` carrying both. And a table is rows
+// of text rather than `ui.table`, which renders nothing on fyne or android and
+// has no gtk4 implementation.
 component document(source string) ui.node {
     ui.vbox(style={gap=12px}) {
         for var b = _parse(source) {
@@ -42,6 +45,7 @@ enum _Kind { paragraph, heading1, heading2, heading3, heading4, heading5, headin
 // list, `columns` and `rows` for a table.
 struct _Block {
     kind _Kind = _Kind.paragraph
+    anchor string = ""
     runs list<_Run> = []
     ordered bool = false
     start int = 1
@@ -88,27 +92,27 @@ component _leaf(b _Block) ui.node {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading1 {
-        markup.heading1 {
+        markup.heading1(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading2 {
-        markup.heading2 {
+        markup.heading2(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading3 {
-        markup.heading3 {
+        markup.heading3(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading4 {
-        markup.heading4 {
+        markup.heading4(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading5 {
-        markup.heading5 {
+        markup.heading5(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.heading6 {
-        markup.heading6 {
+        markup.heading6(anchor=b.anchor) {
             _runs(runs=b.runs)
         }
     } else if b.kind == _Kind.quote {
@@ -150,18 +154,17 @@ component _table(b _Block) ui.node {
     }
 }
 
-// A list, and the two levels of list it may hold. Three components rather
-// than one calling itself; see `document`.
-//
-// Laid out as `markup.list` and `markup.listItem` lay one out by default, not
-// written with them: a task item there is a `ui.checkbox`, whose `checked` is
-// a cell of the instance, and an instance under a `for` is one built at run
-// time -- a list in a page would be code the page runs rather than markup it
-// holds. A task here is its glyph.
+// A list, written with `markup.list` and `markup.listItem` as the scheme
+// writes one -- so a target that overrides them renders this one too, html's
+// `<ul>`, `<ol>` and a task's real checkbox included -- and the two levels of
+// list it may hold. Three components rather than one calling itself: the
+// optimizer unrolls no loop, so a call made inside one never sees the
+// constant it would need to splice, and a component that calls itself is then
+// built at run time. See `document`.
 component _list1(b _Block) ui.node {
-    ui.vbox(style={gap=4px, paddingLeft=20px}) {
+    markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
-            _item(marker=_marker(it, 1)) {
+            markup.listItem(marker=it.marker, task=it.task) {
                 for var c = it.blocks {
                     if c.kind == _Kind.list {
                         _list2(b=c)
@@ -175,9 +178,9 @@ component _list1(b _Block) ui.node {
 }
 
 component _list2(b _Block) ui.node {
-    ui.vbox(style={gap=4px, paddingLeft=20px}) {
+    markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
-            _item(marker=_marker(it, 2)) {
+            markup.listItem(marker=it.marker, task=it.task) {
                 for var c = it.blocks {
                     if c.kind == _Kind.list {
                         _list3(b=c)
@@ -191,40 +194,15 @@ component _list2(b _Block) ui.node {
 }
 
 component _list3(b _Block) ui.node {
-    ui.vbox(style={gap=4px, paddingLeft=20px}) {
+    markup.list(ordered=b.ordered, start=b.start) {
         for var it = b.items {
-            _item(marker=_marker(it, 3)) {
+            markup.listItem(marker=it.marker, task=it.task) {
                 for var c = it.blocks {
                     _leaf(b=c)
                 }
             }
         }
     }
-}
-
-// One item: its marker beside its blocks.
-component _item(marker string, content ...component ui.node) ui.node {
-    ui.hbox(style={gap=8px, alignItems=ui.Alignment.start}) {
-        ui.text(value=marker)
-        ui.vbox {
-            content
-        }
-    }
-}
-
-// What an item at depth shows beside its blocks: its task's box, its ordinal,
-// or the bullet of its depth.
-const func _marker(it _Item, depth int) string {
-    if it.task == markup.Task.done {
-        return "☑"
-    }
-    if it.task == markup.Task.todo {
-        return "☐"
-    }
-    if it.marker != "" {
-        return it.marker
-    }
-    return markup.bulletAt(depth)
 }
 
 // The runs of one flow.
