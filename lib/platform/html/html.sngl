@@ -436,12 +436,16 @@ const component ui.toolbar[platform] {
 // rather than one with a ternary, for the reason progress gives: under a
 // language with no conditional expression the ternary becomes a temporary
 // before the fold that would have settled it.
+// The control reports the date as the text of a "YYYY-MM-DD" field, empty
+// when cleared, so the payload is built from it here.
 const component ui.datepicker[platform] {
-    if value != null {
-        html.input(type="date", value=string(value), disabled=disabled, style={...style}, @change { change() }) {}
-    } else {
-        html.input(type="date", value="", disabled=disabled, style={...style}, @change { change() }) {}
-    }
+    html.input(
+        type="date",
+        value=(value != null ? string(value) : ""),
+        disabled=disabled,
+        style={...style},
+        @change(e) { change({value=e.value == "" ? null : time.date(e.value)}) },
+    ) {}
 }
 
 const component ui.card[platform] {

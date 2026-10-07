@@ -196,11 +196,11 @@ import ui "sngl:ui"
 ui.window {
     var fruit = ""
     var size = "medium"
-    var dob date = date("2000-01-01")
+    var dob option<date> = date("2000-01-01")
     vbox {
         select(options=["Apple", "Banana"], placeholder="File.pick", :value=fruit)
         radio(direction="horizontal", options=["small", "medium", "large"], :value=size)
-        datepicker(placeholder="Birthday", value=dob)
+        datepicker(placeholder="Birthday", :value=dob)
     }
 }`
 	out := compileSrc(t, src, false)

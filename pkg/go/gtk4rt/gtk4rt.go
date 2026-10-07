@@ -197,6 +197,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
@@ -396,6 +397,19 @@ func CheckButtonSetActive(button Handle, active bool) {
 
 func CheckButtonGetActive(button Handle) bool {
 	return C.gtk_check_button_get_active((*C.GtkCheckButton)(p(button))) != 0
+}
+
+// ---- Calendar ----
+
+// CalendarGetDate is the day a GtkCalendar has selected, as the *time.Time an
+// option<date> is in Go. A calendar always has a day selected, so it is never
+// nil.
+func CalendarGetDate(calendar Handle) *time.Time {
+	dt := C.gtk_calendar_get_date((*C.GtkCalendar)(p(calendar)))
+	defer C.g_date_time_unref(dt)
+	t := time.Date(int(C.g_date_time_get_year(dt)), time.Month(C.g_date_time_get_month(dt)),
+		int(C.g_date_time_get_day_of_month(dt)), 0, 0, 0, 0, time.UTC)
+	return &t
 }
 
 // ---- Entry / Editable ----

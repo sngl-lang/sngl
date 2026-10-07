@@ -46,8 +46,11 @@ type templateData struct {
 	// properties that have no C setter of their own.
 	NeedsGObjectSet bool
 	NeedsSlotAnchor bool
-	HasCanvas       bool // emit the cairo draw-func trampoline glue in callbacks.go
-	Wrapped         bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
+	// NeedsCalendarDate emits snglCalendarDate, which a datepicker's change
+	// handler reads its payload through.
+	NeedsCalendarDate bool
+	HasCanvas         bool // emit the cairo draw-func trampoline glue in callbacks.go
+	Wrapped           bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
 }
 
 type structData struct {

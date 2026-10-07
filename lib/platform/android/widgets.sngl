@@ -186,12 +186,15 @@ const component ui.textarea[platform] {
 // overrides write: Kotlin has a conditional expression, so nothing lowers this
 // one to a temporary, and duplicating the call would duplicate the label slot
 // with it.
+// The field is read-only and opens no picker, so the user never picks a date
+// here and nothing reports one: a write-back from the field's own text event
+// would put its text in a date.
 const component ui.datepicker[platform] {
     OutlinedTextField(
         value=(value != null ? string(value) : ""),
         readOnly=true,
         modifier={...style},
-        onValueChange=func(e) { change({}) },
+        onValueChange=func(e) {},
     ) {
         component label {
             if placeholder != "" {

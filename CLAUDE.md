@@ -1795,13 +1795,16 @@ declaration itself. Two things about the name that are easy to get wrong:
 its own terms.** `sngl:ui` declares one struct per kind of event
 (`lib/ui/events.sngl`): `ChangeEvent{value string}` for a committed text or
 choice, `ToggleEvent{checked bool}` for a checkbox's and a toggle's flip,
+`DateEvent{value option<time.date>}` for a datepicker's pick,
 `ClickEvent{}` carrying nothing. A handler's parameter is typed by the
 component's `@event`, and a platform override forwards the host's value one of
 two ways: `change()` with no argument binds the handler's parameter to the
 override's own host event, which the emitter reads fields off
 (`e.target.checked`, fyne's `OnChanged(b bool)`, gtk4's
-`gtk_check_button_get_active`); `change({checked = on})` builds the payload in
-place, and `bindEventParams` reads each field where it was built, holding one
+`gtk_check_button_get_active`, and its calendar's day through
+`snglCalendarDate` or `gtk4rt.CalendarGetDate`); `change({checked = on})`
+builds the payload in place -- html's datepicker builds its date from the
+input's "YYYY-MM-DD" text -- and `bindEventParams` reads each field where it was built, holding one
 computed from state in a temp so a handler that writes that state reads the
 value the event carried (bubbletea's `{checked = !checked}`). A `:prop` binding
 writes back from the payload's field of the prop's type (`injectBind`) rather

@@ -533,14 +533,15 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode string, gc *golang.GoIRContext) (templateData, error) {
 	td := templateData{
-		Package:         c.cfg.Package,
-		Main:            c.cfg.Main,
-		FunctionCode:    functionCode,
-		Imports:         map[string]bool{},
-		NeedsBoolToInt:  c.shared.boolToInt,
-		NeedsGObjectSet: c.shared.gObjectSet,
-		NeedsSlotAnchor: c.shared.slotAnchor,
-		Wrapped:         c.wrapped,
+		Package:           c.cfg.Package,
+		Main:              c.cfg.Main,
+		FunctionCode:      functionCode,
+		Imports:           map[string]bool{},
+		NeedsBoolToInt:    c.shared.boolToInt,
+		NeedsGObjectSet:   c.shared.gObjectSet,
+		NeedsSlotAnchor:   c.shared.slotAnchor,
+		NeedsCalendarDate: c.shared.calendarDate,
+		Wrapped:           c.wrapped,
 	}
 	if c.wrapped {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if
@@ -714,6 +715,10 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 		if event == "change" || event == "notifyActive" {
 			return gtk4PromotedHandlerSig{EventVar: "event", Field: "checked", CType: "GtkSwitch"}
 		}
+	case "datepicker", "GtkCalendar":
+		if event == "change" || event == "daySelected" {
+			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkCalendar"}
+		}
 	}
 	return gtk4PromotedHandlerSig{}
 }
@@ -721,11 +726,21 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 // gtk4EventGetterExpr reads `e.<field>` directly from the source widget of
 // cType, replacing the two-way-bind assignment when a node-attached handler is
 // promoted to a top-level Func the trampoline calls with no args.
-func gtk4EventGetterExpr(cType, nodeID string, wrapped bool) ir.Expr {
+func gtk4EventGetterExpr(cType, nodeID string, wrapped bool, shared *emitShared) ir.Expr {
 	if wrapped {
 		return rtEventGetterExpr(cType, codegen.ModelFieldRef(nodeID))
 	}
-	return cgoEventGetterExpr(cType, &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true})
+	return shared.cgoEventGetter(cType, &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true})
+}
+
+// cgoEventGetter is cgoEventGetterExpr, noting a helper the template must
+// emit for the getter it returns.
+func (s *emitShared) cgoEventGetter(cType string, widgetRef ir.Expr) ir.Expr {
+	g := cgoEventGetterExpr(cType, widgetRef)
+	if g != nil && cType == "GtkCalendar" {
+		s.calendarDate = true
+	}
+	return g
 }
 
 func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
@@ -749,9 +764,22 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return cgoGBoolean("gtk_check_button_get_active", cType, widgetRef)
 	case "GtkSwitch":
 		return cgoGBoolean("gtk_switch_get_active", cType, widgetRef)
+	case "GtkCalendar":
+		// The date is a *time.Time built from three getters on a GDateTime
+		// that has to be released, which no one expression can say: the
+		// helper is Go in the template, emitted when this is reached.
+		return &ir.Call{
+			Type: ir.TypDyn,
+			Func: &ir.Func{Name: calendarDateHelper, Foreign: ir.Foreign{Name: calendarDateHelper}},
+			Args: []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+		}
 	}
 	return nil
 }
+
+// calendarDateHelper is the template's Go function reading a GtkCalendar's
+// selected day; emitShared.calendarDate says it is called.
+const calendarDateHelper = "snglCalendarDate"
 
 // cgoGBoolean calls a getter returning gboolean, which cgo types as C.int: Go
 // converts no integer to bool, so the read is a comparison.
@@ -926,7 +954,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 				// The SNGL event param may be named anything, so key off the
 				// field: the bare-ident operand IS the event param, never `m`.
 				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name != "m" && sel.Field == sig.Field {
-					getter := gtk4EventGetterExpr(cType, nodeID, wrapped)
+					getter := gtk4EventGetterExpr(cType, nodeID, wrapped, shared)
 					if getter != nil {
 						prelude = []ir.Stmt{&ir.Assign{
 							Target: &ir.Ident{Name: target.Name},
@@ -941,7 +969,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	if sig.CType != "" {
-		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
+		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped, shared))
 	}
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	// Drop self-setter splices: writing the entry's text from inside its own

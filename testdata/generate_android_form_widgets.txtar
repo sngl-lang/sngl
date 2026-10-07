@@ -99,13 +99,15 @@ fun MainScreen() {
     var value__inst0 by remember { mutableStateOf(name) }
     var value__inst1 by remember { mutableStateOf(plain) }
     var value__inst2 by remember { mutableStateOf(fruit) }
-    var visible__inst3 by remember { mutableStateOf(true) }
+    var value__inst3 by remember { mutableStateOf<String?>(null) }
+    var value__inst4 by remember { mutableStateOf(birthday) }
+    var visible__inst5 by remember { mutableStateOf(true) }
 
-    if (visible__inst3) {
+    if (visible__inst5) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst3 = false
-            if (!(visible__inst3)) {
+            visible__inst5 = false
+            if (!(visible__inst5)) {
                 __activity?.finish()
             }
         }
@@ -138,12 +140,12 @@ fun MainScreen() {
             LinearProgressIndicator(progress = fun(): Float {
                 return 0.2f
             }, modifier = Modifier.safeDrawingPadding())
-            OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
+            OutlinedTextField(value = (if ((value__inst3 != null)) value__inst3!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
                 Text(text = "Birthday", modifier = Modifier)
             })
-            OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
+            OutlinedTextField(value = (if ((value__inst4 != null)) value__inst4!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:fb6e5ef0e43a47e5c9c962227d62940f
+pass sha256:d88a2da33e8453e2edc2a6aeb3412cdf

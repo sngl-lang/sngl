@@ -21,8 +21,11 @@ type emitShared struct {
 	boolToInt  bool
 	gObjectSet bool
 	slotAnchor bool
-	errs       []error
-	seen       map[string]bool
+	// calendarDate: a handler reads a GtkCalendar's day through
+	// calendarDateHelper.
+	calendarDate bool
+	errs         []error
+	seen         map[string]bool
 
 	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
@@ -1091,7 +1094,7 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string
 	if t.wrapped {
 		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
 	} else {
-		getter = cgoEventGetterExpr(cType, t.qualifyNodeExpr(node))
+		getter = t.shared.cgoEventGetter(cType, t.qualifyNodeExpr(node))
 	}
 	stmts := lam.Func.Block
 	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok && getter != nil {
@@ -1115,6 +1118,8 @@ func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, 
 		kind = ir.TypeString
 	case "GtkCheckButton", "GtkSwitch":
 		kind = ir.TypeBool
+	case "GtkCalendar":
+		kind = ir.TypeOption
 	default:
 		return stmts
 	}

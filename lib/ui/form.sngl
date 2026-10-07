@@ -191,7 +191,7 @@ component datepicker(
     placeholder string,
     min option<time.date>,
     max option<time.date>,
-    value option<time.date>, // TODO Two-way binding
+    :value option<time.date>,
     disabled bool,
     style Style,
     @change DateEvent,

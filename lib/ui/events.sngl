@@ -1,3 +1,5 @@
+import time "sngl:time"
+
 // Payload emitted by `@click` when a component is activated. Fires on
 // tap, mouse click, Enter-on-focused-button, or the platform's
 // activation gesture. Currently carries no fields — consult the
@@ -74,7 +76,10 @@ struct MenuEvent {}
 struct LoadEvent {}
 
 // Payload emitted by `@change` from `datepicker` when the selected
-// date changes. Inspect the picker's `value` prop for the new date.
-struct DateEvent {}
+// date changes. `value` is the date now picked, or null when the user
+// cleared it.
+struct DateEvent {
+    value option<time.date>
+}
 
 // TODO Now that events can have multiple ars, most of these should probably go away

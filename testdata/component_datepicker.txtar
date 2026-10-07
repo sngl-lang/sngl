@@ -50,6 +50,10 @@ import (
 	"time"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 func mustParseDate(s string) time.Time {
 	t, err := time.Parse("2006-01-02", s)
 	if err != nil {
@@ -60,7 +64,8 @@ func mustParseDate(s string) time.Time {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	d time.Time
+	d            time.Time
+	value__inst0 *time.Time
 
 	width, height int
 }
@@ -69,6 +74,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.d = mustParseDate("0001-01-01")
+	m.value__inst0 = snglSome(m.d)
 	return m
 }
 
@@ -93,6 +99,21 @@ func SetDCmd(v time.Time) tea.Cmd {
 	return func() tea.Msg { return setDMsg{value: v} }
 }
 
+func (m Model) Value__inst0() *time.Time {
+	return m.value__inst0
+}
+
+func (m Model) SetValue__inst0(v *time.Time) Model {
+	m.value__inst0 = v
+	return m
+}
+
+type setValue__inst0Msg struct{ value *time.Time }
+
+func SetValue__inst0Cmd(v *time.Time) tea.Cmd {
+	return func() tea.Msg { return setValue__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -104,6 +125,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setDMsg:
 		m = m.SetD(msg.value)
+	case setValue__inst0Msg:
+		m = m.SetValue__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -118,7 +141,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.d)))
+	if m.value__inst0 != nil {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((*(m.value__inst0)))))
+	} else {
+		content = lipgloss.NewStyle().Render(fmt.Sprint("Pick a date"))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -390,6 +417,16 @@ func mustParseDate(s string) time.Time {
 	return t
 }
 
+// snglCalendarDate is the day a GtkCalendar has selected, as the *time.Time an
+// option<date> is in Go. A calendar always has a day selected.
+func snglCalendarDate(c *C.GtkCalendar) *time.Time {
+	dt := C.gtk_calendar_get_date(c)
+	defer C.g_date_time_unref(dt)
+	t := time.Date(int(C.g_date_time_get_year(dt)), time.Month(C.g_date_time_get_month(dt)),
+		int(C.g_date_time_get_day_of_month(dt)), 0, 0, 0, 0, time.UTC)
+	return &t
+}
+
 func boolToInt(b bool) int {
 	if b {
 		return 1
@@ -477,13 +514,14 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var d by mutableStateOf("0001-01-01")
+    var value__inst0 by mutableStateOf(d)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    OutlinedTextField(value = state.d.toString(), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
+    OutlinedTextField(value = (if ((state.value__inst0 != null)) state.value__inst0!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
         Text(text = "Pick a date", modifier = Modifier)
     })
 }
@@ -534,7 +572,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span data-sngl-slot="0" style="display:contents"></span>
+<input id="__n0" data-sngl-id="__n0" type="date"/>
 
 <script>
 window.__sngl_markup = Array.from(document.body.childNodes)
@@ -550,7 +588,8 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { d: "0001-01-01" };
+  var state = { d: "0001-01-01", value__inst0: null };
+  state.value__inst0 = state.d;
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -562,92 +601,30 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testDatepickerValueMutates });
   }
-  function __cf___child0(props) {
-    const __root = document.createElement("div");
-    __root.style.display = "contents";
-    let __p0 = props.__p0;
-    let __prop___p0 = __p0;
-    let __slot02 = [];
-    function __set___p0(__v) {
-      __prop___p0 = __v;
-      __n0.value = String(__prop___p0);
-    }
-    let __n0 = document.createElement("input");
-    __n0.value = String(__prop___p0);
-    __n0.disabled = false;
-    __n0.setAttribute("type", "date");
-    __n0.addEventListener("change", () => {
-    });
-    __root.appendChild(__n0);
-    return {
-      __root,
-      __destroy() {
-      },
-      __set___p0
-    };
-  }
-  var __slot0 = [];
-  var __inst1_live = [];
-  function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    let __inst1_next = [];
-    let __inst1_i = 0;
-    let __n1 = null;
-    if (__inst1_live.length > __inst1_i) {
-      __n1 = __inst1_live[__inst1_i];
-      __n1.__set___p0(state.d);
-    } else {
-      if (__inst1_live.length > __inst1_i) {
-        __inst1_live[__inst1_i].__destroy();
-      }
-      let __n1__new = __cf___child0({ __p0: state.d });
-      __n1 = __n1__new;
-    }
-    __inst1_next.push(__n1);
-    __inst1_i = __inst1_i + 1;
-    let __n1__el = __n1.__root;
-    let __place0_i_ref0 = null;
-    if (__place0_i < __place0_prev.length) {
-      __place0_i_ref0 = __place0_prev[__place0_i];
-    }
-    if (__place0_i_ref0 === __n1__el) {
-      __place0_i = __place0_i + 1;
-    } else {
-      parent.insertBefore(__n1__el, __place0_i_ref0);
-    }
-    __slot0.push(__n1__el);
-    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
-      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
-      if (__inst1_i_j >= __inst1_i) {
-        __inst1_live[__inst1_i_j].__destroy();
-      }
-    }
-    __inst1_live = __inst1_next;
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
-    }
-  }
   function String(v) {
     return "" + v;
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  __n0.addEventListener("change", function(e) {
+    state.value__inst0 = e.target.value;
+    __n0.value = state.value__inst0 !== null ? String(state.value__inst0) : "";
+  });
+  function __sngl_init() {
+    __n0.value = state.value__inst0 !== null ? String(state.value__inst0) : "";
+  }
+  __sngl_init();
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:2d3135c2d141e0e0dde30603b12671b6
+pass sha256:ba48ac55a0d0e8ee1565a86244f3fa3e
 -- run/go/fyne --
 pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
-pass sha256:958eccab34936d6d7c4359d89ade4ada
+pass sha256:f73dec380f72bfdc6445e2b7a1f7d1a8
 -- run/kotlin/android --
-pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
+pass sha256:778ca2ae6c209f85e09af912d307625e
 -- run/none/html --
-pass sha256:9f9904b0f04961b494000a85a362af19
+pass sha256:5c21c5301aac936979bfcfad80311d29

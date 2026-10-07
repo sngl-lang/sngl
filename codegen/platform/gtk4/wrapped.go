@@ -203,6 +203,8 @@ func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 		return rtCall("EditableGetText", widgetRef)
 	case "GtkCheckButton":
 		return rtCall("CheckButtonGetActive", widgetRef)
+	case "GtkCalendar":
+		return rtCall("CalendarGetDate", widgetRef)
 	}
 	return nil
 }
