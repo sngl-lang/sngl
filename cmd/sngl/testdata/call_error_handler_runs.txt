@@ -11,8 +11,8 @@
 # boundary.sngl is testdata/boundary_catches_called_raise.txtar's program: a
 # boundary catching a raise from a called function, in a click -- which the
 # raise ends, so the click appends nothing to `after` -- and in an effect's
-# @mount, and a call through a func value catching its own. fyne and
-# gtk4 implement no boundary, so it runs on the interpreter and html only.
+# @mount, and a call through a func value catching its own. Its golden runs it
+# on bubbletea and android; this runs it everywhere else.
 #
 # return.sngl is testdata/error_handler_return.txtar's program: a `return` in
 # a handler ends the handler and not the function it was inlined into.
@@ -36,9 +36,15 @@ stdout '1 tests, 0 failures'
 sngl test --platform=html return.sngl
 stdout '1 tests, 0 failures'
 
+sngl test --platform=fyne --language=go boundary.sngl
+stdout '1 tests, 0 failures'
+
 [!gtk4] skip 'gtk4 development libraries required'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go boundary.sngl
 stdout '1 tests, 0 failures'
 
 -- app.sngl --
@@ -181,12 +187,32 @@ window {
     main
 }
 
+-- testrun/fyne/go/boundary.sngl/main/1 --
+sha256:f73acdf2be367a9a31fe7ecb60267bed
+{
+  "results": [
+    {
+      "Desc": "BoundaryAndLambdaCatch",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/main/1 --
 sha256:0be1e40af5f5a705fe20e72b411af2c7
 {
   "results": [
     {
       "Desc": "EachCallCatchesItsOwnRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/boundary.sngl/main/1 --
+sha256:e9527c5d971d550b68be98839f053dbb
+{
+  "results": [
+    {
+      "Desc": "BoundaryAndLambdaCatch",
       "Passed": true
     }
   ]
