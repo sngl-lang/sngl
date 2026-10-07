@@ -28,8 +28,16 @@ type SymbolTable = ir.SymbolTable
 //go:fix inline
 var NewScope = ir.NewScope
 
-//go:fix inline
-var NewSymbolTable = ir.NewSymbolTable
+// NewSymbolTable is ir.NewSymbolTable with the scalar universe in its base
+// scope (scalarUniverse).
+func NewSymbolTable() *ir.SymbolTable {
+	st := ir.NewSymbolTable()
+	base := st.Root.Parent
+	for name, typ := range scalarUniverse() {
+		base.Symbols[name] = &ir.TypeSym{Name: name, Type: typ}
+	}
+	return st
+}
 
 // lookupMethod finds a method on the declaration recv names, resolved through
 // the scope the checker is currently in. That is the scope AttachMethod wrote

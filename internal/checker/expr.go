@@ -987,12 +987,13 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	// user method and be called as `x.string()` etc. — the cast form never
 	// dispatches to user methods.
 	if ident, ok := x.Func.(*ast.IdentExpr); ok {
-		// Scalar-primitive casts are dispatched from the shared registry
-		// (ir/builtins.go); struct-backed casts (color/date/time) follow.
-		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
-			return c.inferBuiltinConversion(x, b.Type, ident.Name)
-		}
+		// A scalar cast and a struct-backed one (color/date/time) are both
+		// found through scope, so a program's own declaration of the name is
+		// no cast.
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			if typ, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
+				return c.inferBuiltinConversion(x, typ, ident.Name)
+			}
 			if target, ok := stringReprCast(sym); ok {
 				return c.inferBuiltinConversion(x, target, ident.Name)
 			}

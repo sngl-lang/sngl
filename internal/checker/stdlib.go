@@ -570,6 +570,9 @@ const timePkg = "time"
 const (
 	irPkg         = "internal/ir"
 	macroTypeName = "Macro"
+	// builtinMacroTypeName is sngl:builtin's private Macro, which its own
+	// marks return so the package imports no macros.
+	builtinMacroTypeName = "_Macro"
 )
 
 // macroPackage returns the URI of the package that declares a macro of this
@@ -596,7 +599,7 @@ func macroPackage(name string) string {
 // authority.
 func IsMacroDecl(f *ast.FuncDef) bool {
 	nt, ok := f.ReturnType.(*ast.NamedType)
-	return ok && nt.Name == macroTypeName
+	return ok && (nt.Name == macroTypeName || nt.Name == builtinMacroTypeName)
 }
 
 // isMacroSig reports whether a declared signature returns sngl:internal/ir's
@@ -614,7 +617,8 @@ func (c *checker) isMacroSig(t *ir.Type) bool {
 	// resolved is a different *StructDef from this checker's — equal in every
 	// way that matters and not the same pointer. Comparing the two made a mark
 	// in an imported package "not a macro".
-	return sd.Name == macroTypeName && sd.Pkg == "sngl:"+irPkg
+	return (sd.Name == macroTypeName && sd.Pkg == "sngl:"+irPkg) ||
+		(sd.Name == builtinMacroTypeName && sd.Pkg == "sngl:builtin")
 }
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the

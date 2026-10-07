@@ -219,17 +219,12 @@ type TypeSym struct {
 func (t *TypeSym) SymName() string { return t.Name }
 func (t *TypeSym) SymType() *Type  { return t.Type }
 
-// NewBaseScope creates a scope pre-populated with builtin type names.
-// Fresh instances are created each call to avoid mutating shared state.
+// NewBaseScope creates a scope pre-populated with the bare generic
+// constructors. Fresh instances are created each call to avoid mutating
+// shared state. The scalars are the checker's to add (scalarUniverse), from
+// sngl:builtin's declarations.
 func NewBaseScope() *Scope {
 	s := &Scope{Symbols: make(map[string]Symbol)}
-	// Scalar universe names come from the shared built-in registry (builtins.go)
-	// so this table can't drift from the type resolver / conversion switches.
-	for _, b := range BuiltinScalars() {
-		if b.Universe {
-			s.Symbols[b.Name] = &TypeSym{Name: b.Name, Type: b.Type}
-		}
-	}
 	// The bare generic constructors are predeclared as dyn-parameterized
 	// defaults. "color", "date", "time", and "datetime" are intentionally
 	// absent — they are provided exclusively as stdlib StructDefs

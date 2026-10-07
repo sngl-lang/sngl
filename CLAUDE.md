@@ -706,6 +706,27 @@ a package URI and a name for each: `ir.IsUITree` and its siblings read
 The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
+**sngl:builtin marks itself with private macros**, and imports nothing but
+`sngl:build`. `lib/builtin/marks.sngl` declares `_builtin`, `_intrinsic` and
+`_none` -- the same implementations as `marks.builtin`, `marks.intrinsic` and
+`tree.none`, returning the package's own `_Macro` -- so an ambient package
+does not reach the compiler's tier, and its underscore names are no program's
+to write. `_builtin` takes an enum member written bare, `#[_builtin(int)]`,
+so its signature names none of the scalars its marks make; `_intrinsic(id string, …)` does name one, and pass1 registers a macro whose signature names a
+struct its own package marks only after those marks have run
+(`namesMarkedStruct`).
+
+**A scalar's name is read off that source, not a table.** `bool`, `int`,
+`string`, `dyn`, the sized numerics and the rest are each a `#[_builtin(kind)]`
+struct, and `scalarUniverse` (`internal/checker/universe.go`) reads them off
+sngl:builtin's parsed documents into the base scope `checker.NewSymbolTable`
+builds, as the singleton `ir.ScalarType(kind)` stands for. That is what the
+packages checked before sngl:builtin is in scope -- `sngl:build` and what it
+imports -- resolve `string` against. Afterwards the name finds its
+declaration, which `scalarOf` reads the same type off, and a program's own
+declaration shadows both; a conversion `int16(x)` is any symbol `scalarOf`
+answers. There is no list of scalar names in Go.
+
 **Macros are not ambient.** A macro package is imported like any other:
 `#[tree.none]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
 `#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which

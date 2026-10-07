@@ -1396,7 +1396,18 @@ func (c *checker) pass1() {
 	// type comes from the package declaring `ir.Macro`, which is imported.
 	// Nothing else about a macro is special, so what makes one is still
 	// `macroFrom` asking the registered func what it returns.
+	//
+	// A macro whose signature names a struct this package marks waits for the
+	// marks instead: sngl:builtin's `_intrinsic(id string, …)` names the
+	// `string` its own `_builtin(string)` makes a scalar, and resolved before
+	// that mark ran it would take the bare struct.
+	marked := markedStructNames(c.docs)
 	macroDecls := map[*ast.FuncDef]bool{}
+	type lateMacro struct {
+		doc *ast.Document
+		f   *ast.FuncDef
+	}
+	var late []lateMacro
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
@@ -1405,10 +1416,18 @@ func (c *checker) pass1() {
 				continue
 			}
 			macroDecls[f] = true
+			if namesMarkedStruct(f, marked) {
+				late = append(late, lateMacro{d, f})
+				continue
+			}
 			c.registerFunc(f)
 		}
 	}
 	c.runShellMarks()
+	for _, m := range late {
+		c.resumeFile(m.doc)
+		c.registerFunc(m.f)
+	}
 
 	membersMark := len(c.familyMembers)
 	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
@@ -2246,12 +2265,12 @@ func (c *checker) nonConstRef(e ast.Expr) string {
 // stdlib declaration. Resolving the mark through scope also makes the check
 // respect shadowing, so a user `struct color` is not a builtin conversion (D3).
 func (c *checker) isBuiltinTypeName(name string) bool {
-	if b, ok := ir.LookupBuiltinScalar(name); ok && b.Convertible {
-		return true
-	}
 	sym, ok := c.scope.Lookup(name)
 	if !ok {
 		return false
+	}
+	if _, kind, ok := scalarOf(sym); ok && kind.IsConvertibleScalar() {
+		return true
 	}
 	sd, ok := sym.(*ir.StructDef)
 	if !ok {
@@ -4871,6 +4890,41 @@ func (c *checker) runShellMarks() {
 	}
 }
 
+// markedStructNames is the structs of docs that carry a mark, by name.
+func markedStructNames(docs []*ast.Document) map[string]bool {
+	names := map[string]bool{}
+	for _, d := range docs {
+		for _, stmt := range d.Stmts {
+			if sd, ok := stmt.(*ast.StructDef); ok && len(sd.Attrs) > 0 {
+				names[sd.Name] = true
+			}
+		}
+	}
+	return names
+}
+
+// namesMarkedStruct reports whether a parameter of f names, unqualified, one
+// of the marked structs, at any depth of its type.
+func namesMarkedStruct(f *ast.FuncDef, marked map[string]bool) bool {
+	var names func(t ast.TypeExpr) bool
+	names = func(t ast.TypeExpr) bool {
+		nt, ok := t.(*ast.NamedType)
+		if !ok {
+			return false
+		}
+		if nt.Package == "" && marked[nt.Name] {
+			return true
+		}
+		return slices.ContainsFunc(nt.TypeArgs, names)
+	}
+	for _, p := range f.Params.Params {
+		if names(p.Type) {
+			return true
+		}
+	}
+	return false
+}
+
 // looksLikeMacroDecl is the cheap syntactic gate on registering a func early,
 // before the declarations an ordinary signature may name are in place. It
 // answers on the written return type alone; whether that name resolves to
@@ -4880,8 +4934,7 @@ func looksLikeMacroDecl(f *ast.FuncDef) bool {
 	if f.Target != nil {
 		return false
 	}
-	nt, ok := f.ReturnType.(*ast.NamedType)
-	return ok && nt.Name == "Macro"
+	return IsMacroDecl(f)
 }
 
 // nodeHandleSym is the binding declareNodeID made for a written `#id`, or nil

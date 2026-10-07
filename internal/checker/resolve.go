@@ -130,34 +130,20 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))
 }
 
-// userShadowsBuiltin reports whether name resolves in scope to a user struct
-// declaration that shadows a built-in of the same name. The built-in's own
-// #[builtin]-marked decl is not a shadow, and non-struct bindings (the base
-// scope's scalar TypeSyms, the `duration` unit) are the built-in itself, not a
-// shadow.
-func (c *checker) userShadowsBuiltin(name string) bool {
-	sym, ok := c.scope.Lookup(name)
-	if !ok {
-		return false
-	}
-	sd, ok := sym.(*ir.StructDef)
-	return ok && sd.Builtin == ir.BuiltinNone
-}
-
 func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 	// Qualified type: pkg.Type
 	if t.Package != "" {
 		return c.resolveQualifiedType(t)
 	}
 
-	// Builtin scalar primitives — resolved from the shared registry
-	// (ir/builtins.go) so this site can't drift from the base scope /
-	// conversion switches. A user struct declaration of the same name shadows
-	// the built-in (D3); the built-in's own #[builtin] decl does not, and
-	// neither does the `duration` unit that shares the name. When shadowed, fall
-	// through to the user-type resolution below.
-	if b, ok := ir.LookupBuiltinScalar(t.Name); ok && !c.userShadowsBuiltin(t.Name) {
-		return b.Type
+	// A scalar is its declaration in sngl:builtin, or its name in the
+	// universe before that package is in scope; either stands for the type
+	// its kind does. A program's own declaration of the name is found first
+	// and shadows it, as any declaration does.
+	if sym, ok := c.scope.Lookup(t.Name); ok {
+		if typ, _, ok := scalarOf(sym); ok {
+			return typ
+		}
 	}
 
 	// Generic built-in constructors resolve through scope: a #[builtin]-marked

@@ -1,14 +1,12 @@
-import marks "sngl:internal/marks"
-
 // 64-bit signed integer. Arithmetic operators produce `int` when both
 // operands are `int`; division truncates. Methods on the `int` receiver
 // (`min`, `max`, `abs`, `clamp`) live alongside this type; convert to
 // `float` with `float(x)` before doing fractional math.
-#[marks.builtin("int")]
+#[_builtin(int)]
 struct int {}
 
 // Returns the smallest of its arguments, of which there is at least one.
-#[marks.intrinsic("int.min")]
+#[_intrinsic("int.min")]
 const func int.min(a int, rest ...int) int {
     var m = a
     for var x = rest {
@@ -20,7 +18,7 @@ const func int.min(a int, rest ...int) int {
 }
 
 // Returns the largest of its arguments, of which there is at least one.
-#[marks.intrinsic("int.max")]
+#[_intrinsic("int.max")]
 const func int.max(a int, rest ...int) int {
     var m = a
     for var x = rest {
@@ -33,31 +31,31 @@ const func int.max(a int, rest ...int) int {
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
-#[marks.intrinsic("int.abs")]
+#[_intrinsic("int.abs")]
 const func int.abs(x int) int { return x < 0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the result
 // follows `max(lo, min(x, hi))` — i.e. lo wins, which is the
 // documented contract for malformed ranges.
-#[marks.intrinsic("int.clamp")]
+#[_intrinsic("int.clamp")]
 const func int.clamp(x int, lo int, hi int) int { return int.max(lo, int.min(x, hi)) }
 
 // Parse s in the given base (2, 8, 10, 16). No target other than the headless
 // interpreter implements this yet.
-#[marks.intrinsic("int.parse")]
+#[_intrinsic("int.parse")]
 const func int.parse(s string, base int) int
 
 // 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
 // trailing `.0` distinguishes it from `int`). Methods on the `float`
 // receiver expose the standard math library (`floor`, `round`, `pow`,
 // trigonometric functions, etc.).
-#[marks.builtin("float")]
+#[_builtin(float)]
 struct float {}
 
 // Returns the smallest of its arguments, of which there is at least one.
 // NaN handling is platform-defined — prefer explicit NaN checks when an
 // argument may be NaN.
-#[marks.intrinsic("float.min")]
+#[_intrinsic("float.min")]
 const func float.min(a float, rest ...float) float {
     var m = a
     for var x = rest {
@@ -70,7 +68,7 @@ const func float.min(a float, rest ...float) float {
 
 // Returns the largest of its arguments, of which there is at least one. See
 // `float.min` for NaN caveats.
-#[marks.intrinsic("float.max")]
+#[_intrinsic("float.max")]
 const func float.max(a float, rest ...float) float {
     var m = a
     for var x = rest {
@@ -83,28 +81,28 @@ const func float.max(a float, rest ...float) float {
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.
-#[marks.intrinsic("float.abs")]
+#[_intrinsic("float.abs")]
 const func float.abs(x float) float { return x < 0.0 ? -x : x }
 
 // Clamps x to the inclusive range [lo, hi]. If hi < lo the lo bound
 // wins (see `int.clamp`).
-#[marks.intrinsic("float.clamp")]
+#[_intrinsic("float.clamp")]
 const func float.clamp(x float, lo float, hi float) float { return float.max(lo, float.min(x, hi)) }
 
 // Largest integer value not greater than x. For negative non-integers this
 // rounds away from zero (e.g. floor(-1.5) == -2).
-#[marks.intrinsic("float.floor")]
+#[_intrinsic("float.floor")]
 const func float.floor(x float) float { return x < 0.0 && float(int(x)) != x ? float(int(x)) - 1.0 : float(int(x)) }
 
 // Smallest integer value not less than x. For negative non-integers this
 // rounds toward zero (e.g. ceil(-1.5) == -1).
-#[marks.intrinsic("float.ceil")]
+#[_intrinsic("float.ceil")]
 const func float.ceil(x float) float { return x > 0.0 && float(int(x)) != x ? float(int(x)) + 1.0 : float(int(x)) }
 
 // Nearest integer value to x. Halves round away from zero
 // (half-away-from-zero / "commercial" rounding), e.g. round(0.5) == 1.0
 // and round(-0.5) == -1.0.
-#[marks.intrinsic("float.round")]
+#[_intrinsic("float.round")]
 const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float(int(x + 0.5)) }
 
 // --- Sized numerics ---
@@ -119,42 +117,42 @@ const func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) :
 // and JavaScript holds a number, a uint64 a BigInt.
 
 // 8-bit signed integer.
-#[marks.builtin("int8")]
+#[_builtin(int8)]
 struct int8 {}
 
 // 16-bit signed integer.
-#[marks.builtin("int16")]
+#[_builtin(int16)]
 struct int16 {}
 
 // 32-bit signed integer.
-#[marks.builtin("int32")]
+#[_builtin(int32)]
 struct int32 {}
 
 // 64-bit signed integer: `int` at a width stated rather than assumed.
-#[marks.builtin("int64")]
+#[_builtin(int64)]
 struct int64 {}
 
 // 8-bit unsigned integer, a byte: the channels of a `color`.
-#[marks.builtin("uint8")]
+#[_builtin(uint8)]
 struct uint8 {}
 
 // 16-bit unsigned integer.
-#[marks.builtin("uint16")]
+#[_builtin(uint16)]
 struct uint16 {}
 
 // 32-bit unsigned integer.
-#[marks.builtin("uint32")]
+#[_builtin(uint32)]
 struct uint32 {}
 
 // 64-bit unsigned integer.
-#[marks.builtin("uint64")]
+#[_builtin(uint64)]
 struct uint64 {}
 
 // 32-bit IEEE-754 floating-point number.
-#[marks.builtin("float32")]
+#[_builtin(float32)]
 struct float32 {}
 
 // 64-bit IEEE-754 floating-point number: `float` at a width stated rather
 // than assumed.
-#[marks.builtin("float64")]
+#[_builtin(float64)]
 struct float64 {}

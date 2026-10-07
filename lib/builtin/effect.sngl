@@ -1,6 +1,3 @@
-import marks "sngl:internal/marks"
-import tree "sngl:tree"
-
 // Brackets a lifetime. `@mount` runs when the node enters the tree, `@unmount`
 // when it leaves, and the pair is what a component uses to hold something the
 // program has to give back -- a subscription, a scheduled callback, a request
@@ -32,8 +29,8 @@ import tree "sngl:tree"
 // It belongs to no tree, which is what lets one bracket a lifetime inside a
 // drawing or a menu as readily as inside a layout: an effect renders nothing,
 // so it is no more a widget than it is a shape.
-#[tree.none]
-#[marks.builtin("effect")]
+#[_none]
+#[_builtin(effect)]
 component effect<T = struct {}>(
     on       T,
     @mount   T,

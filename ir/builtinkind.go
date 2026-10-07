@@ -26,6 +26,9 @@ const (
 	BuiltinInt    BuiltinKind = "int"
 	BuiltinFloat  BuiltinKind = "float"
 	BuiltinString BuiltinKind = "string"
+	BuiltinBool   BuiltinKind = "bool"
+	// Dyn is the type of a value the program says nothing about.
+	BuiltinDyn BuiltinKind = "dyn"
 
 	// The sized numerics, each a scalar of the width and signedness its name
 	// says (TypInt8 … TypFloat64).
@@ -172,7 +175,7 @@ func (b BuiltinKind) IsTargetID() bool {
 // string, and the sized numerics.
 func (b BuiltinKind) IsPrimitive() bool {
 	switch b {
-	case BuiltinInt, BuiltinFloat, BuiltinString,
+	case BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64:
@@ -270,7 +273,7 @@ func (b BuiltinKind) IsConst() bool {
 // AllBuiltinKinds returns every valid kind, in declaration order.
 func AllBuiltinKinds() []BuiltinKind {
 	return []BuiltinKind{
-		BuiltinInt, BuiltinFloat, BuiltinString,
+		BuiltinInt, BuiltinFloat, BuiltinString, BuiltinBool, BuiltinDyn,
 		BuiltinInt8, BuiltinInt16, BuiltinInt32, BuiltinInt64,
 		BuiltinUint8, BuiltinUint16, BuiltinUint32, BuiltinUint64,
 		BuiltinFloat32, BuiltinFloat64,

@@ -1,5 +1,4 @@
 import build "sngl:build"
-import marks "sngl:internal/marks"
 
 // Declares what the package compiles to: which language and platform
 // pairs to build, and the options each is built with.
@@ -42,7 +41,7 @@ import marks "sngl:internal/marks"
 //
 // A package that declares its own `output` component gets that
 // component, and has no build directive.
-#[marks.builtin("output")]
+#[_builtin(output)]
 component output(
     // Display name for the app; used as window title and platform-native app name.
     const name        string,

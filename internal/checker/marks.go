@@ -232,6 +232,14 @@ func (a markArgs) String(name string) string {
 	return ""
 }
 
+// Ident is the enum member an enum-typed parameter was given.
+func (a markArgs) Ident(name string) string {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].ident
+	}
+	return ""
+}
+
 // Idents is the value of a list-typed parameter, empty when the mark supplied
 // none.
 func (a markArgs) Idents(name string) []string {

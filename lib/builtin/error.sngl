@@ -1,5 +1,3 @@
-import marks "sngl:internal/marks"
-
 // A failure, and the receiver the program raises one through. `message` is
 // human-readable; `kind` tags the category so a handler can dispatch on it
 // programmatically ("network", "decode", "validation").
@@ -12,7 +10,7 @@ struct error {
 // `boundary`, whose `@error` handler receives it. Without a boundary the
 // error terminates the containing evaluation with a platform-default
 // handler.
-#[marks.intrinsic("error.raise")]
+#[_intrinsic("error.raise")]
 func error.raise(message string, kind string)
 
 // Catches errors raised in its children's event handlers and expressions.
@@ -26,7 +24,7 @@ func error.raise(message string, kind string)
 // One of the two is required, since a boundary that neither reports nor
 // replaces catches an error and does nothing with it.
 //
-#[marks.builtin("errorBoundary")]
+#[_builtin(errorBoundary)]
 component boundary<T>(
     @error  error,
     content ...component T,

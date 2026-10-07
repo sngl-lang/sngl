@@ -1,5 +1,3 @@
-import marks "sngl:internal/marks"
-
 // The identity of a build target: one platform, named. A value of it is a
 // platform's build-target node read as a value -- `html.platform`, the
 // `component platform(…) build.platform` sngl:platform/html declares -- so the
@@ -7,13 +5,13 @@ import marks "sngl:internal/marks"
 //
 // There is no literal, so a string is never mistaken for a platform. Compare
 // `PLATFORM` against a node rather than against `"html"`.
-#[marks.builtin("platform")]
+#[_builtin(platform)]
 struct platform {}
 
 // The identity of a build target's output language, the `platform` type's
 // counterpart: `go.language`, `js.language`, each a language package's node.
 // Compare `LANGUAGE` against one.
-#[marks.builtin("language")]
+#[_builtin(language)]
 struct language {}
 
 // TODO build exists to expose these same names as tree families. Let's make these pull double-duty.
@@ -26,12 +24,12 @@ struct language {}
 // Its type is `platform`, not `string`: `PLATFORM == "html"` does not compile,
 // so a target name cannot be misspelled into a branch that is silently never
 // taken.
-#[marks.builtin("targetPlatform")]
+#[_builtin(targetPlatform)]
 const PLATFORM = ""
 // TODO make this a tree family too (was #[tree.kind])
 
 // The language this build emits: `LANGUAGE == go.language`. Behaves like
 // PLATFORM in every respect.
-#[marks.builtin("targetLanguage")]
+#[_builtin(targetLanguage)]
 const LANGUAGE = ""
 // TODO make this a tree family too (was #[tree.kind])

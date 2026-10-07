@@ -16,25 +16,29 @@ import (
 var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
-	{"tree", "none"}:                markTreeNone,
-	{"tree", "crosses"}:             markTreeCrosses,
-	{"tree", "eventless"}:           markTreeEventless,
-	{"macro", "wildcard"}:           markWildcard,
-	{"macro", "construct"}:          markConstruct,
-	{"macro", "foreign"}:            markForeign,
-	{"macro", "cnative"}:            markCNative,
-	{"macro", "unusable"}:           markUnusable,
-	{"language/kotlin", "native"}:   markKotlinNative,
-	{"language/go", "native"}:       markGoNative,
-	{"language/go", "async"}:        markGoAsync,
-	{"language/js", "native"}:       markJSNative,
-	{"x/gen", "can"}:                markGenCan,
-	{"x/gen", "cannot"}:             markGenCannot,
-	{"x/gen", "wants"}:              markGenWants,
-	{"x/gen", "renders"}:            markGenRenders,
-	{"x/gen", "name"}:               markGenName,
-	{"x/gen", "native"}:             markGenNative,
-	{"ui/markup/md", "order"}:       markMdOrder,
+	// sngl:builtin's private copies, which keep the package free of imports.
+	{"builtin", "_builtin"}:       markBuiltin,
+	{"builtin", "_intrinsic"}:     markIntrinsic,
+	{"builtin", "_none"}:          markTreeNone,
+	{"tree", "none"}:              markTreeNone,
+	{"tree", "crosses"}:           markTreeCrosses,
+	{"tree", "eventless"}:         markTreeEventless,
+	{"macro", "wildcard"}:         markWildcard,
+	{"macro", "construct"}:        markConstruct,
+	{"macro", "foreign"}:          markForeign,
+	{"macro", "cnative"}:          markCNative,
+	{"macro", "unusable"}:         markUnusable,
+	{"language/kotlin", "native"}: markKotlinNative,
+	{"language/go", "native"}:     markGoNative,
+	{"language/go", "async"}:      markGoAsync,
+	{"language/js", "native"}:     markJSNative,
+	{"x/gen", "can"}:              markGenCan,
+	{"x/gen", "cannot"}:           markGenCannot,
+	{"x/gen", "wants"}:            markGenWants,
+	{"x/gen", "renders"}:          markGenRenders,
+	{"x/gen", "name"}:             markGenName,
+	{"x/gen", "native"}:           markGenNative,
+	{"ui/markup/md", "order"}:     markMdOrder,
 }
 
 // markMdOrder implements #[md.order]. The md: importer reads it from source
@@ -299,7 +303,12 @@ func markJSNative(m *mark) error {
 // checked by bindBuiltinRole, where the compiler stores the reference, because
 // that is where the requirement comes from.
 func markBuiltin(m *mark) error {
+	// A string for sngl:internal/marks' `builtin("int")`, an enum member for
+	// sngl:builtin's own `_builtin(int)`.
 	raw := m.args.String("kind")
+	if raw == "" {
+		raw = m.args.Ident("kind")
+	}
 	kind := ir.BuiltinKind(raw)
 	if !kind.Valid() {
 		return fmt.Errorf("unknown builtin kind %q (valid: %s)", raw, strings.Join(builtinKindNames(), ", "))
