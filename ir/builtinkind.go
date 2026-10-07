@@ -60,13 +60,13 @@ const (
 	BuiltinIter BuiltinKind = "iter"
 	// Chan is a host channel. It is declared by sngl:language/go rather than
 	// by lib/, because only a language with channels can answer it.
-	BuiltinChan   BuiltinKind = "chan"
+	BuiltinChan   BuiltinKind = "chan" // TODO This seems wrong. This should just be an intrinsic struct in Go.
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 	// Remote is the box a data adapter returns: the last value that arrived,
 	// how the most recent attempt failed, and whether one is in flight. See
 	// sngl:remote.
-	BuiltinRemote BuiltinKind = "remote"
+	BuiltinRemote BuiltinKind = "remote" // TODO Remote should go
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 

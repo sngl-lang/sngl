@@ -164,6 +164,9 @@ component HorizontalDivider(
     modifier ui.Style,
 ) ui.node
 
+// TODO I don't think we followed the pattern right. We should have an android.Component(name = "CircularProgressIndicator", ...)
+// This is needed to make it possible for end-users to describe native Kotlin components to re-use.
+// We can define the standard android components in terms of that dynamic one. If there's machine-readable metadata we can generate it (like GIR)
 #[gen.renders(identity)]
 #[intrinsic("android:CircularProgressIndicator")]
 component CircularProgressIndicator(
