@@ -656,6 +656,43 @@ const component markup.run[platform] {
     }
 }
 
+// A list is the element html has for one, so a screen reader announces its
+// length and each item's place, and the browser numbers it and picks a nested
+// list's bullet itself. The default body's `marker` is the ordinal written out
+// for a host that cannot count; this one can, so it reads `start` instead.
+//
+// The page's reset takes the indent the markers hang in, so the list gives it
+// back, and the gap between items is the default body's.
+const component markup.list[platform] {
+    if ordered {
+        html.ol(start=string(start), style={display=flex, flexDirection=column, gap=4px, paddingLeft=2em}) {
+            items
+        }
+    } else {
+        html.ul(style={display=flex, flexDirection=column, gap=4px, paddingLeft=2em}) {
+            items
+        }
+    }
+}
+
+// A task item is a checkbox in place of the bullet: a real one, so it reads as
+// a checkbox, and disabled, since a document describes state rather than
+// holding it. Its row is a flex box, which is also what drops the marker.
+const component markup.listItem[platform] {
+    if task == markup.Task.none {
+        html.li {
+            content
+        }
+    } else {
+        html.li(style={display=flex, flexDirection=row, alignItems=baseline, gap=8px}) {
+            html.input(type="checkbox", checked=task == markup.Task.done, disabled=true) {}
+            html.div(style={display=flex, flexDirection=column}) {
+                content
+            }
+        }
+    }
+}
+
 // Force v to run client-side (front-end). For code imported from non-js:
 // languages this compiles the dependency to a front-end WASM asset instead of a
 // server call. No effect for static-site builds. Build fails if the logic cannot

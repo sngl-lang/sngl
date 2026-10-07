@@ -58,21 +58,18 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-  <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-    <span>•</span>
-    <div style="display:flex;flex-direction:column">
-      <span>one</span>
-    </div>
-  </div>
-</div>
+<ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+  <li>
+    <span>one</span>
+  </li>
+</ul>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst1: true };
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3601fbaf5656492e9074f873f0deeb11
+pass sha256:f70242702638e07585deb1dee4c93998

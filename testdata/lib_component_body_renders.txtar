@@ -1,9 +1,10 @@
 A library component with a body renders it.
 
 `sngl:ui/markup`'s `list` is a `vbox` with an indent and `listItem` is a row
-with a marker column, both written in SNGL and neither overridden by any
-platform -- which is the point of writing them there: a target implements the
-primitives and inherits the blocks. Until the two changes this fixture pins,
+with a marker column, both written in SNGL -- which is the point of writing
+them there: a target implements the primitives and inherits the blocks. html
+overrides both with `<ul>` and `<li>`, the element it has for a list, so the
+html half here is that override and bubbletea is the library body. Until the two changes this fixture pins,
 neither body reached a backend at all. The loader checked a component body
 only for the target tiers, so every other tier's converted to an empty one,
 and the inliner declined to splice a component it did not declare, so the node
@@ -15,13 +16,15 @@ The bullet is the second assertion and it comes from the first: `listItem`
 asks `listDepth` for it, `list` provides one more than it was given, and the
 nested list therefore draws a different bullet from the one it sits in -- a
 body reading a context through a slot, which only works because the body is
-there to read it.
+there to read it. On html the browser picks a nested `<ul>`'s bullet, and none
+is drawn as text.
 
 On bubbletea the bullet is a ternary Go cannot write, hoisted to `__ltN` and
 folded once the item is inlined. The fold left a bare assignment, which a view
 body draws nothing for, so the bullet rendered as the temp's zero.
 
 deny * `\blistDepth\b` -- the context name is not a symbol any target declares
+deny out/none/html/index.html `<span>[•◦▪]</span>` -- html's list is a <ul>, whose bullets are the browser's, not a span of text
 deny out/go/bubbletea/model.go `var __lt\d+ string\n` -- a hoisted ternary temp is declared with its value, not assigned after
 -- doc.sngl --
 import ui "sngl:ui"
@@ -251,36 +254,27 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-  <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-    <span>•</span>
-    <div style="display:flex;flex-direction:column">
-      <span>one</span>
-    </div>
-  </div>
-  <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-    <span>•</span>
-    <div style="display:flex;flex-direction:column">
-      <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-        <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-          <span>◦</span>
-          <div style="display:flex;flex-direction:column">
-            <span>nested</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+  <li>
+    <span>one</span>
+  </li>
+  <li>
+    <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+      <li>
+        <span>nested</span>
+      </li>
+    </ul>
+  </li>
+</ul>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst5: true };
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
 pass sha256:800c76928093d4f1ca219ef3a804f536
 -- run/none/html --
-pass sha256:7b2907b2693a97ca1df1b841f05800b4
+pass sha256:0e204e01575972fb090432d9a78435cb

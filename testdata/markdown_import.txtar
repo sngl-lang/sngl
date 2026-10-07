@@ -19,6 +19,8 @@ whitespace run holding a line break reaches the page as text.
 
 deny * `<h1>\s*<span>Guide` -- a heading is a `richText` with a role, so its typography is the block's and its words are spans
 deny * `innerHTML` -- a document is a component tree; nothing is handed to a parser at run time
+deny out/none/html/index.html `<span>(•|◦|▪|\d+\.)</span>` -- a list is a <ul> or an <ol>, and the browser draws its markers
+deny out/none/html/index.html `addEventListener\("change"` -- a task item's checkbox is disabled: a document describes state rather than holding it
 deny * `<span class="sngl-tok-plain"><span></span></span>` -- a line break and the indentation after it are a code sample's text, not the pretty-printer's whitespace
 
 -- app.sngl --
@@ -87,40 +89,27 @@ body { font-family: system-ui, sans-serif; }
     <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="guide"><span>Guide</span></h1>
     <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
     <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap"><span>Quoted.</span></blockquote>
-    <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-      <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-        <span>•</span>
-        <div style="display:flex;flex-direction:column">
-          <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
-        </div>
-      </div>
-      <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-        <label style="align-items:center;display:inline-flex;gap:4px">
-          <input id="__n1" data-sngl-id="__n1" disabled type="checkbox"/>
-          <span>
-          </span>
-        </label>
+    <ul style="display:flex;flex-direction:column;gap:4px;padding-left:2em">
+      <li>
+        <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
+      </li>
+      <li style="align-items:baseline;display:flex;flex-direction:row;gap:8px">
+        <input checked disabled type="checkbox"/>
         <div style="display:flex;flex-direction:column">
           <p style="margin:0px;white-space:pre-wrap"><span>done</span></p>
         </div>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
-      <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-        <span>1.</span>
-        <div style="display:flex;flex-direction:column">
-          <p style="margin:0px;white-space:pre-wrap"><span>first</span></p>
-        </div>
-      </div>
-      <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-        <span>2.</span>
-        <div style="display:flex;flex-direction:column">
-          <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
-        </div>
-      </div>
-    </div>
+      </li>
+    </ul>
+    <ol style="display:flex;flex-direction:column;gap:4px;padding-left:2em" start="1">
+      <li>
+        <p style="margin:0px;white-space:pre-wrap"><span>first</span></p>
+      </li>
+      <li>
+        <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
+      </li>
+    </ol>
     <pre class="sngl-code" style="margin:0px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>twice</span></span><span class="sngl-tok-punctuation"><span>(</span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-punctuation"><span>)</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{</span></span><span class="sngl-tok-plain"><span>&#10;    </span></span><span class="sngl-tok-variable"><span>return</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>*</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>2</span></span><span class="sngl-tok-plain"><span>&#10;</span></span><span class="sngl-tok-punctuation"><span>}</span></span></code></pre>
-    <table id="$46" style="border-collapse:collapse;width:100%">
+    <table id="$37" style="border-collapse:collapse;width:100%">
       <thead>
         <tr>
           <th style="border-bottom:2px solid #ddd;padding:8px;text-align:left">Name</th>
@@ -152,22 +141,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst1: true, checked__inst3: true, selected__inst6: 0 };
-  var $46 = document.getElementById("$46");
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  __n1.addEventListener("change", function(e) {
-    state.checked__inst3 = e.target.checked;
-    __n1.checked = state.checked__inst3;
+  var state = { selected__inst0: 0, visible__inst1: true };
+  var $37 = document.getElementById("$37");
+  $37.addEventListener("selected", function(e) {
+    state.selected__inst0 = e;
   });
-  $46.addEventListener("selected", function(e) {
-    state.selected__inst6 = e;
-  });
-  function __sngl_init() {
-    __n1.checked = state.checked__inst3;
-  }
-  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9de3768674cb1696ca4db78a1ce8ded5
+pass sha256:854d94ae6f64deb5d274ee07d5c7bb15

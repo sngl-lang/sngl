@@ -2729,7 +2729,13 @@ The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
 `role` and style set, or a `vbox` — so a platform implements the two
 primitives and inherits every block. `role` is what a flow is *for*, and a
 prop rather than a component per role, so it reaches every emitter through the
-node they already render.
+node they already render. html is the one target overriding a block: `list`
+and `listItem` are `<ul>`/`<ol start>` and `<li>`, so the browser numbers the
+list and picks a nested bullet, and a task item is a disabled
+`<input type=checkbox>` in a flex `<li>`, which drops the marker. Every other
+target renders the bodies. An override's prop defaults are the declaration's,
+checked in its file: re-read in the override's, `task Task = Task.none` named a
+type html.sngl never imported (`installedOverride`).
 
 **`md:` imports markdown as SNGL source.** `codegen/scheme/markdown` is an
 `FSSchemeImporter`, the seam `git:` and `http:` use, rather than a native
