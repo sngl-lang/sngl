@@ -479,6 +479,10 @@ purely mechanical reasons — `go fix` rewriting a loop, `mdox fmt` reformatting
 paragraph — because neither is visible until CI says so. It checks staged files
 only and takes about a second. Install it with `git config core.hooksPath githooks`; `git commit --no-verify` skips it.
 
+`mdox fmt --check` covers every markdown file `verify` finds, a scratch note at
+the repository root included, so run `go tool mdox fmt --soft-wraps <file>` on
+one before committing it.
+
 WASM build (used by docsgen for playground):
 
 ```bash
@@ -3552,6 +3556,13 @@ beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
+
+Two ways that check passes for the wrong reason. `go test ./internal/checker/`
+does not evaluate a new `// ERROR(check)` fixture; the root package's
+`TestFixtures` does. And the `sngl` on `PATH` is a proxy that resolves
+`./cmd/sngl` against the current directory, so a binary built out of tree has
+to be *run* out of tree too, or "does this fail when reverted?" compares HEAD
+with itself and says ok.
 
 ### Performance
 
