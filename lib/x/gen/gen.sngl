@@ -147,7 +147,7 @@ func renders(these list<Rendered>) ir.Macro
 //     component block[go.language] {
 //         gen.emit(
 //             render=encode,
-//             @start(members) { async.spawn(func() { readClicks(members) }) },
+//             @start(members) { async.start(func() { readClicks(members) }) },
 //             @change(line) { print(line) },
 //         )
 //     }

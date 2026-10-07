@@ -318,8 +318,8 @@ func init() {
 			return lv.Call(nil)
 		}
 	}
-	intrinsics["async.spawn"] = runClosure("spawn")
-	intrinsics["async.post"] = runClosure("post")
+	intrinsics["async.start"] = runClosure("start")
+	intrinsics["async.do"] = runClosure("do")
 
 	intrinsics["list.filter"] = func(args []any) (any, error) {
 		list, ok := args[0].([]any)

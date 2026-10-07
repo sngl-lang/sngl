@@ -3,17 +3,17 @@ package needs the same two ids.
 
 These collided by construction. fyne's timer hands its tick to a host scheduler
 and has to be back on the drawing thread before it touches a widget, so the
-platform package declared `async.post` and `async.spawn` for itself; `sngl:async`
+platform package declared `async.do` and `async.start` for itself; `sngl:async`
 declares them for everyone. `ir.RegisterIntrinsic` panics on a duplicate, so the
 two together took the compiler down at load:
 
-	panic: ir: intrinsic "async.spawn" is declared twice,
-	as sngl:platform/fyne.spawn and as sngl:async.spawn
+	panic: ir: intrinsic "async.start" is declared twice,
+	as sngl:platform/fyne.spawn and as sngl:async.start
 
 which is the whole reason the package and the timer are one merge request rather
 than two. fyne names `sngl:async` now instead of declaring its own, so there is
 one declaration of each id and the platform answers it for both callers: the
-program's `async.post` below and the tick inside the ticker's goroutine both
+program's `async.do` below and the tick inside the ticker's goroutine both
 come out as `fyne.Do`.
 
 The assertion is that this program builds at all -- reverted, the harness does
@@ -37,7 +37,7 @@ ui.window(title="t") {
 
     time.timer(interval=1000ms, @tick { n = n + 1 })
     ui.button(text="go", @click {
-        async.post(func() {
+        async.do(func() {
             n = n + 1
         })
     })

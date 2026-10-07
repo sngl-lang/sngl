@@ -13,7 +13,7 @@ import gen "sngl:x/gen"
 // the goroutine that made it -- which on a UI target is the one drawing the
 // screen. Nor can it hold a typed lambda behind an interface surface. What it
 // does have is the goroutine passAsyncOffload moves that call onto, which is
-// what makes `async.spawn` sayable here and nowhere else.
+// what makes `async.start` sayable here and nowhere else.
 #[gen.can(
     toggle,
     lambda,

@@ -89,7 +89,7 @@ type Features struct {
 	// Withheld, the flow holding one is the render slot instead.
 	InlineSlots bool
 	// AsyncPost says the platform can run a closure back on the thread it
-	// draws on, and answers lower.AsyncPostIntrinsic with the call that does
+	// draws on, and answers lower.AsyncDoIntrinsic with the call that does
 	// it. Without it there is nowhere for a blocking call's answer to land,
 	// and passAsyncOffload refuses the program rather than writing a state
 	// update onto a goroutine that does not own the widgets.
@@ -98,7 +98,7 @@ type Features struct {
 	// tests check the two against each other.
 	AsyncPost bool
 	// AsyncSpawn says the language can run a closure without waiting for it,
-	// and answers lower.AsyncSpawnIntrinsic with the call that does -- Go's
+	// and answers lower.AsyncStartIntrinsic with the call that does -- Go's
 	// `go func(){}()`. It sits on the language axis where AsyncPost sits on
 	// the platform's, because starting work is a property of the host language
 	// and getting back to the drawing thread is a property of the surface.

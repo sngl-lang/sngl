@@ -18,7 +18,7 @@ that *says* it schedules -- the `schedules` flag on its native mark -- because a
 host scheduler calls its callback from the loop it owns, which is the thread the
 target draws on.
 
-`async.post` is the second thing that is true of, and on fyne it is the one that
+`async.do` is the second thing that is true of, and on fyne it is the one that
 matters here: a self-rearming `AfterFunc` hands its whole body over with a post,
 so the tick is a lambda inside *that* lambda and the outer one's `schedules`
 flag does not reach it. The id has no declaration to carry a flag on, so the

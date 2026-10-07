@@ -690,11 +690,11 @@ const component time.timer[platform] {
                     done = go.makeChan(false)
                     var stopped = done
                     var ticker = handle
-                    async.spawn(func() {
+                    async.start(func() {
                         for {
                             go.select([
                                 go.recv(ticker.C, func(at time.datetime) {
-                                    async.post(func() {
+                                    async.do(func() {
                                         // A post queued before an unmount runs
                                         // after it. `gen` is what it finds:
                                         // without it a stale tick writes state

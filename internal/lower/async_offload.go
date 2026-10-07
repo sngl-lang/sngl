@@ -9,10 +9,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// AsyncSpawnIntrinsic runs its one argument, a no-argument closure, without
+// AsyncStartIntrinsic runs its one argument, a no-argument closure, without
 // waiting for it. The host language answers it -- in Go a `go func(){…}()`.
 //
-// AsyncPostIntrinsic runs its one argument back on the thread the target
+// AsyncDoIntrinsic runs its one argument back on the thread the target
 // draws on. The *platform* answers that one, because there is no such thread
 // in general and no two toolkits reach theirs the same way: fyne queues onto
 // the driver and gtk4 onto a GLib idle tick. Those two are the whole list --
@@ -30,8 +30,8 @@ import (
 // is deliberate: it may write a post for a target whose own program never
 // could.
 const (
-	AsyncSpawnIntrinsic = "async.spawn"
-	AsyncPostIntrinsic  = "async.post"
+	AsyncStartIntrinsic = "async.start"
+	AsyncDoIntrinsic    = "async.do"
 )
 
 // passAsyncOffload moves a blocking call off the thread the target draws on.
@@ -41,9 +41,9 @@ const (
 // goroutine painting the screen. The rewrite splits one body in three:
 //
 //	loading = true                 // before the first blocking call: stays put
-//	spawn(func() {
+//	start(func() {
 //	    __async0 := fetch(url)     // the blocking calls: their own goroutine
-//	    post(func() {
+//	    do(func() {
 //	        result = __async0      // everything after: back on the UI thread
 //	        loading = false
 //	    })
@@ -276,7 +276,7 @@ func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 }
 
 // schedulesItsCallback answers the question the flag exists for, and
-// AsyncPostIntrinsic is the second thing it is true of: a post runs its closure
+// AsyncDoIntrinsic is the second thing it is true of: a post runs its closure
 // from the loop the platform owns, which is the same thread a native scheduler
 // calls back on.
 //
@@ -286,7 +286,7 @@ func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 // standing before this pass runs are read, so the posts it goes on to generate
 // are not candidates.
 func schedulesItsCallback(fn *ir.Func) bool {
-	return fn.NativeSchedules || fn.Intrinsic == AsyncPostIntrinsic
+	return fn.NativeSchedules || fn.Intrinsic == AsyncDoIntrinsic
 }
 
 // callbackFunc is the body behind a callback argument, through whatever the
@@ -302,7 +302,7 @@ func schedulesItsCallback(fn *ir.Func) bool {
 // then protects nothing: an *ir.Ident bound to a func var is none of the three.
 // gtk4's `every(int(d), tick)` is covered only because inlining has made `tick`
 // a literal lambda by the time this runs, and fyne's `after(d, rearm)` is not
-// covered at all -- its tick reaches the pass through the AsyncPostIntrinsic
+// covered at all -- its tick reaches the pass through the AsyncDoIntrinsic
 // arm instead. Resolving an ident through pkg.PointsTo is what closing it
 // would take.
 func callbackFunc(e ir.Expr) *ir.Func {
@@ -412,10 +412,10 @@ func (st *offloadState) transform(block []ir.Stmt) ([]ir.Stmt, error) {
 	post = append(post, block[last+1:]...)
 
 	if len(post) > 0 {
-		bg = append(bg, callStmt(AsyncPostIntrinsic, closure(post)))
+		bg = append(bg, callStmt(AsyncDoIntrinsic, closure(post)))
 	}
 	out := append([]ir.Stmt(nil), block[:first]...)
-	return append(out, callStmt(AsyncSpawnIntrinsic, closure(bg))), nil
+	return append(out, callStmt(AsyncStartIntrinsic, closure(bg))), nil
 }
 
 // split says which half of the rewrite one statement's work belongs to. A

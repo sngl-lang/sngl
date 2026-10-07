@@ -1,14 +1,14 @@
 // Handing a closure somewhere else to run.
 //
-// Two operations, and they are each other's halves: `spawn` starts work that
-// must not block the caller, and `post` brings the answer back to the thread
+// Two operations, and they are each other's halves: `start` begins work that
+// must not block the caller, and `do` brings the answer back to the thread
 // the target draws on. A UI program that does the first without the second has
 // written a data race -- the widgets belong to that thread, and nothing else
 // may touch them.
 //
-//	async.spawn(func() {
+//	async.start(func() {
 //	    var page = fetch(url)          // off the drawing thread
-//	    async.post(func() { body = page })   // and back onto it
+//	    async.do(func() { body = page })   // and back onto it
 //	})
 //
 // **Each is answered by a different half of the build**, which is the whole
@@ -20,13 +20,13 @@
 // same way. fyne queues onto its driver, gtk4 onto a GLib idle tick, and a
 // framework that owns its own loop may have no way in at all.
 //
-// So a target answers `spawn` on the language axis and `post` on the platform
+// So a target answers `start` on the language axis and `do` on the platform
 // axis, and **a target that answers neither says so**: naming one it cannot
 // emit is a build failure positioned at the call, rather than generated code
 // that does not compile.
 //
 // The compiler writes both itself. A blocking call on a language that cannot
-// suspend is moved to a spawn with its tail posted back -- that is
+// suspend is moved to a `start` with its tail handed back through `do` -- that is
 // `passAsyncOffload`, and it is why these two ids existed before this package
 // did.
 //

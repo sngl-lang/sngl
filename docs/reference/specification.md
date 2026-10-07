@@ -765,7 +765,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
 | `sngl:tree`         | the `kind` and `none` marks, and the `one<T>` slot count                                           |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
-| `sngl:async`        | `spawn`, `post`                                                                                    |
+| `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
 | `sngl:test`         | `Test`                                                                                             |
 | `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
