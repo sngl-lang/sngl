@@ -155,7 +155,7 @@ func Flip(r string) string {
 func Shape(n int) string {
 	out := ""
 	for _, a := range []string{"start", "end"} {
-		out = (out + fmt.Sprint(a))
+		out = (out + a)
 	}
 	var __lt0 string
 	if n > 1 {
@@ -163,7 +163,7 @@ func Shape(n int) string {
 	} else {
 		__lt0 = "block"
 	}
-	return (out + fmt.Sprint(__lt0))
+	return (out + __lt0)
 }
 
 func (m *Model) __focusNext() {
@@ -355,7 +355,7 @@ func (m Model) View() tea.View {
 		contentPart_0 = lipgloss.NewStyle().Render(contentPart_0Prefix + " " + fmt.Sprint("next"))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
-		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint(m.mood) + " ") + fmt.Sprint(m.mood)) + " ") + fmt.Sprint(m.w)) + " ") + fmt.Sprint(m.look.Weight)) + " ") + Shape(len(m.none)))))
+		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((m.mood + " ") + m.mood) + " ") + m.w) + " ") + m.look.Weight) + " ") + Shape(len(m.none)))))
 		contentParts = append(contentParts, contentPart_1)
 		var contentPart_2 string
 		if m.open {
@@ -690,7 +690,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dbda3ceac241e931467a5960e74fa817
+pass sha256:011adddaecacdd6ac6f7dfb4bb76f79b
 -- run/kotlin/android --
 pass sha256:547c58bd9d00a0578109e2c8e538ac3a
 -- run/none/html --

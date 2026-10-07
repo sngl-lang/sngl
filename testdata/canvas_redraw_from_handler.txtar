@@ -517,21 +517,21 @@ func Source(ctx *C.cairo_t, c snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap string) C.cairo_line_cap_t {
+	if cap == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -735,6 +735,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:053bb16bdf03ecd9de8e01fd88a6dac6
 -- run/go/gtk4 --
-pass sha256:eeae08cfb6bb0e4295933afe4714ce11
+pass sha256:ff916f4b1ffa2cef6a24f198643c5995
 -- run/none/html --
 pass sha256:523fc3baf813fbbb32f7b4dee3954419

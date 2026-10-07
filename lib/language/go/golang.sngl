@@ -247,7 +247,7 @@ func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
     ctx.setStroke(style.stroke.r, style.stroke.g, style.stroke.b, style.stroke.a)
     ctx.setStrokeWidth(style.strokeWidth)
     ctx.setFont(style.fontSize, style.fontFamily)
-    ctx.setLineStyle(style.lineCap, style.lineJoin)
+    ctx.setLineStyle(string(style.lineCap), string(style.lineJoin))
 }
 
 // The shapes, on the language axis: every Go target that draws with pixels
@@ -301,19 +301,19 @@ const component shapes.path[language] {
         e.ctx.save()
         applyStyle(e.ctx, style)
         for var c = cmds {
-            if c.op == "moveTo" {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.cubicTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }

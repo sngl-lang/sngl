@@ -90,21 +90,21 @@ const joinBevel StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
 // for cairo's enums.
-const func strokeCap(name string) StrokeCap {
-    if name == "round" {
+const func strokeCap(cap shapes.LineCap) StrokeCap {
+    if cap == shapes.LineCap.round {
         return capRound
     }
-    if name == "square" {
+    if cap == shapes.LineCap.square {
         return capSquare
     }
     return capButt
 }
 
-const func strokeJoin(name string) StrokeJoin {
-    if name == "round" {
+const func strokeJoin(join shapes.LineJoin) StrokeJoin {
+    if join == shapes.LineJoin.round {
         return joinRound
     }
-    if name == "bevel" {
+    if join == shapes.LineJoin.bevel {
         return joinBevel
     }
     return joinMiter
@@ -244,19 +244,19 @@ const component shapes.path[platform] {
         var at = shapes.Point{x=0.0, y=0.0}
 
         for var c = cmds {
-            if c.op == "moveTo" {
+            if c.op == shapes.PathOp.moveTo {
                 pathMoveTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 pathLineTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 pathCubicTo(p, f32(c.cx1), f32(c.cy1), f32(c.cx2), f32(c.cy2), f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 var a = shapes.tangentArc(at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
                 if a.degenerate {
                     pathLineTo(p, f32(c.cx1), f32(c.cy1))
@@ -266,7 +266,7 @@ const component shapes.path[platform] {
                 }
                 at = a.tangent2
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 pathClose(p)
             }
         }

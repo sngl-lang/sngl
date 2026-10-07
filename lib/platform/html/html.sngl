@@ -863,7 +863,7 @@ const component shapes.rect[platform] {
             // A rectangle has corners, so lineJoin is its to honour. No
             // lineCap: the path closes, so there are no ends for one to shape
             // -- which is also why circle and ellipse set neither.
-            e.ctx.lineJoin = style.lineJoin
+            e.ctx.lineJoin = string(style.lineJoin)
             e.ctx.strokeRect(x, y, w, h)
         }
         e.ctx.restore()
@@ -894,8 +894,8 @@ const component shapes.line[platform] {
         e.ctx.save()
         e.ctx.strokeStyle = cssColor(style.stroke)
         e.ctx.lineWidth = style.strokeWidth
-        e.ctx.lineCap = style.lineCap
-        e.ctx.lineJoin = style.lineJoin
+        e.ctx.lineCap = string(style.lineCap)
+        e.ctx.lineJoin = string(style.lineJoin)
         e.ctx.beginPath()
         e.ctx.moveTo(x1, y1)
         e.ctx.lineTo(x2, y2)
@@ -908,23 +908,23 @@ const component shapes.path[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
         paintStyle(e.ctx, style)
-        e.ctx.lineCap = style.lineCap
-        e.ctx.lineJoin = style.lineJoin
+        e.ctx.lineCap = string(style.lineCap)
+        e.ctx.lineJoin = string(style.lineJoin)
         e.ctx.beginPath()
         for var c = cmds {
-            if c.op == "moveTo" {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }

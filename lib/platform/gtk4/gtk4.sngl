@@ -378,21 +378,21 @@ component draw(@draw DrawEvent) shapes.shape
 // numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
 // here is what makes `lineCap` and `lineJoin` reach this target at all --
 // before the overrides, gtk4 read neither (#223).
-const func lineCap(name string) LineCapValue {
-    if name == "round" {
+const func lineCap(cap shapes.LineCap) LineCapValue {
+    if cap == shapes.LineCap.round {
         return toLineCap(1)
     }
-    if name == "square" {
+    if cap == shapes.LineCap.square {
         return toLineCap(2)
     }
     return toLineCap(0)
 }
 
-const func lineJoin(name string) LineJoinValue {
-    if name == "round" {
+const func lineJoin(join shapes.LineJoin) LineJoinValue {
+    if join == shapes.LineJoin.round {
         return toLineJoin(1)
     }
-    if name == "bevel" {
+    if join == shapes.LineJoin.bevel {
         return toLineJoin(2)
     }
     return toLineJoin(0)
@@ -511,22 +511,22 @@ const component shapes.path[platform] {
 
         e.ctx.save()
         for var c = cmds {
-            if c.op == "moveTo" {
+            if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "lineTo" {
+            if c.op == shapes.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "bezierTo" {
+            if c.op == shapes.PathOp.bezierTo {
                 e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}
             }
-            if c.op == "arcTo" {
+            if c.op == shapes.PathOp.arcTo {
                 at = arcTo(e.ctx, at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
             }
-            if c.op == "close" {
+            if c.op == shapes.PathOp.close {
                 e.ctx.closePath()
             }
         }

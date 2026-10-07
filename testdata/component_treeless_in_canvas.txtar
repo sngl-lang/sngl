@@ -990,21 +990,21 @@ func Source(ctx *C.cairo_t, c snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
 }
 
-func LineCap(name string) C.cairo_line_cap_t {
-	if name == "round" {
+func LineCap(cap string) C.cairo_line_cap_t {
+	if cap == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if name == "square" {
+	if cap == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
 }
 
-func LineJoin(name string) C.cairo_line_join_t {
-	if name == "round" {
+func LineJoin(join string) C.cairo_line_join_t {
+	if join == "round" {
 		return C.cairo_line_join_t(C.int(1))
 	}
-	if name == "bevel" {
+	if join == "bevel" {
 		return C.cairo_line_join_t(C.int(2))
 	}
 	return C.cairo_line_join_t(C.int(0))
@@ -1501,7 +1501,7 @@ pass sha256:6ffa37db9881a3800575d4f05276f563
 -- run/go/fyne --
 pass sha256:405ab19eeb8f4f9499f03f18b947ff34
 -- run/go/gtk4 --
-pass sha256:d1abd77d4fe8478e26c2033fa9b1d499
+pass sha256:06dd0c1770ae730868b0812fc4f90e50
 -- run/kotlin/android --
 pass sha256:0ba987f35115edd2b61ae742bf4280af
 -- run/none/html --

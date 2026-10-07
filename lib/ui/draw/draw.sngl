@@ -7,6 +7,14 @@ import math "sngl:math"
 import marks "sngl:internal/marks"
 import tree "sngl:tree"
 
+// How the end of an open stroke is drawn: flat at the end point, rounded
+// past it, or squared off past it.
+enum LineCap { butt, round, square }
+
+// How two segments of a stroke meet: a sharp corner, a rounded one, or one
+// cut across.
+enum LineJoin { miter, round, bevel }
+
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
 // `fontFamily` apply to `canvasText` only.
@@ -15,18 +23,20 @@ struct CanvasStyle {
     fill color = color{a=0}
     stroke color = color{a=0}
     strokeWidth float = 1.0
-    lineCap string = "butt"   // TODO enum
-    lineJoin string = "miter" // TODO enum
+    lineCap LineCap = butt
+    lineJoin LineJoin = miter
     fontSize float = 16.0
     fontFamily string = "sans-serif"
 }
 
-// One step of a path. `op` is "moveTo", "lineTo", "bezierTo", "arcTo" or
-// "close", and each reads only the fields it needs: `bezierTo` both control
-// points and the end point, `arcTo` one control point, the end point and
-// the radius `r`. The rest keep their zero value.
+// What one step of a path does.
+enum PathOp { moveTo, lineTo, bezierTo, arcTo, close }
+
+// One step of a path. Each `op` reads only the fields it needs: `bezierTo`
+// both control points and the end point, `arcTo` one control point, the end
+// point and the radius `r`. The rest keep their zero value.
 struct PathCmd {
-    op string // TODO enum
+    op PathOp
     x float = 0.0
     y float = 0.0
     cx1 float = 0.0
@@ -175,7 +185,7 @@ const func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inn
 
 // --- The tangent arc ---
 
-// Arc is the corner `PathCmd{op = "arcTo"}` asks for, solved: round off
+// Arc is the corner `PathCmd{op = arcTo}` asks for, solved: round off
 // the corner at `corner` with radius `r`, tangent to the segment arriving from
 // `from` and to the one leaving toward `to`.
 //

@@ -1659,6 +1659,10 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		if ud := UnitStringConversion(n); ud != nil {
 			return UnitStringFn(ud) + "(" + operand + ")"
 		}
+		// An enum value is the string of its member's name already.
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeEnum {
+			return operand
+		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
 	}
