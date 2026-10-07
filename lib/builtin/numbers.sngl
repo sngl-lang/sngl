@@ -9,16 +9,29 @@ import marks "sngl:internal/marks"
 #[marks.builtin("int")]
 struct int {}
 
-// Returns the smaller of two integers. Ties return a (which equals b
-// for integers, so the distinction is vacuous).
-// TODO Variadic
+// Returns the smallest of its arguments, of which there is at least one.
 #[marks.intrinsic("int.min")]
-const func int.min(a int, b int) int { return a < b ? a : b }
+const func int.min(a int, rest ...int) int {
+    var m = a
+    for var x = rest {
+        if x < m {
+            m = x
+        }
+    }
+    return m
+}
 
-// Returns the larger of two integers. Ties return a.
-// TODO Variadic
+// Returns the largest of its arguments, of which there is at least one.
 #[marks.intrinsic("int.max")]
-const func int.max(a int, b int) int { return a > b ? a : b }
+const func int.max(a int, rest ...int) int {
+    var m = a
+    for var x = rest {
+        if x > m {
+            m = x
+        }
+    }
+    return m
+}
 
 // Returns the absolute value of an integer. Behavior on the minimum
 // representable value is platform-defined (may overflow).
@@ -43,16 +56,32 @@ const func int.parse(s string, base int) int
 #[marks.builtin("float")]
 struct float {}
 
-// Returns the smaller of two floats. NaN handling is platform-defined
-// — prefer explicit NaN checks when either operand may be NaN.
-// TODO Variadic
+// Returns the smallest of its arguments, of which there is at least one.
+// NaN handling is platform-defined — prefer explicit NaN checks when an
+// argument may be NaN.
 #[marks.intrinsic("float.min")]
-const func float.min(a float, b float) float { return a < b ? a : b }
+const func float.min(a float, rest ...float) float {
+    var m = a
+    for var x = rest {
+        if x < m {
+            m = x
+        }
+    }
+    return m
+}
 
-// Returns the larger of two floats. See `float.min` for NaN caveats.
-// TODO Variadic
+// Returns the largest of its arguments, of which there is at least one. See
+// `float.min` for NaN caveats.
 #[marks.intrinsic("float.max")]
-const func float.max(a float, b float) float { return a > b ? a : b }
+const func float.max(a float, rest ...float) float {
+    var m = a
+    for var x = rest {
+        if x > m {
+            m = x
+        }
+    }
+    return m
+}
 
 // Returns the absolute value of a float. Preserves +0.0 / -0.0
 // equivalence.

@@ -1101,6 +1101,11 @@ type Param struct {
 	// Const is the `const` prefix: the argument is a compile-time value at
 	// every call site, so a read of the parameter is one too (IsConst).
 	Const bool `json:",omitempty"`
+	// Variadic is a function's last parameter written `...T`. Its Type is
+	// list<T>: the checker packs the positional arguments past the others
+	// into a list literal at each call, so nothing after it sees anything
+	// but an ordinary list argument.
+	Variadic bool `json:",omitempty"`
 }
 
 func (p *Param) SymName() string { return p.Name }

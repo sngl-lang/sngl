@@ -1,0 +1,38 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+// A function's last parameter may be `...T`: it collects the positional
+// arguments past the others into a list<T>, and a list spread into that
+// position contributes its elements.
+func sum(first int, rest ...int) int {
+    var total = first
+    for var x = rest {
+        total += x
+    }
+    return total
+}
+
+func count(xs ...string) => xs.length()
+
+struct Point {
+    first int
+}
+
+component main node {
+    var more = [3, 4]
+    text(value=string(sum(1, 2, ...more)))
+}
+
+func testVariadic(t Test, c main) {
+    t.assert(sum(1) == 1)
+    t.assert(sum(1, 2, 3) == 6)
+    var xs = [2, 3, 4]
+    t.assert(sum(1, ...xs) == 10)
+    t.assert(sum(1, 2, ...xs, 5) == 17)
+    t.assert(sum(first=1, rest=[2, 3]) == 6)
+    t.assert(count() == 0)
+    t.assert(count("a", "b") == 2)
+    // A struct spread still names parameters by its fields.
+    var p = Point{first=7}
+    t.assert(sum(...p) == 7)
+}

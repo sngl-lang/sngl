@@ -2938,6 +2938,22 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 	seenNamed := false
 	ok := true
 
+	// A variadic last parameter takes the positional arguments past the
+	// others, and the elements of a list spread among them, as one list
+	// literal: written by hand, the caller would have built the same.
+	variadic := -1
+	var extras []ir.Expr
+	var extrasPos *ast.Pos
+	if n > 0 && sig.Params[n-1].Variadic {
+		variadic = n - 1
+	}
+	variadicElem := func() *ir.Type {
+		if t := sig.Params[variadic].Type; t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
+			return t.Elems[0]
+		}
+		return TypDyn
+	}
+
 	for _, a := range args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg {
@@ -2948,8 +2964,31 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 		}
 
 		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			var operand ir.Expr
+			if variadic >= 0 && !seenNamed && positional >= variadic {
+				elem := variadicElem()
+				operand = c.checkExprExpecting(sp.Operand, ListOf(elem))
+				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeDyn) {
+					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
+						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
+						ok = false
+						continue
+					}
+					extras = append(extras, &ir.Spread{AST: sp, Type: t, Operand: operand})
+					if extrasPos == nil {
+						extrasPos = &sp.Pos
+					}
+					continue
+				}
+			}
 			seenNamed = true
-			spread, expanded := c.expandSpread(sp)
+			var spread *spreadArg
+			var expanded bool
+			if operand != nil {
+				spread, expanded = c.expandSpreadOf(sp, operand)
+			} else {
+				spread, expanded = c.expandSpread(sp)
+			}
 			if !expanded {
 				ok = false
 				continue
@@ -2994,6 +3033,15 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				ok = false
 				// Still check the expression for side-effects (e.g. async detection).
 				c.checkExpr(arg.Value)
+				continue
+			}
+			if variadic >= 0 && positional >= variadic {
+				expr := c.checkArgExpr(arg.Value, &ir.Param{Type: variadicElem()})
+				extras = append(extras, expr)
+				if extrasPos == nil {
+					extrasPos = arg.Value.ExprPos()
+				}
+				positional++
 				continue
 			}
 			if positional >= n {
@@ -3049,6 +3097,18 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			if p.Const {
 				c.deferConstArg(*arg.Value.ExprPos(), expr, constParamLabel(p.Name))
 			}
+		}
+	}
+
+	if variadic >= 0 {
+		switch {
+		case bound[variadic] == nil:
+			// Given nothing, it is the empty list.
+			lit := ir.Expr(&ir.ListLit{Type: sig.Params[variadic].Type, Elems: extras})
+			bound[variadic] = &lit
+		case extras != nil:
+			c.error(*extrasPos, "parameter %q already provided", sig.Params[variadic].Name)
+			ok = false
 		}
 	}
 
@@ -3244,7 +3304,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
-		if positional >= len(sig.Params) {
+		if positional >= len(sig.Params) && !(len(sig.Params) > 0 && sig.Params[len(sig.Params)-1].Variadic) {
 			expr := c.checkExpr(arg.Value)
 			result = append(result, ir.CallArg{Value: expr})
 		}

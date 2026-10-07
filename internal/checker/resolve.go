@@ -646,7 +646,23 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			c.error(p.Pos, "duplicate parameter %q", p.Name)
 		}
 		seen[p.Name] = struct{}{}
-		typ := c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
+		// `...T` on a function's parameter collects the arguments past the
+		// others. A slot is the other thing `...` bounds, and a component's
+		// parameters never reach here.
+		variadic := false
+		var typ *ir.Type
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			if i != len(pl.Params)-1 {
+				c.error(vt.Pos, "`...` collects the arguments past the others, so only the last parameter may carry one")
+			}
+			if p.Default != nil {
+				c.error(vt.Pos, "parameter %q collects the arguments past the others, so it has no default: given none it is the empty list", p.Name)
+			}
+			variadic = true
+			typ = ir.ListOf(c.resolveTypeRequired(vt.Elem, p.Pos, "parameter "+strconv.Quote(p.Name)))
+		} else {
+			typ = c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
+		}
 		var def ir.Expr
 		if p.Default != nil {
 			// Use a placeholder to signal "has default" for arity checks.
@@ -654,10 +670,11 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			def = &ir.Literal{Type: typ}
 		}
 		params[i] = &ir.Param{
-			Name:    p.Name,
-			Type:    typ,
-			Default: def,
-			Const:   p.Const,
+			Name:     p.Name,
+			Type:     typ,
+			Default:  def,
+			Const:    p.Const,
+			Variadic: variadic,
 		}
 	}
 	return params

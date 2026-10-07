@@ -4,10 +4,12 @@ import math "sngl:math"
 
 component methodfold node {
     // int methods (qualified)
-    var imin = int.min(3, 7) // FOLD 3
-    var imax = int.max(3, 7) // FOLD 7
-    var iabs = int.abs(-5)   // FOLD 5
-    var iabsp = int.abs(5)   // FOLD 5
+    var imin = int.min(3, 7)     // FOLD 3
+    var imax = int.max(3, 7)     // FOLD 7
+    var imin3 = int.min(3, 7, 1) // FOLD 1
+    var imax3 = int.max(3, 9, 7) // FOLD 9
+    var iabs = int.abs(-5)       // FOLD 5
+    var iabsp = int.abs(5)       // FOLD 5
 
     // float methods (qualified)
     var fmin = float.min(1.5, 2.5) // FOLD 1.5

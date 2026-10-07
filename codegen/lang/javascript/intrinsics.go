@@ -91,16 +91,16 @@ func init() {
 	})
 
 	// --- numeric ---
-	reg("int.min", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
-	reg("int.max", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("int.min", "Math.min")
+	regVariadicMinMax("int.max", "Math.max")
 	reg("int.abs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
 	// max(lo, min(x, hi)): with a malformed range lo wins, which is what the
 	// declaration documents and its own body computes.
 	reg("int.clamp", func(a []string) string {
 		return "Math.max(" + a[1] + ", Math.min(" + a[0] + ", " + a[2] + "))"
 	})
-	reg("float.min", func(a []string) string { return "Math.min(" + a[0] + ", " + a[1] + ")" })
-	reg("float.max", func(a []string) string { return "Math.max(" + a[0] + ", " + a[1] + ")" })
+	regVariadicMinMax("float.min", "Math.min")
+	regVariadicMinMax("float.max", "Math.max")
 	reg("float.abs", func(a []string) string { return "Math.abs(" + a[0] + ")" })
 	reg("float.clamp", func(a []string) string {
 		return "Math.max(" + a[1] + ", Math.min(" + a[0] + ", " + a[2] + "))"
@@ -191,4 +191,15 @@ func init() {
 		call := "i18n." + name
 		reg(id, func(a []string) string { return call + "(" + strings.Join(a, ", ") + ")" })
 	}
+}
+
+// regVariadicMinMax emits Math.min and Math.max with a literal rest written
+// out, and any other spread into the call.
+func regVariadicMinMax(id, fn string) {
+	codegen.RegisterIntrinsic(langJS, id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		if parts, ok := codegen.VariadicArgs(args, tr); ok {
+			return fn + "(" + strings.Join(parts, ", ") + ")", nil
+		}
+		return fn + "(" + tr(args[0]) + ", ..." + tr(codegen.VariadicRest(args[1])) + ")", nil
+	})
 }

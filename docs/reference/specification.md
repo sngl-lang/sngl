@@ -988,6 +988,13 @@ function. A parameterless function is a *computed* value (see
 interpolation, or a condition, it is called implicitly. Elsewhere it is a value
 of function type and is called explicitly.
 
+The last parameter may be **variadic**, written `...T`: it collects the
+positional arguments past the others, and the body reads it as a `list<T>`.
+`func sum(first int, rest ...int)` is called as `sum(1)`, `sum(1, 2, 3)` or
+`sum(1, ...xs)`, where a list spread contributes its elements. A spread of a
+struct keeps its meaning, naming parameters by its fields. A variadic parameter
+given no arguments is the empty list, so it takes no default.
+
 A **method** is a function whose name is qualified by a receiver type,
 `func Type.method(…)`. Type parameters may appear after the receiver type
 (receiver-level) and after the method name (method-level); see

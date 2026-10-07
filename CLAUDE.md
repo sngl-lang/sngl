@@ -1433,6 +1433,21 @@ naming one already given is "already provided". Two consequences:
   `checkExpr` stands where one value is taken (a context's value, a
   conversion) and is refused there; `checkListSpread` is the one constructor.
 
+**A function's last parameter may be `...T`**, and it collects the positional
+arguments past the others: `func sum(first int, rest ...int)` reads `rest` as a
+`list<int>` (`ir.Param.Variadic`, whose `Type` is the list). The checker packs
+them into a list literal at each call (`bindArgs`), so nothing after it sees
+anything but a list argument and no backend grew a case. A spread there is the
+other meaning `...` has in an argument list, told apart by the operand's type:
+a list contributes its elements, `sum(1, 2, ...xs)` being `sum(1, [2, ...xs])`,
+and a struct still names parameters by its fields. Given nothing, the parameter
+is the empty list, so it takes no default; naming it, `rest=[2, 3]`, passes the
+list whole. Only a declared function has one: a func type has no `...`, so a
+call through a value of one passes the list. `int.min`, `int.max` and the float
+pair are the library's, and an emitter whose host takes the arguments
+separately writes a literal rest out (`codegen.VariadicArgs`) and folds over any
+other (`testdata/func_variadic.sngl`, `func_variadic.txtar`).
+
 **The operand is evaluated once**, however many fields it fills. Each field is
 an `ir.Select` of the operand, so a computed one (`add(...next())`) carries a
 site id in `Select.Spread` and `ir.StatementSpreads` names the sites a
@@ -1726,8 +1741,8 @@ declaration itself. Two things about the name that are easy to get wrong:
   is only selected on, while binding one to a var would emit the bidirectional
   `chan T` and not compile against it.
 
-  **`go.select` takes a `list<Case>`** -- SNGL has no variadic func parameters,
-  `...` being a slot's -- and each arm is `go.recv(ch, func(v T) { … })`. It is
+  **`go.select` takes a `list<Case>`**, written before SNGL had variadic
+  parameters, and each arm is `go.recv(ch, func(v T) { … })`. It is
   the one thing here that cannot be an `IntrinsicEmitter`: that renders a single
   *expression*, and a select's arms are statement lists. So it is answered from
   `CallStmtLines`, the statement-level seam that already existed, and the arms

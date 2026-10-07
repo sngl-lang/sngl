@@ -11,6 +11,11 @@ func testIntMinMaxAbsClamp(t Test, c main) {
     t.assert(int.min(-1, 5) == -1)
     t.assert(int.max(3, 7) == 7)
     t.assert(int.max(-1, 5) == 5)
+    t.assert(int.min(4) == 4)
+    t.assert(int.min(4, 9, -2, 6) == -2)
+    t.assert(int.max(4, 9, -2, 6) == 9)
+    var rest = [8, 1]
+    t.assert(int.min(5, ...rest) == 1)
     t.assert(int.abs(-5) == 5)
     t.assert(int.abs(5) == 5)
     t.assert(int.clamp(5, 0, 10) == 5)
@@ -27,6 +32,7 @@ func testIntMethodSyntax(t Test, c main) {
 func testFloatMinMaxAbsClamp(t Test, c main) {
     t.assert(float.min(1.5, 2.5) == 1.5)
     t.assert(float.max(1.5, 2.5) == 2.5)
+    t.assert(float.min(1.5, 0.5, 2.5) == 0.5)
     t.assert(float.abs(-3.14) == 3.14)
     t.assert(float.clamp(0.5, 0.0, 1.0) == 0.5)
     t.assert(float.clamp(-0.5, 0.0, 1.0) == 0.0)

@@ -291,3 +291,42 @@ func callName(fn *ir.Func) string {
 	}
 	return fn.Name
 }
+
+// VariadicArgs is a call's arguments with a variadic last one written out:
+// the checker packs the arguments past the others into a list literal, and
+// an emitter whose host takes them as separate arguments wants them back.
+// ok is false when the last argument is not a literal, or spreads another
+// list into itself, so there is no fixed list of arguments to give.
+func VariadicArgs(args []ir.Expr, tr func(ir.Expr) string) (out []string, ok bool) {
+	if len(args) == 0 {
+		return nil, false
+	}
+	lit, isLit := args[len(args)-1].(*ir.ListLit)
+	if !isLit {
+		return nil, false
+	}
+	for _, a := range args[:len(args)-1] {
+		out = append(out, tr(a))
+	}
+	for _, e := range lit.Elems {
+		if _, spread := e.(*ir.Spread); spread {
+			return nil, false
+		}
+		out = append(out, tr(e))
+	}
+	return out, true
+}
+
+// VariadicRest is a variadic argument as a list to read: the list a call
+// spread whole into it, `f(a, ...xs)`, rather than the copy the checker's
+// literal makes of it. Only for an emitter that reads the rest and keeps
+// nothing of it, since the copy is what stops a body writing the caller's
+// list.
+func VariadicRest(arg ir.Expr) ir.Expr {
+	if lit, ok := arg.(*ir.ListLit); ok && len(lit.Elems) == 1 {
+		if sp, ok := lit.Elems[0].(*ir.Spread); ok {
+			return sp.Operand
+		}
+	}
+	return arg
+}

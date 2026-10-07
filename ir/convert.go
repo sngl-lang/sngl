@@ -1159,6 +1159,9 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 			Type:  c.convertType(p.Type),
 			Const: p.Const,
 		}
+		if p.Variadic && p.Type != nil && p.Type.Kind == TypeList && len(p.Type.Elems) == 1 {
+			ap.Type = &ast.VariadicType{Elem: c.convertType(p.Type.Elems[0])}
+		}
 		if p.Default != nil {
 			ap.Default = c.convertExpr(p.Default)
 		}

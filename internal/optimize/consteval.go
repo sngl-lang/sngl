@@ -940,23 +940,9 @@ func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	switch qualName {
-	case "int.min":
-		a, aok := toInt(args[0])
-		b, bok := toInt(args[1])
-		if aok && bok {
-			if a < b {
-				return a, true
-			}
-			return b, true
-		}
-	case "int.max":
-		a, aok := toInt(args[0])
-		b, bok := toInt(args[1])
-		if aok && bok {
-			if a > b {
-				return a, true
-			}
-			return b, true
+	case "int.min", "int.max":
+		if m, ok := foldIntExtreme(args, qualName == "int.min"); ok {
+			return m, true
 		}
 	case "int.abs":
 		x, ok := toInt(args[0])
@@ -966,17 +952,9 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 			}
 			return x, true
 		}
-	case "float.min":
-		a, aok := toFloat(args[0])
-		b, bok := toFloat(args[1])
-		if aok && bok {
-			return math.Min(a, b), true
-		}
-	case "float.max":
-		a, aok := toFloat(args[0])
-		b, bok := toFloat(args[1])
-		if aok && bok {
-			return math.Max(a, b), true
+	case "float.min", "float.max":
+		if m, ok := foldFloatExtreme(args, qualName == "float.min"); ok {
+			return m, true
 		}
 	case "float.abs":
 		x, ok := toFloat(args[0])
@@ -1384,4 +1362,67 @@ func foldNavHref(args []any) (any, bool) {
 		return "", false
 	})
 	return filled, ok
+}
+
+// variadicOperands is a min or max call's first argument followed by the
+// elements of the list its variadic rest arrived as. A call checked before
+// the rest was variadic -- or folded from IR that kept two arguments -- hands
+// the second operand bare, and that is an operand too.
+func variadicOperands(args []any) []any {
+	if len(args) == 0 {
+		return nil
+	}
+	out := []any{args[0]}
+	for _, a := range args[1:] {
+		if xs, ok := a.([]any); ok {
+			out = append(out, xs...)
+		} else {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+func foldIntExtreme(args []any, least bool) (int, bool) {
+	ops := variadicOperands(args)
+	if len(ops) == 0 {
+		return 0, false
+	}
+	m, ok := toInt(ops[0])
+	if !ok {
+		return 0, false
+	}
+	for _, o := range ops[1:] {
+		x, ok := toInt(o)
+		if !ok {
+			return 0, false
+		}
+		if (least && x < m) || (!least && x > m) {
+			m = x
+		}
+	}
+	return m, true
+}
+
+func foldFloatExtreme(args []any, least bool) (float64, bool) {
+	ops := variadicOperands(args)
+	if len(ops) == 0 {
+		return 0, false
+	}
+	m, ok := toFloat(ops[0])
+	if !ok {
+		return 0, false
+	}
+	for _, o := range ops[1:] {
+		x, ok := toFloat(o)
+		if !ok {
+			return 0, false
+		}
+		if least {
+			m = math.Min(m, x)
+		} else {
+			m = math.Max(m, x)
+		}
+	}
+	return m, true
 }
