@@ -13,9 +13,10 @@ import marks "sngl:internal/marks"
 // document per iteration (html). One the build cannot read is an error at the
 // call, since no target parses markdown while the program runs.
 //
-// What the scheme does with a fence's `mode=` it does not do here: every fence
-// is a sample, shown and highlighted. A live example belongs in a file the
-// scheme imports, where it is checked as part of the program.
+// Every fence is a sample, shown and highlighted, and one whose `mode=` asks
+// for anything else is an error at the call: a live example is source the
+// program compiles, and a string parsed here is read after the check. It
+// belongs in a file the scheme imports.
 //
 // The tree is the scheme's in every respect but one. A list nests three deep
 // here, and a list inside the third is laid out in its item's place: the tree
@@ -243,13 +244,41 @@ component _runs(runs list<_Run>) markup.span {
     }
 }
 
+// One run, written with the member the scheme writes for the span around it,
+// so the two doors to a document come out as one tree: bare words, or words in
+// `markup.bold`, `markup.italic`, `markup.strike` or `markup.monospace`. The
+// parse hands a run every span that encloses it rather than their nesting, so
+// a run under two of them -- bold italic -- is one `markup.run` carrying both,
+// which renders the same and is the one place the trees differ. One branch per
+// style rather than a component per span: each `if` here is written out at
+// every call, and a target that runs the loops (bubbletea) writes them all.
 component _run(r _Run) markup.span {
-    markup.run(style={
-        fontWeight = r.bold ? markup.Weight.bold : markup.Weight.inherit,
-        fontStyle = r.italic ? markup.Slant.italic : markup.Slant.inherit,
-        strike = r.strike,
-        fontFamily = r.mono ? "monospace" : "",
-    }) {
+    if !r.bold && !r.italic && !r.strike && !r.mono {
         markup.text(value=r.text)
+    } else if r.bold && !r.italic && !r.strike && !r.mono {
+        markup.bold {
+            markup.text(value=r.text)
+        }
+    } else if r.italic && !r.bold && !r.strike && !r.mono {
+        markup.italic {
+            markup.text(value=r.text)
+        }
+    } else if r.mono && !r.bold && !r.italic && !r.strike {
+        markup.monospace {
+            markup.text(value=r.text)
+        }
+    } else if r.strike && !r.bold && !r.italic && !r.mono {
+        markup.strike {
+            markup.text(value=r.text)
+        }
+    } else {
+        markup.run(style={
+            fontWeight = r.bold ? markup.Weight.bold : markup.Weight.inherit,
+            fontStyle = r.italic ? markup.Slant.italic : markup.Slant.inherit,
+            strike = r.strike,
+            fontFamily = r.mono ? "monospace" : "",
+        }) {
+            markup.text(value=r.text)
+        }
     }
 }

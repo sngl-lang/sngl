@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
@@ -97,6 +98,7 @@ func (p *mdParser) block(n gast.Node, quoted bool, depth int) []Block {
 	case *gast.Blockquote:
 		return p.blocks(n, true, depth)
 	case *gast.FencedCodeBlock:
+		p.refuseLiveFence(n)
 		return []Block{codeBlock(trimNewline(linesOf(n, p.src)), languageOf(n, p.src))}
 	case *gast.CodeBlock:
 		return []Block{codeBlock(trimNewline(linesOf(n, p.src)), "")}
@@ -113,6 +115,26 @@ func (p *mdParser) block(n gast.Node, quoted bool, depth int) []Block {
 	}
 	p.fail("unsupported markdown block %T", n)
 	return nil
+}
+
+// refuseLiveFence fails on a fence whose `mode=` asks for anything but a
+// sample. A live fence is source the program compiles, and a string parsed
+// while the program builds is past the point where anything joins it: the
+// check is over. Saying `view` is saying the default, and a trailer this does
+// not name is left alone, as the scheme leaves one.
+func (p *mdParser) refuseLiveFence(n *gast.FencedCodeBlock) {
+	if n.Info == nil {
+		return
+	}
+	for f := range strings.FieldsSeq(string(n.Info.Segment.Value(p.src))) {
+		spelling, ok := strings.CutPrefix(f, "mode=")
+		if !ok || spelling == "view" {
+			continue
+		}
+		line := 1 + strings.Count(string(p.src[:n.Info.Segment.Start]), "\n")
+		p.fail("line %d: a fence with mode=%s is live, and markdown md.document parses is read after the program is checked; import the document through md: to compile it", line, spelling)
+		return
+	}
 }
 
 // list reads a list one level below depth, or splices its items' blocks into

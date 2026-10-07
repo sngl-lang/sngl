@@ -147,6 +147,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
+	if comp.Stdlib && !childCtx.site.IsValid() {
+		childCtx.site = ir.NodePos(n)
+	}
 	for name, val := range propValues {
 		if _, ref := propRefs[name]; ref {
 			continue

@@ -2815,7 +2815,17 @@ things follow from the tree being rendered rather than written out:
   text, which bubbletea can also hold in a loop.
 - **A list nests three deep**, one component per level, since a component
   calling itself is built at run time; deeper items are laid out in their
-  parent's place. A fence's `mode=` is not read: every fence is a sample.
+  parent's place.
+- **Prose is the scheme's tree**: a run is bare `markup.text` or the one span
+  member the scheme writes around it (`markup.bold`, `italic`, `strike`,
+  `monospace`), so the html is the importer's byte for byte. Only a run under
+  two spans differs -- the parse hands it its styles rather than their
+  nesting -- and is one `markup.run` carrying both.
+- **A live fence is refused.** `mode=island`, `package` or `body` is source
+  the program compiles, and a string parsed here is read after the check; the
+  error names the markdown line and is reported at the program's node rather
+  than the library's call (`evalCtx.site`, set where the optimizer splices a
+  library body). `mode=view` is the default and passes.
 - **The source must be known while the program builds.** An argument reading
   state is refused at the argument right after the first optimize
   (`refuseStateIntoBuildCalls`); a call no fold answered is refused at the node

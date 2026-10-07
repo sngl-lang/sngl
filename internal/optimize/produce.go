@@ -104,7 +104,11 @@ func (ctx *evalCtx) fail(err error) {
 	}
 	var he *buildhost.Error
 	if errors.As(err, &he) && he.Pos().IsValid() {
-		err = ir.Diagnostic{Pos: he.Pos(), Msg: he.Err().Error(), Severity: ir.Error}
+		pos := he.Pos()
+		if ctx.site.IsValid() {
+			pos = ctx.site
+		}
+		err = ir.Diagnostic{Pos: pos, Msg: he.Err().Error(), Severity: ir.Error}
 	}
 	ctx.err = err
 }

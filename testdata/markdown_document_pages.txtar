@@ -55,8 +55,8 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span><span>A</span></span></h1>
-  <p style="margin:0px;white-space:pre-wrap"><span><span>First </span></span><span style="font-style:italic"><span>page</span></span><span><span>.</span></span></p>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>A</span></h1>
+  <p style="margin:0px;white-space:pre-wrap"><span>First </span><em><span>page</span></em><span>.</span></p>
 </div>
 
 <script>
@@ -81,18 +81,18 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span><span>B</span></span></h1>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>B</span></h1>
   <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
     <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
       <span>•</span>
       <div style="display:flex;flex-direction:column">
-        <p style="margin:0px;white-space:pre-wrap"><span><span>second</span></span></p>
+        <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
       </div>
     </div>
     <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
       <span>•</span>
       <div style="display:flex;flex-direction:column">
-        <p style="margin:0px;white-space:pre-wrap"><span><span>page</span></span></p>
+        <p style="margin:0px;white-space:pre-wrap"><span>page</span></p>
       </div>
     </div>
   </div>
@@ -106,4 +106,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:00cbf631ad225ed651b631a663533089
+pass sha256:2dcddc78b1b9a7b3c94653b248995c6e
