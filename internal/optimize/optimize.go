@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/buildhost"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
@@ -167,6 +168,11 @@ type evalCtx struct {
 	hostMemo map[*ir.Func]bool
 	// cfg is the run's Config, for what a fold reports back to it.
 	cfg *Config
+	// site is the node the program wrote that a library body being folded
+	// was spliced in for, invalid outside one. A fold that fails reading the
+	// host inside that body is reported there: the call that failed is the
+	// library's, and says nothing about which of the program's nodes asked.
+	site ast.Pos
 }
 
 // child returns a context for folding a nested scope — a for-loop iteration,

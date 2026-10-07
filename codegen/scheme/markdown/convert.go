@@ -9,6 +9,7 @@ import (
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	east "github.com/yuin/goldmark/extension/ast"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
@@ -60,9 +61,13 @@ func (d *docState) page(src []byte, name string) ([]constDecl, string, error) {
 		return nil, "", fmt.Errorf("md: %s: %w", name, err)
 	}
 	d.name, d.lineOffset = name, lineOffset
-	// The same goldmark the doc site parses with, GFM and all: two readings of
-	// one document is a difference nobody would look for.
-	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(body))
+	// The same goldmark the doc site parses with, GFM and heading ids and all:
+	// two readings of one document is a difference nobody would look for, and
+	// an in-page `#` link names the id goldmark gave the heading.
+	doc := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+	).Parser().Parse(text.NewReader(body))
 	var err0 error
 	inner := &emitter{src: body, depth: 2, err: &err0, doc: d}
 	inner.blocks(doc, false)
@@ -181,7 +186,7 @@ func (e *emitter) blocks(n gast.Node, quoted bool) {
 func (e *emitter) block(n gast.Node, quoted bool) {
 	switch n := n.(type) {
 	case *gast.Heading:
-		e.wrap(fmt.Sprintf("markup.heading%d", n.Level), "", func(e *emitter) { e.inlines(n) })
+		e.wrap(fmt.Sprintf("markup.heading%d", n.Level), headingAnchor(n), func(e *emitter) { e.inlines(n) })
 	case *gast.Paragraph:
 		e.paragraph(n, quoted)
 	case *gast.TextBlock:
@@ -211,6 +216,27 @@ func (e *emitter) block(n gast.Node, quoted bool) {
 	default:
 		e.fail("unsupported markdown block %T", n)
 	}
+}
+
+// headingAnchor is the `anchor` argument for a heading: the id goldmark's
+// WithAutoHeadingID gave it, deduplicated per document as goldmark does, so a
+// `#` link written against the rendered page finds it.
+func headingAnchor(n *gast.Heading) string {
+	id := anchorOf(n)
+	if id == "" {
+		return ""
+	}
+	return "anchor=" + str(id)
+}
+
+// anchorOf is the id goldmark's WithAutoHeadingID gave a heading, or "".
+func anchorOf(n *gast.Heading) string {
+	id, ok := n.AttributeString("id")
+	if !ok {
+		return ""
+	}
+	b, _ := id.([]byte)
+	return string(b)
 }
 
 func (e *emitter) paragraph(n gast.Node, quoted bool) {

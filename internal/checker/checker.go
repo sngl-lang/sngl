@@ -297,6 +297,9 @@ type checker struct {
 	fileScopesByName map[string]*ir.Scope
 	// overrideFile says which file an installed override's body came from.
 	overrideFile overrideFile
+	// installedOverride is the component whose body is an override's while
+	// that body is checked, user or library.
+	installedOverride *ir.Component
 	// shellMarks queues the marks on a struct shell, enum or unit while pass1
 	// is still registering declarations, so a package's own macro is in scope
 	// by the time one that names it runs. Non-nil only for that window.
@@ -1271,6 +1274,17 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedFuncDepth, savedLoopDepth := c.funcDepth, c.loopDepth
 	savedComp := c.currentComponent
 	c.funcDepth, c.loopDepth, c.currentComponent = 0, 0, nil
+	// The same holds for the expression the load interrupted. An undefined
+	// name's hint loads every public package from inside the expression it was
+	// read in, and `r=nope` on a float prop left `float` expected: the loaded
+	// package's `f.trim().length() > 0` then checked its `0` as a float and
+	// reported a library error in place of the program's.
+	savedExpected, savedReturn, savedOutput := c.expected, c.returnType, c.outputDepth
+	savedStmtCall := c.stmtCall
+	savedFunc, savedOuter, savedNested := c.currentFunc, c.funcOuterScope, c.nestedScope
+	c.expected, c.returnType, c.outputDepth, c.stmtCall = nil, nil, 0, nil
+	c.currentFunc, c.funcOuterScope, c.nestedScope = nil, nil, nil
+	restoreNarrow := c.clearNarrowings()
 	restoreFile := c.saveFile()
 	c.docs = docs
 	// A library package is its own declaration set: a name the program already
@@ -1289,6 +1303,10 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.shellMarks = savedShellMarks
 		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
 		c.currentComponent = savedComp
+		c.expected, c.returnType, c.outputDepth = savedExpected, savedReturn, savedOutput
+		c.stmtCall = savedStmtCall
+		c.currentFunc, c.funcOuterScope, c.nestedScope = savedFunc, savedOuter, savedNested
+		restoreNarrow()
 	}
 }
 
@@ -4156,7 +4174,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// A slot is a Param too, and is not in comp.Props -- counting one
 			// here walks propIdx off the end of the props it is indexing.
 			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
-				if propIdx < len(comp.Props) && pd.Default != nil {
+				// A default is the declaration's, written in its file against
+				// its imports. An override installed on the declaration has
+				// no business reading it again from the override's file, where
+				// `task Task = Task.none` names a type nothing there imports;
+				// once the declaration's own check has set it, it stands.
+				if propIdx < len(comp.Props) && pd.Default != nil && !(c.installedOverride == comp && comp.Props[propIdx].Default != nil) {
 					prop := comp.Props[propIdx]
 					// A default states a value of what the prop takes here,
 					// which for `on T = 0` under `<T = int>` is an int. A

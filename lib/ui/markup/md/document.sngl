@@ -1,0 +1,262 @@
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+import marks "sngl:internal/marks"
+
+// A markdown document written as a string, rendered as the blocks the `md:`
+// scheme would write for it: the hand-written door to the same tree.
+//
+//     md.document(source="# Hello\n\nSome *emphasis*.")
+//
+// The source is parsed while the program builds, with the same parser the
+// scheme reads a file with, so it has to be known then: a literal, a const, or
+// a field of what a loop over a const hands out on a target that writes a
+// document per iteration (html). One the build cannot read is an error at the
+// call, since no target parses markdown while the program runs.
+//
+// Every fence is a sample, shown and highlighted, and one whose `mode=` asks
+// for anything else is an error at the call: a live example is source the
+// program compiles, and a string parsed here is read after the check. It
+// belongs in a file the scheme imports.
+//
+// The tree is the scheme's in every respect but three. A list nests three deep
+// here, and a list inside the third is laid out in its item's place: the tree
+// is rendered by components that cannot call themselves, which is what keeps
+// it markup a target writes out rather than code that builds it at run time. A
+// run under two spans is one `markup.run` carrying both. And a table is rows
+// of text rather than `ui.table`, which renders nothing on fyne or android and
+// has no gtk4 implementation.
+component document(source string) ui.node {
+    ui.vbox(style={gap=12px}) {
+        for var b = _parse(source) {
+            if b.kind == _Kind.list {
+                _list1(b=b)
+            } else {
+                _leaf(b=b)
+            }
+        }
+    }
+}
+
+// What a block of a parsed document is.
+enum _Kind { paragraph, heading1, heading2, heading3, heading4, heading5, heading6, quote, code, rule, list, table }
+
+// One block of a parsed document. Which fields mean anything is the kind's
+// answer: `runs` for prose and code, `ordered`, `start` and `items` for a
+// list, `columns` and `rows` for a table.
+struct _Block {
+    kind _Kind = _Kind.paragraph
+    anchor string = ""
+    runs list<_Run> = []
+    ordered bool = false
+    start int = 1
+    items list<_Item> = []
+    columns list<string> = []
+    rows list<list<string>> = []
+}
+
+// One item of a list, holding blocks of its own.
+struct _Item {
+    marker string = ""
+    task markup.Task = markup.Task.none
+    blocks list<_Block> = []
+}
+
+// A run of words and what is true of them. A link is a run whose `parts` are
+// its words, and an image a run whose `text` is its description; in a code
+// block, `token` is what the highlighter called the run.
+struct _Run {
+    text string = ""
+    bold bool = false
+    italic bool = false
+    strike bool = false
+    mono bool = false
+    href string = ""
+    image string = ""
+    token markup.Token = markup.Token.plain
+    parts list<_Run> = []
+}
+
+#[marks.intrinsic("md.parse", build)]
+const func _parseMarkdown(source string) list<_Block>
+
+// The blocks of source. A const func of its own, because that is what the
+// build folds: the intrinsic is the parser, and this is the call it answers.
+const func _parse(source string) list<_Block> {
+    return _parseMarkdown(source)
+}
+
+// A block that holds no blocks.
+component _leaf(b _Block) ui.node {
+    if b.kind == _Kind.paragraph {
+        markup.paragraph {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading1 {
+        markup.heading1(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading2 {
+        markup.heading2(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading3 {
+        markup.heading3(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading4 {
+        markup.heading4(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading5 {
+        markup.heading5(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.heading6 {
+        markup.heading6(anchor=b.anchor) {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.quote {
+        markup.quote {
+            _runs(runs=b.runs)
+        }
+    } else if b.kind == _Kind.code {
+        markup.codeBlock {
+            for var r = b.runs {
+                markup.token(kind=r.token) {
+                    markup.text(value=r.text)
+                }
+            }
+        }
+    } else if b.kind == _Kind.rule {
+        ui.divider
+    } else if b.kind == _Kind.table {
+        _table(b=b)
+    }
+}
+
+// A table, as rows of cells. Not `ui.table`, which a target may build as a
+// widget from its props when the program starts -- bubbletea does -- and so
+// cannot stand in a loop, which is where every block here stands.
+component _table(b _Block) ui.node {
+    ui.vbox(style={gap=4px}) {
+        ui.hbox(style={gap=16px}) {
+            for var cell = b.columns {
+                ui.text(value=cell, style={fontWeight=ui.FontWeight.bold, minWidth=80px})
+            }
+        }
+        for var r = b.rows {
+            ui.hbox(style={gap=16px}) {
+                for var cell = r {
+                    ui.text(value=cell, style={minWidth=80px})
+                }
+            }
+        }
+    }
+}
+
+// A list, written with `markup.list` and `markup.listItem` as the scheme
+// writes one -- so a target that overrides them renders this one too, html's
+// `<ul>`, `<ol>` and a task's real checkbox included -- and the two levels of
+// list it may hold. Three components rather than one calling itself: the
+// optimizer unrolls no loop, so a call made inside one never sees the
+// constant it would need to splice, and a component that calls itself is then
+// built at run time. See `document`.
+component _list1(b _Block) ui.node {
+    markup.list(ordered=b.ordered, start=b.start) {
+        for var it = b.items {
+            markup.listItem(marker=it.marker, task=it.task) {
+                for var inner = it.blocks {
+                    if inner.kind == _Kind.list {
+                        _list2(b=inner)
+                    } else {
+                        _leaf(b=inner)
+                    }
+                }
+            }
+        }
+    }
+}
+
+component _list2(b _Block) ui.node {
+    markup.list(ordered=b.ordered, start=b.start) {
+        for var it = b.items {
+            markup.listItem(marker=it.marker, task=it.task) {
+                for var inner = it.blocks {
+                    if inner.kind == _Kind.list {
+                        _list3(b=inner)
+                    } else {
+                        _leaf(b=inner)
+                    }
+                }
+            }
+        }
+    }
+}
+
+component _list3(b _Block) ui.node {
+    markup.list(ordered=b.ordered, start=b.start) {
+        for var it = b.items {
+            markup.listItem(marker=it.marker, task=it.task) {
+                for var inner = it.blocks {
+                    _leaf(b=inner)
+                }
+            }
+        }
+    }
+}
+
+// The runs of one flow.
+component _runs(runs list<_Run>) markup.span {
+    for var r = runs {
+        if r.image != "" {
+            markup.image(src=r.image, alt=r.text)
+        } else if r.href != "" {
+            markup.link(href=r.href) {
+                for var p = r.parts {
+                    _run(r=p)
+                }
+            }
+        } else {
+            _run(r=r)
+        }
+    }
+}
+
+// One run, written with the member the scheme writes for the span around it,
+// so the two doors to a document come out as one tree: bare words, or words in
+// `markup.bold`, `markup.italic`, `markup.strike` or `markup.monospace`. The
+// parse hands a run every span that encloses it rather than their nesting, so
+// a run under two of them -- bold italic -- is one `markup.run` carrying both,
+// which renders the same and is the one place the trees differ. One branch per
+// style rather than a component per span: each `if` here is written out at
+// every call, and a target that runs the loops (bubbletea) writes them all.
+component _run(r _Run) markup.span {
+    if !r.bold && !r.italic && !r.strike && !r.mono {
+        markup.text(value=r.text)
+    } else if r.bold && !r.italic && !r.strike && !r.mono {
+        markup.bold {
+            markup.text(value=r.text)
+        }
+    } else if r.italic && !r.bold && !r.strike && !r.mono {
+        markup.italic {
+            markup.text(value=r.text)
+        }
+    } else if r.mono && !r.bold && !r.italic && !r.strike {
+        markup.monospace {
+            markup.text(value=r.text)
+        }
+    } else if r.strike && !r.bold && !r.italic && !r.mono {
+        markup.strike {
+            markup.text(value=r.text)
+        }
+    } else {
+        markup.run(style={
+            fontWeight = r.bold ? markup.Weight.bold : markup.Weight.inherit,
+            fontStyle = r.italic ? markup.Slant.italic : markup.Slant.inherit,
+            strike = r.strike,
+            fontFamily = r.mono ? "monospace" : "",
+        }) {
+            markup.text(value=r.text)
+        }
+    }
+}

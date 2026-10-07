@@ -1263,7 +1263,9 @@ func (c *checker) checkPendingExtensions() {
 			if pe.user {
 				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
 			}
+			c.installedOverride = pe.comp
 			c.checkComponentBody(pe.comp)
+			c.installedOverride = nil
 			c.overrideFile = overrideFile{}
 			// While the override's state is still installed, because that is
 			// the body a component nested in it was written in. Left to

@@ -88,6 +88,12 @@ func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Docum
 		yield(nil, err)
 		return false
 	}
+	// The build left a call only it can answer in the view for the fold to
+	// answer per document; one still standing has nothing left to answer it.
+	if err := codegen.RefuseUnfoldedBuildCalls(doc.Body); err != nil {
+		yield(nil, err)
+		return false
+	}
 	doc.FileAssets = append(doc.FileAssets, fold.TakeFileAssets()...)
 	return yield(doc, nil)
 }

@@ -11,24 +11,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
-// renderDeclBody returns rendered HTML for the given lookup result. Used to
-// pre-bake DeclPage.Body so the website can drop the page contents in via
-// docui.Markdown without depending on the optimizer to fold a runtime
-// lookup.Resolve call. `pkg` lets renderers cross-link to sibling decl pages
-// (e.g. methods → method detail pages) using the same URL scheme as
-// declPageHref.
-func renderDeclBody(pkg string, res Result) string {
-	md := buildDeclMarkdown(pkg, res)
-	if md == "" {
-		return ""
-	}
-	html, err := docsite.RenderMarkdown([]byte(md))
-	if err != nil {
-		return md
-	}
-	return string(html)
-}
-
+// buildDeclMarkdown returns the markdown source of the given lookup result's
+// page, which the website renders with md.document -- parsed while the site
+// builds, into the same markup tree a page of docs/ is. `pkg` lets renderers
+// cross-link to sibling decl pages (e.g. methods → method detail pages) using
+// the same URL scheme as declPageHref.
 func buildDeclMarkdown(pkg string, res Result) string {
 	switch res.Kind {
 	case KindComponent:

@@ -62,6 +62,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	if f.Intrinsic != "" {
 		return nil
 	}
+	// A function that reaches the build host keeps its call: it is a
+	// producer, folded whole where its arguments are known and stored by its
+	// own identity (produce). Spliced, the bare intrinsic it wraps is left,
+	// which nothing folds -- and a call whose arguments a later fold binds,
+	// a page's loop variable, is the one still to be answered.
+	if ir.ReachesBuildHost(f, ctx.hostMemoOrNew()) {
+		return nil
+	}
 	if len(f.TypeParams) > 0 {
 		return nil // skip generic functions
 	}

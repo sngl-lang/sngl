@@ -80,7 +80,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Alpha</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="alpha"><span>Alpha</span></h1>
   </div>
 </div>
 
@@ -110,7 +110,7 @@ body { font-family: system-ui, sans-serif; }
   <span>child: Middle</span>
   <span>child: Alpha</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Home</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="home"><span>Home</span></h1>
   </div>
 </div>
 
@@ -137,7 +137,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Middle</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="middle"><span>Middle</span></h1>
   </div>
 </div>
 
@@ -164,7 +164,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Zeta</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="zeta"><span>Zeta</span></h1>
   </div>
 </div>
 
@@ -176,4 +176,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c190818f3668402ae8cfc54594c9a600
+pass sha256:d85547d8bfe5dc86dafcf17862b65752

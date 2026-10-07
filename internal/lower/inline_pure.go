@@ -394,7 +394,9 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// with it. canInline asks the same questions (inline_components.go), and
 	// asking only about Body here is how a timer-only component vanished from
 	// every platform with no diagnostic -- a timer is a node in the body now,
-	// so Body is what answers for one.
+	// so Body is what answers for one. Not comp.Bodyless either: `{}` holds
+	// nothing too, and a bodyless declaration a target overrode holds the
+	// override's body by now.
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		// A user component declaring nothing at all renders nothing, so the
 		// node goes rather than reaching a codegen that has to guess what an

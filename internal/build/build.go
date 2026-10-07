@@ -167,6 +167,9 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
 	}
+	if err := refuseStateIntoBuildCalls(tpkg); err != nil {
+		return Result{}, err
+	}
 	slog.Info("optimize", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
 	plat := codegen.LookupPlatform(target.Platform)
@@ -195,7 +198,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		if err := refuseBuildOnlyCalls(tpkg); err != nil {
+		if err := refuseBuildOnlyCalls(tpkg, false); err != nil {
 			return Result{}, err
 		}
 		return Result{Target: target, Pkg: tpkg, Files: emitted, Warnings: optCfg.Warnings}, nil
@@ -220,7 +223,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
 	}
-	if err := refuseBuildOnlyCalls(tpkg); err != nil {
+	if err := refuseBuildOnlyCalls(tpkg, codegen.PlatformRendersViewStatically(target.Platform, target.Lang)); err != nil {
 		return Result{}, err
 	}
 	slog.Info("optimize2", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -253,29 +256,6 @@ func inDir(dir string, err error) error {
 		return err
 	}
 	return fmt.Errorf("%s: %w", dir, err)
-}
-
-// refuseBuildOnlyCalls reports a call to an intrinsic only the build answers
-// -- sngl:x/gen's host API -- that survived the optimizer: one written
-// outside a const func, or in one whose arguments are not known until the
-// program runs. No target can make it.
-func refuseBuildOnlyCalls(pkg *ir.Package) error {
-	var found *ir.Call
-	ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && c.Func != nil && c.Func.BuildOnly {
-			found = c
-			return ir.SkipAll
-		}
-		return nil
-	})
-	if found == nil {
-		return nil
-	}
-	d := ir.Diagnostic{Severity: ir.Error, Msg: fmt.Sprintf("%s reads the machine the build runs on, so only the build can call it, and this call was left for the program to make: call it from a const func whose arguments are known at build time", found.Func.Intrinsic)}
-	if found.AST != nil {
-		d.Pos = found.AST.Pos
-	}
-	return d
 }
 
 func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {

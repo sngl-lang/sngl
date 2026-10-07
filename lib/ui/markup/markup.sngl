@@ -33,9 +33,15 @@ component span build.family
 // block components at the foot of this file, which are each a `richText` with
 // its role already set -- and what goes between them is everything a document
 // holds that this family does not describe.
+//
+// `anchor` names the flow for a link into the middle of a document -- the
+// `#id` a heading is reached by. Empty is no name. A host with addresses (an
+// html page) writes it; the rest have nothing a link could land on, and ignore
+// it.
 component richText(
     style ui.Style,
     role Role,
+    anchor string = "",
     content ...component span,
 ) ui.node
 
@@ -329,43 +335,43 @@ component image(src string, alt string) span
 // The six levels are six components rather than one taking a level, for the
 // reason `Role` gives: a level is only ever one of six, and a number can be
 // none of them.
-component heading1(content ...component span) ui.node {
-    richText(role=Role.heading1, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
+component heading1(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading1, anchor=anchor, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A section title.
-component heading2(content ...component span) ui.node {
-    richText(role=Role.heading2, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
+component heading2(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading2, anchor=anchor, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A subsection title.
-component heading3(content ...component span) ui.node {
-    richText(role=Role.heading3, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
+component heading3(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading3, anchor=anchor, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title below a subsection.
-component heading4(content ...component span) ui.node {
-    richText(role=Role.heading4, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
+component heading4(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading4, anchor=anchor, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title four levels down; rare outside a reference document.
-component heading5(content ...component span) ui.node {
-    richText(role=Role.heading5, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
+component heading5(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading5, anchor=anchor, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // The deepest title a document outline has.
-component heading6(content ...component span) ui.node {
-    richText(role=Role.heading6, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
+component heading6(anchor string = "", content ...component span) ui.node {
+    richText(role=Role.heading6, anchor=anchor, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }

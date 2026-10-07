@@ -86,7 +86,7 @@ func TestServedDeclarationsCarryTheirInputs(t *testing.T) {
 	gencache.RegisterSetting(girSetting, func() string { return g.girOpt })
 	defer registerGIRScheme(codegen.LookupPlatform(platformName).(*Generator))
 	rec := buildhost.NewRecorder()
-	out, err := g.girWidgets(rec, nil)
+	out, err := g.girWidgets(rec, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestMissingNamedGIRIsUnavailable(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "--opt gir=") {
 		t.Errorf("Unavailable() = %v, want the --opt gir= message", err)
 	}
-	if _, err := g.girWidgets(buildhost.NewRecorder(), nil); err == nil {
+	if _, err := g.girWidgets(buildhost.NewRecorder(), nil, nil); err == nil {
 		t.Error("a platform with no GIR wrote widgets")
 	}
 }
