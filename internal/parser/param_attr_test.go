@@ -168,7 +168,7 @@ func TestFormatParamAttrsMultiline(t *testing.T) {
 	// without a body rather than inventing `{}`.
 	fn.Block = ast.StmtBlock{Pos: ast.Pos{Line: 1, Column: 1}}
 	doc := &ast.Document{Stmts: []ast.Stmt{fn}}
-	const want = "func f(\n    tag string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
+	const want = "func f(\n    tag        string,\n    #[mark(\"^data-\")]\n    attributes string,\n) {}\n"
 	if got := Format(doc); got != want {
 		t.Errorf("format:\ngot:  %q\nwant: %q", got, want)
 	}

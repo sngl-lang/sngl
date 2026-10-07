@@ -98,7 +98,7 @@ func TestFormatConstExpr(t *testing.T) {
 func TestFormatStruct(t *testing.T) {
 	assertFormat(t,
 		"struct Todo {\n    title string\n    done bool\n}",
-		"struct Todo {\n    title string\n    done bool\n}")
+		"struct Todo {\n    title string\n    done  bool\n}")
 }
 
 func TestFormatEmptyStruct(t *testing.T) {
