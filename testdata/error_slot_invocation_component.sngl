@@ -33,7 +33,7 @@ component site(
 
 component main node {
     site {
-        component layout(title) { // ERROR(check) "slot \"layout\" binds 1 parameter(s), but declares 2"
+        component layout(title) {
             text(value=title)
         }
         component plain(s) {

@@ -7,6 +7,7 @@ Zeta; the root's list of children says Zeta, Middle, Alpha.
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 import docs "md:./docs/"
 
 output {
@@ -15,14 +16,16 @@ output {
     }
 }
 
-docs.site {
-    component layout(page, content) {
-        ui.window(title=page.frontmatter.title, href=page.href) {
-            ui.vbox {
-                for var child = page.children {
-                    ui.text(value="child: {child.frontmatter.title}")
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        docs.site {
+            component layout(page, content) {
+                ui.vbox {
+                    for var child = page.children {
+                        ui.text(value="child: {child.frontmatter.title}")
+                    }
+                    content
                 }
-                content
             }
         }
     }
@@ -77,14 +80,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Alpha</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="alpha"><span>Alpha</span></h1>
   </div>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -107,14 +110,14 @@ body { font-family: system-ui, sans-serif; }
   <span>child: Middle</span>
   <span>child: Alpha</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Home</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="home"><span>Home</span></h1>
   </div>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -134,14 +137,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Middle</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="middle"><span>Middle</span></h1>
   </div>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -161,16 +164,16 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Zeta</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap" id="zeta"><span>Zeta</span></h1>
   </div>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6110c6813c608f4198af597e7d17dc08
+pass sha256:d85547d8bfe5dc86dafcf17862b65752

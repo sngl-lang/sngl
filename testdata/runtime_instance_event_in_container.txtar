@@ -334,7 +334,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -561,7 +561,6 @@ type Model struct {
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*CardInstance
-	__n2         gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -748,11 +747,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__renderSlot0(m.__n2)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n2, 6)
+	m.__renderSlot0(__n2)
+	gtk4rt.BoxAppend(m.__root, __n2)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -1046,9 +1045,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:175364fe25b471fad9147eceb8c89cfb
 -- run/go/fyne --
-pass sha256:596a94e41bfeb0300ff272c9fa808b4b
+pass sha256:7afa0b584496a1922659c53d5fa45a99
 -- run/go/gtk4 --
-pass sha256:a40f18107a5ae0d7255f07318d4b44a6
+pass sha256:5273b646760366aed4359e3f12a04ef5
 -- run/kotlin/android --
 pass sha256:8fced1626b74d4e7e0c5aefcb1148baf
 -- run/none/html --

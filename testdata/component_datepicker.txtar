@@ -400,7 +400,6 @@ func boolToInt(b bool) int {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	d      time.Time
-	__n0   *C.GtkCalendar
 	__root *C.GtkBox
 }
 
@@ -428,11 +427,11 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	m.__n0 = (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
-	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n0)), C.gboolean(boolToInt(true)))
+	__n0 := (*C.GtkCalendar)(unsafe.Pointer(C.gtk_calendar_new()))
+	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(__n0)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n0_daySelected_handler)
-	C.sngl_connect(unsafe.Pointer(m.__n0), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
+	C.sngl_connect(unsafe.Pointer(__n0), C.CString("day-selected"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(__n0)))
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -563,27 +562,69 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testDatepickerValueMutates });
   }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.value = String(__prop___p0);
+    }
+    let __n0 = document.createElement("input");
+    __n0.value = String(__prop___p0);
+    __n0.disabled = false;
+    __n0.setAttribute("type", "date");
+    __n0.addEventListener("change", () => {
+    });
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    let __n0 = document.createElement("input");
-    __n0.value = String(state.d);
-    __n0.setAttribute("disabled", false);
-    __n0.setAttribute("type", "date");
-    __n0.addEventListener("change", () => {
-    });
+    let __inst1_next = [];
+    let __inst1_i = 0;
+    let __n1 = null;
+    if (__inst1_live.length > __inst1_i) {
+      __n1 = __inst1_live[__inst1_i];
+      __n1.__set___p0(state.d);
+    } else {
+      if (__inst1_live.length > __inst1_i) {
+        __inst1_live[__inst1_i].__destroy();
+      }
+      let __n1__new = __cf___child0({ __p0: state.d });
+      __n1 = __n1__new;
+    }
+    __inst1_next.push(__n1);
+    __inst1_i = __inst1_i + 1;
+    let __n1__el = __n1.__root;
     let __place0_i_ref0 = null;
     if (__place0_i < __place0_prev.length) {
       __place0_i_ref0 = __place0_prev[__place0_i];
     }
-    if (__place0_i_ref0 === __n0) {
+    if (__place0_i_ref0 === __n1__el) {
       __place0_i = __place0_i + 1;
     } else {
-      parent.insertBefore(__n0, __place0_i_ref0);
+      parent.insertBefore(__n1__el, __place0_i_ref0);
     }
-    __slot0.push(__n0);
+    __slot0.push(__n1__el);
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);
@@ -605,8 +646,8 @@ pass sha256:2d3135c2d141e0e0dde30603b12671b6
 -- run/go/fyne --
 pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
-pass sha256:15b20b2a509d9e7c1bfa344fc1c14d3b
+pass sha256:958eccab34936d6d7c4359d89ade4ada
 -- run/kotlin/android --
 pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
 -- run/none/html --
-pass sha256:375c71116f6600395d3ef70e8bfdf812
+pass sha256:9f9904b0f04961b494000a85a362af19

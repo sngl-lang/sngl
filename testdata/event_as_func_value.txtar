@@ -94,13 +94,13 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
+<span id="__n1" data-sngl-id="__n1">
 </span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 0, b__inst0: 0, seen__inst0: 0 };
+  var state = { a__inst0: 0, b__inst0: 0, seen__inst0: 0, visible__inst1: true };
   function run(f) {
     f();
   }
@@ -110,19 +110,19 @@ body { font-family: system-ui, sans-serif; }
   function __effect0_mount() {
     run(() => {
       state.a__inst0 += 1;
-      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
+      __n1.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   function __effect1_mount() {
     run(() => {
       state.b__inst0 += 1;
-      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
+      __n1.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   function __effect2_mount() {
     runWith((__e0) => {
       state.seen__inst0 = __e0;
-      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
+      __n1.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   var __effect0_live = [];
@@ -208,9 +208,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
+    __n1.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
   }
   __sngl_init();
   __effects0_settle();
@@ -218,4 +218,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:64be1595aa6f0a2bc6dbe9f48c079db6
+pass sha256:4233688f36a825a704d0b91bab22e9ae

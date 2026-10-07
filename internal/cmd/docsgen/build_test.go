@@ -24,8 +24,7 @@ func TestWebsiteProducesContent(t *testing.T) {
 	}
 
 	out := t.TempDir()
-	cmd := exec.Command("go", "tool", "sngl", "generate",
-		"--platform", "html", "--lang", "none", "--out", out, "website.sngl")
+	cmd := exec.Command("go", generateArgs("website.sngl", out)...)
 	cmd.Dir = repoRoot
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("building website.sngl failed: %v\n%s", err, combined)

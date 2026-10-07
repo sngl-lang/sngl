@@ -63,6 +63,13 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if comp == nil {
 		return nil
 	}
+	// A primitive renders from its declaration, and a builtin node is the
+	// compiler's construct until the lowering decides what it is on this
+	// target -- a nav.link's body is chosen per node there. Neither has a body
+	// for the optimizer to splice.
+	if isPrimitiveDecl(comp) {
+		return nil
+	}
 	if ctx.inlining[comp] >= maxInlineDepth {
 		if ctx.inlineCapped != nil {
 			*ctx.inlineCapped = true
@@ -88,7 +95,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// unlock further compile-time folding — either a `for var x = param`
 	// unroll, or a pure native call whose argument is a param. Otherwise
 	// leave the call as-is so component sharing is preserved.
-	if !bodyHasFoldableParamUse(comp.Body, propNames) {
+	//
+	// A member that is no value of its family (ir.IsFamilyValue) is spliced
+	// whatever its props: it composes members rather than being one, and what
+	// it renders is decided here -- an `if` over what its call site handed it
+	// folds against the member it is about, which nothing after the splice can
+	// do.
+	composes := comp.Tree != nil && !ir.IsFamilyValue(comp)
+	if !composes && !bodyHasFoldableParamUse(comp.Body, propNames) {
 		return nil
 	}
 
@@ -110,12 +124,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	}
 	// If no provided prop folded to a const, the body's for-loop won't
 	// unroll either — bail.
-	if len(propValues) == 0 {
+	if len(propValues) == 0 && !composes {
 		return nil
 	}
 
 	paramSyms := findParamSyms(comp.Body, propNames)
-	if len(paramSyms) == 0 {
+	if len(paramSyms) == 0 && !composes {
 		return nil
 	}
 
@@ -133,6 +147,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
+	if comp.Stdlib && !childCtx.site.IsValid() {
+		childCtx.site = ir.NodePos(n)
+	}
 	for name, val := range propValues {
 		if _, ref := propRefs[name]; ref {
 			continue
@@ -184,7 +201,11 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		defaultSubs[sym] = def
 	}
 
-	cloned = substituteSlots(cloned, n)
+	site, ok := siteInCallerScope(n, paramSyms, ctx)
+	if !ok {
+		return nil
+	}
+	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's
 	// passPlatformExtensionBody runs, so the override must be resolved now while
@@ -249,72 +270,28 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if n.ID != "" {
 		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
+	ir.AttachNodeSite(folded, n)
 	return folded
 }
 
-// substituteParamsInStmts replaces parameter references in a (cloned) component
-// body with their call-site argument expressions, recursing through nested
-// statement lists. Mirrors substituteParams (which handles expression trees)
-// at the statement level. Mutates in place; operates on cloned IR.
+// substituteParamsInStmts replaces parameter references in a (cloned)
+// component body with their call-site argument expressions, wherever an
+// expression sits: a node's props and handlers, a boundary's fallback and its
+// handler, a slot insertion's arguments and populations, a lambda's body.
+// ir.RewriteExprs is the walk that reaches all of them; this one's own switch
+// skipped a fallback, and a prop read there was left naming a parameter of a
+// component that no longer existed. Mutates in place; operates on cloned IR.
 func substituteParamsInStmts(stmts []ir.Stmt, subs map[*ir.Param]ir.Expr) {
-	for _, s := range stmts {
-		substituteParamsInStmt(s, subs)
-	}
-}
-
-func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		for i := range n.Props {
-			n.Props[i].Value = substituteParams(n.Props[i].Value, subs)
-		}
-		n.Key = substituteParams(n.Key, subs)
-		n.Ref = substituteParams(n.Ref, subs)
-		substituteParamsInStmts(n.Children, subs)
-		for _, h := range n.Handlers {
-			if h.Func != nil {
-				substituteParamsInStmts(h.Func.Block, subs)
+	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+		if id, ok := e.(*ir.Ident); ok {
+			if p, ok := id.Sym.(*ir.Param); ok {
+				if arg, found := subs[p]; found {
+					return cloneExpr(arg), ir.SkipDir
+				}
 			}
 		}
-	case *ir.If:
-		n.Cond = substituteParams(n.Cond, subs)
-		substituteParamsInStmts(n.Body, subs)
-		substituteParamsInStmts(n.Else, subs)
-	case *ir.For:
-		n.Iter = substituteParams(n.Iter, subs)
-		substituteParamsInStmts(n.Body, subs)
-		substituteParamsInStmts(n.Else, subs)
-	case *ir.Assign:
-		n.Target = substituteParams(n.Target, subs)
-		n.Value = substituteParams(n.Value, subs)
-	case *ir.Return:
-		n.Value = substituteParams(n.Value, subs)
-	case *ir.LocalVar:
-		n.Init = substituteParams(n.Init, subs)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			if c, ok := substituteParams(n.Call, subs).(*ir.Call); ok {
-				n.Call = c
-			}
-		}
-	case *ir.Emit:
-		for i := range n.Args {
-			n.Args[i].Value = substituteParams(n.Args[i].Value, subs)
-		}
-	case *ir.Toggle:
-		n.Target = substituteParams(n.Target, subs)
-	case *ir.SlotInst:
-		substituteParamsInStmts(n.Children, subs)
-	case *ir.ContextProvider:
-		n.Value = substituteParams(n.Value, subs)
-		substituteParamsInStmts(n.Children, subs)
-	case *ir.ErrorBoundary:
-		substituteParamsInStmts(n.Children, subs)
-	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
-		// No params to substitute.
-	default:
-		panic(fmt.Sprintf("substituteParamsInStmt: unhandled stmt %T", n))
-	}
+		return e, nil
+	})
 }
 
 // bodyHasFoldableParamUse reports whether stmts contain a use of one of the
@@ -498,7 +475,10 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 // per name that appears as an Ident.Sym. Mirrors findLoopVar.
 func findParamSyms(stmts []ir.Stmt, propNames map[string]bool) map[string]*ir.Param {
 	out := make(map[string]*ir.Param)
-	walkForBody(stmts, func(e ir.Expr) {
+	// Every expression the body holds, a fallback's and a handler's included:
+	// a param found nowhere is a param left unsubstituted, naming a component
+	// the splice has removed.
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok {
 			if p, ok := id.Sym.(*ir.Param); ok && propNames[p.Name] {
 				if _, dup := out[p.Name]; !dup {
@@ -506,6 +486,7 @@ func findParamSyms(stmts []ir.Stmt, propNames map[string]bool) map[string]*ir.Pa
 				}
 			}
 		}
+		return nil
 	})
 	return out
 }
@@ -520,6 +501,76 @@ func slotBindings(sc *ir.SlotContent, si *ir.SlotInst) map[*ir.Param]ir.Expr {
 		}
 	}
 	return subs
+}
+
+// siteInCallerScope is the call site with the content it supplies resolved
+// against the caller's bindings, where that content reads a parameter the
+// callee is about to rebind.
+//
+// Content written at a call site reads the caller's scope, and the splice puts
+// it in the callee's, where a parameter is bound by pointer. The two are one
+// scope only when the content names a parameter of the callee itself, which is
+// a recursion: `frame(n=n - 1) { text(value="level {n}") }` written in
+// frame's own body means the enclosing frame's n, and bound with the callee's,
+// html rendered `level 1, level 0` for `level 2, level 1`. So each such read is
+// replaced by the value the caller holds for it first. One the caller holds no
+// value for cannot be told apart from the callee's after the splice, and the
+// call is left to the target (false).
+func siteInCallerScope(n *ir.NodeInst, params map[string]*ir.Param, ctx *evalCtx) (*ir.NodeInst, bool) {
+	rebound := make(map[*ir.Param]bool, len(params))
+	for _, p := range params {
+		rebound[p] = true
+	}
+	reads := func(stmts []ir.Stmt) bool {
+		found := false
+		_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+			if id, ok := e.(*ir.Ident); ok {
+				if p, ok := id.Sym.(*ir.Param); ok && rebound[p] {
+					found = true
+				}
+			}
+			return e, nil
+		})
+		return found
+	}
+	readsAny := reads(n.Children)
+	for _, sc := range n.Slots {
+		readsAny = readsAny || reads(sc.Body)
+	}
+	if !readsAny {
+		return n, true
+	}
+
+	ok := true
+	resolve := func(stmts []ir.Stmt) []ir.Stmt {
+		out := cloneStmts(stmts)
+		_ = ir.RewriteExprs(out, func(e ir.Expr) (ir.Expr, error) {
+			id, isIdent := e.(*ir.Ident)
+			if !isIdent {
+				return e, nil
+			}
+			p, isParam := id.Sym.(*ir.Param)
+			if !isParam || !rebound[p] {
+				return e, nil
+			}
+			val, found := ctx.values[p]
+			if !found {
+				ok = false
+				return e, nil
+			}
+			return irFromValue(val, id.Type), ir.SkipDir
+		})
+		return out
+	}
+	site := *n
+	site.Children = resolve(n.Children)
+	if n.Slots != nil {
+		site.Slots = make(map[string]*ir.SlotContent, len(n.Slots))
+		for name, sc := range n.Slots {
+			site.Slots[name] = &ir.SlotContent{Params: sc.Params, Body: resolve(sc.Body)}
+		}
+	}
+	return &site, ok
 }
 
 // substituteSlots replaces *ir.SlotInst nodes in stmts with what the call site

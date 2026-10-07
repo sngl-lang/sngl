@@ -1,13 +1,3 @@
-// TODO The formatter should add spaces similar to structs to make the props easier to read
-//
-// TODO Components take positional arguments. We prefer putting the ones that make sense early,
-// but a user could use them all that way. We should make a way to cut off positional arguments.
-// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
-// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.
-//
-// TODO Components should be documented better. Comments on each prop.
-
-
 // Displays a text string. `value` is the content; set `selectable=true`
 // to allow the platform to offer copy. Typography (size, weight, color,
 // alignment, `maxLines` truncation) is driven entirely by `style`.
@@ -20,8 +10,8 @@ component text(
 ) node
 
 component _example_text node {
-    vbox(style={gap=8, padding=16}) {
-        text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
+    vbox(style={gap=8px, padding=16px}) {
+        text(value="Hello, World!", style={fontSize=24px, fontWeight=bold})
         text(value="Regular text")
         text(value="Colored text", style={color=#0066CC})
     }
@@ -44,8 +34,8 @@ component image(
 ) node
 
 component _example_image node {
-    vbox(style={gap=8, padding=16}) {
-        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
+    vbox(style={gap=8px, padding=16px}) {
+        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=contain)
     }
 }
 
@@ -60,7 +50,7 @@ component badge(
 ) node // TODO Define in terms of text as a deafult
 
 component _example_badge node {
-    hbox(style={gap=8, padding=16, alignItems="center"}) {
+    hbox(style={gap=8px, padding=16px, alignItems=center}) {
         badge(value="3", variant="primary")
         badge(value="New", variant="success")
         badge(value="Error", variant="error")
@@ -84,7 +74,7 @@ component chip(
 ) node // TODO Define in terms of text as a default
 
 component _example_chip node {
-    hbox(style={gap=8, padding=16}) {
+    hbox(style={gap=8px, padding=16px}) {
         chip(label="Tag")
         chip(label="Removable", removable=true)
         chip(label="Success", variant="success")
@@ -97,7 +87,7 @@ component _example_chip node {
 // "circle" (default) or "square".
 component avatar(
     initials string,
-    size string, // TODO enum
+    size string,    // TODO enum
     variant string, // TODO: Enum
     src string,
     alt string,
@@ -106,7 +96,7 @@ component avatar(
 ) node // TODO define in terms of image and text
 
 component _example_avatar node {
-    hbox(style={gap=8, padding=16}) {
+    hbox(style={gap=8px, padding=16px}) {
         avatar(initials="JD")
         avatar(initials="AB", variant="square")
         avatar(initials="XY", size="large")
@@ -136,7 +126,7 @@ component progress(
 ) node
 
 component _example_progress node {
-    vbox(style={gap=8, padding=16}) {
+    vbox(style={gap=8px, padding=16px}) {
         progress(value=0.7, max=1, label="70% complete", showValue=true)
         progress(value=3, max=10)
         progress(label="working")
@@ -150,12 +140,12 @@ component _example_progress node {
 component spinner(
     label string,
     variant string, // TODO enum
-    size string, // TODO enum
+    size string,    // TODO enum
     style Style,
 ) node
 
 component _example_spinner node {
-    hbox(style={gap=16, padding=16, alignItems="center"}) {
+    hbox(style={gap=16px, padding=16px, alignItems=center}) {
         spinner(label="Loading...")
         spinner(variant="circle", size="large")
     }
@@ -185,7 +175,7 @@ component table(
 ) node
 
 component _example_table node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         table(columns=["Name", "Role", "Status"])
     }
 }
@@ -206,7 +196,16 @@ component tree(
 ) node
 
 component _example_tree node {
-    vbox(style={padding=16}) {
+    vbox(style={padding=16px}) {
         tree(items=["Documents", "Photos", "Music", "Videos"])
     }
 }
+
+// TODO The formatter should add spaces similar to structs to make the props easier to read
+//
+// TODO Components take positional arguments. We prefer putting the ones that make sense early,
+// but a user could use them all that way. We should make a way to cut off positional arguments.
+// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
+// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.
+//
+// TODO Components should be documented better. Comments on each prop.

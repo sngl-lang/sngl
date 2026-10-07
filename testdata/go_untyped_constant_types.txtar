@@ -76,7 +76,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	scale float32
+	scale          float32
+	visible__inst0 bool
 
 	width, height int
 }
@@ -85,6 +86,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.scale = 2.0
+	m.visible__inst0 = true
 	return m
 }
 
@@ -130,6 +132,21 @@ func SetScaleCmd(v float32) tea.Cmd {
 	return func() tea.Msg { return setScaleMsg{value: v} }
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -141,13 +158,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setScaleMsg:
 		m = m.SetScale(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -155,7 +180,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.mix()) + " ") + m.boxed())))
+	if m.visible__inst0 {
+		content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.mix()) + " ") + m.boxed())))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -170,4 +197,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:54532b00ce794782db6b928a088d572f
+pass sha256:77be719e7ae65de0cd59a7ea338a6eb4

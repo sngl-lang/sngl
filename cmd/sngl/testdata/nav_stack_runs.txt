@@ -1,0 +1,296 @@
+# testdata/nav_stack.sngl's program, run on each target passNavigation lowers
+# sngl:ui/nav for, on android, which answers it with a NavHost
+# (testdata/nav_stack_android.txtar), and on the interpreter, which answers it from the checked
+# IR and is the reference the others are held to. A stack starts at the page
+# at "/", `go` and a link show another and push, `back` restores the page and
+# its params, and a page not showing is not mounted: the effect on the home
+# page mounts again each time it comes back.
+#
+# The tests read what a compiled test can reach -- the component's state, its
+# own handles, a page's record -- rather than nav_stack.sngl's reads of a
+# label's value and of a counter nested in a page, which no Go target's test
+# emitter compiles yet. So the params a page shows are what an effect keyed
+# on them in its content saw.
+#
+# testdata/nav_stack_lowered.txtar is the code.
+#
+# html answers a stack with a document per page (testdata/nav_stack_html.txtar),
+# and a test runs inside the document it was loaded in: a `go` or a link loads
+# another, which ends the run. And a static site cannot serve app.sngl's
+# `/p/{name}`, a pattern. So html runs static.sngl, the part a document
+# answers on its own -- the page it starts at, read through the stack, and that
+# the page it is not is not there at all -- beside the interpreter, which holds
+# the program to the same answers.
+
+sngl test --platform=none app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=none static.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=html static.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Pkg {
+    name string
+}
+
+struct Meta {
+    label string
+}
+
+component site ui.node {
+    var mounts = 0
+    var seen = ""
+    nav.stack #pages {
+        nav.page #about(href="/about", title="About", meta=Meta{label="about"}) {
+            ui.text(value="about")
+        }
+        nav.page #home(href="/", title="Home", meta=Meta{label="home"}) {
+            ui.text(value="home")
+            effect(@mount {
+                mounts += 1
+            })
+        }
+        nav.page #pkg(href=`/p/{name}`, title="Package", meta=Meta{label="pkg"}, params=Pkg{name="first"}) {
+            component content(p) {
+                ui.text(value=p.name)
+                effect(on=p.name, @mount {
+                    seen = p.name
+                })
+            }
+        }
+    }
+    ui.text(value="Site - {pages.current.title}")
+    ui.button #toAbout(text="About", @click {
+        pages.go(about)
+    })
+    ui.button #toPkg(text="Pkg", @click {
+        pages.go(pkg)
+    })
+    ui.button #toOther(text="Other", @click {
+        pages.go(pkg, Pkg{name="other"})
+    })
+    ui.button #back(text="Back", @click {
+        pages.back()
+    })
+    nav.link #aboutLink(to=about, text="about")
+    nav.link #linked(to=pkg, params=Pkg{name="linked"}, text="linked")
+}
+
+func testAStackStartsAtTheRootPage(t Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.pages.current.title == "Home")
+    t.assert(c.pages.current.meta.label == "home")
+}
+
+func testGoShowsThePageAndBackReturns(t Test, c site) {
+    c.toAbout.click()
+    t.assert(c.pages.current == c.about)
+    t.assert(c.pages.current.title == "About")
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+    c.back.click()
+    t.assert(c.pages.current == c.home)
+}
+
+func testParamsTravelWithTheEntry(t Test, c site) {
+    c.toPkg.click()
+    t.assert(c.seen == "first")
+    c.toOther.click()
+    t.assert(c.seen == "other")
+    c.back.click()
+    t.assert(c.pages.current == c.pkg)
+    t.assert(c.seen == "first")
+}
+
+func testALinkGoesToItsPage(t Test, c site) {
+    c.aboutLink.click()
+    t.assert(c.pages.current == c.about)
+    c.linked.click()
+    t.assert(c.seen == "linked")
+}
+
+func testAPageNotShowingIsNotMounted(t Test, c site) {
+    t.assert(c.mounts == 1)
+    c.toAbout.click()
+    t.assert(c.mounts == 1)
+    c.back.click()
+    t.assert(c.mounts == 2)
+}
+-- static.sngl --
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Meta {
+    label string
+}
+
+component site ui.node {
+    var homeMounts = 0
+    var aboutMounts = 0
+    nav.stack #pages {
+        nav.page #about(href="/about", title="About", meta=Meta{label="about"}) {
+            ui.text(value="about")
+            effect(@mount {
+                aboutMounts += 1
+            })
+        }
+        nav.page #home(href="/", title="Home", meta=Meta{label="home"}) {
+            ui.text(value="home")
+            effect(@mount {
+                homeMounts += 1
+            })
+        }
+    }
+    ui.text(value="Site - {pages.current.title}")
+    nav.link #aboutLink(to=about, text="about")
+}
+
+func testAStackStartsAtTheRootPage(t Test, c site) {
+    t.assert(c.pages.current == c.home)
+    t.assert(c.pages.current != c.about)
+    t.assert(c.pages.current.title == "Home")
+    t.assert(c.pages.current.meta.label == "home")
+}
+
+func testAPageNotShowingIsNotMounted(t Test, c site) {
+    t.assert(c.homeMounts == 1)
+    t.assert(c.aboutMounts == 0)
+}
+-- testrun/android/kotlin/app.sngl/site/1 --
+sha256:2106c3b37da6986fd5fc70d69df1eac9
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/site/1 --
+sha256:b721184d17d1b431f7312b18e106497b
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/site/1 --
+sha256:dec6356b82bd460f2bef31c80e127f23
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/site/1 --
+sha256:c955855443cd430081024356650decd9
+{
+  "results": [
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/static.sngl/site/1 --
+sha256:3614d89173ce708d0960edc1418c797b
+{
+  "results": [
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    },
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    }
+  ]
+}

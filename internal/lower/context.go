@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -181,9 +182,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		seedFromStmts(fn.Block)
 	}
 	seedFromStmts(pkg.Body)
-	for _, w := range pkg.Windows {
-		seedFromStmts(w.Children)
-	}
 	for _, v := range pkg.Vars {
 		seedFromVar(v)
 	}
@@ -750,16 +748,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	pkgBodyActive := copyExprMap(defaults)
 	pkg.Body = lowerInStmts(pkg.Body, pkgBodyActive, pc)
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
-	// Seed window roots with defaults.
-	for _, w := range pkg.Windows {
-		windowActive := copyExprMap(defaults)
-		w.Children = lowerInStmts(w.Children, windowActive, pc)
-		lowerInHandler(w.ErrorHandler, windowActive, pc)
-		// The provider unwrap splices a provider's children up to window-body
-		// level, which can put a fresh LocalVar there after passHoistState
-		// already ran. Promote those too, into the same slice.
-		w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
-	}
 	// Top-level pkg.Vars: also rooted, seed with defaults.
 	for _, v := range pkg.Vars {
 		pkgActive := copyExprMap(defaults)
@@ -889,7 +877,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 		case *ir.NodeInst:
 			// Thread hidden args onto user-component calls that are reachable.
 			if n.Component != nil {
-				for ctx, val := range active {
+				// By name: the order is the props' order, which is output.
+				for _, ctx := range sortedContexts(active) {
+					val := active[ctx]
 					if !pc.reach.Components[ctx][n.Component] {
 						continue
 					}
@@ -909,7 +899,6 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			for i := range n.Handlers {
 				lowerInHandler(&n.Handlers[i], active, pc)
 			}
-			lowerInHandler(n.ErrorHandler, active, pc)
 			// A slot population is rendered where the callee's body inserts
 			// it, so a provider the callee wrapped that insertion in covers
 			// it -- even though the population is written here.
@@ -919,7 +908,8 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 				entry = calleeEntry(active, pc)
 			}
 			n.Children = lowerInStmts(n.Children, slotActive(active, entry, slots[""], pc), pc)
-			for name, sc := range n.Slots {
+			for _, name := range ir.SlotNames(n.Slots) {
+				sc := n.Slots[name]
 				sc.Body = lowerInStmts(sc.Body, slotActive(active, entry, slots[name], pc), pc)
 			}
 			out = append(out, n)
@@ -937,8 +927,13 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			out = append(out, n)
 
 		case *ir.SlotInst:
+			// What the insertion hands its population is evaluated here.
+			for i := range n.Args {
+				n.Args[i] = lowerInExpr(n.Args[i], active, pc)
+			}
 			n.Children = lowerInStmts(n.Children, active, pc)
-			for _, sc := range n.Slots {
+			for _, name := range ir.SlotNames(n.Slots) {
+				sc := n.Slots[name]
 				sc.Body = lowerInStmts(sc.Body, active, pc)
 			}
 			out = append(out, n)
@@ -946,6 +941,7 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 		case *ir.ErrorBoundary:
 			lowerInHandler(n.Handler, active, pc)
 			n.Children = lowerInStmts(n.Children, active, pc)
+			n.Failed = lowerInStmts(n.Failed, active, pc)
 			out = append(out, n)
 
 		case *ir.Assign:
@@ -1287,4 +1283,15 @@ func rereadable(e ir.Expr) bool {
 		return nil
 	})
 	return ok
+}
+
+// sortedContexts is active's contexts by name, then by declaration where two
+// share one.
+func sortedContexts(active map[*ir.Context]ir.Expr) []*ir.Context {
+	out := make([]*ir.Context, 0, len(active))
+	for ctx := range active {
+		out = append(out, ctx)
+	}
+	slices.SortStableFunc(out, func(a, b *ir.Context) int { return strings.Compare(a.Name, b.Name) })
+	return out
 }

@@ -28,6 +28,10 @@ window {
 	// claimed, so the intrinsic calls under test are the only thing arriving.
 	feats := lower.NoLowering()
 	feats.Reactivity, feats.Declarative = false, false
+	// And fyne's third: a window is a component on fyne, spliced like any
+	// other, which is the inliner this platform withholds inlineComponents
+	// to ask for.
+	feats.InlineComponents = false
 	if err := lower.Lower(pkg, feats, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -51,21 +55,22 @@ window {
 	for _, snippet := range []string{
 		"func (m *Model) __renderSlot0(__parent *fyne.Container)",
 		"for _, __entry := range m.__slot0",
-		"__parent.Remove(__entry)",
+		"fynelayout.Remove(__parent, __entry)",
 		"m.__slot0 = nil",
 		"if m.visible",
 		// The slot-local label does not escape __renderSlot0 (created,
 		// SetText'd, added, and tracked in m.__slot0 all within this scope),
 		// so the node-escape lower pass emits it as a function-local
-		// `__n0 := ...` rather than a shared Model field.
-		"__n0 := widget.NewLabel",
+		// `__n1 := ...` rather than a shared Model field. `__n0` is the
+		// window's Toplevel.
+		"__n1 := widget.NewLabel",
 		// `text=value` in the fyne override forwards a `string` prop to a
 		// `string` prop, so the setter takes the value as it stands — the
 		// blueprint form's `fmt.Sprint` wrapper existed only because the
 		// prop it named carried no type.
-		`__n0.SetText("hi")`,
-		"fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)",
-		"m.__slot0 = append(m.__slot0, __n0)",
+		`__n1.SetText("hi")`,
+		"fynelayout.InsertBefore(__parent, m.__slot0_at, __n1)",
+		"m.__slot0 = append(m.__slot0, __n1)",
 	} {
 		if !strings.Contains(out, snippet) {
 			t.Errorf("emitted Go missing snippet %q\n--- generated ---\n%s", snippet, out)

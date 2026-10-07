@@ -13,6 +13,6 @@ context #theme(Theme{primary="blue", density=1})
 enum Mode { light, dark }
 context #mode(Mode.light)
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     text(value="x")
 }

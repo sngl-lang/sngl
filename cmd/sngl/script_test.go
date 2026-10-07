@@ -17,6 +17,8 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"git.duckfam.us/jonathan/sngl/internal/headless"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -34,6 +36,7 @@ func TestScript(t *testing.T) {
 			t.Setenv("SNGL_HOST_GO_MOD", mod)
 		}
 	}
+	goEnvFile = hostGoEnvFile()
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
 	// generated cgo can be compiled.
@@ -44,6 +47,13 @@ func TestScript(t *testing.T) {
 		"gtk4 development libraries and introspection data are available",
 		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil &&
 			codegen.PlatformUnavailable("gtk4") == nil,
+	)
+	// `headless` is true inside the cage compositor `go tool verify` runs the
+	// suite under, so a GUI program a script builds can run to completion
+	// without a desktop and without reaching one.
+	conds["headless"] = script.BoolCondition(
+		"running inside the headless compositor",
+		headless.Active(),
 	)
 	// `node` is true when a node binary is on PATH. Compile-time evaluation of
 	// a pure js: function shells out to it; the CI image ships chromium and
@@ -90,7 +100,12 @@ func TestScript(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			s, err := script.NewState(context.Background(), t.TempDir(), os.Environ())
+			// The user's trust config is never a script's: each reads and
+			// records its own. GOENV is pinned first, since the go command
+			// finds its own config under the same directory.
+			work := t.TempDir()
+			env := append(os.Environ(), "WORK="+work, "GOENV="+goEnvFile, "XDG_CONFIG_HOME="+filepath.Join(work, "config"))
+			s, err := script.NewState(context.Background(), work, env)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,8 +293,10 @@ func snglCmd() script.Cmd {
 				os.Setenv(k, v)
 			}
 
-			// Reset flags to defaults so prior invocations don't leak state.
+			// Reset flags to defaults so prior invocations don't leak state,
+			// and forget the store's verdicts, which hold for one build.
 			resetFlags(rootCmd)
+			gencache.ResetDefault()
 			rootCmd.SetArgs(args)
 			rootCmd.SilenceUsage = true
 			rootCmd.SilenceErrors = true
@@ -310,6 +327,18 @@ func snglCmd() script.Cmd {
 			}, nil
 		},
 	)
+}
+
+// goEnvFile is the go command's own config file as the test process found
+// it, before a script moves XDG_CONFIG_HOME.
+var goEnvFile string
+
+func hostGoEnvFile() string {
+	out, err := exec.Command("go", "env", "GOENV").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func findGoModAncestor(start string) string {

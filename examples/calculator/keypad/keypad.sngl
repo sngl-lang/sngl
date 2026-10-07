@@ -54,17 +54,17 @@ component KeyCap(entry Key, @press Key) ui.node {
             flex = entry.span,
             background = bgOf(entry.tone()),
             color = KEY_FG,
-            fontSize = 22,
-            fontWeight = "bold",
-            borderRadius = 8,
-            margin = 3,
+            fontSize = 22px,
+            fontWeight = bold,
+            borderRadius = 8px,
+            margin = 3px,
         },
         @click { press(entry) },
     )
 }
 
 component Keypad(@press Key) ui.node {
-    ui.vbox(style={flex=1, gap=0, padding=6}) {
+    ui.vbox(style={flex=1, gap=0, padding=6px}) {
         for var row = rows() {
             ui.hbox(style={flex=1, gap=0}) {
                 for var entry = row {

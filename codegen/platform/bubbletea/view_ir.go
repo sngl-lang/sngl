@@ -60,6 +60,15 @@ func (vc *irViewContext) line(format string, args ...any) {
 // `var __ltN` decl or its value-only If) to Go via the shared Go IR context,
 // honoring the current indent.
 func (vc *irViewContext) emitIRStmt(s ir.Stmt) {
+	// A nested ternary's inner temp is declared inside the outer one's
+	// branches, and an unbound enum-typed temp is spelled as the member of its
+	// own name.
+	_ = ir.WalkStmts(s, func(st ir.Stmt) error {
+		if lv, ok := st.(*ir.LocalVar); ok {
+			vc.gc = vc.gc.WithLocal(lv.Name)
+		}
+		return nil
+	})
 	for _, l := range vc.gc.EvalStmt(s) {
 		vc.line("%s", l)
 	}
@@ -75,14 +84,14 @@ func (vc *irViewContext) requireImport(path string) {
 func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext, cfg Config) {
 	b.WriteString("func (m Model) View() tea.View {\n")
 
-	wins := ctx.Windows()
-	if len(wins) == 0 || len(wins[0].Body) == 0 {
+	bodyStmts := viewStmts(ctx)
+	// No window, which only a package that is not a program has, draws
+	// nothing; a harness's isolated component is drawn as the window.
+	if len(bodyStmts) == 0 || info.screen == nil && ctx.Harness() == nil {
 		b.WriteString("\treturn tea.NewView(\"\")\n")
 		b.WriteString("}\n\n")
 		return
 	}
-
-	bodyStmts := wins[0].Body
 
 	vc := &irViewContext{
 		gc:          gc,
@@ -282,12 +291,22 @@ func draws(s ir.Stmt) bool {
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			// A window only appears at top level; one in a view tree is unexpected.
-			panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
-		}
 		if ir.IsTimerPrimitive(s.Component) {
 			return // see rendersPart
+		}
+		if btIntrinsic(s) == "Screen" {
+			// The window draws its content as the view, and no box of its own,
+			// while it is visible; what it holds lives on while it is not.
+			if v := codegen.NodeProp(s, "visible"); v != nil {
+				vc.line("if %s {", vc.gc.EvalExpr(v))
+				vc.indent++
+				vc.renderBranch(s.Children, resultVar)
+				vc.indent--
+				vc.line("}")
+				return
+			}
+			vc.renderBranch(s.Children, resultVar)
+			return
 		}
 		vc.renderNode(s, resultVar)
 		vc.countFocusPos(s)
@@ -520,7 +539,13 @@ func tooltipFocusExpr(stmts []ir.Stmt, gc *golang.GoIRContext) string {
 func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	bp := extractBlueprint(n)
 	styleFields := codegen.NodeStyleFields(n)
-	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
+	var style string
+	switch bp.Kind {
+	case bpOverlay, bpLayout, bpStyled:
+		style = vc.styleExpr(styleFields)
+	case bpSpan, bpWidget:
+		vc.discardStyle(styleFields)
+	}
 
 	switch bp.Kind {
 	case bpFlow:
@@ -671,7 +696,7 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 
 func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	styleFields := codegen.NodeStyleFields(n)
-	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
+	style := vc.styleExpr(styleFields)
 
 	// Join layout
 	if joinExpr := codegen.NodeProp(n, "join"); joinExpr != nil {
@@ -714,19 +739,45 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	}
 }
 
-// buildIRStyleExpr builds a Go lipgloss style chain from IR style fields.
-func buildIRStyleExpr(styles []codegen.StyleField, gc *golang.GoIRContext, scaleFactor int) string {
+// styleExpr builds a Go lipgloss style chain from IR style fields.
+func (vc *irViewContext) styleExpr(styles []codegen.StyleField) string {
 	chain := []string{"lipgloss.NewStyle()"}
 	// Sort by property name: a lipgloss builder chain is order-independent, and
 	// a stable key order keeps the emitted source reproducible.
 	sorted := append([]codegen.StyleField(nil), styles...)
 	slices.SortFunc(sorted, func(a, b codegen.StyleField) int { return strings.Compare(a.Name, b.Name) })
 	for _, sf := range sorted {
-		if call := irStyleCall(sf.Name, sf.Value, gc, scaleFactor); call != "" {
+		if call := irStyleCall(sf.Name, sf.Value, vc.gc, vc.scaleFactor); call != "" {
 			chain = append(chain, call)
+		} else {
+			vc.discard(sf.Value)
 		}
 	}
 	return strings.Join(chain, ".\n")
+}
+
+func (vc *irViewContext) discardStyle(styles []codegen.StyleField) {
+	for _, sf := range styles {
+		vc.discard(sf.Value)
+	}
+}
+
+// discard marks a view-local temp read by a field this target does not draw.
+// NoTernary hoists `fontSize = on ? 20px : 10px` into a `var __ltN` ahead of
+// the node whether or not anything reads it, and Go refuses one nobody reads.
+func (vc *irViewContext) discard(e ir.Expr) {
+	seen := map[string]bool{}
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		id, ok := x.(*ir.Ident)
+		if !ok || id.Member != "" || seen[id.Name] {
+			return nil
+		}
+		if _, kind := vc.gc.Ctx.Resolve(id.Name); kind == codegen.NameLocal {
+			seen[id.Name] = true
+			vc.line("_ = %s", vc.gc.EvalExpr(id))
+		}
+		return nil
+	})
 }
 
 // lipglossColor renders a color style value for `lipgloss.Color(...)`. A
@@ -853,26 +904,107 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 	case "maxHeight":
 		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, scaleFactor))
 	case "fontWeight":
-		if val == `"bold"` {
-			return "Bold(true)"
-		}
+		return enumFlagCall("Bold", expr, val, "bold")
 	case "fontStyle":
-		if val == `"italic"` {
-			return "Italic(true)"
-		}
+		return enumFlagCall("Italic", expr, val, "italic")
 	case "textAlign":
-		switch val {
-		case `"center"`:
-			return "AlignHorizontal(lipgloss.Center)"
-		case `"right"`:
-			return "AlignHorizontal(lipgloss.Right)"
-		case `"left"`:
-			return "AlignHorizontal(lipgloss.Left)"
+		if m := enumMember(expr); m != "" {
+			if pos, ok := lipglossPositions[m]; ok {
+				return "AlignHorizontal(" + pos + ")"
+			}
+			return ""
 		}
+		// Every enum is a string in Go. A member with no entry reads the zero
+		// Position, which is lipgloss.Left -- what left and justify both get.
+		return fmt.Sprintf(`AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[%s])`, val)
 	case "borderWidth":
-		return "Border(lipgloss.NormalBorder())"
+		if mag, ok := literalMagnitude(expr); ok {
+			if mag <= 0 {
+				return ""
+			}
+			return "Border(lipgloss.NormalBorder())"
+		}
+		return fmt.Sprintf("Border(lipgloss.NormalBorder(), %s)", nonzero(expr, val))
 	case "opacity":
-		return "Faint(true)"
+		if v, ok := codegen.IRLiteralNumber(expr); ok {
+			if v >= 1 {
+				return ""
+			}
+			return "Faint(true)"
+		}
+		return fmt.Sprintf("Faint(%s < 1)", val)
 	}
 	return ""
+}
+
+var lipglossPositions = map[string]string{
+	"left":   "lipgloss.Left",
+	"center": "lipgloss.Center",
+	"right":  "lipgloss.Right",
+}
+
+// enumFlagCall is a lipgloss toggle that one member of an enum field turns on.
+func enumFlagCall(method string, expr ir.Expr, val, member string) string {
+	if on := enumFlag(expr, val, member); on != "" {
+		return method + "(" + on + ")"
+	}
+	return ""
+}
+
+// enumFlag is whether an enum field holds member, as a Go bool expression: ""
+// for a literal that does not, "true" for one that does. A value that reads
+// state is compared at render time; a lowering has usually hoisted it into a
+// temp by now, which is an Ident with no member. val is expr in Go.
+func enumFlag(expr ir.Expr, val, member string) string {
+	if m := enumMember(expr); m != "" {
+		if m == member {
+			return "true"
+		}
+		return ""
+	}
+	return fmt.Sprintf("%s == %q", val, member)
+}
+
+// literalMagnitude is a constant measurement's magnitude, in whichever base it
+// was written, or a bare number's value.
+func literalMagnitude(expr ir.Expr) (float64, bool) {
+	if v, ok := codegen.IRLiteralNumber(expr); ok {
+		return v, true
+	}
+	if lit, ok := expr.(*ir.Literal); ok {
+		if mag, _, ok := ir.UnitMagnitude(lit); ok {
+			return mag, true
+		}
+	}
+	return 0, false
+}
+
+// nonzero is whether a run-time measurement is anything but zero, in Go. A
+// multi-base one is a struct, and nonzero in any base.
+func nonzero(expr ir.Expr, val string) string {
+	if ud := ir.UnitDeclOf(exprType(expr)); ud != nil && !ud.IsSingleBase() {
+		return fmt.Sprintf("%s != (%s{})", val, golang.ExportName(ud.Name))
+	}
+	return val + " > 0"
+}
+
+// viewStmts is what View draws: the package body, which is the application's
+// view and holds the Screen a window is on this platform -- or, for a harness
+// that isolated a component, that component's body.
+func viewStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
+	if h := ctx.Harness(); h != nil {
+		return h.Body
+	}
+	if ctx.Pkg == nil {
+		return nil
+	}
+	return ctx.Pkg.Body
+}
+
+// screenPos is where a window was written, for a diagnostic about it.
+func screenPos(n *ir.NodeInst) string {
+	if p := ir.NodePos(n); p.IsValid() {
+		return p.String()
+	}
+	return "window"
 }

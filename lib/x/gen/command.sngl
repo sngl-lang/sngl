@@ -1,0 +1,38 @@
+import marks "sngl:internal/marks"
+import tree "sngl:tree"
+
+// What `sngl run` does with a target's output, written in the body of the
+// target's build-tree node:
+//
+//     component language(…) build.language {
+//         gen.run(@run(dir, args) {
+//             gen.shell(cmd=[buildModule(dir, dir + ".app")] + args, dir=dir)
+//         })
+//     }
+//
+// `dir` is the directory the build wrote the target's files to, and `args` the
+// command line after `--`. The handler reads the node's props, bound to the
+// options the target was built with.
+//
+// A platform's command wins over its language's, so `go run` is written once
+// on `sngl:language/go` and html says how it serves a site on its own node; an
+// override of the platform's node for one language (`component platform[go.language] { gen.run(…) }`)
+// wins over both. A target that writes none cannot be run. A command is the
+// target package's to write: one in a program is refused.
+#[marks.builtin("genRun")]
+#[tree.none]
+component run(@run(dir string, args list<string>))
+
+// What `sngl build` does with a target's output: build what `dir` holds into
+// the artifact at `out`. Found as `run` is.
+#[marks.builtin("genBuild")]
+#[tree.none]
+component build(@build(dir string, out string))
+
+// Runs cmd -- the program, then its arguments -- in dir, the current directory
+// when empty, with the terminal's standard input, output and error, and
+// returns its exit status. A command is the user's terminal rather than a
+// build input, so nothing is recorded; it answers only in a `run` or `build`
+// handler.
+#[marks.intrinsic("gen.shell", build)]
+func shell(cmd list<string>, dir string = "") int

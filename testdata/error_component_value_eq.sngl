@@ -1,0 +1,17 @@
+import . "sngl:ui"
+
+// A handle read as a value is its node, and two nodes compare only when they
+// are instances of one declaration: an `a` is never a `b`.
+component a node {
+    text(value="a")
+}
+
+component b node {
+    text(value="b")
+}
+
+component p node {
+    a #x
+    b #y
+    text(value=string(x == y)) // ERROR(check) "operator == not defined for a and b"
+}

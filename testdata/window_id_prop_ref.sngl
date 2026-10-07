@@ -1,0 +1,11 @@
+import . "sngl:ui"
+
+window #home(title="Home", favicon="/favicon.ico") {
+    text(value="Home")
+}
+
+window #about(title="About") {
+    link(text="Icon", href=home.favicon)
+    text(value=home.title)
+    text(value=about.title)
+}

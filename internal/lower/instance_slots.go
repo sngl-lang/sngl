@@ -109,7 +109,7 @@ func (st *instanceSlots) specializeIn(root any) error {
 
 func wantsCopy(n *ir.NodeInst) bool {
 	c := n.Component
-	if c == nil || !c.RuntimeInstance || !hasRealComponentBody(c) || ir.IsWindowNode(n) {
+	if c == nil || !c.RuntimeInstance || !hasRealComponentBody(c) {
 		return false
 	}
 	return len(n.Slots) > 0 || len(n.Children) > 0 && c.RestSlot() != nil

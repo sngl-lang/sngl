@@ -32,9 +32,8 @@ component _example_label ui.node {
 	if err != nil {
 		t.Fatal(err)
 	}
-	imports := checker.DocumentExampleImports(doc)
 	for name, src := range checker.PrefixedExamples(doc) {
-		assertExampleChecks(t, name, exampleSource(imports, src, []string{"bubbletea"}))
+		assertExampleChecks(t, name, exampleSource(src, []string{"bubbletea"}))
 	}
 }
 

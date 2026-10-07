@@ -343,9 +343,9 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
-    <button style="background-color:none;border:none;cursor:pointer;padding:8px 16px" role="tab">Overview</button>
-    <button style="background-color:none;border:none;cursor:pointer;padding:8px 16px" role="tab">Details</button>
-    <button style="background-color:none;border:none;cursor:pointer;padding:8px 16px" role="tab">Settings</button>
+    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Overview</button>
+    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Details</button>
+    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Settings</button>
   </div>
   <div role="tabpanel">
     <span>Overview content</span>
@@ -394,4 +394,4 @@ pass sha256:e12611b7ec23e94551cd1751fca4566a
 -- run/kotlin/android --
 pass sha256:87434f98c9740458d1f5331a40062b2b
 -- run/none/html --
-pass sha256:e8e55d1167c9692deeaf595491d9f221
+pass sha256:f3343e821e38400c950a3b09f4a444a9

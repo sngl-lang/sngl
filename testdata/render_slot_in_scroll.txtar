@@ -83,7 +83,7 @@ func New() *Model {
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		__parent.Remove(__entry)
+		fynelayout.Remove(__parent, __entry)
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
@@ -193,7 +193,6 @@ type Model struct {
 	__root     gtk4rt.Handle
 	__slot0    []gtk4rt.Handle
 	__slot0_at gtk4rt.Handle
-	__n2       gtk4rt.Handle
 	__n1       gtk4rt.Handle
 	__n1_box   gtk4rt.Handle
 	flip       gtk4rt.Handle
@@ -246,21 +245,21 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
+	__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n2, 6)
 	m.__n1 = gtk4rt.ScrolledWindowNew()
 	m.__n1_box = gtk4rt.SlotBox(m.__n1_box)
 	if gtk4rt.ParentOf(m.__n1_box) != m.__n1 {
 		gtk4rt.ScrolledWindowSetChild(m.__n1, m.__n1_box)
 	}
 	m.__renderSlot0(m.__n1_box)
-	gtk4rt.BoxAppend(m.__n2, m.__n1)
+	gtk4rt.BoxAppend(__n2, m.__n1)
 	m.flip = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.flip, "flip")
 	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.flip)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(__n2, m.flip)
+	gtk4rt.BoxAppend(m.__root, __n2)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -277,6 +276,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:f722f49b87ad084f329b20eff5a8ba27
+pass sha256:2293e9dfd0032f676a8d44721d60bffa
 -- run/go/gtk4 --
-pass sha256:ca474418eddc0c99094ad6705cd81b80
+pass sha256:834d2f29a7f52660eb9e73c16f01c164

@@ -1,0 +1,48 @@
+# What android's NavHost cannot carry is refused where it is written, rather
+# than emitted as Kotlin that does not compile.
+#
+# A page's params are its route, a @Serializable class, so every type they
+# reach has to serialize: a string, a number, a bool, an enum, a struct of
+# those, a list, a map or an option of them. A datetime is a host value with
+# no serializer.
+#
+# And the NavHost is Compose, which is Kotlin: under --lang go the program's
+# functions are emitted into a gomobile module, where a `go` has no
+# NavController to call.
+
+! sngl generate --platform android --lang kotlin -o out when.sngl
+stderr 'when.sngl:14:23: android carries a page.s params in its route, and Slot.at is a datetime, which has no serializer: give the page params of strings, numbers, bools, enums and structs, lists, maps and options of them'
+
+! sngl generate --platform android --lang go -o out golib.sngl
+stderr 'golib.sngl:5:8: android renders sngl:ui/nav through a Compose NavHost, which is Kotlin: build this program with --lang kotlin'
+
+-- when.sngl --
+import nav "sngl:ui/nav"
+import time "sngl:time"
+import ui "sngl:ui"
+
+struct Slot {
+    at time.datetime
+}
+
+ui.window {
+    nav.stack #pages {
+        nav.page #home(href="/") {
+            ui.text(value="home")
+        }
+        nav.page #slot(href="/slot", params=Slot{}) {
+            ui.text(value="slot")
+        }
+    }
+}
+-- golib.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+ui.window {
+    nav.stack #pages {
+        nav.page #home(href="/") {
+            ui.text(value="home")
+        }
+    }
+}

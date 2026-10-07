@@ -9,7 +9,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <span id="__n0" data-sngl-id="__n0">
+  <span id="__n1" data-sngl-id="__n1">
   </span>
   <button id="$1">
     <span>Add</span>
@@ -540,23 +540,23 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = { count: 1 };
+  var state = { count: 1, visible__inst0: true };
   function label(__ctx_locale) {
     return i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
     state.count = state.count + 1;
-    __n0.textContent = label(i18n.defaultLocale());
+    __n1.textContent = label(i18n.defaultLocale());
   });
   $2.addEventListener("click", function() {
     state.count = 0;
-    __n0.textContent = label(i18n.defaultLocale());
+    __n1.textContent = label(i18n.defaultLocale());
   });
   function __sngl_init() {
-    __n0.textContent = label(i18n.defaultLocale());
+    __n1.textContent = label(i18n.defaultLocale());
   }
   __sngl_init();
 })();

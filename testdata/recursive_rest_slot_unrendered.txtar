@@ -165,7 +165,6 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	depth  int
-	__n0   gtk4rt.Handle
 	deeper gtk4rt.Handle
 	__root gtk4rt.Handle
 }
@@ -195,14 +194,14 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n0, 6)
+	__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n0, 6)
 	m.deeper = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.deeper, "deeper")
 	gtk4rt.Connect(m.deeper, "clicked", m.deeper_clicked_handler)
-	gtk4rt.BoxAppend(m.__n0, m.deeper)
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(__n0, m.deeper)
+	gtk4rt.BoxAppend(m.__root, __n0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -275,6 +274,6 @@ window.__sngl_boot();
 -- run/go/fyne --
 pass sha256:6c6b353558da56e9390fc13c39597302
 -- run/go/gtk4 --
-pass sha256:619670ebb535bdbe4de14b0b2ee5f0c5
+pass sha256:ab49bca68e0a0f2e09b14fe92e725ff2
 -- run/none/html --
 pass sha256:f21fb7470853b228e0eba9cc0300eec1

@@ -1,0 +1,186 @@
+A handler that reaches a `go:` function only through a function the program
+declares is a server action, as one making the call itself is: the browser
+has no `strings.ToUpper` to call. Placement used to ask the handler's own
+body alone, so the click stayed client-side JS calling a name nothing
+declared.
+
+And the function the action calls is the server's copy, which carries no DOM
+patch: the page's lowering wrote `__n1.textContent = …` into `bump` for the
+page, and the server's `Bump` named a node no server holds -- a Go program
+that did not compile.
+
+deny out/go/html/server.go `__n[0-9]+\.` -- a server function patches no node
+deny out/go/html/server.go `TextContent` -- a server function patches no node
+
+-- app.sngl --
+import ui "sngl:ui"
+import strings "go:strings"
+
+output {
+    go {
+        html
+    }
+}
+
+var n = 0
+var s = "hi"
+
+func bump() {
+    n += 1
+    s = strings.ToUpper(s)
+}
+
+ui.window(title="t") {
+    ui.text(value="{n} {s}")
+    ui.button(text="go", @click {
+        bump()
+    })
+}
+-- out/go/html/server.go --
+package main
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"html"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+// Handler returns an http.Handler wired with every route.
+func Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", handleIndex)
+	mux.HandleFunc("POST /", handleIndexAction)
+	return mux
+}
+
+// snglSession is one cookie's server state, guarded by its own mutex so a
+// handler can hold the lock across the whole render/mutation.
+type snglSession struct {
+	mu         sync.Mutex
+	state      any
+	lastAccess time.Time
+}
+
+// snglSessionStore is a minimal cookie-keyed in-memory session store. Each
+// distinct cookie maps to its own per-route state value. Sessions idle
+// longer than snglSessionTTL (30 * time.Minute) are evicted lazily on access to bound
+// the map's growth.
+type snglSessionStore struct {
+	mu   sync.Mutex
+	data map[string]*snglSession
+}
+
+const snglSessionTTL = 30 * time.Minute
+
+var snglSessions = &snglSessionStore{data: map[string]*snglSession{}}
+
+// snglSession returns the *snglSession for key, creating it if absent. Idle
+// sessions are evicted first. The caller must lock the returned session.
+func (st *snglSessionStore) session(key string) *snglSession {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	now := time.Now()
+	for k, sess := range st.data {
+		if now.Sub(sess.lastAccess) > snglSessionTTL {
+			delete(st.data, k)
+		}
+	}
+	sess := st.data[key]
+	if sess == nil {
+		sess = &snglSession{}
+		st.data[key] = sess
+	}
+	sess.lastAccess = now
+	return sess
+}
+
+// snglSessionID returns the caller's session id, minting and setting a
+// hardened cookie when absent. ok is false (and a 500 already written) if
+// a fresh id could not be generated.
+func snglSessionID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	if c, err := r.Cookie("sngl_session"); err == nil && c.Value != "" {
+		return c.Value, true
+	}
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return "", false
+	}
+	id := hex.EncodeToString(buf[:])
+	http.SetCookie(w, &http.Cookie{
+		Name:     "sngl_session",
+		Value:    id,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	return id, true
+}
+
+// handleIndexState is the per-session server state for route "/".
+type handleIndexState struct {
+	N              int
+	S              string
+	Visible__inst0 bool
+}
+
+func loadHandleIndexState(id string) (*snglSession, *handleIndexState) {
+	key := "handleIndex:" + id
+	sess := snglSessions.session(key)
+	sess.mu.Lock()
+	s, ok := sess.state.(*handleIndexState)
+	if !ok {
+		s = &handleIndexState{}
+		sess.state = s
+	}
+	return sess, s
+}
+
+func (s *handleIndexState) Bump() {
+	s.N += 1
+	s.S = strings.ToUpper(s.S)
+}
+
+func renderHandleIndex(s *handleIndexState) string {
+	var __b strings.Builder
+	__b.WriteString("<span>")
+	__b.WriteString(html.EscapeString(((fmt.Sprint(s.N) + " ") + s.S)))
+	__b.WriteString("</span><form method=\"post\"><input type=\"hidden\" name=\"_action\" value=\"0\"><button><span>go</span></button></form>")
+	return __b.String()
+}
+
+func handleIndex(__w http.ResponseWriter, __r *http.Request) {
+	__w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	id, ok := snglSessionID(__w, __r)
+	if !ok {
+		return
+	}
+	sess, s := loadHandleIndexState(id)
+	defer sess.mu.Unlock()
+	__w.Write([]byte(renderHandleIndex(s)))
+}
+
+func handleIndexAction(__w http.ResponseWriter, __r *http.Request) {
+	id, ok := snglSessionID(__w, __r)
+	if !ok {
+		return
+	}
+	sess, s := loadHandleIndexState(id)
+	defer sess.mu.Unlock()
+	switch __r.FormValue("_action") {
+	case "0":
+		s.Bump()
+	}
+	http.Redirect(__w, __r, "/", http.StatusSeeOther)
+}
+
+func main() {
+	http.ListenAndServe(":8080", Handler())
+}
+-- run/go/html --
+pass sha256:658ce7f633a4691e8b25f82a688b94c0

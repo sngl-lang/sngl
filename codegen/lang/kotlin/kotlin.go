@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	codegen.RegisterLang(&Translator{})
+	codegen.RegisterNative("kotlin", &Translator{})
 }
 
 // Translator implements codegen.LangTranslator for Kotlin.

@@ -1,0 +1,90 @@
+# A const func that reaches the host through sngl:x/gen is a producer: its
+# value is stored, behind what it recorded reading and the digest of the code
+# that read it -- the plugin's package and everything it imports. A store hit
+# runs nothing, so it needs no grant; an edit to what was read, or to the
+# plugin, is a miss.
+env SNGL_GENCACHE_DIR=$WORK/store
+
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' --debug app.sngl
+grep 'v1: one' out/index.html
+! stderr 'gencache hit" req="sngl.eval'
+
+# Nothing changed: a hit, and no command runs, so none needs allowing.
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+grep 'v1: one' out/index.html
+stderr 'gencache hit" req="sngl.eval'
+
+# What the plugin read changed: a miss, and the command it runs is asked about
+# again.
+cp data2.txt data.txt
+! sngl generate --lang=none --platform=html -o out app.sngl
+stderr 'may not run sh -c'
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' app.sngl
+grep 'v1: two' out/index.html
+
+# The plugin changed, and nothing it read did: still a miss, or the old
+# plugin's answer would be replayed.
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+stderr 'gencache hit" req="sngl.eval'
+cp pc2.sngl pc/pc.sngl
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' --debug app.sngl
+! stderr 'gencache hit" req="sngl.eval'
+grep 'v2: two' out/index.html
+
+# So did a package the plugin imports.
+cp fmt2.sngl pc/fmt/fmt.sngl
+sngl generate --lang=none --platform=html -o out --allow-command='./pc=sh' --debug app.sngl
+! stderr 'gencache hit" req="sngl.eval'
+grep 'v2= two' out/index.html
+
+-- app.sngl --
+import ui "sngl:ui"
+import pc "./pc"
+
+const v = pc.read("data.txt")
+
+ui.window(title="t") {
+    ui.text(value=v)
+}
+-- data.txt --
+one
+-- data2.txt --
+two
+-- pc/pc.sngl --
+import gen "sngl:x/gen"
+import f "./fmt"
+
+// The first line of path, behind a version the command reports.
+const func read(path string) string {
+    var tag = ""
+    var p = gen.exec(cmd=["sh", "-c", "echo v1"])
+    for var line = p.stdout {
+        tag = line
+    }
+    for var line = gen.lines(path) {
+        return f.label(tag, line)
+    }
+    return ""
+}
+-- pc2.sngl --
+import gen "sngl:x/gen"
+import f "./fmt"
+
+// The first line of path, behind a version the command reports.
+const func read(path string) string {
+    var tag = ""
+    var p = gen.exec(cmd=["sh", "-c", "echo v2"])
+    for var line = p.stdout {
+        tag = line
+    }
+    for var line = gen.lines(path) {
+        return f.label(tag, line)
+    }
+    return ""
+}
+-- pc/fmt/fmt.sngl --
+// A tag and a value.
+const func label(tag string, value string) => "{tag}: {value}"
+-- fmt2.sngl --
+// A tag and a value.
+const func label(tag string, value string) => "{tag}= {value}"

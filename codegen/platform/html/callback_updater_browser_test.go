@@ -51,7 +51,7 @@ component App() node {
     })
     text(value="n=" + string(n))
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 
 func TestAWriteInsideACallbackUpdatesWhatReadsIt(t *testing.T) {

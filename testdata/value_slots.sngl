@@ -1,0 +1,98 @@
+// Every position a value is written into holds it to one rule. A value goes
+// there when it is assignable, when it is the literal 0 and a unit is wanted,
+// or when it is a zero-argument function whose result is wanted, which is
+// then called. A colour literal is validated wherever one is written. Each
+// position is a line below, once for what it accepts and once for what it
+// refuses.
+
+import "sngl:tree"
+
+unit len { px, em }
+
+const func five() => 5
+
+func takesInt(n int) => n
+func takesLen(l len) => l
+func takesColor(k color) => k
+
+struct S {
+    n int
+    l len
+}
+
+// The implicit call, and the unit's zero.
+var initialized int = five
+var unitZero len = 0
+var passed = takesInt(five)
+var passedZero = takesLen(0)
+const field = S{n=five, l=0}
+
+struct Defaults {
+    n int = five
+    l len = 0
+}
+
+func returned() int {
+    return five
+}
+
+func assigned() {
+    var x = 1
+    x = five
+    var y len = 1px
+    y = 0
+}
+
+func paramDefault(n int = five, l len = 0) => n
+
+#[tree.none]
+component takes(n int, l len = 0) {}
+
+#[tree.none]
+component user {
+    takes(n=five, l=0)
+}
+
+// Where nothing wants an int, `five` is the function. A variable holding
+// one is a zero-argument function too, called where its result is wanted.
+func held() {
+    var aFunc = five
+    var stillAFunc func() int = aFunc
+    var called int = aFunc
+}
+
+// The call is implied only when the result is what is wanted, never when it
+// would need converting.
+var notAString string = five // ERROR(check) "cannot initialize string with func() int"
+
+// A bare number is not a length, anywhere.
+var badInit len = 4 // ERROR(check) "cannot initialize len with int"
+
+func badReturn() len {
+    return 4 // ERROR(check) "cannot return int as len"
+}
+
+func badAssign() {
+    var z len = 1px
+    z = 4 // ERROR(check) "cannot assign int to len"
+}
+
+var badPass = takesLen(4) // ERROR(check) "cannot pass int as len"
+
+struct BadDefault {
+    l len = 4 // ERROR(check) "default value type int does not match field type len"
+}
+
+func badParamDefault(l len = 4) => l // ERROR(check) "default value type int does not match param type len"
+
+// A colour literal is validated in every position.
+const badConst color = "teal"         // ERROR(check) "invalid color literal \"teal\""
+var badPassColor = takesColor("teal") // ERROR(check) "invalid color literal \"teal\""
+
+func badReturnColor() color {
+    return "teal" // ERROR(check) "invalid color literal \"teal\""
+}
+
+struct BadColorDefault {
+    k color = "teal" // ERROR(check) "invalid color literal \"teal\""
+}

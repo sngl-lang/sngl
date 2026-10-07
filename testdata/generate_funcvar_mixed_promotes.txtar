@@ -62,7 +62,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { handler__inst0: null };
+  var state = { handler__inst0: null, visible__inst1: true };
   state.handler__inst0 = fetchHello;
   function syncFetch() {
     return "sync";
@@ -83,4 +83,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ed38c1e6b1e0587ed9f6f741f7b1fc00
+pass sha256:bc7a809afda87c4b5784c9e17d94bf6a

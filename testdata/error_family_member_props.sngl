@@ -1,0 +1,32 @@
+// A member declares every prop its family declares, by name and type: the
+// family's props are what a value of the family reads, so a member missing
+// one, or declaring it with another type, would hand a reader nothing to read.
+// One the family gives a default may be omitted, and the member then has it
+// with that default and nothing else: no call site sets it. And the default is
+// what every such member holds, so it is a constant.
+
+import build "sngl:build"
+
+component suit(name string, rank int, color string = "black") build.family
+
+component full(name string, rank int, extra bool) suit {}
+
+component missing(name string) suit {} // ERROR(check) "component missing is a member of suit, which declares prop \"rank\": declare rank int"
+
+component retyped(name string, rank string) suit {} // ERROR(check) "component retyped declares prop \"rank\" as string, and its family suit declares it int"
+
+var hue = "red"
+
+component tinted(name string, tint string = hue) build.family // ERROR(check) "the default of tinted's prop \"tint\""
+
+component plain(name string, rank int) suit {}
+
+component table(name string, rank int) suit {
+    plain(name="a", rank=1, color="red") // ERROR(check) "component plain takes \"color\" from its family suit, which gives it a default and no call site a say"
+}
+
+component boxed<M = struct {}>(name string, meta M) build.family
+
+component held<M = struct {}>(name string, meta M) boxed<M> {}
+
+component pinned(name string, meta int) boxed<string> {} // ERROR(check) "component pinned declares prop \"meta\" as int, and its family boxed<string> declares it string"

@@ -34,6 +34,15 @@ component anyBox(which string = "") node {
     text(value=which)
 }
 
+var resets = 0
+
+// A name the package declares is not one nobody declared: a func the
+// component's wildcard would match is called where it is written, not
+// rendered as a box.
+func boxReset() {
+    resets = resets + 1
+}
+
 struct rowAttrs {
     dataRole string = "row"
 }
@@ -53,4 +62,7 @@ window {
     // The declared name still binds: a wildcard adds names, it does not
     // take its own away.
     attrs(data={dataRole="plain"})
+    button(text="reset", @click {
+        boxReset()
+    })
 }

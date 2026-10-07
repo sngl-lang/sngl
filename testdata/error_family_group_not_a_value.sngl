@@ -1,0 +1,32 @@
+// A component that renders members of a family with props, and declares none
+// of those props itself, is a group: it renders several members rather than
+// being one. So its handle is no value of the family -- there is no one href
+// or title for it to hold -- and naming it where a page is wanted is a type
+// error, while the pages it renders are pages like any other.
+
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+component extras {
+    nav.page #faq(href="/faq", title="FAQ") {
+        ui.text(value="faq")
+    }
+    nav.page #terms(href="/terms", title="Terms") {
+        ui.text(value="terms")
+    }
+}
+
+component site ui.node {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+        extras #more
+    }
+    ui.button(text="More", @click { pages.go(more) })  // ERROR(check) "cannot pass extras as page<T, struct {}>"
+    ui.text(value=pages.current == more ? "more" : "") // ERROR(check) "operator == not defined for _page<struct {}> and extras"
+}
+
+ui.window(title="Site") {
+    site
+}

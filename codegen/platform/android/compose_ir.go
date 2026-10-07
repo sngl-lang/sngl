@@ -22,6 +22,8 @@ type irComposeContext struct {
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
 	parentAxis string
+	// screen is the window the view draws, which the system back closes.
+	screen *codegen.Screen
 	// atRoot marks the window's own content, which is the node the display
 	// cutout has to be kept out of.
 	atRoot bool
@@ -30,6 +32,9 @@ type irComposeContext struct {
 	// there is no such divergence between the current combos, so nothing
 	// branches on it yet — it's the wired hook, not dead weight.
 	combo androidtc.Combo
+	// nav is the stacks the program renders, answered here rather than
+	// lowered (nav.go).
+	nav *androidNav
 	// widgetSeq names per-widget local state (e.g. a select's `expanded`)
 	// uniquely within a composable so multiple instances don't collide.
 	widgetSeq int
@@ -42,14 +47,15 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
-		if ir.IsWindowNode(s) {
-			panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
-		}
 		// A schedule is not a composable. The timer primitive stays in the
 		// tree so the branch around it is answered there; AnalyzeCommon reads
 		// it and the LaunchedEffect it becomes is emitted with the model,
 		// not here.
 		if ir.IsTimerPrimitive(s.Component) {
+			return
+		}
+		if cc.screen != nil && s == cc.screen.Node {
+			cc.renderScreen(s)
 			return
 		}
 		cc.renderNode(s)
@@ -118,6 +124,17 @@ func (cc *irComposeContext) renderFor(s *ir.For) {
 }
 
 func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
+	if n.Component != nil {
+		switch n.Component.Builtin {
+		case ir.BuiltinNavStack:
+			cc.renderNavStack(n)
+			return
+		}
+		if n.Component.Intrinsic == intrinsicNS+"Link" {
+			cc.renderNavLink(n)
+			return
+		}
+	}
 	if isEffectNode(n) {
 		cc.renderEffect(n)
 		return
@@ -336,6 +353,14 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			}
 			continue
 		}
+		switch sf.Name {
+		case "background":
+			parts = append(parts, "background("+cc.colorExpr(sf.Value)+")")
+			continue
+		case "opacity":
+			parts = append(parts, "alpha("+ktFloat(cc.styleValue(sf.Value))+")")
+			continue
+		}
 		if mod := composeModifier(sf.Name, cc.styleValue(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
@@ -362,7 +387,13 @@ func (cc *irComposeContext) styleValue(e ir.Expr) string {
 			return ir.FormatUnitMagnitude(mag)
 		}
 	}
-	return cc.kc.EvalExpr(e)
+	val := cc.kc.EvalExpr(e)
+	if e != nil {
+		if ud := ir.UnitDeclOf(e.ExprType()); ud != nil && !ud.IsSingleBase() && len(ud.Bases()) > 0 {
+			return "(" + val + ")." + ud.Bases()[0].Name
+		}
+	}
+	return val
 }
 
 // flexModifier is what a child asking for a share of its parent becomes.
@@ -427,9 +458,9 @@ func (cc *irComposeContext) buttonColorsExpr(n *ir.NodeInst, styleProp string) s
 	for _, sf := range codegen.NodeStyleFieldsOf(n, styleProp) {
 		switch sf.Name {
 		case "background":
-			args = append(args, "containerColor = "+composeColorExpr(cc.kc.EvalExpr(sf.Value)))
+			args = append(args, "containerColor = "+cc.colorExpr(sf.Value))
 		case "color":
-			args = append(args, "contentColor = "+composeColorExpr(cc.kc.EvalExpr(sf.Value)))
+			args = append(args, "contentColor = "+cc.colorExpr(sf.Value))
 		}
 	}
 	if len(args) == 0 {
@@ -474,11 +505,11 @@ func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) stri
 		case "fontSize":
 			styleParts = append(styleParts, fmt.Sprintf("fontSize = %s.sp", val))
 		case "fontWeight":
-			if w := composeWeight(enumMember(sf.Value)); w != "" {
+			if w := cc.composeEnum(sf.Value, composeWeight); w != "" {
 				styleParts = append(styleParts, "fontWeight = "+w)
 			}
 		case "fontStyle":
-			if st := composeSlant(enumMember(sf.Value)); st != "" {
+			if st := cc.composeEnum(sf.Value, composeSlant); st != "" {
 				styleParts = append(styleParts, "fontStyle = "+st)
 				cc.kc.RequireImport("androidx.compose.ui.text.font.FontStyle")
 			}
@@ -488,14 +519,11 @@ func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) stri
 				cc.kc.RequireImport("androidx.compose.ui.text.font.FontFamily")
 			}
 		case "textAlign":
-			switch val {
-			case `"center"`:
-				styleParts = append(styleParts, "textAlign = TextAlign.Center")
-			case `"right"`:
-				styleParts = append(styleParts, "textAlign = TextAlign.End")
+			if a := cc.composeEnum(sf.Value, composeTextAlign); a != "" {
+				styleParts = append(styleParts, "textAlign = "+a)
 			}
 		case "color":
-			styleParts = append(styleParts, "color = "+composeColorExpr(val))
+			styleParts = append(styleParts, "color = "+cc.colorExpr(sf.Value))
 		}
 	}
 	if len(styleParts) == 0 {
@@ -578,10 +606,6 @@ func composeModifier(prop, val string) string {
 		return fmt.Sprintf("width(%s.dp)", val)
 	case "height":
 		return fmt.Sprintf("height(%s.dp)", val)
-	case "background":
-		return fmt.Sprintf("background(%s)", composeColorExpr(val))
-	case "opacity":
-		return fmt.Sprintf("alpha(%s)", val)
 	case "flex":
 		// Decided in modifierRawExcept, which knows whether weight() is in
 		// scope here.
@@ -988,4 +1012,29 @@ func ktFloat(val string) string {
 		return val + "f"
 	}
 	return "(" + val + ").toFloat()"
+}
+
+func composeTextAlign(member string) string {
+	switch member {
+	case "left":
+		return "TextAlign.Start"
+	case "center":
+		return "TextAlign.Center"
+	case "right":
+		return "TextAlign.End"
+	case "justify":
+		return "TextAlign.Justify"
+	}
+	return ""
+}
+
+// colorExpr is a color-valued style field as a Compose Color. A ternary is
+// mapped per branch: each literal becomes its ComposeColor, where evaluating
+// the whole would name the SNGL `Color` record, which this target declares
+// only when a program stores one.
+func (cc *irComposeContext) colorExpr(e ir.Expr) string {
+	if t, ok := e.(*ir.Ternary); ok {
+		return fmt.Sprintf("(if (%s) %s else %s)", cc.kc.EvalExpr(t.Cond), cc.colorExpr(t.Then), cc.colorExpr(t.Else))
+	}
+	return composeColorExpr(cc.kc.EvalExpr(e))
 }

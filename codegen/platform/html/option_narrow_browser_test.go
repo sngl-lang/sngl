@@ -31,7 +31,7 @@ component App() node {
     button(text="clear", @click { maybe = null })
     button(text="set", @click { maybe = 21 })
 }
-window(title="H", href="/index.html") { App() }
+window(title="H") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

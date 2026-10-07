@@ -80,7 +80,7 @@ func TestAStructPropCrossesTheWireIntact(t *testing.T) {
 	src := `import . "sngl:ui"
 
 component main node {
-    text #t({}, "hi")
+    text #t("hi", false, {})
 }
 `
 	client, server := net.Pipe()

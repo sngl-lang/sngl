@@ -34,7 +34,6 @@ every settle and cannot be folded away.
 
 deny out/go/bubbletea/model.go `(?s)type __anon_a_b_\w+ struct.*type __anon_a_b_` -- four spellings of one signature are one declaration, not two that happen to look alike
 deny out/go/bubbletea/model.go `struct\{\}\{` -- a literal names its declared type; `struct{}{A: 1, B: 2}` is what a decl-less anonymous struct emitted, and it does not compile
-broken out/kotlin/android -- an empty anonymous struct emits a Kotlin `data class` with no primary constructor parameter, which the language forbids
 -- app.sngl --
 import . "sngl:ui"
 
@@ -119,6 +118,7 @@ type Model struct {
 	written__inst0      __anon_a_b_8dc8a4
 	total__inst0        int
 	mounts__inst0       int
+	visible__inst1      bool
 	__effect0_key       __anon_e3b0c4
 	__effect0_live      []__anon_e3b0c4
 	__effect0_desired   []__anon_e3b0c4
@@ -139,6 +139,7 @@ func New() Model {
 	m.written__inst0 = __anon_a_b_8dc8a4{A: 5, B: 6}
 	m.total__inst0 = ((((m.pair__inst0.A + m.pair__inst0.B) + (m.swapped__inst0.A + m.swapped__inst0.B)) + (m.shorthand__inst0.A + m.shorthand__inst0.B)) + (m.written__inst0.A + m.written__inst0.B))
 	m.mounts__inst0 = 0
+	m.visible__inst1 = true
 	m.__effect0_key = __anon_e3b0c4{}
 	m.__effect0_live = []__anon_e3b0c4{}
 	m.__effect0_desired = []__anon_e3b0c4{}
@@ -299,6 +300,21 @@ func SetMounts__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setMounts__inst0Msg{value: v} }
 }
 
+func (m Model) Visible__inst1() bool {
+	return m.visible__inst1
+}
+
+func (m Model) SetVisible__inst1(v bool) Model {
+	m.visible__inst1 = v
+	return m
+}
+
+type setVisible__inst1Msg struct{ value bool }
+
+func SetVisible__inst1Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -322,13 +338,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetTotal__inst0(msg.value)
 	case setMounts__inst0Msg:
 		m = m.SetMounts__inst0(msg.value)
+	case setVisible__inst1Msg:
+		m = m.SetVisible__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst1 {
+				m.visible__inst1 = false
+			}
+			if !(m.visible__inst1) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -337,17 +361,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total__inst0)))
+	if m.visible__inst1 {
+		var part0Parts []string
+		var part0Part_0 string
+		part0Part_0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total__inst0)))
+		part0Parts = append(part0Parts, part0Part_0)
+		var part0Part_1 string
+		part0Part_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.pair__inst0.A)))
+		part0Parts = append(part0Parts, part0Part_1)
+		var part0Part_2 string
+		part0Part_2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0))))
+		part0Parts = append(part0Parts, part0Part_2)
+		var part0Part_3 string
+		part0Part_3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.mounts__inst0)))
+		part0Parts = append(part0Parts, part0Part_3)
+		part0 = lipgloss.JoinVertical(lipgloss.Left, part0Parts...)
+	}
 	parts = append(parts, part0)
-	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.pair__inst0.A)))
-	parts = append(parts, part1)
-	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0))))
-	parts = append(parts, part2)
-	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.mounts__inst0)))
-	parts = append(parts, part3)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -387,6 +417,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class __anon_a_b_8dc8a4(
@@ -394,8 +427,11 @@ data class __anon_a_b_8dc8a4(
     var b: Int = 0
 )
 
-data class __anon_e3b0c4(
-)
+class __anon_e3b0c4 {
+    override fun equals(other: Any?) = other is __anon_e3b0c4
+    override fun hashCode() = 0
+    override fun toString() = "__anon_e3b0c4()"
+}
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -413,21 +449,31 @@ fun MainScreen() {
     var written__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 5, b = 6)) }
     var total__inst0 by remember { mutableStateOf(((((pair__inst0.a + pair__inst0.b) + (swapped__inst0.a + swapped__inst0.b)) + (shorthand__inst0.a + shorthand__inst0.b)) + (written__inst0.a + written__inst0.b))) }
     var mounts__inst0 by remember { mutableStateOf(0) }
+    var visible__inst1 by remember { mutableStateOf(true) }
 
-    Column {
-        DisposableEffect(empty__inst0) {
-            val __snglEffectKey = empty__inst0
-            run {
-                val v = __snglEffectKey
-                mounts__inst0 = (mounts__inst0 + 1)
-            }
-            onDispose {
+    if (visible__inst1) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst1 = false
+            if (!(visible__inst1)) {
+                __activity?.finish()
             }
         }
-        Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = mounts__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        Column {
+            DisposableEffect(empty__inst0) {
+                val __snglEffectKey = empty__inst0
+                run {
+                    val v = __snglEffectKey
+                    mounts__inst0 = (mounts__inst0 + 1)
+                }
+                onDispose {
+                }
+            }
+            Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
+            Text(text = mounts__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        }
     }
 }
 -- out/none/html/index.html --
@@ -443,19 +489,19 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
 <span id="__n3" data-sngl-id="__n3">
 </span>
+<span id="__n4" data-sngl-id="__n4">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null, mounts__inst0: 0 };
+  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null, mounts__inst0: 0, visible__inst1: true };
   state.empty__inst0 = {};
   state.pair__inst0 = { a: 1, b: 2 };
   state.swapped__inst0 = { b: 4, a: 3 };
@@ -464,7 +510,7 @@ body { font-family: system-ui, sans-serif; }
   state.total__inst0 = state.pair__inst0.a + state.pair__inst0.b + (state.swapped__inst0.a + state.swapped__inst0.b) + (state.shorthand__inst0.a + state.shorthand__inst0.b) + (state.written__inst0.a + state.written__inst0.b);
   function __effect0_mount() {
     state.mounts__inst0 = state.mounts__inst0 + 1;
-    __n3.textContent = String(state.mounts__inst0);
+    __n4.textContent = String(state.mounts__inst0);
   }
   var __effect0_key = {};
   var __effect0_live = [];
@@ -507,15 +553,15 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   function __sngl_init() {
-    __n0.textContent = String(state.total__inst0);
-    __n1.textContent = String(state.pair__inst0.a);
-    __n2.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
-    __n3.textContent = String(state.mounts__inst0);
+    __n1.textContent = String(state.total__inst0);
+    __n2.textContent = String(state.pair__inst0.a);
+    __n3.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
+    __n4.textContent = String(state.mounts__inst0);
   }
   __sngl_init();
   __effects0_settle();
@@ -523,8 +569,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5199585b01c1ee5e51ba52b8af956235
+pass sha256:7cce45338a3fbd2f259fab592a4f553e
 -- run/kotlin/android --
-broken sha256:34a790979ba39882fd892b7ebf42a00d
+pass sha256:010f66089cc70f43fa2309585d5307e1
 -- run/none/html --
-pass sha256:0bb277315898933a9d389e27ca9248b8
+pass sha256:fccc011c85f62cb01bcea9822c124f4e

@@ -1,0 +1,18 @@
+// A window is a surface, and a destination is a nav.page: `href` and `params`
+// moved to the page, so a window that names either names a prop it does not
+// have. Where a window used to be a page per href, a nav.stack of pages is the
+// spelling now, and the window is the chrome around it.
+
+import ui "sngl:ui"
+
+struct P {
+    name string
+}
+
+ui.window(title="Home", href="/") { // ERROR(check) "unknown prop \"href\" on component window"
+    ui.text(value="hi")
+}
+
+ui.window(title="Item", params=P{}) { // ERROR(check) "unknown prop \"params\" on component window"
+    ui.text(value="item")
+}

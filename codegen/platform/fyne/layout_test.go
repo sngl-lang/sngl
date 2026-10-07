@@ -15,8 +15,8 @@ func TestFlexBuildsTheWeightedLayout(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    hbox(style={gap=4, padding=6}) {
-        text(value="a", style={flex=1, margin=3})
+    hbox(style={gap=4px, padding=6px}) {
+        text(value="a", style={flex=1, margin=3px})
         text(value="b", style={flex=2})
     }
 }
@@ -42,7 +42,7 @@ func TestNoFlexKeepsTheBoxConstructor(t *testing.T) {
 import . "sngl:ui"
 output { go { fyne } }
 window {
-    vbox(style={gap=4}) {
+    vbox(style={gap=4px}) {
         text(value="a")
         text(value="b")
     }
@@ -51,7 +51,9 @@ window {
 	if !strings.Contains(out, "container.NewVBox()") {
 		t.Errorf("box with no flexing child should keep NewVBox\n--- generated ---\n%s", out)
 	}
-	if strings.Contains(out, "fynelayout") {
+	// fynelayout is imported for the window's Toplevel either way; the
+	// weighted layout is what a flexing child would pull in.
+	if strings.Contains(out, "fynelayout.New(") {
 		t.Errorf("box with no flexing child should not pull in the weighted layout\n--- generated ---\n%s", out)
 	}
 }

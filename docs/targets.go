@@ -6,6 +6,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 
@@ -60,6 +61,33 @@ type TargetCatalog struct {
 	GlobalOptions []OptionDoc
 	Platforms     []PlatformTarget
 	Languages     []LanguageTarget
+	// PlatformMatrix and LanguageMatrix are the capability tables as a table
+	// takes them: a name column, then one per capability, "—" where a target
+	// has none.
+	PlatformMatrix CapabilityMatrix
+	LanguageMatrix CapabilityMatrix
+}
+
+// CapabilityMatrix is a table of targets by capability.
+type CapabilityMatrix struct {
+	Columns []string
+	Rows    [][]string
+}
+
+func capabilityMatrix(first string, columns []string, names []string, caps [][]Capability) CapabilityMatrix {
+	m := CapabilityMatrix{Columns: append([]string{first}, columns...)}
+	for i, name := range names {
+		row := []string{name}
+		for _, c := range caps[i] {
+			v := c.Value
+			if v == "" {
+				v = "—"
+			}
+			row = append(row, v)
+		}
+		m.Rows = append(m.Rows, row)
+	}
+	return m
 }
 
 // Probes every built-in target for the optional codegen interfaces it
@@ -106,6 +134,17 @@ func Targets() TargetCatalog {
 		})
 	}
 
+	var names []string
+	var caps [][]Capability
+	for _, p := range cat.Platforms {
+		names, caps = append(names, p.Name), append(caps, p.Capabilities)
+	}
+	cat.PlatformMatrix = capabilityMatrix("Platform", cat.PlatformCapabilities, names, caps)
+	names, caps = nil, nil
+	for _, l := range cat.Languages {
+		names, caps = append(names, l.Name), append(caps, l.Capabilities)
+	}
+	cat.LanguageMatrix = capabilityMatrix("Language", cat.LanguageCapabilities, names, caps)
 	return cat
 }
 
@@ -113,6 +152,16 @@ type platformProbe struct {
 	name string
 	doc  string
 	eval func(codegen.PlatformGenerator) string
+}
+
+// hasCommand is whether the platform, built with its first language, holds a
+// command of the given kind: its own node's, or its language's.
+func hasCommand(p codegen.PlatformGenerator, kind ir.BuiltinKind) bool {
+	langs := p.SupportedLangs()
+	if len(langs) == 0 {
+		return false
+	}
+	return build.HasCommand(build.Target{Platform: p.PlatformIdentifier(), Lang: langs[0]}, kind)
 }
 
 func check(ok bool) string {
@@ -124,9 +173,9 @@ func check(ok bool) string {
 
 var platformProbes = []platformProbe{
 	{"Run", "Execute generated output in place (sngl run).",
-		func(p codegen.PlatformGenerator) string { _, ok := p.(codegen.Runner); return check(ok) }},
+		func(p codegen.PlatformGenerator) string { return check(hasCommand(p, ir.BuiltinGenRun)) }},
 	{"Build", "Produce a distributable artifact (e.g. APK).",
-		func(p codegen.PlatformGenerator) string { _, ok := p.(codegen.Builder); return check(ok) }},
+		func(p codegen.PlatformGenerator) string { return check(hasCommand(p, ir.BuiltinGenBuild)) }},
 	{"Snapshot", "Capture a screenshot of the rendered output (PNG or ANSI text).",
 		func(p codegen.PlatformGenerator) string {
 			switch p.(type) {

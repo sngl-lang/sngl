@@ -68,13 +68,7 @@ func Canvases(pkg *ir.Package) []Canvas {
 	if pkg == nil {
 		return nil
 	}
-	roots := [][]ir.Stmt{pkg.Body}
-	for _, w := range pkg.Windows {
-		if w != nil {
-			roots = append(roots, w.Children)
-		}
-	}
-	return canvasesOf(pkg, roots)
+	return canvasesOf(pkg, [][]ir.Stmt{pkg.Body})
 }
 
 // CanvasesIn is Canvases for a target writing one document at a time: the

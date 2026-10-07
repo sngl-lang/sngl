@@ -1,0 +1,43 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none { html }
+}
+
+// A node written through an import alias is the same node written bare, so a
+// test reaches its #id the same way.
+func testQualifiedRefIsAddressable(t test.Test, c counter) {
+    c.inc.click()
+    t.assert(c.count == 1)
+    t.assert(c.shown.value == "1")
+    t.assert(c.box != null)
+}
+
+func testQualifiedRefInAChildIsAddressable(t test.Test, c pair) {
+    t.assert(c.lbl[1].value == "b")
+}
+
+component counter ui.node {
+    var count = 0
+
+    ui.vbox #box {
+        ui.button #inc(text="+", @click { count += 1 })
+        ui.text #shown(value="{count}")
+    }
+}
+
+component labelled(label string) ui.node {
+    ui.text #lbl(value=label)
+}
+
+component pair ui.node {
+    ui.vbox {
+        labelled(label="a")
+        labelled(label="b")
+    }
+}
+
+ui.window {
+    counter()
+}

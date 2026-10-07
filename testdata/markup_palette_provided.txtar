@@ -39,7 +39,7 @@ output {
     }
 }
 
-ui.window #home(title="t", href="/") {
+ui.window #home(title="t") {
     markup.palette(markup.darkPalette) {
         markup.richText {
             markup.monospace {
@@ -76,12 +76,15 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -89,6 +92,21 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -100,13 +118,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -114,10 +140,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = ""
-	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#ff7b72")).Render(fmt.Sprint("func"))
-	content += fmt.Sprint(" ")
-	content += lipgloss.NewStyle().Foreground(lipgloss.Color("#d2a8ff")).Render(fmt.Sprint("main"))
+	if m.visible__inst0 {
+		content = ""
+		content += lipgloss.NewStyle().Foreground(lipgloss.Color("#ff7b72")).Render(fmt.Sprint("func"))
+		content += fmt.Sprint(" ")
+		content += lipgloss.NewStyle().Foreground(lipgloss.Color("#d2a8ff")).Render(fmt.Sprint("main"))
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -139,6 +167,7 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"os"
 )
@@ -153,23 +182,69 @@ type Measurement struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	__n0 *fynetext.Flow
-	__n1 *fynetext.Span
-	__n2 *fynetext.Span
-	__n3 *fynetext.Span
-	__n4 *fynetext.Span
-	__n5 *fynetext.Span
-	__n6 *fynetext.Span
+	visible__inst0 bool
+
+	home    *fynelayout.Toplevel
+	__n0    *fynetext.Flow
+	__n1    *fynetext.Span
+	__n2    *fynetext.Span
+	__n3    *fynetext.Span
+	__n4    *fynetext.Span
+	__n5    *fynetext.Span
+	__n6    *fynetext.Span
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n0 = fynetext.NewFlow()
 	m.__n1 = fynetext.NewSpan(fynetext.Style().WithMono())
 	m.__n2 = fynetext.NewSpan(fynetext.Style().WithToken("keyword").WithRGBA(255, 123, 114, 255))
@@ -186,17 +261,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n5.Add(m.__n6)
 	m.__n1.Add(m.__n5)
 	m.__n0.Add(m.__n1)
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.home.Add(m.__n0)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/go/gtk4/callbacks.go --
@@ -207,9 +281,10 @@ package main
 import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
 func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
+	gtk4rt.Init()
+	m := New()
+	m.buildWidgetTree()
+	gtk4rt.RunWindows(true)
 }
 -- out/go/gtk4/model.go --
 // Code generated by sngl (gtk4) from main.sngl; DO NOT EDIT.
@@ -230,37 +305,59 @@ type Measurement struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	__n0   gtk4rt.Handle
-	__root gtk4rt.Handle
+	visible__inst0 bool
+	home           gtk4rt.Handle
+	__n0           gtk4rt.Handle
+	__built        bool
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	return m
 }
 
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+	if m.__built {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__built = true
+	m.home = gtk4rt.ToplevelNew()
+	gtk4rt.ToplevelSetTitle(m.home, "t")
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
+	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
+	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetWrap(m.__n0, true)
 	gtk4rt.LabelSetXAlign(m.__n0, 0.0)
 	gtk4rt.LabelSetMarkup(m.__n0, "<tt><span foreground=\"#FF7B72\">func</span> <span foreground=\"#D2A8FF\">main</span></tt>")
-	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(m.home, m.__n0)
+	gtk4rt.AppAttach(m.home)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
+// BuildUI constructs the widget tree and returns a window showing the first
+// window's content.
 func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetTitle(win, "t")
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+	return gtk4rt.ToplevelWindow(app, m.home)
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from main.sngl; DO NOT EDIT.
@@ -287,6 +384,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.SpanStyle
@@ -310,17 +410,28 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Text(text = buildAnnotatedString {
-        withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-            withStyle(SpanStyle(color = ComposeColor(red = 255, green = 123, blue = 114, alpha = 255))) {
-                append("func")
-            }
-            append(" ")
-            withStyle(SpanStyle(color = ComposeColor(red = 210, green = 168, blue = 255, alpha = 255))) {
-                append("main")
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
             }
         }
-    }, modifier = Modifier.safeDrawingPadding())
+        Text(text = buildAnnotatedString {
+            withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                withStyle(SpanStyle(color = ComposeColor(red = 255, green = 123, blue = 114, alpha = 255))) {
+                    append("func")
+                }
+                append(" ")
+                withStyle(SpanStyle(color = ComposeColor(red = 210, green = 168, blue = 255, alpha = 255))) {
+                    append("main")
+                }
+            }
+        }, modifier = Modifier.safeDrawingPadding())
+    }
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from main.sngl; DO NOT EDIT. -->
@@ -347,17 +458,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6fde7434495c0fbed2110bb7a7d36964
+pass sha256:896e570511349d45099ebdfb42b9dfb3
 -- run/go/fyne --
-pass sha256:05d7e0ead8a4c2d8b2b830bd1727ba26
+pass sha256:3327934823e96472f7329a464c943118
 -- run/go/gtk4 --
-pass sha256:a8deb01aabc0e99296fdd8a9cb67b26a
+pass sha256:8eed8b92483e61b0203250ce9a8d77c6
 -- run/kotlin/android --
-pass sha256:2a2139f463bcb4edbcefff8e827cdc41
+pass sha256:7a661edd4bfc45ca0814565dfa5ce4a6
 -- run/none/html --
-pass sha256:3a47d59b5e2ecf64df47bace98df332c
+pass sha256:c1eb89b2beb06ae7bd1a87647a2ffd85

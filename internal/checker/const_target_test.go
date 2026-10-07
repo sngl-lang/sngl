@@ -71,7 +71,7 @@ const component sngl.text[tgtstub.platform] {
 			_, diags := checker.Check(doc, &checker.Config{
 				IsMain:     true,
 				Platforms:  []ir.Platform{tgtStubPlatform{}},
-				LibSources: map[string][]*ast.Document{"platform/tgtstub": {stub}},
+				LibSources: map[string][]*ast.Document{"platform/tgtstub": {stub, targetNodeDoc(t, "platform/tgtstub")}},
 			})
 			var errs []string
 			for _, d := range diags {

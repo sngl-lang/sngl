@@ -29,7 +29,6 @@ require (
 	golang.org/x/text v0.36.0
 	golang.org/x/tools v0.44.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/cc/v4 v4.28.2
 	modernc.org/scanner v1.3.0
 	nhooyr.io/websocket v1.8.17
 	rsc.io/script v0.0.2

@@ -61,8 +61,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	calls     int
-	__focusID int
+	visible__inst0 bool
+	calls          int
+	__focusID      int
 
 	width, height int
 }
@@ -70,6 +71,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	m.calls = 0
 	m.__focusID = 0
 	return m
@@ -98,6 +100,21 @@ func (m *Model) __focusPrev() {
 	}
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Calls() int {
 	return m.calls
 }
@@ -122,6 +139,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case setCallsMsg:
 		m = m.SetCalls(msg.value)
 	case tea.WindowSizeMsg:
@@ -130,7 +149,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		case msg.Code == tea.KeyTab && msg.Mod == 0:
 			m.__focusNext()
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
@@ -144,19 +169,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0Focused := (m.__focusID == 0)
-	content_0Prefix := " "
-	if content_0Focused {
-		content_0Prefix = ">"
+	if m.visible__inst0 {
+		var contentChildren []string
+		var content_0 string
+		content_0Focused := (m.__focusID == 0)
+		content_0Prefix := " "
+		if content_0Focused {
+			content_0Prefix = ">"
+		}
+		content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("b"))
+		contentChildren = append(contentChildren, content_0)
+		var content_1 string
+		content_1 = lipgloss.NewStyle().Render(fmt.Sprint(("calls " + fmt.Sprint(m.calls))))
+		contentChildren = append(contentChildren, content_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	}
-	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("b"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(("calls " + fmt.Sprint(m.calls))))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -181,21 +208,26 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	calls int
+	visible__inst0 bool
+	calls          int
 
-	__n1 *fyne.Container
-	__n2 *widget.Button
-	__n0 *widget.Label
+	home    *fynelayout.Toplevel
+	__n1    *fyne.Container
+	__n2    *widget.Button
+	__n0    *widget.Label
+	__built bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.visible__inst0 = true
 	m.calls = 0
 	return m
 }
@@ -206,8 +238,40 @@ func (m *Model) bump() int {
 	return m.calls
 }
 
+func (m *Model) home_closed_handler() {
+}
+
+func (m *Model) home_visible_handler(__visible bool) {
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
+}
+
 func (m *Model) __n2_click_handler() {
 	m.bump()
+}
+
+// homeClosed invokes the OnClosed callback on the #home widget; for tests.
+func (m *Model) homeClosed() {
+	if m.home.OnClosed != nil {
+		m.home.OnClosed()
+	}
+}
+
+// homeVisible invokes the OnVisible callback on the #home widget; for tests.
+func (m *Model) homeVisible(__visible bool) {
+	if cb := m.home.OnVisible; cb != nil {
+		m.home.OnVisible = nil
+		cb(__visible)
+		m.home.OnVisible = cb
+	}
+}
+
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) Calls() int {
@@ -218,8 +282,17 @@ func (m *Model) SetCalls(v int) {
 	m.calls = v
 }
 
-// BuildUI creates the widget tree. Call once; widgets are updated selectively.
+// BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
+	if m.__built {
+		return m.home.Container
+	}
+	m.__built = true
+	m.home = fynelayout.NewToplevel()
+	m.home.SetTitle("t")
+	m.home.SetVisible(m.visible__inst0)
+	m.home.OnClosed = m.home_closed_handler
+	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = container.NewVBox()
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("b")
@@ -228,17 +301,16 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(("calls " + fmt.Sprint(m.calls)))
 	m.__n1.Add(m.__n0)
-	content := fyne.CanvasObject(m.__n1)
-	return content
+	m.home.Add(m.__n1)
+	fynelayout.AppAttach(m.home)
+	return m.home.Container
 }
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("SNGL App")
 	m := New()
-	w.SetContent(m.BuildUI())
-	w.Resize(fyne.NewSize(480, 640))
-	w.ShowAndRun()
+	m.BuildUI()
+	fynelayout.RunWindows(a, true)
 	_ = os.Stderr
 }
 -- out/none/html/index.html --
@@ -266,7 +338,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { calls: 0 };
+  var state = { visible__inst0: true, calls: 0 };
   function bump() {
     state.calls += 1;
     __n0.textContent = "calls " + String(state.calls);
@@ -288,8 +360,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1647a8ea37736a8ad18578921212aba9
+pass sha256:3e07ea5876f362df26f4f2d24cfa3c3b
 -- run/go/fyne --
-pass sha256:59fbe7faaf8c0ef871219b8a5ba24908
+pass sha256:551b7ebe3d8e8dbfc5f0ad6538995059
 -- run/none/html --
-pass sha256:016c62b4e3316f2e169fdba8fe9c0f1e
+pass sha256:e4f86a287f62e506de8dd926c3803c68

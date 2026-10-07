@@ -6,7 +6,7 @@ component Inner node {
     text(value="static")
 }
 
-window #home(title="Home", href="/") {
+window #home(title="Home") {
     theme("dark") {
         Inner()
     }

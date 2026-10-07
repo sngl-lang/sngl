@@ -24,6 +24,9 @@ type IntrinsicDef struct {
 	// signature returns a value. Reactivity treats a statement-level call as a
 	// write to the receiver var, and backends emit an in-place mutation.
 	MutatesReceiver bool
+	// BuildOnly says no target emits the id: the build's evaluator answers
+	// every call, and one it cannot is an error.
+	BuildOnly bool
 	// Pkg is the library package the declaration lives in -- how a caller asks
 	// about a group of intrinsics without matching id spellings.
 	Pkg string

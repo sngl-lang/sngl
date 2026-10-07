@@ -13,10 +13,10 @@ import (
 // other component, rather than by a section of its own.
 func TestATargetsBuildNodeIsDocumented(t *testing.T) {
 	for _, tc := range []struct{ path, node string }{
-		{"html", "html"},
-		{"go", "go"},
-		{"sngl:platform/html", "html"},
-		{"sngl:language/go", "go"},
+		{"html", "platform"},
+		{"go", "language"},
+		{"sngl:platform/html", "platform"},
+		{"sngl:language/go", "language"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			res, err := lookup.Lookup(tc.path)

@@ -55,27 +55,19 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		main:    true,
 		quiet:   true, // suppress per-file print; only print artifact path
 		onTarget: func(target build.Target, _ *ir.Package, _, srcDir string) error {
-			plat := codegen.LookupPlatform(target.Platform)
-			lang := codegen.LookupLang(target.Lang)
-			var builder codegen.Builder
-			if b, ok := plat.(codegen.Builder); ok {
-				builder = b
-			} else if b, ok := lang.(codegen.Builder); ok {
-				builder = b
-			} else {
-				return fmt.Errorf("platform %q with language %q does not support building", target.Platform, target.Lang)
-			}
-			artifact, err := builder.Build(srcDir, target.Options)
-			if err != nil {
-				return fmt.Errorf("build failed: %w", err)
-			}
 			finalName := binaryName(target.Options, target.Platform, multiTarget, isWindowsTarget(target))
-			finalPath := filepath.Join(outDir, finalName)
+			finalPath, err := filepath.Abs(filepath.Join(outDir, finalName))
+			if err != nil {
+				return err
+			}
 			if err := os.MkdirAll(outDir, 0o755); err != nil {
 				return err
 			}
-			if err := moveFile(artifact, finalPath); err != nil {
-				return fmt.Errorf("placing artifact: %w", err)
+			if !build.HasCommand(target, ir.BuiltinGenBuild) {
+				return fmt.Errorf("platform %q with language %q does not support building", target.Platform, target.Lang)
+			}
+			if err := build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath); err != nil {
+				return fmt.Errorf("build failed: %w", err)
 			}
 			fmt.Println(finalPath)
 			return nil

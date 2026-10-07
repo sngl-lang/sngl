@@ -73,11 +73,11 @@ func TestTheSlotSubtreeIsReachableFromTheInstanceRoot(t *testing.T) {
 	m := New()
 	m.BuildUI()
 
-	if got := len(m.__inst0_live); got != 2 {
+	if got := len(m.__inst1_live); got != 2 {
 		t.Fatalf("expected 2 live instances, got %d", got)
 	}
 	var got []string
-	texts(m.__inst0_live[0].Root, &got)
+	texts(m.__inst1_live[0].Root, &got)
 	want := []string{"a", "body of a"}
 	if len(got) != len(want) {
 		t.Fatalf("instance tree = %v, want %v", got, want)

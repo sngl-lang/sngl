@@ -1,0 +1,131 @@
+// A stack's pages need not be written one by one. A `for` over a constant
+// writes a page per element, an `if` the build decides writes one or none, and
+// a component whose body renders pages adds its pages to the stack it is
+// written in. Each is a page of the stack as a page written directly is.
+//
+// A page under a `for` is one page per element, and each copy is a page of its
+// own: its `#id` names that copy inside the loop, and is nothing outside it.
+// The copy at "/" is where the stack starts, and `back` returns to the copy it
+// left rather than to the first.
+
+import . "sngl:test"
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+struct Item {
+    slug string
+    title string
+}
+
+const items list<Item> = [
+    {slug="one", title="One"},
+    {slug="", title="Two"},
+]
+
+const guarded = true
+
+component looped ui.node {
+    nav.stack #pages {
+        for var it = items {
+            nav.page #item(href="/" + it.slug, title=it.title) {
+                ui.text(value=pages.current == item ? "showing" : "hidden")
+            }
+        }
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toAbout(text="About", @click { pages.go(about) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testTheStackStartsAtTheCopyAtTheRoot(t Test, c looped) {
+    t.assert(c.heading.value == "Two")
+    t.assert(c.pages.current.href == "/")
+}
+
+func testBackReturnsToTheCopyItLeft(t Test, c looped) {
+    c.toAbout.click()
+    t.assert(c.heading.value == "About")
+    c.back.click()
+    t.assert(c.heading.value == "Two")
+}
+
+component decided ui.node {
+    nav.stack #pages {
+        if guarded {
+            nav.page(href="/", title="Guarded") {
+                ui.text(value="guarded")
+            }
+        }
+        if !guarded {
+            nav.page(href="/", title="Unguarded") {
+                ui.text(value="unguarded")
+            }
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+}
+
+func testAnIfTheBuildDecidesWritesItsPage(t Test, c decided) {
+    t.assert(c.heading.value == "Guarded")
+}
+
+// Renders pages, so it is a page: its family is inferred from its body.
+component extras {
+    nav.page #faq(href="/", title="FAQ") {
+        ui.text(value="faq")
+    }
+}
+
+component composed ui.node {
+    nav.stack #pages {
+        extras
+        nav.page #other(href="/other", title="Other") {
+            ui.text(value="other")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toOther(text="Other", @click { pages.go(other) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testAComponentsPagesArePagesOfTheStack(t Test, c composed) {
+    t.assert(c.heading.value == "FAQ")
+    c.toOther.click()
+    t.assert(c.heading.value == "Other")
+    c.back.click()
+    t.assert(c.heading.value == "FAQ")
+}
+
+// A wrapper may declare a page's own props and render the page from them --
+// a page with chrome around its content. It composes like any other: inlined
+// among the stack's pages, it is the page it renders. Its `meta` is the
+// program's own `struct {}`, the type the page family's is: two anonymous
+// structs with the same fields are one type, whichever package spelled them.
+component framed(href string, title string, meta struct {} = {}, label string) {
+    nav.page(href=href, title=title) {
+        ui.text(value="[{label}]")
+    }
+}
+
+component wrapped ui.node {
+    nav.stack #pages {
+        framed(href="/", title="Framed", label="inside")
+        nav.page #plain(href="/plain", title="Plain") {
+            ui.text(value="plain")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toPlain(text="Plain", @click { pages.go(plain) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+func testAWrapperDeclaringAPagesPropsIsThePageItRenders(t Test, c wrapped) {
+    t.assert(c.heading.value == "Framed")
+    c.toPlain.click()
+    t.assert(c.heading.value == "Plain")
+    c.back.click()
+    t.assert(c.heading.value == "Framed")
+}

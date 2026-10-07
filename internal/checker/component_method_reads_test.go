@@ -62,3 +62,51 @@ component main node {
 		t.Errorf("isLong.Reads does not include `name`; got %v", isLong.Reads)
 	}
 }
+
+// A `var` written in a block of a component's view is that component's state
+// until passHoistState moves it there, as one in the package body's view is
+// the package's: a method writing it is impure and writes it. Analysed against
+// the component's top-level vars alone, it came out pure, which is
+// const-foldable and settles nothing.
+func TestComponentMethodSeesViewBlockVars(t *testing.T) {
+	src := `
+component counter node {
+    vbox {
+        var n = 0
+        func bump() {
+            n = n + 1
+        }
+        button(text="+", @click {
+            bump()
+        })
+    }
+}
+`
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := Check(doc, &Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diag: %s", d.Msg)
+		}
+	}
+	var bump *ir.Func
+	for _, c := range pkg.Components {
+		for _, f := range c.Funcs {
+			if c.Name == "counter" && f.Name == "bump" {
+				bump = f
+			}
+		}
+	}
+	if bump == nil {
+		t.Fatal("no bump func")
+	}
+	if bump.Purity == ir.PurityPure {
+		t.Errorf("bump writes the view block's `n` but was typed PurityPure")
+	}
+	if len(bump.Writes) == 0 {
+		t.Errorf("bump writes nothing, want n")
+	}
+}

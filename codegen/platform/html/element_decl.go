@@ -7,6 +7,7 @@ package html
 // than keeping a list of names beside the declaration to drift away from it.
 
 import (
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -121,6 +122,10 @@ var domPropNames = map[string]string{
 // `open="false"`, which leaves a <details> open — so it is always a property
 // write. Everything else is an attribute unless no attribute spells it.
 func domPropForProp(comp *ir.Component, prop string) (string, bool) {
+	// A Window shown as a `<dialog>` is on screen when the dialog is open.
+	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
+		return "open", true
+	}
 	if domOnlyProps[prop] {
 		return domName(prop), true
 	}
@@ -223,6 +228,17 @@ var voidElements = map[string]bool{
 	"area": true, "base": true, "br": true, "col": true, "embed": true,
 	"hr": true, "img": true, "input": true, "link": true, "meta": true,
 	"source": true, "track": true, "wbr": true,
+}
+
+// isEmptyIDProp reports an `id` prop whose value is the empty string literal.
+// An id attribute may not be empty, and a flow passes its anchor whether or
+// not one was named, so an empty one is no attribute rather than `id=""`.
+func isEmptyIDProp(prop string, value ir.Expr) bool {
+	if prop != "id" {
+		return false
+	}
+	s, ok := codegen.IRLiteralString(value)
+	return ok && s == ""
 }
 
 // contentProp reports how a prop's value is written when the element is

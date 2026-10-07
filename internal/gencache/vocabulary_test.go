@@ -39,7 +39,9 @@ func TestEveryInputKindIsDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	gencache.RegisterSetting("test.vocabulary", func() string { return "v" })
 	inputs := append([]gencache.Input{
+		must(gencache.Setting("test.vocabulary")),
 		must(gencache.File(file)),
 		gencache.Absent(filepath.Join(tmp, "missing")),
 		must(gencache.Dir(tmp)),

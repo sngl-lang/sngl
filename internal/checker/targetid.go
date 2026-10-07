@@ -1,22 +1,27 @@
 package checker
 
 import (
+	"cmp"
+	"maps"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The identity of a build target is a value of its own type rather than a
-// string: `platform` and `language` are declared in lib/builtin and marked
-// #[builtin], and each registered target gets one const of that type
-// synthesized into its own package. So `html.platform` is the only way to name
-// the html target, `PLATFORM == "html"` does not type-check, and a misspelled
-// target name is an unresolved selector rather than a branch nobody takes.
+// A build target is named by its node: the `component platform(…)
+// build.platform` or `component language(…) build.language` its own package
+// declares, carrying `#[gen.name]`. Inside that package it is `platform`,
+// and a program names it through the package, `html.platform`, the way it
+// names any other declaration there. Nothing is synthesized: the declaration
+// that is the target's option schema and carries its `#[gen]` marks is also
+// its identity, so there is no second one to disagree with it.
 //
-// The consts are synthesized rather than declared because a plugin that
-// declared its own could disagree with the name it registered under, and
-// because a target outside this repository then needs to know nothing.
+// As a value it is the identity PLATFORM and LANGUAGE are compared against:
+// its type is sngl:builtin's `platform` or `language` (targetValueType), so
+// `PLATFORM == "html"` still does not type-check, and a misspelled target is
+// an unresolved name rather than a branch nobody takes.
 
 // typeTargetConsts gives PLATFORM and LANGUAGE their types. It runs after the
 // whole of lib/builtin is registered: the consts and the types they carry are
@@ -31,17 +36,29 @@ func (c *checker) typeTargetConsts() {
 	}
 }
 
-// targetConstName is the predeclared const a target identity is compared
-// against — the inverse of the member name a target's identity const carries.
-func targetConstName(member string) string {
-	if member == "language" {
-		return "LANGUAGE"
+// targetValueType is the type a reference to a build-target node has where it
+// is read as a value: sngl:builtin's `platform` or `language`, the types
+// PLATFORM and LANGUAGE carry. Nil for any other symbol.
+func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
+	node, _, ok := ir.TargetNode(sym)
+	if !ok {
+		return nil
 	}
-	return "PLATFORM"
+	if ir.TargetTier(node.Tree) == ir.BuiltinLanguage {
+		if c.languageType != nil {
+			return c.languageType.SymType()
+		}
+		return nil
+	}
+	if c.platformType != nil {
+		return c.platformType.SymType()
+	}
+	return nil
 }
 
-// targetTierMember is the identity a target of this kind carries, as it is
-// written: `html.platform`, `go.language`.
+// targetTierMember is the word for a tier: the segment of a target package's
+// URI (`sngl:platform/html`), and what a message calls one. Its node is
+// conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
 	if kind == ir.BuiltinLanguage {
 		return "language"
@@ -106,28 +123,15 @@ func (c *checker) resolveTargetIndex(e ast.Expr) (name string, kind ir.BuiltinKi
 
 // targetIdentity reads the target a symbol identifies. Both spellings of the
 // index -- the package's own `platform` and another package's `html.platform`
-// -- name one const, so what makes it an identity is checked in one place.
+// -- name one build-target node, so what makes it an identity is checked in one
+// place.
 func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (string, ir.BuiltinKind, bool) {
-	v, isVar := sym.(*ir.Var)
-	if !isVar || !v.IsConst || v.Type == nil || v.Init == nil {
-		c.error(pos, "%s is not a target identity", spelling)
+	node, name, ok := ir.TargetNode(sym)
+	if !ok {
+		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	k := ir.BuiltinNone
-	switch {
-	case c.platformType != nil && v.Type.Decl == c.platformType:
-		k = ir.BuiltinPlatform
-	case c.languageType != nil && v.Type.Decl == c.languageType:
-		k = ir.BuiltinLanguage
-	default:
-		c.error(pos, "%s is a %s, not a target identity", spelling, v.Type)
-		return "", ir.BuiltinNone, false
-	}
-	lit, isLit := v.Init.(*ir.Literal)
-	if !isLit {
-		return "", ir.BuiltinNone, false
-	}
-	return lit.Value, k, true
+	return name, ir.TargetTier(node.Tree), true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program
@@ -451,4 +455,166 @@ func (c *checker) checkPendingFuncOverrides() {
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
 	}
+}
+
+// reportTargetNames holds every build-target node this check can see to a
+// name no other node of its tier carries, and a target package's node to its
+// package's own name.
+//
+// The name is what the command line, the Go registry and an output block look
+// a target up by, so two nodes answering to one would make `--platform html`
+// mean whichever was found first -- and a package's node answering to another
+// package's name is found by nothing, since the lookup goes through the
+// package the name says. The tier is part of the key: `none` is both a
+// language and a platform, and each is found in its own tier.
+//
+// Last, like the bodyless sweep, because a library package may be loaded by
+// anything in the check, and the answer must not depend on which came first:
+// the nodes are sorted by package and position, library packages ahead of
+// the program, and every one after the first of a name is reported, naming
+// that first.
+func (c *checker) reportTargetNames() {
+	var nodes []*ir.Component
+	collect := func(pkg *ir.Package) {
+		if pkg == nil {
+			return
+		}
+		for _, comp := range pkg.Components {
+			if _, _, ok := ir.TargetNode(comp); ok && comp.AST != nil {
+				nodes = append(nodes, comp)
+			}
+		}
+	}
+	collect(c.pkg)
+	if c.libs != nil {
+		for _, path := range slices.Sorted(maps.Keys(c.libs.pkgs)) {
+			collect(c.libs.pkgs[path])
+		}
+	}
+	// A library's nodes first: a program's node that takes a shipped
+	// target's name is the one that has to change, so it is the one reported.
+	slices.SortStableFunc(nodes, func(a, b *ir.Component) int {
+		if (a.Pkg == "") != (b.Pkg == "") {
+			if a.Pkg == "" {
+				return 1
+			}
+			return -1
+		}
+		if n := cmp.Compare(a.Pkg, b.Pkg); n != 0 {
+			return n
+		}
+		if n := cmp.Compare(a.AST.Pos.File, b.AST.Pos.File); n != 0 {
+			return n
+		}
+		if n := cmp.Compare(a.AST.Pos.Line, b.AST.Pos.Line); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.AST.Pos.Column, b.AST.Pos.Column)
+	})
+	first := map[string]*ir.Component{}
+	for _, n := range nodes {
+		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
+		tier := targetTierMember(tierKind)
+		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
+			kind == tierKind && owner != name {
+			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
+			continue
+		}
+		key := tier + "/" + name
+		if prev, dup := first[key]; dup {
+			c.error(n.AST.Pos, "%s %q is already declared at %s: a target's name is how the build finds it, so no two %ss share one",
+				tier, name, prev.AST.Pos, tier)
+			continue
+		}
+		first[key] = n
+	}
+}
+
+// reportEmitterPlacement holds gen.emit and gen.node to the one place each is
+// read: the whole body of an override, of a family for gen.emit and of a
+// member for gen.node. The emitter pass reads them there and nowhere else, so
+// one written in a window, a component body or beside other statements would
+// be checked, lowered and then generate nothing.
+//
+// A family's override is a gen.emit and nothing more, for the same reason: it
+// is never rendered, so anything beside the gen.emit is read by nobody.
+func (c *checker) reportEmitterPlacement() {
+	if c.pkg == nil {
+		return
+	}
+	allowed := map[*ir.NodeInst]bool{}
+	var bodies [][]ir.Stmt
+	for _, comp := range c.pkg.Components {
+		bodies = append(bodies, comp.Body)
+		for _, overrides := range []map[string]ir.Body{comp.PlatformOverrides, comp.LanguageOverrides} {
+			for _, target := range slices.Sorted(maps.Keys(overrides)) {
+				body := overrides[target]
+				want := ir.BuiltinGenNode
+				if comp.IsFamily() {
+					want = ir.BuiltinGenEmit
+				}
+				if ni := soleEmitterNode(body, want); ni != nil {
+					allowed[ni] = true
+				} else if comp.IsFamily() && comp.AST != nil {
+					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
+				}
+				bodies = append(bodies, body.Stmts)
+			}
+		}
+	}
+	for _, owner := range ir.Owners(c.pkg) {
+		bodies = append(bodies, owner.Stmts())
+	}
+	seen := map[*ir.NodeInst]bool{}
+	for _, b := range bodies {
+		for _, st := range b {
+			c.reportMisplacedEmitters(st, allowed, seen)
+		}
+	}
+}
+
+func (c *checker) reportMisplacedEmitters(st ir.Stmt, allowed, seen map[*ir.NodeInst]bool) {
+	{
+		ir.Walk(st, func(n ir.Node) error { //nolint:errcheck // the visit never fails
+			ni, ok := n.(*ir.NodeInst)
+			if !ok || ni.Component == nil || seen[ni] {
+				return nil
+			}
+			kind := ni.Component.Builtin
+			if !kind.IsCommand() && (!kind.IsEmitter() || allowed[ni]) {
+				return nil
+			}
+			seen[ni] = true
+			var at ast.Pos
+			if sp := stmtPos(ni.AST); sp != nil {
+				at = *sp
+			}
+			// A command is the target package's: a program is never asked
+			// one, so it would be read by nobody, and a repository choosing
+			// what `sngl build` runs is what trust exists to stop.
+			if kind.IsCommand() {
+				c.error(at, "gen.%s is written in the body of a target package's build-tree node, where the command reads it, and not in a program", ni.Component.Name)
+				return nil
+			}
+			what := "a member's override for the target whose family emits"
+			if ni.Component.Builtin == ir.BuiltinGenEmit {
+				what = "a family's override"
+			}
+			c.error(at, "gen.%s is written as the whole body of %s, where the build reads it", ni.Component.Name, what)
+			return nil
+		})
+	}
+}
+
+// soleEmitterNode is the one statement of an override body, when it is a gen
+// node of the given kind.
+func soleEmitterNode(body ir.Body, kind ir.BuiltinKind) *ir.NodeInst {
+	if len(body.Stmts) != 1 {
+		return nil
+	}
+	ni, ok := body.Stmts[0].(*ir.NodeInst)
+	if !ok || ni.Component == nil || ni.Component.Builtin != kind {
+		return nil
+	}
+	return ni
 }

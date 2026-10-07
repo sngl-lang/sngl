@@ -1,0 +1,24 @@
+# A program naming two targets builds both, each as a program of its own.
+# `sngl build` and `sngl run` generate into a directory they own, and wrote
+# every target into the same one: gtk4 leaves a callbacks.go declaring main, so
+# the bubbletea build after it found two mains and a BuildUI of the wrong
+# shape.
+
+[!gtk4] skip 'needs the gtk4 development libraries'
+
+sngl build -o bin app.sngl
+exists bin/app-gtk4 bin/app-bubbletea
+
+-- app.sngl --
+import ui "sngl:ui"
+
+output {
+    go {
+        gtk4
+        bubbletea
+    }
+}
+
+ui.window {
+    ui.text(value="hi")
+}

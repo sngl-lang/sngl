@@ -34,9 +34,43 @@ func shakeUnused(pkg *ir.Package, documents bool) error {
 	pkg.Consts, pkg.BuildConsts = consts, buildConsts
 	pkg.Vars = filterVars(pkg.Vars, used)
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
+	dropDetachedHandlers(pkg)
 	pkg.Structs = filterStructs(pkg.Structs, used)
 	pkg.Enums = filterEnums(pkg.Enums, used)
 	return promoteForeignStructs(pkg)
+}
+
+// dropDetachedHandlers removes each handler passDeclarative promoted to a
+// func whose node a later fold removed: the AttachHandler naming it went with
+// the branch, so nothing attaches it, and emitted it names a widget no build
+// creates. A branch decided only once components are inlined is how that
+// happens -- `sngl:ui/markup`'s listItem renders its checkbox under
+// `if task == Task.none`, whose operands meet as constants after the splice.
+//
+// Asked of the package's funcs and every component's, because a root
+// component keeps its own, and only of promoted handlers: every other
+// synthesized func is reached through scaffolding this walk cannot read.
+func dropDetachedHandlers(pkg *ir.Package) {
+	named := map[*ir.Func]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if f, ok := id.Sym.(*ir.Func); ok {
+				named[f] = true
+			}
+		}
+		return nil
+	})
+	keep := func(fs []*ir.Func) []*ir.Func {
+		return slices.DeleteFunc(fs, func(f *ir.Func) bool {
+			return f != nil && f.LoweredFromNode != "" && !named[f]
+		})
+	}
+	pkg.Funcs = keep(pkg.Funcs)
+	for _, c := range pkg.Components {
+		if c != nil {
+			c.Funcs = keep(c.Funcs)
+		}
+	}
 }
 
 // promoteForeignStructs adds a library package's struct to this package's list
@@ -71,7 +105,16 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		haveEnum[ed] = true
 	}
 	var addedEnums []*ir.EnumDef
-	want := func(t *ir.Type) {
+	var want func(t *ir.Type)
+	want = func(t *ir.Type) {
+		// A list, option or map of a library struct names the struct as much
+		// as a parameter of it does.
+		if t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeOption || t.Kind == ir.TypeMap || t.Kind == ir.TypeIter) {
+			for _, el := range t.Elems {
+				want(el)
+			}
+			return
+		}
 		if t != nil && t.Kind == ir.TypeEnum {
 			// Kotlin emits an enum as a class of its own, so a helper taking
 			// `markup.Token` named a type the file never declared.
@@ -90,6 +133,26 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		have[sd] = true
 		added = append(added, sd)
+		// A promoted struct's declaration names its fields' types, which
+		// have to be declared beside it: `_Item` holds `list<_Block>`. A
+		// builtin kind's (`color`) is each backend's own to spell.
+		for _, f := range sd.Fields {
+			if !namesBuiltinStruct(f.Type) {
+				want(f.Type)
+			}
+		}
+	}
+	// A loop a target runs holds its iterable as a value, and a Go literal
+	// spells its type: `for b := range []_Block{…}` is md.document's on
+	// bubbletea. It used to be declared only because a helper's signature
+	// happened to name it.
+	for _, o := range ir.Owners(pkg) {
+		ir.WalkView(*o.Body, func(s ir.Stmt) bool {
+			if f, ok := s.(*ir.For); ok && f.Iter != nil {
+				want(f.Iter.ExprType())
+			}
+			return true
+		})
 	}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || fn.Pkg == "" {
@@ -131,6 +194,32 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	return nil
 }
 
+// namesBuiltinStruct reports whether t is, or holds, a struct of a builtin
+// kind -- `color`, `date` -- which each backend spells itself.
+func namesBuiltinStruct(t *ir.Type) bool {
+	for t != nil {
+		switch t.Kind {
+		case ir.TypeList, ir.TypeOption, ir.TypeIter:
+			if len(t.Elems) == 0 {
+				return false
+			}
+			t = t.Elems[0]
+			continue
+		case ir.TypeMap:
+			if len(t.Elems) < 2 {
+				return false
+			}
+			t = t.Elems[1]
+			continue
+		case ir.TypeStruct:
+			sd, ok := t.Decl.(*ir.StructDef)
+			return ok && sd != nil && sd.Builtin != ir.BuiltinNone
+		}
+		return false
+	}
+	return false
+}
+
 // handlerPayloadTypes is the payload type of every event handler the program
 // writes and of every payload a test hands an event trigger. A backend that
 // keeps the handler's parameter declares it by that type, and a test's
@@ -140,11 +229,32 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	visit := func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
+			// A node a `#id` names gets a test invoker per event it
+			// declares, whether or not the program subscribes; and a node
+			// with a two-way prop, bound or not, has its value written back
+			// from the event's payload with no handler written anywhere. The
+			// emitters prune what nothing reads.
+			if v.Component != nil && (v.Handle != nil || hasTwoWayProp(v.Component)) {
+				for _, e := range v.Component.Events {
+					if t := e.Payload(); t != nil {
+						out = append(out, t)
+					}
+				}
+			}
 			for _, h := range v.Handlers {
 				if h.Func != nil && !h.Func.Synthesized {
 					for _, p := range h.Func.Params {
 						out = append(out, p.Type)
 					}
+				}
+			}
+		case *ir.Lambda:
+			// A closure's parameter is in its signature, which a Go func
+			// type spells: a handler lifted out of a component built at run
+			// time travels in as one.
+			if v.Func != nil {
+				for _, p := range v.Func.Params {
+					out = append(out, p.Type)
 				}
 			}
 		case *ir.Call:
@@ -159,12 +269,33 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	for _, o := range ir.Owners(pkg) {
 		_ = ir.Walk(*o.Body, visit)
 	}
+	// And an event a component the package holds declares, since an
+	// instance record's constructor and setters name its type.
+	for _, c := range pkg.Components {
+		if c == nil {
+			continue
+		}
+		for _, e := range c.Events {
+			for _, p := range e.Params {
+				out = append(out, p.Type)
+			}
+		}
+	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil && fn.IsTest {
 			_ = ir.Walk(fn.Block, visit)
 		}
 	}
 	return out
+}
+
+func hasTwoWayProp(c *ir.Component) bool {
+	for _, p := range c.Props {
+		if p.Bidirectional {
+			return true
+		}
+	}
+	return false
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries
@@ -347,11 +478,6 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
-	// The window itself and not only its body: a window carries its route
-	// parameters and its @error, and neither is reachable from the children.
-	for _, w := range pkg.Windows {
-		view([]ir.Stmt{w})
-	}
 	// Test functions are roots, and so is every synthesized func, which
 	// filterFuncs keeps whether or not anything names it: kept and not
 	// walked, a focus helper outlived the __focusID it reads.
@@ -398,158 +524,65 @@ func walkFunc(f *ir.Func, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 }
 
 func walkStmts(stmts []ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	for _, s := range stmts {
-		walkStmt(s, used, walk)
-	}
+	walkNames(stmts, walk)
 }
 
 func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	if s == nil {
 		return
 	}
-	switch n := s.(type) {
-	case *ir.NodeInst:
-		walkNode(n, used, walk)
-		walkStmts(n.Children, used, walk)
-		walkSlots(n.Slots, used, walk)
-	case *ir.CallStmt:
-		if n.Call != nil {
-			walkCallExpr(n.Call, used, walk)
-		}
-	case *ir.SlotInst:
-		for _, a := range n.Args {
-			walkExpr(a, used, walk)
-		}
-		walkStmts(n.Children, used, walk)
-		walkSlots(n.Slots, used, walk)
-	case *ir.Assign:
-		walkExpr(n.Target, used, walk)
-		walkExpr(n.Value, used, walk)
-	case *ir.Toggle:
-		walkExpr(n.Target, used, walk)
-	case *ir.Emit:
-		for _, a := range n.Args {
-			walkExpr(a.Value, used, walk)
-		}
-	case *ir.LocalVar:
-		walkType(n.Type, used, walk)
-		walkExpr(n.Init, used, walk)
-		// A flattened canvas carries the statements that paint it on the node
-		// it replaced. They call what the platform package's shapes call --
-		// fyne's applyStyle, gtk4's paint -- and reaching them is what keeps
-		// those declarations from being shaken as unreferenced.
-		if n.CanvasNode != nil {
-			walkStmts(n.CanvasNode.Children, used, walk)
-		}
-	case *ir.Return:
-		walkExpr(n.Value, used, walk)
-	case *ir.If:
-		walkExpr(n.Cond, used, walk)
-		walkStmts(n.Body, used, walk)
-		walkStmts(n.Else, used, walk)
-	case *ir.For:
-		walkExpr(n.Iter, used, walk)
-		walkStmts(n.Body, used, walk)
-		walkStmts(n.Else, used, walk)
-	case *ir.ContextProvider:
-		walkExpr(n.Value, used, walk)
-		walkStmts(n.Children, used, walk)
-	case *ir.ErrorBoundary:
-		if n.Handler != nil && n.Handler.Func != nil {
-			walkFunc(n.Handler.Func, used, walk)
-		}
-		walkStmts(n.Children, used, walk)
-	case *ir.CanvasRedrawStmt:
-		// Carries only NodeInst/Func pointers already tracked by other walk paths.
-	case *ir.Break, *ir.Continue:
-		// A loop escape names no declaration.
-	default:
-		panic(fmt.Sprintf("walkStmt: unhandled stmt %T", n))
-	}
+	walkNames(s, walk)
 }
 
 func walkExpr(e ir.Expr, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	if e == nil {
 		return
 	}
-	switch x := e.(type) {
-	case *ir.Ident:
-		if x.Sym != nil {
-			walk(x.Sym)
-		}
-	case *ir.Binary:
-		walkExpr(x.Left, used, walk)
-		walkExpr(x.Right, used, walk)
-	case *ir.Unary:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Ternary:
-		walkExpr(x.Cond, used, walk)
-		walkExpr(x.Then, used, walk)
-		walkExpr(x.Else, used, walk)
-	case *ir.Call:
-		walkCallExpr(x, used, walk)
-	case *ir.Conversion:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Select:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Index:
-		walkExpr(x.Operand, used, walk)
-		walkExpr(x.Idx, used, walk)
-	case *ir.ListLit:
-		for _, el := range x.Elems {
-			walkExpr(el, used, walk)
-		}
-	case *ir.StructLit:
-		if x.Def != nil {
-			walk(x.Def)
-		}
-		for _, f := range x.Fields {
-			walkExpr(f.Value, used, walk)
-		}
-	case *ir.Spread:
-		walkExpr(x.Operand, used, walk)
-	case *ir.Lambda:
-		if x.Func != nil {
-			walkFunc(x.Func, used, walk)
-		}
-	case *ir.Closure:
-		if x.Func != nil {
-			walkFunc(x.Func, used, walk)
-		}
-		if x.State != nil {
-			walkExpr(x.State, used, walk)
-		}
-	case *ir.MapLitIR:
-		for _, kv := range x.Entries {
-			walkExpr(kv.Key, used, walk)
-			walkExpr(kv.Value, used, walk)
-		}
-	case *ir.ContextRead:
-		if x.Ref != nil {
-			walk(x.Ref)
-		}
-	case *ir.Literal:
-		// No subexpressions or referenced symbols.
-	default:
-		panic(fmt.Sprintf("walkExpr: unhandled expr %T", x))
-	}
+	walkNames(e, walk)
 }
 
-func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if call.Func != nil {
-		walk(call.Func)
-	}
-	walkExpr(call.Receiver, used, walk)
-	// Callee is where a call to something other than a declaration keeps its
-	// target: `h.run()` on a func-valued struct field is a Select on `h`, and
-	// Func is nil. Missed here, nothing reached `h` and the var was shaken
-	// while the handler that calls it kept naming it -- `await h__inst0.run()`
-	// against a `state` object with no such field, in emitted JS that a golden
-	// records as passing because nothing runs it.
-	walkExpr(call.Callee, used, walk)
-	for _, a := range call.Args {
-		walkExpr(a.Value, used, walk)
-	}
+// walkNames hands walk every declaration root names. ir.Walk reaches every
+// statement and expression below it -- a call's callee and @error, a lambda's
+// body, a node's key, ref and nav record -- and the visit adds what the walk
+// does not follow because root refers to it rather than owning it: a call's
+// declaration, an ident's symbol, a literal's struct, a closure's body, a
+// catch block's handler, a node's component, and the types a local or a
+// node's route parameters name. A hand-written descent here missed a node's
+// record and start, which a stack's lowering leaves the page's values in.
+func walkNames(root any, walk func(ir.Symbol)) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if x.Sym != nil {
+				walk(x.Sym)
+			}
+		case *ir.Call:
+			if x.Func != nil {
+				walk(x.Func)
+			}
+		case *ir.StructLit:
+			if x.Def != nil {
+				walk(x.Def)
+			}
+		case *ir.ContextRead:
+			if x.Ref != nil {
+				walk(x.Ref)
+			}
+		case *ir.Closure:
+			walkFunc(x.Func, nil, walk)
+		case *ir.LocalVar:
+			walkType(x.Type, nil, walk)
+		case *ir.If:
+			// A catch block renders its handler where it stands, so what the
+			// handler names is used here whether or not its owner survived.
+			if x.Catch != nil && x.Catch.Func != nil {
+				walkStmts(x.Catch.Func.Block, nil, walk)
+			}
+		case *ir.NodeInst:
+			walkNodeRefs(x, walk)
+		}
+		return nil
+	})
 }
 
 func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
@@ -589,7 +622,12 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 			walkViewStmts(n.Body, walk, buildWalk)
 			walkViewStmts(n.Else, walk, buildWalk)
 		case *ir.SlotInst:
+			// What an insertion hands its population, as walkStmt reads it.
+			for _, a := range n.Args {
+				walkExpr(a, nil, walk)
+			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkSlots(n.Slots, nil, walk)
 		case *ir.ContextProvider:
 			walkExpr(n.Value, nil, walk)
 			walkViewStmts(n.Children, walk, buildWalk)
@@ -598,6 +636,7 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 				walkFunc(n.Handler.Func, nil, walk)
 			}
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkViewStmts(n.Failed, walk, buildWalk)
 		default:
 			walkStmt(s, nil, walk)
 		}
@@ -610,26 +649,34 @@ func walkSlots(slots map[string]*ir.SlotContent, used map[ir.Symbol]bool, walk f
 	}
 }
 
-// walkNode walks what a node names itself: its component, props, handlers
-// and route parameters, and not its children.
+// walkNode walks what a node names itself and not its children, which a view
+// walk reads on its own terms: its props, handlers, key, ref and nav record,
+// and walkNodeRefs.
 func walkNode(n *ir.NodeInst, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if n.Component != nil {
-		walk(n.Component)
-	}
+	walkNodeRefs(n, walk)
 	for _, p := range n.Props {
 		walkExpr(p.Value, used, walk)
 	}
 	for _, h := range n.Handlers {
 		walkFunc(h.Func, used, walk)
 	}
-	if n.ErrorHandler != nil {
-		walkFunc(n.ErrorHandler.Func, used, walk)
+	walkExpr(n.Key, used, walk)
+	walkExpr(n.Ref, used, walk)
+	walkExpr(n.Record, used, walk)
+	walkExpr(n.Start, used, walk)
+}
+
+// walkNodeRefs walks what a node refers to rather than holds: its component,
+// and the type of its route parameters. A window's route parameters name a
+// struct the program may declare and never construct: the request fills the
+// cell, and a target with no request renders its zero. Nothing else reaches
+// that declaration, so without this the page read `v.pkg` off a type no file
+// declared.
+func walkNodeRefs(n *ir.NodeInst, walk func(ir.Symbol)) {
+	if n.Component != nil {
+		walk(n.Component)
 	}
-	// A window's route parameters name a struct the program may declare
-	// and never construct: the request fills the cell, and a target with
-	// no request renders its zero. Nothing else reaches that declaration,
-	// so without this the page read `v.pkg` off a type no file declared.
 	if n.Params != nil {
-		walkType(n.Params.Type, used, walk)
+		walkType(n.Params.Type, nil, walk)
 	}
 }

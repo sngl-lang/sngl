@@ -1,0 +1,42 @@
+import marks "sngl:internal/marks"
+
+// An import scheme written in SNGL. Written at the root of a file, it says
+// that every package importing this one -- directly, or through a package
+// that does -- can import `<name>:<path>`, and that what such an import
+// resolves to is the SNGL package `@generate` writes:
+//
+//     gen.scheme(name="pc", @generate(out, importPath) {
+//         out.write("pc.sngl", "const name = \"{importPath}\"\n")
+//     })
+//
+// The handler runs when a build meets an import of the scheme, and is handed
+// what follows the scheme's colon. It reads the machine only through this
+// package's host API, so what it read is recorded and its output is stored
+// between builds behind that and the plugin's own source. A literal
+// `cache.inputs` directive written into the output adds inputs of its own --
+// what a process the handler ran reads, which the build cannot see -- with any
+// digest or value it leaves out filled in when the output is stored.
+//
+// A raise that leaves the handler is an error at the import, carrying the
+// raise's message.
+//
+// A scheme may not take the name of one the compiler or the library already
+// serves, two packages one import reaches may not both declare one name, and
+// a plugin may not use a scheme it declares. A scheme the library ships lives
+// at `sngl:x/scheme/<name>`, and needs no import.
+//
+// It renders nothing and is not part of the program: the check reads it where
+// it is written and takes it out of the package.
+#[marks.builtin("genScheme")]
+component scheme(const name string, @generate(out Out, importPath string)) root {}
+
+// Where a handler writes what it produces: a scheme's the package an import
+// resolves to, a family's `@generate` the files its emitter generates.
+struct Out {}
+
+// Writes one file: for a scheme, name is a `.sngl` file name with no
+// directory, and src its source; for a family's emitter, name is a path
+// inside the output directory. Each name is written once. It records
+// nothing, since it is the output.
+#[marks.intrinsic("gen.Out.write", build)]
+func Out.write(name string, src string)

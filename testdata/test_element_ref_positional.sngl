@@ -15,7 +15,7 @@ func testPositionalPropsOnAnElementRef(t Test, c main) {
 }
 
 component main node {
-    text #pos({}, "positional")
+    text #pos("positional")
     text #named(value="named")
 }
 

@@ -371,16 +371,21 @@ component main node {
 	}
 }
 
+// drainDocuments is the one document a harness writes for pkg's root
+// component: its body, cloned and folded in a child of the package's fold, as
+// a target writing markup folds a document.
 func drainDocuments(t *testing.T, pkg *ir.Package, cfg *Config) []*codegen.Document {
 	t.Helper()
-	var out []*codegen.Document
-	for doc, err := range Documents(pkg, cfg) {
-		if err != nil {
-			t.Fatalf("documents: %v", err)
-		}
-		out = append(out, doc)
+	root := pkg.RootDecl()
+	if root == nil {
+		return nil
 	}
-	return out
+	f := NewFold(pkg, cfg).Child()
+	body := f.Stmts(f.Clone(root.Body))
+	if err := f.Err(); err != nil {
+		t.Fatalf("documents: %v", err)
+	}
+	return []*codegen.Document{{Body: body}}
 }
 
 // TestFoldDoesNotCollapseDerefOfAddrOfConst ensures the const folder leaves

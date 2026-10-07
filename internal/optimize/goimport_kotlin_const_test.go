@@ -3,6 +3,7 @@
 package optimize
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -50,7 +51,7 @@ func TestOptimize_GoImportConstFoldsOnKotlin(t *testing.T) {
 		}},
 	}
 
-	if err := Optimize(pkg, &Config{Platform: "android", Language: "kotlin", Dir: dir}); err != nil {
+	if err := Optimize(pkg, &Config{Platform: "android", Language: "kotlin", Dir: dir, Trust: trust.AllowAll()}); err != nil {
 		t.Fatalf("kotlin build must not fail on a foldable go: const: %v", err)
 	}
 	lit, ok := c.Init.(*ir.Literal)

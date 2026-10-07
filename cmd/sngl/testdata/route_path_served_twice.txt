@@ -1,25 +1,21 @@
-# Two windows serving one path is refused at build time. Route mode registers
-# a `GET <path>` per window on one mux, and net/http panics on the second at
+# Two routes serving one path is refused at build time. Route mode registers
+# a `GET <path>` per route on one mux, and net/http panics on the second at
 # startup -- so the program built and then could not start.
 #
-# Three ways to get there: a second window whose id is `index`, which still
-# takes `/` beside the first window's default; two windows with no id, both of
-# which default to `/`; and two paths that differ only in a parameter's name,
-# which a mux matches as one pattern.
+# Two pages whose paths differ only in a parameter's name are one pattern to a
+# mux. Two windows are no longer a way to get there: the second is a
+# `<dialog>` in the first one's document, served at no path of its own.
 
-! sngl generate --lang go --platform html -o out-index index.sngl
-stderr 'window "home" and window "index" both serve /; give one of them an href'
-
-! sngl generate --lang go --platform html -o out-unnamed unnamed.sngl
-stderr 'window 1 and window 2 both serve /'
+sngl generate --lang go --platform html -o out-index index.sngl
+! grep 'GET /index' out-index/server.go
 
 ! sngl generate --lang go --platform html -o out-params params.sngl
-stderr 'window "byName" and window "byID" both serve /p/\{id\}'
+stderr 'page "byName" and page "byID" both serve /p/\{id\}'
 
 # Two different shapes conflict too when some path matches both and neither is
 # more specific: `/p/q` is either. Only identical shapes were caught.
 ! sngl generate --lang go --platform html -o out-overlap overlap.sngl
-stderr 'window "pa" serves /p/\{a\} and window "bq" serves /\{b\}/q, which match some of the same paths with neither more specific'
+stderr 'page "pa" serves /p/\{a\} and page "bq" serves /\{b\}/q, which match some of the same paths with neither more specific'
 
 # A more specific path beside a general one is what a mux is for.
 sngl generate --lang go --platform html -o out-specific specific.sngl
@@ -34,18 +30,9 @@ ui.window #home(title="Home") {
 ui.window #index(title="Index") {
     ui.text(value="index")
 }
--- unnamed.sngl --
-import ui "sngl:ui"
-
-ui.window(title="A") {
-    ui.text(value="a")
-}
-
-ui.window(title="B") {
-    ui.text(value="b")
-}
 -- params.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
 struct ByName {
     name string
@@ -55,19 +42,23 @@ struct ByID {
     id string
 }
 
-ui.window #byName(href=`/p/{name}`, params=ByName{}) {
-    component content(p) {
-        ui.text(value=p.name)
-    }
-}
-
-ui.window #byID(href=`/p/{id}`, params=ByID{}) {
-    component content(p) {
-        ui.text(value=p.id)
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #byName(href=`/p/{name}`, title="By name", params=ByName{}) {
+            component content(p) {
+                ui.text(value=p.name)
+            }
+        }
+        nav.page #byID(href=`/p/{id}`, title="By id", params=ByID{}) {
+            component content(p) {
+                ui.text(value=p.id)
+            }
+        }
     }
 }
 -- overlap.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
 struct A {
     a string
@@ -77,38 +68,43 @@ struct B {
     b string
 }
 
-ui.window #home(title="Home") {
-    ui.text(value="home")
-}
-
-ui.window #pa(href=`/p/{a}`, params=A{}) {
-    component content(p) {
-        ui.text(value=p.a)
-    }
-}
-
-ui.window #bq(href=`/{b}/q`, params=B{}) {
-    component content(p) {
-        ui.text(value=p.b)
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+        nav.page #pa(href=`/p/{a}`, title="A", params=A{}) {
+            component content(p) {
+                ui.text(value=p.a)
+            }
+        }
+        nav.page #bq(href=`/{b}/q`, title="B", params=B{}) {
+            component content(p) {
+                ui.text(value=p.b)
+            }
+        }
     }
 }
 -- specific.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 
 struct A {
     a string
 }
 
-ui.window #home(title="Home") {
-    ui.text(value="home")
-}
-
-ui.window #pa(href=`/p/{a}`, params=A{}) {
-    component content(p) {
-        ui.text(value=p.a)
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #home(href="/", title="Home") {
+            ui.text(value="home")
+        }
+        nav.page #pa(href=`/p/{a}`, title="A", params=A{}) {
+            component content(p) {
+                ui.text(value=p.a)
+            }
+        }
+        nav.page #pq(href="/p/q", title="Q") {
+            ui.text(value="q")
+        }
     }
-}
-
-ui.window #pq(href="/p/q", title="Q") {
-    ui.text(value="q")
 }

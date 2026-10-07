@@ -1,0 +1,73 @@
+# What a plugin's handler writes is stored, keyed by the import and the digest
+# of the plugin's code, behind every input the handler recorded reading. A
+# store hit runs nothing. An edit to the plugin, to a file it read, or to a
+# file its output names in a literal `cache.inputs` directive -- what a
+# process it ran reads, which no recorder can see -- is a miss.
+env SNGL_GENCACHE_DIR=$WORK/store
+
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+grep 'v1 one' out/index.html
+! stderr 'gencache hit" req="sngl.scheme'
+
+# Nothing changed: the stored package answers.
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+grep 'v1 one' out/index.html
+stderr 'gencache hit" req="sngl.scheme'
+
+# The plugin changed, and nothing it read did: a miss, or the old plugin's
+# package would be replayed.
+cp pc2.sngl pc/pc.sngl
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+! stderr 'gencache hit" req="sngl.scheme'
+grep 'v2 one' out/index.html
+
+# A file the handler read changed.
+cp data2.txt data.txt
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+! stderr 'gencache hit" req="sngl.scheme'
+grep 'v2 two' out/index.html
+
+# A file only the output's literal directive names changed. The handler never
+# read it, so only the directive can say the output depends on it.
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+stderr 'gencache hit" req="sngl.scheme'
+cp tool2.conf tool.conf
+sngl generate --lang=none --platform=html -o out --debug app.sngl
+! stderr 'gencache hit" req="sngl.scheme'
+
+-- app.sngl --
+import ui "sngl:ui"
+import d "data:data.txt"
+import "./pc"
+
+ui.window(title="t") {
+    ui.text(value=d.text)
+}
+-- data.txt --
+one
+-- data2.txt --
+two
+-- tool.conf --
+first
+-- tool2.conf --
+second
+-- pc/pc.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="data", @generate(out, importPath) {
+    var first = ""
+    for var line = gen.lines(importPath) {
+        first = line
+    }
+    out.write("data.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v1 " + first + "\"\n")
+})
+-- pc2.sngl --
+import gen "sngl:x/gen"
+
+gen.scheme(name="data", @generate(out, importPath) {
+    var first = ""
+    for var line = gen.lines(importPath) {
+        first = line
+    }
+    out.write("data.sngl", "import cache \"sngl:x/gen/cache\"\n\ncache.inputs \{\n    cache.file(path=\"tool.conf\")\n\}\n\nconst text = \"v2 " + first + "\"\n")
+})

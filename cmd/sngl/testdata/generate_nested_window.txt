@@ -14,8 +14,8 @@ stderr 'expected node component in window, got window'
 # Inlining is the other route, and it is now refused a phase earlier: #214 gave
 # a component's body the same tree question every other position was already
 # asked, so `component inner node { window … }` is reported where it is written
-# rather than where it is spliced. passWindowNesting is what caught it before,
-# and is left in place for the shapes a lowering pass can still synthesize.
+# rather than where it is spliced. passWindowNesting caught it before; a window
+# is an ordinary component now, and membership is the whole of the answer.
 ! sngl generate --lang=go --platform=fyne --out=out2 viacomponent.sngl
 stderr 'viacomponent.sngl:10:8: expected node component in the body of inner, got window'
 

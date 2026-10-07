@@ -8,7 +8,7 @@
 # at all.
 
 ! sngl generate --lang none --platform html -o out app.sngl
-stderr 'window "home" has a dynamic href'
+stderr 'page "home" is served at /p/\{pkg\}, a pattern: a static site writes one document per page and cannot serve one'
 ! exists out/p
 
 # A path with no placeholders is still a page.
@@ -17,15 +17,20 @@ exists out/index.html
 
 -- app.sngl --
 import ui "sngl:ui"
+import nav "sngl:ui/nav"
 import "sngl:platform/html"
 
 struct PageParams {
     pkg string
 }
 
-ui.window #home(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    component content(v) {
-        ui.text(value="pkg is {v.pkg}")
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        nav.page #home(href=`/p/{pkg}`, title="t", params=PageParams{}) {
+            component content(v) {
+                ui.text(value="pkg is {v.pkg}")
+            }
+        }
     }
 }
 
@@ -33,6 +38,6 @@ ui.window #home(title="t", href=`/p/{pkg}`, params=PageParams{}) {
 import ui "sngl:ui"
 import "sngl:platform/html"
 
-ui.window #home(title="t", href="/index.html") {
+ui.window #home(title="t") {
     ui.text(value="plain")
 }

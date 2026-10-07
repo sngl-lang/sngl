@@ -27,6 +27,10 @@ func DeclFormName(decl any) string {
 		return "an import"
 	case *Param:
 		return "a parameter"
+	case *VisualNode:
+		return "a node"
+	case *CallStmt:
+		return "a call"
 	case nil:
 		return "nothing"
 	default:

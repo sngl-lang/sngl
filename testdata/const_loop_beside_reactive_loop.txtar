@@ -65,7 +65,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picks: [] };
+  var state = { picks: [], visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -95,30 +95,30 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     for (const p of state.picks) {
-      let __n1 = null;
+      let __n2 = null;
       if (__inst1_live.length > __inst1_i) {
-        __n1 = __inst1_live[__inst1_i];
-        __n1.__set___p0(p);
+        __n2 = __inst1_live[__inst1_i];
+        __n2.__set___p0(p);
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n1__new = __cf___child0({ __p0: p });
-        __n1 = __n1__new;
+        let __n2__new = __cf___child0({ __p0: p });
+        __n2 = __n2__new;
       }
-      __inst1_next.push(__n1);
+      __inst1_next.push(__n2);
       __inst1_i = __inst1_i + 1;
-      let __n1__el = __n1.__root;
+      let __n2__el = __n2.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n1__el) {
+      if (__place0_i_ref0 === __n2__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n1__el, __place0_i_ref0);
+        parent.insertBefore(__n2__el, __place0_i_ref0);
       }
-      __slot0.push(__n1__el);
+      __slot0.push(__n2__el);
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
       let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
@@ -144,4 +144,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4c7dbb2d93eadb160c2b2702f40c23a0
+pass sha256:ed36230d97a357c54d20865547dd0fd9

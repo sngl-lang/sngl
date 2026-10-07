@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -83,7 +84,7 @@ func TestServerAction(t *testing.T) {
 	}
 
 	// State struct with Count int.
-	if !strings.Contains(src, "Count int") {
+	if !regexp.MustCompile(`\bCount\s+int\b`).MatchString(src) {
 		t.Errorf("server.go missing State field `Count int`")
 	}
 	// renderRoute-style func taking the State receiver and reading s.Count.

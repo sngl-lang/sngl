@@ -42,6 +42,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"asyncPost":        func(f *Features) *bool { return &f.AsyncPost },
 	"asyncSpawn":       func(f *Features) *bool { return &f.AsyncSpawn },
 	"effects":          func(f *Features) *bool { return &f.Effects },
+	"navigation":       func(f *Features) *bool { return &f.Navigation },
 }
 
 var passField = map[string]func(*Features) *bool{
@@ -50,6 +51,7 @@ var passField = map[string]func(*Features) *bool{
 	"focusOrder":         func(f *Features) *bool { return &f.FocusOrder },
 	"canvas":             func(f *Features) *bool { return &f.Canvas },
 	"reactiveCanvas":     func(f *Features) *bool { return &f.ReactiveCanvas },
+	"navigationHrefs":    func(f *Features) *bool { return &f.NavigationHrefs },
 }
 
 // FeaturesFrom reads a target's capabilities off the two build-tree nodes it

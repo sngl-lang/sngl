@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"iter"
 	"strings"
 	"text/template"
 	"time"
@@ -226,12 +225,11 @@ func PlatformRendersViewStatically(platform, language string) bool {
 	return !f.ViewStatements
 }
 
-// PlatformDocs returns the SNGL declarations p contributes — the source of its
-// `sngl:platform/<id>` package, both what lib/ embeds and what p
-// synthesizes — or nil when it declares none or cannot be used here. gtk4
-// without a GIR file has no widget set to declare and its overrides are
-// written against that set, so it contributes nothing rather than declarations
-// no one can check.
+// PlatformDocs returns the SNGL declarations p contributes -- the source of
+// its `sngl:platform/<id>` package -- or nil when it declares none or cannot
+// be used here. gtk4 with a GIR it cannot read has no widget set for its
+// overrides to be written against, so it contributes nothing rather than
+// declarations no one can check.
 func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if p == nil {
 		return nil
@@ -239,20 +237,17 @@ func PlatformDocs(p PlatformGenerator) []*ast.Document {
 	if a, ok := p.(PlatformAvailability); ok && a.Unavailable() != nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("platform/"+p.PlatformIdentifier()),
-		checker.ProvidedDocs(p)...)
+	return checker.PackageDocsFor("platform/" + p.PlatformIdentifier())
 }
 
 // LangDocs returns the SNGL declarations l contributes -- the source of its
-// `sngl:language/<id>` package, both what lib/ embeds and what l serves
-// itself -- or nil when it declares none. The path is keyed by the language's
+// `sngl:language/<id>` package -- or nil when it declares none. The path is keyed by the language's
 // own identifier, so Go's package is language/go.
 func LangDocs(l LangTranslator) []*ast.Document {
 	if l == nil {
 		return nil
 	}
-	return append(checker.PackageDocsFor("language/"+l.LanguageIdentifier()),
-		checker.ProvidedDocs(l)...)
+	return checker.PackageDocsFor("language/" + l.LanguageIdentifier())
 }
 
 // TestRunner is optionally implemented by PlatformGenerators that provide
@@ -348,37 +343,17 @@ type BatchTextSnapshotter interface {
 	BatchSnapshotText(docs []BatchDoc, width, height int) (map[string][]byte, error)
 }
 
-// Runner is optionally implemented by PlatformGenerators that can execute
-// their generated output directly (e.g., "go run" for bubbletea, open
-// browser for HTML, adb install for Android).
-type Runner interface {
-	Run(dir string, opts *ir.StructLit, args []string) error
-}
-
-// LangRunner is optionally implemented by LangTranslators that know how to
-// execute generated code in a temp directory. Platforms delegate to this
-// interface so execution logic lives in the language, not each platform.
-type LangRunner interface {
-	// RunDir bootstraps a module in dir and runs the generated code.
-	// goVersion sets the toolchain version emitted in go.mod (Go lang).
-	// goModExtra is appended verbatim — typically a `replace …` directive
-	// pointing SNGL runtime imports at a local checkout when developing.
-	RunDir(dir, goVersion, goModExtra string, args []string) error
-}
-
-// Builder is optionally implemented by PlatformGenerators that have a build
-// step between code generation and execution (e.g., compiling an APK).
-type Builder interface {
-	Build(dir string, opts *ir.StructLit) (artifact string, err error)
-}
+// `sngl run` and `sngl build` are not interfaces: a target says what each does
+// with a gen.run or gen.build in its build-tree node's body (sngl:x/gen), and
+// what only Go can do for one is a CommandFunc it registers.
 
 // TestLauncher launches a compiled SNGL program in agent mode and
 // returns an RPC channel for the sngl test driver to use. Implementable
 // by either a PlatformGenerator (custom build/launch lifecycle — e.g.
 // android APK + adb forward) or a LangTranslator (default lifecycle —
 // compile a binary and spawn it with stdin/stdout RPC). The driver
-// tries the platform first and falls back to the language; mirrors
-// codegen.Builder's resolution.
+// tries the platform first and falls back to the language; the platform-then-language order
+// a command is found in.
 type TestLauncher interface {
 	// LaunchTest compiles the package, spawns the agent-mode binary, and
 	// returns a connected RPCChannel plus a Cleanup func the caller must
@@ -415,6 +390,30 @@ type HTTPCompiler interface {
 	CompileHTTP(req *HTTPRequest) ([]*OutputFile, error)
 }
 
+// ServesRoutes reports whether the language named serves a document per
+// route at run time rather than having each written out at build time: it
+// implements HTTPCompiler. The one answer to "static site or server", which
+// the html platform's documents and its route mode both ask.
+func ServesRoutes(lang string) bool {
+	_, ok := LookupLang(lang).(HTTPCompiler)
+	return ok
+}
+
+// Untranslated is optionally implemented by a PlatformGenerator that
+// generates a program for `--lang none` itself -- html, whose static site is
+// the browser's to run. Every other platform given `--lang none` has nothing
+// to generate: the interpreter runs the program.
+type Untranslated interface {
+	GeneratesUntranslated() bool
+}
+
+// GeneratesUntranslated reports whether the platform named answers
+// `--lang none` with output of its own (Untranslated).
+func GeneratesUntranslated(platform string) bool {
+	u, ok := LookupPlatform(platform).(Untranslated)
+	return ok && u.GeneratesUntranslated()
+}
+
 // HTTPRequest describes what the platform needs the language to generate.
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.
@@ -431,19 +430,16 @@ type HTTPRequest struct {
 	RenderHTML func(routeIdx int) string
 }
 
-// HTTPRoute maps a window to an HTTP route.
+// HTTPRoute maps a document to an HTTP route.
 type HTTPRoute struct {
-	Name      string   // handler function name (e.g., "handleHome")
-	Path      string   // URL path template: "/", "/about", "/users/{name}"
-	Title     string   // page title
-	Params    []string // route parameter names extracted from Path (e.g., ["name"])
-	WindowIdx int      // index into CodegenCtx.Windows()
-	// Window is the window this route renders, carried rather than looked up
-	// by WindowIdx: a language needs it to scope a route's expressions to the
-	// window's own state, which is where a root component's declarations are
-	// hoisted (#215), and an index into a list the language does not hold is
-	// two things that can disagree.
-	Window  *ir.Window
+	Name   string   // handler function name (e.g., "handleHome")
+	Path   string   // URL path template: "/", "/about", "/users/{name}"
+	Title  string   // page title
+	Params []string // route parameter names extracted from Path (e.g., ["name"])
+	DocIdx int      // index of the route's document, which RenderHTML is handed
+	// Surface is the node the route's document is written from, html's
+	// Window: a language reads the params cell the route binds off it.
+	Surface *ir.NodeInst
 	Actions []HTTPAction // server-state form actions (POST handlers)
 
 	// Render is a static HTML skeleton interleaved with IR-expr holes, which
@@ -534,9 +530,9 @@ type WASMFunc struct {
 // call sites via cgo. Checked via type assertion at codegen time.
 type CCompiler interface {
 	// EmitCHeader returns the cgo preamble comment block and `import "C"` line
-	// for the given C native imports. Called once per output file.
-	// Returns empty string when imports is empty.
-	EmitCHeader(imports []*ir.NativeImport) string
+	// for the headers the program's c.link directives name. Called once per
+	// output file. Returns empty string when links is empty.
+	EmitCHeader(links []*ir.CLink) string
 }
 
 // MutationModelEmitter is optionally implemented by platforms that emit a
@@ -673,19 +669,71 @@ type Request struct {
 	// OutDir is where the generated files will be written. Only source-map
 	// emission reads it; see FileOptions.OutDir.
 	OutDir string
-	// Documents yields each window Pkg renders as a target that writes markup
-	// writes it: one at a time, loop variables bound and constant loops
-	// unrolled (optimize.Documents). Nil for a caller that did not run the build
-	// pipeline; a platform that needs it builds its own.
-	Documents func() iter.Seq2[*Document, error]
+	// Fold starts the build-time evaluation a target writing markup writes its
+	// documents with (optimize.NewFold), configured as the build that lowered
+	// Pkg was: its trust, its evaluation cache, its project directory. Nil for
+	// a caller that did not run the build pipeline; a platform that needs one
+	// builds its own.
+	Fold func() Fold
 }
 
-// Document is one window as a static target writes it.
+// Fold is a build-time evaluation over a lowered package, for a target that
+// writes its view out rather than running it: which document a page is, what
+// a loop's iterations are, and each document's tree folded with them bound.
+// Which documents a program has is the target's to decide; this is what it
+// decides with. A child shares what its parent has evaluated and binds what it
+// adds without touching the parent.
+type Fold interface {
+	Child() Fold
+	// Eval is e's value, where the build can know it.
+	Eval(e ir.Expr) (any, bool)
+	// Expr and Stmts fold what they are handed, unrolling a constant loop.
+	Expr(e ir.Expr) ir.Expr
+	Stmts(stmts []ir.Stmt) []ir.Stmt
+	// Clone copies statements so a fold may rewrite them, sharing every
+	// declaration they name.
+	Clone(stmts []ir.Stmt) []ir.Stmt
+	// Decide is a condition's value, where the build can know it.
+	Decide(cond ir.Expr) (value, ok bool)
+	// LoopItems is what a loop iterates, where the build can know it; past the
+	// static unroll limit it is an error on the fold.
+	LoopItems(fs *ir.For) ([]any, bool)
+	// BindLoop binds one iteration's variables in this fold.
+	BindLoop(fs *ir.For, i int, item any)
+	// Bind binds a symbol's value in this fold.
+	Bind(sym ir.Symbol, v any)
+	// Answer makes every call of the intrinsic id fold to v in this fold and
+	// its children -- `pages.current`, in the document written for a page.
+	Answer(id string, v any)
+	// Fail records err as the fold's error, unless it has one.
+	Fail(err error)
+	Err() error
+	// TakeFileAssets is the file: assets this fold resolved since the last
+	// call, and forgets them.
+	TakeFileAssets() []FileAsset
+	// SettleNatives answers, before the first document is written, the pure
+	// native calls that only a loop's binding makes constant: probe walks the
+	// documents with the fold it is handed, and each round runs what it could
+	// not answer as one program.
+	SettleNatives(probe func(Fold) error) error
+	// HoldsNativeCall reports whether s holds a pure native call the fold
+	// could evaluate.
+	HoldsNativeCall(s ir.Stmt) bool
+}
+
+// Document is one document as a static target writes it.
 type Document struct {
-	// Window is nil for a harness that renders its root component in place of
-	// a window, and Body is then that component's.
-	Window *ir.Window
-	Body   []ir.Stmt
+	// Surface is the node the document is written from -- the first primitive
+	// marked #[gen.renders(surface)] no `if` over state and no `for` can take
+	// away, html's Window -- and nil for a harness that renders its root
+	// component in its place, whose body Body then is.
+	Surface *ir.NodeInst
+	Body    []ir.Stmt
+	// Page is the page of a nav.stack this document is written for, the
+	// node standing for it carrying the page's record (ir.NodeInst.Record);
+	// nil for a document that holds no stack. The stack stands for it alone in
+	// Body.
+	Page *ir.NodeInst
 	// FileAssets are the file: assets only this document's fold resolved.
 	FileAssets []FileAsset
 }

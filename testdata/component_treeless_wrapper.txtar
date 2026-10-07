@@ -93,19 +93,17 @@ type PathCmd struct {
 	R   float64
 }
 
-type ErrorEvent struct {
-	Message string
-	Kind    string
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	visible__inst0 bool
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.visible__inst0 = true
 	return m
 }
 
@@ -149,6 +147,21 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
+	return m
+}
+
+type setVisible__inst0Msg struct{ value bool }
+
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(nil, m.__canvasTransmit())
 }
@@ -158,13 +171,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			return m, tea.Quit
+			if m.visible__inst0 {
+				m.visible__inst0 = false
+			}
+			if !(m.visible__inst0) {
+				return m, tea.Quit
+			}
+			return m, nil
 		}
 	}
 	cmds = append(cmds, m.__canvasTransmit())
@@ -172,20 +193,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var parts []string
-	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint("widgets"))
-	parts = append(parts, part0)
-	var part1 string
-	parts = append(parts, part1)
-	var part2 string
-	part2 = tui.RenderTerminal(20, 10, 1, func() image.Image {
-		__c := _canvasSurface0.Begin(20, 20, 0, 0, "")
-		m._canvasDraw0(__c)
-		return __c.Result()
-	})
-	parts = append(parts, part2)
-	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	var content string
+	if m.visible__inst0 {
+		var contentParts []string
+		var contentPart_0 string
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint("widgets"))
+		contentParts = append(contentParts, contentPart_0)
+		var contentPart_1 string
+		contentPart_1 = tui.RenderTerminal(20, 10, 1, func() image.Image {
+			__c := _canvasSurface0.Begin(20, 20, 0, 0, "")
+			m._canvasDraw0(__c)
+			return __c.Result()
+		})
+		contentParts = append(contentParts, contentPart_1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -224,6 +246,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
@@ -299,10 +324,6 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
     )
 }
 
-data class ErrorEvent(val message: String = "", val kind: String = "")
-
-class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -312,11 +333,22 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    Column {
-        Text(text = "widgets", modifier = Modifier.safeDrawingPadding())
-        Canvas(modifier = Modifier.size(20.dp, 20.dp)) {
-            drawCircle(color = androidx.compose.ui.graphics.Color(red = 255, green = 0, blue = 0, alpha = 255), radius = 4.0.toFloat(), center = Offset(5.0.toFloat(), 5.0.toFloat()))
-            drawRect(color = androidx.compose.ui.graphics.Color(red = 0, green = 255, blue = 0, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(2.0.toFloat(), 2.0.toFloat()))
+    var visible__inst0 by remember { mutableStateOf(true) }
+
+    if (visible__inst0) {
+        val __activity = LocalContext.current as? Activity
+        BackHandler {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
+                __activity?.finish()
+            }
+        }
+        Column {
+            Text(text = "widgets", modifier = Modifier.safeDrawingPadding())
+            Canvas(modifier = Modifier.size(20.dp, 20.dp)) {
+                drawCircle(color = androidx.compose.ui.graphics.Color(red = 255, green = 0, blue = 0, alpha = 255), radius = 4.0.toFloat(), center = Offset(5.0.toFloat(), 5.0.toFloat()))
+                drawRect(color = androidx.compose.ui.graphics.Color(red = 0, green = 255, blue = 0, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(2.0.toFloat(), 2.0.toFloat()))
+            }
         }
     }
 }
@@ -341,7 +373,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { visible__inst0: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -406,8 +438,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ab9692a43108aff12e7be892e197c0b6
+pass sha256:b2e1be46df95345ee05aee4399ffce6a
 -- run/kotlin/android --
-pass sha256:fbb51388e81236f5d8bed7f8b9671bc2
+pass sha256:db9c521792de0d90812ffe8256f5ed10
 -- run/none/html --
-pass sha256:7b2068c12c555c65a4834e8532298193
+pass sha256:b048c35cf2daca88cee830fd47cc31d4
