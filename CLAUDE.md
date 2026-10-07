@@ -2729,7 +2729,13 @@ The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
 `role` and style set, or a `vbox` — so a platform implements the two
 primitives and inherits every block. `role` is what a flow is *for*, and a
 prop rather than a component per role, so it reaches every emitter through the
-node they already render.
+node they already render. html is the one target overriding a block: `list`
+and `listItem` are `<ul>`/`<ol start>` and `<li>`, so the browser numbers the
+list and picks a nested bullet, and a task item is a disabled
+`<input type=checkbox>` in a flex `<li>`, which drops the marker. Every other
+target renders the bodies. An override's prop defaults are the declaration's,
+checked in its file: re-read in the override's, `task Task = Task.none` named a
+type html.sngl never imported (`installedOverride`).
 
 **`md:` imports markdown as SNGL source.** `codegen/scheme/markdown` is an
 `FSSchemeImporter`, the seam `git:` and `http:` use, rather than a native
@@ -2738,7 +2744,12 @@ package, so a bad import can be dumped and read and a round-trip is assertable.
 The document is read through the filesystem the program is checked against
 (`codegen.ProjectFSScheme`), because it is a file of the project and an
 in-memory package has no other. It parses with the same goldmark configuration
-the doc site uses, so two readings of one document cannot differ.
+the doc site uses, so two readings of one document cannot differ -- heading
+ids included: a heading is written with the `anchor` goldmark's
+`WithAutoHeadingID` gave it, repeats numbered per document, so an in-page `#`
+link resolves (`anchor_test.go` holds it to the doc site's rendering). The
+anchor is `richText`'s; html writes it as the element's `id`, an empty one
+writing none, and the other targets have nothing a link could land on.
 
 - **A file**, `import doc "md:./guide.md"`, is a package holding one component,
   **`document`**, whatever the file is called: a name derived from the path

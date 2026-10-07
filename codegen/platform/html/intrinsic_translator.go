@@ -361,6 +361,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if prop == classStyleProp || prop == classStyleDarkProp {
 		return nil
 	}
+	if isEmptyIDProp(prop, value) {
+		return nil
+	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
