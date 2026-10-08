@@ -811,11 +811,13 @@ type Component struct {
 	// Eventless is the #[tree.eventless] mark on a family: its members raise
 	// no events, an #[intrinsic] primitive's being the target calling in.
 	Eventless bool `json:",omitempty"`
-	// TreeParam is the component's own type parameter written in the return
-	// position, for a wrapper whose family is whatever it was handed. Nil Tree
-	// and a TreeParam is a third state: tree-less at the declaration, and a
-	// member of whatever its children turn out to be at each call site.
-	TreeParam string `json:",omitempty"` // TODO why is this a string?
+	// TreeParam is the return position when it names one of the component's
+	// own type parameters, for a wrapper whose family is whatever it was
+	// handed: the TypeTypeParam it resolved to, as Tree is the family it
+	// resolved to otherwise. Nil Tree and a TreeParam is a third state:
+	// tree-less at the declaration, and a member of whatever its children
+	// turn out to be at each call site.
+	TreeParam *Type `json:",omitempty"`
 	// Bodyless is a declaration written with no block at all, as against one
 	// written `{}`, which renders nothing. The two are different declarations
 	// and only this says which: ast.StmtBlock.IsDefined() reports whether a

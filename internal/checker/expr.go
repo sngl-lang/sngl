@@ -5774,10 +5774,7 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Com
 	if sd := slotTree(owner, slot); sd != nil {
 		return sd
 	}
-	if owner == nil || owner.TreeParam == "" || slot == nil || slot.Content == nil {
-		return nil
-	}
-	if slot.Content.Kind != ir.TypeTypeParam || slot.Content.ParamName != owner.TreeParam {
+	if owner == nil || owner.TreeParam == nil || slot == nil || !slot.Content.Equal(owner.TreeParam) {
 		return nil
 	}
 	return childrenTree(content)

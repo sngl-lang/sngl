@@ -57,7 +57,7 @@ func (c *checker) bindTree(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.
 	}
 	if named.Kind == ir.TypeTypeParam && slices.ContainsFunc(comp.TypeParams,
 		func(tp ir.TypeParam) bool { return tp.Name == named.ParamName }) {
-		comp.TreeParam = named.ParamName
+		comp.TreeParam = named
 		return named
 	}
 	c.error(decl.Pos, "component %s: the return position names the family a component belongs to, and %s is not one",

@@ -287,10 +287,10 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	switch {
 	case comp.Tree != nil:
 		cd.ChildrenType = c.treeName(comp.Tree)
-	case comp.TreeParam != "":
+	case comp.TreeParam != nil:
 		// A wrapper's family is whatever it was handed, and the parameter is
 		// the component's own -- so it is spelled bare, never qualified.
-		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam}
+		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam.ParamName}
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
