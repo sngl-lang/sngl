@@ -220,7 +220,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 			ActiveVar:  activeVar,
 			Enabled:    t.Enabled,
 			Body:       t.Handler.Block,
-			LocalRefs:  t.Handler.LocalRefs,
+			LocalRefs:  t.Handler.Lowered.LocalRefs,
 		})
 	}
 

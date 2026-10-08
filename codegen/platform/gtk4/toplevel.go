@@ -144,7 +144,7 @@ func (t *gtk4Translator) dropTopLevel(child ir.Expr) {
 // application as its parent: gtk4rt.App, which the box calls it makes answer
 // for the application.
 func (t *gtk4Translator) appSlotCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 || !ir.IsAppParent(cs.Call.Args[0].Value) {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 || !ir.IsAppParent(cs.Call.Args[0].Value) {
 		return nil, false
 	}
 	if !t.wrapped {
@@ -270,10 +270,10 @@ func refuseCgoVisibleWrites(pkg *ir.Package, tops map[string]bool) error {
 		return nil
 	})
 	for _, fn := range pkg.Funcs {
-		if fn == nil || (fn.LoweredFromEvent == "visible" && tops[fn.LoweredFromNode]) {
+		if fn == nil || (fn.Lowered.Event == "visible" && tops[fn.Lowered.Node]) {
 			continue
 		}
-		if !reached[fn] && fn.LoweredFromEvent == "" {
+		if !reached[fn] && fn.Lowered.Event == "" {
 			continue
 		}
 		var found bool

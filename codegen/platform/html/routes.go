@@ -163,13 +163,13 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 		return nil
 	}
 	for _, fn := range pkg.Funcs {
-		if fn != nil && fn.SlotRender {
+		if fn != nil && fn.Lowered.SlotRender {
 			return fn
 		}
 	}
 	for _, c := range pkg.Components {
 		for _, fn := range c.Funcs {
-			if fn != nil && fn.SlotRender {
+			if fn != nil && fn.Lowered.SlotRender {
 				return fn
 			}
 		}

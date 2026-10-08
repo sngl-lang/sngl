@@ -353,13 +353,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
 		// A promoted node handler routes to emitIRPromotedHandler even when
 		// Synthesized: the two-way-bind writeback handler is both.
-		if fn.LoweredFromTag != "" {
+		if fn.Lowered.Tag != "" {
 			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode, failProp)
 			continue
 		}
@@ -656,7 +656,7 @@ func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
 	tr.canvasByNode = canvasByNode
 
 	params := fn.Params
@@ -971,7 +971,7 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 	var out []*ir.Func
 	for _, cc := range ctx.NonRootComponents() {
 		for _, fn := range cc.Component.Funcs {
-			if fn == nil || fn.LoweredFromTag == "" || seen[fn] {
+			if fn == nil || fn.Lowered.Tag == "" || seen[fn] {
 				continue
 			}
 			seen[fn] = true
@@ -1123,20 +1123,20 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 
 // emitIRPromotedHandler emits a node-attached event handler that the
 // lower pass promoted to a top-level Func. The Handler record for
-// LoweredFromEvent on the node's Spec dictates the Go signature (e.g.
+// Lowered.Event on the node's Spec dictates the Go signature (e.g.
 // fyne's Entry.OnChanged is `func(s string)`), whose parameters are the SNGL
 // event's position for position and take the handler's names for them
 // (namedAsHandler). The body flows through the same WalkLowered + translator
 // pipeline as slot bodies so it picks up widget-setter rewrites via
 // OnPropAssign.
 //
-// The node is found by LoweredFromNode rather than LoweredFromTag: a tag
+// The node is found by Lowered.Node rather than Lowered.Tag: a tag
 // names one of three primitives, so it says which children contract the
 // widget has and nothing about its callbacks.
 func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error)) {
 	var binding fyneHandler
-	if sp, ok := nodeSpecs[fn.LoweredFromNode]; ok {
-		binding = sp.Handlers[fn.LoweredFromEvent]
+	if sp, ok := nodeSpecs[fn.Lowered.Node]; ok {
+		binding = sp.Handlers[fn.Lowered.Event]
 	}
 
 	// One parse, shared with the Spec decode that validated it -- two
@@ -1144,7 +1144,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// signature the decoder had just accepted.
 	params := fn.Params
 	if binding.Signature != "" {
-		parsed, err := signatureParams("", fn.LoweredFromEvent, binding.Signature)
+		parsed, err := signatureParams("", fn.Lowered.Event, binding.Signature)
 		if err != nil {
 			// specFromProps rejected this already; reaching here means the two
 			// disagree, which is a bug in this package rather than in the Spec.
@@ -1155,7 +1155,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs)
 	tr.canvasByNode = canvasByNode
 
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
@@ -1191,14 +1191,14 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta, failSink func(error), indexed map[string]bool, invokerSink func(fyneEventInvoker)) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
-	}, importSink, failSink).withLocalRefs(fn.LocalRefs).
+	}, importSink, failSink).withLocalRefs(fn.Lowered.LocalRefs).
 		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
 	tr.canvasByNode = canvasByNode
 
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	params := fn.Params
-	if fn.SlotRender {
+	if fn.Lowered.SlotRender {
 		params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 	}
 	synthesized := &ir.Func{

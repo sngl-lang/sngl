@@ -2445,7 +2445,7 @@ invoker looks it up when called (`runtimeHandlers`); on fyne and gtk4 the
 instance's ctor hands the widget to a Model field `__named_<id>` and the
 invoker goes through that, so it reaches whichever instance built it last. A
 handler emitted as a closure records the component event it serves as well as
-a promoted one (`LoweredFromComponentEvent`), or a gtk4 invoker was named for
+a promoted one (`FuncLowering.ComponentEvent`), or a gtk4 invoker was named for
 the GTK signal. That is the first event the override's handler emits that is
 not a binding's write-back, which passPropBindings marks on the handler it
 synthesizes (`ir.EventHandler.WriteBack`) -- `Synthesized` is no answer, since

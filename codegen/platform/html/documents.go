@@ -146,7 +146,7 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 			case *ir.NodeInst:
 				out = append(out, n)
 			case *ir.CallStmt:
-				if n.Call != nil && n.Call.Func != nil && n.Call.Func.SlotRender {
+				if n.Call != nil && n.Call.Func != nil && n.Call.Func.Lowered.SlotRender {
 					out = append(out, n)
 				}
 			}

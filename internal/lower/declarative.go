@@ -350,7 +350,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		var handlerArg ir.Expr
 		// Whichever form it takes: a closure is what a handler inside a
 		// component instance becomes, and a test names it by this too.
-		h.Func.LoweredFromComponentEvent = h.ComponentEvent
+		h.Func.Lowered.ComponentEvent = h.ComponentEvent
 		captures := analyzeCaptures(h.Func.Block, h.Func.Params)
 		switch {
 		case st.liftHandlers && len(captures) > 0:
@@ -371,9 +371,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// on it reads by name. Promote to a named top-level Func.
 			handlerName := id + "_" + h.Name + "_handler"
 			h.Func.Name = handlerName
-			h.Func.LoweredFromTag = n.Name
-			h.Func.LoweredFromEvent = h.Name
-			h.Func.LoweredFromNode = id
+			h.Func.Lowered.Tag = n.Name
+			h.Func.Lowered.Event = h.Name
+			h.Func.Lowered.Node = id
 			*funcs = append(*funcs, h.Func)
 			handlerArg = &ir.Ident{Name: handlerName, Type: ir.TypDyn, Sym: h.Func}
 		}

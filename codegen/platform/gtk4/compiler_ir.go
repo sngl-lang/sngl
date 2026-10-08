@@ -400,7 +400,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}
@@ -408,7 +408,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped, indexed, recordInvoker)
 			continue
 		}
-		if fn.LoweredFromTag != "" {
+		if fn.Lowered.Tag != "" {
 			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
 		}
@@ -668,14 +668,14 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool, indexed map[string]bool, invokerSink func(gtkEventInvoker)) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped).
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.Lowered.LocalRefs).withWrapped(wrapped).
 		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
 	tr.collectTagComponents(fn.Block)
 	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
 
 	params := fn.Params
-	if fn.SlotRender {
+	if fn.Lowered.SlotRender {
 		// The slot body references the reactivity pass's param name, so
 		// renaming it here would leave those refs dangling.
 		params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
@@ -1009,13 +1009,13 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.Lowered.LocalRefs).withWrapped(wrapped)
 	// Pre-populated because OnPropAssign needs the C type for nodes created
 	// in sibling slot Funcs, whose CreateNode sites are not in this Block.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(fn.Block)
 
-	nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+	nodeID := strings.TrimSuffix(fn.Name, "_"+fn.Lowered.Event+"_handler")
 	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
 	// only connects a signal that answers to the event. An event no signal
 	// answers to is a component's own -- a func-typed prop its instance calls
@@ -1024,7 +1024,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
 	params := fn.Params
 	stmts := fn.Block
-	if tr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
+	if tr.signalFor(nodeID, fn.Lowered.Event) != "" {
 		params = nil
 		stmts = selfIsNode(stmts, fn.Params, modelNode(wrapped)(nodeID))
 	}

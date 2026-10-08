@@ -793,7 +793,7 @@ func (t *fyneTranslator) translateDefault(stmt ir.Stmt) []ir.Stmt {
 // scroll -- into a box that is that child, since the slot adds and removes
 // any number of entries.
 func (t *fyneTranslator) boxedSlotRenderCall(cs *ir.CallStmt) []ir.Stmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
@@ -818,7 +818,7 @@ func (t *fyneTranslator) boxedSlotRenderCall(cs *ir.CallStmt) []ir.Stmt {
 // of this scope -- a slot nothing but the ctor renders -- to pass the local,
 // which the language context would otherwise spell as a field.
 func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	id, ok := cs.Call.Args[0].Value.(*ir.Ident)

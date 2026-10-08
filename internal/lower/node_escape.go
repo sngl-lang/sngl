@@ -22,7 +22,7 @@ import (
 // a box to itself (the gtk4 infinite-layout hang).
 //
 // The pass records, per creating scope, the set of NON-escaping ("local")
-// ref ids on the scope's IR node (Component.LocalRefs / Func.LocalRefs /
+// ref ids on the scope's IR node (Component.LocalRefs / Func.Lowered.LocalRefs /
 // Window.LocalRefs). The platform translators consult these sets to decide
 // whether to emit a Model field or a bare local. Escaping refs keep the
 // existing Model-field behavior, so reactive updates are unaffected.
@@ -78,12 +78,12 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 	// Top-level funcs (handlers promoted by passDeclarative, reactive
 	// updaters/slot funcs, computeds, user funcs).
 	for _, f := range pkg.Funcs {
-		addScope(f.Block, &f.LocalRefs)
+		addScope(f.Block, &f.Lowered.LocalRefs)
 	}
 	for _, comp := range pkg.Components {
 		addScope(comp.Body, &comp.LocalRefs)
 		for _, f := range comp.Funcs {
-			addScope(f.Block, &f.LocalRefs)
+			addScope(f.Block, &f.Lowered.LocalRefs)
 		}
 		for _, v := range comp.Vars {
 			addVarHandlerScopes(v, &scopes)
@@ -145,7 +145,7 @@ func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
 		if h.Func == nil {
 			continue
 		}
-		s := newScopeRefInfo(&h.Func.LocalRefs)
+		s := newScopeRefInfo(&h.Func.Lowered.LocalRefs)
 		collectScopeRefs(h.Func.Block, s)
 		*scopes = append(*scopes, s)
 		for _, n := range s.nested {
@@ -176,7 +176,7 @@ func createdNodeID(lv *ir.LocalVar) string {
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func
 // body, sinking its local-ref result onto the lambda Func's LocalRefs.
 func scopeFromFuncBody(f *ir.Func) *scopeRefInfo {
-	s := newScopeRefInfo(&f.LocalRefs)
+	s := newScopeRefInfo(&f.Lowered.LocalRefs)
 	collectScopeRefs(f.Block, s)
 	return s
 }

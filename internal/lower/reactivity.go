@@ -1340,7 +1340,7 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 // isSlotRefire reports whether s is a call of a slot's render function.
 func isSlotRefire(s ir.Stmt) bool {
 	c, ok := s.(*ir.CallStmt)
-	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.SlotRender
+	return ok && c.Call != nil && c.Call.Func != nil && c.Call.Func.Lowered.SlotRender
 }
 
 // updaterStmts is the body of an update: reassign every dependent prop from
@@ -1746,7 +1746,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Params:      []*ir.Param{parentParam},
 		Return:      ir.TypVoid,
 		Synthesized: true,
-		SlotRender:  true,
+		Lowered:     ir.FuncLowering{SlotRender: true},
 	}
 
 	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }

@@ -62,7 +62,7 @@ func dropDetachedHandlers(pkg *ir.Package) {
 	})
 	keep := func(fs []*ir.Func) []*ir.Func {
 		return slices.DeleteFunc(fs, func(f *ir.Func) bool {
-			return f != nil && f.LoweredFromNode != "" && !named[f]
+			return f != nil && f.Lowered.Node != "" && !named[f]
 		})
 	}
 	pkg.Funcs = keep(pkg.Funcs)

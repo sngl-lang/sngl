@@ -38,7 +38,7 @@ func RootSlotRenders(body []ir.Stmt, root string) map[ir.Stmt]bool {
 	set := map[ir.Stmt]bool{}
 	for _, s := range body {
 		cs, ok := s.(*ir.CallStmt)
-		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 			continue
 		}
 		if id, ok := cs.Call.Args[0].Value.(*ir.Ident); ok && id.Name == root {
@@ -87,7 +87,7 @@ func IdentBareName(e ir.Expr) string {
 // component's — gtk4's button is `@clicked { click() }` — so a promoted handler
 // is named for the host while a test writes `c.inc.click()`. The program's name
 // is recorded during the substitution that inlined its block
-// (ir.Func.LoweredFromComponentEvent), because that is the last point both are
+// (ir.FuncLowering.ComponentEvent), because that is the last point both are
 // visible. A platform whose primitive declares the component's own event name
 // gets the same answer from the fallback.
 func TriggerEventName(handler ir.Expr, fallback string) string {
@@ -98,8 +98,8 @@ func TriggerEventName(handler ir.Expr, fallback string) string {
 	case *ir.Lambda:
 		fn = h.Func
 	}
-	if fn == nil || fn.LoweredFromComponentEvent == "" {
+	if fn == nil || fn.Lowered.ComponentEvent == "" {
 		return fallback
 	}
-	return fn.LoweredFromComponentEvent
+	return fn.Lowered.ComponentEvent
 }

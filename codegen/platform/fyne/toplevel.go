@@ -39,7 +39,7 @@ func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 // application at the root of the package body, and a Toplevel's box inside
 // one, since a slot renders into a *fyne.Container.
 func (t *fyneTranslator) appSlotArg(cs *ir.CallStmt) *ir.CallStmt {
-	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
 	}
 	arg := cs.Call.Args[0].Value

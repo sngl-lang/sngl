@@ -145,25 +145,25 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newTr(fn.LocalRefs)
+		mtr := newTr(fn.Lowered.LocalRefs)
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.SlotRender {
+		if fn.Lowered.SlotRender {
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
 			params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
 		}
 		block := fn.Block
-		if fn.LoweredFromTag != "" {
+		if fn.Lowered.Tag != "" {
 			// A handler a widget's signal calls, promoted onto the record: the
 			// trampoline passes it nothing, so the signal's instance is the
 			// node it is attached to, as emitIRPromotedHandler reads it for
 			// one on the Model.
-			nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-			if mtr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
+			nodeID := strings.TrimSuffix(fn.Name, "_"+fn.Lowered.Event+"_handler")
+			if mtr.signalFor(nodeID, fn.Lowered.Event) != "" {
 				block = selfIsNode(block, fn.Params, &ir.Ident{Name: nodeID, IsElementRef: true})
 				params = nil
 			}

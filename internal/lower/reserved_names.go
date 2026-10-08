@@ -456,7 +456,7 @@ func (r *reservedRenamer) funcStrings(fn *ir.Func, renameLocalRefs func(map[stri
 	if fn == nil {
 		return
 	}
-	if fn.LocalRefs != nil {
-		renameLocalRefs(fn.LocalRefs)
+	if fn.Lowered.LocalRefs != nil {
+		renameLocalRefs(fn.Lowered.LocalRefs)
 	}
 }
