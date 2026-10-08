@@ -1,13 +1,13 @@
 package gtk4
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/ir"
 	// The library runner: sngl:platform/gtk4 imports gir:, and a check with
 	// no build around it resolves that through the runner internal/plugin
 	// registers.
-	_ "git.duckfam.us/jonathan/sngl/internal/plugin"
+	_ "duckfam.us/sngl/internal/plugin"
 )
 
 // girSetting is the setting the gir: scheme's output records: the GIR the

@@ -3,7 +3,7 @@ package interp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func envFor(t *testing.T, src, comp string) (*Env, *ir.Package) {

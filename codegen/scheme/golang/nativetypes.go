@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/types"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // nativeTypes maps a Go type to the SNGL type it imports as, keyed by the

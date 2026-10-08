@@ -3,8 +3,8 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A slot places its children instead of rebuilding them, where the platform's

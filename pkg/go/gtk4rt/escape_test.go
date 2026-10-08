@@ -3,8 +3,8 @@ package gtk4rt_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 // The five characters are the ones g_markup_escape_text answers for: the three

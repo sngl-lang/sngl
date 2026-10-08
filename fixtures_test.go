@@ -3,14 +3,14 @@ package sngl_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/fixtures"
+	"duckfam.us/sngl/internal/fixtures"
 
 	// Register every language and platform, so a fixture checked here is
 	// checked against the targets a build would offer it, and every import
 	// scheme, so one that imports a `go:` or `c:` package resolves the way it
 	// does under the CLI.
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
-	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
+	_ "duckfam.us/sngl/codegen/scheme"
+	_ "duckfam.us/sngl/internal/testtargets"
 )
 
 // TestFixtures runs every testdata/*.sngl fixture through every phase its own

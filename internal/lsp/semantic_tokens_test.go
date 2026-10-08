@@ -3,8 +3,8 @@ package lsp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl"
+	"duckfam.us/sngl/internal/parser"
 )
 
 type semTok struct {

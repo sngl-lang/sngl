@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 	"github.com/spf13/cobra"
 )
 

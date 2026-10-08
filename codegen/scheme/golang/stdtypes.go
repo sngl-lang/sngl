@@ -1,6 +1,6 @@
 package golang
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // The Go types the compiler itself maps, and the import-side, do-not-own-the-
 // type cell of a matrix with two axes: which direction a value crosses, and

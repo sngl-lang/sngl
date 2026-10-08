@@ -10,7 +10,7 @@
 // Read top to bottom. Each section introduces one feature with the
 // smallest piece of working code that demonstrates it.
 //
-//     Source: https://git.duckfam.us/jonathan/sngl
+//     Source: https://github.com/sngl-lang/sngl
 // =====================================================================
 
 import ui "sngl:ui"
@@ -392,7 +392,7 @@ component Tour ui.node {
         // --- Link / Chip / Avatar --------------------------------
         ui.text(value="Link & Chip", style={fontSize=20px, fontWeight=bold})
         ui.hbox(style={alignItems=center, gap=8px}) {
-            ui.link(href="https://git.duckfam.us/jonathan/sngl", text="SNGL Source")
+            ui.link(href="https://github.com/sngl-lang/sngl", text="SNGL Source")
             ui.chip(label="Tag")
             ui.chip(label="Removable", removable=true)
             ui.chip(label="Success", variant="success")

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/platform/gtk4"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
 )
 
 func TestPlatformRegistered(t *testing.T) {

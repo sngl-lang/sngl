@@ -3,7 +3,7 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // intLiteralLit is the counter, bound and index literal every pass that

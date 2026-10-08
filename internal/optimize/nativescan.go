@@ -1,6 +1,6 @@
 package optimize
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // hasUnresolvedNativeCall reports whether the package graph still holds a call
 // the compile-time evaluator would have to run: an ir.Call whose selector names

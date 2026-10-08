@@ -4,8 +4,8 @@ import (
 	"maps"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 //go:generate go tool stringer -type=NameKind -trimprefix Name

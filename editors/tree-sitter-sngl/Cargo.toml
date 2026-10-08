@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 keywords = ["incremental", "parsing", "tree-sitter", "sngl"]
 categories = ["parser-implementations", "parsing", "text-editors"]
-repository = "https://sngl.duckfam.us/"
+repository = "https://github.com/sngl-lang/sngl"
 edition = "2021"
 autoexamples = false
 

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // batchSnapshotPackage is the manifest package used for the bundled snapshot

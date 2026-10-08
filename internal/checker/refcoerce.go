@@ -3,8 +3,8 @@ package checker
 import (
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A plain T is accepted where a ref<T> is expected, and reaches the callee as

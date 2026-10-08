@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 func init() {

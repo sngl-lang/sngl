@@ -22,7 +22,7 @@ window {
 }
 `)
 	for _, want := range []string{
-		`"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"`,
+		`"duckfam.us/sngl/pkg/go/fynelayout"`,
 		"container.New(fynelayout.New(true, []float32{1, 2}, []float32{3, 0}, 4, 6))",
 	} {
 		if !strings.Contains(out, want) {

@@ -1,4 +1,4 @@
-module git.duckfam.us/jonathan/sngl
+module duckfam.us/sngl
 
 go 1.26.1
 
@@ -158,9 +158,9 @@ require (
 
 tool (
 	fyne.io/fyne/v2
-	git.duckfam.us/jonathan/sngl/cmd/sngl
-	git.duckfam.us/jonathan/sngl/internal/cmd/docsgen
-	git.duckfam.us/jonathan/sngl/internal/cmd/verify
+	duckfam.us/sngl/cmd/sngl
+	duckfam.us/sngl/internal/cmd/docsgen
+	duckfam.us/sngl/internal/cmd/verify
 	github.com/bwplotka/mdox
 	golang.org/x/tools/cmd/stringer
 	modernc.org/egg

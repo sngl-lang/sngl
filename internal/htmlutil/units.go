@@ -1,7 +1,7 @@
 package htmlutil
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A unit value is a magnitude and the base it is in; CSS is where that gets

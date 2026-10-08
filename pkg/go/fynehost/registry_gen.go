@@ -3,11 +3,11 @@
 package fynehost
 
 import (
+	fynelayout "duckfam.us/sngl/pkg/go/fynelayout"
 	canvas "fyne.io/fyne/v2/canvas"
 	container "fyne.io/fyne/v2/container"
 	layout "fyne.io/fyne/v2/layout"
 	widget "fyne.io/fyne/v2/widget"
-	fynelayout "git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 )
 
 // Ctors is every constructor the stdlib widget set names, keyed the way a Spec
@@ -24,18 +24,18 @@ import (
 // rebuild rather than an impossibility.
 func Ctors() map[string]any {
 	return map[string]any{
-		"fyne.io/fyne/v2/canvas.NewImageFromResource":                canvas.NewImageFromResource,
-		"fyne.io/fyne/v2/container.NewHBox":                          container.NewHBox,
-		"fyne.io/fyne/v2/container.NewVBox":                          container.NewVBox,
-		"fyne.io/fyne/v2/container.NewVScroll":                       container.NewVScroll,
-		"fyne.io/fyne/v2/layout.NewSpacer":                           layout.NewSpacer,
-		"fyne.io/fyne/v2/widget.NewButton":                           widget.NewButton,
-		"fyne.io/fyne/v2/widget.NewCheck":                            widget.NewCheck,
-		"fyne.io/fyne/v2/widget.NewEntry":                            widget.NewEntry,
-		"fyne.io/fyne/v2/widget.NewHyperlink":                        widget.NewHyperlink,
-		"fyne.io/fyne/v2/widget.NewLabel":                            widget.NewLabel,
-		"fyne.io/fyne/v2/widget.NewMultiLineEntry":                   widget.NewMultiLineEntry,
-		"fyne.io/fyne/v2/widget.NewSelect":                           widget.NewSelect,
-		"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
+		"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
+		"fyne.io/fyne/v2/canvas.NewImageFromResource":   canvas.NewImageFromResource,
+		"fyne.io/fyne/v2/container.NewHBox":             container.NewHBox,
+		"fyne.io/fyne/v2/container.NewVBox":             container.NewVBox,
+		"fyne.io/fyne/v2/container.NewVScroll":          container.NewVScroll,
+		"fyne.io/fyne/v2/layout.NewSpacer":              layout.NewSpacer,
+		"fyne.io/fyne/v2/widget.NewButton":              widget.NewButton,
+		"fyne.io/fyne/v2/widget.NewCheck":               widget.NewCheck,
+		"fyne.io/fyne/v2/widget.NewEntry":               widget.NewEntry,
+		"fyne.io/fyne/v2/widget.NewHyperlink":           widget.NewHyperlink,
+		"fyne.io/fyne/v2/widget.NewLabel":               widget.NewLabel,
+		"fyne.io/fyne/v2/widget.NewMultiLineEntry":      widget.NewMultiLineEntry,
+		"fyne.io/fyne/v2/widget.NewSelect":              widget.NewSelect,
 	}
 }

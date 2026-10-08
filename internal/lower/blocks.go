@@ -1,7 +1,7 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // imperativeBlocks returns every imperative block in pkg, in a stable order:

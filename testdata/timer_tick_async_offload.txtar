@@ -82,10 +82,10 @@ ui.window #main(title="poll") {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -358,7 +358,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -373,7 +373,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"os"
 	"time"
 )
@@ -566,6 +566,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:5c90fe8430484cc52bf43010e3eb027f
+pass sha256:6d7ed591b29b4c6318c41a1c2d42bd51
 -- run/go/gtk4 --
-pass sha256:cba1648ef55204686b3a79ebdef80cb3
+pass sha256:ad7d1383bd117d5cff51ca94be6e8a9c

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/testutil"
 )
 
 // assertMarkers checks the //@ directives an lsp_ fixture carries.

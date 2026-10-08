@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
 )
 
 // A node-attached handler that lowering promotes to a Func on a component

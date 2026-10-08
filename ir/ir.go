@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/imports"
 )
 
 // isExportedName reports whether name refers to an exported identifier

@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/testrpc"
 )
 
 // T is the per-test handle passed to user test functions. Its method

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
 )
 
 // btPrimitives is every primitive the view renderer dispatches on. Each must

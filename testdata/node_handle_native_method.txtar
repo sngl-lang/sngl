@@ -195,7 +195,7 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"time"
 	"unsafe"
 )
@@ -359,4 +359,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:9560cca6c524bb754c1229c5df5f724f
+pass sha256:e07e9bb26a5d77b3feef71349261d952

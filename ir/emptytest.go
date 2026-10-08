@@ -1,6 +1,6 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // EmptyTest returns a bool expression that holds exactly when n's loop body
 // would not run — the iterable yields nothing — or nil when the loop's head is

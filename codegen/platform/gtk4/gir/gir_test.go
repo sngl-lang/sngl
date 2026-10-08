@@ -3,8 +3,8 @@ package gir_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/ir"
 )
 
 const minimalGIR = `<?xml version="1.0"?>

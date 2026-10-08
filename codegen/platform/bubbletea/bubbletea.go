@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 //go:embed preview.css
@@ -68,13 +68,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				// A pointer although the Model is a value: the test's local and
 				// the one a snapshot renders are copies of the instance, and a
 				// value would snapshot the state the test began with.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); return &m }\n\nfunc main() { testagent.Main() }\n")
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); return &m }\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
 				snapshotSrc := []byte(`package ` + c.cfg.Package + `
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+import "duckfam.us/sngl/pkg/go/testagent"
 
 var currentModel *Model
 

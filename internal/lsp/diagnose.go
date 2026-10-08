@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 // analyze parses and type-checks a file, returning LSP diagnostics.

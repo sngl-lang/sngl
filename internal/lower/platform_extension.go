@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passPlatformExtensionBody specializes each *ir.Component whose
 // PlatformOverrides map has an entry for the active platform by swapping

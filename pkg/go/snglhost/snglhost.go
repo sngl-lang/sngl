@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/testrpc"
 )
 
 // Key identifies one node in a component's body by *where it is written*

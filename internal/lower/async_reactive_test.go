@@ -3,8 +3,8 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // findFunc returns the first *ir.Func in pkg.Funcs with the given name, or nil.

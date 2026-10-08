@@ -61,12 +61,12 @@ window #w {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"image"
 	"os"
 )
@@ -387,7 +387,7 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
 
@@ -760,9 +760,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f1b097ee300773666b6014f72b10a516
+pass sha256:6711ba4c9d85e1e02c2b54804ac7fa4e
 -- run/go/gtk4 --
-pass sha256:5b3ee5051edf204a3b22d29b154db696
+pass sha256:356c49a2f9b7e8e2392a128c623b5057
 -- run/kotlin/android --
 pass sha256:6cc4a37796a7d0d3b92aa752511f5986
 -- run/none/html --

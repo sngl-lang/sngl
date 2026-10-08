@@ -41,9 +41,9 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/remote"
+	"duckfam.us/sngl/pkg/go/remote/http"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/remote"
-	"git.duckfam.us/jonathan/sngl/pkg/go/remote/http"
 	"os"
 )
 
@@ -211,4 +211,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:9ac513e355bf3b958b01ef275fe91d52
+broken sha256:9acb311a08d4f0ea69860c032e70def1

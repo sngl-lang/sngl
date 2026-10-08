@@ -1,8 +1,8 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // reportSelfReferentialProps reports an argument of a node that reads the very

@@ -1,8 +1,8 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
 // maxInterpDepth bounds recursion in the interpreter adapter. Excess

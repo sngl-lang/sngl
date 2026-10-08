@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // remoteImportPath is the Go runtime behind sngl:remote, and remoteGoType the
@@ -10,7 +10,7 @@ import (
 // identity, since two readers of one key hold the same one and a settle has to
 // be visible to both.
 const (
-	remoteImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/remote"
+	remoteImportPath = "duckfam.us/sngl/pkg/go/remote"
 	remoteGoType     = "remote.Value"
 	remoteFailureGo  = "remote.Failure"
 

@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A fallback to dyn is the checker giving up on a type without saying so, which

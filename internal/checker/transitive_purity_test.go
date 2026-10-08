@@ -3,8 +3,8 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // findCompFunc returns the named func from the named component.

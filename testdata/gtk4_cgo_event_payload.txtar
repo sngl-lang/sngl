@@ -59,11 +59,11 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -762,6 +762,6 @@ func (m *Model) boxChange(v string) {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:c22ba7f8c15e17586df82e5fcf37fbc2
+pass sha256:b4d4c677c924e9c9ce756758b4bf3581
 -- run/go/gtk4 --
 pass sha256:5496095a7990ed4ef423eb24479b625f

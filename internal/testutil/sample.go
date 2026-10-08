@@ -12,8 +12,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 	"golang.org/x/tools/txtar"
 )
 

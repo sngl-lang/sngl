@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // The generator is one value shared by every check and build in the process

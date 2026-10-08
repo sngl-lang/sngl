@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNoInlineComponents inlines every non-recursive, non-native user-defined

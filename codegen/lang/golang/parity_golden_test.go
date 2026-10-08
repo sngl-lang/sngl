@@ -7,21 +7,21 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/ir"
 
 	// Register the html platform and the go language so the route-mode
 	// fixture can be driven end-to-end through the same pipeline `sngl
 	// generate --platform=html --lang=go` uses. The legacy CompileHTTP
 	// path (golang/http.go) is what produces server.go's POST handler.
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	htmlplat "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	htmlplat "duckfam.us/sngl/codegen/platform/html"
 )
 
 // TestParityGolden pins the byte-identical output of golang's LEGACY

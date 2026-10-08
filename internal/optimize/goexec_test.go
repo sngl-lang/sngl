@@ -3,8 +3,8 @@
 package optimize
 
 import (
+	"duckfam.us/sngl/internal/trust"
 	"errors"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
 )
 
-const purepkgPath = "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
+const purepkgPath = "duckfam.us/sngl/internal/optimize/testdata/purepkg"
 
 func projectDir() string {
 	// Walk up from the test file to find go.mod

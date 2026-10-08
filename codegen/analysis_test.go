@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // The analysis must hold no pointer into the IR graph it was derived from:

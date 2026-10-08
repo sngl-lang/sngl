@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp/testrunner"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp/testrunner"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // buildSnapshotPkg parses+checks src and points SourcePath at a temp fixture

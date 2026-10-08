@@ -3,7 +3,7 @@ package names_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/names"
+	"duckfam.us/sngl/internal/names"
 )
 
 func TestReservedNameIsNeverHandedOut(t *testing.T) {

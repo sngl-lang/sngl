@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/asset"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/asset"
+	"duckfam.us/sngl/ir"
 )
 
 // sharedConstAsset is a package const a static site writes once, as a script

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // shakeUnused removes consts, vars, functions, structs, and enums that are

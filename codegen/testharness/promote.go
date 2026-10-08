@@ -1,8 +1,8 @@
 package testharness
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 )
 
 // Promote returns a Document with the named component's body promoted

@@ -4,12 +4,12 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
 
 	// Register every language and platform, exactly as cmd/sngl does.
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
 )
 
 // unrequestedCaps is every lowering pass no registered target asks for.

@@ -25,7 +25,7 @@
       }
     ],
     "links": {
-      "repository": "https://sngl.duckfam.us/"
+      "repository": "https://github.com/sngl-lang/sngl"
     }
   },
   "bindings": {

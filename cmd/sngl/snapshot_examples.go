@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/snapshot"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/snapshot"
+	"duckfam.us/sngl/lib"
 	"github.com/spf13/cobra"
 )
 

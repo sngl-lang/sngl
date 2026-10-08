@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passInstanceSlots gives each instantiation that hands a runtime instance

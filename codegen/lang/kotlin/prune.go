@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // PruneLibraryDataClasses removes the `data class` of each library struct in

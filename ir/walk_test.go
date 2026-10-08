@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // buildWalkPkg constructs a small package exercising nested statements and

@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // SpanStyleUnsetColor reports whether a `markup.SpanStyle` color is the one
 // that means the run set none.

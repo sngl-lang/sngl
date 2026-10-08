@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // This file implements "wrapped mode" gtk4 codegen: instead of emitting inline
@@ -27,7 +27,7 @@ import (
 // gtk4rtPkg is the import path of the shared GTK4 runtime. Emitting an
 // ir.Func with this Foreign.Path auto-registers the import via the golang IR
 // context (see evalNamespaceCall).
-const gtk4rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+const gtk4rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // gtk4rtHandleType is the Go type wrapped-mode code uses for every widget
 // field/local, replacing the per-widget *C.GtkX pointer types.
@@ -290,8 +290,8 @@ func agentMainBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 var gtkInit sync.Once
@@ -322,8 +322,8 @@ func agentSnapshotBytes(pkg string, wrapped bool, cgoSrc []byte) []byte {
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 func currentTestModel() *Model { return currentModel }

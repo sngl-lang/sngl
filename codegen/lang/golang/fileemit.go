@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // fileEmitter implements codegen.FileEmitter for Go output. The platform
@@ -216,7 +216,7 @@ func (fe *fileEmitter) renderImports() []byte {
 
 // goAliasFor returns the conventional package name for an import path:
 // the last path component, with non-identifier characters stripped.
-// E.g. "fmt" → "fmt", "encoding/json" → "json", "git.duckfam.us/.../i18n"
+// E.g. "fmt" → "fmt", "encoding/json" → "json", "duckfam.us/.../i18n"
 // → "i18n". Mirrors the implicit aliasing Go uses by default; the
 // emitter only emits an explicit alias when the conventional one
 // collides with another import.

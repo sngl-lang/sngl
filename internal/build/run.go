@@ -1,8 +1,8 @@
 package build
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
 )
 
 // installRun makes the `@run` handler the output block wrote on t's platform

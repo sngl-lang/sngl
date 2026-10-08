@@ -7,8 +7,8 @@ package html
 // than keeping a list of names beside the declaration to drift away from it.
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // elementDecl is the declaration a node's props and events are read from: the

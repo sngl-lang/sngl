@@ -3,7 +3,7 @@ package codegen
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // collectUsedUnits returns every unit declaration the package needs a type

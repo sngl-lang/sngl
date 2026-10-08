@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
 )
 
 // SnapshotHTML renders a standalone HTML string to a PNG at the given viewport

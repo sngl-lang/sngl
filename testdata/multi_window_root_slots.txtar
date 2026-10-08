@@ -57,12 +57,12 @@ ui.window #two(title="Two") {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -353,7 +353,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -367,8 +367,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -627,6 +627,6 @@ func (m *Model) noteClick() {
 	gtk4rt.Emit(m.note, "clicked")
 }
 -- run/go/fyne --
-pass sha256:086f0eed421f4b008d60c7d8142345c8
+pass sha256:22bdaebaaea035818bb226fe2c4ff68a
 -- run/go/gtk4 --
-pass sha256:8733f7aaf3b830713e428b74d72c5435
+pass sha256:92bd4d76ae1d31653e4a17bb516aea8c

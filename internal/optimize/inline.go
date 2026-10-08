@@ -5,8 +5,8 @@ import (
 	"slices"
 	"sync/atomic"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // inlineCall attempts to replace a function call with its inlined body.

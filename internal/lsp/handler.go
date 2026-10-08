@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // checkForPreview type-checks the workspace file and returns the IR

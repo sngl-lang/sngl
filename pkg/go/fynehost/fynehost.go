@@ -20,7 +20,7 @@ import (
 	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // spec is the Spec record a primitive was instantiated with, as it arrives on

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	jsscheme "duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/ir"
 )
 
 // jsStructDef loads one interface out of a TypeScript module the way the

@@ -3277,7 +3277,7 @@ The `lib/` directory holds **SNGL stdlib declarations** (language-agnostic `.sng
 When adding a new stdlib package that needs runtime support:
 1. Declare the SNGL surface in `lib/<name>/`, one directory per importable package.
 2. For each target language that needs runtime support, create `pkg/<lang>/<name>/`.
-3. The codegen for that language emits `import "git.duckfam.us/jonathan/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
+3. The codegen for that language emits `import "duckfam.us/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
 
 ### Built-in Generic Types
 
@@ -3594,7 +3594,7 @@ targets in parallel) is not a saving.
   and is tuned to one machine besides.
 - **The docs site (`go tool docsgen`) is the stress case**: one html build
   writing ~1200 files, where per-page costs dominate. Its compile step is
-  `sngl generate --allow-eval=go:git.duckfam.us/jonathan/sngl/docs --allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
+  `sngl generate --allow-eval=go:duckfam.us/sngl/docs --allow-eval=go:duckfam.us/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
   staged.
 - **What another process produces is SNGL, and it is stored.** A step
   whose output the compiler reads but did not write -- the compile-time

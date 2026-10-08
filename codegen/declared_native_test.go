@@ -3,8 +3,8 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // The #[gen.native] mark is read off a target's source before anything is

@@ -8,7 +8,7 @@
 # versions the checkout's module cache holds: pruning hides what the
 # checkout's tools require, and the graph the evaluator imports alone selects
 # older ones nothing downloaded.
-exec sh -c 'printf "module example.com/app\n\ngo %s\n\nrequire git.duckfam.us/jonathan/sngl v0.0.0\n\nreplace git.duckfam.us/jonathan/sngl => %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> go.mod'
+exec sh -c 'printf "module example.com/app\n\ngo %s\n\nrequire duckfam.us/sngl v0.0.0\n\nreplace duckfam.us/sngl => %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> go.mod'
 env GOPROXY=off GOFLAGS=-mod=mod
 exec go mod tidy
 env SNGL_GENCACHE_DIR=$WORK/store
@@ -79,7 +79,7 @@ package lib
 
 // Kept so the module requires what the evaluator imports.
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	_ "duckfam.us/sngl/pkg/go/consteval"
 )

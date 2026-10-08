@@ -3,7 +3,7 @@ package imports_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/imports"
+	"duckfam.us/sngl/internal/imports"
 )
 
 func TestParseScheme(t *testing.T) {

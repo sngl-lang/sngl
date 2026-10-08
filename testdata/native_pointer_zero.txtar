@@ -52,10 +52,10 @@ ui.window(title="zero") { main }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"time"
 )
@@ -142,4 +142,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:b9a19492f80d840c13fb93a01cc1243b
+pass sha256:4b1f627f228d69f276d6d7eb2408e148

@@ -3,7 +3,7 @@ package checker
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // inferComponentTrees settles the family of every declaration that named none,

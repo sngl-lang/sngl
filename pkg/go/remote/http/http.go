@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	remote "git.duckfam.us/jonathan/sngl/pkg/go/remote"
+	remote "duckfam.us/sngl/pkg/go/remote"
 )
 
 // Response is what one request answered with, and what sngl:remote/http's

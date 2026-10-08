@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Snapshot generates gtk4 Go code, builds it with a cgo harness that
@@ -208,7 +208,7 @@ import (
 	"os"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 func main() {
@@ -311,7 +311,7 @@ import (
 	"os"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 
 ` + imports.String() + `)
 

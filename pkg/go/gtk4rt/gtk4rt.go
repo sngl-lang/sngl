@@ -199,8 +199,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 // Handle re-exports cbind.Handle so generated code references a single opaque

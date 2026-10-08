@@ -1,8 +1,8 @@
 package interp
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // TestingT is the runtime interface for the SNGL `Test` parameter. The

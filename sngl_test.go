@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl"
+	"duckfam.us/sngl"
 )
 
 // TestConvertContainsPanic verifies the public pipeline boundary contains

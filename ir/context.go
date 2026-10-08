@@ -1,6 +1,6 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // Context represents a top-level `context #name(default)` declaration.
 // Default is the checked default-value expression; Typ is its inferred

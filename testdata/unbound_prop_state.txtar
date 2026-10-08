@@ -368,11 +368,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -601,7 +601,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -615,7 +615,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ToggleEvent struct {
@@ -1077,9 +1077,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ea50b2bcd0abd12b7b3462a4bbf70609
 -- run/go/fyne --
-pass sha256:fc614b71207e96860ff5952cfab130a2
+pass sha256:12823a906bd53028f1b1ff303df8de07
 -- run/go/gtk4 --
-pass sha256:f5ce6d1b8a6455d9c5e766f6c8b000ee
+pass sha256:f1f299f369c66e84bf0f616ffbf77c55
 -- run/kotlin/android --
 pass sha256:b5368a4ed7faaa084b3c29bf66f3f242
 -- run/none/html --

@@ -10,10 +10,10 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
-	sngl "git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/highlight"
-	"git.duckfam.us/jonathan/sngl/ir"
+	sngl "duckfam.us/sngl"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/highlight"
+	"duckfam.us/sngl/ir"
 )
 
 var dumpSpew = &spew.ConfigState{

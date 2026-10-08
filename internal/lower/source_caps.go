@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // capabilityField maps each member of sngl:x/gen's Capability enum to the

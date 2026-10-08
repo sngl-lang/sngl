@@ -5,7 +5,7 @@
 package i18n
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // IsCall reports whether c targets an i18n stdlib entry point.

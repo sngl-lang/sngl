@@ -674,7 +674,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -687,8 +687,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 	"slices"
 )
 
@@ -1089,7 +1089,7 @@ pass sha256:266b2a0e57ca777503f14935e492c2c7
 -- run/go/fyne --
 pass sha256:d3464c58dbb8e7de7df35e4adf46a8bf
 -- run/go/gtk4 --
-pass sha256:efb6f7bbcc5be2e53e19ac46e9430060
+pass sha256:aa6e874c0a4b8d7aa109c177d0fab18d
 -- run/kotlin/android --
 pass sha256:aa5616096ebc269dc2f8daa8ee1b1ae7
 -- run/none/html --

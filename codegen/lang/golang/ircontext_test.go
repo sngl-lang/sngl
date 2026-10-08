@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // TestGoIRContext_ContextVar_NativeCall verifies that a native (go:) call
@@ -387,9 +387,9 @@ func TestEmitFuncDef_NativeParam(t *testing.T) {
 // path keeps its exact alias (call sites reference it literally).
 func TestRequireImportAs_ForcedDeconfliction(t *testing.T) {
 	gc := newMinimalIRCtx()
-	gc.RequireImportAs("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "snglcanvas")
+	gc.RequireImportAs("duckfam.us/sngl/pkg/go/canvas", "snglcanvas")
 	gc.RequireImport("fyne.io/fyne/v2/canvas")
-	if a := gc.ForcedAlias("git.duckfam.us/jonathan/sngl/pkg/go/canvas"); a != "snglcanvas" {
+	if a := gc.ForcedAlias("duckfam.us/sngl/pkg/go/canvas"); a != "snglcanvas" {
 		t.Errorf("forced alias = %q, want snglcanvas", a)
 	}
 	if a := gc.ForcedAlias("fyne.io/fyne/v2/canvas"); a != "" {

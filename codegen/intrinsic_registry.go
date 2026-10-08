@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // IntrinsicEmitter renders the native call-site invocation for an intrinsic in

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 func TestAnalyze_ValidFile(t *testing.T) {

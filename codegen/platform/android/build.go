@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Build answers `android.buildApk`, android's build command, and the

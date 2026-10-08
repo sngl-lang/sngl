@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // litNode builds a NodeInst whose props are bare string Literals (Type=nil), so

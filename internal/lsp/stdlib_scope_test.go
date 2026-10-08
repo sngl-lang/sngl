@@ -3,8 +3,8 @@ package lsp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // Hover resolves against the checked package's symbol table, so it must show

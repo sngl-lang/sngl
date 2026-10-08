@@ -1,7 +1,7 @@
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/build"
+	"duckfam.us/sngl/internal/build"
 	"github.com/spf13/cobra"
 )
 

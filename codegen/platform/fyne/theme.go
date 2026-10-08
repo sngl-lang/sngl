@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // The paint half of sngl.Style, in Fyne.
@@ -27,7 +27,7 @@ import (
 // of. The type used to be emitted here as a string constant, which meant the
 // interpreted host had to carry a second copy of the same forty lines -- and
 // two copies of a Fyne contract drift the moment Fyne changes one.
-const ThemeImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
+const ThemeImportPath = "duckfam.us/sngl/pkg/go/fynetheme"
 
 // themeValue is one distinct set of paint properties. Comparable, so the set
 // of styles in a program dedupes to the set of themes it needs.

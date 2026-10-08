@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"git.duckfam.us/jonathan/sngl/examples/todo/ui"
+	"duckfam.us/sngl/examples/todo/ui"
 )
 
 //go:generate go tool sngl generate --lang go --platform bubbletea --out ui todo.sngl

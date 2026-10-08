@@ -46,8 +46,8 @@ package main
 import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbletea/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -285,7 +285,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -298,7 +298,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -497,11 +497,11 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:269017a68813d867a8f2b22983710ea1
+pass sha256:6cdc6c136e2a92de2d8a30397303737e
 -- run/go/fyne --
 pass sha256:a6385dcda8d0a8d027399ded41954537
 -- run/go/gtk4 --
-pass sha256:44c1ea4703e79fa1abcde1dd6bb20d92
+pass sha256:f11328d7ca282f8825664d4f7c2af8dd
 -- run/kotlin/android --
 pass sha256:ab5bbde298afecd0043f22734a373405
 -- run/none/html --

@@ -2,9 +2,9 @@
 package platform
 
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/fyne"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/gtk4"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/platform/android"
+	_ "duckfam.us/sngl/codegen/platform/bubbletea"
+	_ "duckfam.us/sngl/codegen/platform/fyne"
+	_ "duckfam.us/sngl/codegen/platform/gtk4"
+	_ "duckfam.us/sngl/codegen/platform/html"
 )

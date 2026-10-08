@@ -3,7 +3,7 @@ package checker
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // isLiteralIntZero reports whether expr is the integer literal 0. Used to

@@ -15,10 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/docs"
+	"duckfam.us/sngl/docs"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
 )
 
 func main() {
@@ -115,8 +115,8 @@ func copySnapshots(outDir string) {
 // runs too.
 func generateArgs(filename, outDir string) []string {
 	return []string{"tool", "sngl", "generate",
-		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs",
-		"--allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup",
+		"--allow-eval=go:duckfam.us/sngl/docs",
+		"--allow-eval=go:duckfam.us/sngl/docs/lookup",
 		"--platform", "html", "--lang", "none", "--out", outDir, filename}
 }
 

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // The corpus is a captured snapshot of the gtk4 platform package — 148KB

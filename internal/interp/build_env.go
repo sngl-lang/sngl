@@ -3,7 +3,7 @@ package interp
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BuildEnv creates an Env populated for evaluation in the scope of the given

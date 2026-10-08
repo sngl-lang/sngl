@@ -309,11 +309,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -495,7 +495,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -509,8 +509,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 func snglStrLen(v Len) string {
@@ -686,6 +686,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:4b189788f166b17ddf1fbaa90c308113
 -- run/go/fyne --
-pass sha256:4b1ca73f18cffd82ac83663c67409241
+pass sha256:517b96afe82daeb3e8729be04c6ca781
 -- run/go/gtk4 --
-pass sha256:44d49e3bc68e10a88fd8806455655a79
+pass sha256:5f04f1d2cb2bbd7eedc17c9696c8042e

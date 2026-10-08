@@ -3,11 +3,11 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/trust"
 	"os/exec"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 const jspurePath = "./internal/optimize/testdata/jspure"

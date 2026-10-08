@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync/atomic"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 var spreadSeq atomic.Int64

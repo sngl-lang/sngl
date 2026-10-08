@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passLibFuncs promotes a library package's func into this package's func list
 // when a body this build emits calls it.

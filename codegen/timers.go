@@ -1,8 +1,8 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // ScheduledTimer is one placed timer primitive: the schedule it describes,

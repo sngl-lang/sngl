@@ -204,7 +204,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -218,7 +218,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -419,6 +419,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5cbae03bf64347d2f91287ab24b78fb3
 -- run/go/gtk4 --
-pass sha256:99c08e446418aff9caa5c6caf292c8cd
+pass sha256:44c142da16c8465f7679933e851bcdac
 -- run/none/html --
 pass sha256:d714f611d400dab9b62029144a21b7d9

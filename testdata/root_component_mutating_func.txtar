@@ -60,11 +60,11 @@ main()
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -276,6 +276,6 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:150b54e15c0b2a426c00062c0b7835a4
+pass sha256:104ca90a85c73f9bc2ff54f55ffe1dd4
 -- run/none/html --
 pass sha256:fd34ccc2226e235ed78acf325a2724ed

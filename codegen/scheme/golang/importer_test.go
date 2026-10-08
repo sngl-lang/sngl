@@ -3,12 +3,12 @@ package golang
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestGoImporter_Resolve(t *testing.T) {
 	imp := &GoImporter{}
-	ni, err := imp.Resolve("git.duckfam.us/jonathan/sngl/codegen/scheme/golang/testdata/testpkg", ".")
+	ni, err := imp.Resolve("duckfam.us/sngl/codegen/scheme/golang/testdata/testpkg", ".")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

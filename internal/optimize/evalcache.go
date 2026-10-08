@@ -6,9 +6,9 @@ import (
 	"path"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/internal/asset"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/asset"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/ir"
 )
 
 // constResult is a finished compile-time evaluation: the checked IR of the

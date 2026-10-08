@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness"
-	"git.duckfam.us/jonathan/sngl/internal/jdk"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/testharness"
+	"duckfam.us/sngl/internal/jdk"
+	"duckfam.us/sngl/ir"
 )
 
 // LaunchTest implements codegen.TestLauncher. Dispatches on the

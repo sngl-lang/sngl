@@ -165,10 +165,10 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"os"
 )
 
@@ -278,7 +278,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -292,7 +292,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type Measurement struct {
@@ -465,9 +465,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:896e570511349d45099ebdfb42b9dfb3
 -- run/go/fyne --
-pass sha256:3327934823e96472f7329a464c943118
+pass sha256:dd7cb2d597378ed6abb2bf75e8a97ba3
 -- run/go/gtk4 --
-pass sha256:8eed8b92483e61b0203250ce9a8d77c6
+pass sha256:f0347241ae50ad1b9c9a188008c5080b
 -- run/kotlin/android --
 pass sha256:7a661edd4bfc45ca0814565dfa5ce4a6
 -- run/none/html --

@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // CompParams extracts the prop entries from a ComponentDecl's Props. A slot is

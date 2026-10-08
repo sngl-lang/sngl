@@ -14,7 +14,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 
-	_ "git.duckfam.us/jonathan/sngl/internal/highlight" // register custom SNGL lexer with chroma
+	_ "duckfam.us/sngl/internal/highlight" // register custom SNGL lexer with chroma
 )
 
 // newMarkdown creates a goldmark instance configured for the doc site.

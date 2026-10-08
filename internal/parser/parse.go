@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 	"modernc.org/scanner"
 )
 

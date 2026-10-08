@@ -1,7 +1,7 @@
 package kotlin
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // translateIRLiteral renders an ir.Literal as its Kotlin source form, for

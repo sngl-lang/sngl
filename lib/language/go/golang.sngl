@@ -37,7 +37,7 @@ component language(
     const goVersion string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
-    // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
+    // duckfam.us/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     const goModExtra string,
@@ -136,7 +136,7 @@ enum NativeFlag {
     context
 }
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
+#[native("duckfam.us/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result
 
 // What sngl:remote/http declares and leaves to each target. An override rather
@@ -159,7 +159,7 @@ func http.get[language]() {
 // The runtime package the drawing surface lives in, named once: a mark
 // argument may be a const, so the twenty declarations below do not each spell
 // the import path.
-const _canvasPkg = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+const _canvasPkg = "duckfam.us/sngl/pkg/go/canvas"
 
 // The Go type of the draw handler's context parameter. Named through this
 // package's own `native`, which is the point of registering a package's macros

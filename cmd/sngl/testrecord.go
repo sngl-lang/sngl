@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // testRuns, when set, answers a test launch from a record of an earlier one

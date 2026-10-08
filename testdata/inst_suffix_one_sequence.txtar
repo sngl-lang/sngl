@@ -235,12 +235,12 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -328,7 +328,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -342,8 +342,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -539,9 +539,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8c94be163c30a091d465ba80bb139682
 -- run/go/fyne --
-pass sha256:36f2dfcd67d2131a6b9420ccb816d22c
+pass sha256:ec3a8a9400f0991eba782e305b984dda
 -- run/go/gtk4 --
-pass sha256:1f439a8afc300ab460ebc351830c3adf
+pass sha256:892015d3a8245f0ad862a29376d39841
 -- run/kotlin/android --
 pass sha256:a58b8aae89b9625782e975b6474ec840
 -- run/none/html --

@@ -3,7 +3,7 @@ package fynehost
 import (
 	fyne "fyne.io/fyne/v2"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // Threaded runs a Host's ops on Fyne's own thread.

@@ -248,11 +248,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -397,7 +397,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -411,7 +411,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -709,9 +709,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:65bd69c3a902caa5920f053c5d2aaaf5
 -- run/go/fyne --
-pass sha256:acf106e30591882e1109a35b2e8ab219
+pass sha256:9e3da9307b0df5dce1928544938ca716
 -- run/go/gtk4 --
-pass sha256:133d95eac8be687e1e9c165752c122b3
+pass sha256:040bd87392e20e5cca950468ac7962b4
 -- run/go/html --
 pass sha256:602b055663a5f1063a488f3694fc751e
 -- run/kotlin/android --

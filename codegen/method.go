@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // OwnerMethod resolves a receiver-qualified method call to the func it names,
 // searching every state owner rather than package scope alone.

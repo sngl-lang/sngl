@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // testIRContext builds a GoIRContext for rendering a test body.
@@ -349,7 +349,7 @@ const (
 // *testing.T's API — so only the wrapper differs:
 //
 //   - Native: `package <pkg>` + import "testing" + funcs `func Test<X>(t *testing.T)`.
-//   - Agent:  `package <pkg>` + import "git.duckfam.us/jonathan/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.
+//   - Agent:  `package <pkg>` + import "duckfam.us/sngl/pkg/go/testagent" + funcs `func test<X>(t *testagent.T)` + an init() that RegisterTests them.
 func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode) string {
 	// Bodies first: what a test body calls decides what the file imports, and
 	// the header cannot be written until that is known. A fixed import line
@@ -361,7 +361,7 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 	case TestEmitNative:
 		needed["testing"] = true
 	case TestEmitAgent:
-		needed["git.duckfam.us/jonathan/sngl/pkg/go/testagent"] = true
+		needed["duckfam.us/sngl/pkg/go/testagent"] = true
 	}
 
 	for i, fn := range fns {

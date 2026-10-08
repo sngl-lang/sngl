@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // SubstituteEventPayload returns a copy of stmts with each read of an event
 // parameter's first field replaced by the host's one positional value (the

@@ -13,14 +13,14 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
-const snglModulePath = "git.duckfam.us/jonathan/sngl"
+const snglModulePath = "duckfam.us/sngl"
 
 // DetectHostGoMod walks up from the current working directory looking for
 // the nearest go.mod, parses it, and returns (goVersion, goModExtra) suitable
 // for seeding a temporary go.mod that aligns SNGL runtime imports with the
-// host module's view of git.duckfam.us/jonathan/sngl.
+// host module's view of duckfam.us/sngl.
 //
-//   - If the host module IS git.duckfam.us/jonathan/sngl, goModExtra contains a
+//   - If the host module IS duckfam.us/sngl, goModExtra contains a
 //     `replace` directive pointing the sngl import at the host module root.
 //   - Otherwise, if the host module has a `replace` for the sngl module, it is
 //     copied (with filesystem targets rewritten to absolute paths).

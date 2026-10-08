@@ -3,7 +3,7 @@ package codegen
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // DepTracker tracks reactive dependencies between vars and computed funcs.

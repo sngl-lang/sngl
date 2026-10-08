@@ -1,7 +1,7 @@
 package golang
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BaseImports is the Go imports a generated file needs that no emitted

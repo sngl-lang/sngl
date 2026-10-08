@@ -12,10 +12,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
 )
 
 // isConstExpr reports whether the expression can be evaluated at compile time.

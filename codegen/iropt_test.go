@@ -3,7 +3,7 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func varSet(vars ...*ir.Var) map[ir.Symbol]struct{} {

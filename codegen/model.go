@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // MutationModel is the intermediate representation for platforms that emit

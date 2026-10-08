@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // unixPrintClasses are declared from Gtk-4.0.gir but live in

@@ -10,7 +10,7 @@ package interp
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // oracleResolve is the pre-tree ResolveElementRef.

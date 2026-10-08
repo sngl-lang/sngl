@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 func init() {
@@ -140,9 +140,9 @@ func i18nPluralKeyGoName(snglName string) string {
 	return ""
 }
 
-// SnglI18nImportPath is the Go import path of git.duckfam.us/jonathan/sngl/pkg/go/i18n.
+// SnglI18nImportPath is the Go import path of duckfam.us/sngl/pkg/go/i18n.
 // Platform generators should add this import when PackageUsesI18n returns true.
-const SnglI18nImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
+const SnglI18nImportPath = "duckfam.us/sngl/pkg/go/i18n"
 
 // PackageUsesI18n reports whether any function or component in pkg
 // contains an i18n stdlib call. Platform generators use this to decide

@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // FindComponent finds a ComponentDecl by name in the document.

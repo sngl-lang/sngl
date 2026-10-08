@@ -1,6 +1,6 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // Expr is a type-checked expression node. Every Expr carries its resolved
 // type. Concrete types have an AST field for source positions.

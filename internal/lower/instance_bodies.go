@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passInstanceBodies flattens the body of every component that survives
 // inlining, on the platforms that otherwise keep the declarative tree.

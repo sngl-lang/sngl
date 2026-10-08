@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // LocalRenamer is a language translation context that can bind one name to
 // render as another. Both Go's and JavaScript's contexts do, and the binding is

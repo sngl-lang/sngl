@@ -3,7 +3,7 @@ package ir_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestPointsToKey_VarAndField(t *testing.T) {

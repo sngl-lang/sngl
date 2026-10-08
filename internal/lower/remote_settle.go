@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // RemoteSettleFunc is the name of the handler a store calls when one of its

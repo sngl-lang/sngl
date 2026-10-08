@@ -7,10 +7,10 @@ import (
 	"strings"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls code generation. Field names match the SNGL option names

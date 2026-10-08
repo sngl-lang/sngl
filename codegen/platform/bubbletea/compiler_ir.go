@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls code generation. Field names mirror bubbletea.sngl options.
@@ -671,7 +671,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			// After NewProgram, since the callback holds the program. Send is
 			// safe before Run: it blocks until the program is listening.
 			b.WriteString("\tremote.Default.OnSettle(func() { p.Send(remoteSettledMsg{}) })\n")
-			gc.RequireImport("git.duckfam.us/jonathan/sngl/pkg/go/remote")
+			gc.RequireImport("duckfam.us/sngl/pkg/go/remote")
 		}
 		teardown := ctx.Pkg != nil && ctx.Pkg.Teardown != nil
 		if teardown {

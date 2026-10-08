@@ -3,8 +3,8 @@ package lower
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passPropBindings transforms NodeInst.Bindings into @event+handler pairs

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	sngl "git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/ir"
+	sngl "duckfam.us/sngl"
+	"duckfam.us/sngl/ir"
 )
 
 // checkedFixture parses+checks a fixture, skipping ones that don't cleanly

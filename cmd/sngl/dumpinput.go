@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/parser"
 	"github.com/spf13/cobra"
 	"golang.org/x/tools/txtar"
 )

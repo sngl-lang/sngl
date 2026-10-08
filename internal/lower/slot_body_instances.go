@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // A render slot re-renders on what its structure reads -- an `if`'s
 // condition, a `for`'s iterable -- and what its body reads beyond that is

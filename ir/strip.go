@@ -3,7 +3,7 @@ package ir
 import (
 	"reflect"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // StripForCompare removes AST references, cross-reference pointers, and

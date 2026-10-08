@@ -18,7 +18,7 @@ func TestFieldAndMethod(t *testing.T) {
 // ==== TestEmitAgent ====
 package ui
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+import "duckfam.us/sngl/pkg/go/testagent"
 
 func testFieldAndMethod(t *testagent.T) {
 	c := newTestComponent()

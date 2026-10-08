@@ -3,7 +3,7 @@ package interp
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // sngl:ui/nav on the interpreter. `sngl:platform/none` overrides `nav.stack`

@@ -3,8 +3,8 @@ package parser_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 func TestParseMapLiteralNonIdentKeys(t *testing.T) {

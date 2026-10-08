@@ -22,7 +22,7 @@ const buildMarker = "<!-- sngl:build -->"
 const yearMarker = "<!-- sngl:year -->"
 
 // repoURL is where a commit hash in the footer links to.
-const repoURL = "https://git.duckfam.us/jonathan/sngl"
+const repoURL = "https://github.com/sngl-lang/sngl"
 
 // stamp is the commit the site was generated from.
 type stamp struct {

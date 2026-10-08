@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/ir"
 )
 
 // pickPrimaryConstructorInfo returns the full ConstructorInfo for the first
@@ -283,7 +283,7 @@ import "C"
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 var gtkInit sync.Once
@@ -316,7 +316,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 func currentTestModel() *Model { return currentModel }

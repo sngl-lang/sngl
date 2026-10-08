@@ -1,12 +1,12 @@
 package fyne
 
 import (
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/lib"
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // This platform's answer to "can this prop be written after construction" is

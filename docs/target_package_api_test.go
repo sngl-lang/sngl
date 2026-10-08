@@ -3,10 +3,10 @@ package docs
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
 )
 
 // A target's library package is a lib/ directory (codegen/declared.go), and

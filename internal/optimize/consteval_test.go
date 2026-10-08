@@ -3,9 +3,9 @@ package optimize
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
 )
 
 func TestToFloat_Int(t *testing.T) {

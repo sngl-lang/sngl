@@ -1,12 +1,12 @@
 package codegen
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"duckfam.us/sngl/internal/checker"
 	"slices"
 	"sort"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 var (

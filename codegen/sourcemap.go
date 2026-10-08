@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // PosEntry records that the byte at ByteOffset in the body corresponds to
 // the AST source location Pos.

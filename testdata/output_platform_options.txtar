@@ -31,10 +31,10 @@ window #w {
 package app
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -133,6 +133,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:77f74bfacc9713ba2ad6cc58ca27892b
+pass sha256:7088da27874105e308fc4dcfdd720b59
 -- run/none/html --
 pass sha256:55204b97cbc2b2297786166518136b1d

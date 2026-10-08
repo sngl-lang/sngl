@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // ExprToStaticValueIR extracts a static literal value from an IR expression,

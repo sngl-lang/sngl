@@ -3,7 +3,7 @@ package docs
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"duckfam.us/sngl/docs/lookup"
 )
 
 // SearchEntry is one searchable record surfaced to the docs site's search

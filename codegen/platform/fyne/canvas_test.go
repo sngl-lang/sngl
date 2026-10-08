@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/lower"
 )
 
 // TestCanvas_EmitsGGDrawAndRedraw verifies the fyne platform renders a
@@ -59,7 +59,7 @@ window {
 		// draw func signature uses the shared *snglcanvas.Context runtime.
 		"func (m *Model) _canvasDraw0(ctx *snglcanvas.Context)",
 		// the SNGL canvas runtime is imported under the snglcanvas alias.
-		`snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"`,
+		`snglcanvas "duckfam.us/sngl/pkg/go/canvas"`,
 		// primitive draws go through Context methods.
 		"ctx.Rect(",
 		"ctx.Circle(",

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/pkg/js/consteval"
+	"duckfam.us/sngl/pkg/js/consteval"
 )
 
 // run drives the runtime over the given JS emit statements and returns the

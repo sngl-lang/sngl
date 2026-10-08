@@ -3,7 +3,7 @@ package lsp
 import (
 	"encoding/json"
 
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 func (s *Server) handleInlayHint(id json.RawMessage, params json.RawMessage) {

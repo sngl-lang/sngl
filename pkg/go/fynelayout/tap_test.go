@@ -6,7 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	fynetest "fyne.io/fyne/v2/test"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 func TestTapReachesAnObjectThatIsNotTappable(t *testing.T) {

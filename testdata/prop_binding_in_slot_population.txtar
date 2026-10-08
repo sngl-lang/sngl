@@ -43,8 +43,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -213,11 +213,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -315,7 +315,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -329,7 +329,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -464,10 +464,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:43c6c54eee42b2819f136879433df871
+pass sha256:88ffaacc4d2da4036caab0b0c20964c6
 -- run/go/fyne --
-pass sha256:d10c0ff1291eea33990798b56cfd6edb
+pass sha256:52456b36b5452618c0ff333eb2454213
 -- run/go/gtk4 --
-pass sha256:fe832c60cb6bdc7a24328d4d057d2ce3
+pass sha256:3da6fc59003fcbb8e424be687031df57
 -- run/none/html --
 pass sha256:89d21bfdf9a8843f211bee2d9c75ef85

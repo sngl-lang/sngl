@@ -3,7 +3,7 @@ package ir
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // The package's own body has to survive Convert, or `sngl dump` and `sngl fmt`

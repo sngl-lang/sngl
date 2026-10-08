@@ -3,7 +3,7 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // ir.Literal.Value holds a string's *decoded content* — the checker decodes the

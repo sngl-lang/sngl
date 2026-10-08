@@ -3,7 +3,7 @@ package codegen
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // CommandFunc answers a build-only intrinsic a target's command handler calls

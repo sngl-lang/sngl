@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	fyneplat "git.duckfam.us/jonathan/sngl/codegen/platform/fyne"
+	fyneplat "duckfam.us/sngl/codegen/platform/fyne"
 )
 
 const generated = "../../../pkg/go/fynehost/registry_gen.go"

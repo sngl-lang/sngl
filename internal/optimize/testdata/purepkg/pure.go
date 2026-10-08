@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/optimize/testdata/storeprobe"
+	"duckfam.us/sngl/internal/optimize/testdata/storeprobe"
 )
 
 // Double returns x * 2.

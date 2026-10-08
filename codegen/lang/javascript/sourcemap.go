@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 )
 
 // jsPositionMarker matches an inline `/*@SNGL:file:line@*/` marker emitted

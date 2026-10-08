@@ -5,14 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // fyneLayoutImportPath is the SNGL runtime package holding the weighted
 // layout. Fyne's own boxes pack their children at minimum size, so `flex` --
 // a child asking for a share of its parent -- has no layout in the toolkit
 // that answers it.
-const fyneLayoutImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+const fyneLayoutImportPath = "duckfam.us/sngl/pkg/go/fynelayout"
 
 // flexLayoutCall returns the `container.New(fynelayout.New(...))` constructor
 // for a box some child asked for a share of, and nil when the box's own

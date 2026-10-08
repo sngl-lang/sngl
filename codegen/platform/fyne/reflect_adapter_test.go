@@ -13,7 +13,7 @@ import (
 	fynetest "fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 // This file is the spike for an interpreted fyne host: proof that a widget can
@@ -50,7 +50,7 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/container.NewVScroll":        container.NewVScroll,
 	// The window's Toplevel is this platform's own runtime type, not a Fyne
 	// widget, and is held to the same reflection as the rest.
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
+	"duckfam.us/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib

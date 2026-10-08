@@ -18,14 +18,14 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/gencache/godeps"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache/godeps"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // evalTimeout bounds one round: generating, building and running the batch.
@@ -493,9 +493,9 @@ func constEvalDeps(gen *gencache.Store, absDir string, reqs []*nativeRequest) ma
 // calls: the runtime it reports through, and the codegen registries a pure
 // function may enumerate (docs.Targets() does).
 var evaluatorImports = []string{
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval",
-	"git.duckfam.us/jonathan/sngl/codegen/lang",
-	"git.duckfam.us/jonathan/sngl/codegen/platform",
+	"duckfam.us/sngl/pkg/go/consteval",
+	"duckfam.us/sngl/codegen/lang",
+	"duckfam.us/sngl/codegen/platform",
 }
 
 // runConstEvalBatch generates, builds and runs the program for reqs and
@@ -815,7 +815,7 @@ import (
 	// The runtime is imported by name; the codegen registries are blank so a
 	// pure func that enumerates them (docs.Targets()) sees what the compiler
 	// sees.
-	fmt.Fprintf(&b, "\n\t%q\n\t%q\n", evaluatorImports[0], "git.duckfam.us/jonathan/sngl/codegen")
+	fmt.Fprintf(&b, "\n\t%q\n\t%q\n", evaluatorImports[0], "duckfam.us/sngl/codegen")
 	for _, p := range evaluatorImports[1:] {
 		fmt.Fprintf(&b, "\t_ %q\n", p)
 	}

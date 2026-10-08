@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passBoundaryPassthrough splices each boundary that holds no fallback into
 // what it holds, on every target, so no backend is handed one: gtk4 and fyne

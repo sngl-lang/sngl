@@ -196,7 +196,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -210,8 +210,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -343,6 +343,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b8bad633ca2bdc368c4df9ac42e8afbb
 -- run/go/gtk4 --
-pass sha256:39ac20a1d7ef6f94779222977b2b6de0
+pass sha256:dec3cc668070333d45e7183a57f223c6
 -- run/none/html --
 pass sha256:64c2590c75ffdfe2f26c217d7c49b373

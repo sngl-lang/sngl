@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // UnitGoTypeKind classifies how a SNGL unit decl is represented in Go.

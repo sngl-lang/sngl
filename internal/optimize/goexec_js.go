@@ -5,8 +5,8 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/internal/trust"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/trust"
+	"duckfam.us/sngl/ir"
 )
 
 // nativeCallState mirrors the non-WASM build; only nativeFailed occurs here.

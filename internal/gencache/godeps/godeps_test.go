@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // module writes a two-package module: a imports b, and b embeds a directory.

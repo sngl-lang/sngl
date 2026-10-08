@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // UnitKtType is the Kotlin type a value of unit u is held in.

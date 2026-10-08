@@ -1,5 +1,5 @@
 import . "sngl:ui"
-import "go:git.duckfam.us/jonathan/sngl/docs"
+import "go:duckfam.us/sngl/docs"
 import "sngl:platform/html"
 
 // SearchBox renders a docs-search input with a results list over a

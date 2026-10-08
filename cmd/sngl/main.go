@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/scheme"
 )
 
 var rootCmd = &cobra.Command{

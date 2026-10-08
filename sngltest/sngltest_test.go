@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/sngltest"
-	"git.duckfam.us/jonathan/sngl/sngltest/testdata/marshalpkg"
+	"duckfam.us/sngl/sngltest"
+	"duckfam.us/sngl/sngltest/testdata/marshalpkg"
 )
 
 // fake stands in for *testing.T so a check that is supposed to fail can be
@@ -113,7 +113,7 @@ func TestCheckTypePasses(t *testing.T) {
 // Encode hands back the source the compiler would have parsed, for a golden
 // test over the exact text.
 func TestEncode(t *testing.T) {
-	const itemRef = `import("go:git.duckfam.us/jonathan/sngl/sngltest/testdata/marshalpkg").Item`
+	const itemRef = `import("go:duckfam.us/sngl/sngltest/testdata/marshalpkg").Item`
 	if got := sngltest.Encode(t, marshalpkg.Item{Name: "alpha", Value: 1}); got != itemRef+`{Name = "alpha", Value = 1}` {
 		t.Errorf("Encode() = %s", got)
 	}

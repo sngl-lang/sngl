@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/testutil"
 )
 
 // TestMain re-execs the CLI tests inside a headless cage compositor so the

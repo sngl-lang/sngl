@@ -3,7 +3,7 @@ package interp
 import (
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TickIntrinsic is the id of the primitive `sngl:platform/none` declares for a

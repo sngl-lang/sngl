@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // SnglCacheDir returns the base cache directory for SNGL.

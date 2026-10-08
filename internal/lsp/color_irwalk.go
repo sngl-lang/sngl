@@ -1,6 +1,6 @@
 package lsp
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // walkIRColorLiterals invokes fn for every *ir.StructLit whose Def is the
 // "color" stdlib struct, reachable from package-level consts/vars,

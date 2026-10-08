@@ -3,7 +3,7 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // A package comment is a run of line comments at the top of doc.sngl,

@@ -3,7 +3,7 @@ package codegen
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // An intrinsic may be answered by either side of a build. A language emitter is

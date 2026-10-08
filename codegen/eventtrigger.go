@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // EventTriggerTarget is what a test's event trigger -- `c.inc.click()`, a
 // call the checker tagged with an Event -- addresses: the variable holding the

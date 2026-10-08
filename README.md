@@ -74,13 +74,19 @@ from the command line.
 Requires Go 1.26+.
 
 ```bash
-git clone https://git.duckfam.us/jonathan/sngl.git
+go install duckfam.us/sngl/cmd/sngl@latest
+```
+
+Or from a checkout:
+
+```bash
+git clone https://github.com/sngl-lang/sngl.git
 cd sngl
 go install ./cmd/sngl
 ```
 
 Prebuilt binaries are linked from the
-[installation page](https://jonathan.git.duckfam.us/sngl/learn/installation.html).
+[installation page](https://sngl-lang.github.io/learn/installation.html).
 
 ## Usage
 
@@ -112,7 +118,7 @@ Code generation is pluggable: platform backends and language translators registe
 
 ## Documentation
 
-Full docs are at the [SNGL documentation site](https://jonathan.git.duckfam.us/sngl), including a browser-based [Playground](https://jonathan.git.duckfam.us/sngl/playground.html) that compiles SNGL to HTML+JS via WebAssembly.
+Full docs are at the [SNGL documentation site](https://sngl-lang.github.io), including a browser-based [Playground](https://sngl-lang.github.io/playground.html) that compiles SNGL to HTML+JS via WebAssembly.
 
 To build the docs locally:
 

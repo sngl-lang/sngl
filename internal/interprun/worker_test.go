@@ -23,9 +23,9 @@ func TestTheWorkerIsBuiltInTheProject(t *testing.T) {
 
 go 1.24
 
-require git.duckfam.us/jonathan/sngl v0.0.0
+require duckfam.us/sngl v0.0.0
 
-replace git.duckfam.us/jonathan/sngl => ./nowhere
+replace duckfam.us/sngl => ./nowhere
 `)
 	_, err := EnsureWorker(dir)
 	if err == nil {
@@ -126,7 +126,7 @@ func TestTheWorkerSourceListIsComplete(t *testing.T) {
 	if err != nil {
 		t.Skipf("go list unavailable: %v", err)
 	}
-	const mod = "git.duckfam.us/jonathan/sngl/"
+	const mod = "duckfam.us/sngl/"
 	listed := map[string]bool{}
 	for _, d := range workerSources {
 		listed[d] = true

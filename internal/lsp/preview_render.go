@@ -7,11 +7,11 @@ import (
 	"sync"
 
 	// The preview renders through these whatever else the binary links.
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/platform/html"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/ir"
 )
 
 // previewCache retains the last good HTML render per (URI, window) so a

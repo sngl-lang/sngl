@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/names"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/names"
+	"duckfam.us/sngl/ir"
 )
 
 // CompileHTTP implements codegen.HTTPCompiler for Go. Produces a single

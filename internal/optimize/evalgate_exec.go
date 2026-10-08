@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/trust"
 )
 
 // What runs a gated package and resolves where it came from: a WASM build

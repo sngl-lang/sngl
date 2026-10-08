@@ -1,7 +1,7 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // constraint is a single subset rule: pts(dst) ⊇ {funcs...} ∪ pts(srcs...).

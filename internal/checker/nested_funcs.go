@@ -1,9 +1,9 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/names"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/names"
+	"duckfam.us/sngl/ir"
 )
 
 // nestedFunc is one `func` written inside a function body, and the function

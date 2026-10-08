@@ -3,7 +3,7 @@ package checker
 import (
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // checkEffectSelfRekey refuses a bracket whose own handler writes what its own

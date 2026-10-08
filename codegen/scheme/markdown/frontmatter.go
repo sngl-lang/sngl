@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
+	snglast "duckfam.us/sngl/ast"
 )
 
 // constDecl is one frontmatter key as the const the generated package writes.

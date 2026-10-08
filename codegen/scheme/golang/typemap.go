@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/types"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TypeMapper answers, for one Go package, the question an import of that

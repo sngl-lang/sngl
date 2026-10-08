@@ -3,8 +3,8 @@ package android
 import (
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // viewStmts is what MainScreen draws: the package body, which is the

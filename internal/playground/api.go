@@ -13,21 +13,21 @@ import (
 
 	"golang.org/x/tools/txtar"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/android"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
-	"git.duckfam.us/jonathan/sngl/ir"
+	_ "duckfam.us/sngl/codegen/lang/golang"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/lang/kotlin"
+	_ "duckfam.us/sngl/codegen/platform/android"
+	_ "duckfam.us/sngl/codegen/platform/bubbletea"
+	_ "duckfam.us/sngl/codegen/platform/html"
+	"duckfam.us/sngl/ir"
 )
 
 var (

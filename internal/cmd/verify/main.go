@@ -46,8 +46,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/headless"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/headless"
 )
 
 var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
@@ -178,16 +178,16 @@ func main() {
 	// whose probe says it can run on this host. Unavailable platforms are
 	// skipped, not failed.
 	//
-	// --opt goModExtra="replace git.duckfam.us/jonathan/sngl => <root>"
+	// --opt goModExtra="replace duckfam.us/sngl => <root>"
 	// points temp Go modules built by platform test runners (today: fyne)
 	// at the project root, so generated code that imports
-	// `git.duckfam.us/jonathan/sngl/pkg/go/*` resolves locally instead of
+	// `duckfam.us/sngl/pkg/go/*` resolves locally instead of
 	// failing on the public proxy.
 	root, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("getwd: %v", err)
 	}
-	replaceDirective := fmt.Sprintf("replace git.duckfam.us/jonathan/sngl => %s", root)
+	replaceDirective := fmt.Sprintf("replace duckfam.us/sngl => %s", root)
 	testArgs := []string{"tool", "sngl", "test",
 		"--platform=all", "--opt", "goModExtra=" + replaceDirective}
 	// android builds a whole Gradle project per fixture and runs it, which is
@@ -469,7 +469,7 @@ func readProfile(path string) ([]pkgResult, error) {
 }
 
 // pkgPathDir returns the package import path for a profile entry. Profile
-// lines start with the full file path like "git.duckfam.us/jonathan/sngl/foo/bar.go".
+// lines start with the full file path like "duckfam.us/sngl/foo/bar.go".
 func pkgPathDir(p string) string {
 	return path.Dir(p)
 }
@@ -502,7 +502,7 @@ func findMarkdownFiles(root string) ([]string, error) {
 }
 
 func shortPkg(full string) string {
-	const prefix = "git.duckfam.us/jonathan/sngl/"
+	const prefix = "duckfam.us/sngl/"
 	if strings.HasPrefix(full, prefix) {
 		s := full[len(prefix):]
 		if s == "" {

@@ -3,7 +3,7 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestExtractBindingsEmitsPropBinding(t *testing.T) {

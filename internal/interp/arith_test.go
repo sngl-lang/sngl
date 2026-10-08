@@ -3,7 +3,7 @@ package interp
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // TestApplyOpDivModByZero guards the compound-assignment div/mod-by-zero paths

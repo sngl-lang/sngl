@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/androidtc"
 )
 
 // toolchain holds paths to the minimal Android build tools plus the version

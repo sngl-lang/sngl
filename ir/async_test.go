@@ -3,7 +3,7 @@ package ir_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // Constructing a closure is not calling it, so a closure holding a blocking

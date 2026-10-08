@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"math"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // NumKind describes the numeric type an arithmetic op produces, so the shared

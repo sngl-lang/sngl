@@ -3,7 +3,7 @@ package codegen
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // Field-reference helpers for the generated model struct. The Go-emitting model

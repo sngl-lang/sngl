@@ -13,9 +13,9 @@ import (
 	"os/exec"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // Drive runs a session against a host on the far end of rw, until that host

@@ -216,7 +216,7 @@ const component ui.popover[platform] {
 // signal handler does and needs no marshalling of its own.
 
 // The runtime package the schedule lives in, named once.
-const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+const _rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
 
 // The armed source itself, held as an opaque type rather than as an id paired
 // with its callback slot in a table the runtime keeps. `*gtk4rt.Schedule` is a

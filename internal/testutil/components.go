@@ -15,9 +15,9 @@ import (
 
 	"golang.org/x/tools/txtar"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
-	"git.duckfam.us/jonathan/sngl/internal/jdk"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/jdk"
 )
 
 var snglBinaries sync.Map // owner -> func() (string, error)

@@ -66,12 +66,12 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"os"
 )
 
@@ -205,7 +205,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -218,7 +218,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type Measurement struct {
@@ -411,8 +411,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0b439b3dd7112025b25542a1786aff2e
+pass sha256:f7344aeb557032c35d5862f6b5d4b505
 -- run/go/gtk4 --
-pass sha256:3f019af0f2c7bbca89d0d8b8983f910d
+pass sha256:6de9fcfc27a5de7b53d4de8debbff0e8
 -- run/none/html --
 pass sha256:3b316f120b369efe26324c63feffd012

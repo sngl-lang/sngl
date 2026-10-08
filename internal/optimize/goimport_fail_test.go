@@ -3,11 +3,11 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/trust"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // TestOptimize_GoImportEvalFailureFatal asserts that when a go: import
@@ -39,10 +39,10 @@ func TestOptimize_GoImportEvalFailureFatal(t *testing.T) {
 		return &ir.Package{
 			Consts: []*ir.Var{c},
 			Imports: []*ir.Import{{
-				Path:  "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
+				Path:  "go:duckfam.us/sngl/internal/optimize/testdata/purepkg",
 				Alias: "purepkg",
 				Native: &ir.NativeImport{
-					ImportPath: "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg",
+					ImportPath: "duckfam.us/sngl/internal/optimize/testdata/purepkg",
 					Funcs: []*ir.Func{{
 						Name:    "Boom",
 						Foreign: ir.Foreign{Name: "purepkg.Boom", Path: "purepkg"},

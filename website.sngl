@@ -8,8 +8,8 @@ output {
     }
 }
 
-import "go:git.duckfam.us/jonathan/sngl/docs"
-import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
+import "go:duckfam.us/sngl/docs"
+import "go:duckfam.us/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
 import snapshots "file:lib/snapshots"
@@ -201,7 +201,7 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
                         innerHTML="&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
                     )
                     html.span(class="footer-meta") {
-                        html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
+                        html.a(href="https://github.com/sngl-lang/sngl", innerText="Source")
                         // docsgen replaces the marker with the commit this site
                         // was generated from; plain `sngl generate` leaves it out.
                         html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")

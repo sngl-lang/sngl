@@ -256,7 +256,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -269,7 +269,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -472,7 +472,7 @@ pass sha256:4f80403ed8c761e6a4c0460ff20a82fa
 -- run/go/fyne --
 pass sha256:4ee3ad56ac885fdb6fc3d5d554cfaabd
 -- run/go/gtk4 --
-pass sha256:03b945448ab37068c37ed3a044c87b70
+pass sha256:9e1d7983270278c73310422f51a036d5
 -- run/kotlin/android --
 pass sha256:4d35de8fe2345e4d9bdc2f4dc0e0bde5
 -- run/none/html --
