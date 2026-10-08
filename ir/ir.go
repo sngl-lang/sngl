@@ -646,10 +646,6 @@ type Func struct {
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
 	Stdlib bool //TODO this shouldn't exist
-	// Nested says the declaration was written inside another *function* body
-	// and hoisted out of it. A func at the root of a window body is hoisted
-	// too and is not this: it is the window's own.
-	Nested bool `json:"-"` // TODO Why do we need this?
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.

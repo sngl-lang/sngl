@@ -533,9 +533,15 @@ type checker struct {
 	// keyed by its declaration. An enclosing body is checked more than once
 	// (preCheckComponentMethods, then checkComponentBody).
 	nestedFuncs map[*ast.FuncDef]*ir.Func
-	// nestedOrder is the ir.Func.Nested subset in declaration order, so
-	// renameNestedFuncs reads an enclosing name that is already renamed and
-	// two bodies never swap suffixes between runs.
+	// nested is the funcs written inside another function body and hoisted
+	// out of it (checkNestedFunc). A func at the root of a window body is
+	// hoisted too and is not one: it is the window's own. Which is which is
+	// only the checker's question -- a hoisted func is an ordinary member of
+	// what it joined -- so it is asked here rather than of the IR.
+	nested map[*ir.Func]bool
+	// nestedOrder is that set in declaration order, so renameNestedFuncs
+	// reads an enclosing name that is already renamed and two bodies never
+	// swap suffixes between runs.
 	nestedOrder []nestedFunc
 	// currentFunc is the function body being checked, and funcOuterScope the
 	// scope it was entered from. A nested func is checked against the latter:
@@ -3560,7 +3566,7 @@ func (c *checker) pass2() {
 	// var has no type until the body declaring it has been checked; nothing
 	// calls a test, so nothing needs its body earlier.
 	for _, fn := range c.pkg.Funcs {
-		if fn.IsTest && !owned[fn] && !fn.Nested {
+		if fn.IsTest && !owned[fn] && !c.nested[fn] {
 			c.checkFuncBody(fn)
 		}
 	}
@@ -3646,7 +3652,7 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 		noteOwned(comp)
 	}
 	for _, fn := range pkg.Funcs {
-		if owned[fn] || fn.Nested || fn.IsTest {
+		if owned[fn] || c.nested[fn] || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -4051,7 +4057,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		// A nested func's name belongs to the body that wrote it, not to the
 		// component it was hoisted onto, so it is bound by checkNestedFunc
 		// alone.
-		if fn.Receiver == "" && !fn.Nested {
+		if fn.Receiver == "" && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4192,7 +4198,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if fn.Receiver == "" && !fn.Nested {
+		if fn.Receiver == "" && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4285,7 +4291,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			if fn.Nested {
+			if c.nested[fn] {
 				continue
 			}
 			c.declare(funcDeclPos(fn), fn)
@@ -4334,7 +4340,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		if fn.Receiver != "" && fn.Receiver != comp.Name {
 			continue
 		}
-		if fn.Nested {
+		if c.nested[fn] {
 			continue
 		}
 		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {

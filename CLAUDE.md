@@ -2562,7 +2562,7 @@ body calls. `CapturesEnclosingState` counts every func for that reason, while
 method by bare name would shadow it.
 
 **A `func` written inside another function body is hoisted, not closed over,
-and `ir.Func.Nested` says which declarations that is.** It joins the enclosing
+and the checker's `nested` set says which declarations that is.** Nothing after the check asks: a hoisted func is an ordinary member of what it joined. It joins the enclosing
 component, window or package — what a backend emits from — while the name it
 was written under is the body's, which leaves two things to reconcile
 (`internal/checker/nested_funcs.go`).
@@ -2604,7 +2604,7 @@ is not what this is. Two of one name in one body is that body's duplicate, from
 
 A func at the root of a **window** body reaches the same code and is none of
 this: it belongs to the window's container, the way a component-body func
-belongs to the component, and it keeps the name it was written under. Reading `Nested` as "hoisted" is
+belongs to the component, and it keeps the name it was written under. Counting it in `nested` as "hoisted" is
 what renamed `examples/todo`'s `status`.
 
 Bare component resolution is `checker.lookupComponentInScope` — the lexical
