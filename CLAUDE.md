@@ -607,7 +607,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, which measures it against the return position `bindTree` read, beside the other rules about what a component's marks say of its tree.
   **`sngl run` and `sngl build` are commands a target writes**, not Go
   interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
   the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
@@ -712,9 +712,30 @@ The mark is declared in `lib/internal/marks` and implemented in
 `tree.none`, returning the package's own `_Macro` -- so an ambient package
 does not reach the compiler's tier, and its underscore names are no program's
 to write. `_builtin` takes an enum member written bare, `#[_builtin(int)]`,
-so its signature names none of the scalars its marks make; `_intrinsic(id string, …)` does name one, and pass1 registers a macro whose signature names a
-struct its own package marks only after those marks have run
-(`namesMarkedStruct`).
+so its signature names none of the scalars its marks make; `_intrinsic(id string, …)` does name one, which resolves because a struct's kind is read off
+its source as it registers (below).
+
+**Marks run once the package is registered.** pass1 queues every mark it
+meets (`afterMarks`, `internal/checker/marks.go`) and runs the queue after the
+last declaration registers and before the initializers -- const, package var,
+context default -- that may read what a mark said. So a mark may name a macro
+its own package declares anywhere, with no registration order to arrange, and
+a check that reads a mark is queued behind it: the intrinsic-with-a-body rule,
+a const with no value, and what `finishTreeMarks` asks of `tree.none`,
+`tree.eventless` and the gen marks. Outside pass1's registration a mark runs
+where it is met. Two things registration cannot wait for, and both are read
+off the source rather than by running a mark. A struct's or family's
+`#[builtin]` **kind** (`writtenBuiltinKind`, stamped by `stampBuiltinKind`):
+`list<T>` in sngl:builtin's own signatures resolves to the kind's
+constructor, and a family's members, registered after it (`familiesFirst`),
+are measured against the family of families (`bindTree`). The mark then binds
+the role and refuses a kind the stamp did not read. And **publishing**
+sngl:builtin's `list` and `map` (`publishBuiltinStruct`): `ListOf` attaches
+the published one to every list type, so published after the marks, the
+package's own signatures attached the previous build's and chained every
+build's library to the last. One more reader that is not a function: a scope
+notes a wildcard symbol when it binds it, so a component's wildcard is noted
+again once its mark has set the pattern (`Scope.NoteWildcard`).
 
 **A scalar's name is read off that source, not a table.** `bool`, `int`,
 `string`, `dyn`, the sized numerics and the rest are each a `#[_builtin(kind)]`
