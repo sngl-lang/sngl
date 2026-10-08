@@ -321,6 +321,8 @@ import (
 
 func currentTestModel() *Model { return currentModel }
 
+var snapshotApp *C.GtkApplication
+
 func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -336,20 +338,28 @@ func snapshotBytesGtk(m *Model) (string, []byte, error) {
 	f.Close()
 	defer os.Remove(f.Name())
 
-	cAppID := C.CString("dev.sngl.test.snapshot")
-	defer C.free(unsafe.Pointer(cAppID))
-	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
-	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-
-	// Register without running the main loop so BuildUI and the pump
-	// execute in the current (locked) OS thread without re-entrancy.
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		if gerr != nil {
-			C.g_error_free(gerr)
+	// One application per process, as gtk4rt.SnapshotModelBytes: the window a
+	// snapshot presents keeps it exported on the session bus, and a second
+	// registration under the same path is refused.
+	if snapshotApp == nil {
+		cAppID := C.CString("dev.sngl.test.snapshot")
+		defer C.free(unsafe.Pointer(cAppID))
+		app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
+		// Register without running the main loop so BuildUI and the pump
+		// execute in the current (locked) OS thread without re-entrancy.
+		var gerr *C.GError
+		if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+			msg := "unknown error"
+			if gerr != nil {
+				msg = C.GoString(gerr.message)
+				C.g_error_free(gerr)
+			}
+			C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+			return "", nil, fmt.Errorf("g_application_register failed: %s", msg)
 		}
-		return "", nil, fmt.Errorf("g_application_register failed")
+		snapshotApp = app
 	}
+	app := snapshotApp
 
 	win := m.BuildUI(app)
 	if win == nil {

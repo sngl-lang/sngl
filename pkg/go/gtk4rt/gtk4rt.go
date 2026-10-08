@@ -653,6 +653,35 @@ func SnapshotModel(build func(app Handle) Handle, width, height int, outPath str
 	return os.WriteFile(outPath, data, 0o644)
 }
 
+// snapshotApp is registered once per process. The window a snapshot presents
+// outlives it and holds the application, which stays exported on the session
+// bus, so registering a second one under the same path is refused wherever a
+// session bus exists.
+var snapshotApp *C.GtkApplication
+
+// snapshotApplication registers without running the main loop, so build and
+// the pump execute on the current (locked) OS thread without re-entrancy.
+func snapshotApplication() (*C.GtkApplication, error) {
+	if snapshotApp != nil {
+		return snapshotApp, nil
+	}
+	appID, freeID := cstr("dev.sngl.snapshot")
+	defer freeID()
+	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "unknown error"
+		if gerr != nil {
+			msg = C.GoString(gerr.message)
+			C.g_error_free(gerr)
+		}
+		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
+	}
+	snapshotApp = app
+	return app, nil
+}
+
 // SnapshotModelBytes is SnapshotModel returning the PNG as bytes rather than
 // writing a file. Used by the test-agent snapshot bridge. The GTK bindings it
 // needs are compiled once here rather than per generated program.
@@ -660,19 +689,9 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 	runtime.LockOSThread()
 	C.gtk_init()
 
-	appID, freeID := cstr("dev.sngl.snapshot")
-	defer freeID()
-	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
-	defer C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-
-	// Register without running the main loop so build + the pump execute in
-	// the current (locked) OS thread without re-entrancy.
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		if gerr != nil {
-			C.g_error_free(gerr)
-		}
-		return nil, fmt.Errorf("g_application_register failed")
+	app, err := snapshotApplication()
+	if err != nil {
+		return nil, err
 	}
 
 	win := build(Handle(unsafe.Pointer(app)))
