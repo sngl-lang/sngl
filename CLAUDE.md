@@ -247,7 +247,18 @@ signature; `testdata/event_params.txtar` and
 `c.f.input(value="x")`, `c.b.click()`: a trigger's arguments bind to the
 event's parameters as an emit's do, positionally or by name, all of them.
 `c.row[1].change(true)` names one of the nodes a loop rendered under one
-id.
+id, the copy at that index in render order, on every target
+(`codegen.EventTrigger.Index`): each language's test lowerer calls the
+invoker's `At` variant (`codegen.InvokerAt`) with the index first. html finds
+the i-th element carrying the id and, where the listener is on an element
+inside it, that element by tag. fyne and gtk4 list the copies of an id a test
+indexes, and only such an id (`codegen.IndexedTriggerIDs`): a render func
+empties the list where it starts over and appends as it builds, an instance
+appends in its constructor and leaves in `Destroy`. bubbletea walks the loop
+as View counts it for the copy's focus ordinal and presses the key with the
+slot's cursor there; android takes the i-th node its tag finds.
+`testdata/indexed_trigger.txtar` is the code and
+`cmd/sngl/testdata/indexed_trigger_runs.txt` runs it on all six.
 
 ## Loop forms
 
@@ -2164,16 +2175,23 @@ two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
 
-**`__instN` is one sequence across two passes.** `passInlinePure` substitutes a
-platform override and `passNoInlineComponents` substitutes a user component, and
-they rename that component's state into one host namespace — but each held a
-counter of its own, both starting at zero, so an owner holding one of each came
-out declaring two `hits__inst0`. Kotlin and Go refuse that outright; html keyed
-its `state` object twice and silently kept one of the two counters, with only an
-esbuild warning to say so. The counter is `Options.instSeq`, a `*int` so it
-survives `Options` being passed by value, set once by `Lower` and defaulted by
-`seqOrOwn` for a unit test that builds a pass's state directly.
-`testdata/inst_suffix_one_sequence.txtar` is the fixture.
+**`__instN` is counted per name, across two passes.** `passInlinePure`
+substitutes a platform override and `passNoInlineComponents` substitutes a user
+component, and they rename that component's state into one host namespace —
+but each held a counter of its own, both starting at zero, so an owner holding
+one of each came out declaring two `hits__inst0`. Kotlin and Go refuse that
+outright; html keyed its `state` object twice and silently kept one of the two
+counters, with only an esbuild warning to say so. So the two share
+`Options.names`, a `renamer` set once by `Lower` and defaulted by `namesOrOwn`
+for a unit test that builds a pass's state directly. It counts per name:
+`hits__inst0` and `hits__inst1` are the first two copies of a `hits` whatever
+was renamed between them. One sequence for every name made each emitted name
+depend on how many unrelated instances came before it, so one more anywhere
+renumbered everything after it, in the program and in every golden. It also
+names the `__pN` a spliced body's parameter takes where it would shadow a name
+the call site's code reads (`freshenShadowingParams`): an override's
+`func(on) { checked = on; change(on) }` with the call site's `@change { on = !on }` spliced in for the emit was one `on` in every target spelling a local
+bare. `testdata/inst_suffix_one_sequence.txtar` is the fixture.
 
 A *double* suffix is not the symptom and is correct wherever it appears: html's
 `timer` override is substituted by one pass and its owner's clone hoisted by the
@@ -2393,7 +2411,10 @@ instance's ctor hands the widget to a Model field `__named_<id>` and the
 invoker goes through that, so it reaches whichever instance built it last. A
 handler emitted as a closure records the component event it serves as well as
 a promoted one (`LoweredFromComponentEvent`), or a gtk4 invoker was named for
-the GTK signal. html's snapshot writes each control's text and checkedness
+the GTK signal. That is the first event the override's handler emits that is
+not a binding's write-back, which passPropBindings marks on the handler it
+synthesizes (`ir.EventHandler.WriteBack`) -- `Synthesized` is no answer, since
+the implicit-state wrapper's forwarding `@change` is synthesized too. html's snapshot writes each control's text and checkedness
 onto a copy of the document, since `outerHTML` carries neither.
 
 Giving every unbound input a write-back put a binding where none had been,
@@ -2439,6 +2460,17 @@ there and is refused with a position
 `cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
+
+**A bubbles model a loop renders is one per copy** (`bubbletea/loopwidget.go`):
+a map keyed as a cell of the copy is, each model built the first time View
+renders it and set from the copy's cell -- read off the write-back handler's
+`cell.get` -- whenever the two differ. Update walks the loop as View counts it
+to the copy the slot's cursor names, hands it the message, and runs its
+write-back, `@input` and `@change` there with the loop's variables bound; the
+focus sync focuses that copy and blurs the rest. It used to be one model field
+for every copy: each row showed and edited one text, the write-back wrote
+whichever var the first handler assigned, and a handler reading the loop
+variable did not compile (`bubbletea/loop_widget_run_test.go`).
 
 **A loop's focus stops are the focusable nodes it renders**, not its
 iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one

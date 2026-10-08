@@ -59,7 +59,7 @@ import (
 type Model struct {
 	items__inst0   []string
 	picked__inst0  string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 
@@ -74,7 +74,7 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	return m
@@ -102,8 +102,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Items__inst0() []string {
@@ -122,12 +122,12 @@ func (m *Model) SetPicked__inst0(v string) {
 	m.picked__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -137,7 +137,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n3 = container.NewVBox()
@@ -183,7 +183,7 @@ import (
 type Model struct {
 	items__inst0   []string
 	picked__inst0  string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__n0           gtk4rt.Handle
@@ -198,7 +198,7 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	return m
@@ -225,8 +225,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 func (m *Model) Items__inst0() []string {
@@ -245,12 +245,12 @@ func (m *Model) SetPicked__inst0(v string) {
 	m.picked__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -259,7 +259,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -280,6 +280,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:6dcb835ba5b3fa2609af68ef55111412
+pass sha256:b2c20aadfb901efe3a6c024ba2169ece
 -- run/go/gtk4 --
-pass sha256:866e748c1d0e57203430958a0c463bb0
+pass sha256:73bdbf4c47c23452abcb484b8e80e1af

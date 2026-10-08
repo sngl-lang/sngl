@@ -61,7 +61,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	txt            string
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -71,7 +71,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.txt = "b"
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -109,19 +109,19 @@ func SetTxtCmd(v string) tea.Cmd {
 	return func() tea.Msg { return setTxtMsg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -135,18 +135,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setTxtMsg:
 		m = m.SetTxt(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -163,7 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0Focused := (m.__focusID == 0)
@@ -208,7 +208,7 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	txt            string
-	visible__inst1 bool
+	visible__inst0 bool
 
 	home    *fynelayout.Toplevel
 	__n1    *fyne.Container
@@ -221,7 +221,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.txt = "b"
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -229,8 +229,8 @@ func (m *Model) home_closed_handler() {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.home.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.home.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n2_click_handler() {
@@ -262,12 +262,12 @@ func (m *Model) SetTxt(v string) {
 	m.txt = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -278,7 +278,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.home = fynelayout.NewToplevel()
 	m.home.SetTitle("t")
-	m.home.SetVisible(m.visible__inst1)
+	m.home.SetVisible(m.visible__inst0)
 	m.home.OnClosed = m.home_closed_handler
 	m.home.OnVisible = m.home_visible_handler
 	m.__n1 = container.NewVBox()
@@ -326,7 +326,7 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	txt            string
-	visible__inst1 bool
+	visible__inst0 bool
 	home           gtk4rt.Handle
 	__n1           gtk4rt.Handle
 	__n2           gtk4rt.Handle
@@ -339,7 +339,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.txt = "b"
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -347,8 +347,8 @@ func (m *Model) home_closed_handler() {
 }
 
 func (m *Model) home_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -364,12 +364,12 @@ func (m *Model) SetTxt(v string) {
 	m.txt = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -379,7 +379,7 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.home = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.home, "t")
-	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.home, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.home, m.home_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.home, m.home_visible_handler)
 	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -442,13 +442,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var txt by remember { mutableStateOf("b") }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -487,7 +487,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { txt: "b", visible__inst1: true };
+  var state = { txt: "b", visible__inst0: true };
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
@@ -502,12 +502,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5f6fdcadbf6e8e8d7493b8500eff52dd
+pass sha256:e6495763db7fa4e2b7dcb3cca030abde
 -- run/go/fyne --
-pass sha256:24b23d2c414af0f0913d53ae29aca81f
+pass sha256:77cd5c159532dc4d94b12f108a15f558
 -- run/go/gtk4 --
-pass sha256:9a8cc2dba81a22fd4324973af9426d1c
+pass sha256:03796f4e771871cf8185f782851bfc39
 -- run/kotlin/android --
-pass sha256:47fa01bee5d9fae22630af7564137e40
+pass sha256:b67934b21df4181b943c415c86737269
 -- run/none/html --
-pass sha256:03169ad2d65ec99c815fb6557c5b967d
+pass sha256:783d9a4d805f2b4b19c636cdd50fc18f

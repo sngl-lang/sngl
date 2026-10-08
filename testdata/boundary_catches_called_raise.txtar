@@ -545,7 +545,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("stmt").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("stmt")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;too big;\")", (c.caught == "too big;too big;"))
         org.junit.Assert.assertTrue("(c.after == \"\")", (c.after == ""))
     }
@@ -554,7 +554,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("lam").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("lam")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big;lam:lam;\")", (c.caught == "too big;lam:lam;"))
         org.junit.Assert.assertTrue("(c.after == \"l\")", (c.after == "l"))
     }
@@ -735,6 +735,6 @@ pass sha256:ec01d7ab5554ece5171ca821c1570e25
 -- run/go/html --
 pass sha256:5d17ebd74ca6061b4fd24638c7aefa33
 -- run/kotlin/android --
-pass sha256:5c11db9fd5a6ef5537149fbfe6cd8288
+pass sha256:df9e8338dae90503d6878a7181239a1b
 -- run/none/html --
 pass sha256:8ad76e3f0b688b38f83b70f96822c4e1

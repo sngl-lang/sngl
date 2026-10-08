@@ -65,7 +65,7 @@ type ErrorEvent struct {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	problem__inst0 string
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -75,7 +75,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.problem__inst0 = "none"
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -120,19 +120,19 @@ func SetProblem__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setProblem__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -146,18 +146,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setProblem__inst0Msg:
 		m = m.SetProblem__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -188,7 +188,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		contentFocused := (m.__focusID == 0)
 		contentPrefix := " "
 		if contentFocused {
@@ -236,7 +236,7 @@ type ErrorEvent struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	problem__inst0 string
-	visible__inst1 bool
+	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
 	__n1    *widget.Button
@@ -247,7 +247,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.problem__inst0 = "none"
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -262,8 +262,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n1_click_handler() {
@@ -292,12 +292,12 @@ func (m *Model) SetProblem__inst0(v string) {
 	m.problem__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -307,7 +307,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewButton("", nil)
@@ -345,7 +345,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { problem__inst0: "none", visible__inst1: true };
+  var state = { problem__inst0: "none", visible__inst0: true };
   function requireAge(s) {
     if (s.length === 0) {
       ;
@@ -372,8 +372,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af2af8040e17daf5e1d7bf4d1ac9e46e
+pass sha256:4471007adb2d5952b42d45652bebc778
 -- run/go/fyne --
-pass sha256:b7551ce885baf0cea7d41d4531cb8998
+pass sha256:526c12f3227619555c938bcf59d3d24b
 -- run/none/html --
-pass sha256:dee26454d30a7bb46c5e68152fdbe53f
+pass sha256:0d8c40873a0989ccd5b9e8715419093b

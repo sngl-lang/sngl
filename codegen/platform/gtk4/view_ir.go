@@ -43,6 +43,10 @@ type gtkEventInvoker struct {
 	// State says the widget holds an on/off state a test sets from the bool
 	// it passes, which is what a user's flip does.
 	State bool
+	// List says FieldName lists every copy of the widget in render order
+	// (namedWidgetField): the invoker fires the last one built, and its `At`
+	// variant the copy at an index.
+	List bool
 }
 
 // --- Lookup tables (consumed by gtk4Translator) ---

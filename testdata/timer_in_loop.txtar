@@ -85,7 +85,7 @@ type ErrorEvent struct {
 type Model struct {
 	n__inst0             int
 	periods__inst0       []time.Duration
-	visible__inst1       bool
+	visible__inst0       bool
 	__slot0              []fyne.CanvasObject
 	__slot0_at           fyne.CanvasObject
 	__inst0_live         []*TimerInstance
@@ -101,7 +101,7 @@ func New() *Model {
 	m := &Model{}
 	m.n__inst0 = 0
 	m.periods__inst0 = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -157,8 +157,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) N__inst0() int {
@@ -177,12 +177,12 @@ func (m *Model) SetPeriods__inst0(v []time.Duration) {
 	m.periods__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -193,7 +193,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetTitle("loop")
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__renderSlot0(m.__n0.Container)
@@ -396,7 +396,7 @@ type ErrorEvent struct {
 type Model struct {
 	n__inst0             int
 	periods__inst0       []time.Duration
-	visible__inst1       bool
+	visible__inst0       bool
 	__slot0              []gtk4rt.Handle
 	__slot0_at           gtk4rt.Handle
 	__inst0_live         []*TimerInstance
@@ -412,7 +412,7 @@ func New() *Model {
 	m := &Model{}
 	m.n__inst0 = 0
 	m.periods__inst0 = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -466,8 +466,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 // TimerInstance is one live instance of the timer component.
@@ -618,12 +618,12 @@ func (m *Model) SetPeriods__inst0(v []time.Duration) {
 	m.periods__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -633,7 +633,7 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.__n0, "loop")
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__renderSlot0(m.__n0)
@@ -670,7 +670,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0, periods__inst0: [100, 250], visible__inst1: true };
+  var state = { n__inst0: 0, periods__inst0: [100, 250], visible__inst0: true };
   function __cf_timer(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -842,8 +842,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8759b3dea18349ca451e0204bdee0cb8
+pass sha256:1443b0124354592a69602a844b3a9ac7
 -- run/go/gtk4 --
-pass sha256:558a77345bb367a39661680a5860533e
+pass sha256:bf81dd56e01d0dc3e4892ba4e195b34e
 -- run/none/html --
-pass sha256:c9493cb091ac8885f308466169d53262
+pass sha256:0705e917377f983608764d531102229e

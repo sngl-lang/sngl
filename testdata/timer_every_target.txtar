@@ -142,8 +142,8 @@ type timerTickMsg1 struct {
 type Model struct {
 	seconds__inst0 int
 	running__inst0 bool
-	visible__inst1 bool
-	beats__inst2   int
+	visible__inst0 bool
+	beats__inst0   int
 
 	__timer0      map[string]int
 	__timer0Seq   map[string]int
@@ -161,8 +161,8 @@ func New() Model {
 	m.__timer1Seq = map[string]int{}
 	m.seconds__inst0 = 0
 	m.running__inst0 = true
-	m.visible__inst1 = true
-	m.beats__inst2 = 0
+	m.visible__inst0 = true
+	m.beats__inst0 = 0
 	return m
 }
 
@@ -202,34 +202,34 @@ func SetRunning__inst0Cmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setRunning__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Beats__inst2() int {
-	return m.beats__inst2
+func (m Model) Beats__inst0() int {
+	return m.beats__inst0
 }
 
-func (m Model) SetBeats__inst2(v int) Model {
-	m.beats__inst2 = v
+func (m Model) SetBeats__inst0(v int) Model {
+	m.beats__inst0 = v
 	return m
 }
 
-type setBeats__inst2Msg struct{ value int }
+type setBeats__inst0Msg struct{ value int }
 
-func SetBeats__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setBeats__inst2Msg{value: v} }
+func SetBeats__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setBeats__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -248,10 +248,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSeconds__inst0(msg.value)
 	case setRunning__inst0Msg:
 		m = m.SetRunning__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
-	case setBeats__inst2Msg:
-		m = m.SetBeats__inst2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setBeats__inst0Msg:
+		m = m.SetBeats__inst0(msg.value)
 	case timerTickMsg0:
 		if m.__timer0[msg.key] == msg.gen && m.running__inst0 {
 			m.seconds__inst0 += 1
@@ -259,7 +259,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case timerTickMsg1:
 		if m.__timer1[msg.key] == msg.gen && true {
-			m.beats__inst2 += 1
+			m.beats__inst0 += 1
 			cmds = append(cmds, tea.Tick(time.Duration(250)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg1{msg.key, msg.gen} }))
 		}
 	case tea.WindowSizeMsg:
@@ -268,10 +268,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -326,10 +326,10 @@ func (m *Model) __timer1Sync() []tea.Cmd {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(("beats " + fmt.Sprint(m.beats__inst2))))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(("beats " + fmt.Sprint(m.beats__inst0))))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.seconds__inst0)))
@@ -371,18 +371,18 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	seconds__inst2       int
-	running__inst2       bool
-	handle__inst1__inst2 *time.Ticker
-	done__inst1__inst2   chan bool
-	live__inst1__inst2   bool
-	gen__inst1__inst2    int
-	visible__inst3       bool
-	beats__inst4         int
-	handle__inst0__inst4 *time.Ticker
-	done__inst0__inst4   chan bool
-	live__inst0__inst4   bool
-	gen__inst0__inst4    int
+	seconds__inst0       int
+	running__inst0       bool
+	handle__inst1__inst0 *time.Ticker
+	done__inst1__inst0   chan bool
+	live__inst1__inst0   bool
+	gen__inst1__inst0    int
+	visible__inst0       bool
+	beats__inst0         int
+	handle__inst0__inst0 *time.Ticker
+	done__inst0__inst0   chan bool
+	live__inst0__inst0   bool
+	gen__inst0__inst0    int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -402,18 +402,18 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst2 = 0
-	m.running__inst2 = true
-	m.handle__inst1__inst2 = nil
-	m.done__inst1__inst2 = nil
-	m.live__inst1__inst2 = false
-	m.gen__inst1__inst2 = 0
-	m.visible__inst3 = true
-	m.beats__inst4 = 0
-	m.handle__inst0__inst4 = nil
-	m.done__inst0__inst4 = nil
-	m.live__inst0__inst4 = false
-	m.gen__inst0__inst4 = 0
+	m.seconds__inst0 = 0
+	m.running__inst0 = true
+	m.handle__inst1__inst0 = nil
+	m.done__inst1__inst0 = nil
+	m.live__inst1__inst0 = false
+	m.gen__inst1__inst0 = 0
+	m.visible__inst0 = true
+	m.beats__inst0 = 0
+	m.handle__inst0__inst0 = nil
+	m.done__inst0__inst0 = nil
+	m.live__inst0__inst0 = false
+	m.gen__inst0__inst0 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -428,23 +428,23 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	if m.__effect0_key > time.Duration(0)*time.Millisecond {
-		m.live__inst1__inst2 = true
-		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
-		var mine int = m.gen__inst1__inst2
-		m.handle__inst1__inst2 = time.NewTicker(m.__effect0_key)
-		m.done__inst1__inst2 = make(chan bool)
-		stopped := m.done__inst1__inst2
-		ticker := m.handle__inst1__inst2
+		m.live__inst1__inst0 = true
+		m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
+		var mine int = m.gen__inst1__inst0
+		m.handle__inst1__inst0 = time.NewTicker(m.__effect0_key)
+		m.done__inst1__inst0 = make(chan bool)
+		stopped := m.done__inst1__inst0
+		ticker := m.handle__inst1__inst0
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					fyne.Do(func() {
-						if m.gen__inst1__inst2 != mine {
+						if m.gen__inst1__inst0 != mine {
 							return
 						}
-						m.seconds__inst2 += 1
-						m.__n2.SetText(fmt.Sprint(m.seconds__inst2))
+						m.seconds__inst0 += 1
+						m.__n2.SetText(fmt.Sprint(m.seconds__inst0))
 					})
 				case <-stopped:
 					return
@@ -455,17 +455,17 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	if m.live__inst1__inst2 {
-		m.live__inst1__inst2 = false
-		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
-		m.handle__inst1__inst2.Stop()
-		close(m.done__inst1__inst2)
+	if m.live__inst1__inst0 {
+		m.live__inst1__inst0 = false
+		m.gen__inst1__inst0 = (m.gen__inst1__inst0 + 1)
+		m.handle__inst1__inst0.Stop()
+		close(m.done__inst1__inst0)
 	}
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	if m.running__inst2 {
+	if m.running__inst0 {
 		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
 	}
 	for __effect0_i, _ := range m.__effect0_live {
@@ -507,23 +507,23 @@ func (m *Model) __effect0_teardown() {
 
 func (m *Model) __effect1_mount() {
 	if m.__effect1_key > time.Duration(0)*time.Millisecond {
-		m.live__inst0__inst4 = true
-		m.gen__inst0__inst4 = (m.gen__inst0__inst4 + 1)
-		var mine int = m.gen__inst0__inst4
-		m.handle__inst0__inst4 = time.NewTicker(m.__effect1_key)
-		m.done__inst0__inst4 = make(chan bool)
-		stopped := m.done__inst0__inst4
-		ticker := m.handle__inst0__inst4
+		m.live__inst0__inst0 = true
+		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+		var mine int = m.gen__inst0__inst0
+		m.handle__inst0__inst0 = time.NewTicker(m.__effect1_key)
+		m.done__inst0__inst0 = make(chan bool)
+		stopped := m.done__inst0__inst0
+		ticker := m.handle__inst0__inst0
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					fyne.Do(func() {
-						if m.gen__inst0__inst4 != mine {
+						if m.gen__inst0__inst0 != mine {
 							return
 						}
-						m.beats__inst4 += 1
-						m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst4)))
+						m.beats__inst0 += 1
+						m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst0)))
 					})
 				case <-stopped:
 					return
@@ -534,11 +534,11 @@ func (m *Model) __effect1_mount() {
 }
 
 func (m *Model) __effect1_unmount() {
-	if m.live__inst0__inst4 {
-		m.live__inst0__inst4 = false
-		m.gen__inst0__inst4 = (m.gen__inst0__inst4 + 1)
-		m.handle__inst0__inst4.Stop()
-		close(m.done__inst0__inst4)
+	if m.live__inst0__inst0 {
+		m.live__inst0__inst0 = false
+		m.gen__inst0__inst0 = (m.gen__inst0__inst0 + 1)
+		m.handle__inst0__inst0.Stop()
+		close(m.done__inst0__inst0)
 	}
 }
 
@@ -613,104 +613,104 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst3 = __visible
-	m.__n0.SetVisible(m.visible__inst3)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) Seconds__inst2() int {
-	return m.seconds__inst2
+func (m *Model) Seconds__inst0() int {
+	return m.seconds__inst0
 }
 
-func (m *Model) SetSeconds__inst2(v int) {
-	m.seconds__inst2 = v
+func (m *Model) SetSeconds__inst0(v int) {
+	m.seconds__inst0 = v
 }
 
-func (m *Model) Running__inst2() bool {
-	return m.running__inst2
+func (m *Model) Running__inst0() bool {
+	return m.running__inst0
 }
 
-func (m *Model) SetRunning__inst2(v bool) {
-	m.running__inst2 = v
+func (m *Model) SetRunning__inst0(v bool) {
+	m.running__inst0 = v
 }
 
-func (m *Model) Handle__inst1__inst2() *time.Ticker {
-	return m.handle__inst1__inst2
+func (m *Model) Handle__inst1__inst0() *time.Ticker {
+	return m.handle__inst1__inst0
 }
 
-func (m *Model) SetHandle__inst1__inst2(v *time.Ticker) {
-	m.handle__inst1__inst2 = v
+func (m *Model) SetHandle__inst1__inst0(v *time.Ticker) {
+	m.handle__inst1__inst0 = v
 }
 
-func (m *Model) Done__inst1__inst2() chan bool {
-	return m.done__inst1__inst2
+func (m *Model) Done__inst1__inst0() chan bool {
+	return m.done__inst1__inst0
 }
 
-func (m *Model) SetDone__inst1__inst2(v chan bool) {
-	m.done__inst1__inst2 = v
+func (m *Model) SetDone__inst1__inst0(v chan bool) {
+	m.done__inst1__inst0 = v
 }
 
-func (m *Model) Live__inst1__inst2() bool {
-	return m.live__inst1__inst2
+func (m *Model) Live__inst1__inst0() bool {
+	return m.live__inst1__inst0
 }
 
-func (m *Model) SetLive__inst1__inst2(v bool) {
-	m.live__inst1__inst2 = v
+func (m *Model) SetLive__inst1__inst0(v bool) {
+	m.live__inst1__inst0 = v
 }
 
-func (m *Model) Gen__inst1__inst2() int {
-	return m.gen__inst1__inst2
+func (m *Model) Gen__inst1__inst0() int {
+	return m.gen__inst1__inst0
 }
 
-func (m *Model) SetGen__inst1__inst2(v int) {
-	m.gen__inst1__inst2 = v
+func (m *Model) SetGen__inst1__inst0(v int) {
+	m.gen__inst1__inst0 = v
 }
 
-func (m *Model) Visible__inst3() bool {
-	return m.visible__inst3
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst3(v bool) {
-	m.visible__inst3 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Beats__inst4() int {
-	return m.beats__inst4
+func (m *Model) Beats__inst0() int {
+	return m.beats__inst0
 }
 
-func (m *Model) SetBeats__inst4(v int) {
-	m.beats__inst4 = v
+func (m *Model) SetBeats__inst0(v int) {
+	m.beats__inst0 = v
 }
 
-func (m *Model) Handle__inst0__inst4() *time.Ticker {
-	return m.handle__inst0__inst4
+func (m *Model) Handle__inst0__inst0() *time.Ticker {
+	return m.handle__inst0__inst0
 }
 
-func (m *Model) SetHandle__inst0__inst4(v *time.Ticker) {
-	m.handle__inst0__inst4 = v
+func (m *Model) SetHandle__inst0__inst0(v *time.Ticker) {
+	m.handle__inst0__inst0 = v
 }
 
-func (m *Model) Done__inst0__inst4() chan bool {
-	return m.done__inst0__inst4
+func (m *Model) Done__inst0__inst0() chan bool {
+	return m.done__inst0__inst0
 }
 
-func (m *Model) SetDone__inst0__inst4(v chan bool) {
-	m.done__inst0__inst4 = v
+func (m *Model) SetDone__inst0__inst0(v chan bool) {
+	m.done__inst0__inst0 = v
 }
 
-func (m *Model) Live__inst0__inst4() bool {
-	return m.live__inst0__inst4
+func (m *Model) Live__inst0__inst0() bool {
+	return m.live__inst0__inst0
 }
 
-func (m *Model) SetLive__inst0__inst4(v bool) {
-	m.live__inst0__inst4 = v
+func (m *Model) SetLive__inst0__inst0(v bool) {
+	m.live__inst0__inst0 = v
 }
 
-func (m *Model) Gen__inst0__inst4() int {
-	return m.gen__inst0__inst4
+func (m *Model) Gen__inst0__inst0() int {
+	return m.gen__inst0__inst0
 }
 
-func (m *Model) SetGen__inst0__inst4(v int) {
-	m.gen__inst0__inst4 = v
+func (m *Model) SetGen__inst0__inst0(v int) {
+	m.gen__inst0__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -720,14 +720,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst3)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst4)))
+	m.__n1.SetText(("beats " + fmt.Sprint(m.beats__inst0)))
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText(fmt.Sprint(m.seconds__inst2))
+	m.__n2.SetText(fmt.Sprint(m.seconds__inst0))
 	m.__n0.Add(m.__n2)
 	fynelayout.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -774,12 +774,12 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	seconds__inst2       int
-	running__inst2       bool
-	handle__inst1__inst2 *gtk4rt.Schedule
-	visible__inst3       bool
-	beats__inst4         int
-	handle__inst0__inst4 *gtk4rt.Schedule
+	seconds__inst0       int
+	running__inst0       bool
+	handle__inst1__inst0 *gtk4rt.Schedule
+	visible__inst0       bool
+	beats__inst0         int
+	handle__inst0__inst0 *gtk4rt.Schedule
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -799,12 +799,12 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst2 = 0
-	m.running__inst2 = true
-	m.handle__inst1__inst2 = nil
-	m.visible__inst3 = true
-	m.beats__inst4 = 0
-	m.handle__inst0__inst4 = nil
+	m.seconds__inst0 = 0
+	m.running__inst0 = true
+	m.handle__inst1__inst0 = nil
+	m.visible__inst0 = true
+	m.beats__inst0 = 0
+	m.handle__inst0__inst0 = nil
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -818,19 +818,19 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst1__inst2 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
-		m.seconds__inst2 += 1
-		gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.seconds__inst2))
+	m.handle__inst1__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
+		m.seconds__inst0 += 1
+		gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.seconds__inst0))
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	m.handle__inst1__inst2.Cancel()
+	m.handle__inst1__inst0.Cancel()
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	if m.running__inst2 {
+	if m.running__inst0 {
 		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
 	}
 	for __effect0_i, _ := range m.__effect0_live {
@@ -871,14 +871,14 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
-	m.handle__inst0__inst4 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
-		m.beats__inst4 += 1
-		gtk4rt.LabelSetText(m.__n1, ("beats " + fmt.Sprint(m.beats__inst4)))
+	m.handle__inst0__inst0 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
+		m.beats__inst0 += 1
+		gtk4rt.LabelSetText(m.__n1, ("beats " + fmt.Sprint(m.beats__inst0)))
 	})
 }
 
 func (m *Model) __effect1_unmount() {
-	m.handle__inst0__inst4.Cancel()
+	m.handle__inst0__inst0.Cancel()
 }
 
 func (m *Model) __effect1_down() {
@@ -952,56 +952,56 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst3 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst3)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
-func (m *Model) Seconds__inst2() int {
-	return m.seconds__inst2
+func (m *Model) Seconds__inst0() int {
+	return m.seconds__inst0
 }
 
-func (m *Model) SetSeconds__inst2(v int) {
-	m.seconds__inst2 = v
+func (m *Model) SetSeconds__inst0(v int) {
+	m.seconds__inst0 = v
 }
 
-func (m *Model) Running__inst2() bool {
-	return m.running__inst2
+func (m *Model) Running__inst0() bool {
+	return m.running__inst0
 }
 
-func (m *Model) SetRunning__inst2(v bool) {
-	m.running__inst2 = v
+func (m *Model) SetRunning__inst0(v bool) {
+	m.running__inst0 = v
 }
 
-func (m *Model) Handle__inst1__inst2() *gtk4rt.Schedule {
-	return m.handle__inst1__inst2
+func (m *Model) Handle__inst1__inst0() *gtk4rt.Schedule {
+	return m.handle__inst1__inst0
 }
 
-func (m *Model) SetHandle__inst1__inst2(v *gtk4rt.Schedule) {
-	m.handle__inst1__inst2 = v
+func (m *Model) SetHandle__inst1__inst0(v *gtk4rt.Schedule) {
+	m.handle__inst1__inst0 = v
 }
 
-func (m *Model) Visible__inst3() bool {
-	return m.visible__inst3
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst3(v bool) {
-	m.visible__inst3 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Beats__inst4() int {
-	return m.beats__inst4
+func (m *Model) Beats__inst0() int {
+	return m.beats__inst0
 }
 
-func (m *Model) SetBeats__inst4(v int) {
-	m.beats__inst4 = v
+func (m *Model) SetBeats__inst0(v int) {
+	m.beats__inst0 = v
 }
 
-func (m *Model) Handle__inst0__inst4() *gtk4rt.Schedule {
-	return m.handle__inst0__inst4
+func (m *Model) Handle__inst0__inst0() *gtk4rt.Schedule {
+	return m.handle__inst0__inst0
 }
 
-func (m *Model) SetHandle__inst0__inst4(v *gtk4rt.Schedule) {
-	m.handle__inst0__inst4 = v
+func (m *Model) SetHandle__inst0__inst0(v *gtk4rt.Schedule) {
+	m.handle__inst0__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -1010,14 +1010,14 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst3)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ("beats " + fmt.Sprint(m.beats__inst4)))
+	gtk4rt.LabelSetText(m.__n1, ("beats " + fmt.Sprint(m.beats__inst0)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.seconds__inst2))
+	gtk4rt.LabelSetText(m.__n2, fmt.Sprint(m.seconds__inst0))
 	gtk4rt.BoxAppend(m.__n0, m.__n2)
 	gtk4rt.AppAttach(m.__n0)
 	m.__effects0_settle()
@@ -1071,8 +1071,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var seconds__inst0 by remember { mutableStateOf(0) }
     var running__inst0 by remember { mutableStateOf(true) }
-    var visible__inst1 by remember { mutableStateOf(true) }
-    var beats__inst2 by remember { mutableStateOf(0) }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var beats__inst0 by remember { mutableStateOf(0) }
 
     LaunchedEffect(running__inst0) {
         while (running__inst0) {
@@ -1084,20 +1084,20 @@ fun MainScreen() {
     LaunchedEffect(true) {
         while (true) {
             delay(250L)
-            beats__inst2 += 1
+            beats__inst0 += 1
         }
     }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
         Column {
-            Text(text = ("beats " + beats__inst2.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("beats " + beats__inst0.toString()), modifier = Modifier.safeDrawingPadding())
             Text(text = seconds__inst0.toString(), modifier = Modifier.safeDrawingPadding())
         }
     }
@@ -1123,24 +1123,24 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst2: 0, running__inst2: true, handle__inst1__inst2: 0, visible__inst3: true, beats__inst4: 0, handle__inst0__inst4: 0 };
+  var state = { seconds__inst0: 0, running__inst0: true, handle__inst1__inst0: 0, visible__inst0: true, beats__inst0: 0, handle__inst0__inst0: 0 };
   function __effect0_mount() {
-    state.handle__inst1__inst2 = setInterval(() => {
-      state.seconds__inst2 += 1;
-      __n2.textContent = String(state.seconds__inst2);
+    state.handle__inst1__inst0 = setInterval(() => {
+      state.seconds__inst0 += 1;
+      __n2.textContent = String(state.seconds__inst0);
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst1__inst2);
+    clearInterval(state.handle__inst1__inst0);
   }
   function __effect1_mount() {
-    state.handle__inst0__inst4 = setInterval(() => {
-      state.beats__inst4 += 1;
-      __n1.textContent = "beats " + String(state.beats__inst4);
+    state.handle__inst0__inst0 = setInterval(() => {
+      state.beats__inst0 += 1;
+      __n1.textContent = "beats " + String(state.beats__inst0);
     }, __effect1_key);
   }
   function __effect1_unmount() {
-    clearInterval(state.handle__inst0__inst4);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect1_teardown();
@@ -1157,7 +1157,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst2) {
+    if (state.running__inst0) {
       __effect0_desired.push(1e3);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -1258,8 +1258,8 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n1.textContent = "beats " + String(state.beats__inst4);
-    __n2.textContent = String(state.seconds__inst2);
+    __n1.textContent = "beats " + String(state.beats__inst0);
+    __n2.textContent = String(state.seconds__inst0);
   }
   __sngl_init();
   __effects0_settle();
@@ -1268,12 +1268,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:229bb76dcbf2778b26d61fef19da810a
+pass sha256:b79f855d7bc6fd8a8bbd719815312b98
 -- run/go/fyne --
-pass sha256:fd45ee37bb9a1da8b06d47eaeb0b4608
+pass sha256:5208efb21cb09e4fbcd784c589092aa2
 -- run/go/gtk4 --
-pass sha256:0390bb1932db43443dd92109cd1b541d
+pass sha256:52ccdf9e152b05aec59b5e9e5e319ce8
 -- run/kotlin/android --
-pass sha256:0c35a7da377b9990aedb93529524ebe2
+pass sha256:3c70a705eaf445e45945db3333d567c5
 -- run/none/html --
-pass sha256:d8d013ed5228f5291d44b8e2f2d178b4
+pass sha256:a293c6256e1252386decd58549e37cdb

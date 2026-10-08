@@ -52,7 +52,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { greeting__inst0: "", visible__inst1: true };
+  var state = { greeting__inst0: "", visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", async function() {
@@ -67,4 +67,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:25036c10d66d06ad286be48b1fcdb338
+pass sha256:94059d6b2e0fc57cef7eaf02bcb45dae

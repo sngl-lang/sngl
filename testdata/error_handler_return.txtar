@@ -746,8 +746,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("call").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("raise").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("call")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("raise")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"cr\")", (c.caught == "cr"))
         org.junit.Assert.assertTrue("(c.after == \"cr\")", (c.after == "cr"))
     }
@@ -868,6 +868,6 @@ pass sha256:7cfab22d2c149b19e72cf6df517a3141
 -- run/go/html --
 pass sha256:777c09133f24051c4dd944ed019b74da
 -- run/kotlin/android --
-pass sha256:d13e8a9d51de6e3b989174b91604ccb2
+pass sha256:300c6a6adf1197a55f290dcf41b0ac79
 -- run/none/html --
 pass sha256:7a9a430f56a08b177031a533621f4609

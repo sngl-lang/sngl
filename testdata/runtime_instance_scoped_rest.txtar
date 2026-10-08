@@ -979,7 +979,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 \")", (c.mounted == "1:10 2:20 "))
-        composeTestRule.onNodeWithTag("add").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.mounted == \"1:10 2:20 3:30 \")", (c.mounted == "1:10 2:20 3:30 "))
     }
 
@@ -1195,6 +1195,6 @@ pass sha256:2dfb7243b38730007b665c0bb611ec87
 -- run/go/gtk4 --
 pass sha256:3d0087dd03b2fc343b66c2f915c361f0
 -- run/kotlin/android --
-pass sha256:a39055ee90d4d0e248e1abd56df1628d
+pass sha256:2c6d9093b7bd4a597917818d20c9e49c
 -- run/none/html --
 pass sha256:65b31ab506c40bff2857b2402ce14e3e

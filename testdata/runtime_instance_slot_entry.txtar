@@ -1190,7 +1190,7 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.heads == \"1:5 2:10 \")", (c.heads == "1:5 2:10 "))
         org.junit.Assert.assertTrue("(c.contents == \"c5 c10 \")", (c.contents == "c5 c10 "))
-        composeTestRule.onNodeWithTag("add").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("add")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.heads == \"1:5 2:10 3:15 \")", (c.heads == "1:5 2:10 3:15 "))
         org.junit.Assert.assertTrue("(c.contents == \"c5 c10 c15 \")", (c.contents == "c5 c10 c15 "))
     }
@@ -1451,6 +1451,6 @@ pass sha256:c48a243b071327926c68d981b227e50f
 -- run/go/gtk4 --
 pass sha256:b7f909c6ecedc2a5e7f2414fe7cd27fc
 -- run/kotlin/android --
-pass sha256:d410b39a76f2ac074ede39d3dc13007d
+pass sha256:a5cf9a868a0f5a8003bd37f0d9214768
 -- run/none/html --
 pass sha256:68f4fe8cb8840acfb7de2cc16f1f9402

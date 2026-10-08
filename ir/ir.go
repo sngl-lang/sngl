@@ -1049,6 +1049,10 @@ type EventHandler struct {
 	// serving, when it is a platform override's subscription to its host
 	// widget's event. See Func.LoweredFromComponentEvent, which it feeds.
 	ComponentEvent string `json:"-"`
+	// WriteBack says passPropBindings synthesized this handler to write a
+	// two-way prop's report back to the var its `:prop` bound: no event a
+	// program wrote, so not one a test names.
+	WriteBack bool `json:"-"`
 	// CanError is set by effect analysis when the handler body may raise
 	// or calls a function that may raise. Codegen uses this to decide
 	// whether to emit error-propagation scaffolding for this handler.

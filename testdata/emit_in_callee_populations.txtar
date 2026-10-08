@@ -121,10 +121,10 @@ type Model struct {
 	got                 int
 	xs                  []int
 	taps__inst0         map[string]int
-	hits__inst1         int
-	visible__inst2      bool
-	width__inst3        map[string]int
-	opened__inst4       int
+	hits__inst0         int
+	visible__inst0      bool
+	width__inst0        map[string]int
+	opened__inst0       int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -137,10 +137,10 @@ func New() Model {
 	m.got = 0
 	m.xs = []int{1}
 	m.taps__inst0 = map[string]int{}
-	m.hits__inst1 = 0
-	m.visible__inst2 = true
-	m.width__inst3 = map[string]int{}
-	m.opened__inst4 = 0
+	m.hits__inst0 = 0
+	m.visible__inst0 = true
+	m.width__inst0 = map[string]int{}
+	m.opened__inst0 = 0
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -245,64 +245,64 @@ func SetTaps__inst0Cmd(v map[string]int) tea.Cmd {
 	return func() tea.Msg { return setTaps__inst0Msg{value: v} }
 }
 
-func (m Model) Hits__inst1() int {
-	return m.hits__inst1
+func (m Model) Hits__inst0() int {
+	return m.hits__inst0
 }
 
-func (m Model) SetHits__inst1(v int) Model {
-	m.hits__inst1 = v
+func (m Model) SetHits__inst0(v int) Model {
+	m.hits__inst0 = v
 	return m
 }
 
-type setHits__inst1Msg struct{ value int }
+type setHits__inst0Msg struct{ value int }
 
-func SetHits__inst1Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setHits__inst1Msg{value: v} }
+func SetHits__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setHits__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst2(v bool) Model {
-	m.visible__inst2 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst2Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst2Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Width__inst3() map[string]int {
-	return m.width__inst3
+func (m Model) Width__inst0() map[string]int {
+	return m.width__inst0
 }
 
-func (m Model) SetWidth__inst3(v map[string]int) Model {
-	m.width__inst3 = v
+func (m Model) SetWidth__inst0(v map[string]int) Model {
+	m.width__inst0 = v
 	return m
 }
 
-type setWidth__inst3Msg struct{ value map[string]int }
+type setWidth__inst0Msg struct{ value map[string]int }
 
-func SetWidth__inst3Cmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setWidth__inst3Msg{value: v} }
+func SetWidth__inst0Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setWidth__inst0Msg{value: v} }
 }
 
-func (m Model) Opened__inst4() int {
-	return m.opened__inst4
+func (m Model) Opened__inst0() int {
+	return m.opened__inst0
 }
 
-func (m Model) SetOpened__inst4(v int) Model {
-	m.opened__inst4 = v
+func (m Model) SetOpened__inst0(v int) Model {
+	m.opened__inst0 = v
 	return m
 }
 
-type setOpened__inst4Msg struct{ value int }
+type setOpened__inst0Msg struct{ value int }
 
-func SetOpened__inst4Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setOpened__inst4Msg{value: v} }
+func SetOpened__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setOpened__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -320,24 +320,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetXs(msg.value)
 	case setTaps__inst0Msg:
 		m = m.SetTaps__inst0(msg.value)
-	case setHits__inst1Msg:
-		m = m.SetHits__inst1(msg.value)
-	case setVisible__inst2Msg:
-		m = m.SetVisible__inst2(msg.value)
-	case setWidth__inst3Msg:
-		m = m.SetWidth__inst3(msg.value)
-	case setOpened__inst4Msg:
-		m = m.SetOpened__inst4(msg.value)
+	case setHits__inst0Msg:
+		m = m.SetHits__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setWidth__inst0Msg:
+		m = m.SetWidth__inst0(msg.value)
+	case setOpened__inst0Msg:
+		m = m.SetOpened__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst2 {
-				m.visible__inst2 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst2) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -382,7 +382,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst2 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		__focusPos0 := 0
@@ -395,7 +395,7 @@ func (m Model) View() tea.View {
 			var content_0ItemChildren []string
 			var content_0Item_0 string
 			content_0Item_0 = lipgloss.NewStyle().Render(fmt.Sprint(("w" + fmt.Sprint(func() int {
-				if __v, __ok := m.width__inst3[fmt.Sprint(__copy0)]; __ok {
+				if __v, __ok := m.width__inst0[fmt.Sprint(__copy0)]; __ok {
 					return __v
 				}
 				return 1
@@ -437,7 +437,7 @@ func (m Model) View() tea.View {
 		var content_2 string
 		var content_2Children []string
 		var content_2_0 string
-		content_2_0 = lipgloss.NewStyle().Render(fmt.Sprint(("opened " + fmt.Sprint(m.opened__inst4))))
+		content_2_0 = lipgloss.NewStyle().Render(fmt.Sprint(("opened " + fmt.Sprint(m.opened__inst0))))
 		content_2Children = append(content_2Children, content_2_0)
 		var content_2_1 string
 		content_2_1Focused := (m.__focusID == 2)
@@ -445,7 +445,7 @@ func (m Model) View() tea.View {
 		if content_2_1Focused {
 			content_2_1Prefix = ">"
 		}
-		content_2_1 = lipgloss.NewStyle().Render(content_2_1Prefix + " " + fmt.Sprint(("named " + fmt.Sprint(m.hits__inst1))))
+		content_2_1 = lipgloss.NewStyle().Render(content_2_1Prefix + " " + fmt.Sprint(("named " + fmt.Sprint(m.hits__inst0))))
 		content_2Children = append(content_2Children, content_2_1)
 		content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 		contentChildren = append(contentChildren, content_2)
@@ -487,8 +487,8 @@ type Model struct {
 	got            int
 	xs             []int
 	hits__inst0    int
-	visible__inst1 bool
-	opened__inst3  int
+	visible__inst0 bool
+	opened__inst0  int
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*PickerInstance
@@ -510,8 +510,8 @@ func New() *Model {
 	m.got = 0
 	m.xs = []int{1}
 	m.hits__inst0 = 0
-	m.visible__inst1 = true
-	m.opened__inst3 = 0
+	m.visible__inst0 = true
+	m.opened__inst0 = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*PickerInstance{}
@@ -563,8 +563,8 @@ func (m *Model) __n2_closed_handler() {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n2.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n2.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n9_done_handler(v int) {
@@ -606,20 +606,20 @@ func (m *Model) SetHits__inst0(v int) {
 	m.hits__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Opened__inst3() int {
-	return m.opened__inst3
+func (m *Model) Opened__inst0() int {
+	return m.opened__inst0
 }
 
-func (m *Model) SetOpened__inst3(v int) {
-	m.opened__inst3 = v
+func (m *Model) SetOpened__inst0(v int) {
+	m.opened__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -629,7 +629,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n2 = fynelayout.NewToplevel()
-	m.__n2.SetVisible(m.visible__inst1)
+	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__n7 = container.NewVBox()
@@ -642,7 +642,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n7.Add(m.__n9)
 	m.__n11 = container.NewVBox()
 	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText(("opened " + fmt.Sprint(m.opened__inst3)))
+	m.__n3.SetText(("opened " + fmt.Sprint(m.opened__inst0)))
 	m.__n11.Add(m.__n3)
 	m.__n4 = widget.NewButton("", nil)
 	m.__n4.SetText(("named " + fmt.Sprint(m.hits__inst0)))
@@ -663,7 +663,7 @@ type PickerInstance struct {
 	__model       *Model
 	__prop_picked func(int)
 	taps          int
-	width__inst2  int
+	width__inst0  int
 	__root        *fyne.Container
 	__slot0       []fyne.CanvasObject
 	__slot0_at    fyne.CanvasObject
@@ -675,12 +675,12 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	c.__model = __model
 	c.__prop_picked = __a_picked
 	c.taps = 0
-	c.width__inst2 = 1
+	c.width__inst0 = 1
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n8 := container.NewHBox()
 	__n0 := widget.NewLabel("")
-	__n0.SetText(("w" + fmt.Sprint(c.width__inst2)))
+	__n0.SetText(("w" + fmt.Sprint(c.width__inst0)))
 	__n8.Add(__n0)
 	c.__n1 = widget.NewButton("", nil)
 	c.__n1.SetText(("tap " + fmt.Sprint(c.taps)))
@@ -735,8 +735,8 @@ type Model struct {
 	got            int
 	xs             []int
 	hits__inst0    int
-	visible__inst1 bool
-	opened__inst3  int
+	visible__inst0 bool
+	opened__inst0  int
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*PickerInstance
@@ -758,8 +758,8 @@ func New() *Model {
 	m.got = 0
 	m.xs = []int{1}
 	m.hits__inst0 = 0
-	m.visible__inst1 = true
-	m.opened__inst3 = 0
+	m.visible__inst0 = true
+	m.opened__inst0 = 0
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*PickerInstance{}
@@ -809,8 +809,8 @@ func (m *Model) __n2_closed_handler() {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 }
 
 func (m *Model) __n9_done_handler(v int) {
@@ -834,7 +834,7 @@ type PickerInstance struct {
 	__model       *Model
 	__prop_picked func(int)
 	taps          int
-	width__inst2  int
+	width__inst0  int
 	__root        gtk4rt.Handle
 	__slot0       []gtk4rt.Handle
 	__slot0_at    gtk4rt.Handle
@@ -846,14 +846,14 @@ func newPickerInstance(__model *Model, __a_picked func(int)) *PickerInstance {
 	c.__model = __model
 	c.__prop_picked = __a_picked
 	c.taps = 0
-	c.width__inst2 = 1
+	c.width__inst0 = 1
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	__n8 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(__n8, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(__n8, 6)
 	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n0, ("w" + fmt.Sprint(c.width__inst2)))
+	gtk4rt.LabelSetText(__n0, ("w" + fmt.Sprint(c.width__inst0)))
 	gtk4rt.BoxAppend(__n8, __n0)
 	c.__n1 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(c.__n1, ("tap " + fmt.Sprint(c.taps)))
@@ -906,20 +906,20 @@ func (m *Model) SetHits__inst0(v int) {
 	m.hits__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
-func (m *Model) Opened__inst3() int {
-	return m.opened__inst3
+func (m *Model) Opened__inst0() int {
+	return m.opened__inst0
 }
 
-func (m *Model) SetOpened__inst3(v int) {
-	m.opened__inst3 = v
+func (m *Model) SetOpened__inst0(v int) {
+	m.opened__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -928,7 +928,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n2 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -947,7 +947,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.OrientableSetOrientation(m.__n11, gtk4rt.OrientationVertical)
 	gtk4rt.BoxSetSpacing(m.__n11, 6)
 	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, ("opened " + fmt.Sprint(m.opened__inst3)))
+	gtk4rt.LabelSetText(m.__n3, ("opened " + fmt.Sprint(m.opened__inst0)))
 	gtk4rt.BoxAppend(m.__n11, m.__n3)
 	m.__n4 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n4, ("named " + fmt.Sprint(m.hits__inst0)))
@@ -1009,14 +1009,14 @@ fun MainScreen() {
     var got by remember { mutableStateOf(0) }
     val xs = remember { mutableStateListOf(1) }
     var hits__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
-    var opened__inst3 by remember { mutableStateOf(0) }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var opened__inst0 by remember { mutableStateOf(0) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -1034,7 +1034,7 @@ fun MainScreen() {
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = ("opened " + opened__inst3.toString()), modifier = Modifier)
+                Text(text = ("opened " + opened__inst0.toString()), modifier = Modifier)
                 Button(onClick = {
                     got = 9
                 }, modifier = Modifier) {
@@ -1049,10 +1049,10 @@ fun MainScreen() {
 @Composable
 fun Picker(onPicked: ((Int) -> Unit)? = null) {
     var taps by remember { mutableStateOf(0) }
-    var width__inst2 by remember { mutableStateOf(1) }
+    var width__inst0 by remember { mutableStateOf(1) }
 
     Row(modifier = Modifier) {
-        Text(text = ("w" + width__inst2.toString()), modifier = Modifier)
+        Text(text = ("w" + width__inst0.toString()), modifier = Modifier)
         Button(onClick = {
             taps = (taps + 1)
             onPicked?.invoke(7)
@@ -1096,7 +1096,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { got: 0, xs: [1], hits__inst0: 0, visible__inst1: true, opened__inst3: 0 };
+  var state = { got: 0, xs: [1], hits__inst0: 0, visible__inst0: true, opened__inst0: 0 };
   function __cf_Picker(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -1104,7 +1104,7 @@ body { font-family: system-ui, sans-serif; }
     });
     let __prop_picked = picked;
     let taps = 0;
-    let width__inst2 = 1;
+    let width__inst0 = 1;
     let __slot02 = [];
     function __set_picked(__v) {
       __prop_picked = __v;
@@ -1112,7 +1112,7 @@ body { font-family: system-ui, sans-serif; }
     let __n8 = document.createElement("div");
     __n8.setAttribute("style", "display:flex;flex-direction:row");
     let __n0 = document.createElement("span");
-    __n0.textContent = "w" + String(width__inst2);
+    __n0.textContent = "w" + String(width__inst0);
     __n8.appendChild(__n0);
     let __n9 = document.createElement("button");
     __n9.disabled = false;
@@ -1212,7 +1212,7 @@ body { font-family: system-ui, sans-serif; }
     __n5.textContent = "got=" + String(state.got);
   });
   function __sngl_init() {
-    __n3.textContent = "opened " + String(state.opened__inst3);
+    __n3.textContent = "opened " + String(state.opened__inst0);
     __n4.textContent = "named " + String(state.hits__inst0);
     __n5.textContent = "got=" + String(state.got);
   }
@@ -1221,12 +1221,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5d50d4777e8a0bfd6b1c7bc3589e71d4
+pass sha256:69b430882be2c5a2d55b99d2be79fd9f
 -- run/go/fyne --
-pass sha256:14fe614fa9dd12f8fbe9a34894ba1d62
+pass sha256:f76dba9b66a794ec626be4f8a9ae5f3d
 -- run/go/gtk4 --
-pass sha256:da89b46403eaf07de9506087e3f968fc
+pass sha256:6d6fd7dae711a591a1e0e3b08cbbba68
 -- run/kotlin/android --
-pass sha256:cb1f82ec954fc751cb64f7488e7b2741
+pass sha256:f8853170137d3acd80b14a0d4aae270f
 -- run/none/html --
-pass sha256:2fbe3ff03f47e26ffe2c718b3030f8c9
+pass sha256:6e5060aa3944a920827f315beba24675

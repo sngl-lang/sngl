@@ -144,7 +144,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -181,7 +181,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -214,7 +214,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -251,7 +251,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
 })();
 </script>
 </body></html>
@@ -279,9 +279,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 1, n__inst1: 2, visible__inst2: true };
+  var state = { n__inst0: 1, n__inst1: 2, visible__inst0: true };
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c9f2935a50d5c3999bae6080fd9827b1
+pass sha256:2398f06b3244472437b1d603a3e3e62c

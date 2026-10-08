@@ -241,22 +241,28 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 // Event name (its callee is a chain of SelectExprs ending in the event
 // field). Lowers to `<receiver>.<id><Event>()`, which platform codegen
 // (gtk4 today) surfaces as a method on *Model that fires the matching
-// widget signal / event so the test exercises the real bridge.
+// widget signal / event so the test exercises the real bridge. One copy of a
+// node a loop rendered, `c.row[1].change(true)`, is its invoker's `At`
+// variant, handed the index first.
 func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	c := call.Call
-	recv, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	methodName := id + ExportName(c.Event)
+	methodName := tt.ID + ExportName(c.Event)
 	// The event's own arguments, as the program would emit them: the invoker
 	// takes what the widget would have reported, which is what the event's
 	// parameters are.
-	args := make([]string, len(c.Args))
-	for i, a := range c.Args {
-		args[i] = gc.EvalExpr(a.Value)
+	var args []string
+	if tt.Index != nil {
+		methodName = codegen.InvokerAt(methodName)
+		args = append(args, gc.EvalExpr(tt.Index))
 	}
-	return fmt.Sprintf("%s.%s(%s)", recv, methodName, strings.Join(args, ", ")), true
+	for _, a := range c.Args {
+		args = append(args, gc.EvalExpr(a.Value))
+	}
+	return fmt.Sprintf("%s.%s(%s)", tt.Recv, methodName, strings.Join(args, ", ")), true
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a

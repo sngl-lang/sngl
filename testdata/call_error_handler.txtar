@@ -1082,7 +1082,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("inHandler").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inHandler")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"too big/range;\")", (c.caught == "too big/range;"))
         org.junit.Assert.assertTrue("(c.after == \"h\")", (c.after == "h"))
     }
@@ -1091,7 +1091,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("inFunc").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("inFunc")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"func:too big;\")", (c.caught == "func:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"f\")", (c.after == "f"))
     }
@@ -1100,7 +1100,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("deep").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("deep")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"deep:too big;\")", (c.caught == "deep:too big;"))
         org.junit.Assert.assertTrue("(c.after == \"d\")", (c.after == "d"))
     }
@@ -1109,7 +1109,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("fine").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("fine")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.caught == \"\")", (c.caught == ""))
         org.junit.Assert.assertTrue("(c.after == \"ok\")", (c.after == "ok"))
     }
@@ -1289,6 +1289,6 @@ pass sha256:dcb8995d75f0e7590efd658204b4af52
 -- run/go/html --
 pass sha256:6ba5a3bcc28f75c158efafa24eecbf84
 -- run/kotlin/android --
-pass sha256:f2b06aa721eb47bb3bdaab262759862b
+pass sha256:f9c2f4e32990765b686240e4269e73e2
 -- run/none/html --
 pass sha256:ba8c993f19a1fd37aaa15ccaa7c094d5

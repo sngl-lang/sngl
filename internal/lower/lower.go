@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -150,23 +151,41 @@ type Options struct {
 	// this is how it says so. Nil means it claims none.
 	ClaimsIntrinsic func(id string) bool
 
-	// instSeq numbers the `__instN` suffix each substituted component's state
-	// is renamed with. Shared, because two passes substitute into one emitted
-	// namespace -- passInlinePure takes a platform override, passNoInlineComponents
-	// takes a user component -- and a counter each had them both start at zero:
-	// an override and a component in one owner were emitted as two
-	// `hits__inst0`. A pointer so it survives Options being passed by value.
-	// Set by Lower; a caller's value is overwritten.
-	instSeq *int
+	// names numbers what the inliners rename: the `__instN` each substituted
+	// component's state and funcs take, and the `__pN` a spliced body's
+	// parameter takes where it would shadow a name the call site's code reads
+	// (freshenShadowingParams). Shared, because two passes substitute into one
+	// emitted namespace -- passInlinePure takes a platform override,
+	// passNoInlineComponents takes a user component -- and a counter each had
+	// them both start at zero: an override and a component in one owner were
+	// emitted as two `hits__inst0`. Set by Lower; a caller's value is
+	// overwritten.
+	names renamer
 }
 
-// seqOrOwn is the shared `__instN` counter, or a private one for a caller that
-// built a pass's state directly rather than through Lower -- a unit test.
-func seqOrOwn(seq *int) *int {
-	if seq == nil {
-		return new(int)
+// renamer numbers renamed declarations per name: `hits__inst0` and
+// `hits__inst1` are the first two copies of a `hits`, whatever else was
+// renamed between them. One sequence for every name made each emitted name
+// depend on how many unrelated instances came before it, so a change anywhere
+// in a program renumbered everything after it.
+type renamer map[string]int
+
+// next is base's next copy under kind: `next("hits", "inst")` is
+// `hits__inst0`, then `hits__inst1`.
+func (r renamer) next(base, kind string) string {
+	k := base + "__" + kind
+	n := r[k]
+	r[k] = n + 1
+	return k + strconv.Itoa(n)
+}
+
+// namesOrOwn is the shared renamer, or a private one for a caller that built
+// a pass's state directly rather than through Lower -- a unit test.
+func namesOrOwn(r renamer) renamer {
+	if r == nil {
+		return renamer{}
 	}
-	return seq
+	return r
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,
@@ -179,7 +198,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	if opts.StopAfter == "none" {
 		return nil
 	}
-	opts.instSeq = new(int)
+	opts.names = renamer{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

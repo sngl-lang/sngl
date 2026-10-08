@@ -36,7 +36,7 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	st := &inlinePureState{
 		pkg:      pkg,
-		instSeq:  seqOrOwn(opts.instSeq),
+		names:    namesOrOwn(opts.names),
 		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
@@ -85,18 +85,17 @@ type inlinePureState struct {
 	// instance becomes a local of that instance's factory, which is what makes
 	// one per instance.
 	hoist *[]*ir.Var
-	// instSeq names each substitution's copy of the callee's state. Shared with
-	// passNoInlineComponents through Options: the two substitute into one
-	// emitted namespace and a counter each made them collide.
-	instSeq *int
+	// names names each substitution's copy of the callee's state, and a
+	// spliced body's renamed parameters. Shared with passNoInlineComponents
+	// through Options: the two substitute into one emitted namespace and a
+	// counter each made them collide.
+	names renamer
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
 	// instance and the platform gives each row its own record.
 	loopDepth int
 }
-
-func (st *inlinePureState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
 
 // viewReadVars is every var of comp's that its rendered tree reads.
 //
@@ -609,7 +608,6 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		if st.hoist == nil {
 			return nil, fmt.Errorf("component %q declares state and there is no owner to hoist it onto at %s", comp.Name, compPos(comp))
 		}
-		suffix := st.freshSuffix()
 		renames := map[ir.Symbol]string{}
 		symRenames := map[ir.Symbol]ir.Symbol{}
 		start := len(*st.hoist)
@@ -618,7 +616,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 				continue
 			}
 			clone := cloneVarShallow(v)
-			clone.Name = v.Name + suffix
+			clone.Name = st.names.next(v.Name, "inst")
 			clone.Init = deepCloneExpr(v.Init)
 			renames[v] = clone.Name
 			symRenames[v] = clone
@@ -637,6 +635,11 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		}
 		body = renameIdents(body, renames, symRenames)
 	}
+
+	// The call site's handlers and slot content are spliced into the body's own
+	// handlers below, so a parameter of the body's sharing a name they read
+	// would shadow it wherever a target spells both by name.
+	body = freshenShadowingParams(body, callsiteNames(callsite), st.names)
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
@@ -823,8 +826,10 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 		if emit, isEmit := s.(*ir.Emit); isEmit {
 			h, ok := byName[emit.Name]
 			// A binding's write-back is emitted ahead of the event it rides on,
-			// and is not an event a test can name.
-			if under != nil && under.ComponentEvent == "" && !(ok && h != nil && h.Func != nil && h.Func.Synthesized) {
+			// and is not an event a test can name. Asked of the handler's own
+			// mark rather than of Synthesized: the implicit-state wrapper's
+			// forwarding @change is synthesized too, and is the event.
+			if under != nil && under.ComponentEvent == "" && !(ok && h != nil && h.WriteBack) {
 				under.ComponentEvent = emit.Name
 			}
 			if ok && h != nil && h.Func != nil {
@@ -1394,4 +1399,112 @@ func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent
 		}
 	}
 	return out
+}
+
+// callsiteNames is every name the code a call site wrote reads from outside
+// it: its handlers' bodies and the content it hands the component's slots,
+// which are spliced into the component's body where its own names are in
+// scope. A name the code declares for itself -- a handler's parameter, a
+// lambda's, a population's, a local -- is its own and shadows nothing.
+func callsiteNames(callsite *ir.NodeInst) map[string]bool {
+	var roots []any
+	own := map[ir.Symbol]bool{}
+	for _, h := range callsite.Handlers {
+		if h.Func != nil {
+			for _, p := range h.Func.Params {
+				own[p] = true
+			}
+			roots = append(roots, h.Func.Block)
+		}
+	}
+	roots = append(roots, callsite.Children)
+	for _, name := range ir.SlotNames(callsite.Slots) {
+		if sc := callsite.Slots[name]; sc != nil {
+			for _, p := range sc.Params {
+				own[p] = true
+			}
+			roots = append(roots, sc.Body)
+		}
+	}
+	for _, root := range roots {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch v := n.(type) {
+			case *ir.Lambda:
+				if v.Func != nil {
+					for _, p := range v.Func.Params {
+						own[p] = true
+					}
+				}
+			case *ir.LocalVar:
+				if v.Sym != nil {
+					own[v.Sym] = true
+				}
+			case *ir.NodeInst:
+				for _, h := range v.Handlers {
+					if h.Func != nil {
+						for _, p := range h.Func.Params {
+							own[p] = true
+						}
+					}
+				}
+			}
+			return nil
+		})
+	}
+	names := map[string]bool{}
+	for _, root := range roots {
+		_ = ir.WalkExprs(root, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok && !own[id.Sym] {
+				names[id.Name] = true
+			}
+			return nil
+		})
+	}
+	return names
+}
+
+// freshenShadowingParams renames each parameter of a handler or lambda in
+// body whose name is in taken, and repoints its reads. A platform override's
+// `onCheckedChange = func(on) { checked = on; change(on) }` has the call
+// site's `@change { on = !on }` spliced in for `change(on)`: left alone, the
+// two `on`s are one name in every target that spells a local bare -- a
+// Kotlin lambda parameter captured the component's `var on` -- and the
+// body's is the one renamed, since the call site's is the program's.
+func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer) []ir.Stmt {
+	renames := map[ir.Symbol]string{}
+	symRenames := map[ir.Symbol]ir.Symbol{}
+	freshen := func(fn *ir.Func) {
+		if fn == nil {
+			return
+		}
+		var params []*ir.Param
+		for i, p := range fn.Params {
+			if p == nil || !taken[p.Name] {
+				continue
+			}
+			if params == nil {
+				params = append([]*ir.Param{}, fn.Params...)
+			}
+			q := *p
+			q.Name = names.next(p.Name, "p")
+			params[i] = &q
+			renames[p] = q.Name
+			symRenames[p] = &q
+		}
+		if params != nil {
+			fn.Params = params
+		}
+	}
+	_ = ir.Walk(body, func(n ir.Node) error {
+		switch v := n.(type) {
+		case *ir.NodeInst:
+			for i := range v.Handlers {
+				freshen(v.Handlers[i].Func)
+			}
+		case *ir.Lambda:
+			freshen(v.Func)
+		}
+		return nil
+	})
+	return renameIdents(body, renames, symRenames)
 }

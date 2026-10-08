@@ -113,11 +113,11 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	base__inst2        int
-	btTally__inst2     int
-	runs__inst0__inst2 int
-	runs__inst1__inst2 int
-	visible__inst3     bool
+	base__inst0        int
+	btTally__inst0     int
+	runs__inst0__inst0 int
+	runs__inst1__inst0 int
+	visible__inst0     bool
 	__focusID          int
 
 	width, height int
@@ -126,11 +126,11 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.base__inst2 = 1
-	m.btTally__inst2 = 0
-	m.runs__inst0__inst2 = 0
-	m.runs__inst1__inst2 = 0
-	m.visible__inst3 = true
+	m.base__inst0 = 1
+	m.btTally__inst0 = 0
+	m.runs__inst0__inst0 = 0
+	m.runs__inst1__inst0 = 0
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -141,12 +141,12 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) fromBase__inst2() int {
-	return (m.base__inst2 + 1)
+func (m Model) fromBase__inst0() int {
+	return (m.base__inst0 + 1)
 }
 
-func (m *Model) bump__inst2() {
-	m.btTally__inst2 = (m.btTally__inst2 + 100)
+func (m *Model) bump__inst0() {
+	m.btTally__inst0 = (m.btTally__inst0 + 100)
 }
 
 func (m *Model) __focusNext() {
@@ -169,79 +169,79 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Base__inst2() int {
-	return m.base__inst2
+func (m Model) Base__inst0() int {
+	return m.base__inst0
 }
 
-func (m Model) SetBase__inst2(v int) Model {
-	m.base__inst2 = v
+func (m Model) SetBase__inst0(v int) Model {
+	m.base__inst0 = v
 	return m
 }
 
-type setBase__inst2Msg struct{ value int }
+type setBase__inst0Msg struct{ value int }
 
-func SetBase__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setBase__inst2Msg{value: v} }
+func SetBase__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setBase__inst0Msg{value: v} }
 }
 
-func (m Model) BtTally__inst2() int {
-	return m.btTally__inst2
+func (m Model) BtTally__inst0() int {
+	return m.btTally__inst0
 }
 
-func (m Model) SetBtTally__inst2(v int) Model {
-	m.btTally__inst2 = v
+func (m Model) SetBtTally__inst0(v int) Model {
+	m.btTally__inst0 = v
 	return m
 }
 
-type setBtTally__inst2Msg struct{ value int }
+type setBtTally__inst0Msg struct{ value int }
 
-func SetBtTally__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setBtTally__inst2Msg{value: v} }
+func SetBtTally__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setBtTally__inst0Msg{value: v} }
 }
 
-func (m Model) Runs__inst0__inst2() int {
-	return m.runs__inst0__inst2
+func (m Model) Runs__inst0__inst0() int {
+	return m.runs__inst0__inst0
 }
 
-func (m Model) SetRuns__inst0__inst2(v int) Model {
-	m.runs__inst0__inst2 = v
+func (m Model) SetRuns__inst0__inst0(v int) Model {
+	m.runs__inst0__inst0 = v
 	return m
 }
 
-type setRuns__inst0__inst2Msg struct{ value int }
+type setRuns__inst0__inst0Msg struct{ value int }
 
-func SetRuns__inst0__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst0__inst2Msg{value: v} }
+func SetRuns__inst0__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst0__inst0Msg{value: v} }
 }
 
-func (m Model) Runs__inst1__inst2() int {
-	return m.runs__inst1__inst2
+func (m Model) Runs__inst1__inst0() int {
+	return m.runs__inst1__inst0
 }
 
-func (m Model) SetRuns__inst1__inst2(v int) Model {
-	m.runs__inst1__inst2 = v
+func (m Model) SetRuns__inst1__inst0(v int) Model {
+	m.runs__inst1__inst0 = v
 	return m
 }
 
-type setRuns__inst1__inst2Msg struct{ value int }
+type setRuns__inst1__inst0Msg struct{ value int }
 
-func SetRuns__inst1__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst1__inst2Msg{value: v} }
+func SetRuns__inst1__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst1__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst3() bool {
-	return m.visible__inst3
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst3(v bool) Model {
-	m.visible__inst3 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst3Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst3Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst3Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -253,26 +253,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setBase__inst2Msg:
-		m = m.SetBase__inst2(msg.value)
-	case setBtTally__inst2Msg:
-		m = m.SetBtTally__inst2(msg.value)
-	case setRuns__inst0__inst2Msg:
-		m = m.SetRuns__inst0__inst2(msg.value)
-	case setRuns__inst1__inst2Msg:
-		m = m.SetRuns__inst1__inst2(msg.value)
-	case setVisible__inst3Msg:
-		m = m.SetVisible__inst3(msg.value)
+	case setBase__inst0Msg:
+		m = m.SetBase__inst0(msg.value)
+	case setBtTally__inst0Msg:
+		m = m.SetBtTally__inst0(msg.value)
+	case setRuns__inst0__inst0Msg:
+		m = m.SetRuns__inst0__inst0(msg.value)
+	case setRuns__inst1__inst0Msg:
+		m = m.SetRuns__inst1__inst0(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst3 {
-				m.visible__inst3 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst3) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -281,13 +281,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.btTally__inst2 = (m.btTally__inst2 + 1)
-			m.runs__inst0__inst2 = (m.runs__inst0__inst2 + 1)
-			m.bump__inst2()
+			m.btTally__inst0 = (m.btTally__inst0 + 1)
+			m.runs__inst0__inst0 = (m.runs__inst0__inst0 + 1)
+			m.bump__inst0()
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.btTally__inst2 = (m.btTally__inst2 + 10)
-			m.runs__inst1__inst2 = (m.runs__inst1__inst2 + 1)
-			m.bump__inst2()
+			m.btTally__inst0 = (m.btTally__inst0 + 10)
+			m.runs__inst1__inst0 = (m.runs__inst1__inst0 + 1)
+			m.bump__inst0()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -295,12 +295,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst3 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst0__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0)) + " ") + fmt.Sprint(m.fromBase__inst0()))))
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		content_0_1Focused := (m.__focusID == 0)
@@ -315,7 +315,7 @@ func (m Model) View() tea.View {
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst2)) + " ") + fmt.Sprint(m.runs__inst1__inst2)) + " ") + fmt.Sprint(m.fromBase__inst2()))))
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.btTally__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0)) + " ") + fmt.Sprint(m.fromBase__inst0()))))
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1Focused := (m.__focusID == 1)
@@ -375,14 +375,14 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { base__inst2: 1, htmlTally__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0, visible__inst3: true };
-  function fromBase__inst2() {
-    return state.base__inst2 + 1;
+  var state = { base__inst0: 1, htmlTally__inst0: 0, runs__inst0__inst0: 0, runs__inst1__inst0: 0, visible__inst0: true };
+  function fromBase__inst0() {
+    return state.base__inst0 + 1;
   }
-  function bump__inst2() {
-    state.htmlTally__inst2 = state.htmlTally__inst2 + 100;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+  function bump__inst0() {
+    state.htmlTally__inst0 = state.htmlTally__inst0 + 100;
+    __n1.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst0__inst0) + " " + String(fromBase__inst0());
+    __n2.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst1__inst0) + " " + String(fromBase__inst0());
   }
   function String(v) {
     return "" + v;
@@ -392,30 +392,30 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
-    state.htmlTally__inst2 = state.htmlTally__inst2 + 1;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
-    state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    bump__inst2();
+    state.htmlTally__inst0 = state.htmlTally__inst0 + 1;
+    __n1.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst0__inst0) + " " + String(fromBase__inst0());
+    __n2.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst1__inst0) + " " + String(fromBase__inst0());
+    state.runs__inst0__inst0 = state.runs__inst0__inst0 + 1;
+    __n1.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst0__inst0) + " " + String(fromBase__inst0());
+    bump__inst0();
   });
   $4.addEventListener("click", function() {
-    state.htmlTally__inst2 = state.htmlTally__inst2 + 10;
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
-    state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
-    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
-    bump__inst2();
+    state.htmlTally__inst0 = state.htmlTally__inst0 + 10;
+    __n1.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst0__inst0) + " " + String(fromBase__inst0());
+    __n2.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst1__inst0) + " " + String(fromBase__inst0());
+    state.runs__inst1__inst0 = state.runs__inst1__inst0 + 1;
+    __n2.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst1__inst0) + " " + String(fromBase__inst0());
+    bump__inst0();
   });
   function __sngl_init() {
-    __n1.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst0__inst2) + " " + String(fromBase__inst2());
-    __n2.textContent = "L " + String(state.htmlTally__inst2) + " " + String(state.runs__inst1__inst2) + " " + String(fromBase__inst2());
+    __n1.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst0__inst0) + " " + String(fromBase__inst0());
+    __n2.textContent = "L " + String(state.htmlTally__inst0) + " " + String(state.runs__inst1__inst0) + " " + String(fromBase__inst0());
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:803471d70bea0ff4cd1758e9f8540a02
+pass sha256:32ae3d78bcd907fe7642f2fbe141904c
 -- run/none/html --
-pass sha256:b21c5504c6486e49d87190913191773c
+pass sha256:8885a6c811339040ffc0a750e2438202

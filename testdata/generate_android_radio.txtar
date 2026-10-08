@@ -98,16 +98,16 @@ fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("medium") }
     var chosen__inst0 by remember { mutableStateOf("") }
     val more__inst0 = remember { mutableStateListOf("a", "b") }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
+    var value__inst0 by remember { mutableStateOf(pick__inst0) }
+    var value__inst1 by remember { mutableStateOf(pick__inst0) }
     var value__inst2 by remember { mutableStateOf(pick__inst0) }
-    var value__inst3 by remember { mutableStateOf(pick__inst0) }
-    var value__inst4 by remember { mutableStateOf(pick__inst0) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -115,8 +115,8 @@ fun MainScreen() {
             Row(modifier = Modifier.padding(4.dp)) {
                 for (opt in listOf("small", "medium", "large")) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst2 == opt), onClick = {
-                            value__inst2 = opt
+                        RadioButton(selected = (value__inst0 == opt), onClick = {
+                            value__inst0 = opt
                             chosen__inst0 = opt
                         })
                         Text(text = opt, modifier = Modifier)
@@ -126,8 +126,8 @@ fun MainScreen() {
             Column(modifier = Modifier.padding(5.dp)) {
                 for (opt in listOf("one", "two")) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst3 == opt), onClick = {
-                            value__inst3 = opt
+                        RadioButton(selected = (value__inst1 == opt), onClick = {
+                            value__inst1 = opt
                         })
                         Text(text = opt, modifier = Modifier)
                     }
@@ -136,8 +136,8 @@ fun MainScreen() {
             Column(modifier = Modifier) {
                 for (opt in more__inst0) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (value__inst4 == opt), onClick = {
-                            value__inst4 = opt
+                        RadioButton(selected = (value__inst2 == opt), onClick = {
+                            value__inst2 = opt
                         })
                         Text(text = opt, modifier = Modifier)
                     }
@@ -147,4 +147,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:e2438d18df23b59cc5ef4b111205a0fa
+pass sha256:b6719950aa4123bb9e14fd16877d16ba

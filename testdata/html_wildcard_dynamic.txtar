@@ -64,7 +64,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items__inst0: ["a", "b"], on__inst0: false, visible__inst1: true };
+  var state = { items__inst0: ["a", "b"], on__inst0: false, visible__inst0: true };
   function __cf___checkbox_state1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -158,4 +158,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c8e159f84f0422a31ce7398cb94a24e7
+pass sha256:d2a26770f9d1dcd1cbffe89fcf170389

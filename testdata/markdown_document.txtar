@@ -109,10 +109,10 @@ type Color struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	visible__inst1      bool
-	checked__inst5      map[string]bool
-	checked__inst9      map[string]bool
-	checked__inst12     map[string]bool
+	visible__inst0      bool
+	checked__inst0      map[string]bool
+	checked__inst1      map[string]bool
+	checked__inst2      map[string]bool
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -122,10 +122,10 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.visible__inst1 = true
-	m.checked__inst5 = map[string]bool{}
-	m.checked__inst9 = map[string]bool{}
-	m.checked__inst12 = map[string]bool{}
+	m.visible__inst0 = true
+	m.checked__inst0 = map[string]bool{}
+	m.checked__inst1 = map[string]bool{}
+	m.checked__inst2 = map[string]bool{}
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -230,64 +230,64 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Checked__inst5() map[string]bool {
-	return m.checked__inst5
+func (m Model) Checked__inst0() map[string]bool {
+	return m.checked__inst0
 }
 
-func (m Model) SetChecked__inst5(v map[string]bool) Model {
-	m.checked__inst5 = v
+func (m Model) SetChecked__inst0(v map[string]bool) Model {
+	m.checked__inst0 = v
 	return m
 }
 
-type setChecked__inst5Msg struct{ value map[string]bool }
+type setChecked__inst0Msg struct{ value map[string]bool }
 
-func SetChecked__inst5Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst5Msg{value: v} }
+func SetChecked__inst0Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst0Msg{value: v} }
 }
 
-func (m Model) Checked__inst9() map[string]bool {
-	return m.checked__inst9
+func (m Model) Checked__inst1() map[string]bool {
+	return m.checked__inst1
 }
 
-func (m Model) SetChecked__inst9(v map[string]bool) Model {
-	m.checked__inst9 = v
+func (m Model) SetChecked__inst1(v map[string]bool) Model {
+	m.checked__inst1 = v
 	return m
 }
 
-type setChecked__inst9Msg struct{ value map[string]bool }
+type setChecked__inst1Msg struct{ value map[string]bool }
 
-func SetChecked__inst9Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst9Msg{value: v} }
+func SetChecked__inst1Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst1Msg{value: v} }
 }
 
-func (m Model) Checked__inst12() map[string]bool {
-	return m.checked__inst12
+func (m Model) Checked__inst2() map[string]bool {
+	return m.checked__inst2
 }
 
-func (m Model) SetChecked__inst12(v map[string]bool) Model {
-	m.checked__inst12 = v
+func (m Model) SetChecked__inst2(v map[string]bool) Model {
+	m.checked__inst2 = v
 	return m
 }
 
-type setChecked__inst12Msg struct{ value map[string]bool }
+type setChecked__inst2Msg struct{ value map[string]bool }
 
-func SetChecked__inst12Cmd(v map[string]bool) tea.Cmd {
-	return func() tea.Msg { return setChecked__inst12Msg{value: v} }
+func SetChecked__inst2Cmd(v map[string]bool) tea.Cmd {
+	return func() tea.Msg { return setChecked__inst2Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -299,24 +299,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
-	case setChecked__inst5Msg:
-		m = m.SetChecked__inst5(msg.value)
-	case setChecked__inst9Msg:
-		m = m.SetChecked__inst9(msg.value)
-	case setChecked__inst12Msg:
-		m = m.SetChecked__inst12(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setChecked__inst0Msg:
+		m = m.SetChecked__inst0(msg.value)
+	case setChecked__inst1Msg:
+		m = m.SetChecked__inst1(msg.value)
+	case setChecked__inst2Msg:
+		m = m.SetChecked__inst2(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -337,19 +337,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if it.Task == "none" {
 							} else {
 								if m.__focusLoop0_cursor == __focusPos0 {
-									__cell1_checked__inst5 := func() bool {
-										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+									__cell1_checked__inst0 := func() bool {
+										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									__cell1_checked__inst5 = !func() bool {
-										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+									__cell1_checked__inst0 = !func() bool {
+										if __v, __ok := m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst5
+									m.checked__inst0[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst0
 									return
 								}
 								__focusPos0++
@@ -364,19 +364,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 										if it.Task == "none" {
 										} else {
 											if m.__focusLoop0_cursor == __focusPos0 {
-												__cell1_checked__inst9 := func() bool {
-													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+												__cell1_checked__inst1 := func() bool {
+													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												__cell1_checked__inst9 = !func() bool {
-													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+												__cell1_checked__inst1 = !func() bool {
+													if __v, __ok := m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst9
+												m.checked__inst1[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst1
 												return
 											}
 											__focusPos0++
@@ -391,19 +391,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 													if it.Task == "none" {
 													} else {
 														if m.__focusLoop0_cursor == __focusPos0 {
-															__cell1_checked__inst12 := func() bool {
-																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+															__cell1_checked__inst2 := func() bool {
+																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															__cell1_checked__inst12 = !func() bool {
-																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+															__cell1_checked__inst2 = !func() bool {
+																if __v, __ok := m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst12
+															m.checked__inst2[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst2
 															return
 														}
 														__focusPos0++
@@ -425,7 +425,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		__focusPos0 := 0
@@ -5474,7 +5474,7 @@ type ListItem__slot2Instance struct {
 	__prop_task            string
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -5509,7 +5509,7 @@ func newListItem__slot2Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop_task = __a_task
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -5588,21 +5588,21 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 		var __n10 *__child1Instance
 		if len(c.__inst2_live) > __inst2_i {
 			__n10 = c.__inst2_live[__inst2_i]
-			__n10.Set__p0(c.checked__inst2)
+			__n10.Set__p0(c.checked__inst0)
 			__n10.Set__on0(func(on bool) {
-				c.checked__inst2 = on
+				c.checked__inst0 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
+					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst2_live) > __inst2_i {
 				c.__inst2_live[__inst2_i].Destroy()
 			}
-			__n10__new := new__child1Instance(c.__model, c.checked__inst2, func(on bool) {
-				c.checked__inst2 = on
+			__n10__new := new__child1Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
-					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
+					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n10 = __n10__new
@@ -6873,7 +6873,7 @@ type ListItem__slot1Instance struct {
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
 	__prop___p1            int
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -6910,7 +6910,7 @@ func newListItem__slot1Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -6997,21 +6997,21 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 		var __n224 *__child3Instance
 		if len(c.__inst4_live) > __inst4_i {
 			__n224 = c.__inst4_live[__inst4_i]
-			__n224.Set__p0(c.checked__inst2)
+			__n224.Set__p0(c.checked__inst0)
 			__n224.Set__on0(func(on bool) {
-				c.checked__inst2 = on
+				c.checked__inst0 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
+					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst4_live) > __inst4_i {
 				c.__inst4_live[__inst4_i].Destroy()
 			}
-			__n224__new := new__child3Instance(c.__model, c.checked__inst2, func(on bool) {
-				c.checked__inst2 = on
+			__n224__new := new__child3Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
-					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
+					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n224 = __n224__new
@@ -8316,7 +8316,7 @@ type ListItem__slot0Instance struct {
 	__prop___ctx_listDepth int
 	__prop___p0            _Item
 	__prop___p1            int
-	checked__inst2         bool
+	checked__inst0         bool
 	__root                 *fyne.Container
 	__slot0                []fyne.CanvasObject
 	__slot0_at             fyne.CanvasObject
@@ -8353,7 +8353,7 @@ func newListItem__slot0Instance(__model *Model, __a_marker string, __a_task stri
 	c.__prop___ctx_listDepth = __a___ctx_listDepth
 	c.__prop___p0 = __a___p0
 	c.__prop___p1 = __a___p1
-	c.checked__inst2 = (c.__prop_task == "done")
+	c.checked__inst0 = (c.__prop_task == "done")
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -8440,21 +8440,21 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 		var __n439 *__child5Instance
 		if len(c.__inst7_live) > __inst7_i {
 			__n439 = c.__inst7_live[__inst7_i]
-			__n439.Set__p0(c.checked__inst2)
+			__n439.Set__p0(c.checked__inst0)
 			__n439.Set__on0(func(on bool) {
-				c.checked__inst2 = on
+				c.checked__inst0 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
+					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 		} else {
 			if len(c.__inst7_live) > __inst7_i {
 				c.__inst7_live[__inst7_i].Destroy()
 			}
-			__n439__new := new__child5Instance(c.__model, c.checked__inst2, func(on bool) {
-				c.checked__inst2 = on
+			__n439__new := new__child5Instance(c.__model, c.checked__inst0, func(on bool) {
+				c.checked__inst0 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
-					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
+					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst0)
 				}
 			})
 			__n439 = __n439__new
@@ -10493,8 +10493,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c1c520c068ede8edcf6cccaafcb58a38
+pass sha256:aaadc85473a605e0c22a74a11f1d9ff5
 -- run/go/fyne --
-pass sha256:02972beeb1f9fb2d92c9798ac173fa86
+pass sha256:caca06febab8647950b52faaa9285e59
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

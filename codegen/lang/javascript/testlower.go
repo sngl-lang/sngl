@@ -211,21 +211,28 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 		return "", false
 	}
 	c := call.Call
-	recv, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
 	// The invoker is handed the event's arguments by their declared names,
 	// `{checked: true}`: it puts each on the element as the user's input would
-	// have, which is where the platform's handler reads it.
-	if len(c.Args) == 0 {
-		return fmt.Sprintf("%s.%s%s();", recv, id, exportEventName(c.Event)), true
+	// have, which is where the platform's handler reads it. One copy of a
+	// node a loop rendered is the `At` variant's, handed the index first.
+	name := tt.ID + exportEventName(c.Event)
+	var args []string
+	if tt.Index != nil {
+		name = codegen.InvokerAt(name)
+		args = append(args, jc.EvalExpr(tt.Index))
 	}
-	fields := make([]string, len(c.Args))
-	for i, a := range c.Args {
-		fields[i] = fmt.Sprintf("%s: %s", a.Name, jc.EvalExpr(a.Value))
+	if len(c.Args) > 0 {
+		fields := make([]string, len(c.Args))
+		for i, a := range c.Args {
+			fields[i] = fmt.Sprintf("%s: %s", a.Name, jc.EvalExpr(a.Value))
+		}
+		args = append(args, "{"+strings.Join(fields, ", ")+"}")
 	}
-	return fmt.Sprintf("%s.%s%s({%s});", recv, id, exportEventName(c.Event), strings.Join(fields, ", ")), true
+	return fmt.Sprintf("%s.%s(%s);", tt.Recv, name, strings.Join(args, ", ")), true
 }
 
 // exportEventName upper-cases the first letter, matching the name the platform

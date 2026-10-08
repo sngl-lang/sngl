@@ -39,7 +39,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
 	if err := st.run(); err != nil {
 		return err
@@ -347,8 +347,8 @@ type inlineCompState struct {
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
-	// instSeq is passInlinePure's counter as well; see Options.instSeq.
-	instSeq *int
+	// names is passInlinePure's as well; see Options.names.
+	names renamer
 	// demoted is the clones dropReceiver made receiverless, so the call sites
 	// renameIdents repointed at them can give their receiver up too.
 	demoted map[*ir.Func]bool
@@ -729,15 +729,6 @@ func retainComponents(in []*ir.Component, keep map[*ir.Component]bool) []*ir.Com
 }
 
 // --- inliner helpers ---
-
-func (st *inlineCompState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
-
-// freshInstSuffix hands out the next `__instN`.
-func freshInstSuffix(seq *int) string {
-	n := *seq
-	*seq++
-	return "__inst" + strconv.Itoa(n)
-}
 
 // renameIdents rewrites Ident.Name via renames and repoints Ident.Sym via
 // symRenames. Repointing Sym is essential: after inlining, the cloned
@@ -1182,8 +1173,6 @@ func dependsOnReactiveVar(e ir.Expr, reactive map[*ir.Var]bool) bool {
 
 func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	comp := n.Component
-	suffix := st.freshSuffix()
-
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
 
@@ -1195,7 +1184,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 			continue
 		}
 		clone := cloneVarShallow(v)
-		clone.Name = v.Name + suffix
+		clone.Name = st.names.next(v.Name, "inst")
 		clone.Init = deepCloneExpr(v.Init)
 		renames[v] = clone.Name
 		symRenames[v] = clone
@@ -1218,7 +1207,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	funcStart := len(*hoist.funcs)
 	for _, f := range comp.Funcs {
 		clone := cloneFuncShallow(f)
-		clone.Name = f.Name + suffix
+		clone.Name = st.names.next(f.Name, "inst")
 		clone.Block = deepCloneStmts(f.Block)
 		renames[f] = clone.Name
 		symRenames[f] = clone
@@ -1306,6 +1295,9 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
+	// The caller's handlers land inside the body's own, so a parameter of the
+	// body's sharing a name they read is renamed first (freshenShadowingParams).
+	body = freshenShadowingParams(body, callsiteNames(n), st.names)
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.
 	body = substituteEvents(body, n.Handlers)

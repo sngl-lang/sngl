@@ -72,7 +72,7 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot1        []fyne.CanvasObject
 	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*CardInstance
@@ -85,7 +85,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*CardInstance{}
@@ -131,8 +131,8 @@ func (m *Model) __n2_closed_handler() {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n2.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n2.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Items__inst0() []string {
@@ -143,12 +143,12 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -158,7 +158,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n2 = fynelayout.NewToplevel()
-	m.__n2.SetVisible(m.visible__inst1)
+	m.__n2.SetVisible(m.visible__inst0)
 	m.__n2.OnClosed = m.__n2_closed_handler
 	m.__n2.OnVisible = m.__n2_visible_handler
 	m.__renderSlot1(m.__n2.Container)
@@ -318,7 +318,7 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	items__inst0   []string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot1        []gtk4rt.Handle
 	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*CardInstance
@@ -331,7 +331,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot1 = nil
 	m.__slot1_at = nil
 	m.__inst1_live = []*CardInstance{}
@@ -377,8 +377,8 @@ func (m *Model) __n2_closed_handler() {
 }
 
 func (m *Model) __n2_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 }
 
 // CardInstance is one live instance of the card component.
@@ -536,12 +536,12 @@ func (m *Model) SetItems__inst0(v []string) {
 	m.items__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -550,7 +550,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n2 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n2, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n2, m.__n2_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n2, m.__n2_visible_handler)
 	m.__renderSlot1(m.__n2)
@@ -564,6 +564,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n2)
 }
 -- run/go/fyne --
-pass sha256:882773746dd04c2a833d5e517a33df2f
+pass sha256:2ca7715162230559094223e6fc9a2e1b
 -- run/go/gtk4 --
-pass sha256:007e37a74ba1b417d6bfccd00248b706
+pass sha256:e9f5461dec3cf1ac970520aed142cc23

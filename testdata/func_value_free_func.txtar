@@ -61,7 +61,7 @@ type Holder struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	h__inst0       Holder
-	visible__inst1 bool
+	visible__inst0 bool
 
 	__n0    *fynelayout.Toplevel
 	__n1    *widget.Label
@@ -72,7 +72,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.h__inst0 = Holder{F: Encode}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -88,8 +88,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) H__inst0() Holder {
@@ -100,12 +100,12 @@ func (m *Model) SetH__inst0(v Holder) {
 	m.h__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -115,7 +115,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
@@ -161,7 +161,7 @@ type Holder struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	h__inst0       Holder
-	visible__inst1 bool
+	visible__inst0 bool
 	__n0           gtk4rt.Handle
 	__n1           gtk4rt.Handle
 	__built        bool
@@ -172,7 +172,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.h__inst0 = Holder{F: Encode}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -188,8 +188,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 }
 
 func (m *Model) H__inst0() Holder {
@@ -200,12 +200,12 @@ func (m *Model) SetH__inst0(v Holder) {
 	m.h__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -214,7 +214,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n0 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n0, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
@@ -230,6 +230,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:42a31ee765834dc80f07a7a830037531
+pass sha256:ac36b1ab34888a6e9ed750a74a6b4792
 -- run/go/gtk4 --
-pass sha256:e96baed5ab64f2acd1bf8da79d8dfc6b
+pass sha256:0814bc3b2464f1b74c8db03d9a6098c9

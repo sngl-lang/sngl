@@ -1,0 +1,134 @@
+# A test triggers one copy of a looped node by its index, on every target a
+# test can execute on: testdata/indexed_trigger.txtar is the code. The second
+# test renders the loop again first -- a longer list, so instances are reused
+# at their positions and one is built -- and the indices still name the copies
+# in render order.
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var items = ["a", "b"]
+    var log = ""
+    vbox {
+        button #swap(text="swap", @click { items = ["c", "d", "e"] })
+        for var it = items {
+            button #tap(text=it, @click { log = it })
+            checkbox #box(label=it, @change(on) { log = "{it} {on}" })
+            input #field(value=it, @change(v) { log = "{it}={v}" })
+        }
+        text(value=log)
+    }
+}
+
+func testOneCopy(t Test, c main) {
+    c.tap[1].click()
+    t.assert(c.log == "b")
+    c.box[0].change(true)
+    t.assert(c.log == "a true")
+    c.field[1].change("x")
+    t.assert(c.log == "b=x")
+}
+
+func testOneCopyAfterTheLoopRendersAgain(t Test, c main) {
+    c.swap.click()
+    c.tap[2].click()
+    t.assert(c.log == "e")
+    c.box[1].change(true)
+    t.assert(c.log == "d true")
+    c.field[0].change(value="y")
+    t.assert(c.log == "c=y")
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:3effda296a5acc9abb79e702eb9cc05e
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:b8f347d93a796923abe0bd4d9cd5442a
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:2b2d2569bf9cef2ac8a810d8316cee98
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:e13b59f39726a30aaa289dfec549f91d
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:3031c82fb5ad68c9aebf6627f26b098b
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}

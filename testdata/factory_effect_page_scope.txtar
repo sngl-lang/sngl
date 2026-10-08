@@ -71,7 +71,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { on__inst0: true, visible__inst1: true };
+  var state = { on__inst0: true, visible__inst0: true };
   function __cf_Row(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -227,4 +227,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8c537f2f92b7f2bb5ccf98d853a00bf1
+pass sha256:95f71a4b52af1342a3231aa6832d1265

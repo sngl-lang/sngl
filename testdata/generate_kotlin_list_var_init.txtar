@@ -66,13 +66,13 @@ fun MainScreen() {
     val evens__inst0 = remember { xs__inst0.filter({ n: Int -> ((n % 2) == 0) }).toMutableStateList() }
     val empty__inst0 = remember { mutableStateListOf<Int>() }
     var idx__inst0 by remember { mutableStateOf(xs__inst0.indexOf(2)) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -80,4 +80,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:66aa08af8894c310d35fb562e83fba77
+pass sha256:e40a1accf116692b4df1e28682aae3b3

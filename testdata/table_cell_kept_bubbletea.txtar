@@ -37,7 +37,7 @@ import (
 type Model struct {
 	selected__inst0 int
 	selected__inst1 int
-	visible__inst2  bool
+	visible__inst0  bool
 	__focusID       int
 
 	widget0 table.Model
@@ -51,7 +51,7 @@ func New() Model {
 	m := Model{}
 	m.selected__inst0 = 0
 	m.selected__inst1 = 0
-	m.visible__inst2 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"a"}, []string{"b"}}), 10)
 	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"c"}}), 10)
@@ -122,19 +122,19 @@ func SetSelected__inst1Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setSelected__inst1Msg{value: v} }
 }
 
-func (m Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst2(v bool) Model {
-	m.visible__inst2 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst2Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst2Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -150,8 +150,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetSelected__inst0(msg.value)
 	case setSelected__inst1Msg:
 		m = m.SetSelected__inst1(msg.value)
-	case setVisible__inst2Msg:
-		m = m.SetVisible__inst2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -159,10 +159,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst2 {
-				m.visible__inst2 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst2) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -187,7 +187,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst2 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		content_0 = m.widget0.View()
@@ -214,4 +214,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:1e7c9761e06ed6ce54afc648d43fa220
+pass sha256:1fa7e9d4f4c2e06beb7ffc02e85c99ab

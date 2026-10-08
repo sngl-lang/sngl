@@ -666,6 +666,10 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 			panic(fmt.Sprintf("bubbletea: widget index %d out of range (%d widgets analyzed); view/analyze walk desync", idx, len(vc.widgets)))
 		}
 		w := vc.widgets[idx]
+		if w.loop != nil {
+			vc.line(`%s = %s%s`, resultVar, copyCall(w, vc.gc), w.model.View)
+			return
+		}
 		vc.line(`%s = m.%s%s`, resultVar, w.fieldName, w.model.View)
 	}
 }

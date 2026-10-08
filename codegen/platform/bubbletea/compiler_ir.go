@@ -56,6 +56,10 @@ type widgetInfo struct {
 	placeholder string // Go-quoted-ready raw string; "" = no placeholder setter
 	focusExpr   string // Go expr that is true when this widget is focused; "" = no tracking
 	node        *ir.NodeInst
+	// loop is set for a widget a loop renders, which is a model per copy
+	// (loopwidget.go); its binds then name no target, and every path written
+	// for one model skips it.
+	loop *loopWidget
 }
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
@@ -287,6 +291,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// An empty __focused prop (passFocusOrder did not run) means focus
 	// tracking is not active.
 	view := viewStmts(ctx)
+	loopsOf := widgetLoops(view)
 	codegen.WalkVisualTree(view, func(n *ir.NodeInst, _ int) bool {
 		if btIntrinsic(n) != "Widget" {
 			return false
@@ -335,14 +340,23 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				break
 			}
 		}
-		info.widgets = append(info.widgets, widgetInfo{
+		wi := widgetInfo{
 			fieldName:   fieldName,
 			model:       model,
 			binds:       binds,
 			placeholder: placeholder,
 			focusExpr:   nodeStaticFocusExpr(n, gc),
 			node:        n,
-		})
+		}
+		if loops := loopsOf[n]; len(loops) > 0 && len(bp.Binds) > 0 {
+			if lw := newLoopWidget(n, loops, bp.Binds[0].Prop); lw != nil {
+				wi.loop, wi.focusExpr = lw, ""
+				for i := range wi.binds {
+					wi.binds[i].target = ""
+				}
+			}
+		}
+		info.widgets = append(info.widgets, wi)
 		return false
 	})
 
@@ -438,6 +452,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("\n")
 	}
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			fmt.Fprintf(&b, "\t%s map[string]%s\n", w.fieldName, w.model.Type)
+			continue
+		}
 		fmt.Fprintf(&b, "\t%s %s\n", w.fieldName, w.model.Type)
 	}
 	if len(info.widgets) > 0 {
@@ -461,6 +479,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 	firstFocusable := true
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			fmt.Fprintf(&b, "\tm.%s = map[string]%s{}\n", w.fieldName, w.model.Type)
+			continue
+		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", w.fieldName, w.model.New)
 		if w.placeholder != "" {
 			fmt.Fprintf(&b, "\tm.%s.Placeholder = %q\n", w.fieldName, w.placeholder)
@@ -513,6 +535,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("func (m *Model) resizeWidgets() {\n")
 		for _, w := range info.widgets {
 			if w.model.Resize == "" {
+				continue
+			}
+			if w.loop != nil {
+				fmt.Fprintf(&b, "\tfor key, w := range m.%s {\n\t\tw%s\n\t\tm.%s[key] = w\n\t}\n", w.fieldName, w.model.Resize, w.fieldName)
 				continue
 			}
 			fmt.Fprintf(&b, "\tm.%s%s\n", w.fieldName, w.model.Resize)
@@ -604,6 +630,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	var widgetInits []string
 	seenInit := map[string]bool{}
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			continue
+		}
 		if w.model.Init != "" && !seenInit[w.model.Init] {
 			seenInit[w.model.Init] = true
 			widgetInits = append(widgetInits, w.model.Init)
@@ -639,17 +668,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("}\n\n")
 
 	var eventInvokers []btEventInvoker
-	emitIRUpdate(&b, info, ctx, gc, cfg, func(n *ir.NodeInst, event string, slotIdx int, keyExpr string) {
-		// A synthesized id is not something a test can write.
-		if n.ID == "" || strings.HasPrefix(n.ID, "__n") {
-			return
-		}
-		eventInvokers = append(eventInvokers, btEventInvoker{
-			IDLabel:   n.ID,
-			SnglEvent: event,
-			SlotIdx:   slotIdx,
-			KeyExpr:   keyExpr,
-		})
+	emitIRUpdate(&b, info, ctx, gc, cfg, func(inv btEventInvoker) {
+		eventInvokers = append(eventInvokers, inv)
 	})
 	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
 	emitWidgetPayloadHandlers(&b, info, gc)
@@ -1015,6 +1035,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		if w.model.Update == "" {
 			continue
 		}
+		if w.loop != nil {
+			emitLoopWidgetForward(b, w, info, gc, fwdIndent)
+			continue
+		}
 		if w.focusExpr != "" {
 			fmt.Fprintf(b, "%sif %s {\n", fwdIndent, w.focusExpr)
 		} else {
@@ -1074,7 +1098,7 @@ func emitIRButtonHandlers(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis,
 
 // btInvokerSink records one (node, event) pair a test can drive. nil where
 // there is no test surface to emit.
-type btInvokerSink func(n *ir.NodeInst, event string, slotIdx int, keyExpr string)
+type btInvokerSink func(inv btEventInvoker)
 
 // emitIRButtonHandlersWalk traverses visual IR emitting KeyEnter cases for
 // button/checkbox handlers. A for-loop is a loop slot as a whole, answered by
@@ -1103,7 +1127,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.For:
-			emitLoopSlotHandlers(b, n, info, gc, overlayGuard)
+			emitLoopSlotHandlers(b, n, info, gc, overlayGuard, invokerSink)
 		case *ir.If:
 			emitIRButtonHandlersWalk(b, n.Body, info, gc, bgGuard, inOverlay, invokerSink)
 			emitIRButtonHandlersWalk(b, n.Else, info, gc, bgGuard, inOverlay, invokerSink)
@@ -1126,9 +1150,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 					continue
 				}
 				emitNodeCase(n, guard, h.Func.Block)
-				if invokerSink != nil {
+				if invokerSink != nil && n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
 					if idx := nodeFocusSlotIdx(n); idx >= 0 {
-						invokerSink(n, ev.On, idx, teaKeyMsg(ev.Key))
+						invokerSink(btEventInvoker{IDLabel: n.ID, SnglEvent: ev.On, SlotIdx: idx, KeyExpr: teaKeyMsg(ev.Key)})
 					}
 				}
 			}
@@ -1210,6 +1234,10 @@ type btEventInvoker struct {
 	SnglEvent string // the event a test writes, e.g. "click"
 	SlotIdx   int    // the focus slot the widget occupies
 	KeyExpr   string // the tea key message that activates it
+	// Cursor is the loop slot's cursor field, for a node a loop renders: its
+	// copies are ordinals of that slot, and Copies is a Go expression of the
+	// ordinal of each, in render order. Empty for a node outside a loop.
+	Cursor, Copies string
 }
 
 // teaKeyMsg is the message a press of key arrives as. It pairs with
@@ -1244,11 +1272,15 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 			continue
 		}
 		seen[name] = true
-		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
 		params := make([]string, 0, len(args[inv.IDLabel+"."+inv.SnglEvent]))
 		for _, t := range args[inv.IDLabel+"."+inv.SnglEvent] {
 			params = append(params, "_ "+golang.IRTypeToGo(t))
 		}
+		if inv.Cursor != "" {
+			emitBtLoopInvokers(b, inv, name, params)
+			continue
+		}
+		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
 		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(params, ", "))
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
@@ -1257,6 +1289,38 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
 		b.WriteString("}\n\n")
 	}
+}
+
+// emitBtLoopInvokers writes the invokers of a node a loop renders: the copy
+// at an index is the one the slot's cursor names when it is at that copy's
+// ordinal, which the loop is walked to find as View counts it. The plain
+// invoker drives the last copy, as fyne's and gtk4's do. What a test passes
+// is taken and not read, as every invoker here takes it: the key is the
+// input.
+func emitBtLoopInvokers(b *strings.Builder, inv btEventInvoker, name string, params []string) {
+	at := codegen.InvokerAt(name)
+	fmt.Fprintf(b, "// %s activates the copy of #%s at index i, in render order, the way a keypress does; for tests.\n", at, inv.IDLabel)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", at, strings.Join(append([]string{"i int"}, params...), ", "))
+	fmt.Fprintf(b, "\tat := %s\n", inv.Copies)
+	b.WriteString("\tif i < 0 || i >= len(at) {\n\t\treturn\n\t}\n")
+	fmt.Fprintf(b, "\tprev, prevAt := m.__focusID, m.%s\n", inv.Cursor)
+	fmt.Fprintf(b, "\tm.__focusID, m.%s = %d, at[i]\n", inv.Cursor, inv.SlotIdx)
+	fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
+	b.WriteString("\t*m = nm.(Model)\n")
+	fmt.Fprintf(b, "\tm.__focusID, m.%s = prev, prevAt\n", inv.Cursor)
+	b.WriteString("}\n\n")
+
+	named := make([]string, len(params))
+	call := []string{fmt.Sprintf("len(%s) - 1", inv.Copies)}
+	for i, p := range params {
+		v := fmt.Sprintf("v%d", i)
+		named[i] = v + strings.TrimPrefix(p, "_")
+		call = append(call, v)
+	}
+	fmt.Fprintf(b, "// %s activates the last copy of #%s the way a keypress does; for tests.\n", name, inv.IDLabel)
+	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(named, ", "))
+	fmt.Fprintf(b, "\tm.%s(%s)\n", at, strings.Join(call, ", "))
+	b.WriteString("}\n\n")
 }
 
 // widgetValue is the value a widget's events carry: how it is read back from
@@ -1315,10 +1379,19 @@ func widgetEventMethod(w widgetInfo, event string) string {
 // carries: the event types are declarations nothing else here emits.
 func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
 	for _, w := range info.widgets {
+		if w.loop != nil {
+			emitLoopWidgetMethods(b, w, gc)
+			emitLoopWidgetInvokers(b, w, info, gc)
+		}
+	}
+	for _, w := range info.widgets {
 		val, hasInput, hasChange := widgetPayloadEvents(w)
 		get := val.get
 		if strings.Contains(val.goType, "time.") {
 			gc.RequireImport("time")
+		}
+		if w.loop != nil {
+			continue
 		}
 		// A widget whose only subscriber is its binding -- a cell the call
 		// site left unbound, or a `:value` with no handler -- still takes a
@@ -1411,6 +1484,10 @@ func teaKeyGuard(key string) string {
 
 func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 	for _, w := range widgets {
+		if w.loop != nil && modelHasFocusMethods(w.model.Type) {
+			fmt.Fprintf(b, "\t\t\tm.%s()\n", loopFocusMethod(w))
+			continue
+		}
 		if w.focusExpr == "" || !modelHasFocusMethods(w.model.Type) {
 			continue
 		}

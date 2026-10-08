@@ -86,13 +86,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var caught__inst0 by remember { mutableStateOf("") }
     var got__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -140,7 +140,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { caught__inst0: "", got__inst0: 0, visible__inst1: true };
+  var state = { caught__inst0: "", got__inst0: 0, visible__inst0: true };
   function ratio(n) {
     if (n > 5) {
       ;
@@ -176,6 +176,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/kotlin/android --
-pass sha256:c9b0ccc593b239f6dbd5b08c7582d759
+pass sha256:fad5480b19729ce6541ef0fbe763b555
 -- run/none/html --
-pass sha256:b4e7765af4896a402bb7e72c9204eb62
+pass sha256:9031796f708ce39e87f44039515ea5c7

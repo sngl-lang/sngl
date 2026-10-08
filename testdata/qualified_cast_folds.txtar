@@ -117,7 +117,7 @@ type Model struct {
 	d__inst1       time.Time
 	t__inst1       time.Time
 	dt__inst1      time.Time
-	visible__inst2 bool
+	visible__inst0 bool
 
 	width, height int
 }
@@ -131,7 +131,7 @@ func New() Model {
 	m.d__inst1 = mustParseDate("2026-05-09")
 	m.t__inst1 = mustParseTime("14:30:00")
 	m.dt__inst1 = mustParseDateTime("2026-05-09T14:30:00")
-	m.visible__inst2 = true
+	m.visible__inst0 = true
 	return m
 }
 
@@ -231,19 +231,19 @@ func SetDt__inst1Cmd(v time.Time) tea.Cmd {
 	return func() tea.Msg { return setDt__inst1Msg{value: v} }
 }
 
-func (m Model) Visible__inst2() bool {
-	return m.visible__inst2
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst2(v bool) Model {
-	m.visible__inst2 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst2Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst2Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst2Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -267,18 +267,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetT__inst1(msg.value)
 	case setDt__inst1Msg:
 		m = m.SetDt__inst1(msg.value)
-	case setVisible__inst2Msg:
-		m = m.SetVisible__inst2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst2 {
-				m.visible__inst2 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst2) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -289,7 +289,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst2 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(m.d__inst0.Format("2006-01-02")))
@@ -379,13 +379,13 @@ fun MainScreen() {
     var d__inst1 by remember { mutableStateOf("2026-05-09") }
     var t__inst1 by remember { mutableStateOf("14:30:00") }
     var dt__inst1 by remember { mutableStateOf("2026-05-09T14:30:00") }
-    var visible__inst2 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst2) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst2 = false
-            if (!(visible__inst2)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -428,7 +428,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00", visible__inst2: true };
+  var state = { d__inst0: "2026-05-09", t__inst0: "14:30:00", dt__inst0: "2026-05-09T14:30:00", d__inst1: "2026-05-09", t__inst1: "14:30:00", dt__inst1: "2026-05-09T14:30:00", visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -451,8 +451,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d4265dca71aba1632c3824bb7d20e926
+pass sha256:246cc354a51f1365c863e3892d2fd204
 -- run/kotlin/android --
-pass sha256:7ac28414c5de6a6c9e6a5f6bfabb7984
+pass sha256:ee9c10fe3a47a5c0ac772dac02545b85
 -- run/none/html --
-pass sha256:b6a95228874926af03ce12bb3ec071ae
+pass sha256:766bb573d298714397de0d1b031c76fc

@@ -4,7 +4,6 @@ import (
 	"maps"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -412,14 +411,10 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 	for _, fn := range fns {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			c, ok := n.(*ir.Call)
-			if !ok || c.Event == "" || len(c.Args) == 0 || c.AST == nil {
+			if !ok || len(c.Args) == 0 {
 				return nil
 			}
-			outer, ok := c.AST.Func.(*ast.SelectExpr)
-			if !ok {
-				return nil
-			}
-			inner, ok := outer.Operand.(*ast.SelectExpr)
+			tt, ok := EventTriggerTarget(c)
 			if !ok {
 				return nil
 			}
@@ -431,7 +426,27 @@ func TriggerArgs(pkg *ir.Package) map[string][]*ir.Type {
 				}
 				types = append(types, t)
 			}
-			out[inner.Field+"."+c.Event] = types
+			out[tt.ID+"."+c.Event] = types
+			return nil
+		})
+	}
+	return out
+}
+
+// IndexedTriggerIDs is every `#id` a test triggers one copy of --
+// `c.row[1].change(true)`. A target keeps the copies of such an id in render
+// order and gives it an `At` invoker (InvokerAt); one no test indexes costs a
+// program nothing.
+func IndexedTriggerIDs(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	fns, _, _ := CollectTestFuncs(pkg)
+	for _, fn := range fns {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			if c, ok := n.(*ir.Call); ok {
+				if tt, ok := EventTriggerTarget(c); ok && tt.Index != nil {
+					out[tt.ID] = true
+				}
+			}
 			return nil
 		})
 	}

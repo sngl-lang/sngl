@@ -99,8 +99,8 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	hits__inst0    int
+	visible__inst0 bool
 	visible__inst1 bool
-	visible__inst2 bool
 
 	a       *fynelayout.Toplevel
 	__n0    *widget.Label
@@ -114,8 +114,8 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.hits__inst0 = 0
+	m.visible__inst0 = true
 	m.visible__inst1 = true
-	m.visible__inst2 = true
 	return m
 }
 
@@ -123,8 +123,8 @@ func (m *Model) a_closed_handler() {
 }
 
 func (m *Model) a_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.a.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.a.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n2_click_handler() {
@@ -137,8 +137,8 @@ func (m *Model) b_closed_handler() {
 }
 
 func (m *Model) b_visible_handler(__visible bool) {
-	m.visible__inst2 = __visible
-	m.b.SetVisible(m.visible__inst2)
+	m.visible__inst1 = __visible
+	m.b.SetVisible(m.visible__inst1)
 }
 
 // aClosed invokes the OnClosed callback on the #a widget; for tests.
@@ -181,20 +181,20 @@ func (m *Model) SetHits__inst0(v int) {
 	m.hits__inst0 = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) Visible__inst1() bool {
 	return m.visible__inst1
 }
 
 func (m *Model) SetVisible__inst1(v bool) {
 	m.visible__inst1 = v
-}
-
-func (m *Model) Visible__inst2() bool {
-	return m.visible__inst2
-}
-
-func (m *Model) SetVisible__inst2(v bool) {
-	m.visible__inst2 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -205,7 +205,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.a = fynelayout.NewToplevel()
 	m.a.SetTitle("A")
-	m.a.SetVisible(m.visible__inst1)
+	m.a.SetVisible(m.visible__inst0)
 	m.a.OnClosed = m.a_closed_handler
 	m.a.OnVisible = m.a_visible_handler
 	m.__n0 = widget.NewLabel("")
@@ -218,7 +218,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	fynelayout.AppAttach(m.a)
 	m.b = fynelayout.NewToplevel()
 	m.b.SetTitle("B")
-	m.b.SetVisible(m.visible__inst2)
+	m.b.SetVisible(m.visible__inst1)
 	m.b.OnClosed = m.b_closed_handler
 	m.b.OnVisible = m.b_visible_handler
 	m.__n1 = widget.NewLabel("")
@@ -261,8 +261,8 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	hits__inst0    int
+	visible__inst0 bool
 	visible__inst1 bool
-	visible__inst2 bool
 	a              gtk4rt.Handle
 	__n0           gtk4rt.Handle
 	__n2           gtk4rt.Handle
@@ -276,8 +276,8 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.hits__inst0 = 0
+	m.visible__inst0 = true
 	m.visible__inst1 = true
-	m.visible__inst2 = true
 	return m
 }
 
@@ -285,8 +285,8 @@ func (m *Model) a_closed_handler() {
 }
 
 func (m *Model) a_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.a, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.a, m.visible__inst0)
 }
 
 func (m *Model) __n2_clicked_handler() {
@@ -299,8 +299,8 @@ func (m *Model) b_closed_handler() {
 }
 
 func (m *Model) b_visible_handler(__visible bool) {
-	m.visible__inst2 = __visible
-	gtk4rt.ToplevelSetVisible(m.b, m.visible__inst2)
+	m.visible__inst1 = __visible
+	gtk4rt.ToplevelSetVisible(m.b, m.visible__inst1)
 }
 
 func (m *Model) Hits__inst0() int {
@@ -311,20 +311,20 @@ func (m *Model) SetHits__inst0(v int) {
 	m.hits__inst0 = v
 }
 
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
+}
+
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
+}
+
 func (m *Model) Visible__inst1() bool {
 	return m.visible__inst1
 }
 
 func (m *Model) SetVisible__inst1(v bool) {
 	m.visible__inst1 = v
-}
-
-func (m *Model) Visible__inst2() bool {
-	return m.visible__inst2
-}
-
-func (m *Model) SetVisible__inst2(v bool) {
-	m.visible__inst2 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -334,7 +334,7 @@ func (m *Model) buildWidgetTree() {
 	m.__built = true
 	m.a = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.a, "A")
-	gtk4rt.ToplevelSetVisible(m.a, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.a, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.a, m.a_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.a, m.a_visible_handler)
 	m.__n0 = gtk4rt.LabelNew("")
@@ -347,7 +347,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.AppAttach(m.a)
 	m.b = gtk4rt.ToplevelNew()
 	gtk4rt.ToplevelSetTitle(m.b, "B")
-	gtk4rt.ToplevelSetVisible(m.b, m.visible__inst2)
+	gtk4rt.ToplevelSetVisible(m.b, m.visible__inst1)
 	gtk4rt.ToplevelOnClosed(m.b, m.b_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.b, m.b_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
@@ -396,7 +396,7 @@ dialog { margin: auto; padding: 1em; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { hits__inst0: 0, visible__inst1: true, visible__inst2: true };
+  var state = { hits__inst0: 0, visible__inst0: true, visible__inst1: true };
   function String(v) {
     return "" + v;
   }
@@ -411,21 +411,21 @@ dialog { margin: auto; padding: 1em; }
     __n1.textContent = "b " + String(state.hits__inst0);
   });
   $2.addEventListener("click", function() {
-    state.visible__inst2 = false;
-    $0.open = state.visible__inst2;
+    state.visible__inst1 = false;
+    $0.open = state.visible__inst1;
   });
   function __sngl_init() {
     __n0.textContent = "a " + String(state.hits__inst0);
     __n1.textContent = "b " + String(state.hits__inst0);
-    $0.open = state.visible__inst2;
+    $0.open = state.visible__inst1;
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:94fdfc050cad73d6ba4a49ec7157a228
+pass sha256:f1873cbed4778a2b258a7a80c11f89ee
 -- run/go/gtk4 --
-pass sha256:51bf9279838b9ecf66fb6b0489804f05
+pass sha256:7a9418fd6127d0303c896f4e9e46cb62
 -- run/none/html --
-pass sha256:131ff4c8df58fa2810e8e6fe63c0f1f2
+pass sha256:91fafb7112a24a203e818530fe6ef38d

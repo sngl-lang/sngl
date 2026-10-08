@@ -53,7 +53,7 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { count__inst0: 0, visible__inst1: true };
+  var state = { count__inst0: 0, visible__inst0: true };
   async function $set_count__inst0(v) {
     state.count__inst0 = v;
     await fetchHello("updated");
@@ -75,4 +75,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:13cc9a3a31f982b415c2ebdde8b18d1e
+pass sha256:0c089d9de5d04cd5026e555cd9a841c5

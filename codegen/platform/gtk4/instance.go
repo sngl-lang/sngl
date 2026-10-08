@@ -37,6 +37,7 @@ func emitComponentInstance(
 	canvases []codegen.Canvas,
 	invokerSink func(gtkEventInvoker),
 	modelFieldSink func(widgetField),
+	indexed map[string]bool,
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -100,6 +101,7 @@ func emitComponentInstance(
 	}
 	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
 	exposed := map[string]bool{}
+	var listed []string
 	for _, inv := range invokers {
 		var field *widgetField
 		for i := range fields {
@@ -111,13 +113,25 @@ func emitComponentInstance(
 		if field == nil || invokerSink == nil {
 			continue
 		}
-		named := "__named_" + inv.FieldName
+		named := namedWidgetField(inv.FieldName)
+		// An id a test indexes is every instance's copy, listed in the order
+		// the instances render, which is the order a slot built them in: it
+		// keeps an instance at its position, and one it builds goes at the end.
+		// The copy leaves the list when its instance is destroyed.
+		list := indexed[inv.IDLabel]
 		if !exposed[named] {
 			exposed[named] = true
-			fmt.Fprintf(&ctorBody, "\t%s.%s.%s = %s.%s\n", instanceReceiver, golang.InstanceModelField, named, instanceReceiver, inv.FieldName)
-			modelFieldSink(widgetField{name: named, goType: field.goType})
+			model := instanceReceiver + "." + golang.InstanceModelField + "." + named
+			if list {
+				fmt.Fprintf(&ctorBody, "\t%s = append(%s, %s.%s)\n", model, model, instanceReceiver, inv.FieldName)
+				modelFieldSink(widgetField{name: named, goType: "[]" + field.goType})
+				listed = append(listed, inv.FieldName)
+			} else {
+				fmt.Fprintf(&ctorBody, "\t%s = %s.%s\n", model, instanceReceiver, inv.FieldName)
+				modelFieldSink(widgetField{name: named, goType: field.goType})
+			}
 		}
-		inv.FieldName = named
+		inv.FieldName, inv.List = named, list
 		invokerSink(inv)
 	}
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
@@ -227,6 +241,13 @@ func emitComponentInstance(
 	// reused instance's root would be appended after it was gone.
 	root := instanceReceiver + "." + golang.ComponentRootField
 	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	// A destroyed instance's widgets leave the Model's lists of them, so a
+	// list holds the copies on screen.
+	for _, w := range listed {
+		list := instanceReceiver + "." + golang.InstanceModelField + "." + namedWidgetField(w)
+		fmt.Fprintf(b, "\tfor i, w := range %s {\n\t\tif w == %s.%s {\n\t\t\t%s = append(%s[:i], %s[i+1:]...)\n\t\t\tbreak\n\t\t}\n\t}\n",
+			list, instanceReceiver, w, list, list, list)
+	}
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}

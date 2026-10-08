@@ -67,8 +67,8 @@ type Model struct {
 	picked__inst0       string
 	at__inst0           int
 	names__inst0        []string
-	visible__inst1      bool
-	clicks__inst2       map[string]int
+	visible__inst0      bool
+	clicks__inst0       map[string]int
 	__focusID           int
 	__focusLoop0_cursor int
 
@@ -81,8 +81,8 @@ func New() Model {
 	m.picked__inst0 = ""
 	m.at__inst0 = 0
 	m.names__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
-	m.clicks__inst2 = map[string]int{}
+	m.visible__inst0 = true
+	m.clicks__inst0 = map[string]int{}
 	m.__focusID = 0
 	m.__focusLoop0_cursor = 0
 	return m
@@ -171,34 +171,34 @@ func SetNames__inst0Cmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setNames__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
-func (m Model) Clicks__inst2() map[string]int {
-	return m.clicks__inst2
+func (m Model) Clicks__inst0() map[string]int {
+	return m.clicks__inst0
 }
 
-func (m Model) SetClicks__inst2(v map[string]int) Model {
-	m.clicks__inst2 = v
+func (m Model) SetClicks__inst0(v map[string]int) Model {
+	m.clicks__inst0 = v
 	return m
 }
 
-type setClicks__inst2Msg struct{ value map[string]int }
+type setClicks__inst0Msg struct{ value map[string]int }
 
-func SetClicks__inst2Cmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setClicks__inst2Msg{value: v} }
+func SetClicks__inst0Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setClicks__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -216,20 +216,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetAt__inst0(msg.value)
 	case setNames__inst0Msg:
 		m = m.SetNames__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
-	case setClicks__inst2Msg:
-		m = m.SetClicks__inst2(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
+	case setClicks__inst0Msg:
+		m = m.SetClicks__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -244,16 +244,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = n
 					if m.__focusLoop0_cursor == __focusPos0 {
-						var __cell1_clicks__inst2 int = func() int {
-							if __v, __ok := m.clicks__inst2[fmt.Sprint(__copy0)]; __ok {
+						var __cell1_clicks__inst0 int = func() int {
+							if __v, __ok := m.clicks__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
 						}()
-						__cell1_clicks__inst2 += 1
-						m.clicks__inst2[fmt.Sprint(__copy0)] = __cell1_clicks__inst2
+						__cell1_clicks__inst0 += 1
+						m.clicks__inst0[fmt.Sprint(__copy0)] = __cell1_clicks__inst0
 						m.at__inst0 = func() int {
-							if __v, __ok := m.clicks__inst2[fmt.Sprint(__copy0)]; __ok {
+							if __v, __ok := m.clicks__inst0[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return 0
@@ -271,7 +271,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		__focusPos0 := 0
@@ -332,7 +332,7 @@ type Model struct {
 	picked__inst0  string
 	at__inst0      int
 	names__inst0   []string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*CardInstance
@@ -348,7 +348,7 @@ func New() *Model {
 	m.picked__inst0 = ""
 	m.at__inst0 = 0
 	m.names__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*CardInstance{}
@@ -405,8 +405,8 @@ func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n1.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n1.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) Picked__inst0() string {
@@ -433,12 +433,12 @@ func (m *Model) SetNames__inst0(v []string) {
 	m.names__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -448,7 +448,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	}
 	m.__built = true
 	m.__n1 = fynelayout.NewToplevel()
-	m.__n1.SetVisible(m.visible__inst1)
+	m.__n1.SetVisible(m.visible__inst0)
 	m.__n1.OnClosed = m.__n1_closed_handler
 	m.__n1.OnVisible = m.__n1_visible_handler
 	m.__renderSlot0(m.__n1.Container)
@@ -536,7 +536,7 @@ type Model struct {
 	picked__inst0  string
 	at__inst0      int
 	names__inst0   []string
-	visible__inst1 bool
+	visible__inst0 bool
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*CardInstance
@@ -552,7 +552,7 @@ func New() *Model {
 	m.picked__inst0 = ""
 	m.at__inst0 = 0
 	m.names__inst0 = []string{"a", "b"}
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*CardInstance{}
@@ -605,8 +605,8 @@ func (m *Model) __n1_closed_handler() {
 }
 
 func (m *Model) __n1_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+	m.visible__inst0 = __visible
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 }
 
 // CardInstance is one live instance of the card component.
@@ -684,12 +684,12 @@ func (m *Model) SetNames__inst0(v []string) {
 	m.names__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -698,7 +698,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__built = true
 	m.__n1 = gtk4rt.ToplevelNew()
-	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst1)
+	gtk4rt.ToplevelSetVisible(m.__n1, m.visible__inst0)
 	gtk4rt.ToplevelOnClosed(m.__n1, m.__n1_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n1, m.__n1_visible_handler)
 	m.__renderSlot0(m.__n1)
@@ -734,7 +734,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picked__inst0: "", at__inst0: 0, names__inst0: ["a", "b"], visible__inst1: true };
+  var state = { picked__inst0: "", at__inst0: 0, names__inst0: ["a", "b"], visible__inst0: true };
   function __cf_card(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -844,10 +844,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bc71b1403c28f56965b7f124f1c2f021
+pass sha256:9a9a55ef25717bcfe3b769e611e716a1
 -- run/go/fyne --
-pass sha256:604db28eb601123a72b2516c6abcbd1d
+pass sha256:0b68509a1bdc71b59f7b4aed611d4444
 -- run/go/gtk4 --
-pass sha256:2b6b62d772169f3b9d52ed067a0cfcb6
+pass sha256:8fceb97d2831dd53fa6aa123768b225c
 -- run/none/html --
-pass sha256:3fa0b30c5e947c639fade214d1eec7df
+pass sha256:9f36a98190fa9983ed329003d5c25513

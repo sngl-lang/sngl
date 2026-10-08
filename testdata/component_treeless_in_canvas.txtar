@@ -387,7 +387,7 @@ type Model struct {
 	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -412,7 +412,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -568,8 +568,8 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
-	m.__n0.SetVisible(m.visible__inst1)
+	m.visible__inst0 = __visible
+	m.__n0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
@@ -619,12 +619,12 @@ func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 // BuildUI creates the widget tree and returns the first window's content.
@@ -635,7 +635,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__built = true
 	m.__n0 = fynelayout.NewToplevel()
 	m.__n0.SetTitle("drawing")
-	m.__n0.SetVisible(m.visible__inst1)
+	m.__n0.SetVisible(m.visible__inst0)
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = container.NewVBox()
@@ -947,7 +947,7 @@ type Color struct {
 type Model struct {
 	frame               int
 	handle__inst0       *gtk4rt.Schedule
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -968,7 +968,7 @@ func New() *Model {
 	m := &Model{}
 	m.frame = 0
 	m.handle__inst0 = nil
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -1126,7 +1126,7 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
+	m.visible__inst0 = __visible
 }
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
@@ -1153,12 +1153,12 @@ func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -1350,7 +1350,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { frame: 0, handle__inst0: 0, visible__inst1: true };
+  var state = { frame: 0, handle__inst0: 0, visible__inst0: true };
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -1511,10 +1511,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6ffa37db9881a3800575d4f05276f563
 -- run/go/fyne --
-pass sha256:405ab19eeb8f4f9499f03f18b947ff34
+pass sha256:310c72e4a0eddefd971efaac636fde02
 -- run/go/gtk4 --
-pass sha256:9171cb8edb9f2ea0673eae41770c3f5d
+pass sha256:7ea162a2d6e746c755632c87e935411c
 -- run/kotlin/android --
 pass sha256:0ba987f35115edd2b61ae742bf4280af
 -- run/none/html --
-pass sha256:8ba795a3ecb0ad3d3eb248db4b1aea2a
+pass sha256:0ca2cbd4a03ffe7a8af009f02bdad3a0

@@ -23,9 +23,9 @@ grep 'notes = v$' out/MainScreen.kt
 
 # toggle puts the Switch before its label. A call site that binds nothing
 # leaves the toggle a cell of its own, which Compose's report writes.
-grep 'var checked__inst1 by remember \{ mutableStateOf\(flag\) \}' out/MainScreen.kt
-grep 'Switch\(checked = checked__inst1, onCheckedChange = \{ on ->' out/MainScreen.kt
-grep 'checked__inst1 = on$' out/MainScreen.kt
+grep 'var checked__inst0 by remember \{ mutableStateOf\(flag\) \}' out/MainScreen.kt
+grep 'Switch\(checked = checked__inst0, onCheckedChange = \{ on ->' out/MainScreen.kt
+grep 'checked__inst0 = on$' out/MainScreen.kt
 grep 'Text\(text = "Wifi", modifier = Modifier\)' out/MainScreen.kt
 
 # A two-way `:checked` binding reaches the same callback: the write-back is the

@@ -633,10 +633,10 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) box_toggle_handler(on bool) {
-	m.on = on
+func (m *Model) box_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(on)) + " ") + fmt.Sprint(m.on))
+	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
 	m.__n0.SetText(m.seen)
 }
 
@@ -1469,9 +1469,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Row(modifier = Modifier.testTag("box"), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = state.on, onCheckedChange = { on ->
-                state.on = on
-                state.seen = ((("box " + on.toString()) + " ") + on.toString())
+            Checkbox(checked = state.on, onCheckedChange = { on__p0 ->
+                state.on = on__p0
+                state.seen = ((("box " + on__p0.toString()) + " ") + state.on.toString())
             })
             Text(text = "a", modifier = Modifier)
         }
@@ -1638,7 +1638,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("field").performTextReplacement("ada"); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("field")).performTextReplacement("ada"); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"input ada ada\")", (c.seen == "input ada ada"))
         org.junit.Assert.assertTrue("(c.name == \"ada\")", (c.name == "ada"))
     }
@@ -1648,7 +1648,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         var d = "2024-03-05"
-        composeTestRule.onNodeWithTag("day").performTextReplacement(d); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("day")).performTextReplacement(d); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.picked == d)", (c.picked == d))
         org.junit.Assert.assertTrue("(c.seen == \"day\")", (c.seen == "day"))
     }
@@ -1657,8 +1657,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("press").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("press").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("press")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("press")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.clicks == 2)", (c.clicks == 2))
     }
 
@@ -1829,10 +1829,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:3ff517e0ce17bbbded35a8d7b28be5ad
 -- run/go/fyne --
-pass sha256:eb6a62776c5c86e599a872112f23bab0
+pass sha256:31c6429b45c92c7adad3d96e703355d5
 -- run/go/gtk4 --
 pass sha256:89b4996e35f39fa6d18e9373e6394063
 -- run/kotlin/android --
-pass sha256:c472495d426aa529a5a0251a90704c0f
+pass sha256:ff483a6edecd76ff68abf717866ce07e
 -- run/none/html --
 pass sha256:3ca95aef0d817cd899438d7cf379b82d

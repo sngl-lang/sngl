@@ -633,7 +633,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("once").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("once")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -642,7 +642,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("path").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("path")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 7)", (c.got == 7))
     }
 
@@ -650,7 +650,7 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("nested").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("nested")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.got == 101)", (c.got == 101))
         org.junit.Assert.assertTrue("(c.n == 1)", (c.n == 1))
     }
@@ -766,6 +766,6 @@ pass sha256:014c657c1bf66982ffaf57c452cacc6b
 -- run/go/fyne --
 pass sha256:3fde783984f22b8cde5f10b6d288701e
 -- run/kotlin/android --
-pass sha256:15cb238b369f2716fcb0ad15aa44e92c
+pass sha256:d13f18ec54b11c3676c109acc36126ad
 -- run/none/html --
 pass sha256:8ed3bf8f7c777b0a02be7a059ac563f1

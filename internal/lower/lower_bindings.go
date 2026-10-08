@@ -118,7 +118,8 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		paramName := "__" + b.PropName
 		param := &ir.Param{Name: paramName, Type: prop.Type}
 		inst.Handlers = append(inst.Handlers, ir.EventHandler{
-			Name: b.PropName,
+			Name:      b.PropName,
+			WriteBack: true,
 			Func: &ir.Func{
 				Params: []*ir.Param{param},
 				Block: []ir.Stmt{&ir.Assign{

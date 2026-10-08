@@ -70,7 +70,7 @@ type ErrorEvent struct {
 type Model struct {
 	seen__inst0      string
 	__failed0__inst0 bool
-	visible__inst1   bool
+	visible__inst0   bool
 	__focusID        int
 
 	width, height int
@@ -81,7 +81,7 @@ func New() Model {
 	m := Model{}
 	m.seen__inst0 = ""
 	m.__failed0__inst0 = false
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -119,19 +119,19 @@ func SetSeen__inst0Cmd(v string) tea.Cmd {
 	return func() tea.Msg { return setSeen__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -145,18 +145,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setSeen__inst0Msg:
 		m = m.SetSeen__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -197,7 +197,7 @@ func (m *Model) goClick() {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		if m.__failed0__inst0 {
 			content = lipgloss.NewStyle().Render(fmt.Sprint("it broke"))
 		} else {
@@ -248,7 +248,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seen__inst0: "", visible__inst1: true };
+  var state = { seen__inst0: "", visible__inst0: true };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -375,6 +375,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3b1c9d446f45e45a46cb1df812ab16c5
+pass sha256:51405a77f691368bd69a5823bb26de62
 -- run/none/html --
-pass sha256:ab97d69c2b6d81396cd159c4f2597660
+pass sha256:e0bdb869a3346ba74a1a715c9f90f4c4

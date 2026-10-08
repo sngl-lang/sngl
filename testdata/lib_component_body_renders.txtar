@@ -75,7 +75,7 @@ type Measurement struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	visible__inst5 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -84,7 +84,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.visible__inst5 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -123,19 +123,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Visible__inst5() bool {
-	return m.visible__inst5
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst5(v bool) Model {
-	m.visible__inst5 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst5Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst5Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst5Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -147,18 +147,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setVisible__inst5Msg:
-		m = m.SetVisible__inst5(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst5 {
-				m.visible__inst5 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst5) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -173,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst5 {
+	if m.visible__inst0 {
 		var contentChildren []string
 		var content_0 string
 		var content_0Children []string
@@ -275,6 +275,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:800c76928093d4f1ca219ef3a804f536
+pass sha256:6cdc9cfa197d0be290bd1e69a6a7c302
 -- run/none/html --
 pass sha256:0e204e01575972fb090432d9a78435cb

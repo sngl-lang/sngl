@@ -80,7 +80,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks__inst0: 0, periods__inst0: [20, 500], visible__inst1: true };
+  var state = { ticks__inst0: 0, periods__inst0: [20, 500], visible__inst0: true };
   function __cf_timer(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -257,4 +257,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:79da3acddea1bc220707fd74be418d22
+pass sha256:b30029e8a2984b844839f915d39b28db

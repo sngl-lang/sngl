@@ -73,13 +73,13 @@ enum class SnglNumberStyle(private val sngl: String) {
 fun MainScreen() {
     var n__inst0 by remember { mutableStateOf(1234) }
     var price__inst0 by remember { mutableStateOf(I18n.numberInt("es-MX", n__inst0, SnglNumberStyle.DECIMAL.toString())) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -572,4 +572,4 @@ private fun loadManifest(ctx: Context): Manifest {
     }
 }
 -- run/kotlin/android --
-pass sha256:a9e429727218231ba3efe9d501d89367
+pass sha256:2367daf42003ca5d1841f7b53f7442bb

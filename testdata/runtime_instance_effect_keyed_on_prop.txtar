@@ -984,7 +984,7 @@ class MainScreenTest {
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.log == \"ax \")", (c.log == "ax "))
-        composeTestRule.onNodeWithTag("bump").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("bump")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.log == \"ax ay \")", (c.log == "ax ay "))
     }
 
@@ -1190,6 +1190,6 @@ pass sha256:bc1686f2762d3a3049b183f77741e175
 -- run/go/gtk4 --
 pass sha256:17815aa4f8953bf84c19e8122ade6179
 -- run/kotlin/android --
-pass sha256:e46731cf494878bc8149c4ed338f3858
+pass sha256:9815037bc3346a333dff0bde383edeef
 -- run/none/html --
 pass sha256:f2c0f1c484d17c6294e6e9ece5f3c129

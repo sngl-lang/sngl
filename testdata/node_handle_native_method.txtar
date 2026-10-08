@@ -220,7 +220,7 @@ type ErrorEvent struct {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	handle__inst0       *gtk4rt.Schedule
-	visible__inst1      bool
+	visible__inst0      bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -238,7 +238,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.handle__inst0 = nil
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -326,7 +326,7 @@ func (m *Model) __n0_closed_handler() {
 }
 
 func (m *Model) __n0_visible_handler(__visible bool) {
-	m.visible__inst1 = __visible
+	m.visible__inst0 = __visible
 }
 
 func (m *Model) Handle__inst0() *gtk4rt.Schedule {
@@ -337,12 +337,12 @@ func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 
-func (m *Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m *Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m *Model) SetVisible__inst1(v bool) {
-	m.visible__inst1 = v
+func (m *Model) SetVisible__inst0(v bool) {
+	m.visible__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -371,4 +371,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:da2f69321ea4d1b57883b3c0c5a9fa70
+pass sha256:60a93f381d21ffd8ea6513e8c919c141

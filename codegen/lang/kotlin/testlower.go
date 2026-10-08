@@ -175,20 +175,28 @@ func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]b
 
 func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	c := call.Call
-	_, id, ok := codegen.EventTriggerTarget(c)
+	tt, ok := codegen.EventTriggerTarget(c)
 	if !ok {
 		return "", false
 	}
-	event := c.Event
+	id, event := tt.ID, c.Event
+	// One copy of a node a loop rendered is that one of every node the tag
+	// finds, in composition order, which is render order.
+	nth := func(matcher string) string {
+		if tt.Index == nil {
+			return "composeTestRule.onNode(" + matcher + ")"
+		}
+		return fmt.Sprintf("composeTestRule.onAllNodes(%s)[%s]", matcher, lowerTestExpr(tt.Index, TestSurface{}, nil))
+	}
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
 		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
 		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
-		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
+		return fmt.Sprintf("%s.performClick(); composeTestRule.waitForIdle()", nth(fmt.Sprintf("androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))", tag, tag))), true
 	}
-	finder := fmt.Sprintf("composeTestRule.onNodeWithTag(%q)", id)
+	finder := nth(fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id))
 	action := composeAction(event, c.Args)
 	if action == "" {
 		return fmt.Sprintf("// TODO: no Compose-test action mapped for @%s on #%s", event, id), true

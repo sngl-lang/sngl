@@ -54,7 +54,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { name__inst0: "World", count__inst0: 0, visible__inst1: true };
+  var state = { name__inst0: "World", count__inst0: 0, visible__inst0: true };
   function update__inst0(newName, newCount) {
     state.name__inst0 = newName;
     __n1.textContent = state.name__inst0;
@@ -79,4 +79,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4217a1d3e2dac5e1c7c34a3cb8e9c782
+pass sha256:b10bb3045c65a85a6902bb47572225a7

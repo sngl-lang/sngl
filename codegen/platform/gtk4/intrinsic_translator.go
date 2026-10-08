@@ -158,6 +158,33 @@ type gtk4Translator struct {
 	// no test surface -- a slot func, a canvas draw -- which is also why this
 	// is a sink rather than a field read back off the translator.
 	invokerSink func(gtkEventInvoker)
+	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
+	// widgets this Model scope lists in render order as it builds them
+	// (namedWidgetField), and slotNamed those of them this slot render func
+	// creates, which its reset empties.
+	indexed   map[string]bool
+	slotNamed []string
+}
+
+// namedWidgetField is the Model field listing every copy of an indexed id's
+// widget, in render order.
+func namedWidgetField(id string) string { return "__named_" + id }
+
+// withIndexed has this Model scope list the widgets of the ids a test
+// indexes; stmts is the scope's body, whose creates of them a slot's reset
+// empties.
+func (t *gtk4Translator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *gtk4Translator {
+	t.indexed = indexed
+	t.slotNamed = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+		}
+		return nil
+	})
+	return t
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {
@@ -632,11 +659,21 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 		}}
 	}
 	t.fieldSink(id, cType)
-	return []ir.Stmt{&ir.Assign{
+	create := []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  initVal,
 	}}
+	if t.indexed[id] {
+		list := namedWidgetField(id)
+		t.fieldSink(list, "[]"+cType)
+		create = append(create, &ir.Assign{
+			Target: t.fieldRef(list),
+			Op:     ast.AssignSet,
+			Value:  &ir.Call{Type: ir.TypDyn, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: t.fieldRef(list)}, {Value: t.fieldRef(id)}}},
+		})
+	}
+	return create
 }
 
 // childAdder is how a parent takes a child, read from the introspection data
@@ -1196,7 +1233,13 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		t.shared.needSlotAnchor()
 		anchor = nativeCall("sngl_slot_anchor", cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
 	}
-	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	stmts := []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
+	// The render builds every copy again, in order, so the list of them
+	// starts over with it.
+	for _, id := range t.slotNamed {
+		stmts = append(stmts, &ir.Assign{Target: t.fieldRef(namedWidgetField(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	return stmts
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
@@ -1333,14 +1376,18 @@ func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
-	t.invokerSink(gtkEventInvoker{
+	inv := gtkEventInvoker{
 		IDLabel:    id,
 		SnglEvent:  event,
 		FieldName:  id,
 		GTKSignal:  signal,
 		WidgetType: cType,
 		State:      invokerStateSetter(cType, t.wrapped) != "",
-	})
+	}
+	if t.indexed[id] {
+		inv.FieldName, inv.List = namedWidgetField(id), true
+	}
+	t.invokerSink(inv)
 }
 
 // invokerStateSetter is the call a test invoker writes a test's state into

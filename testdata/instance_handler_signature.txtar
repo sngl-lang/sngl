@@ -154,7 +154,7 @@ type RowInstance struct {
 	typed          string
 	checked__inst0 bool
 	checked__inst1 bool
-	value__inst2   string
+	value__inst0   string
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
@@ -172,15 +172,15 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.typed = ""
 	c.checked__inst0 = c.on
 	c.checked__inst1 = true
-	c.value__inst2 = c.typed
+	c.value__inst0 = c.typed
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	__n6 := container.NewHBox()
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked__inst0)
-	c.__n0.OnChanged = func(on bool) {
-		c.checked__inst0 = on
+	c.__n0.OnChanged = func(on__p0 bool) {
+		c.checked__inst0 = on__p0
 		c.__n0.SetChecked(c.checked__inst0)
 		c.on = !c.on
 		c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
@@ -195,17 +195,17 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	}
 	__n6.Add(c.__n1)
 	c.__n2 = widget.NewEntry()
-	c.__n2.SetText(c.value__inst2)
+	c.__n2.SetText(c.value__inst0)
 	c.__n2.SetPlaceHolder("")
 	c.__n2.OnChanged = func(v string) {
-		c.value__inst2 = v
-		c.__n2.SetText(c.value__inst2)
+		c.value__inst0 = v
+		c.__n2.SetText(c.value__inst0)
 		c.typed = v
 		c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	}
 	c.__n2.OnSubmitted = func(v string) {
-		c.value__inst2 = v
-		c.__n2.SetText(c.value__inst2)
+		c.value__inst0 = v
+		c.__n2.SetText(c.value__inst0)
 	}
 	__n6.Add(c.__n2)
 	c.__n3 = widget.NewLabel("")
@@ -340,7 +340,7 @@ type RowInstance struct {
 	typed          string
 	checked__inst0 bool
 	checked__inst1 bool
-	value__inst2   string
+	value__inst0   string
 	__root         gtk4rt.Handle
 	__slot0        []gtk4rt.Handle
 	__slot0_at     gtk4rt.Handle
@@ -358,7 +358,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.typed = ""
 	c.checked__inst0 = c.on
 	c.checked__inst1 = true
-	c.value__inst2 = c.typed
+	c.value__inst0 = c.typed
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
@@ -383,16 +383,16 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	})
 	gtk4rt.BoxAppend(__n6, c.__n1)
 	c.__n2 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(c.__n2, c.value__inst2)
+	gtk4rt.EditableSetText(c.__n2, c.value__inst0)
 	gtk4rt.Connect(c.__n2, "changed", func() {
-		c.value__inst2 = gtk4rt.EditableGetText(c.__n2)
-		gtk4rt.EditableSetText(c.__n2, c.value__inst2)
-		c.typed = c.value__inst2
+		c.value__inst0 = gtk4rt.EditableGetText(c.__n2)
+		gtk4rt.EditableSetText(c.__n2, c.value__inst0)
+		c.typed = c.value__inst0
 		gtk4rt.LabelSetText(c.__n3, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	})
 	gtk4rt.Connect(c.__n2, "activate", func() {
-		c.value__inst2 = gtk4rt.EditableGetText(c.__n2)
-		gtk4rt.EditableSetText(c.__n2, c.value__inst2)
+		c.value__inst0 = gtk4rt.EditableGetText(c.__n2)
+		gtk4rt.EditableSetText(c.__n2, c.value__inst0)
 	})
 	gtk4rt.BoxAppend(__n6, c.__n2)
 	c.__n3 = gtk4rt.LabelNew("")
@@ -447,6 +447,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:8248c97f41b9b3fb3fabdf57fb7c244e
+pass sha256:805edce95c4e605d0d4b51db23068bca
 -- run/go/gtk4 --
-pass sha256:b2b72ef6ef68ad1e66712a707ef4839c
+pass sha256:25c68daf54a178dccff301a33cdd7e8a

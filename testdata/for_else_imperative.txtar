@@ -77,7 +77,7 @@ type Model struct {
 	xs__inst0      []int
 	note__inst0    string
 	total__inst0   int
-	visible__inst1 bool
+	visible__inst0 bool
 	__focusID      int
 
 	width, height int
@@ -89,7 +89,7 @@ func New() Model {
 	m.xs__inst0 = []int{}
 	m.note__inst0 = ""
 	m.total__inst0 = 0
-	m.visible__inst1 = true
+	m.visible__inst0 = true
 	m.__focusID = 0
 	return m
 }
@@ -157,19 +157,19 @@ func SetTotal__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
-func (m Model) Visible__inst1() bool {
-	return m.visible__inst1
+func (m Model) Visible__inst0() bool {
+	return m.visible__inst0
 }
 
-func (m Model) SetVisible__inst1(v bool) Model {
-	m.visible__inst1 = v
+func (m Model) SetVisible__inst0(v bool) Model {
+	m.visible__inst0 = v
 	return m
 }
 
-type setVisible__inst1Msg struct{ value bool }
+type setVisible__inst0Msg struct{ value bool }
 
-func SetVisible__inst1Cmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setVisible__inst1Msg{value: v} }
+func SetVisible__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setVisible__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -187,18 +187,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetNote__inst0(msg.value)
 	case setTotal__inst0Msg:
 		m = m.SetTotal__inst0(msg.value)
-	case setVisible__inst1Msg:
-		m = m.SetVisible__inst1(msg.value)
+	case setVisible__inst0Msg:
+		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyPressMsg:
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
-			if m.visible__inst1 {
-				m.visible__inst1 = false
+			if m.visible__inst0 {
+				m.visible__inst0 = false
 			}
-			if !(m.visible__inst1) {
+			if !(m.visible__inst0) {
 				return m, tea.Quit
 			}
 			return m, nil
@@ -233,7 +233,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.visible__inst1 {
+	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
 		contentPart_0Focused := (m.__focusID == 0)
@@ -303,13 +303,13 @@ fun MainScreen() {
     val xs__inst0 = remember { mutableStateListOf<Int>() }
     var note__inst0 by remember { mutableStateOf("") }
     var total__inst0 by remember { mutableStateOf(0) }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -363,7 +363,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs__inst0: [], note__inst0: "", total__inst0: 0, visible__inst1: true };
+  var state = { xs__inst0: [], note__inst0: "", total__inst0: 0, visible__inst0: true };
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
@@ -407,8 +407,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:112ed96f39046c15b37ea2b6cd8f0fd9
+pass sha256:398bc2774e6e9053eecedaaea86c6d6a
 -- run/kotlin/android --
-pass sha256:4c1eef2a8026552b51ea2583ba8924c5
+pass sha256:c2956d4d59703cc4dd2c5856255f6b4b
 -- run/none/html --
-pass sha256:683664e65e7d235c65f1a881f5ee95c9
+pass sha256:3d82bc4535cbfd7040afe692bb7339c1

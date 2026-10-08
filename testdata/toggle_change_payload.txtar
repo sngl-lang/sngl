@@ -365,10 +365,10 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) box_toggle_handler(on bool) {
-	m.on = on
+func (m *Model) box_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.box.SetChecked(m.on)
-	m.seen = ((("box " + fmt.Sprint(on)) + " ") + fmt.Sprint(m.on))
+	m.seen = ((("box " + fmt.Sprint(on__p0)) + " ") + fmt.Sprint(m.on))
 	m.__n0.SetText(m.seen)
 }
 
@@ -867,9 +867,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Row(modifier = Modifier.testTag("box"), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = state.on, onCheckedChange = { on ->
-                state.on = on
-                state.seen = ((("box " + on.toString()) + " ") + on.toString())
+            Checkbox(checked = state.on, onCheckedChange = { on__p0 ->
+                state.on = on__p0
+                state.seen = ((("box " + on__p0.toString()) + " ") + state.on.toString())
             })
             Text(text = "a", modifier = Modifier)
         }
@@ -1038,12 +1038,12 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:2d86eaa1517683f26175d11420b92024
 -- run/go/fyne --
-pass sha256:25a285a61aedecb225ad65c450e1f5f2
+pass sha256:40ebe27760c9a1ecb25870601de61d4f
 -- run/go/gtk4 --
 pass sha256:2c7a1890ee177f43c6a877ff9c369780
 -- run/go/html --
 pass sha256:d6275c7b73dad839f60db6ec1d16538c
 -- run/kotlin/android --
-pass sha256:1db00f164face6fbdd67e8ad10566ae1
+pass sha256:c04564935d7d56bb65e0d0f586b93b4a
 -- run/none/html --
 pass sha256:ae03431c0423727cf8d241be66ac3b69

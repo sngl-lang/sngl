@@ -355,13 +355,14 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	bodyStmts := mainBodyStmts(c.ctx)
 	var topLevelRefs, appChildren []string
 	var topLevelCType map[string]string
+	// The ids a test drives one copy of, whose copies the Model lists.
+	indexed := codegen.IndexedTriggerIDs(c.ctx.Pkg)
+	recordInvoker := func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) }
 	if len(bodyStmts) > 0 {
 		tr := newGtk4Translator(gc, c.widgetFieldSink(&widgetFields)).
 			withPkg(c.ctx.Pkg).withRegistry(c.registry).withShared(c.shared).
 			withLocalRefs(mainComponentLocalRefs(c.ctx)).withWrapped(c.wrapped).
-			withInvokerSink(func(inv gtkEventInvoker) {
-				vc.eventInvokers = append(vc.eventInvokers, inv)
-			})
+			withInvokerSink(recordInvoker).withIndexed(indexed, nil)
 		tr.building = true
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
@@ -404,7 +405,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped, indexed, recordInvoker)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
@@ -422,8 +423,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All(),
-				func(inv gtkEventInvoker) { vc.eventInvokers = append(vc.eventInvokers, inv) },
-				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) })
+				recordInvoker,
+				func(f widgetField) { widgetFields = appendWidgetFieldOnce(widgetFields, f) }, indexed)
 			continue
 		}
 		if createTargets[cc.Component] {
@@ -660,10 +661,15 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // __renderSlot<N> takes the host container; every other synthesized func -- an
 // effect's settle halves, the focus-order navigation -- takes the parameters it
 // declares, which is none.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
+//
+// A widget a render func builds is one a test drives as much as one BuildUI
+// builds, so the func records its invokers too; one of an id a test indexes
+// is listed as it is built (withIndexed).
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool, indexed map[string]bool, invokerSink func(gtkEventInvoker)) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
-	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped).
+		withInvokerSink(invokerSink).withIndexed(indexed, fn.Block)
 	tr.collectTagComponents(fn.Block)
 	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
 	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
@@ -1425,73 +1431,99 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		seen[methodName] = true
 		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
 			methodName, inv.GTKSignal, inv.IDLabel)
-		// An entry's events carry its text, which the handler reads back off
-		// the widget; the invoker takes the text and puts it there first.
-		var valueParam, preFire string
-		if inv.WidgetType == "GtkEntry" {
-			valueParam = "v string"
-			if wrapped {
-				preFire = fmt.Sprintf("gtk4rt.EditableSetTextQuiet(m.%s, v)", inv.FieldName)
-			} else {
-				preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.%s)), __v)", inv.FieldName)
-			}
+		if !inv.List {
+			emitEventInvoker(b, inv, methodName, "", "m."+inv.FieldName, wrapped)
+			continue
 		}
-		// A calendar's carries the day picked, which the invoker selects
-		// before firing day-selected, as a click on the day does.
-		if inv.WidgetType == "GtkCalendar" {
-			valueParam = "v *time.Time"
-			if wrapped {
-				preFire = fmt.Sprintf("gtk4rt.CalendarSelectDate(m.%s, v)", inv.FieldName)
-			} else {
-				preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(m.%s)), v)", calendarSelectHelper, inv.FieldName)
-			}
-		}
-		switch {
-		case inv.State:
-			fmt.Fprintf(b, "func (m *Model) %s(v bool) {\n", methodName)
-			emitInvokerStateWrite(b, inv, wrapped)
-		case valueParam != "":
-			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, valueParam)
-		default:
-			fmt.Fprintf(b, "func (m *Model) %s() {\n", methodName)
-		}
-		if preFire != "" {
-			fmt.Fprintf(b, "\t%s\n", preFire)
-		}
-		switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
-		case inv.GTKSignal == "pressed":
-			fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(m.%s))\n", inv.FieldName)
-		case notify:
-			// g_signal_emit_by_name cannot be handed the GParamSpec a
-			// notification carries; g_object_notify builds it.
-			fmt.Fprintf(b, "\tprop := C.CString(%q)\n\tdefer C.free(unsafe.Pointer(prop))\n", prop)
-			fmt.Fprintf(b, "\tC.g_object_notify((*C.GObject)(unsafe.Pointer(m.%s)), prop)\n", inv.FieldName)
-		case wrapped:
-			// gtk4rt.Emit is the same g_signal_emit_by_name, behind the
-			// runtime this mode already links against.
-			fmt.Fprintf(b, "\tgtk4rt.Emit(m.%s, %q)\n", inv.FieldName, inv.GTKSignal)
-		default:
-			fmt.Fprintf(b, "\tsig := C.CString(%q)\n", inv.GTKSignal)
-			b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")
-			fmt.Fprintf(b, "\tC.sngl_emit(C.gpointer(unsafe.Pointer(m.%s)), sig)\n", inv.FieldName)
-		}
-		b.WriteString("}\n\n")
+		// A widget whose copies are listed (the copies of an id a test
+		// indexes): the plain invoker fires the last built, and the `At` one
+		// the copy at an index, in render order.
+		list := "m." + inv.FieldName
+		emitEventInvoker(b, inv, methodName, "", fmt.Sprintf("%s[len(%s)-1]", list, list), wrapped)
+		fmt.Fprintf(b, "// %s fires it on the copy of #%s at index i, in render order; for tests.\n",
+			codegen.InvokerAt(methodName), inv.IDLabel)
+		emitEventInvoker(b, inv, codegen.InvokerAt(methodName), "i int", list+"[i]", wrapped)
 	}
+}
+
+// emitEventInvoker writes one invoker, firing the signal on the widget w
+// spells. lead is a parameter ahead of the event's own, or "".
+func emitEventInvoker(b *strings.Builder, inv gtkEventInvoker, methodName, lead, w string, wrapped bool) {
+	// An entry's events carry its text, which the handler reads back off
+	// the widget; the invoker takes the text and puts it there first.
+	var valueParam, preFire string
+	if inv.WidgetType == "GtkEntry" {
+		valueParam = "v string"
+		if wrapped {
+			preFire = fmt.Sprintf("gtk4rt.EditableSetTextQuiet(%s, v)", w)
+		} else {
+			preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(%s)), __v)", w)
+		}
+	}
+	// A calendar's carries the day picked, which the invoker selects
+	// before firing day-selected, as a click on the day does.
+	if inv.WidgetType == "GtkCalendar" {
+		valueParam = "v *time.Time"
+		if wrapped {
+			preFire = fmt.Sprintf("gtk4rt.CalendarSelectDate(%s, v)", w)
+		} else {
+			preFire = fmt.Sprintf("%s((*C.GtkCalendar)(unsafe.Pointer(%s)), v)", calendarSelectHelper, w)
+		}
+	}
+	params := func(p string) string {
+		if lead == "" {
+			return p
+		}
+		if p == "" {
+			return lead
+		}
+		return lead + ", " + p
+	}
+	switch {
+	case inv.State:
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params("v bool"))
+		emitInvokerStateWrite(b, inv, w, wrapped)
+	case valueParam != "":
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params(valueParam))
+	default:
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, params(""))
+	}
+	if preFire != "" {
+		fmt.Fprintf(b, "\t%s\n", preFire)
+	}
+	switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
+	case inv.GTKSignal == "pressed":
+		fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(%s))\n", w)
+	case notify:
+		// g_signal_emit_by_name cannot be handed the GParamSpec a
+		// notification carries; g_object_notify builds it.
+		fmt.Fprintf(b, "\tprop := C.CString(%q)\n\tdefer C.free(unsafe.Pointer(prop))\n", prop)
+		fmt.Fprintf(b, "\tC.g_object_notify((*C.GObject)(unsafe.Pointer(%s)), prop)\n", w)
+	case wrapped:
+		// gtk4rt.Emit is the same g_signal_emit_by_name, behind the
+		// runtime this mode already links against.
+		fmt.Fprintf(b, "\tgtk4rt.Emit(%s, %q)\n", w, inv.GTKSignal)
+	default:
+		fmt.Fprintf(b, "\tsig := C.CString(%q)\n", inv.GTKSignal)
+		b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")
+		fmt.Fprintf(b, "\tC.sngl_emit(C.gpointer(unsafe.Pointer(%s)), sig)\n", w)
+	}
+	b.WriteString("}\n\n")
 }
 
 // emitInvokerStateWrite writes the state a test passed into the widget, which
 // is what a user's flip does and what fires the signal. State the widget
 // already holds fires nothing, so the invoker then falls through to firing it
 // itself.
-func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool) {
+func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, w string, wrapped bool) {
 	setter := invokerStateSetter(inv.WidgetType, wrapped)
 	if wrapped {
-		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(m.%s) != v {\n", inv.FieldName)
-		fmt.Fprintf(b, "\t\t%s(m.%s, v)\n\t\treturn\n\t}\n", setter, inv.FieldName)
+		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(%s) != v {\n", w)
+		fmt.Fprintf(b, "\t\t%s(%s, v)\n\t\treturn\n\t}\n", setter, w)
 		return
 	}
 	getter := strings.Replace(setter, "_set_", "_get_", 1)
-	ptr := fmt.Sprintf("(*C.%s)(unsafe.Pointer(m.%s))", inv.WidgetType, inv.FieldName)
+	ptr := fmt.Sprintf("(*C.%s)(unsafe.Pointer(%s))", inv.WidgetType, w)
 	fmt.Fprintf(b, "\tif (%s(%s) != 0) != v {\n", getter, ptr)
 	b.WriteString("\t\ton := C.gboolean(0)\n\t\tif v {\n\t\t\ton = 1\n\t\t}\n")
 	fmt.Fprintf(b, "\t\t%s(%s, on)\n\t\treturn\n\t}\n", setter, ptr)

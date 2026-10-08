@@ -72,6 +72,14 @@ type fyneTranslator struct {
 	// test-invoker methods emitted after the walk. nil in scopes with no test
 	// surface -- a slot func, a canvas draw.
 	invokerSink func(fyneEventInvoker)
+	// indexed are the ids a test triggers one copy of (`c.row[1]`), whose
+	// widgets this Model scope lists in render order as it builds them
+	// (namedWidgetField): appended at each create, and emptied where a slot
+	// render starts over. nil in a scope that keeps no such list.
+	indexed map[string]bool
+	// slotNamed are the indexed ids this slot render func creates, which its
+	// reset empties.
+	slotNamed []string
 	// failSink is where a prop this platform cannot emit is reported. See
 	// withFailSink.
 	failSink func(error)
@@ -136,10 +144,30 @@ type fyneEventInvoker struct {
 	// Target is the Model field holding Field when it is not the #id's own
 	// widget -- a canvas's Tap. "" means IDLabel.
 	Target string
+	// List says Target lists every copy of the widget in render order
+	// (namedWidgetField): the invoker drives the last one built, and its `At`
+	// variant the copy it is handed the index of.
+	List bool
 }
 
 func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
 	t.invokerSink = sink
+	return t
+}
+
+// withIndexed has this Model scope list the widgets of the ids a test indexes;
+// stmts is the scope's body, whose creates of them a slot's reset empties.
+func (t *fyneTranslator) withIndexed(indexed map[string]bool, stmts []ir.Stmt) *fyneTranslator {
+	t.indexed = indexed
+	t.slotNamed = nil
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && indexed[lv.Name] {
+			if c, ok := lv.Init.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == ir.NodeOpCreateNode {
+				t.slotNamed = append(t.slotNamed, lv.Name)
+			}
+		}
+		return nil
+	})
 	return t
 }
 
@@ -303,11 +331,21 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		// widget temp rather than clobbering a shared Model field.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
 	}
-	return []ir.Stmt{&ir.Assign{
+	create := []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
 	}}
+	if t.indexed[id] {
+		list := namedWidgetField(id)
+		t.fieldSink(list, "[]"+goType)
+		create = append(create, &ir.Assign{
+			Target: t.fieldRef(list),
+			Op:     ast.AssignSet,
+			Value:  nativeCall("append", []ir.Expr{t.fieldRef(list), t.fieldRef(id)}, ir.TypDyn),
+		})
+	}
+	return create
 }
 
 // OnCreateComponent binds a name to a live instance of a non-inlinable user
@@ -687,7 +725,7 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
 	anchor := nativeCallAt("fynelayout.SlotAnchor", fyneLayoutImportPath,
 		[]ir.Expr{t.qualifyParentExpr(&ir.Ident{Name: "parent"}), t.slotAnchor}, ir.TypDyn)
-	return []ir.Stmt{
+	reset := []ir.Stmt{
 		&ir.Assign{
 			Target: t.fieldRef(slot.Name),
 			Op:     ast.AssignSet,
@@ -695,6 +733,12 @@ func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		},
 		&ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor},
 	}
+	// The render builds every copy again, in order, so the list of them
+	// starts over with it.
+	for _, id := range t.slotNamed {
+		reset = append(reset, &ir.Assign{Target: t.fieldRef(namedWidgetField(id)), Op: ast.AssignSet, Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	return reset
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
@@ -797,16 +841,21 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 	if err != nil {
 		panic("fyne: " + err.Error())
 	}
-	t.invokerSink(fyneEventInvoker{
+	inv := fyneEventInvoker{
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
 		Params:    params,
-	})
+	}
+	if t.indexed[id] {
+		inv.Target, inv.List = namedWidgetField(id), true
+	}
+	t.invokerSink(inv)
 }
 
 // emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
-// the widget's declared callback field.
+// the widget's declared callback field, and for a widget whose copies are
+// listed an `At` method driving the copy at an index.
 func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
@@ -821,33 +870,44 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
-		if len(inv.Params) > 0 {
-			var decl, call []string
-			for _, p := range inv.Params {
-				decl = append(decl, p.Name+" "+golang.IRTypeToGo(p.Type))
-				call = append(call, p.Name)
-			}
-			// Detached while it runs: a widget calls it after taking the value,
-			// so the handler's write-back of the bound var is a no-op there,
-			// while here it would set a new value and fire the callback again.
-			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
-			// A commit hands on text the entry already holds, since a user
-			// cannot submit what they have not typed. Put it there first
-			// without firing OnChanged, as gtk4's invoker does, or a
-			// binding's write-back setting it would fire @input.
-			if inv.Field == "OnSubmitted" && len(inv.Params) == 1 && golang.IRTypeToGo(inv.Params[0].Type) == "string" {
-				v := inv.Params[0].Name
-				fmt.Fprintf(b, "\tif oc := m.%s.OnChanged; m.%s.Text != %s {\n\t\tm.%s.OnChanged = nil\n\t\tm.%s.SetText(%s)\n\t\tm.%s.OnChanged = oc\n\t}\n",
-					target, target, v, target, target, v, target)
-			}
-			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
-				target, inv.Field, target, inv.Field, strings.Join(call, ", "), target, inv.Field)
+		if !inv.List {
+			emitFyneInvoker(b, inv, name, nil, "m."+target)
 			continue
 		}
-		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
-		fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s()\n\t}\n}\n\n",
-			target, inv.Field, target, inv.Field)
+		emitFyneInvoker(b, inv, name, nil, fmt.Sprintf("m.%s[len(m.%s)-1]", target, target))
+		fmt.Fprintf(b, "// %s invokes it on the copy of #%s at index i, in render order; for tests.\n",
+			codegen.InvokerAt(name), inv.IDLabel)
+		emitFyneInvoker(b, inv, codegen.InvokerAt(name), []string{"i int"}, fmt.Sprintf("m.%s[i]", target))
 	}
+}
+
+// emitFyneInvoker writes one invoker, driving the widget w spells.
+func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead []string, w string) {
+	decl := append([]string{}, lead...)
+	var call []string
+	for _, p := range inv.Params {
+		decl = append(decl, p.Name+" "+golang.IRTypeToGo(p.Type))
+		call = append(call, p.Name)
+	}
+	fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
+	if len(inv.Params) == 0 {
+		fmt.Fprintf(b, "\tif %s.%s != nil {\n\t\t%s.%s()\n\t}\n}\n\n", w, inv.Field, w, inv.Field)
+		return
+	}
+	// A commit hands on text the entry already holds, since a user cannot
+	// submit what they have not typed. Put it there first without firing
+	// OnChanged, as gtk4's invoker does, or a binding's write-back setting it
+	// would fire @input.
+	if inv.Field == "OnSubmitted" && len(inv.Params) == 1 && golang.IRTypeToGo(inv.Params[0].Type) == "string" {
+		v := inv.Params[0].Name
+		fmt.Fprintf(b, "\tif oc := %s.OnChanged; %s.Text != %s {\n\t\t%s.OnChanged = nil\n\t\t%s.SetText(%s)\n\t\t%s.OnChanged = oc\n\t}\n",
+			w, w, v, w, w, v, w)
+	}
+	// Detached while it runs: a widget calls it after taking the value, so the
+	// handler's write-back of the bound var is a no-op there, while here it
+	// would set a new value and fire the callback again.
+	fmt.Fprintf(b, "\tif cb := %s.%s; cb != nil {\n\t\t%s.%s = nil\n\t\tcb(%s)\n\t\t%s.%s = cb\n\t}\n}\n\n",
+		w, inv.Field, w, inv.Field, strings.Join(call, ", "), w, inv.Field)
 }
 
 // structuralProp reports whether prop is one of this platform's own props

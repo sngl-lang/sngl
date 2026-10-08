@@ -540,8 +540,8 @@ class MainScreenTest {
         val c = MainScreenState()
         @Suppress("UNUSED_VARIABLE") val composeTestRule = composeRule
         composeRule.setContent { MainScreen(c) }
-        composeTestRule.onNodeWithTag("a").performClick(); composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("b").performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("a")).performClick(); composeTestRule.waitForIdle()
+        composeTestRule.onNode(androidx.compose.ui.test.hasTestTag("b")).performClick(); composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.seen == \"row3;part7;\")", (c.seen == "row3;part7;"))
     }
 
@@ -618,6 +618,6 @@ pass sha256:0d9a9fa1ac7c614ccfcb369f70338219
 -- run/go/gtk4 --
 pass sha256:78acf4f456b8b42b1f22efc361a98ab1
 -- run/kotlin/android --
-pass sha256:4e89ce83d4f79c65c5f1b978cdf2f7fb
+pass sha256:fd01aebd120c03bdf5473133791fd6f4
 -- run/none/html --
 pass sha256:459a698e1cde1ca1e17da99c6c256cd3

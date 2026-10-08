@@ -93,13 +93,13 @@ fun MainScreen() {
     var value__inst2 by remember { mutableStateOf(fruit) }
     var value__inst3 by remember { mutableStateOf<String?>(null) }
     var value__inst4 by remember { mutableStateOf<String?>(birthday) }
-    var visible__inst5 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst5) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst5 = false
-            if (!(visible__inst5)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -227,4 +227,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:a75183ae910e127d73ac7b1f96e4978e
+pass sha256:730a2f541af5b456ca8a4001cfe43b4d

@@ -192,8 +192,8 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_toggle_handler(on bool) {
-	m.on = on
+func (m *Model) __n0_toggle_handler(on__p0 bool) {
+	m.on = on__p0
 	m.__n0.SetChecked(m.on)
 }
 
@@ -509,8 +509,8 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding(), verticalAlignment = Alignment.CenterVertically) {
-        Switch(checked = state.on, onCheckedChange = { on ->
-            state.on = on
+        Switch(checked = state.on, onCheckedChange = { on__p0 ->
+            state.on = on__p0
         })
         Text(text = "Notifications", modifier = Modifier)
     }
@@ -617,10 +617,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:5e967bc24e50d57eb79e3887e8a70966
 -- run/go/fyne --
-pass sha256:d8e33e3403e306675d217f3a67e54885
+pass sha256:2a9a2a10cfedf1cb41348824f1bffa88
 -- run/go/gtk4 --
 pass sha256:dd7061389f331d479546227d113eb66e
 -- run/kotlin/android --
-pass sha256:d14beb72f4939abed0596a7dd2ae4302
+pass sha256:01ea8c911f90f3b227efeb32a94b575b
 -- run/none/html --
 pass sha256:71b4a9745dca5976770419961b8d8624

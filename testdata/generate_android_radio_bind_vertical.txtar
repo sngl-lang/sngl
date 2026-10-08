@@ -76,13 +76,13 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var pick__inst0 by remember { mutableStateOf("a") }
-    var visible__inst1 by remember { mutableStateOf(true) }
+    var visible__inst0 by remember { mutableStateOf(true) }
 
-    if (visible__inst1) {
+    if (visible__inst0) {
         val __activity = LocalContext.current as? Activity
         BackHandler {
-            visible__inst1 = false
-            if (!(visible__inst1)) {
+            visible__inst0 = false
+            if (!(visible__inst0)) {
                 __activity?.finish()
             }
         }
@@ -102,4 +102,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:350e701ec4f67e2a1521bcf09caa53a5
+pass sha256:b4077a3a03dc3d56df4ced211a7870f6
