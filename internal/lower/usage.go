@@ -27,7 +27,6 @@ func stampUsage(pkg *ir.Package, _ Features, _ Options) error {
 	pkg.UsesI18n = u.i18n
 	pkg.UsesAlert = u.alert
 	pkg.UsesErrorHandling = pkgUsesErrorHandling(pkg)
-	pkg.UsesRemote = u.remote
 	return nil
 }
 
@@ -38,10 +37,6 @@ type usage struct {
 	i18n bool
 	// alert: a call whose receiver is the Alert stdlib namespace.
 	alert bool
-	// remote: a query lookup. A program that holds one has boxes that settle
-	// after the render that started them, so its entry point has to ask the
-	// store to tell it.
-	remote bool
 }
 
 func scanUsage(pkg *ir.Package) usage {
@@ -56,16 +51,13 @@ func scanUsage(pkg *ir.Package) usage {
 				if n.Func.Receiver == "Alert" {
 					u.alert = true
 				}
-				if n.Func.Intrinsic == remoteQueryIntrinsic {
-					u.remote = true
-				}
 			}
 		case *ir.Select:
 			if ir.IsI18nPluralKey(n) {
 				u.i18n = true
 			}
 		}
-		if u.i18n && u.alert && u.remote {
+		if u.i18n && u.alert {
 			return ir.SkipAll
 		}
 		return nil

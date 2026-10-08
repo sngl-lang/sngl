@@ -110,11 +110,6 @@ func emitIRAppMain(b *strings.Builder, pkg *ir.Package) {
 	b.WriteString("\ta := app.New()\n")
 	b.WriteString("\tm := New()\n")
 	b.WriteString("\tm.BuildUI()\n")
-	if pkg.RemoteSettle != nil {
-		// Through DoAndWait because a settle arrives on the fetch's goroutine
-		// and Fyne's widgets belong to the main one.
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	switch {
 	case pkg.Run == nil:
 		b.WriteString("\tfynelayout.RunWindows(a, true)\n")

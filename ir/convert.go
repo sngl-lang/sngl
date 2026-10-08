@@ -1087,15 +1087,6 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
 		}
 		return nt
-	case TypeRemote:
-		// Qualified, unlike list and option: the declaration lives in sngl:remote
-		// rather than being ambient, so `Value<T>` on its own would not resolve
-		// where the printed source is read back.
-		nt := &ast.NamedType{Package: "remote", Name: "Value"}
-		if len(t.Elems) > 0 {
-			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
-		}
-		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent, TypeInstance:
 		// An anonymous struct's spelling is its fields: the synthesized name
 		// resolves to nothing where the printed source is read back.

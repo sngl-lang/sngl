@@ -756,8 +756,6 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:ui/draw`      | `canvas` and the 2D `shape` family it hosts                                                        |
 | `sngl:ui/markup`    | inline rich text: the `span` family, `richText`, and the block components a document is written in |
 | `sngl:ui/markup/md` | the vocabulary of the `md:` scheme, such as the `order` mark                                       |
-| `sngl:remote`       | `Value<T>`, the three-state box a data adapter returns                                             |
-| `sngl:remote/http`  | `fetch`: an HTTP request whose answer is a `remote.Value`                                          |
 | `sngl:build`        | the `language` and `platform` families an `output` directive holds                                 |
 | `sngl:x/gen`        | what a target package says about what it generates                                                 |
 | `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |

@@ -11,7 +11,7 @@ import (
 // the value it already was. That is what lets one declaration serve both
 // callers:
 //
-//	func fetch(url ref<string>) remote.Value<Result>
+//	func fetch(url ref<string>) Result
 //
 //	fetch(&url)   // the handle: the callee keeps seeing what url becomes
 //	fetch(url)    // the value:  a snapshot of what it is now
@@ -54,9 +54,8 @@ func (c *checker) verifyRefCoercions(pkg *ir.Package) {
 		return
 	}
 	owners := paramOwners(pkg)
-	// A library declaration is the common case -- sngl:remote/http's `fetch` is
-	// the reason the coercion exists -- and its parameters belong to a package
-	// the program is not made of.
+	// A library declaration's parameters belong to a package the program is
+	// not made of, so they are looked up there too.
 	for _, lib := range c.libs.pkgs {
 		maps.Copy(owners, paramOwners(lib))
 	}

@@ -401,12 +401,6 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isColorStructLit(n) {
 		gc.RequireImport(colorImportPath)
 	}
-	// A literal of a type the runtime defines is the only mention of it that
-	// need not be reached through a call to that runtime, so it is the one
-	// place the import can be missing.
-	if ir.IsRemoteHTTPResultStruct(n.Type) {
-		gc.RequireImport(remoteHTTPImportPath)
-	}
 	// A channel has no composite literal either, and for the same reason: the
 	// only one that reaches here is the zero the checker synthesizes for an
 	// uninitialised `var done go.chan<bool>`, and a channel's zero is nil.
@@ -2013,30 +2007,11 @@ func IRTypeToGo(t *ir.Type) string {
 			return "*" + IRTypeToGo(t.Elems[0])
 		}
 		return "*any"
-	case ir.TypeRemote:
-		// A pointer: two readers of one key hold the same box, and a settle has
-		// to be visible to both.
-		if len(t.Elems) > 0 {
-			return "*" + remoteGoType + "[" + IRTypeToGo(t.Elems[0]) + "]"
-		}
-		return "*" + remoteGoType + "[any]"
 	case ir.TypeStruct:
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
 			return "time.Time"
-		}
-		// The runtime defines the failure its boxes carry, so generated code
-		// spells that rather than emitting a struct of its own that no box
-		// could hold.
-		if ir.IsRemoteFailureStruct(t) {
-			return remoteFailureGo
-		}
-		// Likewise the value a request answers with: the transport returns it,
-		// so a Result declared beside it would be a second type `http.Get`
-		// could not hand back.
-		if ir.IsRemoteHTTPResultStruct(t) {
-			return remoteHTTPResultGo
 		}
 		if ir.IsColorStruct(t) {
 			return colorGoType

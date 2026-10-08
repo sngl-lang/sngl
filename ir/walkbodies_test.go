@@ -99,14 +99,9 @@ var referenceSlots = map[string]bool{
 	// deliberately rather than by omission -- walking it would subject a
 	// description of the language to the passes that lower a program.
 	"Package.Macros": true,
-	// The settle handler, owned by the component or window whose props it
-	// updates and walked there. The package stores the pointer so an entry
-	// point can subscribe it without looking a name up.
-	"Package.RemoteSettle": true,
 	// The exit handler, owned by the component, window or package whose
-	// effects it releases and walked there. Stored on the package for the same
-	// reason the settle handler is: an entry point calls it without having to
-	// look a name up.
+	// effects it releases and walked there. Stored on the package so an entry
+	// point calls it without having to look a name up.
 	"Package.Teardown": true,
 	// The settle handlers, each owned by the component or window whose
 	// brackets it moves and walked there. Same reason as Teardown, at the

@@ -57,7 +57,6 @@ var passes = []pass{
 	passBoundaryFailed,
 	passUnit,
 	passEnum,
-	passQuery,
 	// Before passAsyncOffload, which synthesizes calls to the two ids this
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,

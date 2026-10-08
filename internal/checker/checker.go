@@ -3896,8 +3896,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	} else if fn.AST != nil {
 		// No body at all: a signature. Something else has to supply the answer,
 		// and this is where that is required rather than assumed. Not of a
-		// library's: a target package implements one (`sngl:remote/http`'s
-		// `get`), and its overrides are attached after the library loads.
+		// library's: a target package implements one, and its overrides are
+		// attached after the library loads.
 		if !c.inLibSource() && !c.bodySuppliedElsewhere(fn) {
 			c.error(fn.AST.Pos, "%q has no body: give it one, or say where the answer comes from — #[intrinsic], #[foreign], or a per-target override",
 				fn.Name)

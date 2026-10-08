@@ -227,17 +227,6 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 			}
 		}
 	}
-	// After the injection walks, so every slot's GenFunc is wired and the
-	// props are the ones the build path settled on.
-	defer func() {
-		for _, comp := range pkg.Components {
-			st.owner = compOwner{comp}
-			st.synthesizeRemoteSettle()
-		}
-		st.owner = pkgOwner{pkg: pkg, root: ir.AppParent}
-		st.synthesizeRemoteSettle()
-	}()
-
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
 		comp.Body = st.rewriteAndInject(comp.Body)

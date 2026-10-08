@@ -75,14 +75,9 @@ run after the purity fixpoint, where `const(…)` assertions are judged:
 **The library says `const` where it means it.** There is no default-pure rule
 any more: a bodied library func is seeded pure for its own fixpoint, and a
 bodyless one is pure only when it is `const func`. So the builtin methods,
-`sngl:seq`, `sngl:ui/draw`'s geometry, the `remote.Value` accessors and the
-target helpers that build a host value are marked, and a side-effecting native
-(a draw call, a timer, `error.raise`, `async.start`) is not — it used to be
-pure by default. The `remote.Value` accessors are const for the reason
-`list.length` is: each is a function of its argument's current value. Unmarked,
-the optimizer stopped treating `contents.value()` as effect-free, declined to
-duplicate it into `Result.ok`'s inlined body, and emitted a Go method call on a
-native type that has none (`cmd/sngl/testdata/remote_http_build.txt`).
+`sngl:seq`, `sngl:ui/draw`'s geometry and the target helpers that build a host
+value are marked, and a side-effecting native (a draw call, a timer,
+`error.raise`, `async.start`) is not — it used to be pure by default.
 
 **Inferred purity counts a call it knows nothing about.** An undeclared
 native's `Purity` is `PurityUnknown`, which ranks *below* pure, so

@@ -493,8 +493,8 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 	// after Lower, which is where they are synthesized; before that they
 	// survived by sitting in a window's Funcs, and in pkg.Funcs they are
 	// filtered like anything else nothing names. Teardown was rooted on its
-	// own and the other two were not, so `__remoteSettled` was shaken while
-	// fyne's `OnSettle` subscription still named it.
+	// own and the others were not, so a settle handler was shaken while a
+	// platform's subscription still named it.
 	//
 	// Guarded rather than handed straight to walk: a nil *ir.Func in an
 	// ir.Symbol is not a nil interface, so the `sym == nil` gate at the top

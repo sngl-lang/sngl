@@ -63,10 +63,6 @@ const (
 	BuiltinChan   BuiltinKind = "chan" // TODO This seems wrong. This should just be an intrinsic struct in Go.
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
-	// Remote is the box a data adapter returns: the last value that arrived,
-	// how the most recent attempt failed, and whether one is in flight. See
-	// sngl:remote.
-	BuiltinRemote BuiltinKind = "remote" // TODO Remote should go
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
 
@@ -203,10 +199,10 @@ func (b BuiltinKind) IsTreeRole() bool {
 }
 
 // IsGeneric reports whether the kind is a generic type constructor
-// (list/map/iter/ref/option/remote).
+// (list/map/iter/chan/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption:
 		return true
 	}
 	return false
@@ -261,7 +257,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinFloat32, BuiltinFloat64,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinTreeLanguage, BuiltinTreePlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,

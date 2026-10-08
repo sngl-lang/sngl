@@ -467,9 +467,9 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // PackageDocFile is the one file a package's prose is read from. Go's
 // semantics -- every file's package comment counts, concatenated in load
 // order -- cannot say which order, and the blank line that makes a comment run
-// package prose is easy to leave in by accident: three files in lib/remote
-// opened with a file header, and the package read as whichever the directory
-// listed first. A stored file is the same accident made by a program, since
+// package prose is easy to leave in by accident: three files of one lib/
+// package opened with a file header, and the package read as whichever the
+// directory listed first. A stored file is the same accident made by a program, since
 // every one opens with a "Code generated" header, the gir: scheme's widget
 // file included.
 const PackageDocFile = "doc.sngl"

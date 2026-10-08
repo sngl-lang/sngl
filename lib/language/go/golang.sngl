@@ -1,6 +1,5 @@
 import . "sngl:macro"
 import ir "sngl:internal/ir"
-import http "sngl:remote/http"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
@@ -100,7 +99,6 @@ const imports = [
     "sort",
     "rand",
     "i18n",
-    "remote",
     "snglcolor",
     "http",
     "context",
@@ -195,11 +193,6 @@ component language(
 #[marks.intrinsic("go.buildModule", build)]
 func buildModule(dir string, out string, goVersion string, goModExtra string) string
 
-// --- sngl:remote/http ---
-
-// The Go transport. `native` rather than a `go:` import, so the request package
-// is pulled in only by a build that actually fetches: an import at the top of
-// this file is resolved by every program built for Go.
 // Names the Go package-level identifier a declaration *is*. A thin spelling of
 // #[foreign(..., native)] in the language it is about, which is where a Go path
 // and a Go identifier belong — and which a package can now use on its own
@@ -263,16 +256,6 @@ enum NativeFlag {
     // does not: it is stripped from the parameters and the call site supplies
     // one.
     context
-}
-
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
-func httpGet(url string) http.Result
-
-// What sngl:remote/http declares and leaves to each target. An override rather
-// than an intrinsic: there is no string for a code generator to build here,
-// only a call to name.
-func http.get[language]() {
-    return httpGet(url)
 }
 
 // --- Drawing ---

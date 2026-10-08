@@ -105,7 +105,6 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
-	"Query",
 	"RecursionDepth",
 	"RefLoop",
 	// What a target reserves is read off its marks, and a target reserving

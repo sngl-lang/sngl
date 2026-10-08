@@ -829,12 +829,6 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 	// reports its default 0×0 dimensions at first paint and the user
 	// sees a blank window until they manually resize.
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
-	if pkg != nil && pkg.RemoteSettle != nil {
-		// After BuildUI, since the updaters write to widgets it creates, and
-		// through DoAndWait because a settle arrives on the fetch's goroutine
-		// and Fyne's widgets belong to the main one.
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
 	b.WriteString("\tw.ShowAndRun()\n")
 	if pkg != nil && pkg.Teardown != nil {
@@ -859,9 +853,6 @@ func emitIRRunMain(b *strings.Builder, cfg Config, pkg *ir.Package) {
 	fmt.Fprintf(b, "\tw := a.NewWindow(%q)\n", cfg.AppName)
 	b.WriteString("\tw.SetContent(m.BuildUI())\n")
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	if pkg.RemoteSettle != nil {
-		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
-	}
 	b.WriteString("\tran := false\n")
 	// An empty handler is emitted as no function at all, and never calls run.
 	if len(pkg.Run.Block) > 0 {

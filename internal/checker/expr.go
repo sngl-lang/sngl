@@ -1840,7 +1840,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeString,
-		ir.TypeList, ir.TypeOption, ir.TypeMap, ir.TypeRemote:
+		ir.TypeList, ir.TypeOption, ir.TypeMap:
 		return true
 	}
 	return false
@@ -1867,11 +1867,6 @@ func methodNamed(t *ir.Type, name string) bool {
 // (color.r, list.length, struct fields, component vars/props, enum members)
 // and everything carrying no shape information (dyn, generic params, anonymous
 // structs).
-//
-// remote.Value is one: it declares no fields and reaches its three facts
-// through methods alone, so `box.value` is `box.value()` with the call left
-// off — which degraded to dyn, passed every prop it was handed, and reached a
-// backend as a field read of a struct that has none.
 // selectDeclaredMember resolves x.Field against a declaration's own member
 // table -- fields first, then methods -- and reports a name in neither. Struct
 // and unit share it because they share the question, which is the same reason
@@ -1908,7 +1903,7 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeRemote:
+	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 		return true
 	}
 	return false
@@ -2854,7 +2849,7 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 	}
 	// A parameter the arguments could not pin is bound from the type the context
 	// wants, which is the only way to write one that appears in the return type
-	// alone: `remote.pending()` takes no arguments, and SNGL has no syntax for
+	// alone: `func empty<T>() list<T>` takes no arguments, and SNGL has no syntax for
 	// naming a type argument at a call site, so without this such a function is
 	// undeclarable rather than merely awkward.
 	//

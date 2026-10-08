@@ -29,9 +29,8 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// A function the output contains keeps its call. Inlining is how a function
 	// the output does *not* contain gets there -- nothing emits an imported
 	// package's declarations, so a call to one is a call to a name the output
-	// lacks, and until now every library function was either pure (inlined
-	// here) or an intrinsic (emitted by the backend). sngl:remote/http's
-	// transport is neither.
+	// lacks, unless it is pure (inlined here) or an intrinsic (emitted by the
+	// backend).
 	//
 	// Applied to non-pure declarations only, because folding still wants to see
 	// through a pure wrapper wherever it was written, and because a program's
@@ -418,8 +417,7 @@ func effectFree(e ir.Expr) bool {
 		case *ir.Unary:
 			// *p reads through an alias, so what it answers depends on when it
 			// is evaluated. &x does not: every evaluation names the same cell,
-			// which is the whole reason a caller writes one -- and a query key
-			// mentions its ref twice, once to key on and once to fetch with.
+			// which is the whole reason a caller writes one.
 			if n.Op == ast.UnaryDeref {
 				free = false
 				return ir.SkipAll
@@ -490,9 +488,8 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		// No parameter references.
 	case *ir.Lambda:
 		// The lambda a body hands to something else closes over the
-		// parameters of the func being inlined -- an adapter returning
-		// `remote.query(..., func() => get(*url))` is the whole shape -- so
-		// leaving the body alone leaves those references pointing at a
+		// parameters of the func being inlined -- `func() => get(*url)` handed
+		// on from an adapter is the whole shape -- so leaving the body alone leaves those references pointing at a
 		// declaration the call site is replacing. cloneExpr gives each copy its
 		// own body, which is what makes rewriting it here safe.
 		if x.Func != nil {

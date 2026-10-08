@@ -44,7 +44,6 @@ component platform(
         "resizeWidgets",
         "snglToast",
         "toastDismissMsg",
-        "remoteSettledMsg",
         "msg",
         "cmd",
         "cmds",

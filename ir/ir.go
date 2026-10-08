@@ -150,19 +150,6 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
-	// UsesRemote says the program holds a query box. Such a box settles after
-	// the render that started it, and tells the store when it does, so an entry
-	// point that never asks shows the fetch starting and nothing after.
-	UsesRemote bool
-
-	// RemoteSettle is the handler the reactivity lowering left for a store to
-	// call, or nil where it left none -- a target with native reactivity has no
-	// updaters to re-run, and one that never fetches has nothing to re-run them
-	// for. An entry point subscribes what is here rather than looking a name up,
-	// because whether the handler exists is the lowering's answer and so is what
-	// it is called.
-	RemoteSettle *Func `json:"-"`
-
 	// Teardown is the handler a platform calls when the program is going away,
 	// or nil where no effect declared an @unmount. Nothing guarantees it runs
 	// -- a killed process and a closed tab both skip it -- so what belongs in
@@ -218,8 +205,8 @@ func (p *Package) EntryPoints() []*Func {
 	if p == nil {
 		return nil
 	}
-	out := make([]*Func, 0, 3+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle, p.Run}, p.Mounts...) {
+	out := make([]*Func, 0, 2+len(p.Mounts))
+	for _, fn := range append([]*Func{p.Teardown, p.Run}, p.Mounts...) {
 		if fn != nil {
 			out = append(out, fn)
 		}

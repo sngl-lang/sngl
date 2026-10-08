@@ -216,9 +216,9 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --
-	// which stopped being true when passQuery became always-on: it synthesizes a
-	// thunk after the optimizer has walked every declaration, so the calls inside
-	// one are calls nothing has looked at.
+	// which is not so: an always-on lowering pass may synthesize code after the
+	// optimizer has walked every declaration, and the calls inside it are calls
+	// nothing has looked at.
 	start = time.Now()
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
