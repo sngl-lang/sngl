@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"go/format"
 	"io/fs"
 	"log/slog"
 	"maps"
@@ -779,7 +780,19 @@ func dirBytes(path string) int64 {
 
 // constEvalSource generates the batch program. Each call sits in its own
 // function with a recover, so a panic costs one value rather than the round.
+//
+// It is gofmt'd because it sits inside the project, where `gofmt -l .` finds
+// any a crashed compile leaves behind. Source that does not parse is returned
+// as written, for the build to report.
 func constEvalSource(reqs []*nativeRequest) string {
+	src := constEvalSourceRaw(reqs)
+	if formatted, err := format.Source([]byte(src)); err == nil {
+		return string(formatted)
+	}
+	return src
+}
+
+func constEvalSourceRaw(reqs []*nativeRequest) string {
 	aliases := map[string]string{}
 	var paths []string
 	for _, r := range reqs {
@@ -815,7 +828,7 @@ import (
 	// The runtime is imported by name; the codegen registries are blank so a
 	// pure func that enumerates them (docs.Targets()) sees what the compiler
 	// sees.
-	fmt.Fprintf(&b, "\n\t%q\n\t%q\n", evaluatorImports[0], "duckfam.us/sngl/codegen")
+	fmt.Fprintf(&b, "\t%q\n\t%q\n", evaluatorImports[0], "duckfam.us/sngl/codegen")
 	for _, p := range evaluatorImports[1:] {
 		fmt.Fprintf(&b, "\t_ %q\n", p)
 	}
