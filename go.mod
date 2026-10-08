@@ -157,10 +157,10 @@ require (
 )
 
 tool (
-	fyne.io/fyne/v2
 	duckfam.us/sngl/cmd/sngl
 	duckfam.us/sngl/internal/cmd/docsgen
 	duckfam.us/sngl/internal/cmd/verify
+	fyne.io/fyne/v2
 	github.com/bwplotka/mdox
 	golang.org/x/tools/cmd/stringer
 	modernc.org/egg
