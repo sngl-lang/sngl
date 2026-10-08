@@ -393,6 +393,17 @@ func markIntrinsic(m *mark) error {
 		comp.Intrinsic = id
 		return nil
 	}
+	if sd, ok := m.sym.(*ir.StructDef); ok {
+		// A host type: no call for a flag to describe, as for a component.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[intrinsic(%q)] carries %s, which describes a call; a struct has none", id, flags[0])
+		}
+		if sd.Intrinsic != "" {
+			return fmt.Errorf("#[intrinsic(%q)]: already an intrinsic (%q)", id, sd.Intrinsic)
+		}
+		sd.Intrinsic = id
+		return nil
+	}
 	fn, ok := m.sym.(*ir.Func)
 	if !ok {
 		return fmt.Errorf("#[intrinsic(%q)] cannot mark %s", id, ast.DeclFormName(m.decl))

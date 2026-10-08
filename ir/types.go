@@ -32,7 +32,6 @@ const (
 	TypeVoid      // void — a call that yields no value; not usable as an expression
 	TypeRef       // Elem set — ref<T>, used by NoLambda for mutable captures
 	TypeIter      // Elems = [T] for iter<T>
-	TypeChan      // Elems = [T] for go.chan<T> — a host channel, ranged over like an iter
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 	TypeInstance  // Decl set — a live instance in the rendered tree
 )
@@ -128,16 +127,6 @@ func IterOf(elem *Type) *Type {
 	return &Type{Kind: TypeIter, Elems: []*Type{elem}}
 }
 
-// ChanOf returns a go.chan<T> type.
-//
-// Direction is not represented. Go's own receive-only channels -- `*time.Ticker`'s
-// `C` is `<-chan Time` -- are reachable because nothing writes a Go type for an
-// expression that is only ranged over; binding one to a var would spell the
-// bidirectional `chan T` and not compile against it.
-func ChanOf(elem *Type) *Type {
-	return &Type{Kind: TypeChan, Elems: []*Type{elem}}
-}
-
 // anonStructString spells an interned anonymous struct structurally. No cycle
 // guard: a field cannot name a type that has no name.
 func anonStructString(sd *StructDef) string {
@@ -205,11 +194,6 @@ func (t *Type) String() string {
 			return fmt.Sprintf("iter<%s>", t.Elems[0])
 		}
 		return "iter<?>"
-	case TypeChan:
-		if len(t.Elems) == 1 {
-			return fmt.Sprintf("go.chan<%s>", t.Elems[0])
-		}
-		return "go.chan<?>"
 	case TypeStruct:
 		name := "struct"
 		// A diagnostic says what the program wrote, never the synthesized name.
@@ -466,7 +450,7 @@ func (t *Type) Substitute(bindings map[string]*Type) *Type {
 			return bound
 		}
 		return t
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeChan, TypeStruct:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeStruct:
 		elems := make([]*Type, len(t.Elems))
 		changed := false
 		for i, e := range t.Elems {
@@ -547,7 +531,7 @@ func (t *Type) Equal(other *Type) bool {
 		// Width and signedness distinguish sized numerics; Bits==0 (plain
 		// int/float) is a distinct type from any sized width.
 		return t.Bits == other.Bits && t.Unsigned == other.Unsigned
-	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter, TypeChan:
+	case TypeList, TypeMap, TypeOption, TypeRef, TypeIter:
 		if len(t.Elems) != len(other.Elems) {
 			return false
 		}

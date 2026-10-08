@@ -621,7 +621,7 @@ func lazyIter(e ir.Expr) bool {
 	t := e.ExprType()
 	// A channel ranges like a pull sequence and not like a slice: one variable,
 	// the element.
-	return t != nil && (t.Kind == ir.TypeIter || t.Kind == ir.TypeChan)
+	return t != nil && (t.Kind == ir.TypeIter || isChanType(t))
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -1786,16 +1786,26 @@ func isChanLit(n *ir.StructLit) bool {
 	if n == nil {
 		return false
 	}
-	if n.Type != nil && n.Type.Kind == ir.TypeChan {
-		return true
-	}
 	def := n.Def
 	if def == nil && n.Type != nil {
 		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
 			def = sd
 		}
 	}
-	return def != nil && def.Builtin == ir.BuiltinChan
+	return def != nil && def.Intrinsic == chanIntrinsic
+}
+
+// chanIntrinsic is sngl:language/go's `chan<T>`: Go's `chan T`, which SNGL
+// declares as a struct it cannot describe.
+const chanIntrinsic = "go:chan"
+
+// isChanType reports whether t is a `chan<T>`.
+func isChanType(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return sd != nil && sd.Intrinsic == chanIntrinsic
 }
 
 // structLitTypeName picks the Go type prefix for a struct literal. An
@@ -2008,6 +2018,16 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "*any"
 	case ir.TypeStruct:
+		// Bidirectional, because SNGL does not spell a direction. A host
+		// channel that is receive-only reaches a program as a field read and
+		// is selected on rather than bound, so no Go type is written for it;
+		// binding one to a var would spell this and not compile.
+		if isChanType(t) {
+			if len(t.Elems) == 1 {
+				return "chan " + IRTypeToGo(t.Elems[0])
+			}
+			return "chan any"
+		}
 		// date/time/datetime are stdlib structs mapping to time.Time; detect
 		// them by name before the generic struct path.
 		if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
@@ -2078,15 +2098,6 @@ func IRTypeToGo(t *ir.Type) string {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
-	case ir.TypeChan:
-		// Bidirectional, because SNGL does not spell a direction. A host
-		// channel that is receive-only reaches a program as a field read and
-		// is selected on rather than bound, so no Go type is written for it;
-		// binding one to a var would spell this and not compile.
-		if len(t.Elems) == 1 {
-			return "chan " + IRTypeToGo(t.Elems[0])
-		}
-		return "chan any"
 	case ir.TypeInstance:
 		// A live instance of a component is the generated record every Go
 		// platform allocates for it. Decl carries which component; without one

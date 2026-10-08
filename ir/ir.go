@@ -1133,6 +1133,12 @@ type StructDef struct {
 	Pkg     string
 	Doc     string      // doc comment for scheme-imported decls; empty for SNGL-sourced
 	Builtin BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
+	// Intrinsic is the id from #[intrinsic] on a struct: a host type one
+	// target's codegen spells and SNGL has no way to describe, namespaced by
+	// that target (`go:chan`, Go's `chan T`). The declaration is an ordinary
+	// generic struct to everything before codegen; only the emitter that
+	// answers the id gives it a host spelling.
+	Intrinsic string `json:",omitempty"`
 	// Anon says the declaration was synthesized for an anonymous struct, one
 	// per canonical field signature. It is an ordinary declaration in every
 	// other respect — a backend emits it and a value names it — and this only

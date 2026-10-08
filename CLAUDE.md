@@ -1871,8 +1871,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   gap itself, and it is closed rather than stepped around: fyne's timer is a
   `*time.Ticker` consumed on a goroutine, and `fyne.sngl` holds all of it.
 
-  **`go.chan<T>` is a builtin type kind declared by `sngl:language/go`**, not by
-  `lib/`, because only a language with channels can answer one. It exists
+  **`go.chan<T>` is an intrinsic struct declared by `sngl:language/go`**
+  (`#[marks.intrinsic("go:chan")] struct chan<T> {}`, `StructDef.Intrinsic`),
+  not a type kind: to the checker it is an ordinary generic struct, and only
+  the Go emitter, which answers the id, gives it a host spelling. It is
+  declared there rather than in `lib/` because only a language with channels
+  can answer one. It exists
   because a host API hands channels *out*: `*time.Ticker`'s `C` is a field, and
   without a channel type there was nothing to declare it as. `IRTypeToGo`
   spells it `chan T`, `lazyIter` ranges it one variable at a time like the pull

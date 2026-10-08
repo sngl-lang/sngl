@@ -55,12 +55,9 @@ const (
 	BuiltinDuration BuiltinKind = "duration"
 
 	// Generic constructors.
-	BuiltinList BuiltinKind = "list"
-	BuiltinMap  BuiltinKind = "map"
-	BuiltinIter BuiltinKind = "iter"
-	// Chan is a host channel. It is declared by sngl:language/go rather than
-	// by lib/, because only a language with channels can answer it.
-	BuiltinChan   BuiltinKind = "chan" // TODO This seems wrong. This should just be an intrinsic struct in Go.
+	BuiltinList   BuiltinKind = "list"
+	BuiltinMap    BuiltinKind = "map"
+	BuiltinIter   BuiltinKind = "iter"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 	// TreeOne narrows a slot's content to exactly one member.
@@ -202,7 +199,7 @@ func (b BuiltinKind) IsTreeRole() bool {
 // (list/map/iter/chan/ref/option).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption:
 		return true
 	}
 	return false
@@ -257,7 +254,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinFloat32, BuiltinFloat64,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
 		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinTreeLanguage, BuiltinTreePlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,

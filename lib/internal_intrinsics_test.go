@@ -38,7 +38,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 	markedComponents := map[string]bool{}
 	scan := func(src []byte) {
 		for _, m := range markRE.FindAllStringSubmatch(string(src), -1) {
-			if m[2] == "component" {
+			if m[2] == "component" || m[2] == "struct" {
 				markedComponents[m[1]] = true
 				continue
 			}
@@ -97,7 +97,7 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 // on. The declaration may carry a doc comment between the two. The mark's
 // package qualifier is optional because a dot import writes none, though no
 // source here uses one; sngl:builtin writes its own private `_intrinsic`.
-var markRE = regexp.MustCompile(`#\[(?:\w+\.)?_?intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(?:const\s+)?(func|component)\b`)
+var markRE = regexp.MustCompile(`#\[(?:\w+\.)?_?intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(?:const\s+)?(func|component|struct)\b`)
 
 // A component a program can write is a component someone has to look up, so
 // every exported one carries a doc comment. The draw shapes shipped without

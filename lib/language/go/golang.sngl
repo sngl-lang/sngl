@@ -464,7 +464,7 @@ const component shapes.canvasImage[language] {
 // emits the bidirectional `chan T`, which Go will not assign a `<-chan T` to.
 // Closing that means two types, or a direction on this one; nothing here needs
 // it yet, and the first API that hands a channel out to be *stored* will.
-#[marks.builtin("chan")]
+#[marks.intrinsic("go:chan")]
 struct chan<T> {}
 
 // The element type comes from the argument rather than from a type argument,
