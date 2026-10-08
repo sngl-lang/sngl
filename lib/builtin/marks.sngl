@@ -42,8 +42,6 @@ enum _Kind {
     errorBoundary
     output
     treeRoot
-    platform
-    language
     targetPlatform
     targetLanguage
 }

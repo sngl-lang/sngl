@@ -19,48 +19,27 @@ import (
 // its identity, so there is no second one to disagree with it.
 //
 // As a value it is the identity PLATFORM and LANGUAGE are compared against:
-// its type is sngl:builtin's `platform` or `language` (targetValueType), so
+// its type is sngl:build's `platform` or `language` family (targetValueType), so
 // `PLATFORM == "html"` still does not type-check, and a misspelled target is
 // an unresolved name rather than a branch nobody takes.
 
-// typeTargetConsts gives PLATFORM and LANGUAGE their types. It runs after the
-// whole of lib/builtin is registered: the consts and the types they carry are
-// in different files (consts.sngl, types.sngl) and load order is not
-// guaranteed, so neither mark can fill the other in as it is applied.
-func (c *checker) typeTargetConsts() {
-	if c.platformConst != nil && c.platformType != nil {
-		c.platformConst.Type = c.platformType.SymType()
-	}
-	if c.languageConst != nil && c.languageType != nil {
-		c.languageConst.Type = c.languageType.SymType()
-	}
-}
-
 // targetValueType is the type a reference to a build-target node has where it
-// is read as a value: sngl:builtin's `platform` or `language`, the types
-// PLATFORM and LANGUAGE carry. Nil for any other symbol.
+// is read as a value: the family it is a member of, sngl:build's `platform` or
+// `language`, which PLATFORM and LANGUAGE are declared as. Nil for any other
+// symbol.
 func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	node, _, ok := ir.TargetNode(sym)
-	if !ok {
+	if !ok || node.Tree == nil {
 		return nil
 	}
-	if ir.TargetTier(node.Tree) == ir.BuiltinLanguage {
-		if c.languageType != nil {
-			return c.languageType.SymType()
-		}
-		return nil
-	}
-	if c.platformType != nil {
-		return c.platformType.SymType()
-	}
-	return nil
+	return node.Tree.SymType()
 }
 
 // targetTierMember is the word for a tier: the segment of a target package's
 // URI (`sngl:platform/html`), and what a message calls one. Its node is
 // conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinTreeLanguage {
 		return "language"
 	}
 	return "platform"
@@ -328,7 +307,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		}
 	}
 	overrides := &base.PlatformOverrides
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinTreeLanguage {
 		overrides = &base.LanguageOverrides
 	}
 	if *overrides == nil {
@@ -453,7 +432,7 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
-		if po.kind == ir.BuiltinLanguage {
+		if po.kind == ir.BuiltinTreeLanguage {
 			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
 		} else {
 			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}

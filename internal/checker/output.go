@@ -30,9 +30,9 @@ func (c *checker) buildTrees() (lang, platform *ir.Component) {
 			continue
 		}
 		switch ir.TargetTier(f) {
-		case ir.BuiltinLanguage:
+		case ir.BuiltinTreeLanguage:
 			c.langTree = f
-		case ir.BuiltinPlatform:
+		case ir.BuiltinTreePlatform:
 			c.platformTree = f
 		}
 	}
@@ -52,9 +52,9 @@ func (c *checker) buildTrees() (lang, platform *ir.Component) {
 // loaded: which targets load is decided by the caller's selection, and a
 // directive names targets that selection does not.
 func (c *checker) targetNode(name string, depth int) *ir.Component {
-	tiers := [2]ir.BuiltinKind{ir.BuiltinLanguage, ir.BuiltinPlatform}
+	tiers := [2]ir.BuiltinKind{ir.BuiltinTreeLanguage, ir.BuiltinTreePlatform}
 	if depth != 1 {
-		tiers = [2]ir.BuiltinKind{ir.BuiltinPlatform, ir.BuiltinLanguage}
+		tiers = [2]ir.BuiltinKind{ir.BuiltinTreePlatform, ir.BuiltinTreeLanguage}
 	}
 	for _, kind := range tiers {
 		target := c.lookupTargetIn(name, kind)
@@ -97,9 +97,9 @@ func (c *checker) judgesTargets(depth int) bool {
 // it declares no props and carries no AST, which is what turns off the schema
 // checks a declaration it does not have could not support.
 func (c *checker) unregisteredTargetNode(name string, depth int) *ir.Component {
-	key := targetTierMember(ir.BuiltinPlatform) + "/" + name
+	key := targetTierMember(ir.BuiltinTreePlatform) + "/" + name
 	if depth == 1 {
-		key = targetTierMember(ir.BuiltinLanguage) + "/" + name
+		key = targetTierMember(ir.BuiltinTreeLanguage) + "/" + name
 	}
 	if comp, ok := c.synthTargets[key]; ok {
 		return comp

@@ -11,13 +11,14 @@ import marks "sngl:internal/marks"
 #[marks.builtin("treeFamily")]
 component family
 
-// TODO These exist in builtin as the type of a platform package. We should double-up those identifiers
-
 // The family a build-target language belongs to: the members `output` hosts.
+// A member read as a value is that language's identity -- `go.language` -- and
+// LANGUAGE is one.
 #[marks.builtin("treeLanguage")]
 component language family
 
 // The family a build-target platform belongs to: the members a language node
-// hosts.
+// hosts. A member read as a value is that platform's identity --
+// `html.platform` -- and PLATFORM is one.
 #[marks.builtin("treePlatform")]
 component platform family

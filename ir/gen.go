@@ -173,16 +173,16 @@ func IsBuildTargetTree(f *Component) bool {
 	return TargetTier(f) != ""
 }
 
-// TargetTier is the tier a build-target family holds -- BuiltinLanguage for
-// `build.language`, BuiltinPlatform for `build.platform` -- and "" for any
+// TargetTier is the tier a build-target family holds -- BuiltinTreeLanguage for
+// `build.language`, BuiltinTreePlatform for `build.platform` -- and "" for any
 // other family. Read off the family's mark, so a package declaring a
 // `language` family of its own declares a different one.
 func TargetTier(f *Component) BuiltinKind {
 	switch {
 	case isTreeRole(f, BuiltinTreeLanguage):
-		return BuiltinLanguage
+		return BuiltinTreeLanguage
 	case isTreeRole(f, BuiltinTreePlatform):
-		return BuiltinPlatform
+		return BuiltinTreePlatform
 	}
 	return ""
 }

@@ -29,11 +29,11 @@ type command struct {
 // findCommand is t's command of the given kind: the platform node's override
 // for t's language, else the platform node's body, else the language node's.
 func findCommand(t Target, kind ir.BuiltinKind) (*command, error) {
-	plat, err := targetNode("platform/"+t.Platform, ir.BuiltinPlatform)
+	plat, err := targetNode("platform/"+t.Platform, ir.BuiltinTreePlatform)
 	if err != nil {
 		return nil, err
 	}
-	lang, err := targetNode("language/"+t.Lang, ir.BuiltinLanguage)
+	lang, err := targetNode("language/"+t.Lang, ir.BuiltinTreeLanguage)
 	if err != nil {
 		return nil, err
 	}

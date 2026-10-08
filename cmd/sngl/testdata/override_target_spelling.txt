@@ -1,8 +1,8 @@
-# An override names the target it implements by that target's identity const.
-# A target's own package writes it unqualified, because the const is the
+# An override names the target it implements by that target's node.
+# A target's own package writes it unqualified, because the node is the
 # package's own declaration -- `[android.platform]` inside android.sngl says
 # the package's name twice. A program outside the package writes the qualified
-# form, which is how the const reaches it at all.
+# form, which is how the node reaches it at all.
 #
 # The bare name used to be refused before it was looked up: the index had to be
 # a selector, so a target package could only name itself the long way.
@@ -10,8 +10,13 @@
 sngl check qualified.sngl
 stdout 'qualified.sngl: ok'
 
-# The ambient `platform` type shares the name and is not an identity.
+# Outside a target package nothing is named `platform`: the identity is the
+# package's node, and nothing ambient shares its name any more.
 ! sngl check bareuser.sngl
+stderr 'undefined: platform'
+
+# The family every platform node is a member of is not itself a target.
+! sngl check family.sngl
 stderr 'not a target identity'
 
 -- qualified.sngl --
@@ -34,6 +39,21 @@ import . "sngl:ui"
 import html "sngl:platform/html"
 
 component mybox[platform] {
+    text(value="x")
+}
+
+component mybox node {
+    text(value="generic")
+}
+
+window #home(title="t") {
+    mybox
+}
+-- family.sngl --
+import . "sngl:ui"
+import build "sngl:build"
+
+component mybox[build.platform] {
     text(value="x")
 }
 

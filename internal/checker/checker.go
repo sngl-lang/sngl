@@ -598,11 +598,6 @@ type checker struct {
 	// registered for phases that have no scope — see ir.DurationType.
 	durationUnit *ir.UnitDef
 
-	// The target-identity types. Held so PLATFORM and LANGUAGE can be typed
-	// and so a target's synthesized identity const has a type to carry; the
-	// declarations are in lib/builtin and are shadowable like any other.
-	platformType *ir.StructDef
-	languageType *ir.StructDef
 	// userOverrides and userFuncOverrides are the program's own
 	// `X[target]` declarations, merged after pass1 by collectUserOverrides.
 	userOverrides        []*ast.ComponentDecl
@@ -720,7 +715,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		c.bindBuiltinRole(kind, sym)
 	}
 	c.stdlibScope = stdlibScope
-	c.typeTargetConsts()
 	symtab.Root.Parent = stdlibScope
 	c.scope = symtab.Root
 
@@ -2066,11 +2060,12 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 			// whole of why the initializer is optional. Without one it is a
 			// name with no value at all, and every read of it would compile
 			// to whatever the target's zero happens to be -- the counterpart
-			// of the rule checkFuncBody applies to a bodyless func.
+			// of the rule checkFuncBody applies to a bodyless func. A
+			// predeclared const is the other answer: the compiler supplies it.
 			if spec.Default == nil {
 				pos, name := spec.Pos, name
 				c.afterMarks(func() {
-					if !ir.IsHostValue(v) {
+					if !ir.IsHostValue(v) && !v.Builtin.IsConst() {
 						c.error(pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
 					}
 				})
@@ -3378,7 +3373,7 @@ func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	if c.cfg == nil {
 		return nil
 	}
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinTreeLanguage {
 		for _, l := range c.cfg.Languages {
 			if l.LanguageIdentifier() == name {
 				return l

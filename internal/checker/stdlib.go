@@ -85,10 +85,10 @@ func targetTier(pkg string) bool {
 // so what tells them apart is the kind, not a separate code path.
 func targetTierName(pkg string) (string, ir.BuiltinKind, bool) {
 	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
-		return name, ir.BuiltinPlatform, true
+		return name, ir.BuiltinTreePlatform, true
 	}
 	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
-		return name, ir.BuiltinLanguage, true
+		return name, ir.BuiltinTreeLanguage, true
 	}
 	return "", ir.BuiltinNone, false
 }
@@ -984,7 +984,7 @@ func qualifiedComponentName(ns, local string) string {
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
 	overrides := &comp.PlatformOverrides
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinTreeLanguage {
 		overrides = &comp.LanguageOverrides
 	}
 	if *overrides == nil {
@@ -1287,7 +1287,7 @@ func (c *checker) checkPendingExtensions() {
 				Const:     pe.isConst,
 				Pkg:       pe.pkg,
 			}
-			if pe.kind == ir.BuiltinLanguage {
+			if pe.kind == ir.BuiltinTreeLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
 				pe.comp.PlatformOverrides[pe.platform] = checked
@@ -1565,7 +1565,7 @@ func ownTarget(name string) []ir.StaticTarget {
 	if !ok {
 		return nil
 	}
-	if kind == ir.BuiltinLanguage {
+	if kind == ir.BuiltinTreeLanguage {
 		return []ir.StaticTarget{{Language: target}}
 	}
 	return []ir.StaticTarget{{Platform: target}}

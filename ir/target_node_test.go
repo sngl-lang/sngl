@@ -17,13 +17,13 @@ func TestTargetNodeOfFindsTheNodeByItsFamily(t *testing.T) {
 	other := &Component{Name: "platform", Tree: impostor, Gen: &GenCaps{TargetName: "fake"}}
 	pkg := &Package{Components: []*Component{other, shell}}
 
-	if got := TargetNodeOf(pkg, BuiltinPlatform); got != shell {
+	if got := TargetNodeOf(pkg, BuiltinTreePlatform); got != shell {
 		t.Errorf("TargetNodeOf(platform) = %v, want the node named shell", got)
 	}
-	if got := TargetNodeOf(pkg, BuiltinLanguage); got != nil {
+	if got := TargetNodeOf(pkg, BuiltinTreeLanguage); got != nil {
 		t.Errorf("TargetNodeOf(language) = %v, want none", got)
 	}
-	if TargetTier(lang) != BuiltinLanguage || TargetTier(plat) != BuiltinPlatform {
+	if TargetTier(lang) != BuiltinTreeLanguage || TargetTier(plat) != BuiltinTreePlatform {
 		t.Error("the marked families answer their tiers")
 	}
 	if IsBuildTargetTree(impostor) {

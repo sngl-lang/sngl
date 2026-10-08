@@ -716,13 +716,6 @@ func parseLiteral(lit *ir.Literal) any {
 			return nil
 		}
 		return mag
-	case ir.TypeStruct:
-		// A target identity is opaque to the program but is a name to the
-		// compiler, so `PLATFORM == html.platform` folds the way the string
-		// comparison it replaced did.
-		if ir.TargetIDStruct(lit.Type) {
-			return lit.Value
-		}
 	}
 	return nil
 }

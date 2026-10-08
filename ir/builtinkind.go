@@ -143,33 +143,15 @@ const (
 	// Package.CLinks rather than rendered.
 	BuiltinCLink BuiltinKind = "cLink"
 
-	// Target identities. An opaque value type each of whose values is one
-	// target's build-tree node read as a value -- html.platform,
-	// go.language. There is no literal, so a string cannot stand in for one,
-	// which is the reason the type exists rather than the name being a string.
-	BuiltinPlatform BuiltinKind = "platform"
-	BuiltinLanguage BuiltinKind = "language"
-
 	// Predeclared constants. These annotate a const declaration whose written
 	// value is a placeholder: the real one is not known until a build picks a
-	// target, so the compiler supplies it. The two target kinds are named for
-	// what they hold -- the target -- because the identity types above own the
-	// bare names.
+	// target, so the compiler supplies it. The two target kinds are typed by
+	// sngl:build's `platform` and `language` families, whose values a target's
+	// own build-tree node is (`html.platform`).
 	BuiltinNull           BuiltinKind = "null"
 	BuiltinTargetPlatform BuiltinKind = "targetPlatform"
 	BuiltinTargetLanguage BuiltinKind = "targetLanguage"
 )
-
-// IsTargetID reports whether the kind marks a target-identity type. Its values
-// are synthesized, one per registered target, so nothing declares them and no
-// literal spells one.
-func (b BuiltinKind) IsTargetID() bool {
-	switch b {
-	case BuiltinPlatform, BuiltinLanguage:
-		return true
-	}
-	return false
-}
 
 // IsPrimitive reports whether the kind is a scalar primitive: int, float and
 // string, and the sized numerics.
@@ -285,7 +267,6 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
-		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
 }
@@ -294,5 +275,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
 }
