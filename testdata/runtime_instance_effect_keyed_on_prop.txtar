@@ -34,7 +34,7 @@ output {
     }
 }
 
-component Watch(tag string, @seen string) node {
+component Watch(tag string, @seen(v string)) node {
     var n = 0
 
     vbox {

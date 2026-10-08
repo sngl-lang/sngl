@@ -400,7 +400,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		var __n2 *TimerInstance
 		if (len(m.__inst0_live) > __inst0_i) && (m.__inst0_was_interval[__inst0_i] == p) {
 			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetTick(func(_ any) {
+			__n2.SetTick(func() {
 				m.n = (m.n + 1)
 				m.__n1.SetText(fmt.Sprint(m.n))
 			})
@@ -408,7 +408,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newTimerInstance(m, p, true, func(_ any) {
+			__n2__new := newTimerInstance(m, p, true, func() {
 				m.n = (m.n + 1)
 				m.__n1.SetText(fmt.Sprint(m.n))
 			})
@@ -445,7 +445,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 			var __n3 *TimerInstance
 			if (len(m.__inst1_live) > __inst1_i) && (m.__inst1_was_interval[__inst1_i] == p) {
 				__n3 = m.__inst1_live[__inst1_i]
-				__n3.SetTick(func(_ any) {
+				__n3.SetTick(func() {
 					m.n = (m.n + 1)
 					m.__n1.SetText(fmt.Sprint(m.n))
 				})
@@ -453,7 +453,7 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n3__new := newTimerInstance(m, p, true, func(_ any) {
+				__n3__new := newTimerInstance(m, p, true, func() {
 					m.n = (m.n + 1)
 					m.__n1.SetText(fmt.Sprint(m.n))
 				})
@@ -544,7 +544,7 @@ type TimerInstance struct {
 	__model             *Model
 	__prop_interval     time.Duration
 	__prop_enabled      bool
-	__prop_tick         func(any)
+	__prop_tick         func()
 	handle              *time.Ticker
 	done                chan bool
 	live                bool
@@ -562,7 +562,7 @@ type TimerInstance struct {
 	__slot1_at          fyne.CanvasObject
 }
 
-func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
 	c.__prop_interval = __a_interval
@@ -603,7 +603,7 @@ func (c *TimerInstance) __effect0_mount() {
 						if c.gen != mine {
 							return
 						}
-						c.__prop_tick(nil)
+						c.__prop_tick()
 					})
 				case <-stopped:
 					return
@@ -688,7 +688,7 @@ func (c *TimerInstance) Destroy() {
 	c.__effect0_teardown()
 }
 
-func (c *TimerInstance) SetTick(__v func(any)) {
+func (c *TimerInstance) SetTick(__v func()) {
 	c.__prop_tick = __v
 	c.__effects0_settle()
 }
@@ -781,14 +781,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		var __n2 *TimerInstance
 		if (len(m.__inst0_live) > __inst0_i) && (m.__inst0_was_interval[__inst0_i] == p) {
 			__n2 = m.__inst0_live[__inst0_i]
-			__n2.SetTick(func(_ any) {
+			__n2.SetTick(func() {
 				m.n = (m.n + 1)
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newTimerInstance(m, p, true, func(_ any) {
+			__n2__new := newTimerInstance(m, p, true, func() {
 				m.n = (m.n + 1)
 			})
 			__n2 = __n2__new
@@ -824,14 +824,14 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 			var __n3 *TimerInstance
 			if (len(m.__inst1_live) > __inst1_i) && (m.__inst1_was_interval[__inst1_i] == p) {
 				__n3 = m.__inst1_live[__inst1_i]
-				__n3.SetTick(func(_ any) {
+				__n3.SetTick(func() {
 					m.n = (m.n + 1)
 				})
 			} else {
 				if len(m.__inst1_live) > __inst1_i {
 					m.__inst1_live[__inst1_i].Destroy()
 				}
-				__n3__new := newTimerInstance(m, p, true, func(_ any) {
+				__n3__new := newTimerInstance(m, p, true, func() {
 					m.n = (m.n + 1)
 				})
 				__n3 = __n3__new
@@ -873,7 +873,7 @@ type TimerInstance struct {
 	__model             *Model
 	__prop_interval     time.Duration
 	__prop_enabled      bool
-	__prop_tick         func(any)
+	__prop_tick         func()
 	handle              *gtk4rt.Schedule
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
@@ -888,7 +888,7 @@ type TimerInstance struct {
 	__slot1_at          gtk4rt.Handle
 }
 
-func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func()) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
 	c.__prop_interval = __a_interval
@@ -912,7 +912,7 @@ func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bo
 
 func (c *TimerInstance) __effect0_mount() {
 	c.handle = gtk4rt.Every(int(c.__effect0_key/time.Millisecond), func() {
-		c.__prop_tick(nil)
+		c.__prop_tick()
 	})
 }
 
@@ -986,7 +986,7 @@ func (c *TimerInstance) teardown() {
 	c.__effect0_teardown()
 }
 
-func (c *TimerInstance) SetTick(__v func(any)) {
+func (c *TimerInstance) SetTick(__v func()) {
 	c.__prop_tick = __v
 	c.__effects0_settle()
 }
@@ -1088,7 +1088,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e0) => {
+    let tick = props.tick ?? (() => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -1104,7 +1104,7 @@ body { font-family: system-ui, sans-serif; }
     let __slot12 = [];
     function __effect0_mount() {
       handle = setInterval(() => {
-        __prop_tick(null);
+        __prop_tick();
       }, __effect0_key);
     }
     function __effect0_unmount() {
@@ -1201,7 +1201,7 @@ body { font-family: system-ui, sans-serif; }
       let __n2 = null;
       if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
         __n2 = __inst1_live[__inst1_i];
-        __n2.__set_tick((_) => {
+        __n2.__set_tick(() => {
           state.n = state.n + 1;
           __n1.textContent = String(state.n);
         });
@@ -1209,7 +1209,7 @@ body { font-family: system-ui, sans-serif; }
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf_timer({ interval: p, enabled: true, tick: (_) => {
+        let __n2__new = __cf_timer({ interval: p, enabled: true, tick: () => {
           state.n = state.n + 1;
           __n1.textContent = String(state.n);
         } });
@@ -1256,7 +1256,7 @@ body { font-family: system-ui, sans-serif; }
         let __n3 = null;
         if (__inst3_live.length > __inst3_i && __inst3_was_interval[__inst3_i] === p) {
           __n3 = __inst3_live[__inst3_i];
-          __n3.__set_tick((_) => {
+          __n3.__set_tick(() => {
             state.n = state.n + 1;
             __n1.textContent = String(state.n);
           });
@@ -1264,7 +1264,7 @@ body { font-family: system-ui, sans-serif; }
           if (__inst3_live.length > __inst3_i) {
             __inst3_live[__inst3_i].__destroy();
           }
-          let __n3__new = __cf_timer({ interval: p, enabled: true, tick: (_) => {
+          let __n3__new = __cf_timer({ interval: p, enabled: true, tick: () => {
             state.n = state.n + 1;
             __n1.textContent = String(state.n);
           } });
@@ -1323,8 +1323,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e89484b9e3f9e9556e9c213f5a028b25
 -- run/go/fyne --
-pass sha256:f69b6ee345215a40d8659be1f98f3523
+pass sha256:59a91089007f0497bf7f92e01b3312fb
 -- run/go/gtk4 --
-pass sha256:2c5293bb240918c0ed9c66e88ce401fa
+pass sha256:0d83d3f84ddbfc288919500b2b00e237
 -- run/none/html --
-pass sha256:afcb9a4ad56a38be6c727643fda5a85b
+pass sha256:03ad4bb55fb81ad8aff2e52855b3cac1

@@ -24,7 +24,7 @@ component box<T>(item T, label string) node {
 
 // The payload of an event follows the parameter, so a handler's argument is
 // typed by the prop the caller passed.
-component job<T>(seed T, @done T) node {
+component job<T>(seed T, @done(v T)) node {
     text(value="job")
 }
 

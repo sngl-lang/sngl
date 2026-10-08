@@ -97,7 +97,7 @@ component link<T = struct {}, M = struct {}>(
     params option<T> = null,
     text   string,
     style  ui.Style,
-    @click ui.ClickEvent,
+    @click(e ui.ClickEvent),
 ) ui.node {
     ui.button(text=text, style=style, @click {
         click()

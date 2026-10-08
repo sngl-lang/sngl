@@ -35,7 +35,7 @@ output {
     }
 }
 
-component Card(start int, @report string, layout component(n int, content component node) node) node {
+component Card(start int, @report(v string), layout component(n int, content component node) node) node {
     var k = start
 
     vbox {

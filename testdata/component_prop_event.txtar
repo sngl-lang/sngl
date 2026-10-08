@@ -5,7 +5,7 @@ carries.
 -- component_prop_event.sngl --
 import . "sngl:ui"
 
-component Button(variant = "primary", @click) node {
+component Button(variant = "primary", @click(v int)) node {
     button(text="Click me", @click { click(1) })
 }
 

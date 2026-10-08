@@ -8,7 +8,7 @@ import . "sngl:test"
 // the emit.
 // Test event declarations and bidirectional bindings
 // Component with an event in ()
-component Counter(label = "", @save) node {
+component Counter(label = "", @save(v int)) node {
     var count = 0
 
     button(text="+", @click { count += 1 })

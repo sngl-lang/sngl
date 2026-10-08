@@ -31,7 +31,7 @@ func testAnEmitFromADefaultedChildArrives(t Test, c main) {
     t.assert(c.defaulted == 1)
 }
 
-component relay(on bool = true, @fired ChangeEvent) node {
+component relay(on bool = true, @fired(e ChangeEvent)) node {
     var seen = 0
 
     if on {

@@ -101,7 +101,7 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		if !hasBindingEvent(comp, b.PropName) {
 			comp.Events = append(comp.Events, &ir.EventDecl{
 				Name:   b.PropName,
-				Params: []*ir.Param{{Type: prop.Type}},
+				Params: []*ir.Param{{Name: b.PropName, Type: prop.Type}},
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component. A body
 			// handing the prop on to what it renders -- an override's

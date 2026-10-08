@@ -189,19 +189,37 @@ component back as a signature.
 
 ## Event syntax
 
-An event declares the parameters its handlers receive, with a func type's
-parameter list — `@pick(index int, label string)` — and `ir.EventDecl.Params`
-is that list. Three spellings, one mechanism:
+An event declares the parameters its handlers receive **as a function
+declares its own**: `@pick(index int, label string)`, `@change(e ChangeEvent)`.
+It is the same list read by the same code -- `EventParams` is `lparen [ ParamList ] rparen` in the grammar, the builder reads it with
+`buildParamList`, and the checker resolves it with `buildParams` -- so each
+parameter is named and typed, and `ir.EventDecl.Params` is that list. The
+names are documentation rather than contract, since a handler binds by
+position. As a function may, an event leaves its parens off when there are
+none: `@tick` and `@done()` both pass nothing, and `ir.Convert` prints the
+second. What a function's parameter may carry and an event's may not -- a
+default, `const`, `...` -- is refused in `eventParams`
+(`testdata/error_event_param_forms.sngl`).
 
-- `@pick(index int, label string)` — the list; names are optional, as in a
-  func type, and are documentation rather than contract.
-- `@change T` — the one-parameter case without the parens.
-- `@done()` passes nothing. A bare `@tick` is **not** that: it is one unnamed
-  `dyn` parameter, the loose payload a bare event has always carried, which is
-  why `ir.Convert` prints an empty list as `@done()`.
+There used to be a func *type's* list here, names optional, and a shorthand
+for a list of one, `@change T`; a bare `@tick` meant one loose `dyn`
+parameter. The shorthand is refused naming the list
+(`testdata/error_event_type_shorthand.sngl`): the grammar still admits it so
+that the builder can say `@change(v T)` rather than "unexpected identifier".
+Most bare events meant none -- a timer's tick, a DOM event SNGL cannot name a
+payload for -- which is what took the `func(any)` and the `nil` every tick
+handed it out of a timer instance's generated code. In an **override's** prop
+list a bare `@click` selects one of the base's events rather than declaring
+one, and `ast.EventDecl.HasParens` is what tells it from `@click()`, which the
+selection refuses. An event a lowering pass synthesizes names its parameter
+too -- a two-way prop's write-back is `@count(count int)` -- and `ir.Convert`
+names one that arrives unnamed `v<i>`, since the list it prints must parse.
 
-A handler binds **by position**, the way a func literal does, and may leave
-trailing parameters unbound; binding more than the event passes, or annotating
+A handler binds **by position**, the way a func literal does, and its
+parameters take their types from the declaration it implements, as a
+lambda's take theirs from the func type it is handed, so it may write names
+alone or annotate them. It may leave trailing
+parameters unbound; binding more than the event passes, or annotating
 one with a type other than its position's, is a positioned error
 (`bindParams`). An emit supplies every declared parameter
 (`checkEmitArgs`) — or **none at all, which forwards**: written in a handler,

@@ -237,7 +237,7 @@ struct DrawEvent {
 }
 
 #[marks.intrinsic("go:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 // The style setters, written once rather than per shape. The context keeps a
 // pending style that the next primitive consumes, so this is the whole of

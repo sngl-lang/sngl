@@ -17,8 +17,8 @@ struct Payload {
 }
 
 component emitter(
-    @one  Payload,
-    @none FocusEvent,
+    @one(v Payload),
+    @none(e FocusEvent),
 ) node {
     text(value="a", @click { one({value="x"}) })
     text(value="b", @click { one(Payload{value="y"}) })
@@ -26,26 +26,26 @@ component emitter(
 }
 
 // The field's own type is not the payload's, however few fields it has.
-component fieldValue(@one Payload) node {
+component fieldValue(@one(v Payload)) node {
     text(value="d", @click { one("x") }) // ERROR(check) "cannot pass string as Payload"
 }
 
-component wrongType(@one Payload) node {
+component wrongType(@one(v Payload)) node {
     var flag = false
     text(value="e", @click { one(flag) }) // ERROR(check) "cannot pass bool as Payload"
 }
 
 // A payload with no fields is still a payload: an empty literal is one, and a
 // value of another type is not.
-component emptyPayload(@none FocusEvent) node {
+component emptyPayload(@none(e FocusEvent)) node {
     text(value="f", @click { none({}) })
 }
 
-component emptyPayloadWrongType(@none FocusEvent) node {
+component emptyPayloadWrongType(@none(e FocusEvent)) node {
     text(value="g", @click { none("x") }) // ERROR(check) "cannot pass string as FocusEvent"
 }
 
-component tooManyArgs(@one Payload) node {
+component tooManyArgs(@one(v Payload)) node {
     text(value="h", @click { one({value="a"}, {value="b"}) }) // ERROR(check) "event \"one\" passes 1 parameter, got 2 arguments"
 }
 

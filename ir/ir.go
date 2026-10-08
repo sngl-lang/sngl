@@ -971,8 +971,8 @@ type EventDecl struct {
 	// handler binds them by position, the way a func literal binds its
 	// parameters, and may stop short -- so unlike a slot's, the names here are
 	// documentation rather than contract, and an entry with none carries "".
-	// `@change T` is one unnamed entry and `@done()` is none. A bare `@tick`
-	// is one unnamed `dyn` entry, the loose payload it has always carried.
+	// They are declared as a function's are, so each written one is named;
+	// `@done()` and a bare `@tick` are none.
 	Params []*Param `json:",omitempty"`
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.

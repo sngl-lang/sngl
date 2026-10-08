@@ -1,9 +1,9 @@
-// An event is declared with a parameter list, the way a func type is, and a
+// An event is declared with a parameter list, the way a function is, and a
 // handler binds it by position, the way a func literal does.
 //
-// `@name T` is the one-parameter case of the same thing, written without the
-// parens, and `@name()` is an event that passes nothing. A handler may leave
-// trailing parameters unbound; what it binds takes the declared type at that
+// Each parameter is named and typed, and `@name()` -- or `@name`, as a
+// function may leave its parens off -- is an event that passes nothing. A
+// handler may leave trailing parameters unbound; what it binds takes the declared type at that
 // position, and an annotation it writes is held to it.
 
 import . "sngl:ui"

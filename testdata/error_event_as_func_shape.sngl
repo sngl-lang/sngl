@@ -21,19 +21,19 @@ func takesAnswer(f func() int) {
     f()
 }
 
-component mismatched(@fired int) node {
+component mismatched(@fired(v int)) node {
     effect(@mount {
         takesString(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component tooMany(@fired int) node {
+component tooMany(@fired(v int)) node {
     effect(@mount {
         takesTwo(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component wantsValue(@fired int) node {
+component wantsValue(@fired(v int)) node {
     effect(@mount {
         takesAnswer(fired) // ERROR(check) "an event answers nothing"
     })

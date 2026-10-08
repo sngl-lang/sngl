@@ -187,7 +187,7 @@ struct ComposeRect {}
 const func degrees(radians float) => radians * 180.0 / math.pi
 
 #[intrinsic("android:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 struct DrawEvent {
     width  int

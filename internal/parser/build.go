@@ -1207,7 +1207,7 @@ func (b *builder) buildParamEntries(it nodeIter, openLine int, multiline *bool, 
 }
 
 func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
-	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
+	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | kw_const ident [ Type ] | ident [ Type ] ) [ assign Expr ] .
 	attrs := b.buildParamAttrs(&it)
 	if it.done() {
 		return ast.Param{Attrs: attrs}
@@ -1232,18 +1232,15 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		Const:         isConst,
 		Attrs:         attrs,
 	}
-	var evParams []ast.FuncTypeParam
+	var evParams ast.ParamList
 	evParens := false
 	if !it.done() && it.isNonTerminal() && it.symbol() == EventParams {
-		// EventParams = lparen [ FuncTypeParamList ] rparen .
+		// EventParams = lparen [ ParamList ] rparen .
 		evParens = true
 		inner := it.enter()
-		for !inner.done() {
-			if inner.isNonTerminal() && inner.symbol() == FuncTypeParamList {
-				evParams = b.buildFuncTypeParamList(inner.enter())
-				continue
-			}
-			inner.skip() // lparen, rparen
+		open := inner.shift() // lparen
+		if !inner.done() && inner.isNonTerminal() && inner.symbol() == ParamList {
+			evParams = b.buildParamList(inner.enter(), open.Line)
 		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
@@ -1262,7 +1259,9 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 		b.errorf(p.Pos, "event %q takes no default value", p.Name)
 	}
 	if p.Type != nil {
-		evParams = []ast.FuncTypeParam{{Type: p.Type}}
+		// The list a declaration used to shorten to its one type, which a
+		// function's parameter list has no form for.
+		b.errorf(p.Pos, "event %q declares its parameters as a function does: @%s(v %s)", p.Name, p.Name, FormatType(p.Type))
 	}
 	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Params: evParams, HasParens: evParens, Attrs: attrs}
 }

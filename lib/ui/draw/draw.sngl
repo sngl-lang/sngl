@@ -86,7 +86,7 @@ component canvas(
     height      ui.measurement,
     scalingMode ScalingMode,
     style       CanvasStyle,
-    @click      ui.ClickEvent,
+    @click(e ui.ClickEvent),
     shapes      ...component shape,
 ) ui.node {}
 

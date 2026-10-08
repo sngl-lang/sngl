@@ -46,7 +46,7 @@ component Wrap(children ...component) ui.node {
     }
 }
 
-component Picker(@picked int) ui.node {
+component Picker(@picked(v int)) ui.node {
     var taps = 0
 
     Wrap {
@@ -57,7 +57,7 @@ component Picker(@picked int) ui.node {
     }
 }
 
-component Frame(@done int, layout component(content component ui.node) ui.node) ui.node {
+component Frame(@done(v int), layout component(content component ui.node) ui.node) ui.node {
     layout() {
         component content {
             ui.button(text="done", @click { done(8) })
@@ -74,7 +74,7 @@ component Card(header component() ui.node) ui.node {
     }
 }
 
-component Titled(@named int) ui.node {
+component Titled(@named(v int)) ui.node {
     var hits = 0
 
     Card {

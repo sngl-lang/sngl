@@ -163,9 +163,9 @@ component Widget(
     options     list<string>,
     date        option<time.date>,
     style       ui.Style,
-    @click      ui.ClickEvent,
-    @change     ui.ChangeEvent,
-    @input      ui.InputEvent,
+    @click(e ui.ClickEvent),
+    @change(e ui.ChangeEvent),
+    @input(e ui.InputEvent),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -178,9 +178,9 @@ component Container(
     flag        bool,
     options     list<string>,
     style       ui.Style,
-    @click      ui.ClickEvent,
-    @change     ui.ChangeEvent,
-    @input      ui.InputEvent,
+    @click(e ui.ClickEvent),
+    @change(e ui.ChangeEvent),
+    @input(e ui.InputEvent),
     children    ...component,
 ) ui.node
 
@@ -194,9 +194,9 @@ component Wrapper(
     flag        bool,
     options     list<string>,
     style       ui.Style,
-    @click      ui.ClickEvent,
-    @change     ui.ChangeEvent,
-    @input      ui.InputEvent,
+    @click(e ui.ClickEvent),
+    @change(e ui.ChangeEvent),
+    @input(e ui.InputEvent),
     content     ...component tr.one,
 ) ui.node
 
@@ -221,7 +221,7 @@ const component Label(text string, style ui.Style) ui.node {
     ) {}
 }
 
-const component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
+const component Button(text string, style ui.Style, @click(e ui.ClickEvent)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -236,7 +236,7 @@ const component Button(text string, style ui.Style, @click ui.ClickEvent) ui.nod
     ) {}
 }
 
-const component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent, @change ui.ChangeEvent) ui.node {
+const component Entry(text string, placeholder string, style ui.Style, @input(e ui.InputEvent), @change(e ui.ChangeEvent)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -263,8 +263,8 @@ const component MultiLineEntry(
     placeholder string,
     rows        int,
     style       ui.Style,
-    @input      ui.InputEvent,
-    @change     ui.ChangeEvent,
+    @input(e ui.InputEvent),
+    @change(e ui.ChangeEvent),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -289,7 +289,7 @@ const component MultiLineEntry(
     ) {}
 }
 
-const component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
+const component Check(text string, checked bool, style ui.Style, @change(e ui.ToggleEvent)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -316,7 +316,7 @@ const component Select(
     selected string,
     options  list<string>,
     style    ui.Style,
-    @change  ui.ChangeEvent,
+    @change(e ui.ChangeEvent),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -576,7 +576,7 @@ const component DateEntry(
     value       option<time.date>,
     placeholder string,
     style       ui.Style,
-    @change     ui.DateEvent,
+    @change(e ui.DateEvent),
 ) ui.node {
     Widget(
         spec = Spec{

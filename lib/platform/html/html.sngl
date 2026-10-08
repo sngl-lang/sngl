@@ -140,17 +140,17 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
-    @click  ui.ClickEvent,
-    @input  ui.InputEvent,
-    @change ui.ChangeEvent,
-    @focus  ui.FocusEvent,
-    @blur   ui.FocusEvent,
-    @submit ui.SubmitEvent,
-    @scroll ui.ScrollEvent,
-    @load   ui.LoadEvent,
-    @error  error,
-    @close  ui.DismissEvent,
-    @select ui.SelectEvent,
+    @click(e ui.ClickEvent),
+    @input(e ui.InputEvent),
+    @change(e ui.ChangeEvent),
+    @focus(e ui.FocusEvent),
+    @blur(e ui.FocusEvent),
+    @submit(e ui.SubmitEvent),
+    @scroll(e ui.ScrollEvent),
+    @load(e ui.LoadEvent),
+    @error(e error),
+    @close(e ui.DismissEvent),
+    @select(e ui.SelectEvent),
 
     // Every other DOM event. The event set is as open as the element set and
     // the attribute set, for the same reason: a standard adds to it. The
@@ -902,7 +902,7 @@ struct DrawEvent {
 }
 
 #[intrinsic("html:draw")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style

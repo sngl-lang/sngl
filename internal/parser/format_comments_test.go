@@ -108,15 +108,15 @@ func TestFormatKeepsCommentsAmongMarkArguments(t *testing.T) {
 // A declaration's list written across lines lines its types up in a column,
 // as gofmt does a struct's fields: per run of items, a blank line ending one.
 // An item whose mark is written before it on its line does not join, since
-// padding it would line nothing up, and an event with a parenthesised list
-// writes no type there to align.
+// padding it would line nothing up, and an event writes its parameters in
+// parens rather than a type there to align.
 func TestFormatAlignsDeclarationColumns(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, want string
 	}{
 		{"component props and events",
-			"component c(\n    label string,\n    :checked bool,\n    const size int = 1,\n    @click ClickEvent,\n    @done(),\n) {}",
-			"component c(\n    label      string,\n    :checked   bool,\n    const size int = 1,\n    @click     ClickEvent,\n    @done(),\n) {}"},
+			"component c(\n    label string,\n    :checked bool,\n    const size int = 1,\n    @click(e ClickEvent),\n    @done(),\n) {}",
+			"component c(\n    label      string,\n    :checked   bool,\n    const size int = 1,\n    @click(e ClickEvent),\n    @done(),\n) {}"},
 		{"a blank line ends a run",
 			"func f(\n    a int,\n    bb int,\n\n    longer string,\n) {}",
 			"func f(\n    a  int,\n    bb int,\n\n    longer string,\n) {}"},

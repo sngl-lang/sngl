@@ -14,7 +14,7 @@ component link(
     disabled  bool,
     focusable bool = true,
     style     Style,
-    @click    ClickEvent,
+    @click(e ClickEvent),
 ) node
 
 component _example_link node {
@@ -38,7 +38,7 @@ component tabs(
     selected int,
     variant  TabsVariant,
     style    Style,
-    @change  SelectEvent,
+    @change(e SelectEvent),
     panels   ...component,
 ) node
 
@@ -59,11 +59,11 @@ component _example_tabs node {
 // outside, Escape).
 // TODO Use families pass the items as children
 component menu(
-    style   Style,
-    items   list<string>,
-    open    bool,
-    @select MenuEvent,
-    @close  DismissEvent,
+    style Style,
+    items list<string>,
+    open  bool,
+    @select(e MenuEvent),
+    @close(e DismissEvent),
 ) node
 
 component _example_menu node {
@@ -80,9 +80,9 @@ component _example_menu node {
 // integration. `@select` fires with the activated menu path.
 // TODO Use families pass the items as children
 component menubar(
-    style   Style,
-    items   list<string>,
-    @select MenuEvent,
+    style Style,
+    items list<string>,
+    @select(e MenuEvent),
 ) node
 
 component _example_menubar node {
@@ -99,7 +99,7 @@ component _example_menubar node {
 component toolbar(
     style    Style,
     items    list<string>,
-    @select  MenuEvent,
+    @select(e MenuEvent),
     controls ...component,
 ) node
 

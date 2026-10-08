@@ -959,7 +959,7 @@ ParamList = Param { "," Param } [ "," ]
 
 Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
 
-EventParams = "(" [ FuncTypeParamList ] ")"
+EventParams = "(" [ ParamList ] ")"
 
 ```
 
@@ -1584,9 +1584,9 @@ A component parameter is one of four kinds:
   that way is an error, since what it shows is the expression the caller wrote;
 - an **event parameter** — `@name(a A, b B)` — an outgoing event the
   component fires by calling its name (`name(x, y)`) and the caller handles
-  with `@name(a, b) { … }`. The list is a func type's, names optional;
-  `@name T` is the one-parameter case written without the parens, `@name()`
-  passes nothing, and a bare `@name` carries one untyped value;
+  with `@name(a, b) { … }`. The list is a function's, each parameter named
+  and typed, and as with a function the parens may be left off when there is
+  none: `@name` and `@name()` both pass nothing;
 - a **slot** — `name component …` — a region of UI the caller supplies,
   described next.
 
@@ -2284,7 +2284,7 @@ ParamList = Param { "," Param } [ "," ]
 
 Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | "const" IDENT [ Type ] | IDENT [ Type ] ) [ "=" Expr ]
 
-EventParams = "(" [ FuncTypeParamList ] ")"
+EventParams = "(" [ ParamList ] ")"
 
 ```
 

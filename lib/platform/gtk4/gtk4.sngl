@@ -385,7 +385,7 @@ struct DrawEvent {
 }
 
 #[marks.intrinsic("gtk4:draw:cairo")]
-component draw(@draw DrawEvent) shapes.shape
+component draw(@draw(e DrawEvent)) shapes.shape
 
 // cairo takes its line cap and join as enum values. The names are SNGL's, the
 // numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them

@@ -6,13 +6,13 @@ import time "sngl:time"
 // `@click` fires on activation; `@longPress` fires after a sustained
 // press on pointer/touch platforms.
 component button(
-    text       string,
-    disabled   bool,
-    focusable  bool = true,
-    style      Style,
-    @click     ClickEvent,
-    @longPress LongPressEvent,
-    content    ...component,
+    text      string,
+    disabled  bool,
+    focusable bool = true,
+    style     Style,
+    @click(e ClickEvent),
+    @longPress(e LongPressEvent),
+    content   ...component,
 ) node
 
 component _example_button node {
@@ -46,11 +46,11 @@ component input(
     maxLength   int,
     focusable   bool = true,
     style       Style,
-    @input      InputEvent,
-    @change     ChangeEvent,
-    @focus      FocusEvent,
-    @blur       FocusEvent,
-    @submit     SubmitEvent,
+    @input(e InputEvent),
+    @change(e ChangeEvent),
+    @focus(e FocusEvent),
+    @blur(e FocusEvent),
+    @submit(e SubmitEvent),
 ) node
 
 component _example_input node {
@@ -76,10 +76,10 @@ component textarea(
     maxLength   int,
     focusable   bool = true,
     style       Style,
-    @input      InputEvent,
-    @change     ChangeEvent,
-    @focus      FocusEvent,
-    @blur       FocusEvent,
+    @input(e InputEvent),
+    @change(e ChangeEvent),
+    @focus(e FocusEvent),
+    @blur(e FocusEvent),
 ) node
 
 component _example_textarea node {
@@ -102,7 +102,7 @@ component checkbox(
     disabled  bool,
     focusable bool = true,
     style     Style,
-    @change   ToggleEvent,
+    @change(e ToggleEvent),
 ) node
 
 component _example_checkbox node {
@@ -127,7 +127,7 @@ component radio(
     disabled  bool,
     direction Orientation,
     style     Style,
-    @change   ChangeEvent,
+    @change(e ChangeEvent),
 ) node
 
 component _example_radio node {
@@ -147,7 +147,7 @@ component toggle(
     disabled  bool,
     focusable bool = true,
     style     Style,
-    @change   ToggleEvent,
+    @change(e ToggleEvent),
 ) node
 
 component _example_toggle node {
@@ -171,9 +171,9 @@ component select(
     multiple    bool,
     focusable   bool = true,
     style       Style,
-    @change     ChangeEvent,
-    @focus      FocusEvent,
-    @blur       FocusEvent,
+    @change(e ChangeEvent),
+    @focus(e FocusEvent),
+    @blur(e FocusEvent),
 ) node
 
 component _example_select node {
@@ -199,9 +199,9 @@ component datepicker(
     :value      option<time.date>,
     disabled    bool,
     style       Style,
-    @change     DateEvent,
-    @focus      FocusEvent,
-    @blur       FocusEvent,
+    @change(e DateEvent),
+    @focus(e FocusEvent),
+    @blur(e FocusEvent),
 ) node
 
 component _example_datepicker node {

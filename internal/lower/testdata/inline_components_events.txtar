@@ -2,7 +2,7 @@ caps: NoInlineComponents
 -- input.sngl --
 import . "sngl:ui"
 
-component LabeledCounter(start = 0, @changed) node {
+component LabeledCounter(start = 0, @changed(v int)) node {
     var n = start
     button(text=string(n), @click {
         n = n + 1

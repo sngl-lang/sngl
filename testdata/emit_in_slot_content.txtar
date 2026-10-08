@@ -29,7 +29,7 @@ output {
     }
 }
 
-component Picker(@picked int) ui.node {
+component Picker(@picked(v int)) ui.node {
     ui.hbox {
         for var i = [1, 2, 3] {
             ui.button(text="p{i}", @click { picked(i) })
@@ -37,7 +37,7 @@ component Picker(@picked int) ui.node {
     }
 }
 
-component Stepper(@changed int) ui.node {
+component Stepper(@changed(v int)) ui.node {
     ui.hbox {
         ui.button(text="inc", @click { changed(5) })
     }

@@ -33,7 +33,7 @@ output {
     }
 }
 
-component Card(n int, @report int) node {
+component Card(n int, @report(v int)) node {
     var hits = 0
 
     vbox {

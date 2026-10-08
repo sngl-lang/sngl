@@ -179,7 +179,7 @@ func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component)
 			}
 		case ast.EventDecl:
 			name, pos = "@"+pd.Name, pd.Pos
-			if len(pd.Params) > 0 || pd.HasParens {
+			if len(pd.Params.Params) > 0 || pd.HasParens {
 				c.error(pos, "override %q selects event %q; its type belongs to the declaration being overridden", decl.Name, name)
 				ok = false
 				continue

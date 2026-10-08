@@ -31,7 +31,7 @@ output {
     }
 }
 
-component Counter(tag string, @seen string) node {
+component Counter(tag string, @seen(v string)) node {
     var n = 0
 
     vbox {

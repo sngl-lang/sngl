@@ -1170,21 +1170,16 @@ func (c *converter) convertParamList(params []*Param) ast.ParamList {
 	return pl
 }
 
-// convertEventDecl spells an event so it parses as the same declaration: the
-// bare `@change T` for one unnamed parameter, `@tick` for the loose `dyn` one
-// that spelling has always meant, and the parenthesised list otherwise --
-// `@done()` for none, since a bare `@done` would read back as the loose form.
+// convertEventDecl spells an event as a function's parameter list, `@done()`
+// for none. A parameter the IR carries without a name -- one a pass
+// synthesized -- is given one, since the list a declaration writes names
+// each.
 func (c *converter) convertEventDecl(e *EventDecl) ast.EventDecl {
-	ed := ast.EventDecl{Name: e.Name}
-	if len(e.Params) == 1 && e.Params[0].Name == "" {
-		if t := e.Params[0].Type; t != nil && t.Kind != TypeDyn {
-			ed.Params = []ast.FuncTypeParam{{Type: c.convertType(t)}}
+	ed := ast.EventDecl{Name: e.Name, HasParens: true, Params: c.convertParamList(e.Params)}
+	for i := range ed.Params.Params {
+		if ed.Params.Params[i].Name == "" {
+			ed.Params.Params[i].Name = fmt.Sprintf("v%d", i)
 		}
-		return ed
-	}
-	ed.HasParens = true
-	for _, p := range e.Params {
-		ed.Params = append(ed.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
 	}
 	return ed
 }

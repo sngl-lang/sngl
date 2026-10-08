@@ -34,7 +34,7 @@ component window(
     title    string,
     favicon  string, // TODO should our components that take images use a component family for that with a slot? That could make imports work well for embedding and remotely fetching work.
     :visible bool = true,
-    @error   error,
+    @error(e error),
     @closed(),
     content  ...component node,
 ) root

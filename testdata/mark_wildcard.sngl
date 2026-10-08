@@ -19,7 +19,7 @@ component attrs(
 // is bound under the name it was written with, so the names stay distinct
 // without a map to hold them.
 component surface(
-    @click ClickEvent,
+    @click(e ClickEvent),
     #[wildcard("on[A-Z][A-Za-z]*")] @event,
 ) node {
     text(value="x")

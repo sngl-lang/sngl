@@ -32,7 +32,7 @@
 #[_none]
 #[_builtin(effect)]
 component effect<T = struct {}>(
-    on       T,
-    @mount   T,
-    @unmount T, // TODO This syntax should go away. Event handler params and args should behave like funcs
+    on T,
+    @mount(key T),
+    @unmount(key T),
 ) {}

@@ -56,9 +56,9 @@ func FormatType(te ast.TypeExpr) string {
 }
 
 // FormatEventSignature formats what follows an event's name in its
-// declaration, for documentation and hover: `T` for `@change T`, the
-// parenthesised list for `@pick(index int, label string)`, and nothing for a
-// bare `@tick`.
+// declaration, for documentation and hover: the parameter list, as
+// `(index int, label string)` for `@pick(index int, label string)`, and
+// nothing for a bare `@tick`.
 func FormatEventSignature(e ast.EventDecl) string {
 	var buf strings.Builder
 	f := newFormatter(&buf)
@@ -1118,18 +1118,11 @@ func paramHead(p ast.Param) string {
 	return head
 }
 
-// propHead is paramHead for a component prop, an event included. It is empty
-// for one that writes no type after its head -- an event with a parenthesised
-// list, or with none -- which takes no part in lining types up.
+// propHead is paramHead for a component prop. It is empty for an event, whose
+// parameters follow its name in parens and so take no part in lining types up.
 func propHead(p ast.ParamOrEventDecl) string {
-	switch v := p.(type) {
-	case ast.Param:
+	if v, ok := p.(ast.Param); ok {
 		return alignedHead(v)
-	case ast.EventDecl:
-		if v.HasParens || len(v.Params) != 1 || marksInline(v.Attrs, v.Pos) {
-			return ""
-		}
-		return "@" + v.Name
 	}
 	return ""
 }
@@ -1212,15 +1205,11 @@ func (f *formatter) writePropOrEventPadded(p ast.ParamOrEventDecl, multiline boo
 		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("@")
 		f.write(v.Name)
-		if !v.HasParens {
-			if len(v.Params) == 1 {
-				f.write(strings.Repeat(" ", max(1, width-len(v.Name))))
-				f.writeType(v.Params[0].Type)
-			}
+		if !v.HasParens && len(v.Params.Params) == 0 {
 			return
 		}
 		f.write("(")
-		f.writeFuncTypeParams(v.Params)
+		f.writeParams(v.Params)
 		f.write(")")
 	}
 }

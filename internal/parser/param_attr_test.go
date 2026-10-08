@@ -104,7 +104,7 @@ func TestParseParamAttrForms(t *testing.T) {
 		{"multiple", `component c(#[m] #[n("x")] a int) node {}`, false},
 		{"lambda", `func f() => func(#[m] a int) => a`, false},
 		{"event", `component c(#[m] @click) node {}`, false},
-		{"event typed", `component c(#[m] @click E) node {}`, false},
+		{"event typed", `component c(#[m] @click(v E)) node {}`, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

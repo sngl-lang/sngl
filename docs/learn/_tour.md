@@ -604,7 +604,7 @@ This is how state flows back up: the parent owns `quantity`, the stepper reports
 ```sngl
 import ui "sngl:ui"
 
-component Stepper(value = 0, @changed int, @reset()) ui.node {
+component Stepper(value = 0, @changed(v int), @reset()) ui.node {
     ui.hbox(style={gap=8px, alignItems=center}) {
         ui.button(text="-", @click { changed(value - 1) })
         ui.text(value="{value}", style={fontFamily="monospace"})

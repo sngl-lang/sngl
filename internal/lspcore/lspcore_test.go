@@ -544,8 +544,8 @@ func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
 	if got := byLabel["text"].Detail; got != "string" {
 		t.Errorf("button.text detail = %q, want string", got)
 	}
-	if got := byLabel["@click"].Detail; got != "ClickEvent" {
-		t.Errorf("button @click detail = %q, want ClickEvent", got)
+	if got := byLabel["@click"].Detail; got != "(e ClickEvent)" {
+		t.Errorf("button @click detail = %q, want (e ClickEvent)", got)
 	}
 	if _, ok := byLabel["value"]; ok {
 		t.Error("button offered `value`, which is input's prop")

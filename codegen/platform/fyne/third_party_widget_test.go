@@ -26,7 +26,7 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) node {
+component Gauge(:level int, @change(e ChangeEvent)) node {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-gauge/fynegauge", name="NewGauge"},
@@ -159,7 +159,7 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) node {
+component Gauge(:level int, @change(e ChangeEvent)) node {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-charts/v2", name="NewGauge"},

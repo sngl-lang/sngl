@@ -59,7 +59,7 @@ component wrapped(@fired) node {
     })
 }
 
-component carries(@fired int) node {
+component carries(@fired(v int)) node {
     effect(@mount {
         runWith(fired)
     })
