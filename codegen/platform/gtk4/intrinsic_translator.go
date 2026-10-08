@@ -330,7 +330,7 @@ func (t *gtk4Translator) unresolvedTagError(id, tag string) error {
 	if cType := widgetCType(comp); cType != "" {
 		return fmt.Errorf("gtk4: widget %q names C type %s, which the installed Gtk-4.0.gir does not declare", tag, cType)
 	}
-	if !comp.Stdlib {
+	if !codegen.DeclinesNode(comp) {
 		// Lowering drops such a node, so this is unreachable through a
 		// compile; answering here beats telling a user their own component
 		// has no gtk4 implementation.

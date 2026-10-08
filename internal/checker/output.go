@@ -105,7 +105,7 @@ func (c *checker) unregisteredTargetNode(name string, depth int) *ir.Component {
 		return comp
 	}
 	langTree, platTree := c.buildTrees()
-	comp := &ir.Component{Name: name, Stdlib: true, Tree: platTree, Gen: &ir.GenCaps{TargetName: name}}
+	comp := &ir.Component{Name: name, Tree: platTree, Gen: &ir.GenCaps{TargetName: name}}
 	if depth == 1 {
 		comp.Tree = langTree
 		comp.ChildrenType = &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypDyn}}

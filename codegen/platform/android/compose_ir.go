@@ -168,7 +168,7 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		if cc.renderStdlibComposable(n) {
 			return
 		}
-		if !n.Component.Stdlib {
+		if !codegen.DeclinesNode(n.Component) {
 			// A user component the optimizer eliminated — its body was empty,
 			// so there is no composable to call and nothing to draw. Lowering
 			// drops such a node now, so this is unreachable through a compile;

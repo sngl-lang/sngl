@@ -235,7 +235,6 @@ func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
 			},
 			Intrinsic: "error.raise",
 			Purity:    ir.PurityPure,
-			Stdlib:    true,
 		},
 		Args: []ir.CallArg{
 			{Name: "message", Value: &ir.Literal{Type: ir.TypString, Value: msg}},

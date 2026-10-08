@@ -809,27 +809,6 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
-	// Only inline components declared in this package or an imported one this
-	// build renders, a stdlib component this build's platform extension
-	// specialized, or a stdlib component carrying a body of its own. An
-	// imported component is on the list because Lower put it there, and its
-	// state is per-instance for the same reasons a local one's is.
-	//
-	// The specialized case is passPlatformExtensionBody's: it swapped that
-	// body and its vars into the component, and state declared there is
-	// per-instance for exactly the reasons a user component's var is. A pure
-	// override never reaches here — passInlinePure substituted it already —
-	// so this is the impure override's path to the same renames.
-	//
-	// The third is a library component that answers for itself on every
-	// target: `sngl:ui/markup`'s blocks are a `richText` with a role set, and
-	// `list` is a `vbox` with a bullet column. Left out, the node survived to
-	// codegen carrying a body no backend reads, so the declaration rendered
-	// its children and nothing of its own — which is what a bodied lib
-	// component did on every target until now.
-	if !st.onList[comp] && !st.specializedHere(comp) && !comp.Stdlib {
-		return false
-	}
 	return true
 }
 
@@ -859,17 +838,6 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 		return nil
 	})
 	return !renders
-}
-
-// specializedHere reports whether comp carries a platform extension body for
-// the platform being lowered for. With no platform (LSP, format) nothing is
-// specialized and nothing qualifies.
-func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
-	if st.platform == "" || comp.PlatformOverrides == nil {
-		return false
-	}
-	_, ok := comp.PlatformOverrides[st.platform]
-	return ok
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
@@ -983,7 +951,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// -- `ui.window`, whose methods keep passInlinePure off it, composed
 		// under a reactive `if` on bubbletea, where the implicit-state wrapper
 		// around it was spliced per copy.
-		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Stdlib && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Pkg != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
@@ -1312,7 +1280,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
-	if comp.Stdlib {
+	if comp.Pkg != "" {
 		ir.AttachNodeSite(body, n)
 	}
 

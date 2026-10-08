@@ -99,7 +99,7 @@ func TestGtk4Translator_OnCreateNode_UnimplementedStdlibComponent(t *testing.T) 
 	// collected across every registered platform.
 	tr.tagComponent["avatar"] = &ir.Component{
 		Name:              "avatar",
-		Stdlib:            true,
+		Bodyless:          true,
 		Pkg:               "sngl:ui",
 		PlatformOverrides: map[string]ir.Body{"html": {}},
 	}

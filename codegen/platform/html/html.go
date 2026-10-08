@@ -1512,8 +1512,8 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	g.renderRawElementIR(b, n, depth)
 }
 
-// isUserIRComponent reports whether a NodeInst resolves to a user-defined
-// component rather than a stdlib component or a raw element.
+// isUserIRComponent reports whether a NodeInst resolves to a component the
+// program declares rather than a library one or a raw element.
 func isUserIRComponent(n *ir.NodeInst) bool {
 	if n.Component == nil || n.Component.AST == nil {
 		return false
@@ -1523,10 +1523,7 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if isElement(n.Component) {
 		return false
 	}
-	if n.Component.Stdlib {
-		return false
-	}
-	return true
+	return n.Component.Pkg == ""
 }
 
 // pts returns the funcvar points-to analysis results, or nil if not yet

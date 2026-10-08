@@ -2515,7 +2515,6 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// buildFunc has already said -- nothing in the program says what a host
 	// does.
 	if c.inLibSource() {
-		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
 			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
@@ -2901,13 +2900,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	popTypeParams := pushTypeParams(c, comp.TypeParams)
 
 	irComp := &ir.Component{
-		AST:  comp,
-		Name: comp.Name,
-		// A library plugin's output is library source in all but where it
-		// came from: gtk4's widgets were sngl:platform/gtk4's, and moving them
-		// to the gir: scheme changes nothing a call site can see -- a prop
-		// with no default stays optional, by platform convention.
-		Stdlib:     c.inLibSource() || c.cfg.byLibrary,
+		AST:        comp,
+		Name:       comp.Name,
 		Pkg:        c.libPkgName,
 		Bodyless:   !comp.Body.IsDefined(),
 		Const:      comp.Const,
@@ -3764,7 +3758,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	c.runConstSlotChecks()
 	c.reportDeclarativeCycles(pkg)
 	for _, comp := range pkg.Components {
-		if comp.Const && !comp.Stdlib {
+		if comp.Const {
 			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
 		}
 	}

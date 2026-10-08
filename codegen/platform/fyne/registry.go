@@ -39,7 +39,7 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 	return out
 }
 
-// BareStdlibComponents lists the bodyless stdlib components this platform
+// BareStdlibComponents lists the bodyless library components this platform
 // gives no body to, and should be empty: a component reaching this list is a
 // widget nothing here builds.
 //
@@ -57,7 +57,7 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || !c.Stdlib || c.Builtin != ir.BuiltinNone {
+		if !ok || c.Pkg == "" || c.Builtin != ir.BuiltinNone {
 			return true
 		}
 		// A body of its own is what every platform renders where it has

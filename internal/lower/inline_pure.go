@@ -243,7 +243,7 @@ func (st *inlinePureState) constSubstitutable(c *ir.Component) bool {
 
 // overriddenHere reports whether c carries a platform extension body for the
 // platform being lowered for. The same question inline_components.go asks as
-// specializedHere; with no platform nothing is specialized.
+// inlinable once asked; with no platform nothing is specialized.
 func (st *inlinePureState) overriddenHere(c *ir.Component) bool {
 	if st.platform == "" || c == nil || c.PlatformOverrides == nil {
 		return false
@@ -412,7 +412,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 			// is a primitive missing its mark, and nothing downstream can tell
 			// that from a wrapper that implements nothing.
 			return nil, fmt.Errorf("platform stdlib wrapper %q has no body to inline; mark it #[intrinsic] if it is a platform primitive (at %s)", comp.Name, compPos(comp))
-		case st.platform != "" && !comp.Stdlib:
+		case st.platform != "" && comp.Pkg == "":
 			return nil, nil
 		}
 		return []ir.Stmt{n}, nil
