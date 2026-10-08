@@ -662,10 +662,11 @@ func markWildcard(m *mark) error {
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
 		}
-		d.Wildcard, d.WildcardInto = pat, m.args.String("into")
-		// The prop it names is checked by finishWildcardMarks: a component's
-		// marks run before its props are built, so there is nothing to look
-		// the name up in yet.
+		into := m.args.String("into")
+		if err := checkWildcardInto(d, into); err != nil {
+			return err
+		}
+		d.Wildcard, d.WildcardInto = pat, into
 	case *ir.Prop:
 		if d.Wildcard != "" {
 			return fmt.Errorf("#[wildcard(%q)]: already a wildcard for %q", pat, d.Wildcard)
@@ -710,23 +711,23 @@ func checkWildcardPropType(p *ir.Prop) error {
 	return nil
 }
 
-// finishWildcardMarks validates the `into` prop a component's wildcard mark
-// names, once its props exist. The matched name is a name, so the prop it
-// binds to holds a string.
-func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
-	if comp == nil || comp.WildcardInto == "" {
-		return
+// checkWildcardInto holds the `into` prop a component's wildcard mark names
+// to existing and holding a string: the matched name is a name. A component's
+// marks run once its props are built.
+func checkWildcardInto(comp *ir.Component, into string) error {
+	if into == "" {
+		return nil
 	}
 	for _, p := range comp.Props {
-		if p.Name != comp.WildcardInto {
+		if p.Name != into {
 			continue
 		}
 		if p.Type == nil || p.Type.Kind != ir.TypeString {
-			c.error(pos, "#[wildcard(..., %q)] on component %s: the matched name is a name, so %q holds a string", comp.WildcardInto, comp.Name, p.Name)
+			return fmt.Errorf("#[wildcard(..., %q)] on component %s: the matched name is a name, so %q holds a string", into, comp.Name, p.Name)
 		}
-		return
+		return nil
 	}
-	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+	return fmt.Errorf("#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", into, comp.Name, into)
 }
 
 // markConstruct implements #[macro.construct], which says a prop is read while
@@ -756,6 +757,9 @@ func markConstruct(m *mark) error {
 	}
 	if p.Construct {
 		return fmt.Errorf("#[construct]: prop %q is already construct-only", p.Name)
+	}
+	if p.Const {
+		return fmt.Errorf("prop %q is const, which already says it is read once while the instance is built; drop #[construct]", p.Name)
 	}
 	// Refused, the prop is an ordinary one: leaving Construct set would have
 	// lowering build the memory and the comparison for a value it has just
@@ -847,9 +851,9 @@ func markGen(m *mark, kind string) error {
 	if !ok {
 		return fmt.Errorf("#[gen.%s] cannot mark %s; it belongs on the build-tree node a target package declares, or on an #[intrinsic] primitive", kind, ast.DeclFormName(m.decl))
 	}
-	// Which component it may be written on is checked in finishTreeMarks, not
-	// here: a mark applies as the declaration registers, and the return
-	// position it has to be measured against is read after that.
+	// Which component it may be written on is finishTreeMarks' question,
+	// asked of the return position bindTree read, beside the other rules
+	// about what a component's marks say of its tree.
 	arg := "caps"
 	switch kind {
 	case "wants":

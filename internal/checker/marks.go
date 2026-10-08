@@ -498,10 +498,10 @@ func (c *checker) macroHome(fn *ir.Func) *ir.Package {
 // markConstValue resolves a package-level `const NAME = <expr>` for a mark
 // argument.
 //
-// From the declarations rather than from a scope, because a mark runs before
-// there is one to ask: the marks on a struct shell are applied in pass1's
-// first half, and consts are not registered until its second. The same reason
-// `ast.EvalString` never consults scope.
+// From the declarations rather than from a scope: a const's value is checked
+// after the marks run (checkPendingConstInits), since what an initializer
+// reads may be what a mark said, so the registered const has no value yet to
+// hand over. The same reason `ast.EvalString` never consults scope.
 //
 // Package-level only, and the first spec of that name wins. A duplicate is
 // `claimTopLevel`'s to report, and reporting it here as well would name the

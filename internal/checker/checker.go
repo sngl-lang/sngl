@@ -2910,7 +2910,6 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 		Builtin:    c.stampBuiltinKind(comp.Attrs),
 	}
-	c.applyMarks(comp, irComp)
 
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
@@ -2936,7 +2935,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				Doc:           pd.Doc(),
 			}
 			c.applyParamMarks(pd, prop)
-			c.afterMarks(func() { c.checkConstProp(pd, prop) })
+			c.checkConstProp(pd, prop)
 			// A prop with neither an annotation nor a default says nothing
 			// about what it takes. `dyn` written out is an annotation: it says
 			// the prop takes anything, which is what `context(default dyn)`
@@ -2958,6 +2957,9 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		}
 	}
 
+	// After the props, which a component's marks may name (#[wildcard]'s
+	// `into`).
+	c.applyMarks(comp, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
@@ -2974,7 +2976,6 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
 				comp.Name, irComp.Intrinsic)
 		}
-		c.finishWildcardMarks(comp.Pos, irComp)
 		c.finishTreeMarks(comp, irComp, named)
 	})
 	c.finishRestSlot(irComp)
