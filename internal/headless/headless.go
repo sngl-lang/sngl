@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // ActiveEnv marks a process, and its descendants, as already running inside a
@@ -86,12 +87,37 @@ func Env(runtimeDir string) []string {
 // Chromium cannot fork and the html browser tests hang or fail at random.
 // dbus-run-session gives the run a bus of its own and stops it when the
 // command exits.
+//
+// It does not stop what the bus activated, and the standard session config
+// activates whatever the host has installed: on a KDE desktop Chromium's
+// password store started ksecretd, which held the test's stdout open after the
+// run and stalled `go test` two minutes on every run. sessionBusConfig is that
+// config with no service directories, so the bus reaches only what the run
+// itself starts -- as in a bare container, which has nothing to activate.
 func sessionBus() string {
 	path, err := exec.LookPath("dbus-run-session")
 	if err != nil {
 		return ""
 	}
 	return path
+}
+
+func sessionBusConfig(runtimeDir string) (string, error) {
+	path := filepath.Join(runtimeDir, "session.conf")
+	conf := `<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:dir=` + runtimeDir + `</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+`
+	return path, os.WriteFile(path, []byte(conf), 0o600)
 }
 
 // CanStart reports whether cage runs a trivial command to completion here.
@@ -131,7 +157,13 @@ func Wrap(command string, args []string) (cmd string, wrapped []string, env []st
 	}
 	wrapped = append([]string{"--", command}, args...)
 	if bus := sessionBus(); bus != "" {
-		return bus, append([]string{"--", compositor}, wrapped...), env, cleanup
+		conf, err := sessionBusConfig(dir)
+		if err != nil {
+			cleanup()
+			fmt.Fprintln(os.Stderr, "note: no session bus config for cage; GUI tests will skip:", err)
+			return command, args, nil, func() {}
+		}
+		return bus, append([]string{"--config-file=" + conf, "--", compositor}, wrapped...), env, cleanup
 	}
 	return compositor, wrapped, env, cleanup
 }
