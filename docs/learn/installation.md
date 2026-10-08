@@ -10,7 +10,11 @@ Prebuilt binaries are available for common platforms. Download the `.gz` for
 your system, decompress it (`gunzip sngl-*.gz`), make it executable
 (`chmod +x sngl-*`), rename it to `sngl`, and place it on your `PATH`.
 
-<!-- sngl:downloads -->
+```sngl mode=body
+import html "sngl:platform/html"
+
+html.div(class="downloads", innerHTML="<!-- sngl:downloads -->")
+```
 
 ## Install from Source
 

@@ -72,12 +72,67 @@ func parseSource(source string) (mainSrc []byte, fsys fs.FS) {
 		main = []byte(source)
 	}
 	mfs := fstest.MapFS{
-		"playground.sngl": &fstest.MapFile{Data: main},
+		mainFile: &fstest.MapFile{Data: main},
 	}
 	for _, f := range arc.Files {
+		if f.Name == mainFile {
+			if len(main) == 0 {
+				main = f.Data
+				mfs[mainFile] = &fstest.MapFile{Data: main}
+			}
+			continue
+		}
 		mfs[f.Name] = &fstest.MapFile{Data: f.Data}
 	}
 	return main, mfs
+}
+
+const mainFile = "playground.sngl"
+
+// parseSiblings parses the .sngl sections at the archive's root, which are
+// files of the editor's package as a directory's are of the CLI's. A section
+// that does not parse is left out, and the first such error returned beside
+// the rest.
+func parseSiblings(fsys fs.FS) ([]*ast.Document, error) {
+	entries, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		return nil, err
+	}
+	var docs []*ast.Document
+	var parseErr error
+	for _, e := range entries {
+		if e.IsDir() || e.Name() == mainFile || !strings.HasSuffix(e.Name(), ".sngl") {
+			continue
+		}
+		data, err := fs.ReadFile(fsys, e.Name())
+		if err != nil {
+			return nil, err
+		}
+		doc, err := parser.Parse(e.Name(), data)
+		if err != nil {
+			if parseErr == nil {
+				parseErr = err
+			}
+			continue
+		}
+		docs = append(docs, doc)
+	}
+	return docs, parseErr
+}
+
+// parsePackage parses the editor buffer as the package it holds: the archive
+// comment and every .sngl section beside it.
+func parsePackage(source string) ([]*ast.Document, fs.FS, error) {
+	main, fsys := parseSource(source)
+	doc, err := parser.Parse(mainFile, main)
+	if err != nil {
+		return nil, fsys, err
+	}
+	siblings, err := parseSiblings(fsys)
+	if err != nil {
+		return nil, fsys, err
+	}
+	return append([]*ast.Document{doc}, siblings...), fsys, nil
 }
 
 // playgroundResolver is the in-memory analogue of cmd/sngl.cliResolver.
@@ -132,11 +187,15 @@ func (r *playgroundResolver) ResolveSchemeFS(scheme, _, _ string) ([]*ast.Docume
 	return nil, nil, fmt.Errorf("scheme %q not supported in playground", scheme)
 }
 
-func newCheckerConfig(fsys fs.FS, isMain bool) *checker.Config {
+// newCheckerConfig checks for the one target the playground builds, as the
+// CLI's --platform and --lang do: the targets an archive's `output` block
+// names may be ones this build does not link.
+func newCheckerConfig(fsys fs.FS, platform, lang string) *checker.Config {
 	return &checker.Config{
 		FS:        fsys,
 		Dir:       playgroundDir,
-		IsMain:    isMain,
+		IsMain:    true,
+		Targets:   []ir.StaticTarget{{Platform: platform, Language: lang}},
 		Resolver:  &playgroundResolver{fsys: fsys},
 		Platforms: codegen.CollectPlatforms(),
 		Languages: codegen.CollectLangs(),
@@ -148,14 +207,13 @@ func newCheckerConfig(fsys fs.FS, isMain bool) *checker.Config {
 func Compile(source string) string {
 	result := map[string]any{"html": "", "error": ""}
 
-	main, fsys := parseSource(source)
-	doc, err := parser.Parse("playground.sngl", main)
+	docs, fsys, err := parsePackage(source)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	pkg, diags := checker.Check(doc, newCheckerConfig(fsys, true))
+	pkg, diags := checker.CheckPackage(docs, newCheckerConfig(fsys, "html", "none"))
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
@@ -218,12 +276,31 @@ func Compile(source string) string {
 func Format(source string) string {
 	result := map[string]any{"source": "", "error": ""}
 	main, _ := parseSource(source)
-	doc, err := parser.Parse("playground.sngl", main)
+	doc, err := parser.Parse(mainFile, main)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	result["source"] = parser.Format(doc)
+	arc := txtar.Parse([]byte(source))
+	if len(arc.Files) == 0 {
+		result["source"] = parser.Format(doc)
+		return jsonStr(result)
+	}
+	if len(arc.Comment) > 0 {
+		arc.Comment = []byte(parser.Format(doc))
+	}
+	for i, f := range arc.Files {
+		if !strings.HasSuffix(f.Name, ".sngl") {
+			continue
+		}
+		fdoc, err := parser.Parse(f.Name, f.Data)
+		if err != nil {
+			result["error"] = err.Error()
+			return jsonStr(result)
+		}
+		arc.Files[i].Data = []byte(parser.Format(fdoc))
+	}
+	result["source"] = string(txtar.Format(arc))
 	return jsonStr(result)
 }
 
@@ -272,14 +349,13 @@ func Targets() string {
 func Generate(source, platform, lang string) string {
 	result := map[string]any{"files": nil, "error": ""}
 
-	main, fsys := parseSource(source)
-	doc, err := parser.Parse("playground.sngl", main)
+	docs, fsys, err := parsePackage(source)
 	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
 
-	pkg, diags := checker.Check(doc, newCheckerConfig(fsys, true))
+	pkg, diags := checker.CheckPackage(docs, newCheckerConfig(fsys, platform, lang))
 	if len(diags) > 0 && diags[0].Severity == ir.Error {
 		err = fmt.Errorf("%s", diags[0].Msg)
 	}
@@ -343,8 +419,12 @@ func Generate(source, platform, lang string) string {
 
 // Diagnostics returns LSP diagnostics for SNGL source as JSON.
 func Diagnostics(source string) string {
-	main, _ := parseSource(source)
-	doc, diags := lspcore.Analyze(string(main), "playground.sngl", nil, "", nil)
+	main, fsys := parseSource(source)
+	siblings, sibErr := parseSiblings(fsys)
+	doc, diags := lspcore.AnalyzePackage(string(main), mainFile, siblings, newCheckerConfig(fsys, "html", "none"))
+	if sibErr != nil {
+		diags = append(diags, lspcore.Diagnostic{Severity: lspcore.SeverityError, Source: "sngl", Message: sibErr.Error()})
+	}
 	if doc != nil {
 		h := sha256.Sum256(main)
 		cacheMu.Lock()
