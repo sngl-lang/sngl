@@ -240,7 +240,7 @@ func (w *rebuildWalker) reportKey(inst *ir.NodeInst, a rebuildArg, t *ir.Type, s
 // alike on every target.
 //
 // The declaration answers this one only when it is written concretely, which
-// checkConstructProps does. `#[construct] seed T` is admitted where it is
+// markConstruct does. `#[construct] seed T` is admitted where it is
 // written -- judging a parameter there would make a generic component
 // undeclarable -- and the call is the only place T becomes a type. Unchecked,
 // bound to a list, the prop reached fyne's rebuild comparison as

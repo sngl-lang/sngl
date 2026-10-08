@@ -15,9 +15,11 @@ var (
 )
 
 // RegisterGenericBuiltin records a #[builtin]-marked collection declaration,
-// ignoring a kind that names no collection. Called once the declaration's mark
-// has run -- the kind is what this dispatches on -- and before its type
-// parameters are filled in.
+// ignoring a kind that names no collection. Called as the declaration
+// registers, with the kind read off its source, and before its type
+// parameters are filled in: a type its own package resolves after that
+// attaches this declaration, and one resolved before would attach a previous
+// check's.
 func RegisterGenericBuiltin(sd *StructDef) {
 	if sd == nil {
 		return

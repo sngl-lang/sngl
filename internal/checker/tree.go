@@ -9,31 +9,78 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// finishTreeMarks reads a component's return position as the tree it is a
-// member of, which is the whole of what that position says. Naming one of the
-// component's own type parameters makes it a wrapper whose family is whatever
-// it was handed; naming something that is not a tree is an error rather than a
-// children contract — a slot is what declares those.
+// bindTree reads a component's return position as the tree it is a member
+// of, which is the whole of what that position says, and returns what the
+// position named. Naming one of the component's own type parameters makes it
+// a wrapper whose family is whatever it was handed; naming something that is
+// not a tree is an error rather than a children contract -- a slot is what
+// declares those.
 //
-// Naming nothing hands the question to inferComponentTrees, which reads the
-// answer off the body once every body has been read. Belonging to no family is
-// a claim the mark makes, and silence is no longer how it is spelled.
-func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
+// Bound as the component registers, because a family's members register
+// after it (familiesFirst) and are measured against it. Nothing here reads a
+// mark but the family of families' kind, which registration reads off the
+// source (writtenBuiltinKind); what the marks say about the tree is
+// finishTreeMarks', once they have run.
+func (c *checker) bindTree(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) *ir.Type {
 	if decl == nil || comp == nil {
-		return
+		return nil
 	}
 	named := comp.ChildrenType
 	comp.ChildrenType = nil
 
-	// Where a sngl:x/gen mark may be written, asked here for the reason the
-	// shape rule below is: the mark applies while the declaration is still
-	// registering, and the return position it has to be measured against is
-	// read at this point.
-	//
-	// Two grains, two homes. What a *target* can do is read off the two
-	// build-tree nodes its pair was selected by; what a *primitive* renders is
-	// read off that primitive. A mark written anywhere else resolves and is
-	// asked nothing, which is the failure the mark table exists to prevent.
+	// The family of families is the one member of itself: every other family
+	// names it in the return position, and it has nothing to name.
+	if comp.Builtin == ir.BuiltinTreeFamily {
+		comp.Tree = comp
+		return named
+	}
+	if named == nil {
+		return nil
+	}
+	if f := ir.TypeFamily(named); f != nil {
+		comp.Tree = f
+		if !comp.IsFamily() {
+			comp.TreeArgs = familyArgsWritten(f, named.Elems)
+		}
+		pkg.NoteTreeKind(f)
+		if comp.IsFamily() {
+			c.checkFamilyDecl(decl, comp)
+			return named
+		}
+		// What a family declares a member has to, and the family is
+		// registered ahead of it (familiesFirst) but the member's siblings
+		// are not all registered yet, so the check waits for the package.
+		if len(f.Props) > 0 {
+			c.familyMembers = append(c.familyMembers, comp)
+		}
+		return named
+	}
+	if named.Kind == ir.TypeTypeParam && slices.ContainsFunc(comp.TypeParams,
+		func(tp ir.TypeParam) bool { return tp.Name == named.ParamName }) {
+		comp.TreeParam = named.ParamName
+		return named
+	}
+	c.error(decl.Pos, "component %s: the return position names the family a component belongs to, and %s is not one",
+		comp.Name, named)
+	return named
+}
+
+// finishTreeMarks holds what a component's marks say about its tree to the
+// return position bindTree read, once the marks have run. named is what that
+// position named, nil for nothing.
+//
+// Naming nothing hands the question to inferComponentTrees, which reads the
+// answer off the body once every body has been read. Belonging to no family is
+// a claim the mark makes, and silence is no longer how it is spelled.
+func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, named *ir.Type) {
+	if decl == nil || comp == nil {
+		return
+	}
+	// Where a sngl:x/gen mark may be written. Two grains, two homes. What a
+	// *target* can do is read off the two build-tree nodes its pair was
+	// selected by; what a *primitive* renders is read off that primitive. A
+	// mark written anywhere else resolves and is asked nothing, which is the
+	// failure the mark table exists to prevent.
 	if g := comp.Gen; g != nil {
 		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.can], #[gen.cannot] and #[gen.wants] say what a target can do, and belong on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
@@ -51,13 +98,10 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		}
 	}
 
-	// The family of families is the one member of itself: every other family
-	// names it in the return position, and it has nothing to name.
 	if comp.Builtin == ir.BuiltinTreeFamily {
 		if named != nil {
 			c.error(decl.Pos, "component %s is the family of families, and a member of itself: it names no family in the return position", comp.Name)
 		}
-		comp.Tree = comp
 		return
 	}
 
@@ -82,43 +126,21 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 			comp.Name, named)
 		return
 	}
-
-	if f := ir.TypeFamily(named); f != nil {
-		comp.Tree = f
-		if !comp.IsFamily() {
-			comp.TreeArgs = familyArgsWritten(f, named.Elems)
-		}
-		pkg.NoteTreeKind(f)
-		if comp.IsFamily() {
-			c.checkFamilyDecl(decl, comp)
-			return
-		}
-		// What a family declares a member has to, and the family is
-		// registered ahead of it (familiesFirst) but the member's siblings
-		// are not all registered yet, so the check waits for the package.
-		if len(f.Props) > 0 {
-			c.familyMembers = append(c.familyMembers, comp)
-		}
-		// A build-target node is the target's identity as well as its option
-		// schema, and #[gen.name] is the half the world outside SNGL reads.
-		if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
-			c.error(decl.Pos, "component %s is a build-target node: say what the build calls it with #[gen.name(\"…\")]", comp.Name)
-		}
-		// A family that says its members raise nothing (#[tree.eventless]):
-		// a handler written for one would never run. A platform primitive is
-		// exempt, its event being the target calling in.
-		if f.Eventless && len(comp.Events) > 0 && comp.Intrinsic == "" {
-			c.error(decl.Pos, "component %s: a member of %s raises no events, so it declares none", comp.Name, f.Name)
-		}
+	f := ir.TypeFamily(named)
+	if f == nil || comp.IsFamily() {
 		return
 	}
-	if named.Kind == ir.TypeTypeParam && slices.ContainsFunc(comp.TypeParams,
-		func(tp ir.TypeParam) bool { return tp.Name == named.ParamName }) {
-		comp.TreeParam = named.ParamName
-		return
+	// A build-target node is the target's identity as well as its option
+	// schema, and #[gen.name] is the half the world outside SNGL reads.
+	if ir.IsBuildTargetTree(f) && (comp.Gen == nil || comp.Gen.TargetName == "") {
+		c.error(decl.Pos, "component %s is a build-target node: say what the build calls it with #[gen.name(\"…\")]", comp.Name)
 	}
-	c.error(decl.Pos, "component %s: the return position names the family a component belongs to, and %s is not one",
-		comp.Name, named)
+	// A family that says its members raise nothing (#[tree.eventless]):
+	// a handler written for one would never run. A platform primitive is
+	// exempt, its event being the target calling in.
+	if f.Eventless && len(comp.Events) > 0 && comp.Intrinsic == "" {
+		c.error(decl.Pos, "component %s: a member of %s raises no events, so it declares none", comp.Name, f.Name)
+	}
 }
 
 // checkFamilyDecl holds a family's declaration to the props its members

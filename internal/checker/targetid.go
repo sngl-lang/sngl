@@ -277,8 +277,14 @@ type pendingFuncOverride struct {
 
 // collectFuncOverrides merges each `func f[target] { ... }` a program declares
 // into the function it names.
+//
+// Each in the file it was written in, whose imports its target names: read in
+// whichever file pass1 ended on, `[html.platform]` was undefined unless that
+// file happened to import html too.
 func (c *checker) collectFuncOverrides() {
+	defer c.saveFile()()
 	for _, decl := range c.userFuncOverrides {
+		c.enterFileOf(decl.Pos)
 		c.mergeFuncOverride(decl, nil, "")
 	}
 }

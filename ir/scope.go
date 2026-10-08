@@ -65,10 +65,14 @@ func NewScope(parent *Scope) *Scope {
 	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
 }
 
-// noteWildcard records sym among the scope's wildcards when it is one. Binding
+// NoteWildcard records sym among the scope's wildcards when it is one. Binding
 // a wildcard symbol binds its own name too: `element` is a name like any
 // other, and is what a declaration of it in an inner scope shadows.
-func (s *Scope) noteWildcard(sym Symbol) {
+//
+// Declare and Replace note what they bind. A symbol bound before its pattern
+// was set is noted again by whoever set it: the checker runs a declaration's
+// marks once its package is registered.
+func (s *Scope) NoteWildcard(sym Symbol) {
 	w, ok := sym.(WildcardSymbol)
 	if !ok || w.WildcardPattern() == "" {
 		return
@@ -134,7 +138,7 @@ func (s *Scope) Declare(sym Symbol) error {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
 	s.Symbols[name] = sym
-	s.noteWildcard(sym)
+	s.NoteWildcard(sym)
 	return nil
 }
 
@@ -159,7 +163,7 @@ func (s *Scope) DeclareName(sym Symbol) error {
 // name, splicing a platform override over the stdlib declaration it extends.
 func (s *Scope) Replace(sym Symbol) {
 	s.Symbols[sym.SymName()] = sym
-	s.noteWildcard(sym)
+	s.NoteWildcard(sym)
 }
 
 // Lookup walks the parent chain for a name. Declared names only: it resolves

@@ -42,17 +42,59 @@ type mark struct {
 // applyMarks resolves and runs the marks written on decl. sym is the IR the
 // checker has just built for it; every mark writes what it has to say there.
 //
-// Called from each registration site rather than from a pass over the
-// document, so a mark applies once, at the moment the declaration exists and
-// before anything reads what the mark says about it.
+// Called from each registration site, so a mark applies once and to the
+// declaration it was written on -- but during pass1's registration it runs
+// later, once every declaration of the package is registered (afterMarks):
+// a mark resolves its macro through the scope, and the macro may be a func
+// of this package that registers further down.
 func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	a, ok := decl.(ast.Attributed)
-	if !ok {
+	if !ok || len(a.MacroAttrs()) == 0 {
 		return
 	}
-	for _, attr := range a.MacroAttrs() {
-		c.applyMark(attr, a, sym, false)
+	c.afterMarks(func() {
+		for _, attr := range a.MacroAttrs() {
+			c.applyMark(attr, a, sym, false)
+		}
+	})
+}
+
+// afterMarks runs f once the marks registered ahead of it have run: at the
+// end of pass1's registration while that is under way, in the order queued,
+// and at once anywhere else. A check reading what a mark said about a
+// declaration is queued after the declaration's marks, which is all the
+// ordering it needs.
+func (c *checker) afterMarks(f func()) {
+	if c.pendingMarks == nil {
+		f()
+		return
 	}
+	*c.pendingMarks = append(*c.pendingMarks, pendingMark{c.doc, f})
+}
+
+// runPendingMarks runs what afterMarks queued and closes the queue, so every
+// later registrar marks as it goes. The file is restored per entry: a mark
+// resolves through the scope of the file it was written in, and the queue
+// spans every file of the package.
+func (c *checker) runPendingMarks() {
+	q := c.pendingMarks
+	c.pendingMarks = nil
+	if q == nil {
+		return
+	}
+	for _, m := range *q {
+		if m.doc != nil {
+			c.resumeFile(m.doc)
+		}
+		m.run()
+	}
+}
+
+// pendingMark is one declaration's marks, or a check reading them, held
+// until the package is registered.
+type pendingMark struct {
+	doc *ast.Document
+	run func()
 }
 
 // paramMarks are the marks that may be written in a component's parameter
@@ -67,9 +109,14 @@ var paramMarks = map[markKey]bool{
 // prop is the ir.Prop the checker has just built for it, which is what a mark
 // legal here writes to.
 func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
-	for _, attr := range p.MacroAttrs() {
-		c.applyMark(attr, p, prop, true)
+	if len(p.MacroAttrs()) == 0 {
+		return
 	}
+	c.afterMarks(func() {
+		for _, attr := range p.MacroAttrs() {
+			c.applyMark(attr, p, prop, true)
+		}
+	})
 }
 
 func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inParam bool) {

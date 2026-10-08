@@ -300,10 +300,11 @@ type checker struct {
 	// installedOverride is the component whose body is an override's while
 	// that body is checked, user or library.
 	installedOverride *ir.Component
-	// shellMarks queues the marks on a struct shell, enum or unit while pass1
-	// is still registering declarations, so a package's own macro is in scope
-	// by the time one that names it runs. Non-nil only for that window.
-	shellMarks *[]pendingMark
+	// pendingMarks queues the marks pass1 meets while it is still
+	// registering declarations, and the checks that read them (afterMarks),
+	// so every macro a mark may name is registered by the time one runs.
+	// Non-nil only for that window.
+	pendingMarks *[]pendingMark
 
 	// curFileScope is the file whose imports are in scope, or nil outside any
 	// file (loading a library, checking synthesized IR).
@@ -607,9 +608,6 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
-	// pendingConstruct is the #[construct] marks written in this package,
-	// waiting for a type complete enough to judge. See checkConstructProps.
-	pendingConstruct []constructMark
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -1277,10 +1275,10 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
 	savedPkgDecls, savedInits := c.pkgDecls, c.pendingInits
-	// The queue pass1 holds its shell marks in. A lib package's own pass1 arms
-	// a fresh one, so the program's -- still filling, since the load happened
+	// The queue pass1 holds its marks in. A lib package's own pass1 arms a
+	// fresh one, so the program's -- still filling, since the load happened
 	// from inside it -- has to come back.
-	savedShellMarks := c.shellMarks
+	savedMarks := c.pendingMarks
 	// A package loads lazily, so the load may interrupt a body of the
 	// program's: an import resolved from inside a function body leaves
 	// funcDepth set, and the loaded package's own component bodies are then
@@ -1318,7 +1316,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
 		c.pkgDecls, c.pendingInits = savedPkgDecls, savedInits
-		c.shellMarks = savedShellMarks
+		c.pendingMarks = savedMarks
 		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
 		c.currentComponent = savedComp
 		c.expected, c.returnType, c.outputDepth = savedExpected, savedReturn, savedOutput
@@ -1386,7 +1384,7 @@ func (c *checker) pass1() {
 	}
 	var structShells []pendingShell
 	var pendingComponents []pendingComp
-	c.shellMarks = &[]pendingMark{}
+	c.pendingMarks = &[]pendingMark{}
 	c.pendingInits = &[]pendingInit{}
 	for _, d := range c.docs {
 		c.resumeFile(d)
@@ -1403,32 +1401,6 @@ func (c *checker) pass1() {
 			}
 		}
 	}
-	// A package's own macros, ahead of every mark that could name one. A mark
-	// resolves its macro through the scope, and a macro is an ordinary func,
-	// so one declared in this package would not be registered until long after
-	// the marks on this package's structs had already run -- which is why a
-	// language package could not write its own `native` on its own struct.
-	//
-	// Registered here rather than with the other funcs because this is the
-	// earliest point where a macro's signature resolves: the shells above
-	// cover the structs, enums and units its parameters name, and its return
-	// type comes from the package declaring `ir.Macro`, which is imported.
-	// Nothing else about a macro is special, so what makes one is still
-	// `macroFrom` asking the registered func what it returns.
-	macroDecls := map[*ast.FuncDef]bool{}
-	for _, d := range c.docs {
-		c.resumeFile(d)
-		for _, stmt := range d.Stmts {
-			f, ok := stmt.(*ast.FuncDef)
-			if !ok || !looksLikeMacroDecl(f) {
-				continue
-			}
-			macroDecls[f] = true
-			c.registerFunc(f)
-		}
-	}
-	c.runShellMarks()
-
 	membersMark := len(c.familyMembers)
 	for _, i := range familiesFirst(pendingComponents, func(p pendingComp) *ast.ComponentDecl { return p.decl }) {
 		p := pendingComponents[i]
@@ -1440,9 +1412,6 @@ func (c *checker) pass1() {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
 	}
-	// Every shell is filled, so a struct a #[construct] prop names can now be
-	// walked field by field.
-	c.checkConstructProps()
 
 	for _, d := range c.docs {
 		c.resumeFile(d)
@@ -1455,9 +1424,6 @@ func (c *checker) pass1() {
 			case *ast.VarDecl:
 				c.registerVars(s)
 			case *ast.FuncDef:
-				if macroDecls[s] {
-					continue // registered above, ahead of the marks naming it
-				}
 				c.registerFunc(s)
 			case *ast.VisualNode:
 				c.registerRootVisualNode(s)
@@ -1495,6 +1461,12 @@ func (c *checker) pass1() {
 	// Check deferred top-level const values now that every const shell, type,
 	// and func is registered (enables forward references between consts and
 	// bare enum members in const initializers).
+	// Every declaration is registered, so every macro a mark may name is in
+	// scope, and every shell is filled: what a mark says about a struct can
+	// be judged by its fields. The initializers below read what the marks
+	// said.
+	c.runPendingMarks()
+
 	c.checkPendingConstInits()
 	c.checkPendingInits()
 }
@@ -1917,7 +1889,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 func (c *checker) registerEnum(e *ast.EnumDef) {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
-	c.applyMarksOnShell(e, ed)
+	c.applyMarks(e, ed)
 	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
@@ -1930,22 +1902,27 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName, Builtin: c.stampBuiltinKind(s.Attrs)}
-	c.applyMarksOnShell(s, sd)
-	c.declPkg().Structs = append(c.declPkg().Structs, sd)
-	c.bindDeclared(claimed, sd)
-	return sd
-}
-
-// publishBuiltinStruct hands a marked declaration to the phases that read it
-// where they have no scope to resolve a name in. Both cases key on the mark
-// the declaration carries, so neither is a property of the tier it sits in.
-func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	// Macro carries no #[builtin] kind: a kind names the IR construct a
 	// declaration dispatches to, and this one dispatches to none. It is found
 	// by name within the compiler's own package, which no program can import.
 	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
 		c.macroStruct = sd
 	}
+	// Published as it registers, which the kind stamped above is what makes
+	// possible: ListOf attaches the published `list` to every list type, and
+	// one resolved before this package's was published would attach the last
+	// build's, chaining each build's library to the one before it.
+	c.publishBuiltinStruct(sd)
+	c.applyMarks(s, sd)
+	c.declPkg().Structs = append(c.declPkg().Structs, sd)
+	c.bindDeclared(claimed, sd)
+	return sd
+}
+
+// publishBuiltinStruct hands a marked declaration to the phases that read it
+// where they have no scope to resolve a name in. Both cases key on the kind
+// the declaration carries, so neither is a property of the tier it sits in.
+func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
 	// The canonical datetime type, for the foreign-type importers that
 	// synthesize one without a scope of their own.
 	if sd.Builtin == ir.BuiltinDateTime {
@@ -2008,7 +1985,7 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 func (c *checker) registerUnit(u *ast.UnitDef) {
 	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
-	c.applyMarksOnShell(u, ud)
+	c.applyMarks(u, ud)
 	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
 }
@@ -2090,8 +2067,13 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 			// name with no value at all, and every read of it would compile
 			// to whatever the target's zero happens to be -- the counterpart
 			// of the rule checkFuncBody applies to a bodyless func.
-			if spec.Default == nil && !ir.IsHostValue(v) {
-				c.error(spec.Pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
+			if spec.Default == nil {
+				pos, name := spec.Pos, name
+				c.afterMarks(func() {
+					if !ir.IsHostValue(v) {
+						c.error(pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
+					}
+				})
 			}
 			c.declPkg().Consts = append(c.declPkg().Consts, v)
 			c.bindVar(decl.Pos, v)
@@ -2542,9 +2524,11 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// what gets published. A mistyped id is not an error here -- there is no
 	// list for it to be absent from -- but RequireIntrinsicFallback catches one
 	// when a backend has neither an emitter nor a `usable` body.
-	if fn.Intrinsic != "" {
-		c.publishIntrinsic(fn)
-	}
+	c.afterMarks(func() {
+		if fn.Intrinsic != "" {
+			c.publishIntrinsic(fn)
+		}
+	})
 
 	// Only free functions bind a file-scope name; a method's name lives under
 	// its receiver, checked when it is attached there.
@@ -2927,17 +2911,6 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Builtin:    c.stampBuiltinKind(comp.Attrs),
 	}
 	c.applyMarks(comp, irComp)
-	// The converse of the rule reportBodylessComponents applies: #[intrinsic]
-	// answers where a bodyless component's render comes from, so a body
-	// beside one is emitted by nobody and read by nobody -- the platform
-	// renders the declaration, and isPrimitiveComponent exempts it from
-	// inlining precisely so that can happen. `{}` is refused along with the
-	// rest, because it says the component renders nothing, which is the one
-	// thing an intrinsic never does.
-	if irComp.Intrinsic != "" && !irComp.Bodyless {
-		c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
-			comp.Name, irComp.Intrinsic)
-	}
 
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
@@ -2963,7 +2936,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				Doc:           pd.Doc(),
 			}
 			c.applyParamMarks(pd, prop)
-			c.checkConstProp(pd, prop)
+			c.afterMarks(func() { c.checkConstProp(pd, prop) })
 			// A prop with neither an annotation nor a default says nothing
 			// about what it takes. `dyn` written out is an annotation: it says
 			// the prop takes anything, which is what `context(default dyn)`
@@ -2985,11 +2958,25 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		}
 	}
 
-	c.finishWildcardMarks(comp.Pos, irComp)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
-	c.finishTreeMarks(comp, irComp, c.declPkg())
+	named := c.bindTree(comp, irComp, c.declPkg())
+	c.afterMarks(func() {
+		// The converse of the rule reportBodylessComponents applies:
+		// #[intrinsic] answers where a bodyless component's render comes
+		// from, so a body beside one is emitted by nobody and read by nobody
+		// -- the platform renders the declaration, and isPrimitiveComponent
+		// exempts it from inlining precisely so that can happen. `{}` is
+		// refused along with the rest, because it says the component renders
+		// nothing, which is the one thing an intrinsic never does.
+		if irComp.Intrinsic != "" && !irComp.Bodyless {
+			c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+				comp.Name, irComp.Intrinsic)
+		}
+		c.finishWildcardMarks(comp.Pos, irComp)
+		c.finishTreeMarks(comp, irComp, named)
+	})
 	c.finishRestSlot(irComp)
 	popTypeParams()
 
@@ -2999,11 +2986,18 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	c.popScope()
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
+	bound := true
 	if bodyLocal {
 		c.bodyComps = append(c.bodyComps, irComp)
 		c.declare(comp.Pos, irComp)
 	} else {
-		c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
+		bound = c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, "")
+		c.bindDeclared(bound, irComp)
+	}
+	// A wildcard is noted in the scope a symbol binds in, and its mark may
+	// run after the binding: the scope is told again once it has.
+	if bindScope := c.scope; bound {
+		c.afterMarks(func() { bindScope.NoteWildcard(irComp) })
 	}
 
 	// The component's type parameters travel with its methods, which is what
@@ -4876,69 +4870,6 @@ func (c *checker) finishRestSlot(comp *ir.Component) {
 	if slot := comp.RestSlot(); slot != nil {
 		comp.ChildrenType = childrenTypeFor(slot)
 	}
-}
-
-// pendingMark is one declaration's marks, held until the package's own macros
-// are registered.
-type pendingMark struct {
-	doc  *ast.Document
-	decl ast.Stmt
-	sym  any
-}
-
-// applyMarksOnShell is applyMarks for the three declaration kinds pass1
-// registers before a package's own macros: a struct shell, an enum and a unit.
-// Their marks are queued rather than run, because one of them may name a macro
-// this package declares and nothing has registered it yet. Outside that window
-// -- a body declaration, a sub-checker -- the queue is nil and marks run at
-// once.
-func (c *checker) applyMarksOnShell(decl ast.Stmt, sym any) {
-	if c.shellMarks == nil {
-		c.runShellMark(pendingMark{c.doc, decl, sym})
-		return
-	}
-	*c.shellMarks = append(*c.shellMarks, pendingMark{c.doc, decl, sym})
-}
-
-// runShellMark applies one queued declaration's marks and then hands it to the
-// phases that read the result. Publishing is tied to the mark rather than to
-// registration because it is the mark that decides it: `publishBuiltinStruct`
-// dispatches on `sd.Builtin`, which until the mark runs is empty.
-func (c *checker) runShellMark(m pendingMark) {
-	c.applyMarks(m.decl, m.sym)
-	if sd, ok := m.sym.(*ir.StructDef); ok {
-		c.publishBuiltinStruct(sd)
-	}
-}
-
-// runShellMarks applies what applyMarksOnShell queued and closes the queue, so
-// every later registrar marks as it goes. The file is restored per mark: a
-// mark resolves through the scope of the file it was written in, and the queue
-// spans every file of the package.
-func (c *checker) runShellMarks() {
-	q := c.shellMarks
-	c.shellMarks = nil
-	if q == nil {
-		return
-	}
-	for _, m := range *q {
-		if m.doc != nil {
-			c.resumeFile(m.doc)
-		}
-		c.runShellMark(m)
-	}
-}
-
-// looksLikeMacroDecl is the cheap syntactic gate on registering a func early,
-// before the declarations an ordinary signature may name are in place. It
-// answers on the written return type alone; whether that name resolves to
-// sngl:internal/ir's Macro is `macroFrom`'s question, asked when a mark
-// actually names the declaration.
-func looksLikeMacroDecl(f *ast.FuncDef) bool {
-	if f.Target != nil {
-		return false
-	}
-	return IsMacroDecl(f)
 }
 
 // nodeHandleSym is the binding declareNodeID made for a written `#id`, or nil
