@@ -891,10 +891,8 @@ func (c *converter) convertLiteral(lit *Literal) ast.Expr {
 		// Raw is the spelling, and a unit literal's is its number followed by
 		// its suffix -- the two halves the IR holds apart.
 		return &ast.UnitLiteral{
-			LiteralExpr: ast.LiteralExpr{
-				Kind: ast.LiteralUnit,
-				Raw:  lit.Value + lit.Suffix,
-			},
+			Kind:   ast.LiteralUnit,
+			Raw:    lit.Value + lit.Suffix,
 			Suffix: lit.Suffix,
 		}
 	}

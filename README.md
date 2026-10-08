@@ -71,7 +71,7 @@ from the command line.
 
 ## Install
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 ```bash
 git clone https://git.duckfam.us/jonathan/sngl.git

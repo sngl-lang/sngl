@@ -14,7 +14,7 @@ your system, decompress it (`gunzip sngl-*.gz`), make it executable
 
 ## Install from Source
 
-Building from source requires Go 1.26 or later.
+Building from source requires Go 1.27 or later.
 
 ```bash
 git clone https://git.duckfam.us/jonathan/sngl.git

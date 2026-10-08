@@ -103,7 +103,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 	// recognizes them.
 	frontendUse := func(name string) ir.Stmt {
 		return &ir.CallStmt{Call: intrinsicCall("html.frontend",
-			&ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/refpkg"}, Name: name}})}
+			&ir.Call{Func: &ir.Func{Path: "example.com/refpkg", Name: name}})}
 	}
 	pkg := &ir.Package{
 		Imports: []*ir.Import{{
@@ -161,7 +161,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 		Native: ni,
 	}
 	call := func() *ir.Call {
-		return &ir.Call{Func: &ir.Func{Foreign: ir.Foreign{Path: "example.com/optin"}, Name: "Persist"},
+		return &ir.Call{Func: &ir.Func{Path: "example.com/optin", Name: "Persist"},
 			Args: []ir.CallArg{{Value: &ir.Literal{}}}}
 	}
 
