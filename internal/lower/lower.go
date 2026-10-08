@@ -70,6 +70,8 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	// Once the inliners have settled every node's ID, before anything copies one.
+	passReservedNodeIDs,
 	passErrorScope,
 	passRecursionDepth,
 	passInstanceSlots,
@@ -110,6 +112,8 @@ var passes = []pass{
 	// After the passthrough: what is left to count is what raises or
 	// catches, whatever a boundary was given.
 	passStampUsage,
+	// Last of all: it renames what every pass above declared or copied.
+	passReservedNames,
 }
 
 // Options controls a single Lower invocation.

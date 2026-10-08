@@ -663,15 +663,15 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(cap string) C.cairo_line_cap_t {
-	if cap == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if cap == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
@@ -970,7 +970,7 @@ pass sha256:393f6bc0fd8f3e1c2af3a9ce42e14878
 -- run/go/fyne --
 pass sha256:1807fb2b35a998bcb4627380081ce71b
 -- run/go/gtk4 --
-pass sha256:7dd3aee2019da57530043c0b6c041add
+pass sha256:c12466ff111ab72fa059b4697e0d0aa1
 -- run/kotlin/android --
 pass sha256:c9ed3127821e2c50c1632637bc9bafe9
 -- run/none/html --

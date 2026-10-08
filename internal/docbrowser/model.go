@@ -333,10 +333,10 @@ func (m Model) View() tea.View {
 			content_2Children = append(content_2Children, content_2_7)
 			var content_2_8 string
 			var content_2_8Items []string
-			for _, t := range m.entry().Index.Types {
-				_ = t
+			for _, t__r0 := range m.entry().Index.Types {
+				_ = t__r0
 				var content_2_8Item string
-				content_2_8Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + t.Name) + " — ") + t.Doc)))
+				content_2_8Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + t__r0.Name) + " — ") + t__r0.Doc)))
 				content_2_8Items = append(content_2_8Items, content_2_8Item)
 			}
 			content_2_8 = strings.Join(content_2_8Items, "\n")
@@ -528,10 +528,10 @@ func (m Model) View() tea.View {
 			content_4Children = append(content_4Children, content_4_4)
 			var content_4_5 string
 			var content_4_5Items []string
-			for _, m := range m.entry().TypeDoc.Methods {
-				_ = m
+			for _, m__r0 := range m.entry().TypeDoc.Methods {
+				_ = m__r0
 				var content_4_5Item string
-				content_4_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  ." + m.Short) + "  ") + m.Doc)))
+				content_4_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  ." + m__r0.Short) + "  ") + m__r0.Doc)))
 				content_4_5Items = append(content_4_5Items, content_4_5Item)
 			}
 			content_4_5 = strings.Join(content_4_5Items, "\n")
@@ -555,10 +555,10 @@ func (m Model) View() tea.View {
 			content_5Children = append(content_5Children, content_5_1)
 			var content_5_2 string
 			var content_5_2Items []string
-			for _, m := range m.entry().EnumDoc.Members {
-				_ = m
+			for _, m__r1 := range m.entry().EnumDoc.Members {
+				_ = m__r1
 				var content_5_2Item string
-				content_5_2Item = lipgloss.NewStyle().Render(fmt.Sprint(("  • " + m.Name)))
+				content_5_2Item = lipgloss.NewStyle().Render(fmt.Sprint(("  • " + m__r1.Name)))
 				content_5_2Items = append(content_5_2Items, content_5_2Item)
 			}
 			content_5_2 = strings.Join(content_5_2Items, "\n")

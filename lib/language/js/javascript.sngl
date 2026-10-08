@@ -3,6 +3,68 @@ import ir "sngl:internal/ir"
 import build "sngl:build"
 import gen "sngl:x/gen"
 
+// What JavaScript reserves: its reserved words, the contextually reserved ones
+// a module's strict code refuses as a binding, and the globals no binding
+// should hide. A platform writing JavaScript under another language -- html's
+// page script, whatever `--lang` serves the routes -- reserves these as well,
+// and names this list to do it.
+const words = [
+    "break",
+    "case",
+    "catch",
+    "class",
+    "const",
+    "continue",
+    "debugger",
+    "default",
+    "delete",
+    "do",
+    "else",
+    "enum",
+    "export",
+    "extends",
+    "false",
+    "finally",
+    "for",
+    "function",
+    "if",
+    "import",
+    "in",
+    "instanceof",
+    "new",
+    "null",
+    "return",
+    "super",
+    "switch",
+    "this",
+    "throw",
+    "true",
+    "try",
+    "typeof",
+    "var",
+    "void",
+    "while",
+    "with",
+    "yield",
+    "let",
+    "static",
+    "implements",
+    "interface",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "await",
+    "async",
+    "of",
+    "as",
+    "arguments",
+    "eval",
+    "undefined",
+    "NaN",
+    "Infinity",
+]
+
 // The `js` node of a build directive. It carries
 // no props, which is a fact rather than an omission -- this target takes no
 // build options -- and a misplaced option is reported against it.
@@ -24,6 +86,7 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
 )]
+#[gen.reserves(words)]
 #[gen.name("js")]
 #[gen.native("js")]
 component language(const platforms ...component build.platform) build.language

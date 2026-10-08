@@ -6,6 +6,126 @@ import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import gen "sngl:x/gen"
 
+// Go's keywords.
+const keywords = [
+    "break",
+    "case",
+    "chan",
+    "const",
+    "continue",
+    "default",
+    "defer",
+    "else",
+    "fallthrough",
+    "for",
+    "func",
+    "go",
+    "goto",
+    "if",
+    "import",
+    "interface",
+    "map",
+    "package",
+    "range",
+    "return",
+    "select",
+    "struct",
+    "switch",
+    "type",
+    "var",
+]
+
+// Go's predeclared identifiers. Each is a name a declaration may shadow, and
+// the emitted code calls them -- a parameter named `len` hides the builtin
+// `xs.length` becomes -- so the spec, not the emitter, says which they are.
+const predeclared = [
+    "any",
+    "bool",
+    "byte",
+    "comparable",
+    "complex64",
+    "complex128",
+    "error",
+    "float32",
+    "float64",
+    "int",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "rune",
+    "string",
+    "uint",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uintptr",
+    "true",
+    "false",
+    "iota",
+    "nil",
+    "append",
+    "cap",
+    "clear",
+    "close",
+    "complex",
+    "copy",
+    "delete",
+    "imag",
+    "len",
+    "make",
+    "max",
+    "min",
+    "new",
+    "panic",
+    "print",
+    "println",
+    "real",
+    "recover",
+]
+
+// The packages the translator imports.
+const imports = [
+    "fmt",
+    "os",
+    "time",
+    "strings",
+    "strconv",
+    "math",
+    "slices",
+    "utf8",
+    "url",
+    "unsafe",
+    "sort",
+    "rand",
+    "i18n",
+    "remote",
+    "snglcolor",
+    "http",
+    "context",
+    "sync",
+    "testing",
+    "testagent",
+]
+
+// What every Go target's code declares beside a program's: `m`, the Model's
+// receiver; `model` and `errorEvent`, which it exports as `Model` and
+// `ErrorEvent`; and the helpers it writes.
+const emitted = [
+    "m",
+    "model",
+    "errorEvent",
+    "snglSeq",
+    "snglSome",
+    "snglOptEq",
+    "snglParseInt",
+    "snglParseFloat",
+    "mustParseDate",
+    "mustParseTime",
+    "mustParseDateTime",
+]
+
 // The `go` node of a build directive: `output { go { bubbletea() } }`. Its
 // props are the build options every Go target accepts, and its slot is the
 // platforms built with them.
@@ -29,6 +149,7 @@ import gen "sngl:x/gen"
     viewStatements,
     asyncSpawn,
 )]
+#[gen.reserves(keywords, predeclared, imports, emitted)]
 #[gen.name("go")]
 #[gen.native("go")]
 component language(

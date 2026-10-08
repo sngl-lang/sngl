@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -74,7 +75,12 @@ func FeaturesFrom(lang, plat *ir.Component) (Features, error) {
 		if err := applyGen(&f, g, c.Name); err != nil {
 			return Features{}, err
 		}
+		// A union rather than an override: what a platform's code introduces
+		// is reserved beside the language's words, not instead of them.
+		f.Reserved = append(f.Reserved, g.Reserves...)
 	}
+	slices.Sort(f.Reserved)
+	f.Reserved = slices.Compact(f.Reserved)
 	return f, nil
 }
 

@@ -22,6 +22,27 @@ import gtk "gir:Gtk-4.0"
 // reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
+// What its generated code introduces beside a program's names: the packages
+// it imports -- `C` is cgo's, which a Go export of `c` would be -- an instance
+// record's receiver, the Model's own members, and the locals and helpers its
+// application code declares.
+#[gen.reserves(
+    "gtk4rt",
+    "c",
+    "app",
+    "win",
+    "buildUI",
+    "buildWidgetTree",
+    "snglCallbacks",
+    "snglDrawFuncs",
+    "gtkPost",
+    "snglGoDispatch",
+    "snglIdleCallback",
+    "snglActivate",
+    "boolToInt",
+    "snglCalendarDate",
+    "snglCalendarSelect",
+)]
 #[gen.name("gtk4")]
 #[gen.native("gtk4")]
 component platform(

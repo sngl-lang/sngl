@@ -41,6 +41,43 @@ func serve(dir string, listen string)
     structSpread,
 )]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas, navigationHrefs)]
+// Its page script is JavaScript whatever the language, so it reserves
+// JavaScript's words, and beside them what the script introduces: the `state`
+// object a page's vars live in, a factory's `props`, the `String` it
+// redefines, and the browser globals it calls.
+#[gen.reserves(
+    js.words,
+    "state",
+    "props",
+    "String",
+    "document",
+    "window",
+    "globalThis",
+    "Object",
+    "Array",
+    "Map",
+    "Set",
+    "Number",
+    "Math",
+    "JSON",
+    "Event",
+    "Error",
+    "Promise",
+    "Date",
+    "Intl",
+    "location",
+    "history",
+    "console",
+    "parseInt",
+    "parseFloat",
+    "decodeURIComponent",
+    "encodeURIComponent",
+    "setTimeout",
+    "clearTimeout",
+    "setInterval",
+    "clearInterval",
+    "requestAnimationFrame",
+)]
 #[gen.name("html")]
 #[gen.native("html")]
 component platform(

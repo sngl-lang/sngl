@@ -525,15 +525,15 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 	}
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
-func LineCap(cap string) C.cairo_line_cap_t {
-	if cap == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if cap == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
@@ -747,6 +747,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:053bb16bdf03ecd9de8e01fd88a6dac6
 -- run/go/gtk4 --
-pass sha256:8aecd7ffacc70836fad487036024689c
+pass sha256:d47bcd61aeb28b516434a0e323fe048c
 -- run/none/html --
 pass sha256:523fc3baf813fbbb32f7b4dee3954419

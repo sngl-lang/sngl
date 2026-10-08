@@ -55,7 +55,7 @@ var blank http.Response = http.Response{Status: 0, Body: "", Headers: map[string
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	url            string
+	url__r0        string
 	visible__inst0 bool
 	__focusID      int
 	blank          http.Response
@@ -66,7 +66,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.url = "https://example.com/"
+	m.url__r0 = "https://example.com/"
 	m.visible__inst0 = true
 	m.__focusID = 0
 	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
@@ -91,19 +91,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Url() string {
-	return m.url
+func (m Model) Url__r0() string {
+	return m.url__r0
 }
 
-func (m Model) SetUrl(v string) Model {
-	m.url = v
+func (m Model) SetUrl__r0(v string) Model {
+	m.url__r0 = v
 	return m
 }
 
-type setUrlMsg struct{ value string }
+type setUrl__r0Msg struct{ value string }
 
-func SetUrlCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setUrlMsg{value: v} }
+func SetUrl__r0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setUrl__r0Msg{value: v} }
 }
 
 func (m Model) Visible__inst0() bool {
@@ -130,8 +130,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setUrlMsg:
-		m = m.SetUrl(msg.value)
+	case setUrl__r0Msg:
+		m = m.SetUrl__r0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case remoteSettledMsg:
@@ -153,7 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.url = "https://other/"
+			m.url__r0 = "https://other/"
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -164,8 +164,8 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(remote.Query[http.Response](remote.Default, "http.fetch", ([]any)([]string{m.url}), func() (http.Response, error) {
-			return (func() http.Response { return func() http.Response { v, _ := http.Get(m.url); return v }() })(), nil
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(remote.Query[http.Response](remote.Default, "http.fetch", ([]any)([]string{m.url__r0}), func() (http.Response, error) {
+			return (func() http.Response { return func() http.Response { v, _ := http.Get(m.url__r0); return v }() })(), nil
 		}).Or(m.blank).Body))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
@@ -196,4 +196,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:b5719a5f20739e18203fa49581882445
+broken sha256:d7a2466ff351f337e0437ddc5b8b9b37

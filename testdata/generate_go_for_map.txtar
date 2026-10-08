@@ -148,8 +148,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			for _, v := range m.scores__inst0 {
-				m.total__inst0 = (m.total__inst0 + v)
+			for _, v__r0 := range m.scores__inst0 {
+				m.total__inst0 = (m.total__inst0 + v__r0)
 			}
 		}
 	}
@@ -187,4 +187,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:c10282f5f782031b187e4e1de607ed88
+pass sha256:8c1924233fe47fd2f4f9a31b04e6acbf

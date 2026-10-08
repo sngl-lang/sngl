@@ -145,6 +145,19 @@ type Features struct {
 	// sngl:ui/nav with an address per page: a link becomes a ui.link to the
 	// page's href, and a go passing no params passes the page's own.
 	NavigationHrefs bool
+
+	// Reserved is every name the build's `#[gen.reserves]` marks list, the
+	// language's and the platform's together: passReservedNames renames a
+	// declaration the program gave one of them. Not a capability, so it is
+	// the one field String does not list and no pass is gated on.
+	Reserved []string
+}
+
+// LowersNothing reports whether f holds exactly NoLowering's capabilities,
+// whatever names it reserves. String lists every capability held, so two
+// records listing the same are the same set of passes.
+func (f Features) LowersNothing() bool {
+	return f.String() == NoLowering().String()
 }
 
 // NoLowering is the Features under which no capability-gated pass runs: every

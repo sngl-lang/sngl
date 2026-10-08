@@ -264,10 +264,10 @@ import (
 type Model struct {
 	seen string
 
-	w *fyne.Container
-	a *widget.Button
-	m *fyne.Container
-	b *widget.Button
+	w     *fyne.Container
+	a     *widget.Button
+	m__r0 *fyne.Container
+	b     *widget.Button
 }
 
 // New creates a Model with default values.
@@ -314,14 +314,14 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.a.SetText("row")
 	m.a.OnTapped = m.a_click_handler
 	m.w.Add(m.a)
-	m.m = container.NewVBox()
+	m.m__r0 = container.NewVBox()
 	m.b = widget.NewButton("", nil)
 	m.b.SetText("part")
 	m.b.OnTapped = m.b_click_handler
-	m.m.Add(m.b)
+	m.m__r0.Add(m.b)
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.w)
-	parts = append(parts, m.m)
+	parts = append(parts, m.m__r0)
 	return container.NewVBox(parts...)
 }
 
@@ -384,7 +384,7 @@ type Model struct {
 	seen   string
 	w      gtk4rt.Handle
 	a      gtk4rt.Handle
-	m      gtk4rt.Handle
+	m__r0  gtk4rt.Handle
 	b      gtk4rt.Handle
 	__root gtk4rt.Handle
 }
@@ -425,15 +425,15 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ButtonSetLabel(m.a, "row")
 	gtk4rt.Connect(m.a, "clicked", m.a_clicked_handler)
 	gtk4rt.BoxAppend(m.w, m.a)
-	m.m = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.m, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.m, 6)
+	m.m__r0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.m__r0, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.m__r0, 6)
 	m.b = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.b, "part")
 	gtk4rt.Connect(m.b, "clicked", m.b_clicked_handler)
-	gtk4rt.BoxAppend(m.m, m.b)
+	gtk4rt.BoxAppend(m.m__r0, m.b)
 	gtk4rt.BoxAppend(m.__root, m.w)
-	gtk4rt.BoxAppend(m.__root, m.m)
+	gtk4rt.BoxAppend(m.__root, m.m__r0)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -614,9 +614,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cd613dafad6bdb89e23de6f81cf0c78a
 -- run/go/fyne --
-pass sha256:0d9a9fa1ac7c614ccfcb369f70338219
+pass sha256:5af3a45fb14ec5a62ea2ef5e3c72d7f6
 -- run/go/gtk4 --
-pass sha256:78acf4f456b8b42b1f22efc361a98ab1
+pass sha256:42d81b96293f2c3f37c36c0c03dce9bd
 -- run/kotlin/android --
 pass sha256:fd01aebd120c03bdf5473133791fd6f4
 -- run/none/html --

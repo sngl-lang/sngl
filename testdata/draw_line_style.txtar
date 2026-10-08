@@ -307,20 +307,20 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
-		if c.Op == "moveTo" {
-			ctx.MoveTo(c.X, c.Y)
+	for _, c__r0 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+		if c__r0.Op == "moveTo" {
+			ctx.MoveTo(c__r0.X, c__r0.Y)
 		}
-		if c.Op == "lineTo" {
-			ctx.LineTo(c.X, c.Y)
+		if c__r0.Op == "lineTo" {
+			ctx.LineTo(c__r0.X, c__r0.Y)
 		}
-		if c.Op == "bezierTo" {
-			ctx.CubicTo(c.Cx1, c.Cy1, c.Cx2, c.Cy2, c.X, c.Y)
+		if c__r0.Op == "bezierTo" {
+			ctx.CubicTo(c__r0.Cx1, c__r0.Cy1, c__r0.Cx2, c__r0.Cy2, c__r0.X, c__r0.Y)
 		}
-		if c.Op == "arcTo" {
-			ctx.ArcTo(c.Cx1, c.Cy1, c.X, c.Y, c.R)
+		if c__r0.Op == "arcTo" {
+			ctx.ArcTo(c__r0.Cx1, c__r0.Cy1, c__r0.X, c__r0.Y, c__r0.R)
 		}
-		if c.Op == "close" {
+		if c__r0.Op == "close" {
 			ctx.ClosePath()
 		}
 	}
@@ -665,11 +665,11 @@ func New() *Model {
 	return m
 }
 
-func LineCap(cap string) C.cairo_line_cap_t {
-	if cap == "round" {
+func LineCap(cap__r0 string) C.cairo_line_cap_t {
+	if cap__r0 == "round" {
 		return C.cairo_line_cap_t(C.int(1))
 	}
-	if cap == "square" {
+	if cap__r0 == "square" {
 		return C.cairo_line_cap_t(C.int(2))
 	}
 	return C.cairo_line_cap_t(C.int(0))
@@ -685,8 +685,8 @@ func LineJoin(join string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
-func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+func Source(ctx *C.cairo_t, c__r0 snglcolor.Color) {
+	C.cairo_set_source_rgba(ctx, C.double((float64(c__r0.R) / 255.0)), C.double((float64(c__r0.G) / 255.0)), C.double((float64(c__r0.B) / 255.0)), C.double((float64(c__r0.A) / 255.0)))
 }
 
 func ArcTo(ctx *C.cairo_t, from Point, corner Point, to Point, r float64) Point {
@@ -740,12 +740,12 @@ func TangentArc(from Point, corner Point, to Point, r float64) Arc {
 	t1 := Point{X: (corner.X + (reach * math.Cos(a1))), Y: (corner.Y + (reach * math.Sin(a1)))}
 	t2 := Point{X: (corner.X + (reach * math.Cos(a2))), Y: (corner.Y + (reach * math.Sin(a2)))}
 	var __cse0 float64 = math.Sin(half)
-	c := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
+	c__r1 := Point{X: (corner.X + ((r / __cse0) * math.Cos((a1 + (turn / 2.0))))), Y: (corner.Y + ((r / __cse0) * math.Sin((a1 + (turn / 2.0)))))}
 	var sweep float64 = (3.141592653589793 - math.Abs(turn))
 	if turn > 0.0 {
 		sweep = -sweep
 	}
-	return Arc{Tangent1: t1, Tangent2: t2, Center: c, Start: math.Atan2((t1.Y - c.Y), (t1.X - c.X)), Sweep: sweep, Degenerate: false}
+	return Arc{Tangent1: t1, Tangent2: t2, Center: c__r1, Start: math.Atan2((t1.Y - c__r1.Y), (t1.X - c__r1.X)), Sweep: sweep, Degenerate: false}
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -767,23 +767,23 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_restore(ctx)
 	at := Point{X: 0.0, Y: 0.0}
 	C.cairo_save(ctx)
-	for _, c := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
-		if c.Op == "moveTo" {
-			C.cairo_move_to(ctx, C.double(c.X), C.double(c.Y))
-			at = Point{X: c.X, Y: c.Y}
+	for _, c__r2 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+		if c__r2.Op == "moveTo" {
+			C.cairo_move_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
+			at = Point{X: c__r2.X, Y: c__r2.Y}
 		}
-		if c.Op == "lineTo" {
-			C.cairo_line_to(ctx, C.double(c.X), C.double(c.Y))
-			at = Point{X: c.X, Y: c.Y}
+		if c__r2.Op == "lineTo" {
+			C.cairo_line_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
+			at = Point{X: c__r2.X, Y: c__r2.Y}
 		}
-		if c.Op == "bezierTo" {
-			C.cairo_curve_to(ctx, C.double(c.Cx1), C.double(c.Cy1), C.double(c.Cx2), C.double(c.Cy2), C.double(c.X), C.double(c.Y))
-			at = Point{X: c.X, Y: c.Y}
+		if c__r2.Op == "bezierTo" {
+			C.cairo_curve_to(ctx, C.double(c__r2.Cx1), C.double(c__r2.Cy1), C.double(c__r2.Cx2), C.double(c__r2.Cy2), C.double(c__r2.X), C.double(c__r2.Y))
+			at = Point{X: c__r2.X, Y: c__r2.Y}
 		}
-		if c.Op == "arcTo" {
-			at = ArcTo(ctx, at, Point{X: c.Cx1, Y: c.Cy1}, Point{X: c.X, Y: c.Y}, c.R)
+		if c__r2.Op == "arcTo" {
+			at = ArcTo(ctx, at, Point{X: c__r2.Cx1, Y: c__r2.Cy1}, Point{X: c__r2.X, Y: c__r2.Y}, c__r2.R)
 		}
-		if c.Op == "close" {
+		if c__r2.Op == "close" {
 			C.cairo_close_path(ctx)
 		}
 	}
@@ -1159,9 +1159,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:5f2176afa00b9dbb7ba339b7f5efff11
 -- run/go/fyne --
-pass sha256:3dc26a23f931b084d6bcd71684061586
+pass sha256:afd48d8fc73c4f39fcb595c2516d970d
 -- run/go/gtk4 --
-pass sha256:6a317f2b976e81980731f0ae617c1703
+pass sha256:4435b8afe63158730082db1da2592475
 -- run/kotlin/android --
 pass sha256:5e2e4e773322ce054edfba258f4dd63d
 -- run/none/html --

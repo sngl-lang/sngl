@@ -42,7 +42,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	url            string
+	url__r0        string
 	visible__inst0 bool
 
 	width, height int
@@ -51,7 +51,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.url = "https://example.com/"
+	m.url__r0 = "https://example.com/"
 	m.visible__inst0 = true
 	return m
 }
@@ -62,19 +62,19 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) Url() string {
-	return m.url
+func (m Model) Url__r0() string {
+	return m.url__r0
 }
 
-func (m Model) SetUrl(v string) Model {
-	m.url = v
+func (m Model) SetUrl__r0(v string) Model {
+	m.url__r0 = v
 	return m
 }
 
-type setUrlMsg struct{ value string }
+type setUrl__r0Msg struct{ value string }
 
-func SetUrlCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setUrlMsg{value: v} }
+func SetUrl__r0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setUrl__r0Msg{value: v} }
 }
 
 func (m Model) Visible__inst0() bool {
@@ -101,8 +101,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setUrlMsg:
-		m = m.SetUrl(msg.value)
+	case setUrl__r0Msg:
+		m = m.SetUrl__r0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -126,7 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.visible__inst0 {
-		content = lipgloss.NewStyle().Render(fmt.Sprint(func() http.Response { v, _ := http.Get(m.url); return v }().Body))
+		content = lipgloss.NewStyle().Render(fmt.Sprint(func() http.Response { v, _ := http.Get(m.url__r0); return v }().Body))
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -142,4 +142,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:1981fb1d1cc6800b0798fab41008113d
+pass sha256:37324a7e4145c571e2457f17acca25f8

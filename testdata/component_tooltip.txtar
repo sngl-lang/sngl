@@ -53,7 +53,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	msg       string
+	msg__r0   string
 	__focusID int
 
 	width, height int
@@ -62,7 +62,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.msg = "hello"
+	m.msg__r0 = "hello"
 	m.__focusID = 0
 	return m
 }
@@ -85,19 +85,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Msg() string {
-	return m.msg
+func (m Model) Msg__r0() string {
+	return m.msg__r0
 }
 
-func (m Model) SetMsg(v string) Model {
-	m.msg = v
+func (m Model) SetMsg__r0(v string) Model {
+	m.msg__r0 = v
 	return m
 }
 
-type setMsgMsg struct{ value string }
+type setMsg__r0Msg struct{ value string }
 
-func SetMsgCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setMsgMsg{value: v} }
+func SetMsg__r0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setMsg__r0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -109,8 +109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setMsgMsg:
-		m = m.SetMsg(msg.value)
+	case setMsg__r0Msg:
+		m = m.SetMsg__r0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -139,7 +139,7 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("hover"))
 	contentChildren = append(contentChildren, content_0)
 	if m.__focusID == 0 {
-		contentChildren = append(contentChildren, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(m.msg)))
+		contentChildren = append(contentChildren, lipgloss.NewStyle().Faint(true).Render(fmt.Sprint(m.msg__r0)))
 	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
@@ -163,9 +163,9 @@ import "testing"
 func TestTooltipTextMutates(t *testing.T) {
 	c := newTestComponent()
 	_ = c
-	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
-	c.msg = "goodbye"
-	if !((c.msg == "goodbye")) { t.Errorf("assert failed: %s", "(c.msg == \"goodbye\")") }
+	if !((c.msg__r0 == "hello")) { t.Errorf("assert failed: %s", "(c.msg__r0 == \"hello\")") }
+	c.msg__r0 = "goodbye"
+	if !((c.msg__r0 == "goodbye")) { t.Errorf("assert failed: %s", "(c.msg__r0 == \"goodbye\")") }
 }
 
 
@@ -600,7 +600,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ec77887264626a53d03db76d8a316f7e
+pass sha256:98e041102b0f6c8790bd5db263bb7f27
 -- run/go/fyne --
 pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --

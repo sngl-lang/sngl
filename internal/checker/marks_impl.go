@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
@@ -38,6 +39,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "renders"}:          markGenRenders,
 	{"x/gen", "name"}:             markGenName,
 	{"x/gen", "native"}:           markGenNative,
+	{"x/gen", "reserves"}:         markGenReserves,
 	{"ui/markup/md", "order"}:     markMdOrder,
 }
 
@@ -844,6 +846,44 @@ func markGenNative(m *mark) error {
 	}
 	comp.Gen.Native = key
 	return nil
+}
+
+// markGenReserves implements #[gen.reserves]: the names a target's generated
+// code cannot give a program's declaration. Placement is finishTreeMarks', as
+// the other build-target marks' is.
+func markGenReserves(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[gen.reserves] cannot mark %s; it belongs on the build-tree node a target package declares", ast.DeclFormName(m.decl))
+	}
+	names := m.args.Strings("names")
+	if len(names) == 0 {
+		return fmt.Errorf("#[gen.reserves] names nothing")
+	}
+	for _, n := range names {
+		if !isIdentifier(n) {
+			return fmt.Errorf("#[gen.reserves(%q)]: not an identifier, so no declaration could be named it", n)
+		}
+	}
+	if comp.Gen == nil {
+		comp.Gen = &ir.GenCaps{}
+	}
+	comp.Gen.Reserves = append(comp.Gen.Reserves, names...)
+	if n, dup := firstDuplicate(comp.Gen.Reserves); dup {
+		return fmt.Errorf("#[gen.reserves] names %q twice", n)
+	}
+	return nil
+}
+
+// isIdentifier reports whether s is spelled as a SNGL identifier: a letter or
+// underscore, then letters, digits and underscores.
+func isIdentifier(s string) bool {
+	for i, r := range s {
+		if r != '_' && !unicode.IsLetter(r) && (i == 0 || !unicode.IsDigit(r)) {
+			return false
+		}
+	}
+	return s != ""
 }
 
 func markGen(m *mark, kind string) error {

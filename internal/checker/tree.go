@@ -90,6 +90,9 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, n
 		if g.TargetName != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.name] names a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}
+		if len(g.Reserves) > 0 && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
+			c.error(decl.Pos, "component %s: #[gen.reserves] names what a target's generated code cannot hold, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
 		if g.Native != "" && !ir.IsBuildTargetTree(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.native] names the Go generator of a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}

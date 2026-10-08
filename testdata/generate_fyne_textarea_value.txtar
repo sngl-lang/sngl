@@ -43,10 +43,10 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	content        string
+	content__r0    string
 	visible__inst0 bool
 
-	app     *fynelayout.Toplevel
+	app__r0 *fynelayout.Toplevel
 	__n1    *fyne.Container
 	__n0    *widget.Entry
 	__n2    *widget.Button
@@ -56,56 +56,56 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.content = "initial value"
+	m.content__r0 = "initial value"
 	m.visible__inst0 = true
 	return m
 }
 
-func (m *Model) app_closed_handler() {
+func (m *Model) app__r0_closed_handler() {
 }
 
-func (m *Model) app_visible_handler(__visible bool) {
+func (m *Model) app__r0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
-	m.app.SetVisible(m.visible__inst0)
+	m.app__r0.SetVisible(m.visible__inst0)
 }
 
 func (m *Model) __n0_input_handler(v string) {
-	m.content = v
-	m.__n0.SetText(m.content)
+	m.content__r0 = v
+	m.__n0.SetText(m.content__r0)
 }
 
 func (m *Model) __n0_change_handler(v string) {
-	m.content = v
-	m.__n0.SetText(m.content)
+	m.content__r0 = v
+	m.__n0.SetText(m.content__r0)
 }
 
 func (m *Model) __n2_click_handler() {
-	m.content = "after click"
-	m.__n0.SetText(m.content)
+	m.content__r0 = "after click"
+	m.__n0.SetText(m.content__r0)
 }
 
-// appClosed invokes the OnClosed callback on the #app widget; for tests.
-func (m *Model) appClosed() {
-	if m.app.OnClosed != nil {
-		m.app.OnClosed()
+// app__r0Closed invokes the OnClosed callback on the #app__r0 widget; for tests.
+func (m *Model) app__r0Closed() {
+	if m.app__r0.OnClosed != nil {
+		m.app__r0.OnClosed()
 	}
 }
 
-// appVisible invokes the OnVisible callback on the #app widget; for tests.
-func (m *Model) appVisible(visible bool) {
-	if cb := m.app.OnVisible; cb != nil {
-		m.app.OnVisible = nil
+// app__r0Visible invokes the OnVisible callback on the #app__r0 widget; for tests.
+func (m *Model) app__r0Visible(visible bool) {
+	if cb := m.app__r0.OnVisible; cb != nil {
+		m.app__r0.OnVisible = nil
 		cb(visible)
-		m.app.OnVisible = cb
+		m.app__r0.OnVisible = cb
 	}
 }
 
-func (m *Model) Content() string {
-	return m.content
+func (m *Model) Content__r0() string {
+	return m.content__r0
 }
 
-func (m *Model) SetContent(v string) {
-	m.content = v
+func (m *Model) SetContent__r0(v string) {
+	m.content__r0 = v
 }
 
 func (m *Model) Visible__inst0() bool {
@@ -119,17 +119,17 @@ func (m *Model) SetVisible__inst0(v bool) {
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
-		return m.app.Container
+		return m.app__r0.Container
 	}
 	m.__built = true
-	m.app = fynelayout.NewToplevel()
-	m.app.SetTitle("t")
-	m.app.SetVisible(m.visible__inst0)
-	m.app.OnClosed = m.app_closed_handler
-	m.app.OnVisible = m.app_visible_handler
+	m.app__r0 = fynelayout.NewToplevel()
+	m.app__r0.SetTitle("t")
+	m.app__r0.SetVisible(m.visible__inst0)
+	m.app__r0.OnClosed = m.app__r0_closed_handler
+	m.app__r0.OnVisible = m.app__r0_visible_handler
 	m.__n1 = container.NewVBox()
 	m.__n0 = widget.NewMultiLineEntry()
-	m.__n0.SetText(m.content)
+	m.__n0.SetText(m.content__r0)
 	m.__n0.SetPlaceHolder("")
 	m.__n0.SetMinRowsVisible(4)
 	m.__n0.OnChanged = m.__n0_input_handler
@@ -139,9 +139,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.SetText("set")
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
-	m.app.Add(m.__n1)
-	fynelayout.AppAttach(m.app)
-	return m.app.Container
+	m.app__r0.Add(m.__n1)
+	fynelayout.AppAttach(m.app__r0)
+	return m.app__r0.Container
 }
 
 func main() {
@@ -152,4 +152,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:a357baf9aa131542f3d2c20efde6a509
+pass sha256:5b0488df5850580c3309539bdc0b1bd7

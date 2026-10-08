@@ -423,7 +423,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
-			if batchFeats != lower.NoLowering() {
+			if !batchFeats.LowersNothing() {
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
 				}

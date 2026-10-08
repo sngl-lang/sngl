@@ -338,9 +338,9 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			}
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
-			return id.Name + "." + n.Field
+			return id.Name + "." + SafeIdent(n.Field)
 		}
-		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + n.Field
+		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + SafeIdent(n.Field)
 	case *ir.Index:
 		operand := lowerTestExpr(n.Operand, surf, compRecvs)
 		idx := lowerTestExpr(n.Idx, surf, compRecvs)

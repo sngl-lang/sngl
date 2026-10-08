@@ -104,7 +104,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	if s := snglI18n.PluralKeyConstString(n); s != "" {
 		return s
 	}
-	field := n.Field
+	field := SafeIdent(n.Field)
 	if field == "length" {
 		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
 			field = "size"
@@ -178,7 +178,7 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		if f.Spread {
 			panic("kotlin: struct spread must be lowered by flatten_struct_spread")
 		}
-		parts[i] = f.Name + " = " + fieldStrs[i]
+		parts[i] = SafeIdent(f.Name) + " = " + fieldStrs[i]
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
@@ -524,7 +524,7 @@ func (kc *KtIRContext) identRewrite(name string) (string, bool) {
 	}
 	return rewritten, true
 }
-func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return n.Field }
+func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return SafeIdent(n.Field) }
 
 func (kc *KtIRContext) StmtPrefix(_ ir.Stmt) []string { return nil }
 
@@ -673,7 +673,7 @@ func ktNameArgs(params []*ir.Param, args []string) []string {
 		if i >= len(out) || p.Name == "" {
 			continue
 		}
-		out[i] = p.Name + " = " + out[i]
+		out[i] = SafeIdent(p.Name) + " = " + out[i]
 	}
 	return out
 }

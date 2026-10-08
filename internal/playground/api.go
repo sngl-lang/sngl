@@ -186,7 +186,7 @@ func Compile(source string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if compileFeats != lower.NoLowering() {
+	if !compileFeats.LowersNothing() {
 		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)
@@ -314,7 +314,7 @@ func Generate(source, platform, lang string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if genFeats != lower.NoLowering() {
+	if !genFeats.LowersNothing() {
 		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)

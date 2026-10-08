@@ -177,9 +177,9 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0_part := func(m_ int) string {
+	content_0_part := func(m__r0 int) string {
 		var result string
-		result = lipgloss.NewStyle().Render(fmt.Sprint(((("level " + fmt.Sprint(m_)) + " ") + m.mark)))
+		result = lipgloss.NewStyle().Render(fmt.Sprint(((("level " + fmt.Sprint(m__r0)) + " ") + m.mark)))
 		return result
 	}
 	content_0 = m.renderFrame(m.depth, "top", 0, content_0_part)
@@ -2301,8 +2301,8 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         Frame(result = (state.depth - 1), m = "second", __depth = 0, part = { result ->
             Text(text = ((("r " + result.toString()) + " ") + state.mark), modifier = Modifier)
         })
-        Frame(result = (state.depth - 2), m = "third", __depth = 0, part = { `in` ->
-            Text(text = ((("in " + `in`.toString()) + " ") + state.mark), modifier = Modifier)
+        Frame(result = (state.depth - 2), m = "third", __depth = 0, part = { in__r0 ->
+            Text(text = ((("in " + in__r0.toString()) + " ") + state.mark), modifier = Modifier)
         })
     }
 }
@@ -3162,12 +3162,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c6d1873a2548e7613ce16b8440c9ca07
+pass sha256:e59c453bb16cadfafc0f886e3d7c3dec
 -- run/go/fyne --
 pass sha256:b32534e3063c3a7037cd7821cbdcce71
 -- run/go/gtk4 --
 pass sha256:820ead8c024171b049b8dbedcc5842d6
 -- run/kotlin/android --
-pass sha256:d240a16f922563997c98ff32f8edcc27
+pass sha256:eb81527ce5973031e125c910d6292d32
 -- run/none/html --
 pass sha256:78af8e4ad7d71513c0ffee91e8cfd65e

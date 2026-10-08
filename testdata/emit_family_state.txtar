@@ -207,7 +207,7 @@ func New() *Model {
 }
 
 func Encode(members []Entry) string {
-	parts := []string{}
+	parts__r0 := []string{}
 	for _, e := range members {
 		var __lt0 string
 		if e.Color == "" {
@@ -215,9 +215,9 @@ func Encode(members []Entry) string {
 		} else {
 			__lt0 = ((e.Full + "#") + e.Color)
 		}
-		parts = append(parts, __lt0)
+		parts__r0 = append(parts__r0, __lt0)
 	}
-	return strings.Join(parts, "|")
+	return strings.Join(parts__r0, "|")
 }
 
 func ReadClicks(members func() []Entry) {
@@ -644,6 +644,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:d5416d8bbde172d5f9e6030bbf0231b4
+pass sha256:7fd3bd5890382ecdc4b5dc6fdbd46407
 -- run/go/gtk4 --
 pass sha256:90a63a8ef7c3d19580aaf80081bdccd2

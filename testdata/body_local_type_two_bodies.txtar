@@ -193,8 +193,8 @@ func Local__secondShout(this Local__second, n int) string {
 }
 
 func Pick(n int) int {
-	v := Local__pick{C: n}
-	return v.C
+	v__r0 := Local__pick{C: n}
+	return v__r0.C
 }
 
 func (m Model) Seed__inst0() int {
@@ -662,7 +662,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:851637c09b2571837f963d464a90ddac
+pass sha256:622abc11dbee993d5a8b88f77fecad4d
 -- run/kotlin/android --
 pass sha256:930ffe1a95affc02a875d4698ae0e840
 -- run/none/html --

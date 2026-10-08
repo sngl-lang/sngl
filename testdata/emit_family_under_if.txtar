@@ -180,11 +180,11 @@ func New() *Model {
 }
 
 func Encode(members []Entry) string {
-	parts := []string{}
+	parts__r0 := []string{}
 	for _, e := range members {
-		parts = append(parts, e.Full)
+		parts__r0 = append(parts__r0, e.Full)
 	}
-	return strings.Join(parts, "|")
+	return strings.Join(parts__r0, "|")
 }
 
 func (m *Model) __bar_members() []Entry {
@@ -771,6 +771,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:fb96b3c37ee3e5b30f2e8dc658998387
+pass sha256:4ca072000dc06b526e1145807474248d
 -- run/go/gtk4 --
 pass sha256:ff078055c1b5d080ab8a58c638f25fdb

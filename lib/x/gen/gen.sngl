@@ -109,6 +109,26 @@ func name(target string) ir.Macro
 // so.
 func native(generator string) ir.Macro
 
+// Names a program's declaration may not keep in the target's generated code,
+// so a declaration named one is renamed there, with every reference to it.
+//
+// A language node lists its words -- keywords, and the names its runtime
+// predeclares; a platform node lists the identifiers its own generated code
+// introduces beside a program's -- a receiver, an import, a field or method
+// of a type it writes, a local it declares. A build reserves both, so a
+// platform adds to its language's list rather than overruling it.
+//
+// A name is matched as the program wrote it, before a backend capitalizes or
+// prefixes it: a platform whose `Model` would collide with a program's struct
+// `model` reserves `model`.
+//
+// What keeps its name whatever this says: a struct field and an enum member,
+// whose names a host reads -- a route's path, a serialized record -- and a
+// declaration that is a host's own (`#[foreign]`, a native, a primitive's
+// props). A language whose words a field may not take escapes them as it
+// writes them.
+func reserves(names list<string>) ir.Macro
+
 // Says the nodes this primitive renders support each named thing.
 //
 // The one mark here written on something other than a build-target node, and

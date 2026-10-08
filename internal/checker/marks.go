@@ -128,7 +128,7 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
 		return
 	}
-	args, err := markArgsFor(fn, attr.Args, c.markConstValue)
+	args, err := markArgsFor(fn, attr.Args, c.markConstValue, c.markConstStrings)
 	if err != nil {
 		c.error(attr.Pos, "macro %s: %s", attr.MacroName(), err)
 		return
@@ -254,6 +254,7 @@ type markVal struct {
 	num    int64
 	ident  string
 	idents []string
+	strs   []string
 	expr   ast.Expr
 }
 
@@ -296,6 +297,15 @@ func (a markArgs) Idents(name string) []string {
 	return nil
 }
 
+// Strings is the value of a list<string> parameter, empty when the mark
+// supplied none.
+func (a markArgs) Strings(name string) []string {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].strs
+	}
+	return nil
+}
+
 // argKind is how a declared parameter type is written at a mark's use site.
 // A mark's arguments are constants read at check time, so a parameter's type
 // says which constant form its argument takes rather than what a value of it
@@ -303,17 +313,18 @@ func (a markArgs) Idents(name string) []string {
 type argKind int
 
 const (
-	argExpr   argKind = iota // any expression; nothing reads one yet
-	argString                // constant string
-	argInt                   // constant integer
-	argIdent                 // one enum member, written bare
-	argIdents                // the remaining arguments, each an enum member
+	argExpr    argKind = iota // any expression; nothing reads one yet
+	argString                 // constant string
+	argInt                    // constant integer
+	argIdent                  // one enum member, written bare
+	argIdents                 // the remaining arguments, each an enum member
+	argStrings                // the remaining arguments, each a constant string
 )
 
 // markArgKind reads a parameter's declared type as an argument form, plus the
-// member names an enum-typed one accepts. A list of enum members is variadic:
-// the flags a mark carries are written as bare identifiers after its other
-// arguments, not as a list literal.
+// member names an enum-typed one accepts. A list is variadic: the flags a
+// mark carries are written as bare identifiers after its other arguments, and
+// the strings a list<string> takes as constant strings, not as a list literal.
 func markArgKind(t *ir.Type) (argKind, []string) {
 	if t == nil {
 		return argExpr, nil
@@ -328,6 +339,9 @@ func markArgKind(t *ir.Type) (argKind, []string) {
 	case ir.TypeList:
 		if len(t.Elems) == 1 && t.Elems[0] != nil && t.Elems[0].Kind == ir.TypeEnum {
 			return argIdents, enumMemberNames(t.Elems[0])
+		}
+		if len(t.Elems) == 1 && t.Elems[0] != nil && t.Elems[0].Kind == ir.TypeString {
+			return argStrings, nil
 		}
 	}
 	return argExpr, nil
@@ -349,12 +363,17 @@ func enumMemberNames(t *ir.Type) []string {
 // parameters and reads each to its form. Arguments are positional; a parameter
 // with a default may be omitted from the tail, and a trailing list parameter
 // takes however many remain.
-func markArgsFor(fn *ir.Func, raw []ast.Expr, constVal func(string) (ast.Expr, bool)) (markArgs, error) {
+//
+// An argument to a list<string> parameter may also name a constant list of
+// strings, this package's or one an imported package declares, which
+// contributes every element: `#[gen.reserves(js.words, "state")]`. lists
+// answers that, nil where nothing does.
+func markArgsFor(fn *ir.Func, raw []ast.Expr, constVal func(string) (ast.Expr, bool), lists func(ast.Expr) ([]string, bool)) (markArgs, error) {
 	params := fn.Params
 	required, variadic := 0, false
 	for i, p := range params {
 		kind, _ := markArgKind(p.Type)
-		if kind == argIdents && i == len(params)-1 {
+		if (kind == argIdents || kind == argStrings) && i == len(params)-1 {
 			variadic = true
 			continue
 		}
@@ -370,15 +389,29 @@ func markArgsFor(fn *ir.Func, raw []ast.Expr, constVal func(string) (ast.Expr, b
 		kind, enum := markArgKind(p.Type)
 		if variadic && i == len(params)-1 {
 			rest := raw[min(i, len(raw)):]
-			idents := make([]string, 0, len(rest))
+			each := argIdent
+			if kind == argStrings {
+				each = argString
+			}
+			var idents, strs []string
 			for _, e := range rest {
-				v, err := readMarkArg(argIdent, enum, e, constVal)
+				if kind == argStrings && lists != nil {
+					if ss, ok := lists(e); ok {
+						strs = append(strs, ss...)
+						continue
+					}
+				}
+				v, err := readMarkArg(each, enum, e, constVal)
 				if err != nil {
 					return markArgs{}, fmt.Errorf("argument %q: %w", p.Name, err)
 				}
-				idents = append(idents, v.ident)
+				if kind == argStrings {
+					strs = append(strs, v.str)
+				} else {
+					idents = append(idents, v.ident)
+				}
 			}
-			vals[i] = markVal{set: true, idents: idents}
+			vals[i] = markVal{set: true, idents: idents, strs: strs}
 			break
 		}
 		if i >= len(raw) {
@@ -506,6 +539,68 @@ func (c *checker) macroHome(fn *ir.Func) *ir.Package {
 // Package-level only, and the first spec of that name wins. A duplicate is
 // `claimTopLevel`'s to report, and reporting it here as well would name the
 // mark rather than the declaration.
+// markConstStrings reads e as a constant list of strings: a const of this
+// package written as a list literal, read off its source as markConstValue
+// reads one, or `alias.name` naming a const an imported package declares,
+// read off its checked initializer.
+func (c *checker) markConstStrings(e ast.Expr) ([]string, bool) {
+	switch x := e.(type) {
+	case *ast.IdentExpr:
+		init, ok := c.markConstValue(x.Name)
+		if !ok {
+			return nil, false
+		}
+		list, ok := init.(*ast.ListExpr)
+		if !ok {
+			return nil, false
+		}
+		out := make([]string, 0, len(list.Elements))
+		for _, el := range list.Elements {
+			s, err := ast.EvalStringWith(el, c.markConstValue)
+			if err != nil {
+				return nil, false
+			}
+			out = append(out, s)
+		}
+		return out, true
+	case *ast.SelectExpr:
+		alias, ok := x.Operand.(*ast.IdentExpr)
+		if !ok {
+			return nil, false
+		}
+		nsSym, found := c.scope.Lookup(alias.Name)
+		if !found {
+			return nil, false
+		}
+		ns, ok := nsSym.(*ir.Namespace)
+		if !ok || ns.Pkg == nil {
+			return nil, false
+		}
+		member, found := ns.Pkg.Symbols.LookupMember(x.Field)
+		if !found {
+			return nil, false
+		}
+		v, ok := member.(*ir.Var)
+		if !ok || !v.IsConst {
+			return nil, false
+		}
+		list, ok := v.Init.(*ir.ListLit)
+		if !ok {
+			return nil, false
+		}
+		out := make([]string, 0, len(list.Elems))
+		for _, el := range list.Elems {
+			lit, ok := el.(*ir.Literal)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, lit.Value)
+		}
+		return out, true
+	}
+	return nil, false
+}
+
 func (c *checker) markConstValue(name string) (ast.Expr, bool) {
 	for _, d := range c.docs {
 		for _, stmt := range d.Stmts {

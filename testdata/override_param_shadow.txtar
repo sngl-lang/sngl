@@ -68,7 +68,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	on             bool
-	v              string
+	v__r0          string
 	seen           string
 	checked__inst0 bool
 	value__inst0   string
@@ -84,7 +84,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.on = false
-	m.v = "x"
+	m.v__r0 = "x"
 	m.seen = ""
 	m.checked__inst0 = false
 	m.value__inst0 = ""
@@ -152,19 +152,19 @@ func SetOnCmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setOnMsg{value: v} }
 }
 
-func (m Model) V() string {
-	return m.v
+func (m Model) V__r0() string {
+	return m.v__r0
 }
 
-func (m Model) SetV(v string) Model {
-	m.v = v
+func (m Model) SetV__r0(v string) Model {
+	m.v__r0 = v
 	return m
 }
 
-type setVMsg struct{ value string }
+type setV__r0Msg struct{ value string }
 
-func SetVCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setVMsg{value: v} }
+func SetV__r0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setV__r0Msg{value: v} }
 }
 
 func (m Model) Seen() string {
@@ -239,8 +239,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setOnMsg:
 		m = m.SetOn(msg.value)
-	case setVMsg:
-		m = m.SetV(msg.value)
+	case setV__r0Msg:
+		m = m.SetV__r0(msg.value)
 	case setSeenMsg:
 		m = m.SetSeen(msg.value)
 	case setChecked__inst0Msg:
@@ -318,7 +318,7 @@ func (m *Model) fieldChange(v string) {
 func (m *Model) __widget0_input(__v string) {
 	__input0 := __v
 	_ = __input0
-	m.v = (m.v + "!")
+	m.v__r0 = (m.v__r0 + "!")
 }
 
 // fieldInput types v into the #field widget and runs its @input; for tests.
@@ -375,7 +375,7 @@ func TestShadow(t *testing.T) {
 	c.boxChange(true)
 	if !((c.on == true)) { t.Errorf("assert failed: %s", "(c.on == true)") }
 	c.fieldInput("q")
-	if !((c.v == "x!")) { t.Errorf("assert failed: %s", "(c.v == \"x!\")") }
+	if !((c.v__r0 == "x!")) { t.Errorf("assert failed: %s", "(c.v__r0 == \"x!\")") }
 	c.swChange(true)
 	if !((c.seen == "true true")) { t.Errorf("assert failed: %s", "(c.seen == \"true true\")") }
 }
@@ -1159,7 +1159,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:75ccfed4642ab359df30fcbb1cc2ebd7
+pass sha256:26e3b7796748e188d318010d8e3fe067
 -- run/go/fyne --
 pass sha256:c150b4e322eae5301eae4deb84de4977
 -- run/go/gtk4 --

@@ -117,9 +117,9 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func LenDoubled(v Len, m *Model) Len {
+func LenDoubled(v__r0 Len, m *Model) Len {
 	m.log = (m.log + "!")
-	return (v + v)
+	return (v__r0 + v__r0)
 }
 
 func IntTwice(n int, m *Model) int {
@@ -684,7 +684,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/bubbletea --
-pass sha256:7bb2ed3ea538c3989612621b60968c48
+pass sha256:2f8ffe30e9ffa430de815a084a7ecb9a
 -- run/go/fyne --
 pass sha256:a2bd9e46d4a7f196d80e4b3f9b0e9189
 -- run/go/gtk4 --

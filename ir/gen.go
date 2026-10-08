@@ -29,6 +29,10 @@ type GenCaps struct {
 	// Native is `#[gen.native]`: the key the Go generator of this target was
 	// registered under, empty for a target with none.
 	Native string `json:",omitempty"`
+	// Reserves is `#[gen.reserves]`: the names the target's generated code
+	// cannot give a program's declaration -- a language's words, the
+	// identifiers a platform's own code introduces.
+	Reserves []string `json:",omitempty"`
 }
 
 // RenderedIdentity is the one thing a primitive can claim about its nodes: a

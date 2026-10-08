@@ -186,8 +186,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// goClick activates the #go widget the way a keypress does; for tests.
-func (m *Model) goClick() {
+// go__r0Click activates the #go__r0 widget the way a keypress does; for tests.
+func (m *Model) go__r0Click() {
 	prev := m.__focusID
 	m.__focusID = 0
 	nm, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -375,6 +375,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:51405a77f691368bd69a5823bb26de62
+pass sha256:d72de90bc4660a24af3a7f4592ca6fb4
 -- run/none/html --
 pass sha256:e0bdb869a3346ba74a1a715c9f90f4c4

@@ -611,7 +611,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if i == len(sd.Fields)-1 {
 				comma = ""
 			}
-			fmt.Fprintf(&body, "    var %s: %s%s%s\n", f.Name, ktType, def, comma)
+			fmt.Fprintf(&body, "    var %s: %s%s%s\n", kotlin.SafeIdent(f.Name), ktType, def, comma)
 		}
 		body.WriteString(")\n\n")
 	}

@@ -21,6 +21,35 @@ import gen "sngl:x/gen"
 // needs both.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
+// What its generated code introduces beside a program's names: the packages
+// it imports, an instance record's receiver, the Model's own members, and the
+// locals BuildUI declares around the nodes a program names.
+#[gen.reserves(
+    "fyne",
+    "app",
+    "canvas",
+    "container",
+    "layout",
+    "test",
+    "theme",
+    "widget",
+    "fynelayout",
+    "fynetext",
+    "fynetheme",
+    "snglcanvas",
+    "color",
+    "c",
+    "toasts",
+    "toastLabel",
+    "toastBox",
+    "buildUI",
+    "showToast",
+    "updateToast",
+    "content",
+    "parts",
+    "slotContent",
+    "win",
+)]
 #[gen.name("fyne")]
 #[gen.native("fyne")]
 component platform(
