@@ -3,6 +3,7 @@ package codegen
 import (
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -109,10 +110,20 @@ func TestWriteGoMod_ExtraDirectivesOverrideHostReplace(t *testing.T) {
 	}
 }
 
-func TestWriteGoMod_NoHostModule(t *testing.T) {
+// noHostModule leaves WriteGoMod no host go.mod to find and hands it bi as
+// the running binary's build info.
+func noHostModule(t *testing.T, bi *debug.BuildInfo) {
+	t.Helper()
 	t.Setenv("SNGL_HOST_GO_MOD", "")
+	t.Chdir(t.TempDir())
+	prev := readBuildInfo
+	readBuildInfo = func() (*debug.BuildInfo, bool) { return bi, bi != nil }
+	t.Cleanup(func() { readBuildInfo = prev })
+}
+
+func TestWriteGoMod_NoHostModule(t *testing.T) {
+	noHostModule(t, nil)
 	dir := t.TempDir()
-	t.Chdir(dir)
 
 	needTidy, err := WriteGoMod(dir, "1.25", "")
 	if err != nil {
@@ -123,6 +134,94 @@ func TestWriteGoMod_NoHostModule(t *testing.T) {
 	}
 	if got := readFile(t, filepath.Join(dir, "go.mod")); !strings.Contains(got, "go 1.25") {
 		t.Errorf("caller go version ignored:\n%s", got)
+	}
+}
+
+// With no host go.mod, an installed binary is the only record of which sngl
+// and which dependencies the generated code was written against; left to
+// tidy, every one of them resolved at its newest release.
+func TestWriteGoMod_SeedsFromBuildInfo(t *testing.T) {
+	noHostModule(t, &debug.BuildInfo{
+		Main: debug.Module{Path: snglModulePath, Version: "v0.3.0", Sum: "h1:sngl="},
+		Deps: []*debug.Module{
+			{Path: "charm.land/bubbletea/v2", Version: "v2.0.2", Sum: "h1:tea="},
+			{Path: "example.com/forked", Version: "v1.0.0", Replace: &debug.Module{Path: "example.com/fork", Version: "v1.0.1", Sum: "h1:fork="}},
+			{Path: "example.com/local", Version: "v0.0.0", Replace: &debug.Module{Path: "../local"}},
+		},
+	})
+	dir := t.TempDir()
+
+	needTidy, err := WriteGoMod(dir, "", "")
+	if err != nil {
+		t.Fatalf("WriteGoMod: %v", err)
+	}
+	// Build info carries no go.mod hashes, so the graph is still incomplete.
+	if !needTidy {
+		t.Error("needTidy = false, want true")
+	}
+
+	mod := readFile(t, filepath.Join(dir, "go.mod"))
+	for _, want := range []string{
+		snglModulePath + " v0.3.0",
+		"charm.land/bubbletea/v2 v2.0.2",
+		"example.com/forked v1.0.0",
+		"replace example.com/forked v1.0.0 => example.com/fork v1.0.1",
+	} {
+		if !strings.Contains(mod, want) {
+			t.Errorf("go.mod missing %q:\n%s", want, mod)
+		}
+	}
+	if strings.Contains(mod, "example.com/local") {
+		t.Errorf("go.mod carries a filesystem replace relative to a go.mod it cannot see:\n%s", mod)
+	}
+
+	sum := readFile(t, filepath.Join(dir, "go.sum"))
+	for _, want := range []string{
+		snglModulePath + " v0.3.0 h1:sngl=",
+		"charm.land/bubbletea/v2 v2.0.2 h1:tea=",
+		"example.com/fork v1.0.1 h1:fork=",
+	} {
+		if !strings.Contains(sum, want) {
+			t.Errorf("go.sum missing %q:\n%s", want, sum)
+		}
+	}
+}
+
+// A binary built with no VCS information, or from a modified tree, names no
+// sngl the proxy can serve; its dependencies are still pinned.
+func TestWriteGoMod_BuildInfoUnfetchableMain(t *testing.T) {
+	for _, v := range []string{"(devel)", "v0.0.0-20261008012256-3dc47b4b0a96+dirty"} {
+		t.Run(v, func(t *testing.T) {
+			noHostModule(t, &debug.BuildInfo{
+				Main: debug.Module{Path: snglModulePath, Version: v},
+				Deps: []*debug.Module{{Path: "charm.land/bubbletea/v2", Version: "v2.0.2"}},
+			})
+			dir := t.TempDir()
+			if _, err := WriteGoMod(dir, "", ""); err != nil {
+				t.Fatalf("WriteGoMod: %v", err)
+			}
+			mod := readFile(t, filepath.Join(dir, "go.mod"))
+			if strings.Contains(mod, snglModulePath) {
+				t.Errorf("go.mod requires an unfetchable sngl:\n%s", mod)
+			}
+			if !strings.Contains(mod, "charm.land/bubbletea/v2 v2.0.2") {
+				t.Errorf("go.mod lost the pinned dependency:\n%s", mod)
+			}
+		})
+	}
+}
+
+func TestWriteGoMod_ExtraDirectivesOverrideBuildInfo(t *testing.T) {
+	noHostModule(t, &debug.BuildInfo{Main: debug.Module{Path: snglModulePath, Version: "v0.3.0"}})
+	dir := t.TempDir()
+
+	extra := "replace " + snglModulePath + " => /somewhere/else"
+	if _, err := WriteGoMod(dir, "", extra); err != nil {
+		t.Fatalf("WriteGoMod: %v", err)
+	}
+	mod := readFile(t, filepath.Join(dir, "go.mod"))
+	if strings.Contains(mod, "v0.3.0") || !strings.Contains(mod, "=> /somewhere/else") {
+		t.Errorf("caller directive did not win:\n%s", mod)
 	}
 }
 

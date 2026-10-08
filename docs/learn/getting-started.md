@@ -47,7 +47,8 @@ sngl run hello.sngl --platform html
 ## Reactive state and binding
 
 State is declared with `var` (mutable) or a zero-argument `func` (derived). The
-`:value` prefix on a prop is two-way binding: changes flow both ways.
+`:value` prefix on a prop is two-way binding: changes flow both ways. Replace
+the contents of `hello.sngl` with:
 
 ```sngl
 import "sngl:ui"
@@ -63,11 +64,15 @@ ui.window(title="Hello") {
 ```
 
 When the user types in the input, `name` updates, `greeting` recomputes, and
-the text re-renders. No subscriptions to wire up.
+the text re-renders. No subscriptions to wire up. `value=greeting` names the
+function without calling it: a zero-argument function is called wherever its
+value is read, so the prop always shows the current greeting.
 
 ## Run it on any platform
 
-Pick a target. The same source compiles to all of them:
+Pick a target. The same source compiles to all of them. The first run of a Go
+target downloads and compiles its dependencies, which can take several minutes
+with no output; later runs start in seconds.
 
 ```sngl mode=island
 import "sngl:ui"
@@ -110,7 +115,7 @@ whenSelected(selected=runPlatform, value="bubbletea") {
         markup.text(value="sngl run hello.sngl --platform bubbletea")
     }
     markup.paragraph {
-        markup.text(value="Compiles to a Bubble Tea program and runs it inline in your terminal. Quit with Ctrl-C. Needs a Go toolchain.")
+        markup.text(value="Compiles to a Bubble Tea program and runs it inline in your terminal. Tab moves between controls, Enter presses a button, Space toggles a checkbox, and typing goes to the focused input. Quit with Ctrl-C. Needs a Go toolchain.")
     }
 }
 ```
@@ -158,7 +163,8 @@ whenSelected(selected=runPlatform, value="android") {
 
 `sngl run` is for iteration. To produce source you can ship inside a larger
 project, use `sngl generate`, which writes the code to a directory (`-o`) and
-stops. Pick a target:
+stops. Each target's options, passed as `--opt key=value`, are listed on its
+page under [Platforms](/platforms/index.html). Pick a target:
 
 ```sngl mode=island
 import "sngl:ui"
@@ -245,7 +251,23 @@ whenSelected(selected=generateTarget, value="go") {
         markup.monospace {
             markup.text(value="--opt main=true")
         }
-        markup.text(value=" to get a runnable package main instead of a library.")
+        markup.text(value=" to get a runnable package main instead of a library; build it from a Go module, after ")
+        markup.monospace {
+            markup.text(value="go mod init")
+        }
+        markup.text(value=" and ")
+        markup.monospace {
+            markup.text(value="go mod tidy")
+        }
+        markup.text(value=". The package is named ")
+        markup.monospace {
+            markup.text(value="ui")
+        }
+        markup.text(value=" whatever the directory; ")
+        markup.monospace {
+            markup.text(value="--opt package=name")
+        }
+        markup.text(value=" changes it.")
     }
 }
 ```
@@ -255,7 +277,7 @@ import "sngl:ui/markup"
 
 whenSelected(selected=generateTarget, value="kotlin") {
     markup.codeBlock {
-        markup.text(value="sngl generate hello.sngl --lang kotlin --platform android -o ./app/src/main/java/app")
+        markup.text(value="sngl generate hello.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
     }
     markup.paragraph {
         markup.text(value="Emits Kotlin source with a ")
@@ -266,7 +288,11 @@ whenSelected(selected=generateTarget, value="kotlin") {
         markup.monospace {
             markup.text(value="setContent")
         }
-        markup.text(value=" block.")
+        markup.text(value=" block. ")
+        markup.monospace {
+            markup.text(value="--opt package")
+        }
+        markup.text(value=" sets the Kotlin package; make it match the directory you generate into.")
     }
 }
 ```
@@ -275,7 +301,8 @@ whenSelected(selected=generateTarget, value="kotlin") {
 
 Repeating `--lang` and `--platform` flags is tedious. An `output` block in the
 source declares the targets up front; bare `sngl run` and `sngl generate` then
-pick them up automatically.
+pick them up automatically. It goes at the top level of the file, beside the
+window, and a package has at most one.
 
 <!-- SNGL-top
 import "sngl:ui"
@@ -300,11 +327,17 @@ Each language–platform pair in the block becomes one build. `none` is the
 language for a target that needs no host language, which is what a static page
 is. Same source, four outputs.
 
+`sngl generate` writes every build into the current directory, or into `-o`.
+`sngl run` runs the builds one after another in the order listed, each starting
+when the one before exits; a served page never exits, and Ctrl-C stops
+`sngl run` altogether, so pass `--platform` to run just one. The flags still win over the block:
+`sngl generate --platform bubbletea` builds only that pair.
+
 ## Build a todo app
 
 Now the full thing: a list of todos with an input field, an add button, and a
-checkbox per item. Walk through it section by section — every line is part of
-the running app.
+checkbox per item. Save it as `todo.sngl`; every line is part of the running
+app, and the paragraphs after it explain the pieces.
 
 ```sngl
 import "sngl:ui"
@@ -354,7 +387,51 @@ into the list. The loop's `else` renders when the list is empty.
 ## Persist state with a Go import
 
 The todo list lives in memory. To save it across runs, import a Go package:
-its exported functions become SNGL functions with the same signature.
+its exported functions become SNGL functions with the same signature, and its
+exported types become SNGL types.
+
+A `go:` import resolves through the Go module in the current directory, so
+make the directory holding `todo.sngl` a module and put the package in it:
+
+```
+go.mod           module myapp
+store/store.go
+todo.sngl
+```
+
+```go
+package store
+
+import (
+	"encoding/json"
+	"os"
+)
+
+type Todo struct {
+	Text string
+	Done bool
+}
+
+const file = "todos.json"
+
+func Load() []Todo {
+	var todos []Todo
+	if b, err := os.ReadFile(file); err == nil {
+		json.Unmarshal(b, &todos)
+	}
+	return todos
+}
+
+func Save(todos []Todo) {
+	if b, err := json.Marshal(todos); err == nil {
+		os.WriteFile(file, b, 0o644)
+	}
+}
+```
+
+The list now holds the Go package's `Todo` rather than one declared in SNGL,
+since that is the type `Load` returns and `Save` takes. Its fields keep their Go
+names with the first letter lowercased: `Text` is `text`.
 
 <!-- SNGL-nocheck -->
 
@@ -363,10 +440,23 @@ import "go:myapp/store"
 import "sngl:ui"
 
 ui.window(title="Todos") {
-    var todos list<Todo> = store.Load() @change {
+    var newTodo = ""
+    var todos list<store.Todo> = store.Load() @change {
         store.Save(todos)
     }
-    // ... rest of UI as before
+
+    ui.vbox(style={gap=12px, padding=16px}) {
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            ui.input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
+            ui.button(text="Add", @click {
+                todos.push(store.Todo{text=newTodo})
+                newTodo = ""
+            })
+        }
+        for var &item = todos {
+            ui.checkbox(:checked=item.done, label=item.text)
+        }
+    }
 }
 ```
 
@@ -378,7 +468,8 @@ persistence package for that platform.
 ## Embed generated code in a host app
 
 `sngl generate` writes a library — a package with no `main` — so the generated
-code drops into a program you already have. Pick a host:
+code drops into a program you already have. These use the in-memory `todo.sngl`
+from [Build a todo app](#build-a-todo-app). Pick a host:
 
 ```sngl mode=island
 import "sngl:ui"
@@ -398,7 +489,19 @@ whenSelected(selected=embedTarget, value="html") {
         markup.text(value="sngl generate todo.sngl --lang go --platform html -o ./ui")
     }
     markup.paragraph {
-        markup.text(value="Then mount the handler in your own server:")
+        markup.text(value="Your program is a Go module; the import path below assumes ")
+        markup.monospace {
+            markup.text(value="go mod init example.com/myapp")
+        }
+        markup.text(value=". Mount the handler in your own server, then run ")
+        markup.monospace {
+            markup.text(value="go mod tidy")
+        }
+        markup.text(value=" and ")
+        markup.monospace {
+            markup.text(value="go build")
+        }
+        markup.text(value=":")
     }
     markup.codeBlock {
         markup.text(value=`package main
@@ -425,7 +528,19 @@ whenSelected(selected=embedTarget, value="fyne") {
         markup.text(value="sngl generate todo.sngl --lang go --platform fyne -o ./ui")
     }
     markup.paragraph {
-        markup.text(value="Then put the generated UI in a window of your own Fyne app:")
+        markup.text(value="Your program is a Go module; the import path below assumes ")
+        markup.monospace {
+            markup.text(value="go mod init example.com/myapp")
+        }
+        markup.text(value=". Put the generated UI in a window of your own Fyne app, then run ")
+        markup.monospace {
+            markup.text(value="go mod tidy")
+        }
+        markup.text(value=", which adds Fyne and the SNGL runtime package the generated code imports, and ")
+        markup.monospace {
+            markup.text(value="go build")
+        }
+        markup.text(value=":")
     }
     markup.codeBlock {
         markup.text(value=`package main
@@ -451,17 +566,27 @@ import "sngl:ui/markup"
 
 whenSelected(selected=embedTarget, value="kotlin") {
     markup.codeBlock {
-        markup.text(value="sngl generate todo.sngl --lang kotlin --platform android -o ./app/src/main/java/app")
+        markup.text(value="sngl generate todo.sngl --lang kotlin --platform android --opt package=com.example.app -o ./app/src/main/java/com/example/app")
     }
     markup.paragraph {
         markup.text(value="Then call the generated ")
         markup.monospace {
             markup.text(value="MainScreen")
         }
-        markup.text(value=" composable from your Activity:")
+        markup.text(value=" composable from your Activity. The generated code uses Jetpack Compose with Material 3 and ")
+        markup.monospace {
+            markup.text(value="androidx.activity:activity-compose")
+        }
+        markup.text(value=", so the app module needs those dependencies and the Compose compiler plugin:")
     }
     markup.codeBlock {
-        markup.text(value=`class MainActivity : ComponentActivity() {
+        markup.text(value=`package com.example.app
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { MainScreen() }
@@ -473,7 +598,10 @@ whenSelected(selected=embedTarget, value="kotlin") {
 
 ## Where next
 
-That's a complete app touching every part of the language. Take the
+That's a complete app touching every part of the language. To test it, move
+the window's state into a component, since a component is what a test
+instantiates: [Testing](/reference/effective-sngl.html#testing) shows how, and
+`sngl test` runs the tests. Take the
 interactive [Tour](/tutorial.html) for a guided walkthrough of more features,
 read [Effective SNGL](/reference/effective-sngl.html) for the idioms, or jump to
 the [Reference](/reference/index.html) for the full library, the language

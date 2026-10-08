@@ -1749,10 +1749,10 @@ functions are re-evaluated because of what they read.
 A `var` may carry one or more handlers that run after each assignment to it:
 
 ```
-var count = 0 @change(old) { … }
+var count = 0 @change(v) { … }
 ```
 
-The optional parameter binds the previous value. The handler body executes
+The optional parameter binds the new value. The handler body executes
 after the new value is in place; it may itself assign to other reactive
 variables.
 

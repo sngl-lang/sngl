@@ -103,7 +103,7 @@ ui.window {
 
 ## Output Targets
 
-A real project declares which targets it builds for. The `output` block pairs each host language with one or more platforms, so one source produces many builds; `sngl run` and `sngl generate` with no flags build every pair it lists.
+A real project declares which targets it builds for. The `output` block pairs each host language with one or more platforms, so one source produces many builds; `sngl generate` with no flags builds every pair it lists, and `sngl run` runs them one after another, so pass `--platform` to run just one.
 
 `none` is the language for a target that needs no host language: `none { html }` is a static page with inline JavaScript. `go { html }` is the other HTML mode — a Go server whose routes are the pages of the program's `nav.stack`. The Go platforms are `bubbletea` (terminal), `fyne` and `gtk4` (desktop); `android` takes `kotlin` or `go`.
 
@@ -130,7 +130,7 @@ ui.window {
 
 ## Numeric Operations
 
-SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` is allowed — the `int` operand is promoted to `float`. Use `int(x)` or `float(x)` only when you need to change the stored representation.
+SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Dividing two `int`s gives an `int`, so `7 / 3` is `2`. Mixing `int` and `float` is allowed — the `int` operand is promoted to `float`. Use `int(x)` or `float(x)` only when you need to change the stored representation.
 
 The `+` operator doubles as string concatenation when both sides are strings. Mixing a number and a string is an error — use interpolation or `string(n)` to make the conversion explicit.
 
@@ -583,7 +583,6 @@ ui.window {
         ui.button(text="Add match", @click {
             if query.length > 0 {
                 results.push(query)
-                query = ""
             }
         })
         for var r = results {
@@ -1052,10 +1051,10 @@ ui.window {
 
 You've seen the core of SNGL: windows and components, reactive state, derived funcs, lists and maps, slots and events, lifetimes and errors, and multi-target output. From here, the next steps depend on what you're building.
 
-- Read **Effective SNGL** for the idioms that make a program read well.
-- Read the **Language Specification** for the complete grammar and semantics.
-- Browse the **Reference** for every library package, with live previews of its components.
-- Open the free-form **Playground** to paste your own code and inspect the generated output.
+- Read [Effective SNGL](/reference/effective-sngl.html) for the idioms that make a program read well, including how to test one.
+- Read the [Language Specification](/reference/specification.html) for the complete grammar and semantics.
+- Browse the [Reference](/reference/index.html) for every library package, with live previews of its components.
+- Open the free-form [Playground](/playground.html) to paste your own code and inspect the generated output.
 
 ```sngl
 import ui "sngl:ui"
