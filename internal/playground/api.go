@@ -76,6 +76,10 @@ func parseSource(source string) (mainSrc []byte, fsys fs.FS) {
 	}
 	for _, f := range arc.Files {
 		if f.Name == mainFile {
+			if len(main) == 0 {
+				main = f.Data
+				mfs[mainFile] = &fstest.MapFile{Data: main}
+			}
 			continue
 		}
 		mfs[f.Name] = &fstest.MapFile{Data: f.Data}
@@ -86,13 +90,16 @@ func parseSource(source string) (mainSrc []byte, fsys fs.FS) {
 const mainFile = "playground.sngl"
 
 // parseSiblings parses the .sngl sections at the archive's root, which are
-// files of the editor's package as a directory's are of the CLI's.
+// files of the editor's package as a directory's are of the CLI's. A section
+// that does not parse is left out, and the first such error returned beside
+// the rest.
 func parseSiblings(fsys fs.FS) ([]*ast.Document, error) {
 	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {
 		return nil, err
 	}
 	var docs []*ast.Document
+	var parseErr error
 	for _, e := range entries {
 		if e.IsDir() || e.Name() == mainFile || !strings.HasSuffix(e.Name(), ".sngl") {
 			continue
@@ -103,11 +110,14 @@ func parseSiblings(fsys fs.FS) ([]*ast.Document, error) {
 		}
 		doc, err := parser.Parse(e.Name(), data)
 		if err != nil {
-			return nil, err
+			if parseErr == nil {
+				parseErr = err
+			}
+			continue
 		}
 		docs = append(docs, doc)
 	}
-	return docs, nil
+	return docs, parseErr
 }
 
 // parsePackage parses the editor buffer as the package it holds: the archive
@@ -410,8 +420,11 @@ func Generate(source, platform, lang string) string {
 // Diagnostics returns LSP diagnostics for SNGL source as JSON.
 func Diagnostics(source string) string {
 	main, fsys := parseSource(source)
-	siblings, _ := parseSiblings(fsys)
+	siblings, sibErr := parseSiblings(fsys)
 	doc, diags := lspcore.AnalyzePackage(string(main), mainFile, siblings, newCheckerConfig(fsys, "html", "none"))
+	if sibErr != nil {
+		diags = append(diags, lspcore.Diagnostic{Severity: lspcore.SeverityError, Source: "sngl", Message: sibErr.Error()})
+	}
 	if doc != nil {
 		h := sha256.Sum256(main)
 		cacheMu.Lock()

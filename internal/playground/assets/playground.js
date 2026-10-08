@@ -80,7 +80,13 @@ function getInitialSource() {
         } catch { /* fall through */ }
     }
     const el = document.getElementById("default-source");
-    return el ? el.textContent.trim() : "";
+    return el ? exampleSource(el) : "";
+}
+
+// docsgen escapes a </script> inside an example so the tag holding it is not
+// ended early.
+function exampleSource(el) {
+    return el.textContent.replace(/<\\\/script>/g, "</script>").trim();
 }
 
 // --- Linter extension ---
@@ -244,7 +250,7 @@ document.getElementById("examples").addEventListener("change", (e) => {
     const el = document.getElementById(val + "-source") || document.getElementById("default-source");
     if (el) {
         editor.dispatch({
-            changes: { from: 0, to: editor.state.doc.length, insert: el.textContent.trim() },
+            changes: { from: 0, to: editor.state.doc.length, insert: exampleSource(el) },
         });
     }
     e.target.value = "";

@@ -36,11 +36,12 @@ func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *che
 	if doc != nil {
 		_, checkDiags := checker.CheckPackage(append([]*ast.Document{doc}, siblings...), cfg)
 		for _, d := range checkDiags {
-			if len(siblings) > 0 && d.Pos.File != "" && d.Pos.File != filename {
-				continue
-			}
+			msg := d.Msg
 			rng := Range{Start: Position{}, End: Position{}}
-			if d.Pos.IsValid() {
+			if d.Pos.File != "" && d.Pos.File != filename {
+				// Another file's line numbers mean nothing in this one.
+				msg = d.Pos.String() + ": " + msg
+			} else if d.Pos.IsValid() {
 				rng = AstPosToRange(d.Pos)
 			}
 			sev := SeverityError
@@ -51,7 +52,7 @@ func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *che
 				Range:    rng,
 				Severity: sev,
 				Source:   "sngl",
-				Message:  d.Msg,
+				Message:  msg,
 			})
 		}
 	}

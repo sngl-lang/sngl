@@ -907,8 +907,7 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 // hold, in the order the package's components, the document's body and the
 // package's funcs list them. The package's nodes are the same for every
 // document, so only their order is cached; the document's body is a clone of
-// its own, and a map cached from the first document named the first page's
-// nodes in every later one.
+// its own and is walked each time.
 func (g *htmlGen) prewalkShared() {
 	if g.pkg == nil {
 		return
@@ -983,8 +982,8 @@ func (g *htmlGen) allocID() string {
 	return id
 }
 
-// prewalkNode seeds g.idToNode with a NodeInst carrying an `__n*` id from the
-// NoReactivity lowering. See generate().
+// prewalkNode records what a handler needs of a node before any is translated:
+// its element var, its declaration and its class rules. See generate().
 func (g *htmlGen) prewalkNode(n *ir.NodeInst) {
 	if strings.HasPrefix(n.ID, "__n") {
 		g.idToNode[n.ID] = n

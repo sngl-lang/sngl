@@ -159,3 +159,52 @@ ui.window {
 		t.Errorf("diagnostics: %v", diags)
 	}
 }
+
+func diagnosticMessages(t *testing.T, source string) []string {
+	t.Helper()
+	var diags []struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal([]byte(Diagnostics(source)), &diags); err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, d := range diags {
+		out = append(out, d.Message)
+	}
+	return out
+}
+
+// TestDiagnosticsReportOtherFiles: the editor shows the comment alone, so a
+// problem another section holds is reported there with its own position
+// rather than dropped.
+func TestDiagnosticsReportOtherFiles(t *testing.T) {
+	broken := diagnosticMessages(t, "const a = b\n-- b.sngl --\nconst b = 1\n-- c.sngl --\nconst c = (\n")
+	if len(broken) != 1 || !strings.Contains(broken[0], "c.sngl") {
+		t.Errorf("a section that does not parse: %q", broken)
+	}
+	redeclared := diagnosticMessages(t, "const a = 1\n-- b.sngl --\nconst a = 2\n")
+	if len(redeclared) != 1 || !strings.Contains(redeclared[0], "redeclared") {
+		t.Errorf("a declaration two files make: %q", redeclared)
+	}
+}
+
+func TestCompileMainSection(t *testing.T) {
+	const source = `-- playground.sngl --
+import ui "sngl:ui"
+
+ui.window {
+    ui.text(value="from the section")
+}
+`
+	var result struct {
+		HTML  string `json:"html"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(Compile(source)), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result.HTML, "from the section") {
+		t.Errorf("html %q, error %q", result.HTML, result.Error)
+	}
+}
