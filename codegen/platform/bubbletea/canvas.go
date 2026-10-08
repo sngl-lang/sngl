@@ -363,11 +363,11 @@ func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 func emitCanvasDrawFunc(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext) {
 	body := translateCanvasBody(cv.Draw)
 	synthesized := &ir.Func{
-		Name:     cv.Name,
-		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
-		Return:   ir.TypVoid,
-		Block:    body,
+		Name:    cv.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

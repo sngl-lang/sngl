@@ -718,7 +718,7 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
 		}
 	}
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return kc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
@@ -760,7 +760,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -800,7 +800,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		// and names nothing in the emitted Kotlin, where the function is a
 		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
 		// android test runner verbatim, against a `cells` declared beside it.
-		if n.Func.Receiver == "" {
+		if !n.Func.IsMethod() {
 			name := fname
 			// Through IdentRewrites like every other bare call: test mode
 			// reaches a hoisted state member as `state.<name>`.
@@ -905,7 +905,7 @@ func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 
 func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	// Component-self method reference (the receiver names a component in this
@@ -977,7 +977,7 @@ func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 	// declaration spelled `fun Item.label()`. A component's method is the case
 	// this lookup exists for and is left alone -- there is no Kotlin type to
 	// extend, and the composable calls it by bare name.
-	if fn.Receiver != "" && ReceiverIsUserType(kc.pkg(), fn.Receiver) {
+	if fn.IsMethod() && ReceiverIsUserType(kc.pkg(), fn.RecvName()) {
 		return "", false
 	}
 	sym, kind := kc.Ctx.Resolve(fn.Name)

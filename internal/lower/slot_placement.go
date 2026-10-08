@@ -157,7 +157,7 @@ func callListIndexOf(xs, item ir.Expr) *ir.Call {
 	}
 	return &ir.Call{
 		Type: ir.TypInt,
-		Func: &ir.Func{Name: "indexOf", Receiver: "list", Intrinsic: "list.indexOf", Params: params, Return: ir.TypInt},
+		Func: &ir.Func{Name: "indexOf", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.indexOf", Params: params, Return: ir.TypInt},
 		Args: []ir.CallArg{{Value: xs}, {Value: item}},
 	}
 }

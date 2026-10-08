@@ -347,13 +347,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn.RecvName()) {
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
+		if !fn.IsMethod() && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
@@ -664,11 +664,11 @@ func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		params = params[1:]
 	}
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   fn.Return,
-		Block:    codegen.WalkLowered(context.Background(), fn.Block, tr),
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  fn.Return,
+		Block:   codegen.WalkLowered(context.Background(), fn.Block, tr),
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -793,11 +793,11 @@ func renderIRComponentMethod(
 	}
 
 	synthesized := &ir.Func{
-		Name:     methodName,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.NativeGoNamed("fyne.CanvasObject"),
-		Block:    bodyStmts,
+		Name:    methodName,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.NativeGoNamed("fyne.CanvasObject"),
+		Block:   bodyStmts,
 	}
 	lines := compGC.EmitFuncDef(synthesized)
 	// EmitFuncDef emits "<sig> {", body lines, then "}", so the return-form
@@ -1152,11 +1152,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    body,
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -1193,11 +1193,11 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 	}
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    bodyStmts,
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

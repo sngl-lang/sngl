@@ -632,7 +632,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
 		return jc.evalNamespaceCall(n)
 	}
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return jc.evalTypeMethodCall(n)
 	}
 	if n.Func != nil {
@@ -758,7 +758,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -860,7 +860,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 		return false
 	}
 	for _, f := range jc.Ctx.Pkg.Funcs {
-		if f.Receiver == receiver && f.Name == name {
+		if f.RecvName() == receiver && f.Name == name {
 			return true
 		}
 	}
@@ -869,7 +869,7 @@ func (jc *JsIRContext) userFuncMatches(receiver, name string) bool {
 
 func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)

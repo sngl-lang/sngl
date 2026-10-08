@@ -1074,7 +1074,7 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 		// codegen will surface this via its unhandled-IR panic if it
 		// matters.
 	case *ir.Ident:
-		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && fn.Receiver == "" {
+		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && !fn.IsMethod() {
 			return funcValueUnder(n, fn, active, pc)
 		}
 	case *ir.Literal:

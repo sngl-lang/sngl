@@ -1487,10 +1487,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)
 				} else {
 					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
-						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+						fn.RecvName(), fn.Name, fn.RecvName(), fn.RecvName(), fn.Name)
 				}
 			}
 			rest := c.checkCallArgs(call.Args, sig)

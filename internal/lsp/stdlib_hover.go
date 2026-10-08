@@ -89,7 +89,7 @@ func matchesFuncName(fn *ir.Func, query string) bool {
 	if fn.Name == query {
 		return true
 	}
-	if fn.Receiver != "" && (fn.Receiver+"."+fn.Name) == query {
+	if fn.IsMethod() && (fn.RecvName()+"."+fn.Name) == query {
 		return true
 	}
 	return false
@@ -114,8 +114,8 @@ func typeString(t *ir.Type) string {
 func formatStdlibFunc(fn *ir.Func) string {
 	var sb strings.Builder
 	sb.WriteString("```sngl\nfunc ")
-	if fn.Receiver != "" {
-		sb.WriteString(fn.Receiver)
+	if fn.IsMethod() {
+		sb.WriteString(fn.RecvName())
 		sb.WriteByte('.')
 	}
 	sb.WriteString(fn.Name)

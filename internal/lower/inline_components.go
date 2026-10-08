@@ -391,7 +391,7 @@ func packageHoist(pkg *ir.Package) hoistTarget {
 // ir.Param.Receiver is the flag rather than the name, as the checker sets it
 // on exactly the synthetic parameter it prepended.
 func dropReceiver(fn *ir.Func) {
-	fn.Receiver = ""
+	fn.Receiver = nil
 	fn.RecvParam = nil
 	fn.Params = slices.DeleteFunc(slices.Clone(fn.Params), func(p *ir.Param) bool {
 		return p != nil && p.Receiver

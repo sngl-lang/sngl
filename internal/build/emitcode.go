@@ -473,7 +473,7 @@ func listPush(dst, v ir.Expr, elem *ir.Type) *ir.Call {
 	}
 	return &ir.Call{
 		Type: ir.TypVoid,
-		Func: &ir.Func{Name: "push", Receiver: "list", Intrinsic: "list.push", Params: params, Return: ret},
+		Func: &ir.Func{Name: "push", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.push", Params: params, Return: ret},
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}
 }

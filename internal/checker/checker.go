@@ -1870,7 +1870,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 		// A method is reached through its receiver, not by a package-root
 		// name, so it never claims one — two types in one package may each
 		// declare a `get`.
-		if fn.Receiver != "" {
+		if fn.IsMethod() {
 			continue
 		}
 		c.mergeInto(declPos(fn), dst.Symbols.Root, fn)
@@ -2536,17 +2536,17 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	// Only free functions bind a file-scope name; a method's name lives under
 	// its receiver, checked when it is attached there.
 	claimed := true
-	if fn.Receiver == "" {
+	if !fn.IsMethod() {
 		claimed = c.claimTopLevel(fn.Name, f.Pos, bindDecl, "")
 	}
 
-	if fn.Receiver != "" {
+	if fn.IsMethod() {
 		// Attaching is a declaration: it fails on a member of that name
 		// already there, unless this one shadows a standard-library member.
 		// A receiver naming a namespace rather than a type (i18n) has no
 		// declaration to host it, and declareMethod says so.
 		if prev := c.declareMethod(f.Pos, fn); prev != nil {
-			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.Receiver)
+			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.RecvName())
 			return nil
 		}
 		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
@@ -3638,7 +3638,7 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 	owned := map[*ir.Func]bool{}
 	noteOwned := func(comp *ir.Component) {
 		for _, fn := range ir.BodyFuncs(comp) {
-			if fn.Receiver == "" || fn.Receiver == comp.Name {
+			if !fn.IsMethod() || fn.RecvName() == comp.Name {
 				owned[fn] = true
 			}
 		}
@@ -3835,9 +3835,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	// Only an expression body: the bodyless generic stubs never say `this`, and
 	// resolving the receiver here would trip the map-key comparability check
 	// on an abstract key type.
-	if fn.AST != nil && fn.AST.Body != nil && fn.Receiver != "" && len(fn.RecvTypeParams) > 0 &&
+	if fn.AST != nil && fn.AST.Body != nil && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
-		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.Receiver, fn.RecvTypeParams)); thisType != nil {
+		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.RecvName(), fn.RecvTypeParams)); thisType != nil {
 			recv := &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
 			c.declare(funcDeclPos(fn), recv)
 			// Kept on the declaration as well as in the scope: the body names
@@ -4027,7 +4027,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	defer c.fileOf(compDeclPos(comp))()
 	hasNested := false
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == comp.Name {
+		if fn.RecvName() == comp.Name {
 			hasNested = true
 			break
 		}
@@ -4055,7 +4055,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		// A nested func's name belongs to the body that wrote it, not to the
 		// component it was hoisted onto, so it is bound by checkNestedFunc
 		// alone.
-		if fn.Receiver == "" && !c.nested[fn] {
+		if !fn.IsMethod() && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4064,7 +4064,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	// authoritative method-body check runs again in checkComponentBody.
 	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == comp.Name {
+		if fn.RecvName() == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
@@ -4196,7 +4196,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if fn.Receiver == "" && !c.nested[fn] {
+		if !fn.IsMethod() && !c.nested[fn] {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4288,7 +4288,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			if c.nested[fn] {
 				continue
 			}
@@ -4300,7 +4300,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// scope by bare name; component-body references resolve through
 			// the currentComponent-aware path in inferIdent / inferCall.
 			if prev := c.declareMethod(compDeclPos(comp), fn); prev != nil {
-				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.Receiver)
+				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.RecvName())
 			}
 		}
 	}
@@ -4335,13 +4335,13 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		// Foreign-type methods nested inside a component body (e.g.
 		// `func int.double` inside `component main`) don't need component
 		// scope and are checked by pass2's pkg.Funcs loop.
-		if fn.Receiver != "" && fn.Receiver != comp.Name {
+		if fn.IsMethod() && fn.RecvName() != comp.Name {
 			continue
 		}
 		if c.nested[fn] {
 			continue
 		}
-		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
+		if fn.RecvName() == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
 			fn.Return = nil
 		}
 		c.checkFuncBody(fn)

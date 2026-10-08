@@ -674,8 +674,8 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 // funcDeclName is how a declaration is spelled: `list.push` for a method,
 // `tr` for a free function.
 func funcDeclName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "." + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "." + fn.Name
 	}
 	return fn.Name
 }

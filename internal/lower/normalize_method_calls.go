@@ -80,7 +80,7 @@ func recvVisit(n ir.Node) error {
 // call that already carries its receiver (Args covers the params), a non-method
 // call, or a receiverless func is left unchanged.
 func injectRecv(c *ir.Call) error {
-	if c.Func == nil || c.Func.Receiver == "" {
+	if c.Func == nil || !c.Func.IsMethod() {
 		return nil
 	}
 	if len(c.Args) >= len(c.Func.Params) {
@@ -93,7 +93,7 @@ func injectRecv(c *ir.Call) error {
 	if recvType == nil {
 		return nil
 	}
-	recv, err := synthRecv(recvType, c.Func.Receiver)
+	recv, err := synthRecv(recvType, c.Func.RecvName())
 	if err != nil {
 		return err
 	}

@@ -450,7 +450,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// class holds: its state is the class's fields. Excluding both
 			// left a component's func emitted by nobody in test mode, which
 			// is what `press__inst0` was.
-			if fn.Receiver != "" && kotlin.ReceiverIsUserType(ctx.Pkg, fn.Receiver) {
+			if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
 				continue
 			}
 			if !needsStateScope(fn, stateNames, stateReaching) {
@@ -502,7 +502,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			kc.IdentRewrites = map[string]string{}
 		}
 		for _, fn := range ctx.AllFuncs() {
-			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 				continue
 			}
 			if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
@@ -893,7 +893,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// put in front of the parameters is Kotlin's own `this`. A
 			// component's own func is not that: it is called by bare name from
 			// the composable, and the component is no Kotlin type to extend.
-			if fn.Receiver != "" && kotlin.ReceiverIsUserType(ctx.Pkg, fn.Receiver) {
+			if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
 				emitIRKtMethod(&body, fn, kc)
 				continue
 			}
@@ -1074,13 +1074,13 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 // matching on the name alone left it in the signature of an extension whose
 // receiver it already was.
 func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
-	if fn.Receiver == "" {
+	if !fn.IsMethod() {
 		return false
 	}
 	if p.Name == "this" {
 		return true
 	}
-	return p.Type != nil && p.Type.Decl != nil && p.Type.Decl.SymName() == fn.Receiver
+	return p.Type != nil && p.Type.Decl != nil && p.Type.Decl.SymName() == fn.RecvName()
 }
 
 // emitIRKtMethod emits a method on a user type as a Kotlin extension
@@ -1090,7 +1090,7 @@ func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
 // Skipping every func with a receiver left `Calc.pending` undeclared while
 // `state.pending()` was emitted at two call sites.
 func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
-	recv := exportName(fn.Receiver)
+	recv := exportName(fn.RecvName())
 	fnCopy := *fn
 	fnCopy.Name = recv + "." + fn.Name
 	// Dropped here rather than left to emitIRKtFunc, which decides by asking
@@ -1102,7 +1102,7 @@ func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 		localKC = localKC.WithReceiver(fnCopy.Params[0])
 		fnCopy.Params = fnCopy.Params[1:]
 	}
-	fnCopy.Receiver = ""
+	fnCopy.Receiver = nil
 	emitIRKtFunc(b, &fnCopy, localKC)
 }
 
@@ -1276,7 +1276,7 @@ func literalStructLit(n *ir.StructLit) string {
 // the pure `format` found it only as `state.format`, against a `state` nothing
 // in that scope declares.
 func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Func]bool) bool {
-	if fn.Receiver != "" || reaches[fn] {
+	if fn.IsMethod() || reaches[fn] {
 		return true
 	}
 	found := false

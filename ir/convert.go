@@ -80,7 +80,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		componentNames[comp.Name] = true
 	}
 	for _, f := range pkg.Funcs {
-		if f.Receiver != "" && componentNames[f.Receiver] {
+		if f.IsMethod() && componentNames[f.RecvName()] {
 			continue
 		}
 		stmts = append(stmts, c.convertFuncDef(f))
@@ -218,8 +218,8 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 
 func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 	name := f.Name
-	if f.Receiver != "" {
-		name = f.Receiver + "." + f.Name
+	if f.IsMethod() {
+		name = f.RecvName() + "." + f.Name
 	}
 	fd := &ast.FuncDef{
 		Name:       name,
@@ -307,7 +307,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		// Inside a component body the receiver is implicit; emitting it
 		// as `Comp.name` would re-route the decl as a free-standing
 		// method on type `Comp` rather than a component method.
-		if f.Receiver != "" && f.Receiver == comp.Name {
+		if f.IsMethod() && f.RecvName() == comp.Name {
 			fd.Name = f.Name
 		}
 		bodyStmts = append(bodyStmts, fd)
@@ -950,12 +950,12 @@ func (c *converter) convertCallExpr(call *Call) *ast.CallExpr {
 			funcExpr = c.convertExpr(call.Receiver)
 		}
 	} else if call.Func != nil {
-		if call.Func.Receiver != "" {
+		if call.Func.IsMethod() {
 			// Type-attached method: render as Type.method(args). After checker
 			// normalization Args[0] is the receiver value; both "x.method(...)"
 			// and "Type.method(...)" syntaxes collapse to this shape.
 			funcExpr = &ast.SelectExpr{
-				Operand: &ast.IdentExpr{Name: call.Func.Receiver},
+				Operand: &ast.IdentExpr{Name: call.Func.RecvName()},
 				Field:   call.Func.Name,
 			}
 		} else if id, ok := call.Receiver.(*Ident); ok && id.Name != "" {

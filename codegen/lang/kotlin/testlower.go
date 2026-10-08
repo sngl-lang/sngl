@@ -51,7 +51,7 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
-		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver != "" && len(c.Args) > 0 {
+		if c := n.Call; c != nil && c.Func != nil && c.Func.IsMethod() && len(c.Args) > 0 {
 			if id, ok := c.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
 				return []string{
 					"composeTestRule.runOnUiThread {",
@@ -348,7 +348,7 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 	case *ir.Call:
 		// `c.f(…)` on the instance: a method of the state object, or a
 		// `derivedStateOf` property when f is a computed.
-		if f := n.Func; f != nil && f.Receiver != "" && len(n.Args) > 0 {
+		if f := n.Func; f != nil && f.IsMethod() && len(n.Args) > 0 {
 			if id, ok := n.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
 				if codegen.IsComputed(f) {
 					return id.Name + "." + f.Name

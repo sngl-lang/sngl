@@ -83,7 +83,7 @@ func IsErrorRaiseFunc(fn *Func) bool {
 	if fn.Intrinsic == "error.raise" {
 		return true
 	}
-	return fn.Receiver == "error" && fn.Name == "raise"
+	return fn.RecvName() == "error" && fn.Name == "raise"
 }
 
 // The ids sngl:test's methods are marked with. No language emits them as calls:

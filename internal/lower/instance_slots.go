@@ -346,8 +346,8 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 	for i, f := range comp.Funcs {
 		cf := cloneFuncShallow(f)
 		cf.Block = deepCloneStmts(f.Block)
-		if cf.Receiver == comp.Name {
-			cf.Receiver = name
+		if cf.RecvDecl() == ir.Symbol(comp) {
+			cf.Receiver = out.SymType()
 		}
 		out.Funcs[i] = cf
 		syms[f] = cf

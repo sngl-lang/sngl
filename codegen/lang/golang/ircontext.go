@@ -923,7 +923,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 		return gc.evalNamespaceCall(n)
 	}
 
-	if n.Func != nil && n.Func.Receiver != "" {
+	if n.Func != nil && n.Func.IsMethod() {
 		return gc.evalTypeMethodCall(n)
 	}
 
@@ -1122,7 +1122,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		// A package function called through its import has no receiver on the
 		// declaration — the namespace is the alias at the call site. Name it
 		// from there so a qualified call reads the same either way.
-		receiverName := n.Func.Receiver
+		receiverName := n.Func.RecvName()
 		if receiverName == "" {
 			if id, ok := n.Receiver.(*ir.Ident); ok {
 				receiverName = id.Name
@@ -1232,7 +1232,7 @@ func (gc *GoIRContext) snglNamespace(e ir.Expr) bool {
 
 func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	method := n.Func.Name
-	receiverName := n.Func.Receiver
+	receiverName := n.Func.RecvName()
 	qualName := receiverName + "." + method
 
 	if receiverName == "Alert" {
@@ -2343,8 +2343,8 @@ func (gc *GoIRContext) ModelArg() string {
 // receiver as the first parameter (passNoImplicitRecv already put it there).
 func (gc *GoIRContext) EmitTypeMethodDef(fn *ir.Func) []string {
 	fnCopy := *fn
-	fnCopy.Name = ExportName(fn.Receiver) + ExportName(fn.Name)
-	fnCopy.Receiver = ""
+	fnCopy.Name = ExportName(fn.RecvName()) + ExportName(fn.Name)
+	fnCopy.Receiver = nil
 	sub := *gc
 	if gc.Ctx != nil && gc.Ctx.ModelParamFuncs[fn] {
 		sub.ExtraParam = gc.RecvName() + " *" + codegen.ModelTypeName
@@ -2370,7 +2370,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		// to put a component's funcs on the per-request State, which is the
 		// only receiver that file has.
 		sig += "(" + gc.RecvName() + " *" + gc.MethodRecvType + ") "
-		if len(params) > 0 && fn.Receiver != "" {
+		if len(params) > 0 && fn.IsMethod() {
 			// The component receiver arrives as an ordinary first parameter
 			// (passNoImplicitRecv). As a Go method it is the receiver, so it
 			// is not also an argument.
@@ -2379,8 +2379,8 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		sig += fn.Name + "(" + appendParam(params, extra) + ")" + retType + " {"
 		lines = append(lines, sig)
 		return gc.emitFuncBody(lines, fn, params)
-	case fn.Receiver != "":
-		sig += "(m *" + fn.Receiver + ") "
+	case fn.IsMethod():
+		sig += "(m *" + fn.RecvName() + ") "
 		// The synthetic receiver passNoImplicitRecv prepended is this method's
 		// Go receiver, so it is not also an argument. Emitting it as one gave
 		// `func (m *Model) press(this any, k Key)` against call sites that pass

@@ -651,7 +651,7 @@ func callListLength(iter ir.Expr) *ir.Call {
 	}
 	fn := &ir.Func{
 		Name:      "length",
-		Receiver:  "list",
+		Receiver:  ir.ListOf(ir.TypDyn),
 		Intrinsic: "list.length",
 		Return:    ir.TypInt,
 		Params:    params,

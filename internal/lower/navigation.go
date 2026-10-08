@@ -1040,7 +1040,7 @@ func (nv *navigation) lowerBack(n *ir.CallStmt) ([]ir.Stmt, error) {
 }
 
 func listLength(list ir.Expr) ir.Expr {
-	fn := &ir.Func{Name: "length", Receiver: "list", Intrinsic: "list.length", Return: ir.TypInt}
+	fn := &ir.Func{Name: "length", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.length", Return: ir.TypInt}
 	if def := ir.LookupIntrinsic("list.length"); def != nil {
 		fn.Params, fn.Return = def.Instantiate(elemOf(typeOf(list)))
 	}
@@ -1048,7 +1048,7 @@ func listLength(list ir.Expr) ir.Expr {
 }
 
 func callListRemove(list, index ir.Expr, elem *ir.Type) ir.Stmt {
-	fn := &ir.Func{Name: "remove", Receiver: "list", Intrinsic: "list.remove"}
+	fn := &ir.Func{Name: "remove", Receiver: ir.ListOf(ir.TypDyn), Intrinsic: "list.remove"}
 	if def := ir.LookupIntrinsic("list.remove"); def != nil {
 		fn.Params, fn.Return = def.Instantiate(elem)
 	}

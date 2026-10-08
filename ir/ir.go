@@ -545,8 +545,13 @@ type Func struct {
 	//
 	// A macro needs it: a mark is bound to the declaration it was written from,
 	// and that binding is (package, name).
-	Pkg      string
-	Receiver string // "int" for int.abs (empty for plain funcs) // TODO This should be a *Type
+	Pkg string
+	// Receiver is the type a method is declared on: its Decl is the
+	// declaration whose member table holds it -- a struct, enum, unit or
+	// component, or a namespace for a receiver naming a package (i18n). Nil
+	// for a plain function. Held as the declaration rather than its name, so
+	// a pass renaming the declaration renames the receiver with it.
+	Receiver *Type
 	// RecvParam is the implicit `this` of a method on a generic built-in whose
 	// body is an expression -- `func list<T>.push(item T) => …ListPush(this,
 	// item)`. The checker binds it into the body's scope without putting it in
@@ -676,6 +681,10 @@ type FuncLowering struct {
 	// rather than shared Model fields. nil when the pass did not run.
 	// See internal/lower/node_escape.go and Component.LocalRefs.
 	LocalRefs map[string]bool
+	// HostReceiver is the host type a generator made this function a method
+	// of when it rebuilt it -- fyne's and gtk4's `Model`, which no SNGL type
+	// is. Receiver stays what the declaration said.
+	HostReceiver string
 }
 
 func (f *Func) SymName() string { return f.Name }
@@ -683,8 +692,69 @@ func (f *Func) SymType() *Type  { return &Type{Kind: TypeFunc, Sig: f.FuncSig()}
 
 // IsExported reports whether the function is part of its package's public
 // API. Both the receiver (if any) and the method name must be exported.
+// IsMethod reports whether f is called on a receiver: one the declaration
+// names, or the host type a generator made it a method of.
+func (f *Func) IsMethod() bool { return f.Receiver != nil || f.Lowered.HostReceiver != "" }
+
+// RecvName is the name f's receiver is spelled by: the host type a generator
+// made it a method of where one did, and otherwise the declaration it was
+// declared on. Empty for a plain function.
+func (f *Func) RecvName() string {
+	if f.Lowered.HostReceiver != "" {
+		return f.Lowered.HostReceiver
+	}
+	return receiverName(f.Receiver)
+}
+
+// RecvDecl is the declaration f is a method of, nil for a plain function.
+func (f *Func) RecvDecl() Symbol {
+	if f.Receiver == nil {
+		return nil
+	}
+	return f.Receiver.Decl
+}
+
+// receiverName names a receiver type by its declaration, or by its kind for a
+// built-in constructor whose declaration was not to hand.
+func receiverName(t *Type) string {
+	if t == nil {
+		return ""
+	}
+	if t.Decl != nil {
+		return t.Decl.SymName()
+	}
+	switch t.Kind {
+	case TypeList:
+		return "list"
+	case TypeMap:
+		return "map"
+	case TypeIter:
+		return "iter"
+	case TypeOption:
+		return "option"
+	case TypeRef:
+		return "ref"
+	case TypeString:
+		return "string"
+	case TypeBool:
+		return "bool"
+	case TypeInt:
+		return "int"
+	case TypeFloat:
+		return "float"
+	}
+	return ""
+}
+
+// ReceiverNamed is a receiver for a function a pass synthesizes on a
+// declaration it holds no handle on: a namespace stand-in carrying the name,
+// which is all a backend reads off one.
+func ReceiverNamed(name string) *Type {
+	return &Type{Kind: TypeDyn, Decl: &Namespace{Name: name}}
+}
+
 func (f *Func) IsExported() bool {
-	if f.Receiver != "" && !isExportedName(f.Receiver) {
+	if f.IsMethod() && !isExportedName(f.RecvName()) {
 		return false
 	}
 	return isExportedName(f.Name)

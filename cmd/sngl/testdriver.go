@@ -66,7 +66,7 @@ func runViaLauncher(ctx context.Context, plat codegen.PlatformGenerator, lang co
 	}
 	if os.Getenv("SNGL_DEBUG_LAUNCHER") != "" {
 		for _, f := range pkg.Funcs {
-			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.Receiver, f.IsTest)
+			fmt.Fprintf(os.Stderr, "DEBUG pkg.Func name=%q receiver=%q isTest=%v\n", f.Name, f.RecvName(), f.IsTest)
 		}
 	}
 	groups := testharness.GroupIR(testFns)

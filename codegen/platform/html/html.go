@@ -2136,8 +2136,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			if !codegen.IsComputed(fn) {
 				continue
 			}
-			if fn.Receiver != "" {
-				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.Receiver, fn.Name)
+			if fn.IsMethod() {
+				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.RecvName(), fn.Name)
 			} else {
 				fmt.Fprintf(b, "state.%s = () => %s();\n", fn.Name, fn.Name)
 			}
@@ -2185,8 +2185,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			continue
 		}
 		body := g.exprToJS(ret.Value)
-		if fn.Receiver != "" {
-			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
+		if fn.IsMethod() {
+			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.RecvName(), fn.Name, body)
 		} else {
 			// Its own name, not a `$`-prefixed one: `$` is this platform's
 			// namespace for a helper it synthesized ($set_, $timer_, $compute_)
@@ -2218,7 +2218,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		// A library function the view called may have been folded away in
 		// every document -- `md.document`'s helpers are -- so it is declared
 		// only where the script still names it.
-		lib := fn.Pkg != "" && fn.Receiver == ""
+		lib := fn.Pkg != "" && !fn.IsMethod()
 		if lib {
 			openDecl(b, fn.Name)
 		}
@@ -2469,7 +2469,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			// and a definition that lost it is an await in a sync function.
 			IsAsync: fn.IsAsync,
 		}
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			openDecl(b, fn.Name)
 		}
 		for _, line := range jc.EmitFuncDef(synthesized) {
@@ -2477,7 +2477,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			b.WriteByte('\n')
 		}
 		b.WriteByte('\n')
-		if fn.Receiver == "" {
+		if !fn.IsMethod() {
 			closeDecl(b)
 		}
 	}
@@ -3241,8 +3241,8 @@ func receiverParamName(fn *ir.Func) string {
 // jsFuncName is the JavaScript name a user func is emitted under. A desugared
 // method's dotted form lives in fn.Receiver.
 func jsFuncName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "_" + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "_" + fn.Name
 	}
 	return strings.ReplaceAll(fn.Name, ".", "_")
 }
@@ -3261,7 +3261,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 		// so that it is a name JavaScript accepts at all. SNGL spells the
 		// receiver `this`, which is a parameter name JS rejects; the body's
 		// uses are renamed to match below.
-		if i == 0 && fn.Receiver != "" && p.Receiver {
+		if i == 0 && fn.IsMethod() && p.Receiver {
 			params[i] = "state"
 		} else {
 			params[i] = p.Name
@@ -3279,7 +3279,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	if len(fn.Block) == 1 {
 		if ret, ok := fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			jc := g.scopedJC()
-			if fn.Receiver != "" {
+			if fn.IsMethod() {
 				jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 			}
 			for _, p := range fn.Params {
@@ -3297,7 +3297,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	// Routed through the same pipeline as a handler body, so element-ref
 	// writes and intrinsic statements lower identically.
 	jc := g.scopedJC()
-	if fn.Receiver != "" {
+	if fn.IsMethod() {
 		jc = jc.WithRenamedLocal(receiverParamName(fn), "state")
 	}
 	for _, p := range fn.Params {

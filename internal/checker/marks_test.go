@@ -275,7 +275,7 @@ component App ui.node {
 	wantNoMarkErrs(t, errs)
 	var fn *ir.Func
 	for _, f := range pkg.Funcs {
-		if f.Receiver == "Row" {
+		if f.RecvName() == "Row" {
 			fn = f
 		}
 	}

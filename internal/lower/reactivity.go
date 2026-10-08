@@ -1813,7 +1813,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	}
 	listPushFn := &ir.Func{
 		Name:      "push",
-		Receiver:  "list",
+		Receiver:  ir.ListOf(ir.TypDyn),
 		Intrinsic: "list.push",
 		Params:    pushParams,
 		Return:    pushReturn,

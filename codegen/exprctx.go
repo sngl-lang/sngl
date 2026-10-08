@@ -318,7 +318,7 @@ func IsComputed(f *ir.Func) bool {
 		return false
 	}
 	n := len(f.Params)
-	if f.Receiver != "" {
+	if f.IsMethod() {
 		// A receiver-bearing func is a component computed only when it
 		// carries the synthetic receiver param (added by registerNestedMethods
 		// for bare `func name()` decls inside a component) typed as a

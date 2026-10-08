@@ -187,7 +187,7 @@ func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 			if fn == nil || seen[fn] || len(fn.Block) == 0 {
 				continue
 			}
-			if fn.IsTest || fn.Receiver != "" {
+			if fn.IsTest || fn.IsMethod() {
 				continue
 			}
 			if fn.Foreign.Name != "" && !fn.Foreign.Marked {

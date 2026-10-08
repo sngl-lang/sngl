@@ -118,7 +118,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// RequireImport is idempotent, so re-running in pass 2 is harmless.
 	var discard strings.Builder
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
 		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
@@ -150,7 +150,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// constant before it arrives. The Kotlin side renders them from Compose
 	// state.
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
 		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
@@ -168,7 +168,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
 	read := map[*ir.Var]bool{}
 	for _, fn := range funcs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) {
 			continue
 		}
 		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {

@@ -48,7 +48,7 @@ func scanUsage(pkg *ir.Package) usage {
 				u.i18n = true
 			}
 			if n.Func != nil {
-				if n.Func.Receiver == "Alert" {
+				if n.Func.RecvName() == "Alert" {
 					u.alert = true
 				}
 			}

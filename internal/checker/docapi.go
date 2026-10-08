@@ -445,7 +445,11 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 			}
 		case *ast.FuncDef:
 			recv, method, _ := ast.SplitMethodName(s.Name)
-			if !(&ir.Func{Receiver: recv, Name: method}).IsExported() {
+			probe := &ir.Func{Name: method}
+			if recv != "" {
+				probe.Receiver = ir.ReceiverNamed(recv)
+			}
+			if !probe.IsExported() {
 				continue
 			}
 			pd.Functions = append(pd.Functions, DeclInfo{

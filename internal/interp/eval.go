@@ -1118,7 +1118,7 @@ func (env *Env) resolveCallableFunc(name string) *ir.Func {
 	for e := env; e != nil; e = e.parent {
 		if e.Comp != nil {
 			for _, fn := range e.Comp.Funcs {
-				if fn.Name == name && fn.Receiver == "" {
+				if fn.Name == name && !fn.IsMethod() {
 					return fn
 				}
 			}
@@ -1128,7 +1128,7 @@ func (env *Env) resolveCallableFunc(name string) *ir.Func {
 		}
 		if e.Pkg != nil {
 			for _, fn := range e.Pkg.Funcs {
-				if fn.Name == name && fn.Receiver == "" {
+				if fn.Name == name && !fn.IsMethod() {
 					return fn
 				}
 			}
@@ -1693,7 +1693,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	}
 
 	// Type-attached method call (checker-normalized): Args[0] is the receiver.
-	if call.Func != nil && call.Func.Receiver != "" {
+	if call.Func != nil && call.Func.IsMethod() {
 		return env.evalTypeMethodCall(call)
 	}
 
@@ -1745,7 +1745,7 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	method := call.Func.Name
-	receiverName := call.Func.Receiver
+	receiverName := call.Func.RecvName()
 
 	// ErrorRaise: construct an error payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then

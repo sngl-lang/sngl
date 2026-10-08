@@ -138,8 +138,8 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 		for _, f := range o.Funcs {
 			a.FuncNames[f.Name] = true
-			if f.Receiver != "" {
-				a.FuncNames[f.Receiver+"."+f.Name] = true
+			if f.IsMethod() {
+				a.FuncNames[f.RecvName()+"."+f.Name] = true
 			}
 			if IsComputed(f) {
 				a.ModelFields[f.Name] = true

@@ -2192,10 +2192,12 @@ and the two answers differ in kind because the collisions do.
   Every reference rides on the declaration pointer — a literal's `Def`, an
   annotation's `Decl`, a field type, the element of a `list<Local>`, the host
   spelling each backend derives from `Name` — so setting `Name` reaches all of
-  them. `ir.Func.Receiver` is the exception, being the receiver type's name
-  written out as a string; renaming it is what keeps Go's `Local__secondShout`,
-  Kotlin's `fun Local__second.shout` and JS's `Local__second_shout` off a type
-  that holds someone else's fields. A checker error (`claimBodyType`) stood in
+  them, a method's `ir.Func.Receiver` included: it is the type of the
+  declaration whose member table holds the method, so Go's
+  `Local__secondShout`, Kotlin's `fun Local__second.shout` and JS's
+  `Local__second_shout` follow the rename rather than landing on a type that
+  holds someone else's fields. It was a name written out as a string, which
+  each renaming pass had to rewrite by hand. A checker error (`claimBodyType`) stood in
   the gap for as long as #198 was open, so that no program could reach the
   output while it was.
 - A **component** collides only inside a recursion cycle, which is why that
@@ -2320,8 +2322,10 @@ all resolve the receiver as a bare name. So `component draw.circle[…]` may
 declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
 says so where the helper is written. Binding the bare name for the body's
 duration is what supporting it would take, and that shadows a same-named
-declaration of the program's own for as long as it lasts — carrying a qualified
-`ir.Func.Receiver` instead is the real fix and touches every `fn.Receiver == comp.Name` comparison in the checker.
+declaration of the program's own for as long as it lasts. `ir.Func.Receiver`
+is the declaration now, so the IR can carry such a receiver; what is left is the
+checker's attaching and lookup, which still go by the bare name
+(`fn.RecvName() == comp.Name`, `AttachMethod`).
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested

@@ -39,7 +39,7 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	for _, fn := range pkg.Funcs {
 		// A promoted handler is always a Model method: it is wired to a widget
 		// by name, and nothing calls it, so it never had to be in the set.
-		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
+		if fn.IsTest || fn.IsMethod() || fn.Synthesized || componentFuncs[fn] || fn.Lowered.Event != "" {
 			continue
 		}
 		if isComputedSig(fn) || stateFuncs[fn] {
@@ -90,7 +90,7 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {
-		if fn.Receiver != "" && LiftsToFreeFunc(pkg, fn.Receiver) {
+		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn.RecvName()) {
 			out[fn] = true
 		}
 	}

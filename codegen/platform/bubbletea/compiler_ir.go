@@ -601,7 +601,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn.RecvName()) {
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}
@@ -618,7 +618,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
 		// same question here and always did. A synthesized func is not in
 		// ModelFreeFuncs either, so its call sites spell it on m.
-		if fn.Receiver == "" && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
+		if !fn.IsMethod() && !fn.Synthesized && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -806,7 +806,8 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	// invoke `c.<name>(...)`). Defer signature/body emission to the Go language
 	// driver's EmitFuncDef instead of re-implementing param/return/body here.
 	fnCopy := *fn
-	fnCopy.Receiver = "Model"
+	fnCopy.Receiver = nil
+	fnCopy.Lowered.HostReceiver = "Model"
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')

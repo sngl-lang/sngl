@@ -690,7 +690,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	c.refuseParamMarks(f.Params.Params)
 	popTypeParams()
 	if isMethod {
-		fn.Receiver = typeName
+		fn.Receiver = c.receiverType(typeName)
 		fn.Name = methodName
 		// The receiver convention: a method's first param is the receiver when
 		// it is named `this` — prepended synthetically for bare component

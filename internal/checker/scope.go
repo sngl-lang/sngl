@@ -70,14 +70,19 @@ func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
 // member (which user code may do), or because the receiver carries no member
 // list — a namespace, whose members are the declarations of its package.
 func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
-	err := ir.AttachMethod(c.scope, fn.Receiver, fn)
+	// The member table is the declaration's, so the receiver is the one the
+	// table is found on -- in this scope, which a body-local type's method
+	// is attached in.
+	name := fn.RecvName()
+	fn.Receiver = c.receiverType(name)
+	err := ir.AttachMethod(c.scope, name, fn)
 	switch {
 	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
 		return nil
 	case errors.Is(err, ir.ErrUnknownReceiver):
 		// Without a receiver to attach to there is no member list to hold the
 		// method, so it could never be found again.
-		c.error(pos, "undefined: %s (no type to declare method %q on)", fn.Receiver, fn.Name)
+		c.error(pos, "undefined: %s (no type to declare method %q on)", fn.RecvName(), fn.Name)
 		return nil
 	}
 	var red *ir.RedeclaredError
@@ -88,7 +93,7 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// A package may shadow a method another package declared on the same
 	// receiver; two in one package are a redeclaration.
 	if isFunc && prev.Pkg != fn.Pkg {
-		if err := ir.ReplaceMethod(c.scope, fn.Receiver, fn); err != nil {
+		if err := ir.ReplaceMethod(c.scope, fn.RecvName(), fn); err != nil {
 			return nil
 		}
 		return nil
@@ -205,4 +210,20 @@ func pushTypeParams[T typeParamLike](c *checker, groups ...[]T) func() {
 		}
 	}
 	return c.popScope
+}
+
+// receiverType is the receiver a method declared on name has: the type of the
+// declaration name resolves to here. A namespace (i18n) hosts no member table
+// and has no type of its own, so the type carries it as its declaration; a
+// name that resolves to nothing keeps a stand-in for its name, and attaching
+// reports it.
+func (c *checker) receiverType(name string) *ir.Type {
+	sym, ok := c.scope.Lookup(name)
+	if !ok {
+		return ir.ReceiverNamed(name)
+	}
+	if t := sym.SymType(); t != nil && t.Decl == sym {
+		return t
+	}
+	return &ir.Type{Kind: ir.TypeDyn, Decl: sym}
 }

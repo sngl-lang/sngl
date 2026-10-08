@@ -417,8 +417,8 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// as math.sin has in place of a receiver.
 	if call.Func != nil {
 		qualName := call.Func.Intrinsic
-		if qualName == "" && call.Func.Receiver != "" {
-			qualName = call.Func.Receiver + "." + call.Func.Name
+		if qualName == "" && call.Func.IsMethod() {
+			qualName = call.Func.RecvName() + "." + call.Func.Name
 		}
 		if qualName != "" {
 			if v, ok := evalQualifiedMethod(qualName, args); ok {

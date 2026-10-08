@@ -202,8 +202,8 @@ func int.double(x int) => x + x
 		t.Fatalf("got %d funcs, want 1", len(pkg.Funcs))
 	}
 	f := pkg.Funcs[0]
-	if f.Receiver != "int" {
-		t.Errorf("receiver = %q, want int", f.Receiver)
+	if f.RecvName() != "int" {
+		t.Errorf("receiver = %q, want int", f.RecvName())
 	}
 	if f.Name != "double" {
 		t.Errorf("name = %q, want double", f.Name)

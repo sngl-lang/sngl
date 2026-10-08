@@ -14,7 +14,7 @@ import (
 func TestBodylessLibFuncKeepsUnknownPurity(t *testing.T) {
 	pkg := LibPackage("builtin")
 	for _, fn := range pkg.Funcs {
-		if fn.Receiver == "error" && fn.Name == "raise" {
+		if fn.RecvName() == "error" && fn.Name == "raise" {
 			if fn.Purity != ir.PurityUnknown {
 				t.Fatalf("error.raise purity = %v, want Unknown", fn.Purity)
 			}

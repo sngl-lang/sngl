@@ -186,7 +186,7 @@ func (r *reservedRenamer) fn(fn *ir.Func, owner *ir.Component) {
 	if fn.Name != "" && !fn.IsTest {
 		old := fn.Name
 		n := r.sym(fn, old, func(n string) { fn.Name = n })
-		if owner != nil && fn.Receiver == owner.Name {
+		if owner != nil && fn.RecvName() == owner.Name {
 			r.member(owner, old, n)
 		}
 	}
@@ -214,15 +214,8 @@ func (r *reservedRenamer) param(p *ir.Param) {
 // typeDecl renames a struct, enum or unit, and the methods that spell their
 // receiver by its name.
 func (r *reservedRenamer) typeDecl(s ir.Symbol, name string, set func(string), methods map[string]*ir.Func) {
-	n := r.sym(s, name, set)
-	if n == "" {
-		return
-	}
-	for _, m := range methods {
-		if m.Receiver == name {
-			m.Receiver = n
-		}
-	}
+	// A method's receiver is the declaration, so it is renamed with it.
+	r.sym(s, name, set)
 }
 
 // primitive reports whether comp is rendered by a backend from its
@@ -288,16 +281,6 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		n := r.fresh(old)
 		r.comps[comp] = n
 		comp.Name = n
-		for _, fn := range comp.Funcs {
-			if fn.Receiver == old {
-				fn.Receiver = n
-			}
-		}
-		for _, fn := range comp.Methods {
-			if fn.Receiver == old {
-				fn.Receiver = n
-			}
-		}
 	}
 	// What a body declares: locals, loop variables, and the parameters of
 	// the funcs a body holds -- handlers, lambdas, a slot population's.

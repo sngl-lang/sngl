@@ -11,7 +11,7 @@ func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
 	thisType := &ir.Type{Kind: ir.TypeComponent, Decl: main}
 
 	status := &ir.Func{
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Name:     "status",
 		Params:   []*ir.Param{{Name: "this", Type: thisType}},
 	}
@@ -46,7 +46,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 	main := &ir.Component{Name: "main"}
 	thisType := &ir.Type{Kind: ir.TypeComponent, Decl: main}
 	status := &ir.Func{
-		Receiver: "main",
+		Receiver: ir.ReceiverNamed("main"),
 		Name:     "status",
 		Params:   []*ir.Param{{Name: "this", Type: thisType}},
 	}
@@ -75,7 +75,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 
 func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 	add := &ir.Func{
-		Receiver: "",
+		Receiver: nil,
 		Name:     "add",
 		Params: []*ir.Param{
 			{Name: "a", Type: &ir.Type{Kind: ir.TypeInt}},

@@ -227,8 +227,8 @@ func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRCon
 	tr := newGtk4Translator(gc, func(string, string) {}).withRegistry(reg).withShared(shared)
 	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     cv.Name,
-		Receiver: "Model",
+		Name:    cv.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
 		// Param name matches the IR draw-func param ("ctx") the
 		// canvas-intrinsic bodies reference; renaming would dangle them.
 		Params: []*ir.Param{{Name: "ctx", Type: ir.NativePointerOf("cairo_t")}},

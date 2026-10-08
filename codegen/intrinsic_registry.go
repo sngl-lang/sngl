@@ -286,8 +286,8 @@ func RequireIntrinsicFallback(lang string, fn *ir.Func) {
 }
 
 func callName(fn *ir.Func) string {
-	if fn.Receiver != "" {
-		return fn.Receiver + "." + fn.Name
+	if fn.IsMethod() {
+		return fn.RecvName() + "." + fn.Name
 	}
 	return fn.Name
 }

@@ -394,13 +394,13 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.Receiver != "" && golang.LiftsToFreeFunc(c.ctx.Pkg, fn.Receiver) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(c.ctx.Pkg, fn.RecvName()) {
 			emitGTK4TypeMethod(&funcBuf, fn, gc)
 			continue
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
+		if !fn.IsMethod() && !componentFuncs[fn] && !stateFuncs[fn] && fn.Lowered.Tag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}
@@ -681,11 +681,11 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
 	}
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    bodyStmts,
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -1034,11 +1034,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// "changed" handler re-fires the signal and recurses.
 	body = dropSelfSetterCalls(body, nodeID)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
-		Receiver: "Model",
-		Params:   params,
-		Return:   ir.TypVoid,
-		Block:    body,
+		Name:    fn.Name,
+		Lowered: ir.FuncLowering{HostReceiver: "Model"},
+		Params:  params,
+		Return:  ir.TypVoid,
+		Block:   body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -1158,7 +1158,8 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	// that receiver rather than an argument.
 	// EmitFuncDef drops the synthetic first parameter for a func with a
 	// receiver, so the component receiver does not also arrive as an argument.
-	fnCopy.Receiver = "Model"
+	fnCopy.Receiver = nil
+	fnCopy.Lowered.HostReceiver = "Model"
 	fnCopy.Block = body
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)

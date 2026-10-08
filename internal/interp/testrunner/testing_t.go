@@ -583,7 +583,7 @@ func (cv *componentValue) funcNamed(name string) *ir.Func {
 		return nil
 	}
 	for _, fn := range cv.comp.Funcs {
-		if fn.Name == name && fn.Receiver == "" {
+		if fn.Name == name && !fn.IsMethod() {
 			return fn
 		}
 	}

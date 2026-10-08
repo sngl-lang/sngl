@@ -249,7 +249,7 @@ func snglSignatureWithInferred(pkgPath, fullName string, f *ast.FuncDef) string 
 		simple = fullName[i+1:]
 	}
 	for _, irFunc := range pkg.Funcs {
-		if irFunc.Receiver != receiver || irFunc.Name != simple {
+		if irFunc.RecvName() != receiver || irFunc.Name != simple {
 			continue
 		}
 		if irFunc.Return != nil {
