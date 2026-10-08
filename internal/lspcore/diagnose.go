@@ -12,8 +12,19 @@ import (
 )
 
 // Analyze parses and type-checks SNGL source, returning the document and diagnostics.
-// Pass dir="" and resolve=nil when no filesystem is available (e.g. playground).
+// Pass dir="" and resolve=nil when no filesystem is available.
 func Analyze(content, filename string, fsys fs.FS, dir string, resolve checker.ImportResolver) (*ast.Document, []Diagnostic) {
+	return AnalyzePackage(content, filename, nil, &checker.Config{
+		FS:       fsys,
+		Dir:      dir,
+		Resolver: resolve,
+		IsMain:   true,
+	})
+}
+
+// AnalyzePackage is Analyze for a file checked beside the other files of its
+// package, under cfg. Only the file's own diagnostics are reported.
+func AnalyzePackage(content, filename string, siblings []*ast.Document, cfg *checker.Config) (*ast.Document, []Diagnostic) {
 	doc, parseErr := parser.Parse(filename, []byte(content))
 
 	var diags []Diagnostic
@@ -23,14 +34,11 @@ func Analyze(content, filename string, fsys fs.FS, dir string, resolve checker.I
 	}
 
 	if doc != nil {
-		cfg := &checker.Config{
-			FS:       fsys,
-			Dir:      dir,
-			Resolver: resolve,
-			IsMain:   true,
-		}
-		_, checkDiags := checker.Check(doc, cfg)
+		_, checkDiags := checker.CheckPackage(append([]*ast.Document{doc}, siblings...), cfg)
 		for _, d := range checkDiags {
+			if len(siblings) > 0 && d.Pos.File != "" && d.Pos.File != filename {
+				continue
+			}
 			rng := Range{Start: Position{}, End: Position{}}
 			if d.Pos.IsValid() {
 				rng = AstPosToRange(d.Pos)

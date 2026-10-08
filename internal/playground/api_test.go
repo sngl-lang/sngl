@@ -72,3 +72,90 @@ window {
 		t.Errorf("expected 'hello' in HTML; got: %s", result.HTML)
 	}
 }
+
+// TestCompileRootSiblings holds the archive's root .sngl sections to being
+// files of the editor's package, as a directory's files are of the CLI's.
+func TestCompileRootSiblings(t *testing.T) {
+	const source = `import ui "sngl:ui"
+
+ui.window {
+    ui.text(value=greeting)
+}
+-- strings.sngl --
+const greeting = "hello from a sibling"
+`
+	var result struct {
+		HTML  string `json:"html"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(Compile(source)), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Error != "" {
+		t.Fatalf("Compile error: %s", result.Error)
+	}
+	if !strings.Contains(result.HTML, "hello from a sibling") {
+		t.Errorf("expected the sibling's const in HTML; got: %s", result.HTML)
+	}
+
+	var diags []map[string]any
+	if err := json.Unmarshal([]byte(Diagnostics(source)), &diags); err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Errorf("diagnostics: %v", diags)
+	}
+}
+
+func TestFormatKeepsSections(t *testing.T) {
+	const source = "const a   = 1\n-- b.sngl --\nconst b   = 2\n-- notes.txt --\nkept  as is\n"
+	var result struct {
+		Source string `json:"source"`
+		Error  string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(Format(source)), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Error != "" {
+		t.Fatal(result.Error)
+	}
+	const want = "const a = 1\n-- b.sngl --\nconst b = 2\n-- notes.txt --\nkept  as is\n"
+	if result.Source != want {
+		t.Errorf("got:\n%q\nwant:\n%q", result.Source, want)
+	}
+}
+
+// TestCompileIgnoresUnlinkedOutputTargets: the preview is html whatever the
+// archive's output block names, and a target the playground does not link
+// has none of its overrides loaded.
+func TestCompileIgnoresUnlinkedOutputTargets(t *testing.T) {
+	const source = `import ui "sngl:ui"
+
+output {
+    go {
+        fyne
+    }
+}
+
+ui.window {
+    ui.text(value="hello")
+}
+`
+	var result struct {
+		HTML  string `json:"html"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(Compile(source)), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Error != "" {
+		t.Fatalf("Compile error: %s", result.Error)
+	}
+	var diags []map[string]any
+	if err := json.Unmarshal([]byte(Diagnostics(source)), &diags); err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Errorf("diagnostics: %v", diags)
+	}
+}
