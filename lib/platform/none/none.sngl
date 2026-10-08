@@ -92,6 +92,24 @@ component Control<T>(
 // controls are the exception, rendering a Control a trigger reaches. Written
 // out for the reason the shapes are -- the declarations are bodyless, and a
 // target that says nothing about one is a build failure.
+const component ui.vbox[platform] {}
+
+const component ui.hbox[platform] {}
+
+const component ui.stack[platform] {}
+
+const component ui.scroll[platform] {}
+
+const component ui.spacer[platform] {}
+
+const component ui.divider[platform] {}
+
+const component ui.splitview[platform] {}
+
+const component ui.card[platform] {}
+
+const component ui.drawer[platform] {}
+
 const component ui.text[platform] {}
 
 const component ui.image[platform] {}

@@ -6,11 +6,11 @@ import tr "sngl:tree"
 // is "small", "medium", "large", or "full". Dismissing the scrim or
 // pressing Escape also emits `@close`.
 component modal(
-    style    Style,
-    open     bool,
-    title    string,
-    closable bool,
-    size     string,
+    style    Style = Style{},
+    open     bool = false,
+    title    string = "",
+    closable bool = false,
+    size     string = "",
     @close(),
     content  ...component,
 ) node
@@ -31,13 +31,13 @@ component _example_modal node {
 // "medium", "large"). Like `modal`, tapping the scrim or pressing
 // Escape emits `@close`.
 component drawer(
-    style   Style,
-    open    bool,
-    side    string,
-    size    string,
+    style   Style = Style{},
+    open    bool = false,
+    side    string = "",
+    size    string = "",
     @close(),
     content ...component,
-) node {}
+) node
 
 component _example_drawer node {
     var showDrawer = false
@@ -57,10 +57,10 @@ component _example_drawer node {
 // ("top", "bottom", "left", "right", "auto"). `delay` is the
 // millisecond delay before the tooltip appears.
 component tooltip(
-    style    Style,
+    style    Style = Style{},
     text     string,
-    position string,
-    delay    int,
+    position string = "",
+    delay    int = 0,
     trigger  ...component tr.one<node>,
 ) node {}
 
@@ -78,10 +78,10 @@ component _example_tooltip node {
 // hints at placement; the runtime flips to an opposite side if there
 // is not enough room. Clicking outside emits `@close`.
 component popover(
-    style    Style,
-    open     bool,
-    position string,
-    openOn   string,
+    style    Style = Style{},
+    open     bool = false,
+    position string = "",
+    openOn   string = "",
     @close(),
     content  ...component,
 ) node {}

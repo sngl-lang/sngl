@@ -39,8 +39,8 @@ component span build.family
 // html page) writes it; the rest have nothing a link could land on, and ignore
 // it.
 component richText(
-    style   ui.Style,
-    role    Role,
+    style   ui.Style = ui.Style{},
+    role    Role = Role.paragraph,
     anchor  string = "",
     content ...component span,
 ) ui.node
@@ -135,7 +135,7 @@ enum Slant { inherit, normal, italic, oblique }
 // reaches for it directly is saying it wants those exact letters rather than
 // what the wrappers name.
 component run(
-    style   SpanStyle,
+    style   SpanStyle = SpanStyle{},
     content ...component span,
 ) span
 
@@ -310,7 +310,7 @@ component link(href string, content ...component span) span
 // the author was offered a choice that was never theirs.
 //
 // So an importer flattens: the words between the brackets, and nothing else.
-component image(src string, alt string) span
+component image(src string, alt string = "") span
 
 // --- Document blocks ---
 //

@@ -76,7 +76,6 @@ type Measurement struct {
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
-	__focusID      int
 
 	width, height int
 }
@@ -85,7 +84,6 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.visible__inst0 = true
-	m.__focusID = 0
 	return m
 }
 
@@ -93,34 +91,6 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
-}
-
-func (m *Model) __focusNext() {
-	if m.__focusID == 0 {
-		m.__focusID = 1
-	} else {
-		if m.__focusID == 1 {
-			m.__focusID = 2
-		} else {
-			if m.__focusID == 2 {
-				m.__focusID = 0
-			}
-		}
-	}
-}
-
-func (m *Model) __focusPrev() {
-	if m.__focusID == 0 {
-		m.__focusID = 2
-	} else {
-		if m.__focusID == 1 {
-			m.__focusID = 0
-		} else {
-			if m.__focusID == 2 {
-				m.__focusID = 1
-			}
-		}
-	}
 }
 
 func (m Model) Visible__inst0() bool {
@@ -162,10 +132,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m, nil
-		case msg.Code == tea.KeyTab && msg.Mod == 0:
-			m.__focusNext()
-		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
-			m.__focusPrev()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -177,50 +143,47 @@ func (m Model) View() tea.View {
 		var contentChildren []string
 		var content_0 string
 		var content_0Children []string
-		__lt0 := "•"
+		var content_0_0 string
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("•"))
+		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
-		content_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+		var content_0_1Children []string
+		var content_0_1_0 string
+		content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
+		content_0_1Children = append(content_0_1Children, content_0_1_0)
+		content_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_0_1Children...)
 		content_0Children = append(content_0Children, content_0_1)
-		var content_0_2 string
-		var content_0_2Children []string
-		var content_0_2_0 string
-		content_0_2_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
-		content_0_2Children = append(content_0_2Children, content_0_2_0)
-		content_0_2 = lipgloss.JoinVertical(lipgloss.Left, content_0_2Children...)
-		content_0Children = append(content_0Children, content_0_2)
 		content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 		contentChildren = append(contentChildren, content_0)
 		var content_1 string
 		var content_1Children []string
-		__lt1 := "•"
+		var content_1_0 string
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("•"))
+		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
-		content_1_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+		var content_1_1Children []string
+		var content_1_1_0 string
+		var content_1_1_0Children []string
+		var content_1_1_0_0 string
+		var content_1_1_0_0Children []string
+		var content_1_1_0_0_0 string
+		content_1_1_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("◦"))
+		content_1_1_0_0Children = append(content_1_1_0_0Children, content_1_1_0_0_0)
+		var content_1_1_0_0_1 string
+		var content_1_1_0_0_1Children []string
+		var content_1_1_0_0_1_0 string
+		content_1_1_0_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint("nested"))
+		content_1_1_0_0_1Children = append(content_1_1_0_0_1Children, content_1_1_0_0_1_0)
+		content_1_1_0_0_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1_0_0_1Children...)
+		content_1_1_0_0Children = append(content_1_1_0_0Children, content_1_1_0_0_1)
+		content_1_1_0_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_1_1_0_0Children...)
+		content_1_1_0Children = append(content_1_1_0Children, content_1_1_0_0)
+		content_1_1_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_1_0Children...)
+		content_1_1_0 = lipgloss.NewStyle().
+			PaddingLeft(2).Render(content_1_1_0)
+		content_1_1Children = append(content_1_1Children, content_1_1_0)
+		content_1_1 = lipgloss.JoinVertical(lipgloss.Left, content_1_1Children...)
 		content_1Children = append(content_1Children, content_1_1)
-		var content_1_2 string
-		var content_1_2Children []string
-		var content_1_2_0 string
-		var content_1_2_0Children []string
-		var content_1_2_0_0 string
-		var content_1_2_0_0Children []string
-		__lt2 := "◦"
-		var content_1_2_0_0_1 string
-		content_1_2_0_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
-		content_1_2_0_0Children = append(content_1_2_0_0Children, content_1_2_0_0_1)
-		var content_1_2_0_0_2 string
-		var content_1_2_0_0_2Children []string
-		var content_1_2_0_0_2_0 string
-		content_1_2_0_0_2_0 = lipgloss.NewStyle().Render(fmt.Sprint("nested"))
-		content_1_2_0_0_2Children = append(content_1_2_0_0_2Children, content_1_2_0_0_2_0)
-		content_1_2_0_0_2 = lipgloss.JoinVertical(lipgloss.Left, content_1_2_0_0_2Children...)
-		content_1_2_0_0Children = append(content_1_2_0_0Children, content_1_2_0_0_2)
-		content_1_2_0_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_1_2_0_0Children...)
-		content_1_2_0Children = append(content_1_2_0Children, content_1_2_0_0)
-		content_1_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_2_0Children...)
-		content_1_2_0 = lipgloss.NewStyle().
-			PaddingLeft(2).Render(content_1_2_0)
-		content_1_2Children = append(content_1_2Children, content_1_2_0)
-		content_1_2 = lipgloss.JoinVertical(lipgloss.Left, content_1_2Children...)
-		content_1Children = append(content_1Children, content_1_2)
 		content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
 		contentChildren = append(contentChildren, content_1)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
@@ -275,6 +238,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6cdc9cfa197d0be290bd1e69a6a7c302
+pass sha256:67b027a9f6804bc1088347487b2a9be0
 -- run/none/html --
 pass sha256:0e204e01575972fb090432d9a78435cb

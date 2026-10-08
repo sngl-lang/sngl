@@ -965,6 +965,11 @@ type Prop struct {
 	// Doc is the comment written on the prop in its declaration
 	// (ast.CommentDoc).
 	Doc string `json:",omitempty"`
+	// DefaultWritten records that the declaration gave this prop a default,
+	// from registration on. Default itself is checked with the declaring
+	// component's body, so a call checked first sees nil there; what makes
+	// the prop optional is that one was written.
+	DefaultWritten bool `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so

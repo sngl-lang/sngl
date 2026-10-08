@@ -4933,9 +4933,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 	}
 
 	c.refuseInheritedProps(args.Pos, comp, boundProps)
-	// Arity: all required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if comp != nil && !comp.Stdlib {
+	// Arity: a prop with no default must be bound, whichever package declared
+	// the component -- unless a target renders it from its declaration, which
+	// reads a prop the call omitted as absent (RendersFromDeclaration).
+	if comp != nil {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -4947,28 +4948,27 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten && !comp.RendersFromDeclaration() {
 				c.error(args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}
 		// A prop the call omits is supplied here, so every consumer reads one
 		// list of arguments rather than each evaluating the declaration's
 		// defaults for itself. This is what a struct literal does with its
-		// field defaults.
+		// field defaults. A component rendered from its declaration reads an
+		// omitted prop as absent, and a bodyless one is rendered by a target's
+		// override, which reads the declaration's defaults where it uses them;
+		// for either, only the zero of a type parameter is written, since that
+		// names a type only this call site has bound.
+		fromDecl := comp.RendersFromDeclaration() || comp.Bodyless
 		for _, p := range comp.Props {
 			if p.Default == nil || boundProps[p.Name] {
 				continue
 			}
-			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
-		}
-	} else if comp != nil {
-		// A library's defaults are its targets' to read, except the zero of a
-		// type parameter, which names a type only this call site has bound.
-		for _, p := range comp.Props {
-			if boundProps[p.Name] || !typeParamZero(p.Default) || mentionsTypeParam(p.Type) {
+			if fromDecl && (!typeParamZero(p.Default) || mentionsTypeParam(p.Type)) {
 				continue
 			}
-			props = append(props, ir.Arg{Name: p.Name, Value: ir.DeclaredDefault(p.Type)})
+			props = append(props, ir.Arg{Name: p.Name, Value: typeParamZeroFor(p.Default, p.Type)})
 		}
 	}
 
@@ -5094,9 +5094,8 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 	}
 
 	c.refuseInheritedProps(call.Args.Pos, comp, boundProps)
-	// Arity: required props must be bound (user-defined components only;
-	// stdlib component props without defaults are optional by platform convention).
-	if !comp.Stdlib {
+	// Arity: as checkAndSplitArgs.
+	if !comp.RendersFromDeclaration() {
 		for _, p := range comp.Props {
 			// A wildcard prop stands for names rather than being one, so
 			// there is nothing to require: its own name binds nothing.
@@ -5108,7 +5107,7 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if p.Bidirectional {
 				continue
 			}
-			if !boundProps[p.Name] && p.Default == nil {
+			if !boundProps[p.Name] && p.Default == nil && !p.DefaultWritten {
 				c.error(call.Args.Pos, "missing required prop %q on component %s", p.Name, comp.Name)
 			}
 		}

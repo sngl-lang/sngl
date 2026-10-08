@@ -31,8 +31,8 @@
 // hiding one without destroying it is `visible`. A close that leaves no window
 // on screen ends the program, unless it started with none.
 component window(
-    title    string,
-    favicon  string, // TODO should our components that take images use a component family for that with a slot? That could make imports work well for embedding and remotely fetching work.
+    title    string = "",
+    favicon  string = "", // TODO should our components that take images use a component family for that with a slot? That could make imports work well for embedding and remotely fetching work.
     :visible bool = true,
     @error(e error),
     @closed(),

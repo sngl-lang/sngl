@@ -213,7 +213,7 @@ func TestOptimize_ShakeUnusedConst(t *testing.T) {
 const used = 1
 const unused = 2
 component main node {
-	text string(used)
+	text(value=string(used))
 }
 `
 	pkg, _ := checkAndOptimize(t, src, "html", "js")

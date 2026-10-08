@@ -10,10 +10,10 @@ enum LinkTarget { self, blank }
 component link(
     text      string,
     href      string,
-    target    LinkTarget,
-    disabled  bool,
+    target    LinkTarget = LinkTarget.self,
+    disabled  bool = false,
     focusable bool = true,
-    style     Style,
+    style     Style = Style{},
     @click(),
 ) node
 
@@ -35,9 +35,9 @@ enum TabsVariant { underline, pills }
 // TODO Use families pass the tabs as children
 component tabs(
     items    list<string>,
-    selected int,
-    variant  TabsVariant,
-    style    Style,
+    selected int = 0,
+    variant  TabsVariant = TabsVariant.underline,
+    style    Style = Style{},
     @change(),
     panels   ...component,
 ) node
@@ -59,9 +59,9 @@ component _example_tabs node {
 // outside, Escape).
 // TODO Use families pass the items as children
 component menu(
-    style Style,
+    style Style = Style{},
     items list<string>,
-    open  bool,
+    open  bool = false,
     @select(),
     @close(),
 ) node
@@ -80,7 +80,7 @@ component _example_menu node {
 // integration. `@select` fires with the activated menu path.
 // TODO Use families pass the items as children
 component menubar(
-    style Style,
+    style Style = Style{},
     items list<string>,
     @select(),
 ) node
@@ -97,8 +97,8 @@ component _example_menubar node {
 // item from `items` is activated.
 // TODO Use families pass the items as children
 component toolbar(
-    style    Style,
-    items    list<string>,
+    style    Style = Style{},
+    items    list<string> = [],
     @select(),
     controls ...component,
 ) node

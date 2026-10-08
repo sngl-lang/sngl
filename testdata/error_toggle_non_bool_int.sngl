@@ -5,7 +5,7 @@ import . "sngl:ui"
 // codegen would emit `!x` on whatever type slipped through.
 component main node {
     var i int = 0
-    button(@click {
+    button(text="Go", @click {
         i!! // ERROR(check) "bool"
     })
     text(value="{i}")

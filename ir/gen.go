@@ -201,3 +201,25 @@ func TargetNodeOf(pkg *Package, tier BuiltinKind) *Component {
 	}
 	return nil
 }
+
+// RendersFromDeclaration reports whether a target reads c's props off the
+// declaration rather than off a body: a primitive a platform's codegen emits
+// (#[intrinsic]), a raw element a wildcard matched, a builtin node the
+// compiler dispatches on, a build-target node an output block holds, and a
+// canvas -- a component whose rest slot hosts the drawing family, which every
+// target paints from the node whatever body it was declared with. For such a
+// component a prop the call site omitted is absent rather than its default,
+// which is what lets html write no `checked` on an element that never named
+// one, and it is not required.
+func (c *Component) RendersFromDeclaration() bool {
+	if c == nil {
+		return false
+	}
+	if c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != BuiltinNone || IsBuildTargetTree(c.Tree) {
+		return true
+	}
+	if rest := c.RestSlot(); rest != nil && rest.Content != nil && IsDrawShapeTree(TypeFamily(rest.Content)) {
+		return true
+	}
+	return false
+}

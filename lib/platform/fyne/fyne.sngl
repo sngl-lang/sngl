@@ -238,7 +238,7 @@ component Wrapper(
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
 // written the same way a user would write a thirteenth.
 
-const component Label(text string, style ui.Style) ui.node {
+const component Label(text string = "", style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
@@ -251,7 +251,7 @@ const component Label(text string, style ui.Style) ui.node {
     ) {}
 }
 
-const component Button(text string, style ui.Style, @click()) ui.node {
+const component Button(text string = "", style ui.Style = ui.Style{}, @click()) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -266,7 +266,7 @@ const component Button(text string, style ui.Style, @click()) ui.node {
     ) {}
 }
 
-const component Entry(text string, placeholder string, style ui.Style, @input(text string), @change(text string)) ui.node {
+const component Entry(text string = "", placeholder string = "", style ui.Style = ui.Style{}, @input(text string), @change(text string)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -289,10 +289,10 @@ const component Entry(text string, placeholder string, style ui.Style, @input(te
 }
 
 const component MultiLineEntry(
-    text        string,
-    placeholder string,
-    rows        int,
-    style       ui.Style,
+    text        string = "",
+    placeholder string = "",
+    rows        int = 0,
+    style       ui.Style = ui.Style{},
     @input(text string),
     @change(text string),
 ) ui.node {
@@ -319,7 +319,7 @@ const component MultiLineEntry(
     ) {}
 }
 
-const component Check(text string, checked bool, style ui.Style, @change(checked bool)) ui.node {
+const component Check(text string = "", checked bool = false, style ui.Style = ui.Style{}, @change(checked bool)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -343,9 +343,9 @@ const component Check(text string, checked bool, style ui.Style, @change(checked
 // this call writes them. Reordering them is why the constructor can take `nil`
 // choices.
 const component Select(
-    selected string,
-    options  list<string>,
-    style    ui.Style,
+    selected string = "",
+    options  list<string> = [],
+    style    ui.Style = ui.Style{},
     @change(value string),
 ) ui.node {
     Widget(
@@ -369,7 +369,7 @@ const component Select(
 // `widget.Hyperlink` exposes its text and its URL as struct fields rather than
 // as setters, and a URL is a `*url.Parse` result rather than an expression this
 // package can spell, so the link renders empty.
-const component Hyperlink(style ui.Style) ui.node {
+const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
@@ -384,7 +384,7 @@ const component Hyperlink(style ui.Style) ui.node {
 // expression to build, so the image is empty. From a resource rather than a
 // URI because NewImageFromURI dereferences what it is given and a nil URI is
 // the only one available here.
-const component Image(style ui.Style) ui.node {
+const component Image(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
@@ -395,7 +395,7 @@ const component Image(style ui.Style) ui.node {
     ) {}
 }
 
-const component Spacer(style ui.Style) ui.node {
+const component Spacer(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
@@ -405,7 +405,7 @@ const component Spacer(style ui.Style) ui.node {
     ) {}
 }
 
-const component VBox(style ui.Style, children ...component) ui.node {
+const component VBox(style ui.Style = ui.Style{}, children ...component) ui.node {
     Container(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -419,7 +419,7 @@ const component VBox(style ui.Style, children ...component) ui.node {
     }
 }
 
-const component HBox(style ui.Style, children ...component) ui.node {
+const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node {
     Container(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -433,7 +433,7 @@ const component HBox(style ui.Style, children ...component) ui.node {
     }
 }
 
-const component VScroll(style ui.Style, content ...component tr.one) ui.node {
+const component VScroll(style ui.Style = ui.Style{}, content ...component tr.one) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -603,9 +603,9 @@ const component ui.progress[platform] {
 // Fyne's DateEntry takes a typed date or one picked from its calendar button,
 // and reports it as the *time.Time an option<date> is in Go, nil when cleared.
 const component DateEntry(
-    value       option<time.date>,
-    placeholder string,
-    style       ui.Style,
+    value       option<time.date> = null,
+    placeholder string = "",
+    style       ui.Style = ui.Style{},
     @change(date option<time.date>),
 ) ui.node {
     Widget(

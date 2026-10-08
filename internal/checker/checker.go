@@ -2120,8 +2120,11 @@ func (c *checker) checkPendingConstInits() {
 		// A mark that supplied both the type and the value has already said
 		// what this const is -- a target identity is a string in the source
 		// and a target type in the IR, which is the one thing this pass cannot
-		// reconcile for it.
-		if len(p.vars) > 0 && p.vars[0].Synthesized && p.vars[0].Init != nil {
+		// reconcile for it. `null` is the other: written `= 0`, so the shell
+		// took int, and checked here it put int back over the type its mark
+		// gave it, for every library body checked before the next program
+		// re-bound the role.
+		if len(p.vars) > 0 && (p.vars[0].Synthesized || p.vars[0].Builtin.IsConst()) && p.vars[0].Init != nil {
 			continue
 		}
 		// Deferred out of the per-file loop, so each initializer says which
@@ -2939,11 +2942,12 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				continue
 			}
 			prop := &ir.Prop{
-				Name:          pd.Name,
-				Type:          c.resolveType(pd.Type),
-				Bidirectional: pd.Bidirectional,
-				Const:         pd.Const,
-				Doc:           pd.Doc(),
+				Name:           pd.Name,
+				Type:           c.resolveType(pd.Type),
+				Bidirectional:  pd.Bidirectional,
+				Const:          pd.Const,
+				Doc:            pd.Doc(),
+				DefaultWritten: pd.Default != nil,
 			}
 			c.applyParamMarks(pd, prop)
 			c.checkConstProp(pd, prop)

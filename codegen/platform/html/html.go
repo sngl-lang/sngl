@@ -2541,7 +2541,8 @@ func canvasScalingCSS(n *ir.NodeInst, isCanvas bool) string {
 
 // canvasScalingMode reads a canvas node's `scalingMode` prop.
 func canvasScalingMode(n *ir.NodeInst) string {
-	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok {
+	// `center` draws at the size given, which the runtime spells as no mode.
+	if v, ok := codegen.NodeProp(n, "scalingMode").(*ir.Ident); ok && v.Member != canvasutil.ScaleCenter {
 		return v.Member
 	}
 	return ""

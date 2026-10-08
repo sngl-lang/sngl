@@ -6,12 +6,12 @@ import tr "sngl:tree"
 // to opt in to pull-to-refresh on platforms that support it. Use
 // `style.gap` to control spacing between children.
 component vbox(
-    scroll     bool,
-    refreshing bool,
-    style      Style,
+    scroll     bool = false,
+    refreshing bool = false,
+    style      Style = Style{},
     @refresh(),
     children   ...component,
-) node {}
+) node
 
 component _example_vbox node {
     vbox(style={gap=8px, padding=16px}) {
@@ -26,10 +26,10 @@ component _example_vbox node {
 // `style.justifyContent`. Enable `scroll` to make horizontal overflow
 // scrollable. Use `style.gap` for spacing between children.
 component hbox(
-    style    Style,
-    scroll   bool,
+    style    Style = Style{},
+    scroll   bool = false,
     children ...component,
-) node {}
+) node
 
 component _example_hbox node {
     hbox(style={gap=8px, padding=16px}) {
@@ -45,9 +45,9 @@ component _example_hbox node {
 // size independently; use `style.position` inside a child for precise
 // placement.
 component stack(
-    style  Style,
+    style  Style = Style{},
     layers ...component,
-) node {}
+) node
 
 component _example_stack node {
     stack {
@@ -63,15 +63,15 @@ component _example_stack node {
 // "never". `@scroll` fires continuously while scrolling; `@scrollEnd`
 // fires once motion settles.
 component scroll(
-    style         Style,
-    direction     string,
-    scrollX       float,
-    scrollY       float,
-    showScrollbar string,
+    style         Style = Style{},
+    direction     string = "",
+    scrollX       float = 0.0,
+    scrollY       float = 0.0,
+    showScrollbar string = "",
     @scroll(),
     @scrollEnd(),
     content       ...component tr.one,
-) node {}
+) node
 
 component _example_scroll node {
     scroll(direction="vertical", style={height=120px}) {
@@ -93,9 +93,9 @@ component _example_scroll node {
 // right-align content in an `hbox`. `size` gives a fixed length
 // when flex expansion is not wanted.
 component spacer(
-    style Style,
-    size  string,
-) node {}
+    style Style = Style{},
+    size  string = "",
+) node
 
 component _example_spacer node {
     hbox(style={padding=16px}) {
@@ -109,10 +109,10 @@ component _example_spacer node {
 // "vertical". `label` inserts a centered caption inside the rule,
 // commonly rendered as "text with lines on either side".
 component divider(
-    style     Style,
-    direction string,
-    label     string,
-) node {}
+    style     Style = Style{},
+    direction string = "",
+    label     string = "",
+) node
 
 component _example_divider node {
     vbox(style={gap=8px, padding=16px}) {
@@ -130,15 +130,15 @@ component _example_divider node {
 // `minPosition`/`maxPosition` clamp user drags. Set `resizable=false`
 // to lock the split.
 component splitview(
-    style       Style,
-    direction   string,
-    position    float,
-    minPosition float,
-    maxPosition float,
-    resizable   bool,
+    style       Style = Style{},
+    direction   string = "",
+    position    float = 0.0,
+    minPosition float = 0.0,
+    maxPosition float = 0.0,
+    resizable   bool = false,
     @resize(),
     panes       ...component,
-) node {}
+) node
 
 component _example_splitview node {
     splitview(direction="horizontal", style={height=120px}) {
@@ -156,12 +156,12 @@ component _example_splitview node {
 // `clickable=true` to make the entire card respond to `@click` —
 // useful for building tappable list items.
 component card(
-    style     Style,
-    variant   string,
-    clickable bool,
+    style     Style = Style{},
+    variant   string = "",
+    clickable bool = false,
     @click(),
     content   ...component,
-) node {}
+) node
 
 component _example_card node {
     hbox(style={gap=16px, padding=16px}) {

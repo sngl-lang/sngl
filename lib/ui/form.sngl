@@ -7,9 +7,9 @@ import time "sngl:time"
 // press on pointer/touch platforms.
 component button(
     text      string,
-    disabled  bool,
+    disabled  bool = false,
     focusable bool = true,
-    style     Style,
+    style     Style = Style{},
     @click(),
     @longPress(),
     content   ...component,
@@ -38,14 +38,14 @@ enum InputType { text, password, search, email, number, tel, url }
 // `type` to what the field holds for appropriate platform behavior. `@input` fires on every keystroke, `@change` on commit
 // (blur or Enter), `@submit` on Enter. `maxLength` caps accepted input.
 component input(
-    placeholder string,
-    readonly    bool,
+    placeholder string = "",
+    readonly    bool = false,
     :value      string,
-    disabled    bool,
-    type        InputType,
-    maxLength   int,
+    disabled    bool = false,
+    type        InputType = InputType.text,
+    maxLength   int = 0,
     focusable   bool = true,
-    style       Style,
+    style       Style = Style{},
     @input(value string),
     @change(value string),
     @focus(),
@@ -68,14 +68,14 @@ component _example_input node {
 // `@change` on commit. `rows` controls the initial visible row count;
 // the editor still scrolls when content exceeds it.
 component textarea(
-    placeholder string,
-    readonly    bool,
+    placeholder string = "",
+    readonly    bool = false,
     :value      string,
-    disabled    bool,
-    rows        int,
-    maxLength   int,
+    disabled    bool = false,
+    rows        int = 0,
+    maxLength   int = 0,
     focusable   bool = true,
-    style       Style,
+    style       Style = Style{},
     @input(value string),
     @change(value string),
     @focus(),
@@ -97,11 +97,11 @@ component _example_textarea node {
 // a bare checkbox. `@change` fires each time the user toggles, and
 // carries the new state.
 component checkbox(
-    label     string,
+    label     string = "",
     :checked  bool,
-    disabled  bool,
+    disabled  bool = false,
     focusable bool = true,
-    style     Style,
+    style     Style = Style{},
     @change(checked bool),
 ) node
 
@@ -124,9 +124,9 @@ enum Orientation { vertical, horizontal }
 component radio(
     options   list<string>,
     :value    string,
-    disabled  bool,
-    direction Orientation,
-    style     Style,
+    disabled  bool = false,
+    direction Orientation = Orientation.vertical,
+    style     Style = Style{},
     @change(value string),
 ) node
 
@@ -142,11 +142,11 @@ component _example_radio node {
 // equivalent to `checkbox` but rendered as a switch affordance on
 // platforms that distinguish the two.
 component toggle(
-    label     string,
+    label     string = "",
     :checked  bool,
-    disabled  bool,
+    disabled  bool = false,
     focusable bool = true,
-    style     Style,
+    style     Style = Style{},
     @change(checked bool),
 ) node
 
@@ -165,12 +165,12 @@ component _example_toggle node {
 // TODO Should this use children for the options?
 component select(
     options     list<string>,
-    placeholder string,
+    placeholder string = "",
     :value      string,
-    disabled    bool,
-    multiple    bool,
+    disabled    bool = false,
+    multiple    bool = false,
     focusable   bool = true,
-    style       Style,
+    style       Style = Style{},
     @change(value string),
     @focus(),
     @blur(),
@@ -193,12 +193,12 @@ component _example_select node {
 // and a `date` has no value meaning "none": its zero is the first day of year
 // one, which is a date a picker would happily show.
 component datepicker(
-    placeholder string,
-    min         option<time.date>,
-    max         option<time.date>,
+    placeholder string = "",
+    min         option<time.date> = null,
+    max         option<time.date> = null,
     :value      option<time.date>,
-    disabled    bool,
-    style       Style,
+    disabled    bool = false,
+    style       Style = Style{},
     @change(value option<time.date>),
     @focus(),
     @blur(),

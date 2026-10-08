@@ -15,7 +15,7 @@ component main node {
         ready!!
     }
 
-    button(@click { tick() })
+    button(text="Go", @click { tick() })
 }
 -- expected.sngl --
 import . "sngl:ui"
@@ -29,7 +29,7 @@ component main node {
     func tick(this main) {
         ready = !ready
     }
-    button(@click {
+    button(text="Go", @click {
         main.tick()
     })
 }

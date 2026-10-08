@@ -187,6 +187,20 @@ rather than `AST.Body.IsDefined()` — that reports whether a block came from
 as "has a body" made `sngl dump --stage checked` print every empty-bodied
 component back as a signature.
 
+**A prop with no default is required, whichever package declares it.** A
+library prop used to be optional because it was a library's, which is a rule
+about where a declaration lives. What is left is about what a declaration is
+(`ir.Component.RendersFromDeclaration`): a primitive a platform emits, a
+wildcard element, a builtin node, a build-target node and a canvas are read
+straight off their node by a target, which takes an omitted prop as *absent*
+-- html writes no `checked` on an element that named none, and a build option
+left out is not an option set to its zero -- so their props are not required
+and their defaults are not filled in. Every other component's omitted props
+take their written default at the call site, except a bodyless one's, whose
+override reads the declaration's defaults itself. `Prop.DefaultWritten` is what
+makes a prop optional, because `Default` is only checked with its component's
+body and a call checked first would see none.
+
 ## Event syntax
 
 An event declares the parameters its handlers receive **as a function

@@ -96,7 +96,7 @@ component link<T = struct {}, M = struct {}>(
     to     page<T, M>,
     params option<T> = null,
     text   string,
-    style  ui.Style,
+    style  ui.Style = ui.Style{},
     @click(),
 ) ui.node {
     ui.button(text=text, style=style, @click {

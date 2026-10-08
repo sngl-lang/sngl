@@ -113,7 +113,12 @@ func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 		c.Name = fmt.Sprintf("_canvasDraw%d", i)
 		c.Width = nodeIntProp(c.Node, "width")
 		c.Height = nodeIntProp(c.Node, "height")
-		c.Scaling = nodeEnumProp(c.Node, "scalingMode")
+		// `center` is the declaration's default and draws at the size given,
+		// which every runtime spells as no mode at all; handed on, it fell to
+		// their scale-to-fit branch.
+		if c.Scaling = nodeEnumProp(c.Node, "scalingMode"); c.Scaling == "center" {
+			c.Scaling = ""
+		}
 		if c.Local != nil {
 			c.ID = c.Local.Name
 		} else {

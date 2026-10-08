@@ -4,13 +4,13 @@ import . "sngl:ui"
 
 component main node {
     var on bool = false
-    button(@click { on!! })
+    button(text="Go", @click { on!! })
 }
 -- expected.sngl --
 import . "sngl:ui"
 component main node {
     var on bool = false
-    button(@click {
+    button(text="Go", @click {
         on = !on
     })
 }

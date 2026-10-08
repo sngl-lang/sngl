@@ -11,7 +11,7 @@ component main node {
         ready!!
     }
 
-    button(@click { toggleBoth() })
+    button(text="Go", @click { toggleBoth() })
 }
 -- expected.sngl --
 import . "sngl:ui"
@@ -22,7 +22,7 @@ component main node {
         on = !on
         ready = !ready
     }
-    button(@click {
+    button(text="Go", @click {
         main.toggleBoth()
     })
 }
