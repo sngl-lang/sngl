@@ -500,6 +500,43 @@ func IndexNativeDecls(p *Package) NativeDecls {
 	return out
 }
 
+// DeclInfo is what every declaration carries whatever it declares -- a func,
+// a component, a struct, an enum, a unit or a var: the name it is declared
+// under, the package that declared it, its doc comment, and what the marks
+// written on it said. Embedded, so `fn.Name` and `sd.Pkg` read as before.
+type DeclInfo struct {
+	// Name is the declared name; empty for a lambda and an event handler.
+	Name string
+	// Pkg is the URI of the package that declared it, for a package whose
+	// identity is global -- the embedded library's "sngl:ui", "sngl:builtin",
+	// "sngl:ui/draw". Empty for a program's own declarations, whose names are
+	// only meaningful relative to a build. Pkg and Name are a named type's
+	// identity (sameDecl), and a mark is bound to the declaration it was
+	// written from by the pair.
+	Pkg string
+	// Doc is the doc comment of a declaration a scheme imported; a SNGL
+	// declaration's own is read off its AST.
+	Doc string `json:",omitempty"`
+	// Builtin is the #[builtin] mark: which compiler construct the
+	// declaration dispatches to -- a scalar or generic constructor on a struct,
+	// a node kind or family on a component, a predeclared constant (null,
+	// PLATFORM, LANGUAGE) on a var. BuiltinNone otherwise.
+	Builtin BuiltinKind `json:",omitempty"`
+	// Intrinsic is the #[intrinsic] id. On a func it is a signature every
+	// backend implements (e.g. "string.indexOf"): with no body every backend
+	// must, and with one the body computes the same answer, so a backend
+	// without the id may emit it instead -- the body's presence is the whole
+	// of that distinction. On a component it is a widget one platform's
+	// codegen emits, which the inliner leaves standing; on a struct a host type
+	// one target spells and SNGL cannot describe (`go:chan`). Namespaced by
+	// that target in both of the latter.
+	Intrinsic string `json:",omitempty"`
+	// Foreign is what the declaration corresponds to outside SNGL. The tag is
+	// load-bearing: without it Foreign.Name and Name collide in the encoder
+	// and neither is written.
+	Foreign `json:"Foreign,omitzero"`
+}
+
 // Foreign records what a declaration corresponds to outside SNGL: the package
 // it lives in there, the name to emit for it, and whether SNGL can model it at
 // all. A declaration with an empty Foreign is SNGL's own.
@@ -538,14 +575,8 @@ type Foreign struct {
 // HasContextArg / HasErrorReturn describe shape adapter wrapping applied by
 // the importer (leading context.Context stripped; trailing error unwrapped).
 type Func struct {
-	AST  *ast.FuncDef // nil for lambdas and event handlers
-	Name string       // empty for lambdas and event handlers
-	// Pkg is the declaring package URI, as StructDef.Pkg is. Empty for a
-	// program's own declarations, whose names mean nothing outside a build.
-	//
-	// A macro needs it: a mark is bound to the declaration it was written from,
-	// and that binding is (package, name).
-	Pkg string
+	AST *ast.FuncDef // nil for lambdas and event handlers
+	DeclInfo
 	// Receiver is the type a method is declared on: its Decl is the
 	// declaration whose member table holds it -- a struct, enum, unit or
 	// component, or a namespace for a receiver naming a package (i18n). Nil
@@ -582,21 +613,11 @@ type Func struct {
 	// the optimizer. Const is what the declaration says: `const func`, a
 	// contract the checker holds the body to and callers may rely on. Only
 	// Const makes a call a compile-time value (IsConst).
-	Purity Purity
-	Const  bool `json:",omitempty"`
-	IsTest bool
-	Reads  []*Var // vars read (directly or via called functions)
-	Writes []*Var // vars mutated (directly or via called functions)
-	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
-	// declaration carrying one and no body is a signature every backend must
-	// implement; one carrying a body asserts that the body computes the same
-	// answer, so a backend without the id may emit it instead. The body's
-	// presence is the whole of that distinction — there is no flag, because a
-	// flag beside a body is two records of one fact and they drifted.
-	Intrinsic string
-	// The tag is load-bearing: without it Foreign.Name and Func.Name collide
-	// in the encoder and neither is written.
-	Foreign        `json:"Foreign,omitzero"`
+	Purity         Purity
+	Const          bool `json:",omitempty"`
+	IsTest         bool
+	Reads          []*Var // vars read (directly or via called functions)
+	Writes         []*Var // vars mutated (directly or via called functions)
 	HasContextArg  bool
 	HasErrorReturn bool
 	CanError       bool // set by effect analysis; true if body raises or calls a CanError func
@@ -619,9 +640,8 @@ type Func struct {
 	//
 	// Stated rather than inferred, for the reason a foreign declaration's body
 	// is never read: nothing about a call's shape says when the callee runs it.
-	NativeSchedules bool   `json:",omitempty"`
-	Doc             string // doc comment for scheme-imported decls
-	Synthesized     bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __renderSlotN)
+	NativeSchedules bool `json:",omitempty"`
+	Synthesized     bool `json:"-"` // true if generated by a lower pass (e.g. passReactivity __renderSlotN)
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's
 	// variable and a backend emits an in-place mutation.
@@ -775,19 +795,13 @@ func (f *Func) FuncSig() *FuncSig {
 //
 // Foreign is set when the var originates from a scheme import.
 type Var struct {
-	AST      ast.Stmt // original ConstDecl or VarDecl
-	Name     string
-	Type     *Type
-	Init     Expr // checked initializer (nil if none)
-	IsConst  bool
-	Handlers []*EventHandler
-	// Builtin is set by the #[builtin] macro on a predeclared constant
-	// (null, PLATFORM, LANGUAGE). The compiler supplies the type and value;
-	// the written ones are placeholders.
-	Builtin     BuiltinKind
-	Foreign     `json:"Foreign,omitzero"`
-	Doc         string // doc comment for scheme-imported decls
-	Synthesized bool   `json:"-"` // true if generated by a lower pass (e.g. passReactivity __slotN)
+	AST ast.Stmt // original ConstDecl or VarDecl
+	DeclInfo
+	Type        *Type
+	Init        Expr // checked initializer (nil if none)
+	IsConst     bool
+	Handlers    []*EventHandler
+	Synthesized bool `json:"-"` // true if generated by a lower pass (e.g. passReactivity __slotN)
 
 	// NodeHandle marks the binding a `#id` on a visual node declares: a handle
 	// to the rendered instance, which every target stores wherever it keeps the
@@ -846,12 +860,8 @@ type Body struct {
 
 // Component represents a resolved component declaration.
 type Component struct {
-	AST  *ast.ComponentDecl
-	Name string
-	// Builtin carries the #[builtin("window")] mark from the declaration, so the
-	// checker can recognise a built-in visual node (window) by tag rather than
-	// by name. Copied from ComponentDecl.Builtin at registration.
-	Builtin BuiltinKind
+	AST *ast.ComponentDecl
+	DeclInfo
 	// Tree is the family this component is a member of, named in its return
 	// position: a component that is itself a member of `build.family`. Nil for
 	// a component that belongs to no family: it may be placed in any of them
@@ -886,12 +896,6 @@ type Component struct {
 	// Const is the `const` prefix: the render depends only on the props. An
 	// override's is its base's or its own.
 	Const bool `json:",omitempty"`
-	// Intrinsic is the id from #[intrinsic] on a component: this component is
-	// emitted by the platform codegen that answers to the id, not by
-	// inlining a body. It is what tells the inliner to leave the component
-	// standing — a bodyless component the wrappers lower *to*, rather than a
-	// wrapper over one.
-	Intrinsic string `json:",omitempty"`
 	// Wildcard is the RE2 pattern from #[platforms.wildcard]: a name nobody
 	// declared in this component's package namespace resolves to this
 	// component when the pattern matches the whole name. Empty for an
@@ -926,8 +930,6 @@ type Component struct {
 	// and a platform primitive carries what its own rendered nodes support.
 	// Nil for the components that are neither, which is nearly all of them.
 	Gen *GenCaps `json:",omitempty"`
-	// Pkg is the declaring package URI; see StructDef.Pkg.
-	Pkg string // TODO this should be a pointer. Decls should have an embeedded struct for common fields for package, name, macro marks,
 	// TypeParams are the component's generic parameters, in declaration
 	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
@@ -1190,25 +1192,10 @@ func (p TypeParam) ParamPos() ast.Pos { return p.Pos }
 
 // StructDef is a resolved struct type declaration.
 type StructDef struct {
-	AST        *ast.StructDef
-	Name       string
+	AST *ast.StructDef
+	DeclInfo
 	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
-	Foreign    `json:"Foreign,omitzero"`
-	// Pkg is the URI of the package that declared this type, for a package
-	// whose identity is global — today the embedded library's "sngl:ui",
-	// "sngl:builtin", "sngl:ui/draw". Empty for a program's own
-	// declarations, whose names are only meaningful relative to a build.
-	// See sameDecl: Pkg and Name are a named type's identity.
-	Pkg     string
-	Doc     string      // doc comment for scheme-imported decls; empty for SNGL-sourced
-	Builtin BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
-	// Intrinsic is the id from #[intrinsic] on a struct: a host type one
-	// target's codegen spells and SNGL has no way to describe, namespaced by
-	// that target (`go:chan`, Go's `chan T`). The declaration is an ordinary
-	// generic struct to everything before codegen; only the emitter that
-	// answers the id gives it a host spelling.
-	Intrinsic string `json:",omitempty"`
 	// Anon says the declaration was synthesized for an anonymous struct, one
 	// per canonical field signature. It is an ordinary declaration in every
 	// other respect — a backend emits it and a value names it — and this only
@@ -1263,12 +1250,9 @@ type StructField struct {
 
 // EnumDef is a resolved enum type declaration.
 type EnumDef struct {
-	AST       *ast.EnumDef
-	Name      string
+	AST *ast.EnumDef
+	DeclInfo
 	Members   []*EnumMember
-	Foreign   `json:"Foreign,omitzero"`
-	Pkg       string           // declaring package URI; see StructDef.Pkg
-	Doc       string           // doc comment for scheme-imported decls
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
 }
@@ -1287,8 +1271,8 @@ type EnumMember struct {
 
 // UnitDef is a resolved unit type declaration with conversion table.
 type UnitDef struct {
-	AST      *ast.UnitDef
-	Name     string
+	AST *ast.UnitDef
+	DeclInfo
 	Suffixes []*UnitSuffix
 	// Fields are the unit's members, looked up the way a struct's are: one per
 	// base suffix, because a unit value is a magnitude per base and that is
@@ -1296,8 +1280,6 @@ type UnitDef struct {
 	// is a plain number on every target, with nothing to select -- and
 	// float(x)/int(x) is how the magnitude is read there.
 	Fields    []*StructField
-	Pkg       string           // declaring package URI; see StructDef.Pkg
-	Builtin   BuiltinKind      // compiler built-in marker; BuiltinNone otherwise
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
 }
