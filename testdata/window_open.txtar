@@ -249,10 +249,10 @@ func (m *Model) detailsClosed() {
 }
 
 // detailsVisible invokes the OnVisible callback on the #details widget; for tests.
-func (m *Model) detailsVisible(__visible bool) {
+func (m *Model) detailsVisible(visible bool) {
 	if cb := m.details.OnVisible; cb != nil {
 		m.details.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.details.OnVisible = cb
 	}
 }
@@ -584,6 +584,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:5990125ef93c30ef4ed10f639980389c
+pass sha256:6825fae0099dfb783c29c1c72529c9ae
 -- run/go/gtk4 --
 pass sha256:6376ba4c29ba84efe2ff50082abfc19c

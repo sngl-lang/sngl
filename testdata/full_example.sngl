@@ -33,7 +33,7 @@ component main node {
         if !isAdult {
             text(value="(Minor)", style={color=#CC0000})
         }
-        input(placeholder="Enter name", value=user.name, @input(e) { user.name = e.value })
+        input(placeholder="Enter name", value=user.name, @input(e) { user.name = e })
         Counter(label="Clicks")
         button(text=user.loggedIn ? "Logout" : "Login", @click { user.loggedIn!! })
     }

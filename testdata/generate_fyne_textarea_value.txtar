@@ -69,13 +69,13 @@ func (m *Model) app_visible_handler(__visible bool) {
 	m.app.SetVisible(m.visible__inst0)
 }
 
-func (m *Model) __n0_input_handler(s string) {
-	m.content = s
+func (m *Model) __n0_input_handler(v string) {
+	m.content = v
 	m.__n0.SetText(m.content)
 }
 
-func (m *Model) __n0_change_handler(s string) {
-	m.content = s
+func (m *Model) __n0_change_handler(v string) {
+	m.content = v
 	m.__n0.SetText(m.content)
 }
 
@@ -92,10 +92,10 @@ func (m *Model) appClosed() {
 }
 
 // appVisible invokes the OnVisible callback on the #app widget; for tests.
-func (m *Model) appVisible(__visible bool) {
+func (m *Model) appVisible(visible bool) {
 	if cb := m.app.OnVisible; cb != nil {
 		m.app.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.app.OnVisible = cb
 	}
 }
@@ -152,4 +152,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:6273ccca089da9c843db3144bb0b3f2b
+pass sha256:a357baf9aa131542f3d2c20efde6a509

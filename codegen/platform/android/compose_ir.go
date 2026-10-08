@@ -184,10 +184,8 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 
 // emitInputHandlerCall lowers one @change handler attached to select, the
 // last composable whose body is written here. The handler body runs inside
-// Compose's onClick lambda with the chosen option bound to `newValueVar`;
-// the handler's event param (if any) is materialized as a tiny data holder so
-// `e.value` reads return the same Kotlin string. A handler with no event param
-// drops the alias.
+// Compose's onClick lambda with the chosen option bound to `newValueVar`,
+// which is the event's one parameter.
 func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
 	h := codegen.NodeHandler(n, eventName)
 	if h == nil || h.Func == nil {
@@ -200,7 +198,7 @@ func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newVa
 	cc.indent++
 	if len(h.Func.Params) > 0 {
 		param := h.Func.Params[0]
-		cc.line("val %s = SnglInputEvent(%s)", param.Name, newValueVar)
+		cc.line("val %s = %s", param.Name, newValueVar)
 	}
 	for _, stmt := range h.Func.Block {
 		for _, line := range cc.kc.EvalStmt(stmt) {
@@ -790,11 +788,6 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 	return mod.String()
 }
 
-// rawCallbackValue names the value Compose hands a callback, in the emitted
-// Kotlin. It is a generated local: the declaration names the SNGL event built
-// from it, not the framework's own argument.
-const rawCallbackValue = "newValue"
-
 // lambdaArg emits a func-typed prop as the Kotlin lambda Compose takes in its
 // place. Compose spells a callback as an argument, so the body is written where
 // the argument goes and the whole call stays one expression even when the body
@@ -833,18 +826,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 		return cc.anonFuncArg(name, lam, body)
 	}
 
-	var params, prologue []string
+	var params []string
 	for _, p := range lam.Func.Params {
 		if !readsParam(lam.Func.Block, p) {
-			continue
-		}
-		// A parameter declared as an event payload is the SNGL event, while
-		// Compose passes the changed value: the event is built from it here,
-		// the only place both are in view. SnglInputEvent is the holder this
-		// platform emits (compiler_ir.go).
-		if paramTakesInputHolder(lam.Func.Block, p) {
-			params = append(params, rawCallbackValue)
-			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
 			continue
 		}
 		params = append(params, p.Name)
@@ -856,7 +840,7 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 	if len(params) > 0 {
 		b.WriteString(" " + strings.Join(params, ", ") + " ->")
 	}
-	for _, line := range append(prologue, body...) {
+	for _, line := range body {
 		b.WriteString("\n" + outer + "    " + line)
 	}
 	b.WriteString("\n" + outer + "}")
@@ -867,26 +851,15 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 // function. Every parameter is named and typed here, unlike the lambda form:
 // an anonymous `fun` may not drop one, and the declaration holds the types
 // that make the signature Compose's rather than whatever inference reached.
-//
-// An event-payload parameter is built from the framework's value here too,
-// the way lambdaArg does it -- a parameter typed as the SNGL event names a
-// class this platform emits under its own name, so declaring it as written
-// would name one nothing declares.
 func (cc *irComposeContext) anonFuncArg(name string, lam *ir.Lambda, body []string) string {
 	params := make([]string, 0, len(lam.Func.Params))
-	var prologue []string
 	for _, p := range lam.Func.Params {
-		if paramTakesInputHolder(lam.Func.Block, p) {
-			params = append(params, rawCallbackValue+": String")
-			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
-			continue
-		}
 		params = append(params, p.Name+": "+kotlin.IRTypeToKt(p.Type))
 	}
 	outer := strings.Repeat("    ", cc.indent)
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), kotlin.IRTypeToKt(lam.Func.Return))
-	for _, line := range append(prologue, body...) {
+	for _, line := range body {
 		b.WriteString("\n" + outer + "    " + line)
 	}
 	b.WriteString("\n" + outer + "}")
@@ -901,72 +874,6 @@ func readsParam(stmts []ir.Stmt, p *ir.Param) bool {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok && id.Sym == p {
-			found = true
-		}
-		return nil
-	})
-	return found
-}
-
-// paramTakesInputHolder reports whether p is a callback parameter this
-// platform materializes as a SnglInputEvent: an event payload the body reads,
-// where Compose passes the changed value instead.
-//
-// It is a function rather than the inline test it replaces because
-// compiler_ir.go has to answer the same question *before* it writes the
-// preamble the holder is declared in, and a second spelling of the predicate
-// would eventually disagree with this one. Only over-declaring is harmless;
-// under-declaring is Kotlin naming a class nothing defines.
-func paramTakesInputHolder(block []ir.Stmt, p *ir.Param) bool {
-	return readsParam(block, p) && p.Type != nil && p.Type.Kind == ir.TypeStruct
-}
-
-// usesInputHolder reports whether anything in pkg will reach one of the two
-// sites that emit a SnglInputEvent: a func-typed prop's lambda (lambdaArg) or
-// a param-carrying handler on one of the components renderStdlibComposable
-// still writes by hand (emitInputHandlerCall).
-//
-// The walk is over the whole package rather than over the windows and
-// components actually emitted, because the cost of the two answers is not
-// symmetric: a declaration nothing uses is dead Kotlin, and a use with no
-// declaration does not compile.
-func usesInputHolder(pkg *ir.Package) bool {
-	found := false
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		switch v := n.(type) {
-		case *ir.Lambda:
-			if v.Func == nil || len(v.Func.Block) == 0 {
-				return nil
-			}
-			for _, p := range v.Func.Params {
-				if paramTakesInputHolder(v.Func.Block, p) {
-					found = true
-				}
-			}
-		case *ir.NodeInst:
-			if !handWrittenComposable(v) {
-				return nil
-			}
-			for i := range v.Handlers {
-				if h := &v.Handlers[i]; h.Func != nil && len(h.Func.Params) > 0 {
-					found = true
-				}
-			}
-		}
-		return nil
-	})
-	return found
-}
-
-// usesChangeEvent reports whether anything in pkg builds a `sngl:ui`
-// ChangeEvent. A struct literal is what spells the class name in the emitted
-// Kotlin -- `change({value=opt})` in an override becomes
-// `ChangeEvent(value = opt)` -- and nothing flows a stdlib struct into the
-// data classes the file declares.
-func usesChangeEvent(pkg *ir.Package) bool {
-	found := false
-	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if lit, ok := e.(*ir.StructLit); ok && lit.Def != nil && lit.Def.Name == "ChangeEvent" {
 			found = true
 		}
 		return nil

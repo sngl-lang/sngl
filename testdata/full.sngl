@@ -25,7 +25,7 @@ component main node {
         if active {
             text(value="Active", style={color=#007700})
         }
-        input(placeholder="Enter name", value=name, @input(e) { name = e.value })
+        input(placeholder="Enter name", value=name, @input(e) { name = e })
         Counter(label="Clicks")
         button(text=active ? "Deactivate" : "Activate", @click { active!! })
     }

@@ -981,17 +981,6 @@ type EventDecl struct {
 	Doc string `json:",omitempty"`
 }
 
-// Payload is the type of the event's only parameter, or nil when it does not
-// declare exactly one. A host widget's event -- a DOM click, a Fyne callback,
-// a boundary's error -- hands its handler one value, and this is what the code
-// dispatching one reads.
-func (e *EventDecl) Payload() *Type {
-	if e == nil || len(e.Params) != 1 {
-		return nil
-	}
-	return e.Params[0].Type
-}
-
 // SlotDecl is a resolved slot declaration: a parameter whose type is a
 // component type.
 type SlotDecl struct {

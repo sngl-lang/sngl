@@ -337,19 +337,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if it.Task == "none" {
 							} else {
 								if m.__focusLoop0_cursor == __focusPos0 {
-									__bound_checked := !func() bool {
-										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
-											return __v
-										}
-										return (it.Task == "done")
-									}()
 									__cell1_checked__inst5 := func() bool {
 										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
 											return __v
 										}
 										return (it.Task == "done")
 									}()
-									__cell1_checked__inst5 = __bound_checked
+									__cell1_checked__inst5 = !func() bool {
+										if __v, __ok := m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))]; __ok {
+											return __v
+										}
+										return (it.Task == "done")
+									}()
 									m.checked__inst5[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = __cell1_checked__inst5
 									return
 								}
@@ -365,19 +364,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 										if it.Task == "none" {
 										} else {
 											if m.__focusLoop0_cursor == __focusPos0 {
-												__bound_checked := !func() bool {
-													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
-														return __v
-													}
-													return (it.Task == "done")
-												}()
 												__cell1_checked__inst9 := func() bool {
 													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
 														return __v
 													}
 													return (it.Task == "done")
 												}()
-												__cell1_checked__inst9 = __bound_checked
+												__cell1_checked__inst9 = !func() bool {
+													if __v, __ok := m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))]; __ok {
+														return __v
+													}
+													return (it.Task == "done")
+												}()
 												m.checked__inst9[((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3))] = __cell1_checked__inst9
 												return
 											}
@@ -393,19 +391,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 													if it.Task == "none" {
 													} else {
 														if m.__focusLoop0_cursor == __focusPos0 {
-															__bound_checked := !func() bool {
-																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
-																	return __v
-																}
-																return (it.Task == "done")
-															}()
 															__cell1_checked__inst12 := func() bool {
 																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
 																	return __v
 																}
 																return (it.Task == "done")
 															}()
-															__cell1_checked__inst12 = __bound_checked
+															__cell1_checked__inst12 = !func() bool {
+																if __v, __ok := m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))]; __ok {
+																	return __v
+																}
+																return (it.Task == "done")
+															}()
 															m.checked__inst12[((((((((((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)) + "/") + fmt.Sprint(__copy2)) + "/") + fmt.Sprint(__copy3)) + "/") + fmt.Sprint(__copy4)) + "/") + fmt.Sprint(__copy5))] = __cell1_checked__inst12
 															return
 														}
@@ -4007,10 +4004,6 @@ type Color struct {
 	A uint8
 }
 
-type ToggleEvent struct {
-	Checked bool
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -5596,8 +5589,8 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 		if len(c.__inst2_live) > __inst2_i {
 			__n10 = c.__inst2_live[__inst2_i]
 			__n10.Set__p0(c.checked__inst2)
-			__n10.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n10.Set__on0(func(on bool) {
+				c.checked__inst2 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
 					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -5606,8 +5599,8 @@ func (c *ListItem__slot2Instance) __renderSlot1(__parent *fyne.Container) {
 			if len(c.__inst2_live) > __inst2_i {
 				c.__inst2_live[__inst2_i].Destroy()
 			}
-			__n10__new := new__child1Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n10__new := new__child1Instance(c.__model, c.checked__inst2, func(on bool) {
+				c.checked__inst2 = on
 				for __inst2_live_ui, _ := range c.__inst2_live {
 					c.__inst2_live[__inst2_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -7005,8 +6998,8 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 		if len(c.__inst4_live) > __inst4_i {
 			__n224 = c.__inst4_live[__inst4_i]
 			__n224.Set__p0(c.checked__inst2)
-			__n224.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n224.Set__on0(func(on bool) {
+				c.checked__inst2 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
 					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -7015,8 +7008,8 @@ func (c *ListItem__slot1Instance) __renderSlot3(__parent *fyne.Container) {
 			if len(c.__inst4_live) > __inst4_i {
 				c.__inst4_live[__inst4_i].Destroy()
 			}
-			__n224__new := new__child3Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n224__new := new__child3Instance(c.__model, c.checked__inst2, func(on bool) {
+				c.checked__inst2 = on
 				for __inst4_live_ui, _ := range c.__inst4_live {
 					c.__inst4_live[__inst4_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -8448,8 +8441,8 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 		if len(c.__inst7_live) > __inst7_i {
 			__n439 = c.__inst7_live[__inst7_i]
 			__n439.Set__p0(c.checked__inst2)
-			__n439.Set__on0(func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n439.Set__on0(func(on bool) {
+				c.checked__inst2 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
 					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -8458,8 +8451,8 @@ func (c *ListItem__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 			if len(c.__inst7_live) > __inst7_i {
 				c.__inst7_live[__inst7_i].Destroy()
 			}
-			__n439__new := new__child5Instance(c.__model, c.checked__inst2, func(__event ToggleEvent) {
-				c.checked__inst2 = __event.Checked
+			__n439__new := new__child5Instance(c.__model, c.checked__inst2, func(on bool) {
+				c.checked__inst2 = on
 				for __inst7_live_ui, _ := range c.__inst7_live {
 					c.__inst7_live[__inst7_live_ui].Set__p0(c.checked__inst2)
 				}
@@ -10070,7 +10063,7 @@ type __child1Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10095,7 +10088,7 @@ type __child1Instance struct {
 	__n1         *widget.Check
 }
 
-func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child1Instance {
+func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child1Instance {
 	c := &__child1Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10114,8 +10107,8 @@ func new__child1Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n1 = widget.NewCheck("", nil)
 	c.__n1.SetText("")
 	c.__n1.SetChecked(c.__prop___p0)
-	c.__n1.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n1.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n1
 	return c
@@ -10126,7 +10119,7 @@ func (c *__child1Instance) Set__p0(__v bool) {
 	c.__n1.SetChecked(c.__prop___p0)
 }
 
-func (c *__child1Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child1Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10219,7 +10212,7 @@ type __child3Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10244,7 +10237,7 @@ type __child3Instance struct {
 	__n3         *widget.Check
 }
 
-func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child3Instance {
+func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child3Instance {
 	c := &__child3Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10263,8 +10256,8 @@ func new__child3Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n3 = widget.NewCheck("", nil)
 	c.__n3.SetText("")
 	c.__n3.SetChecked(c.__prop___p0)
-	c.__n3.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n3.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n3
 	return c
@@ -10275,7 +10268,7 @@ func (c *__child3Instance) Set__p0(__v bool) {
 	c.__n3.SetChecked(c.__prop___p0)
 }
 
-func (c *__child3Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child3Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10368,7 +10361,7 @@ type __child5Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  bool
-	__prop___on0 func(ToggleEvent)
+	__prop___on0 func(bool)
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -10393,7 +10386,7 @@ type __child5Instance struct {
 	__n5         *widget.Check
 }
 
-func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEvent)) *__child5Instance {
+func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(bool)) *__child5Instance {
 	c := &__child5Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -10412,8 +10405,8 @@ func new__child5Instance(__model *Model, __a___p0 bool, __a___on0 func(ToggleEve
 	c.__n5 = widget.NewCheck("", nil)
 	c.__n5.SetText("")
 	c.__n5.SetChecked(c.__prop___p0)
-	c.__n5.OnChanged = func(b bool) {
-		c.__prop___on0(ToggleEvent{Checked: b})
+	c.__n5.OnChanged = func(__on0_0 bool) {
+		c.__prop___on0(__on0_0)
 	}
 	c.Root = c.__n5
 	return c
@@ -10424,7 +10417,7 @@ func (c *__child5Instance) Set__p0(__v bool) {
 	c.__n5.SetChecked(c.__prop___p0)
 }
 
-func (c *__child5Instance) Set__on0(__v func(ToggleEvent)) {
+func (c *__child5Instance) Set__on0(__v func(bool)) {
 	c.__prop___on0 = __v
 }
 
@@ -10500,8 +10493,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5aea85864c31de4d85243cd7a1a0e406
+pass sha256:c1c520c068ede8edcf6cccaafcb58a38
 -- run/go/fyne --
-pass sha256:f2557a34235acede3caa56b45d0f8d39
+pass sha256:02972beeb1f9fb2d92c9798ac173fa86
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

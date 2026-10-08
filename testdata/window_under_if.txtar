@@ -180,10 +180,10 @@ func (m *Model) mainClosed() {
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
-func (m *Model) mainVisible(__visible bool) {
+func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
 		m.main.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.main.OnVisible = cb
 	}
 }
@@ -941,7 +941,7 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:927e1d228c5f3461949c43eb070ec5f0
+pass sha256:40417a0277bc97675ead17e6b527bbfa
 -- run/go/gtk4 --
 pass sha256:8709252be85984764652443cbb75d093
 -- run/none/html --

@@ -33,7 +33,7 @@ component SearchBox[html.platform] {
             placeholder = "Search docs…",
             autocomplete = "off",
             spellcheck = "false",
-            @input(e) { typed = string.trim(e.value) },
+            @input(e) { typed = string.trim(e.currentTarget.value) },
         )
         html.div(class="search-results", hidden=typed == "") {
             for var entry = searchHits(entries, typed) {

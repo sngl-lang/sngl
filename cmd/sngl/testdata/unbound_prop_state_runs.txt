@@ -10,7 +10,7 @@
 # binding's write-back runs before its handler.
 #
 # The flips alternate from the state each control is in, because bubbletea's
-# key press and android's click flip the control whatever the payload says.
+# key press and android's click flip the control whatever the test passed.
 #
 # refs.sngl reads the cells off the handles, which only the interpreter's test
 # surface can do: through the node, in the text beside it, and per row of a
@@ -51,16 +51,16 @@ component main node {
 }
 
 func testUnboundKeepsWhatTheHostReports(t Test, c main) {
-    c.box.change({checked=true})
+    c.box.change(true)
     t.assert(c.seen == "box true")
-    c.box.change({checked=false})
+    c.box.change(false)
     t.assert(c.seen == "box false")
 }
 
 func testOneWayValueIsWhereItStarts(t Test, c main) {
-    c.start.change({checked=false})
+    c.start.change(false)
     t.assert(c.seen == "start false")
-    c.start.change({checked=true})
+    c.start.change(true)
     t.assert(c.seen == "start true")
 }
 
@@ -86,16 +86,16 @@ component main node {
 func testReadOffTheHandle(t Test, c main) {
     t.assert(c.box.checked == false)
     t.assert(c.shown.value == "off")
-    c.box.change({checked=true})
+    c.box.change(true)
     t.assert(c.box.checked == true)
     t.assert(c.shown.value == "on")
     t.assert(c.start.checked == true)
-    c.start.change({checked=false})
+    c.start.change(false)
     t.assert(c.start.checked == false)
 }
 
 func testEachRowKeepsItsOwn(t Test, c main) {
-    c.row[1].change({checked=true})
+    c.row[1].change(true)
     t.assert(c.row[0].checked == false)
     t.assert(c.row[1].checked == true)
 }
@@ -118,7 +118,7 @@ sha256:7fb1586eefd8cdbfff09ae1c5b236aa2
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:3d22af4c9be409d5404855607775d2d6
+sha256:d1da6c54b1cd0f81c4e2ef54242627e2
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:3d22af4c9be409d5404855607775d2d6
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:5509c7f5eb4d46a2ca19268c705ab3f0
+sha256:9c4f073a14d4f25b5b4172fbbaa8fe72
 {
   "results": [
     {
@@ -146,7 +146,7 @@ sha256:5509c7f5eb4d46a2ca19268c705ab3f0
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:dff84fd137732a1383f8acf2b040d27c
+sha256:799a6d78224cfff8a06891dd18c66762
 {
   "results": [
     {
@@ -160,7 +160,7 @@ sha256:dff84fd137732a1383f8acf2b040d27c
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:cc77397268ef4a17c9ccc62c6d51f262
+sha256:00d5f965c5cc75ded440584daae67621
 {
   "results": [
     {

@@ -196,7 +196,7 @@ func lowerTestSnapshot(s ir.Stmt, jc *JsIRContext) (string, bool) {
 // lowerEventTrigger matches the IR shape a test line like `c.inc.click()`
 // produces -- a CallStmt the checker tagged with an Event, whose callee is a
 // chain of SelectExprs ending in the event field -- and emits
-// `<recv>.<id><Event>(...)`.
+// `<recv>.<id><Event>({...})`.
 //
 // Without it the event was dropped and the call rendered as `c.inc()`, which
 // resolves to nothing: the assertion then failed on an unchanged value rather
@@ -215,11 +215,17 @@ func lowerEventTrigger(s ir.Stmt, jc *JsIRContext) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	args := make([]string, len(c.Args))
-	for i, a := range c.Args {
-		args[i] = jc.EvalExpr(a.Value)
+	// The invoker is handed the event's arguments by their declared names,
+	// `{checked: true}`: it puts each on the element as the user's input would
+	// have, which is where the platform's handler reads it.
+	if len(c.Args) == 0 {
+		return fmt.Sprintf("%s.%s%s();", recv, id, exportEventName(c.Event)), true
 	}
-	return fmt.Sprintf("%s.%s%s(%s);", recv, id, exportEventName(c.Event), strings.Join(args, ", ")), true
+	fields := make([]string, len(c.Args))
+	for i, a := range c.Args {
+		fields[i] = fmt.Sprintf("%s: %s", a.Name, jc.EvalExpr(a.Value))
+	}
+	return fmt.Sprintf("%s.%s%s({%s});", recv, id, exportEventName(c.Event), strings.Join(fields, ", ")), true
 }
 
 // exportEventName upper-cases the first letter, matching the name the platform

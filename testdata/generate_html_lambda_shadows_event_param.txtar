@@ -20,7 +20,7 @@ component main node {
     var n int = 0
     var name = ""
     input(value=name, @input(e) {
-        name = e.value
+        name = e
         n = xs.filter(func(e int) => e > 1).length()
     })
     text(value="{n}")
@@ -57,14 +57,14 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
-    state.name__inst0 = e.target.value;
-    state.n__inst0 = state.xs__inst0.filter((e2) => __event > 1).length;
+    state.name__inst0 = state.value__inst2;
+    state.n__inst0 = state.xs__inst0.filter((e2) => state.value__inst2 > 1).length;
     __n2.textContent = String(state.n__inst0);
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
   });
   function __sngl_init() {
@@ -76,4 +76,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e3d85f53653c25ca19d194735c3aafa0
+pass sha256:24de354cb640b62ee87760d1f4948fc9

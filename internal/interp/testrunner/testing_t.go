@@ -515,24 +515,34 @@ func (cv *componentValue) WriteBackList(field string, list []any) error {
 
 // childComponentByID returns the live componentValue wrapper for a user
 // component instantiated in the component's body with element id == id (e.g.
-// `main #m()` reached as `c.m`), or nil.
+// `main #m()` reached as `c.m`), a list of them where a loop rendered the id
+// more than once, or nil.
 //
 // It reads the mounted tree rather than walking the IR. The tree keeps a
 // component instantiation as a node carrying its own scope, which is exactly
 // what a wrapper needs -- and it reaches ids the old walk could not, since that
 // one descended `if` branches only and skipped loops, slots and boundaries.
-func (cv *componentValue) childComponentByID(id string) *componentValue {
+func (cv *componentValue) childComponentByID(id string) any {
 	view, err := interp.Mount(cv.Env)
 	if err != nil {
 		return nil
 	}
+	var found []any
 	for _, n := range view.FindAny(id) {
 		if n.Component == nil || n.CompEnv == nil || !isUserComponent(n.Component) {
 			continue
 		}
-		return wrapChildComponent(n.CompEnv, n.Component)
+		found = append(found, wrapChildComponent(n.CompEnv, n.Component))
 	}
-	return nil
+	switch len(found) {
+	case 0:
+		return nil
+	case 1:
+		return found[0]
+	}
+	// An id a loop renders more than once names each instance, in mount
+	// order: `c.row[1]` is the second.
+	return found
 }
 
 // stampOwner attaches __ownerComponent to element maps returned by

@@ -201,12 +201,8 @@ func (t *gtk4Translator) attachCanvasClick(id, event string, handler ir.Expr) []
 		t.invokerSink(gtkEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), FieldName: gesture, GTKSignal: "pressed", WidgetType: "GtkGesture"})
 	}
 
-	arg := ""
-	if pt, _ := codegen.HandlerPayload(handler); pt != nil {
-		arg = golang.IRTypeToGo(pt) + "{}"
-	}
 	cbList := &ir.Ident{Name: "snglCallbacks", Type: ir.TypDyn}
-	closure := &ir.Ident{Name: fmt.Sprintf("func() { %s(%s) }", t.gc.EvalExpr(handler), arg), Type: ir.TypDyn}
+	closure := &ir.Ident{Name: fmt.Sprintf("func() { %s() }", t.gc.EvalExpr(handler)), Type: ir.TypDyn}
 	appendCall := &ir.Call{Type: ir.TypDyn, Func: &ir.Func{Name: "append"}, Args: []ir.CallArg{{Value: cbList}, {Value: closure}}}
 	lenCall := &ir.Call{Type: ir.TypInt, Func: &ir.Func{Name: "len"}, Args: []ir.CallArg{{Value: cbList}}}
 	idx := nativeCall("int", &ir.Binary{Op: ast.BinSub, Left: lenCall, Right: &ir.Literal{Type: ir.TypInt, Value: "1"}})

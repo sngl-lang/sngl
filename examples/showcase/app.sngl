@@ -332,7 +332,7 @@ component Tour ui.node {
             ui.input(
                 placeholder = "Enter your name",
                 value = name,
-                @input(e) { name = e.value },
+                @input(e) { name = e },
             )
             ui.input(placeholder="Password", type=password)
             ui.input(placeholder="Search...", type=search)
@@ -342,7 +342,7 @@ component Tour ui.node {
             placeholder = "Write some notes...",
             rows = 4,
             value = notes,
-            @input(e) { notes = e.value },
+            @input(e) { notes = e },
         )
         ui.divider
 

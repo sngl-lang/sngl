@@ -215,13 +215,13 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_input_handler(s string) {
-	m.text = s
+func (m *Model) __n0_input_handler(v string) {
+	m.text = v
 	m.__n0.SetText(m.text)
 }
 
-func (m *Model) __n0_change_handler(s string) {
-	m.text = s
+func (m *Model) __n0_change_handler(v string) {
+	m.text = v
 	m.__n0.SetText(m.text)
 }
 
@@ -381,8 +381,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
-data class SnglInputEvent(val value: String)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -397,9 +395,8 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    OutlinedTextField(value = state.text, minLines = 3, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-        val e = SnglInputEvent(newValue)
-        state.text = e.value
+    OutlinedTextField(value = state.text, minLines = 3, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+        state.text = v
     })
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -486,10 +483,10 @@ window.__sngl_boot = () => {
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("input", function(e) {
-    state.text = e.target.value;
+    state.text = e.currentTarget.value;
   });
   $0.addEventListener("change", function(e) {
-    state.text = e.target.value;
+    state.text = e.currentTarget.value;
   });
 })();
 };
@@ -499,10 +496,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:269017a68813d867a8f2b22983710ea1
 -- run/go/fyne --
-pass sha256:a6385dcda8d0a8d027399ded41954537
+pass sha256:ea0928959261ab6c9e224df50539e4d3
 -- run/go/gtk4 --
 pass sha256:44c1ea4703e79fa1abcde1dd6bb20d92
 -- run/kotlin/android --
-pass sha256:ab5bbde298afecd0043f22734a373405
+pass sha256:3c301ba67c7c92f3ae64fb7b237950be
 -- run/none/html --
-pass sha256:b40b62c1007da3df4f5b23abf45adf85
+pass sha256:b19ec53cc064141429bc4e54e032234c

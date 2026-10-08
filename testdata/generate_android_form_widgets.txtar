@@ -38,7 +38,7 @@ window {
     var plain = ""
     var birthday option<date> = null
 
-    input(placeholder="Name", value=name, @input(e) { name = e.value })
+    input(placeholder="Name", value=name, @input(e) { name = e })
     input(value=plain)
     select(options=["Apple", "Banana"], placeholder="Pick", value=fruit)
     progress(value=2.0, max=10.0)
@@ -75,14 +75,6 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
-class FocusEvent {
-    override fun equals(other: Any?) = other is FocusEvent
-    override fun hashCode() = 0
-    override fun toString() = "FocusEvent()"
-}
-
-data class SnglInputEvent(val value: String)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -112,16 +104,14 @@ fun MainScreen() {
             }
         }
         Column {
-            OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-                val e = SnglInputEvent(newValue)
-                value__inst0 = e.value
-                name = e.value
+            OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+                value__inst0 = v
+                name = v
             }, label = {
                 Text(text = "Name", modifier = Modifier)
             })
-            OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-                val e = SnglInputEvent(newValue)
-                value__inst1 = e.value
+            OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+                value__inst1 = v
             })
             var expanded1 by remember { mutableStateOf(false) }
             Box(modifier = Modifier) {
@@ -237,4 +227,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:f45e0663cafaccc909ee84068b6dad0d
+pass sha256:a75183ae910e127d73ac7b1f96e4978e

@@ -378,10 +378,10 @@ func (m *Model) homeClosed() {
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
-func (m *Model) homeVisible(__visible bool) {
+func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
 		m.home.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.home.OnVisible = cb
 	}
 }
@@ -871,7 +871,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0c6497ba9629ac2da7a950be1db7ddba
 -- run/go/fyne --
-pass sha256:c06d2134d634202e1926dce7e4273ed5
+pass sha256:bb0dd3db5e90ef1ee8480485f6e6f163
 -- run/go/gtk4 --
 pass sha256:4b9a37946f9b206457a5cfad7c9b49f3
 -- run/kotlin/android --

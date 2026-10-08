@@ -2906,6 +2906,16 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Builtin:    c.stampBuiltinKind(comp.Attrs),
 	}
 
+	// The declaration names itself in its own signature as a function's
+	// parameter may name its own struct: a GTK signal hands its handler the
+	// widget it fired on, `@toggled(self GtkCheckButton)`. It is bound for the
+	// signature only, for the reason the type parameters' scope closes below,
+	// and only where the name finds nothing else: a declaration shadowing one
+	// -- a component called `list` -- still means the one it shadows there.
+	c.pushScope()
+	if _, taken := c.scope.Lookup(comp.Name); !taken {
+		_ = c.scope.Declare(irComp)
+	}
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
@@ -2974,6 +2984,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		c.finishTreeMarks(comp, irComp, named)
 	})
 	c.finishRestSlot(irComp)
+	c.popScope()
 	popTypeParams()
 
 	c.pushScope()

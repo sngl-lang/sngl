@@ -1,8 +1,9 @@
 A datepicker's value is two-way: a pick writes the var `:value` bound, from
-the date the change event carries. testdata/datepicker_two_way.sngl runs that
-on the interpreter; this is the code each target generates for it. html builds that payload from the input's
-"YYYY-MM-DD" text; gtk4 reads it off the GtkCalendar with
-gtk4rt.CalendarGetDate, since the day-selected signal carries nothing.
+the date the host reports. testdata/datepicker_two_way.sngl runs that on the
+interpreter; this is the code each target generates for it. Each override
+writes `value` itself, which is the binding's write-back: html builds the date
+from the input's "YYYY-MM-DD" text, and gtk4 reads it off the GtkCalendar the
+day-selected signal fired on, with gtk4rt.CalendarGetDate.
 
 -- datepicker_two_way.sngl --
 import . "sngl:ui"
@@ -295,7 +296,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	m.__n0.SetVisible(m.visible__inst1)
 }
 
-func (m *Model) d_change_handler(d *time.Time) {
+func (m *Model) d_pick_handler(d *time.Time) {
 	m.picked__inst0 = d
 	m.d.SetDate(m.picked__inst0)
 	var __lt0 string
@@ -355,7 +356,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.d = widget.NewDateEntry()
 	m.d.SetDate(m.picked__inst0)
 	m.d.SetPlaceHolder("")
-	m.d.OnChanged = m.d_change_handler
+	m.d.OnChanged = m.d_pick_handler
 	m.__n2.Add(m.d)
 	var __lt1 string
 	if m.picked__inst0 != nil {
@@ -933,7 +934,7 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("change", function(e) {
-    state.picked__inst0 = e.target.value;
+    state.picked__inst0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
     $0.value = state.picked__inst0 !== null ? String(state.picked__inst0) : "";
     __n1.textContent = state.picked__inst0 !== null ? String(state.picked__inst0) : "none";
     state.changes__inst0 += 1;
@@ -950,10 +951,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8caf753c0d64b94362e7010fc2ad7237
 -- run/go/fyne --
-pass sha256:7e92ed6641bf93986c30f43e498d2273
+pass sha256:158b8912ecdc87a0735b6c1639fdbf52
 -- run/go/gtk4 --
 pass sha256:9828414ec7d6ab14c99c11233c3f2eb7
 -- run/kotlin/android --
 pass sha256:c38d91fe23b27866961fd61e22fb70b2
 -- run/none/html --
-pass sha256:02fe5dd5ca0f2482321ba29abd52b061
+pass sha256:a6b481845d377e527d4d1fffe79ea17e

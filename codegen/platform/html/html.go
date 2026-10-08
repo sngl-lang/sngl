@@ -815,10 +815,7 @@ type eventHandler struct {
 	// snglID is the id a test invokes this handler by: the element's own, or
 	// the nearest enclosing one.
 	snglID string
-	// payloadOnTarget says the payload's fields are the element's own state
-	// (eventPayloadBase answered e.target), so an invoker writes them there.
-	payloadOnTarget bool
-	body            string // JS statements
+	body   string // JS statements
 	// hasParam follows the handler's declared parameter, not the event name,
 	// because that is what translation binds `e` from. A declared parameter
 	// the body never reads still sets it.
@@ -2062,7 +2059,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if event == "" {
 			continue
 		}
-		g.addEventHandler(decl, id, event, h.Func)
+		g.addEventHandler(id, event, h.Func)
 	}
 }
 
@@ -3173,17 +3170,16 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 	}
 }
 
-// addEventHandler registers a handler for one DOM event. What its event-arg
-// param stands for is the event's declared payload to say (see
-// eventPayloadBase); whether it has one decides the listener's signature.
-func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *ir.Func) {
+// addEventHandler registers a handler for one DOM event. Its parameter is the
+// DOM's event, which an element declares as `Event`; whether it has one
+// decides the listener's signature.
+func (g *htmlGen) addEventHandler(elemID, event string, fn *ir.Func) {
 	if fn == nil || len(fn.Block) == 0 {
 		return
 	}
 	savedEvent := g.ctx.EventVar
 	savedEventParam := g.ctx.EventParam
-	base := eventPayloadBase(decl, event)
-	g.ctx.EventVar = base
+	g.ctx.EventVar = "e"
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
@@ -3213,11 +3209,10 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
-		elemID:          elemID,
-		event:           event,
-		snglID:          g.enclosingSnglID,
-		payloadOnTarget: base == "e.target",
-		body:            strings.Join(lines, "\n  "),
+		elemID: elemID,
+		event:  event,
+		snglID: g.enclosingSnglID,
+		body:   strings.Join(lines, "\n  "),
 		// With no declared parameter nothing in the body can resolve to the
 		// event, so the listener takes none either.
 		hasParam: len(fn.Params) > 0,
@@ -3512,10 +3507,10 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // which is what makes `c.<id><Event>()` resolve. The computed accessors above
 // are attached the same way.
 //
-// A payload a test passes is written where the handler reads it: onto the
-// element when its fields are the element's state (`checked`, `value`), which
-// is what a user's input would have changed before the event fired, and onto
-// the event otherwise.
+// A test hands the event's arguments by their declared names, `{checked:
+// true}`, and they are written where a handler reads them: onto the element,
+// which is what a user's input would have changed before the event fired, and
+// onto the event, which is where the DOM puts what the event itself carries.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
 	emit := func(h eventHandler, snglID string) {
@@ -3527,14 +3522,11 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			return
 		}
 		seen[name] = true
-		switch {
-		case h.event == "click":
+		if h.event == "click" {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-		case h.payloadOnTarget:
-			fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
-		default:
-			fmt.Fprintf(b, "state.%s = (p) => %s.dispatchEvent(Object.assign(new Event(%q), p));\n", name, h.elemID, h.event)
+			return
 		}
+		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, h.elemID, h.elemID, h.event)
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
@@ -3730,7 +3722,7 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if closed != nil && closed.Func != nil {
 		block = append(block, closed.Func.Block...)
 	}
-	g.addEventHandler(nil, close, "click", &ir.Func{Block: block})
+	g.addEventHandler(close, "click", &ir.Func{Block: block})
 }
 
 // respellWindowWrites drops what the lowering wrote to the document's props

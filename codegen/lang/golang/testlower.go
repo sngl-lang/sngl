@@ -249,50 +249,14 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 		return "", false
 	}
 	methodName := id + ExportName(c.Event)
-	var args []string
-	for _, a := range c.Args {
-		// A payload with no fields says nothing, and a test may leave it out,
-		// so an invoker takes none: `c.board.click()` and
-		// `c.board.click({})` are one call.
-		if emptyPayload(a.Value.ExprType()) {
-			continue
-		}
-		args = append(args, eventPayloadArg(a.Value, gc))
+	// The event's own arguments, as the program would emit them: the invoker
+	// takes what the widget would have reported, which is what the event's
+	// parameters are.
+	args := make([]string, len(c.Args))
+	for i, a := range c.Args {
+		args[i] = gc.EvalExpr(a.Value)
 	}
 	return fmt.Sprintf("%s.%s(%s)", recv, methodName, strings.Join(args, ", ")), true
-}
-
-// eventPayloadArg is what an invoker is handed for an event's payload: the
-// widget-level value, which for every payload a Go target's widget produces
-// is the payload's `value` -- fyne's OnChanged takes the entry's text, not an
-// InputEvent. The android lowerer reads the same field for
-// performTextReplacement.
-func eventPayloadArg(e ir.Expr, gc *GoIRContext) string {
-	if sl, ok := e.(*ir.StructLit); ok {
-		for _, f := range sl.Fields {
-			if f.Name == "value" {
-				return gc.EvalExpr(f.Value)
-			}
-		}
-	}
-	if t := e.ExprType(); t != nil && t.Kind == ir.TypeStruct {
-		if sd, ok := t.Decl.(*ir.StructDef); ok {
-			for _, f := range sd.Fields {
-				if f.Name == "value" {
-					return gc.EvalExpr(e) + ".Value"
-				}
-			}
-		}
-	}
-	return gc.EvalExpr(e)
-}
-
-func emptyPayload(t *ir.Type) bool {
-	if t == nil || t.Kind != ir.TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	return ok && sd != nil && len(sd.Fields) == 0
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a

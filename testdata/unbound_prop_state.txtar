@@ -252,11 +252,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeySpace && m.__focusID == 0:
-			__bound_checked := !m.checked__inst2
-			m.checked__inst2 = __bound_checked
+			m.checked__inst2 = !m.checked__inst2
 		case msg.Code == tea.KeySpace && m.__focusID == 1:
-			__bound_checked := !m.checked__inst3
-			m.checked__inst3 = __bound_checked
+			m.checked__inst3 = !m.checked__inst3
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
 			func() {
 				__focusPos2 := 0
@@ -264,19 +262,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = __copy0
 					_ = it
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__bound_checked := !func() bool {
-							if __v, __ok := m.checked__inst4[fmt.Sprint(__copy0)]; __ok {
-								return __v
-							}
-							return false
-						}()
 						__cell1_checked__inst4 := func() bool {
 							if __v, __ok := m.checked__inst4[fmt.Sprint(__copy0)]; __ok {
 								return __v
 							}
 							return false
 						}()
-						__cell1_checked__inst4 = __bound_checked
+						__cell1_checked__inst4 = !func() bool {
+							if __v, __ok := m.checked__inst4[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return false
+						}()
 						m.checked__inst4[fmt.Sprint(__copy0)] = __cell1_checked__inst4
 						return
 					}
@@ -376,10 +373,6 @@ import (
 	"os"
 )
 
-type ToggleEvent struct {
-	Checked bool
-}
-
 // Model holds the state for this SNGL UI.
 type Model struct {
 	items__inst0   []string
@@ -454,8 +447,8 @@ func (m *Model) __n1_visible_handler(__visible bool) {
 	m.__n1.SetVisible(m.visible__inst1)
 }
 
-func (m *Model) box_change_handler(b bool) {
-	m.checked__inst2 = b
+func (m *Model) box_toggle_handler(on bool) {
+	m.checked__inst2 = on
 	m.box.SetChecked(m.checked__inst2)
 	var __lt0 string
 	if m.checked__inst2 {
@@ -466,15 +459,17 @@ func (m *Model) box_change_handler(b bool) {
 	m.__n2.SetText(__lt0)
 }
 
-func (m *Model) __n3_change_handler(b bool) {
-	m.checked__inst3 = b
+func (m *Model) __n3_toggle_handler(on bool) {
+	m.checked__inst3 = on
 	m.__n3.SetChecked(m.checked__inst3)
 }
 
 // boxChange invokes the OnChanged callback on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if m.box.OnChanged != nil {
-		m.box.OnChanged(e.Checked)
+func (m *Model) boxChange(b bool) {
+	if cb := m.box.OnChanged; cb != nil {
+		m.box.OnChanged = nil
+		cb(b)
+		m.box.OnChanged = cb
 	}
 }
 
@@ -524,7 +519,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.box = widget.NewCheck("", nil)
 	m.box.SetText("alone")
 	m.box.SetChecked(m.checked__inst2)
-	m.box.OnChanged = m.box_change_handler
+	m.box.OnChanged = m.box_toggle_handler
 	m.__n5.Add(m.box)
 	var __lt1 string
 	if m.checked__inst2 {
@@ -538,7 +533,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3 = widget.NewCheck("", nil)
 	m.__n3.SetText("starts on")
 	m.__n3.SetChecked(m.checked__inst3)
-	m.__n3.OnChanged = m.__n3_change_handler
+	m.__n3.OnChanged = m.__n3_toggle_handler
 	m.__n5.Add(m.__n3)
 	m.__renderSlot0(m.__n5)
 	m.__n1.Add(m.__n5)
@@ -570,8 +565,8 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText(c.__prop_label)
 	c.__n0.SetChecked(c.checked)
-	c.__n0.OnChanged = func(b bool) {
-		c.checked = b
+	c.__n0.OnChanged = func(on bool) {
+		c.checked = on
 		c.__n0.SetChecked(c.checked)
 	}
 	c.Root = c.__n0
@@ -617,10 +612,6 @@ package main
 import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
-
-type ToggleEvent struct {
-	Checked bool
-}
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
@@ -841,9 +832,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 }
 
 // boxChange fires the "toggled" signal on the #box widget; for tests.
-func (m *Model) boxChange(e ToggleEvent) {
-	if gtk4rt.CheckButtonGetActive(m.box) != e.Checked {
-		gtk4rt.CheckButtonSetActive(m.box, e.Checked)
+func (m *Model) boxChange(v bool) {
+	if gtk4rt.CheckButtonGetActive(m.box) != v {
+		gtk4rt.CheckButtonSetActive(m.box, v)
 		return
 	}
 	gtk4rt.Emit(m.box, "toggled")
@@ -987,8 +978,8 @@ body { font-family: system-ui, sans-serif; }
     __n0.checked = checked;
     __n0.disabled = false;
     __n0.setAttribute("type", "checkbox");
-    __n0.addEventListener("change", (__event) => {
-      checked = __event.checked;
+    __n0.addEventListener("change", (e) => {
+      checked = e.currentTarget.checked;
       __n0.checked = checked;
     });
     __n8.appendChild(__n0);
@@ -1057,12 +1048,12 @@ body { font-family: system-ui, sans-serif; }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   __n3.addEventListener("change", function(e) {
-    state.checked__inst2 = e.target.checked;
+    state.checked__inst2 = e.currentTarget.checked;
     __n3.checked = state.checked__inst2;
     __n4.textContent = state.checked__inst2 ? "on" : "off";
   });
   __n5.addEventListener("change", function(e) {
-    state.checked__inst3 = e.target.checked;
+    state.checked__inst3 = e.currentTarget.checked;
     __n5.checked = state.checked__inst3;
   });
   function __sngl_init() {
@@ -1075,12 +1066,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ea50b2bcd0abd12b7b3462a4bbf70609
+pass sha256:c3f3974e5049ddfb5aedb77c975edef0
 -- run/go/fyne --
-pass sha256:fc614b71207e96860ff5952cfab130a2
+pass sha256:ac5229ce3cd70b95b565006bf442181c
 -- run/go/gtk4 --
-pass sha256:f5ce6d1b8a6455d9c5e766f6c8b000ee
+pass sha256:642f3bd3ebddbeeccf99d88b60c93927
 -- run/kotlin/android --
 pass sha256:b5368a4ed7faaa084b3c29bf66f3f242
 -- run/none/html --
-pass sha256:ef3ec67e6e38af2a05fdb115d8f82c8b
+pass sha256:75ebc7c4a24206ce11a58e8450d2205a

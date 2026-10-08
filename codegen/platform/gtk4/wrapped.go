@@ -194,7 +194,7 @@ func rtChildRemoveCall(parentCType string, parent, child ir.Expr) (ir.Stmt, bool
 	return nil, false
 }
 
-// rtEventGetterExpr is the wrapped-mode analogue of gtk4EventGetterExpr: it
+// rtEventGetterExpr is the wrapped-mode analogue of cgoEventGetterExpr: it
 // reads a widget's bound value through gtk4rt rather than cgo. Returns nil when
 // the widget's read-back isn't wrapped (→ fallback).
 func rtEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {

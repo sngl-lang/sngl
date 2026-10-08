@@ -87,10 +87,10 @@ func (m *Model) appClosed() {
 }
 
 // appVisible invokes the OnVisible callback on the #app widget; for tests.
-func (m *Model) appVisible(__visible bool) {
+func (m *Model) appVisible(visible bool) {
 	if cb := m.app.OnVisible; cb != nil {
 		m.app.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.app.OnVisible = cb
 	}
 }
@@ -103,10 +103,10 @@ func (m *Model) settingsClosed() {
 }
 
 // settingsVisible invokes the OnVisible callback on the #settings widget; for tests.
-func (m *Model) settingsVisible(__visible bool) {
+func (m *Model) settingsVisible(visible bool) {
 	if cb := m.settings.OnVisible; cb != nil {
 		m.settings.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.settings.OnVisible = cb
 	}
 }
@@ -168,4 +168,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:a477f693c7ae3f87d065bc8e20460305
+pass sha256:5f985cb7a6e57778be4a287c3f0f9fb1

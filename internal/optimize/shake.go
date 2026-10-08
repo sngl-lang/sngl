@@ -220,24 +220,23 @@ func namesBuiltinStruct(t *ir.Type) bool {
 	return false
 }
 
-// handlerPayloadTypes is the payload type of every event handler the program
-// writes and of every payload a test hands an event trigger. A backend that
-// keeps the handler's parameter declares it by that type, and a test's
-// `c.box.change({checked=true})` constructs one.
+// handlerPayloadTypes is the type of every parameter of an event handler the
+// program writes and of every argument a test hands an event trigger. A
+// backend that keeps the handler's parameter declares it by that type, and a
+// test's trigger constructs one -- a boundary's `@error(e error)` is the
+// library struct a handler is handed.
 func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 	var out []*ir.Type
 	visit := func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
 			// A node a `#id` names gets a test invoker per event it
-			// declares, whether or not the program subscribes; and a node
-			// with a two-way prop, bound or not, has its value written back
-			// from the event's payload with no handler written anywhere. The
-			// emitters prune what nothing reads.
-			if v.Component != nil && (v.Handle != nil || hasTwoWayProp(v.Component)) {
+			// declares, whether or not the program subscribes. The emitters
+			// prune what nothing reads.
+			if v.Component != nil && v.Handle != nil {
 				for _, e := range v.Component.Events {
-					if t := e.Payload(); t != nil {
-						out = append(out, t)
+					for _, p := range e.Params {
+						out = append(out, p.Type)
 					}
 				}
 			}
@@ -287,15 +286,6 @@ func handlerPayloadTypes(pkg *ir.Package) []*ir.Type {
 		}
 	}
 	return out
-}
-
-func hasTwoWayProp(c *ir.Component) bool {
-	for _, p := range c.Props {
-		if p.Bidirectional {
-			return true
-		}
-	}
-	return false
 }
 
 // pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries

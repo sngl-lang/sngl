@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -916,56 +915,6 @@ func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	return nil
 }
 
-// extractEventBindTarget returns the variable the synthesized two-way bind
-// writes, or "" when stmts does not begin with one.
-//
-// passPropBindings opens a bound node's handler with `<var> = <event>.<field>`.
-// A Fyne callback receives the unwrapped value rather than the SNGL event
-// struct, so the emitter replaces that statement with a read of the callback's
-// own parameter — which means it has to be certain it is looking at that
-// statement and not at the first line the user wrote.
-//
-// Recognising "an assignment" was not certain enough: a handler whose body
-// merely began with one had that line replaced and silently dropped. The bind
-// is identified by its whole shape instead — a plain assignment to a name,
-// reading a field off one of the handler's own parameters.
-func extractEventBindTarget(stmts []ir.Stmt, params []*ir.Param) string {
-	if len(stmts) == 0 {
-		return ""
-	}
-	assign, ok := stmts[0].(*ir.Assign)
-	if !ok || assign.Op != ast.AssignSet {
-		return ""
-	}
-	target, ok := assign.Target.(*ir.Ident)
-	if !ok {
-		return ""
-	}
-	sel, ok := assign.Value.(*ir.Select)
-	if !ok || !isParamRef(sel.Operand, params) {
-		return ""
-	}
-	return target.Name
-}
-
-// isParamRef reports whether e reads one of params. Sym is the reliable answer;
-// the name is the fallback for an ident a pass rebuilt without re-resolving it.
-func isParamRef(e ir.Expr, params []*ir.Param) bool {
-	id, ok := e.(*ir.Ident)
-	if !ok {
-		return false
-	}
-	for _, p := range params {
-		if p == nil {
-			continue
-		}
-		if id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name) {
-			return true
-		}
-	}
-	return false
-}
-
 func fyneIRAlertFunc(gc *golang.GoIRContext, method string, args []ir.CallArg) []string {
 	switch method {
 	case "toast":
@@ -1174,12 +1123,11 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 // emitIRPromotedHandler emits a node-attached event handler that the
 // lower pass promoted to a top-level Func. The Handler record for
 // LoweredFromEvent on the node's Spec dictates the Go signature (e.g.
-// fyne's Entry.OnChanged is `func(s string)`, not `func(e InputEvent)`).
-// The first stmt of the handler body — the user's `var = e.<field>`
-// two-way bind — is rewritten to `m.<var> = <param>`; subsequent
-// stmts (reactive splices injected by passReactivity) flow through
-// the same WalkLowered + translator pipeline as slot bodies so they
-// pick up widget-setter rewrites via OnPropAssign.
+// fyne's Entry.OnChanged is `func(s string)`), whose parameters are the SNGL
+// event's position for position and take the handler's names for them
+// (namedAsHandler). The body flows through the same WalkLowered + translator
+// pipeline as slot bodies so it picks up widget-setter rewrites via
+// OnPropAssign.
 //
 // The node is found by LoweredFromNode rather than LoweredFromTag: a tag
 // names one of three primitives, so it says which children contract the
@@ -1201,7 +1149,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 			// disagree, which is a bug in this package rather than in the Spec.
 			panic("fyne: " + err.Error())
 		}
-		params = parsed
+		params = namedAsHandler(parsed, fn.Params)
 	}
 
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
@@ -1209,42 +1157,14 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}, importSink, failSink).withLocalRefs(fn.LocalRefs)
 	tr.canvasByNode = canvasByNode
 
-	stmts := fn.Block
-
-	var prelude []ir.Stmt
-	if binding.Param != "" {
-		// The synthesized `var = e.<field>` two-way bind, when the handler
-		// opens with one, is re-emitted as a direct `m.<var> = <param>` since
-		// the closure exposes the unwrapped fyne value. fn.Params is the SNGL
-		// signature the bind was written against, not the Fyne one that
-		// replaced it above.
-		bindVar := extractEventBindTarget(stmts, fn.Params)
-		if bindVar != "" {
-			prelude = []ir.Stmt{&ir.Assign{
-				Target: &ir.Ident{Name: bindVar},
-				Op:     ast.AssignSet,
-				Value:  &ir.Ident{Name: binding.Param},
-			}}
-			stmts = stmts[1:]
-		}
-		// Any other read of the payload's value is the callback's argument
-		// too: the closure is handed the text, never an event struct.
-		if len(fn.Params) > 0 {
-			codegen.ReadEventField(stmts, fn.Params[0], "value", &ir.Ident{Name: binding.Param, Type: ir.TypString})
-		}
-	}
-
-	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	if binding.Signature != "" {
-		body = substitutePayload(body, fn.Params, binding.Param, params)
-	}
+	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
 		Params:   params,
 		Return:   ir.TypVoid,
-		Block:    append(prelude, body...),
+		Block:    body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

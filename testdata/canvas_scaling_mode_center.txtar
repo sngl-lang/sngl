@@ -135,10 +135,10 @@ func (m *Model) wClosed() {
 }
 
 // wVisible invokes the OnVisible callback on the #w widget; for tests.
-func (m *Model) wVisible(__visible bool) {
+func (m *Model) wVisible(visible bool) {
 	if cb := m.w.OnVisible; cb != nil {
 		m.w.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.w.OnVisible = cb
 	}
 }
@@ -748,7 +748,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:46c05962a62e05989b30d4f9c2107ff5
+pass sha256:d57a53de0eb9afaeb4c04b5fb7168822
 -- run/go/gtk4 --
 pass sha256:d27a2d2a01cdc60dfd446d8a43ddac38
 -- run/kotlin/android --

@@ -89,7 +89,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 		return err
 	}
 	var prune []string
-	for _, name := range golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerPayloads(c.ctx.Pkg)) {
+	for _, name := range golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerArgs(c.ctx.Pkg)) {
 		if !bytes.Contains(callbacksSrc, []byte(name)) {
 			prune = append(prune, name)
 		}
@@ -665,7 +665,8 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
 	tr.collectTagComponents(fn.Block)
-	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	block := readWidgets(fn.Block, widgetReader(wrapped, shared, modelNode(wrapped)))
+	bodyStmts := codegen.WalkLowered(context.Background(), block, tr)
 
 	params := fn.Params
 	if fn.SlotRender {
@@ -687,56 +688,120 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	b.WriteByte('\n')
 }
 
-// gtk4PromotedHandlerSig declares how a SNGL @event handler lowers into Go.
-// The GCallback trampoline carries no args, so the Go handler has no event
-// param and each `e.<field>` becomes a widget-getter call on the source node.
-type gtk4PromotedHandlerSig struct {
-	// EventVar is the SNGL event param name being replaced (e.g. "e").
-	// Empty when the SNGL event has no value param (click, change-on-button).
-	EventVar string
-	// Field is the SNGL event field accessed (e.g. "value"). Empty when
-	// no rewrite is needed.
-	Field string
-	// CType is the GTK widget C type the handler is attached to, and selects
-	// the getter. Empty when no getter is needed.
-	CType string
+// widgetReads are the getters gtk4.sngl declares for an override to read what
+// a control holds, by intrinsic id, and the widget each reads. A GTK signal
+// hands its handler the widget it fired on and nothing else, so
+// `@toggled(b) { checked = checkActive(b) }` is how the value a change
+// reports reaches the program.
+var widgetReads = map[string]string{
+	"gtk4.checkActive":  "GtkCheckButton",
+	"gtk4.switchActive": "GtkSwitch",
+	"gtk4.entryText":    "GtkEntry",
+	"gtk4.calendarDate": "GtkCalendar",
 }
 
-// gtk4HandlerSig keys on (LoweredFromTag, LoweredFromEvent). A tag may be a
-// SNGL stdlib alias or a GIR class name.
-func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
-	switch tag {
-	case "input", "entry", "GtkEntry":
-		// "changed" is the GTK signal name (post-wrapper inline); "input"
-		// and "change" are the SNGL stdlib event names.
-		if event == "input" || event == "change" || event == "changed" || event == "activate" {
-			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkEntry"}
-		}
-	case "checkbox", "GtkCheckButton":
-		// "toggled" is the GTK signal; "change" is the SNGL event name.
-		if event == "change" || event == "toggled" {
-			return gtk4PromotedHandlerSig{EventVar: "event", Field: "checked", CType: "GtkCheckButton"}
-		}
-	case "toggle", "GtkSwitch":
-		if event == "change" || event == "notifyActive" {
-			return gtk4PromotedHandlerSig{EventVar: "event", Field: "checked", CType: "GtkSwitch"}
-		}
-	case "datepicker", "GtkCalendar":
-		if event == "change" || event == "daySelected" {
-			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkCalendar"}
-		}
+// selfIsNode is a signal handler's body with its parameters read as the node
+// the handler is attached to. A GTK signal hands its callback the instance it
+// fired on, which is what an event declares as `self`; the trampoline passes
+// the handler nothing, and the instance is the node it was connected on.
+func selfIsNode(stmts []ir.Stmt, params []*ir.Param, node ir.Expr) []ir.Stmt {
+	if len(params) == 0 {
+		return stmts
 	}
-	return gtk4PromotedHandlerSig{}
+	isParam := func(id *ir.Ident) bool {
+		return slices.ContainsFunc(params, func(p *ir.Param) bool {
+			return p != nil && (id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name))
+		})
+	}
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+		if id, ok := e.(*ir.Ident); ok && isParam(id) {
+			return ir.CloneExprSharingDecls(node), ir.SkipDir
+		}
+		return e, nil
+	})
+	return stmts
 }
 
-// gtk4EventGetterExpr reads `e.<field>` directly from the source widget of
-// cType, replacing the two-way-bind assignment when a node-attached handler is
-// promoted to a top-level Func the trampoline calls with no args.
-func gtk4EventGetterExpr(cType, nodeID string, wrapped bool, shared *emitShared) ir.Expr {
-	if wrapped {
-		return rtEventGetterExpr(cType, codegen.ModelFieldRef(nodeID))
+// readWidgets rewrites each widgetReads call in stmts to the getter read
+// answers for the widget it is handed. The statements are copied first: a
+// body is the lowered IR's, shared with every other reader of it.
+func readWidgets(stmts []ir.Stmt, read func(cType string, ref ir.Expr) ir.Expr) []ir.Stmt {
+	found := false
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && widgetReads[c.Func.Intrinsic] != "" {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	if !found {
+		return stmts
 	}
-	return shared.cgoEventGetter(cType, &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true})
+	stmts = ir.CloneStmtsSharingDecls(stmts)
+	_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
+		c, ok := e.(*ir.Call)
+		if !ok || c.Func == nil || len(c.Args) != 1 {
+			return e, nil
+		}
+		cType := widgetReads[c.Func.Intrinsic]
+		if cType == "" {
+			return e, nil
+		}
+		if g := read(cType, c.Args[0].Value); g != nil {
+			return g, ir.SkipDir
+		}
+		return e, nil
+	})
+	return stmts
+}
+
+// widgetReader is readWidgets' read for one scope, which qualify spells a
+// node's handle in. A widget that is no node of the scope arrived as a value
+// -- a handler lifted out of a component built at run time hands the widget
+// its signal fired on to the code that holds the handler's body -- and a
+// widget value has no Go type of its own, so it is asserted to its field's.
+// gtk4rt wraps no getter for some widgets, and the cgo one there is what makes
+// the program fall back to inline cgo.
+func widgetReader(wrapped bool, shared *emitShared, qualify func(name string) ir.Expr) func(cType string, ref ir.Expr) ir.Expr {
+	return func(cType string, ref ir.Expr) ir.Expr {
+		// What is not a name is a node already spelled: selfIsNode's, which
+		// is the Model's field.
+		w := ref
+		if id, ok := ref.(*ir.Ident); ok {
+			if isNodeRef(id) {
+				w = qualify(strings.TrimPrefix(id.Name, "m."))
+			} else {
+				w = &ir.Ident{Name: id.Name + ".(" + widgetFieldGoType(cType, wrapped) + ")"}
+			}
+		}
+		if wrapped {
+			if g := rtEventGetterExpr(cType, w); g != nil {
+				return g
+			}
+		}
+		return shared.cgoEventGetter(cType, w)
+	}
+}
+
+// isNodeRef reports whether id names a node: one a lowering synthesized, or a
+// program's `#id`.
+func isNodeRef(id *ir.Ident) bool {
+	if id.IsElementRef || strings.HasPrefix(id.Name, "__n") || strings.HasPrefix(id.Name, "m.") {
+		return true
+	}
+	v, ok := id.Sym.(*ir.Var)
+	return ok && v.NodeHandle
+}
+
+// modelNode spells a node of the Model, in the mode the file is emitted in.
+func modelNode(wrapped bool) func(name string) ir.Expr {
+	return func(name string) ir.Expr {
+		if wrapped {
+			return codegen.ModelFieldRef(name)
+		}
+		return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
+	}
 }
 
 // cgoEventGetter is cgoEventGetterExpr, noting a helper the template must
@@ -936,8 +1001,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // promoted to a top-level Func. The trampoline calls it with no args, so the
 // SNGL event param is dropped and `e.<field>` becomes a widget getter.
 func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
-	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
-
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
@@ -946,45 +1009,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(fn.Block)
 
-	stmts := fn.Block
-	var prelude []ir.Stmt
 	nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-	cType := tr.idCTypes[nodeID]
-	if cType == "" {
-		cType = sig.CType
-	}
-
-	// Strip the synthesized leading `var = e.<field>` two-way bind and re-emit
-	// as `m.<var> = <gettercall>`; the trampoline exposes no event param.
-	if sig.EventVar != "" && sig.Field != "" && len(stmts) > 0 {
-		if assign, ok := stmts[0].(*ir.Assign); ok {
-			target, _ := assign.Target.(*ir.Ident)
-			sel, _ := assign.Value.(*ir.Select)
-			if target != nil && sel != nil {
-				// The SNGL event param may be named anything, so key off the
-				// field: the bare-ident operand IS the event param, never `m`.
-				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name != "m" && sel.Field == sig.Field {
-					getter := gtk4EventGetterExpr(cType, nodeID, wrapped, shared)
-					if getter != nil {
-						prelude = []ir.Stmt{&ir.Assign{
-							Target: &ir.Ident{Name: target.Name},
-							Op:     ast.AssignSet,
-							Value:  getter,
-						}}
-						stmts = stmts[1:]
-					}
-				}
-			}
-		}
-	}
-
-	if sig.CType != "" {
-		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped, shared))
-	}
-	body := codegen.WalkLowered(context.Background(), stmts, tr)
-	// Drop self-setter splices: writing the entry's text from inside its own
-	// "changed" handler re-fires the signal and recurses.
-	body = dropSelfSetterCalls(body, nodeID)
 	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
 	// only connects a signal that answers to the event. An event no signal
 	// answers to is a component's own -- a func-typed prop its instance calls
@@ -992,15 +1017,22 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// unconditionally left the payload ident undefined in the body that reads
 	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
 	params := fn.Params
+	stmts := fn.Block
 	if tr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
 		params = nil
+		stmts = selfIsNode(stmts, fn.Params, modelNode(wrapped)(nodeID))
 	}
+	stmts = readWidgets(stmts, widgetReader(wrapped, shared, modelNode(wrapped)))
+	body := codegen.WalkLowered(context.Background(), stmts, tr)
+	// Drop self-setter splices: writing the entry's text from inside its own
+	// "changed" handler re-fires the signal and recurses.
+	body = dropSelfSetterCalls(body, nodeID)
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
 		Params:   params,
 		Return:   ir.TypVoid,
-		Block:    append(prelude, body...),
+		Block:    body,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -1111,7 +1143,7 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	// known program reaches this emitter with one; it is here so the three
 	// emitters do not disagree about what their translator knows.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	body := codegen.WalkLowered(context.Background(), readWidgets(fn.Block, tr.widgetReader()), tr)
 
 	fnCopy := *fn
 	// A component's own func names its component as the receiver
@@ -1298,7 +1330,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
 	tr.collectTagComponents(cc.Body)
 
-	body := codegen.WalkLowered(context.Background(), cc.Body, tr)
+	body := codegen.WalkLowered(context.Background(), readWidgets(cc.Body, tr.widgetReader()), tr)
 
 	var bodyBuf strings.Builder
 	for _, stmt := range body {
@@ -1394,8 +1426,7 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
 			methodName, inv.GTKSignal, inv.IDLabel)
 		// An entry's events carry its text, which the handler reads back off
-		// the widget; the invoker takes the payload's value and puts it there
-		// first.
+		// the widget; the invoker takes the text and puts it there first.
 		var valueParam, preFire string
 		if inv.WidgetType == "GtkEntry" {
 			valueParam = "v string"
@@ -1416,8 +1447,8 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 			}
 		}
 		switch {
-		case inv.Payload != "":
-			fmt.Fprintf(b, "func (m *Model) %s(e %s) {\n", methodName, inv.Payload)
+		case inv.State:
+			fmt.Fprintf(b, "func (m *Model) %s(v bool) {\n", methodName)
 			emitInvokerStateWrite(b, inv, wrapped)
 		case valueParam != "":
 			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, valueParam)
@@ -1448,21 +1479,22 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 	}
 }
 
-// emitInvokerStateWrite writes the payload's state into the widget, which is
-// what a user's flip does and what fires the signal. State the widget already
-// holds fires nothing, so the invoker then falls through to firing it itself.
+// emitInvokerStateWrite writes the state a test passed into the widget, which
+// is what a user's flip does and what fires the signal. State the widget
+// already holds fires nothing, so the invoker then falls through to firing it
+// itself.
 func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool) {
 	setter := invokerStateSetter(inv.WidgetType, wrapped)
 	if wrapped {
-		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(m.%s) != e.%s {\n", inv.FieldName, inv.PayloadField)
-		fmt.Fprintf(b, "\t\t%s(m.%s, e.%s)\n\t\treturn\n\t}\n", setter, inv.FieldName, inv.PayloadField)
+		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(m.%s) != v {\n", inv.FieldName)
+		fmt.Fprintf(b, "\t\t%s(m.%s, v)\n\t\treturn\n\t}\n", setter, inv.FieldName)
 		return
 	}
 	getter := strings.Replace(setter, "_set_", "_get_", 1)
 	ptr := fmt.Sprintf("(*C.%s)(unsafe.Pointer(m.%s))", inv.WidgetType, inv.FieldName)
-	fmt.Fprintf(b, "\tif (%s(%s) != 0) != e.%s {\n", getter, ptr, inv.PayloadField)
-	fmt.Fprintf(b, "\t\tv := C.gboolean(0)\n\t\tif e.%s {\n\t\t\tv = 1\n\t\t}\n", inv.PayloadField)
-	fmt.Fprintf(b, "\t\t%s(%s, v)\n\t\treturn\n\t}\n", setter, ptr)
+	fmt.Fprintf(b, "\tif (%s(%s) != 0) != v {\n", getter, ptr)
+	b.WriteString("\t\ton := C.gboolean(0)\n\t\tif v {\n\t\t\ton = 1\n\t\t}\n")
+	fmt.Fprintf(b, "\t\t%s(%s, on)\n\t\treturn\n\t}\n", setter, ptr)
 }
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose

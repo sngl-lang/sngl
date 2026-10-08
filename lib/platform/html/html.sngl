@@ -70,6 +70,25 @@ component platform(
     })
 }
 
+// The browser's Event, as an element's handler is handed it. A handler on an
+// element is handed the DOM's own event, and an override reads what it reports
+// off it: `@change(e) { checked = e.currentTarget.checked }`. Only what an
+// override reads is declared; the DOM has more.
+#[js.native("Event")]
+struct Event {
+    // The element the handler was attached to.
+    currentTarget Target
+}
+
+// The element an event was dispatched to, as far as a control reports its
+// state through it: the text of an input, a textarea or a select, and whether
+// a checkbox is checked.
+#[js.native("HTMLInputElement")]
+struct Target {
+    value   string
+    checked bool
+}
+
 // The element every tag resolves to. The web's element set is open — a new
 // standard adds to it, and a custom element is a tag nobody declared — so one
 // declaration answers to every tag name rather than one per tag existing.
@@ -140,25 +159,26 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     attrs map<string, string>,
 
-    @click(e ui.ClickEvent),
-    @input(e ui.InputEvent),
-    @change(e ui.ChangeEvent),
-    @focus(e ui.FocusEvent),
-    @blur(e ui.FocusEvent),
-    @submit(e ui.SubmitEvent),
-    @scroll(e ui.ScrollEvent),
-    @load(e ui.LoadEvent),
+    @click(),
+    @input(e Event),
+    @change(e Event),
+    @focus(),
+    @blur(),
+    @submit(),
+    @scroll(),
+    @load(),
     @error(e error),
-    @close(e ui.DismissEvent),
-    @select(e ui.SelectEvent),
+    @close(),
+    @select(),
 
     // Every other DOM event. The event set is as open as the element set and
     // the attribute set, for the same reason: a standard adds to it. The
-    // events above are declared for their payload types, not as the whole
-    // list, so one that carries nothing SNGL can name reaches a handler here.
+    // events above are declared for what a handler is handed, not as the
+    // whole list, so one that hands nothing SNGL can name reaches a handler
+    // here.
     //
-    // Void, because a payload this cannot name is one a handler cannot read;
-    // an event whose payload matters is declared above.
+    // Void, because what this cannot name a handler cannot read; an event
+    // whose argument matters is declared above.
     //
     // Lowercase, because these are DOM event types and that is how the DOM
     // spells them. A stdlib component's SNGL name for an event -- `@scrollEnd`
@@ -226,12 +246,30 @@ const component ui.image[platform] {
 }
 
 const component ui.input[platform] {
-    html.input(type=string(type), placeholder=placeholder, value=value, disabled=disabled, readonly=readonly, style={...style}, @input { input() }, @change { change() }) {}
+    html.input(
+        type = string(type),
+        placeholder = placeholder,
+        value = value,
+        disabled = disabled,
+        readonly = readonly,
+        style = {...style},
+        @input(e) {
+            value = e.currentTarget.value
+            input(value)
+        },
+        @change(e) {
+            value = e.currentTarget.value
+            change(value)
+        },
+    ) {}
 }
 
 const component ui.checkbox[platform] {
     html.label(style={display=inlineFlex, alignItems=center, gap=4px, ...style}) {
-        html.input(type="checkbox", checked=checked, disabled=disabled, @change { change() }) {}
+        html.input(type="checkbox", checked=checked, disabled=disabled, @change(e) {
+            checked = e.currentTarget.checked
+            change(checked)
+        }) {}
         html.span(textContent=label) {}
     }
 }
@@ -242,7 +280,10 @@ const component ui.radio[platform] {
     html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
-                html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change { change() })
+                html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change {
+                    value = opt
+                    change(opt)
+                })
                 html.span(textContent=opt)
             }
         }
@@ -251,13 +292,19 @@ const component ui.radio[platform] {
 
 const component ui.toggle[platform] {
     html.label(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
-        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change { change() }) {}
+        html.input(type="checkbox", role="switch", checked=checked, disabled=disabled, @change(e) {
+            checked = e.currentTarget.checked
+            change(checked)
+        }) {}
         html.span(textContent=label) {}
     }
 }
 
 const component ui.select[platform] {
-    html.select(disabled=disabled, style={...style}, @change { change() }) {
+    html.select(disabled=disabled, style={...style}, @change(e) {
+        value = e.currentTarget.value
+        change(value)
+    }) {
         if placeholder != "" {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
@@ -268,7 +315,21 @@ const component ui.select[platform] {
 }
 
 const component ui.textarea[platform] {
-    html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
+    html.textarea(
+        placeholder = placeholder,
+        disabled = disabled,
+        readonly = readonly,
+        rows = string(rows),
+        style = {...style},
+        @input(e) {
+            value = e.currentTarget.value
+            input(value)
+        },
+        @change(e) {
+            value = e.currentTarget.value
+            change(value)
+        },
+    ) {
     }
 }
 
@@ -321,7 +382,7 @@ const component ui.chip[platform] {
     ) {
         html.span(textContent=label, @click { click() }) {}
         if removable {
-            html.button(class="sngl-chip-remove", textContent="×", disabled=disabled, @click { remove({}) }) {}
+            html.button(class="sngl-chip-remove", textContent="×", disabled=disabled, @click { remove() }) {}
         }
     }
 }
@@ -530,14 +591,17 @@ const component ui.toolbar[platform] {
 // language with no conditional expression the ternary becomes a temporary
 // before the fold that would have settled it.
 // The control reports the date as the text of a "YYYY-MM-DD" field, empty
-// when cleared, so the payload is built from it here.
+// when cleared, so the date is built from it here.
 const component ui.datepicker[platform] {
     html.input(
         type = "date",
         value = (value != null ? string(value) : ""),
         disabled = disabled,
         style = {...style},
-        @change(e) { change({value=e.value == "" ? null : time.date(e.value)}) },
+        @change(e) {
+            value = e.currentTarget.value == "" ? null : time.date(e.currentTarget.value)
+            change(value)
+        },
     ) {}
 }
 

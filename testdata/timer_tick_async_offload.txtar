@@ -270,10 +270,10 @@ func (m *Model) mainClosed() {
 }
 
 // mainVisible invokes the OnVisible callback on the #main widget; for tests.
-func (m *Model) mainVisible(__visible bool) {
+func (m *Model) mainVisible(visible bool) {
 	if cb := m.main.OnVisible; cb != nil {
 		m.main.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.main.OnVisible = cb
 	}
 }
@@ -566,6 +566,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.main)
 }
 -- run/go/fyne --
-pass sha256:5c90fe8430484cc52bf43010e3eb027f
+pass sha256:7a0b686d88f9b98a88ab1e68eeaa0bd7
 -- run/go/gtk4 --
 pass sha256:cba1648ef55204686b3a79ebdef80cb3

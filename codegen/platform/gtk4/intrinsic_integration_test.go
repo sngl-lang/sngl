@@ -103,7 +103,7 @@ window {
     vbox {
         text(value="hello")
         button(text="go", @click { on = !on })
-        input(value=name, @input(e) { name = e.value })
+        input(value=name, @input(e) { name = e })
         checkbox(checked=on, label="check")
         image(src="/x.png", alt="x")
         hbox {

@@ -519,18 +519,18 @@ func TestImportPathCompletionsHideTheInternalTier(t *testing.T) {
 	}
 }
 
-// Completion is asked for mid-edit, when the buffer does not parse: `button(`
+// Completion is asked for mid-edit, when the buffer does not parse: `input(`
 // has no closing paren, and Analyze returns a document with no statements at
 // all rather than a partial one. The imports decide what is in scope, so they
 // are read from the text when the parse has none -- without that, everything
 // below is empty exactly when an editor asks.
 func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
-	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  button(\n}"
+	content := "import . \"sngl:ui\"\n\ncomponent Foo {\n  input(\n}"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	if doc != nil && len(doc.Stmts) > 0 {
 		t.Fatal("this buffer is supposed to be unparseable; the test no longer covers what it says")
 	}
-	items := lspcore.Complete(content, doc, 4, 10)
+	items := lspcore.Complete(content, doc, 4, 9)
 	byLabel := map[string]lspcore.CompletionItem{}
 	styles := 0
 	for _, it := range items {
@@ -539,16 +539,17 @@ func TestPropListCompletions_UnparseableBuffer(t *testing.T) {
 			styles++
 		}
 	}
-	// The props and events are resolved, not written: `text` is a string and
-	// @click carries a ClickEvent, neither of which the AST says.
-	if got := byLabel["text"].Detail; got != "string" {
-		t.Errorf("button.text detail = %q, want string", got)
+	// The props and events are resolved, not written: `placeholder` is a
+	// string and @change carries the committed text, neither of which the AST
+	// says.
+	if got := byLabel["placeholder"].Detail; got != "string" {
+		t.Errorf("input.placeholder detail = %q, want string", got)
 	}
-	if got := byLabel["@click"].Detail; got != "(e ClickEvent)" {
-		t.Errorf("button @click detail = %q, want (e ClickEvent)", got)
+	if got := byLabel["@change"].Detail; got != "(value string)" {
+		t.Errorf("input @change detail = %q, want (value string)", got)
 	}
-	if _, ok := byLabel["value"]; ok {
-		t.Error("button offered `value`, which is input's prop")
+	if _, ok := byLabel["text"]; ok {
+		t.Error("input offered `text`, which is button's prop")
 	}
 	// `style` comes from the schema with its type, and the untyped fallback
 	// must not double it.

@@ -198,8 +198,8 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked)
-	c.__n0.OnChanged = func(b bool) {
-		c.checked = b
+	c.__n0.OnChanged = func(on bool) {
+		c.checked = on
 		c.__n0.SetChecked(c.checked)
 	}
 	c.Root = c.__n0
@@ -454,6 +454,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:4890c5ecc1cd88940364310cb6a20bf0
+pass sha256:59c0d27b84bc19c5d4e021faa7180a36
 -- run/go/gtk4 --
 pass sha256:10ea4eed80293cef7f3de5133a94fdb5

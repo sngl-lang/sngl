@@ -16,6 +16,10 @@ import (
 // by the tree the override renders into, and nothing here has to ask.
 const TickIntrinsic = "none:Timer"
 
+// ControlIntrinsic is the id sngl:platform/none gives the primitive its form
+// controls render: what a test's trigger reaches in place of a host's widget.
+const ControlIntrinsic = "none:Control"
+
 // InterpreterPlatform is the platform identifier the interpreter answers to,
 // and the key sngl:platform/none's overrides are recorded at.
 const InterpreterPlatform = "none"

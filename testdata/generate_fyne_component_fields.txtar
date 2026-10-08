@@ -96,10 +96,10 @@ func (m *Model) appClosed() {
 }
 
 // appVisible invokes the OnVisible callback on the #app widget; for tests.
-func (m *Model) appVisible(__visible bool) {
+func (m *Model) appVisible(visible bool) {
 	if cb := m.app.OnVisible; cb != nil {
 		m.app.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.app.OnVisible = cb
 	}
 }
@@ -162,4 +162,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:8f1e076054d24ecc8f8440bafdee05e3
+pass sha256:5596c14d02148d79a4599272bdd69f0d

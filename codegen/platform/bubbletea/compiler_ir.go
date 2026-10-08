@@ -116,7 +116,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
-	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerPayloads(ctx.Pkg)))
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(ctx.Pkg, codegen.TriggerArgs(ctx.Pkg)))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -651,7 +651,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			KeyExpr:   keyExpr,
 		})
 	})
-	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerPayloads(ctx.Pkg))
+	emitBtEventInvokers(&b, eventInvokers, codegen.TriggerArgs(ctx.Pkg))
 	emitWidgetPayloadHandlers(&b, info, gc)
 	emitTimerSyncs(&b, info.timers, gc)
 
@@ -1233,10 +1233,10 @@ func teaKeyMsg(key string) string {
 // through the pointer receiver; a test holds an addressable local, which is
 // what makes `c.incClick()` legal.
 //
-// A payload a test passes is taken and not read: the key is the input, and
-// what it produces is what the override builds from the widget's state -- a
-// checkbox's press is its `checked` flipped, whatever the test asked for.
-func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads map[string]*ir.Type) {
+// What a test passes is taken and not read: the key is the input, and what it
+// produces is what the override reads off the widget's state -- a checkbox's
+// press is its `checked` flipped, whatever the test asked for.
+func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, args map[string][]*ir.Type) {
 	seen := map[string]bool{}
 	for _, inv := range invokers {
 		name := inv.IDLabel + golang.ExportName(inv.SnglEvent)
@@ -1245,11 +1245,11 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker, payloads
 		}
 		seen[name] = true
 		fmt.Fprintf(b, "// %s activates the #%s widget the way a keypress does; for tests.\n", name, inv.IDLabel)
-		if t := payloads[inv.IDLabel+"."+inv.SnglEvent]; t != nil {
-			fmt.Fprintf(b, "func (m *Model) %s(_ %s) {\n", name, golang.IRTypeToGo(t))
-		} else {
-			fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
+		params := make([]string, 0, len(args[inv.IDLabel+"."+inv.SnglEvent]))
+		for _, t := range args[inv.IDLabel+"."+inv.SnglEvent] {
+			params = append(params, "_ "+golang.IRTypeToGo(t))
 		}
+		fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(params, ", "))
 		fmt.Fprintf(b, "\tprev := m.__focusID\n")
 		fmt.Fprintf(b, "\tm.__focusID = %d\n", inv.SlotIdx)
 		fmt.Fprintf(b, "\tnm, _ := m.Update(%s)\n", inv.KeyExpr)
@@ -1359,7 +1359,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			if len(h.Func.Params) > 0 {
 				name := h.Func.Params[0].Name
 				hgc = gc.WithLocal(name)
-				fmt.Fprintf(b, "\t%s := struct{ Value %s }{Value: __v}\n\t_ = %s\n", name, val.goType, name)
+				fmt.Fprintf(b, "\t%s := __v\n\t_ = %s\n", name, name)
 			}
 			for _, stmt := range h.Func.Block {
 				for _, line := range hgc.EvalStmt(stmt) {

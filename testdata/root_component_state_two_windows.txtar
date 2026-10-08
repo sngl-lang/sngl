@@ -149,10 +149,10 @@ func (m *Model) aClosed() {
 }
 
 // aVisible invokes the OnVisible callback on the #a widget; for tests.
-func (m *Model) aVisible(__visible bool) {
+func (m *Model) aVisible(visible bool) {
 	if cb := m.a.OnVisible; cb != nil {
 		m.a.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.a.OnVisible = cb
 	}
 }
@@ -165,10 +165,10 @@ func (m *Model) bClosed() {
 }
 
 // bVisible invokes the OnVisible callback on the #b widget; for tests.
-func (m *Model) bVisible(__visible bool) {
+func (m *Model) bVisible(visible bool) {
 	if cb := m.b.OnVisible; cb != nil {
 		m.b.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.b.OnVisible = cb
 	}
 }
@@ -424,7 +424,7 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:a14c119a6faef701a577f3e94a8598d1
+pass sha256:94fdfc050cad73d6ba4a49ec7157a228
 -- run/go/gtk4 --
 pass sha256:51bf9279838b9ecf66fb6b0489804f05
 -- run/none/html --

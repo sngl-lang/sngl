@@ -9,7 +9,7 @@ component vbox(
     scroll     bool,
     refreshing bool,
     style      Style,
-    @refresh(e RefreshEvent),
+    @refresh(),
     children   ...component,
 ) node {}
 
@@ -68,8 +68,8 @@ component scroll(
     scrollX       float,
     scrollY       float,
     showScrollbar string,
-    @scroll(e ScrollEvent),
-    @scrollEnd(e ScrollEvent),
+    @scroll(),
+    @scrollEnd(),
     content       ...component tr.one,
 ) node {}
 
@@ -136,7 +136,7 @@ component splitview(
     minPosition float,
     maxPosition float,
     resizable   bool,
-    @resize(e ResizeEvent),
+    @resize(),
     panes       ...component,
 ) node {}
 
@@ -159,7 +159,7 @@ component card(
     style     Style,
     variant   string,
     clickable bool,
-    @click(e ClickEvent),
+    @click(),
     content   ...component,
 ) node {}
 

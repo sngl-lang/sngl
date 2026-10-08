@@ -234,14 +234,14 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_input_handler(s string) {
-	m.name = s
+func (m *Model) __n0_input_handler(v string) {
+	m.name = v
 	m.__n0.SetText(m.name)
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
 }
 
-func (m *Model) __n0_change_handler(s string) {
-	m.name = s
+func (m *Model) __n0_change_handler(v string) {
+	m.name = v
 	m.__n0.SetText(m.name)
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
 }
@@ -416,8 +416,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
-data class SnglInputEvent(val value: String)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -433,9 +431,8 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Column(modifier = Modifier.safeDrawingPadding()) {
-        OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier, onValueChange = { newValue ->
-            val e = SnglInputEvent(newValue)
-            state.name = e.value
+        OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier, onValueChange = { v ->
+            state.name = v
         }, label = {
             Text(text = "Enter your name", modifier = Modifier)
         })
@@ -531,12 +528,12 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
   __n0.addEventListener("change", function(e) {
-    state.name = e.target.value;
+    state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
   });
@@ -553,10 +550,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:cb3a2bc9dce7aea637128f23cee18dbd
 -- run/go/fyne --
-pass sha256:9d524c211445bbafaff5f7f09f185cea
+pass sha256:cb21c479006b58ba5ac9d26a022b8cfc
 -- run/go/gtk4 --
 pass sha256:0e3d2df5ec534cd5253f45902d9e23e6
 -- run/kotlin/android --
-pass sha256:314c0c2a6d761f58033f63a883939e6c
+pass sha256:75b5d27551ca5599d10e804d5975ae24
 -- run/none/html --
-pass sha256:cc6a983ee1053dcf53116f0345177967
+pass sha256:403ff51becc61b003c90cee6a3717eb6

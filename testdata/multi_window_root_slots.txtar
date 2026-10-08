@@ -189,10 +189,10 @@ func (m *Model) oneClosed() {
 }
 
 // oneVisible invokes the OnVisible callback on the #one widget; for tests.
-func (m *Model) oneVisible(__visible bool) {
+func (m *Model) oneVisible(visible bool) {
 	if cb := m.one.OnVisible; cb != nil {
 		m.one.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.one.OnVisible = cb
 	}
 }
@@ -212,10 +212,10 @@ func (m *Model) twoClosed() {
 }
 
 // twoVisible invokes the OnVisible callback on the #two widget; for tests.
-func (m *Model) twoVisible(__visible bool) {
+func (m *Model) twoVisible(visible bool) {
 	if cb := m.two.OnVisible; cb != nil {
 		m.two.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.two.OnVisible = cb
 	}
 }
@@ -627,6 +627,6 @@ func (m *Model) noteClick() {
 	gtk4rt.Emit(m.note, "clicked")
 }
 -- run/go/fyne --
-pass sha256:086f0eed421f4b008d60c7d8142345c8
+pass sha256:1ed99f6c48a5303f8caa0b9bba4c191c
 -- run/go/gtk4 --
 pass sha256:8733f7aaf3b830713e428b74d72c5435

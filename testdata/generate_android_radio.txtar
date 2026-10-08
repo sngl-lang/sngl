@@ -12,11 +12,11 @@ other way round -- "horizontal" is a Row and the default vertical a Column, and
 both fold at build time so no runtime branch survives.
 
 Compose passes onClick nothing, so the override names the option itself: the
-@change handler's `e.value` is the option that was clicked, which is the loop
+@change handler's `e` is the option that was clicked, which is the loop
 variable.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `RadioButton\(selected = \(pick == "small"\)` -- a literal options list is left as a loop, not unrolled into one RadioButton per option
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `val e = SnglInputEvent` -- the handler reads the loop variable directly; there is no event object for Compose to have handed it
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `val e = ` -- the handler reads the loop variable directly; there is nothing Compose handed it to bind
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `"horizontal" == "horizontal"` -- direction is compared at build time, so neither branch's test reaches the output
 -- app.sngl --
 import . "sngl:ui"
@@ -38,7 +38,7 @@ component main node {
             direction = horizontal,
             options = ["small", "medium", "large"],
             value = pick,
-            @change(e) { chosen = e.value },
+            @change(e) { chosen = e },
         )
         radio(style={padding=5px}, options=["one", "two"], value=pick)
         radio(options=more, value=pick)

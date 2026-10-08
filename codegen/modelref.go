@@ -79,26 +79,6 @@ func IdentBareName(e ir.Expr) string {
 	return ""
 }
 
-// HandlerPayload is the struct type a handler's SNGL parameter is declared as,
-// or nil for one that takes none. A test hands its trigger a value of it.
-func HandlerPayload(handler ir.Expr) (*ir.Type, *ir.StructDef) {
-	var fn *ir.Func
-	switch h := handler.(type) {
-	case *ir.Ident:
-		fn, _ = h.Sym.(*ir.Func)
-	case *ir.Lambda:
-		fn = h.Func
-	}
-	if fn == nil || len(fn.Params) == 0 || fn.Params[0] == nil || fn.Params[0].Type == nil {
-		return nil, nil
-	}
-	sd, ok := fn.Params[0].Type.Decl.(*ir.StructDef)
-	if !ok || sd == nil {
-		return nil, nil
-	}
-	return fn.Params[0].Type, sd
-}
-
 // TriggerEventName is the event a test can write for a handler: the one the
 // program wrote, when a platform override re-raised it, and otherwise the name
 // the handler already carries.
@@ -122,29 +102,4 @@ func TriggerEventName(handler ir.Expr, fallback string) string {
 		return fallback
 	}
 	return fn.LoweredFromComponentEvent
-}
-
-// ReadEventField rewrites every `<param>.<field>` read in stmts to a clone of
-// value: the widget-level value a target's callback is handed, or reads off the
-// widget, in place of a payload struct it never builds. It reports whether the
-// param is still read some other way afterwards, which the caller cannot
-// spell.
-func ReadEventField(stmts []ir.Stmt, param *ir.Param, field string, value ir.Expr) (rest bool) {
-	isParam := func(e ir.Expr) bool {
-		id, ok := e.(*ir.Ident)
-		return ok && (id.Sym == ir.Symbol(param) || (id.Sym == nil && id.Name == param.Name))
-	}
-	_ = ir.Rewrite(stmts, func(nd ir.Node) (ir.Node, error) {
-		if sel, ok := nd.(*ir.Select); ok && sel.Field == field && isParam(sel.Operand) {
-			return ir.CloneExprSharingDecls(value), ir.SkipDir
-		}
-		return nd, nil
-	})
-	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		if isParam(e) {
-			rest = true
-		}
-		return nil
-	})
-	return rest
 }

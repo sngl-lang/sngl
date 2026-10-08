@@ -69,6 +69,11 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			fmt.Fprintf(&b, "    %s %s,\n", n, snglTypeName(p.IRType))
 		}
 		fmt.Fprintf(&b, "    %s dyn,\n", stylePropName)
+		// A signal hands its callback the instance it fired on, as GTK's own
+		// signature does (`void toggled(GtkCheckButton *self, gpointer)`), so
+		// a handler reads the widget that fired rather than reaching it
+		// through a `#id` -- which names no one widget where the node is
+		// rendered more than once.
 		events := map[string]bool{}
 		for _, s := range info.Signals {
 			// A signal the fixed trampoline cannot carry is not declared, so
@@ -83,12 +88,12 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 				continue
 			}
 			events[n] = true
-			fmt.Fprintf(&b, "    @%s,\n", n)
+			fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
 		}
 		for _, prop := range notifyProps[info.CType] {
 			if n, ok := snglName("notify-" + prop); ok && !events[n] {
 				events[n] = true
-				fmt.Fprintf(&b, "    @%s,\n", n)
+				fmt.Fprintf(&b, "    @%s(self %s),\n", n, info.CType)
 			}
 		}
 		// GIR does not say which widgets accept children, and declaring a

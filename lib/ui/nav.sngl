@@ -14,7 +14,7 @@ component link(
     disabled  bool,
     focusable bool = true,
     style     Style,
-    @click(e ClickEvent),
+    @click(),
 ) node
 
 component _example_link node {
@@ -38,7 +38,7 @@ component tabs(
     selected int,
     variant  TabsVariant,
     style    Style,
-    @change(e SelectEvent),
+    @change(),
     panels   ...component,
 ) node
 
@@ -62,8 +62,8 @@ component menu(
     style Style,
     items list<string>,
     open  bool,
-    @select(e MenuEvent),
-    @close(e DismissEvent),
+    @select(),
+    @close(),
 ) node
 
 component _example_menu node {
@@ -82,7 +82,7 @@ component _example_menu node {
 component menubar(
     style Style,
     items list<string>,
-    @select(e MenuEvent),
+    @select(),
 ) node
 
 component _example_menubar node {
@@ -99,7 +99,7 @@ component _example_menubar node {
 component toolbar(
     style    Style,
     items    list<string>,
-    @select(e MenuEvent),
+    @select(),
     controls ...component,
 ) node
 

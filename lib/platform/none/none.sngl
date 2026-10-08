@@ -74,11 +74,24 @@ const component shapes.canvasImage[platform] {}
 
 // --- Widgets ---
 //
+// A control a test drives: what a host would hand an override when the user
+// types or clicks, a test's trigger hands this, and the override writes the
+// prop the control reports from it as on every other target. `value` is what
+// the control shows. A snapshot prints the sngl:ui component rendering one,
+// as the widget a compiled target's snapshot would show.
+#[intrinsic("none:Control")]
+component Control<T>(
+    value T,
+    @input(value T),
+    @change(value T),
+) ui.node
+
 // The interpreter draws no widget, so each sngl:ui widget is answered the way a
 // shape is: an empty body leaves the node standing in the tree with its props,
-// which is what `sngl test` asserts on and a snapshot prints. Written out for
-// the reason the shapes are -- the declarations are bodyless, and a target that
-// says nothing about one is a build failure.
+// which is what `sngl test` asserts on and a snapshot prints. The form
+// controls are the exception, rendering a Control a trigger reaches. Written
+// out for the reason the shapes are -- the declarations are bodyless, and a
+// target that says nothing about one is a build failure.
 const component ui.text[platform] {}
 
 const component ui.image[platform] {}
@@ -93,19 +106,68 @@ const component ui.tree[platform] {}
 
 const component ui.button[platform] {}
 
-const component ui.input[platform] {}
+const component ui.input[platform] {
+    Control(
+        value = value,
+        @input(v) {
+            value = v
+            input(v)
+        },
+        @change(v) {
+            value = v
+            change(v)
+        },
+    )
+}
 
-const component ui.textarea[platform] {}
+const component ui.textarea[platform] {
+    Control(
+        value = value,
+        @input(v) {
+            value = v
+            input(v)
+        },
+        @change(v) {
+            value = v
+            change(v)
+        },
+    )
+}
 
-const component ui.checkbox[platform] {}
+const component ui.checkbox[platform] {
+    Control(value=checked, @change(on) {
+        checked = on
+        change(on)
+    })
+}
 
-const component ui.radio[platform] {}
+const component ui.radio[platform] {
+    Control(value=value, @change(v) {
+        value = v
+        change(v)
+    })
+}
 
-const component ui.toggle[platform] {}
+const component ui.toggle[platform] {
+    Control(value=checked, @change(on) {
+        checked = on
+        change(on)
+    })
+}
 
-const component ui.select[platform] {}
+const component ui.select[platform] {
+    Control(value=value, @change(v) {
+        value = v
+        change(v)
+    })
+}
 
-const component ui.datepicker[platform] {}
+const component ui.datepicker[platform] {
+    Control(value=value, @change(v) {
+        value = v
+        change(v)
+    })
+}
 
 const component ui.link[platform] {}
 

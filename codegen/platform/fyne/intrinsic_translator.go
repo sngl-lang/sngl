@@ -130,13 +130,9 @@ type fyneEventInvoker struct {
 	IDLabel   string // the #id a program wrote
 	SnglEvent string // the event a test writes, e.g. "click"
 	Field     string // the Go callback field, e.g. "OnTapped"
-	Param     string // the declared parameter name, "" for a no-arg event
-	ParamType string // its Go type, "" for a no-arg event
-	// Payload is the SNGL payload's Go type a test passes, and PayloadField
-	// the field of it the callback takes; both "" when the handler declares
-	// no payload or none of its fields is the callback's type.
-	Payload      string
-	PayloadField string
+	// Params are the callback's, from its Spec signature: what a test hands
+	// the invoker, which are the event's own arguments.
+	Params []*ir.Param
 	// Target is the Model field holding Field when it is not the #id's own
 	// widget -- a canvas's Tap. "" means IDLabel.
 	Target string
@@ -512,7 +508,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	fieldName := h.Field
-	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h, handler)
+	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h)
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
@@ -533,8 +529,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 // fyneCallbackLambda gives a handler written in place -- in an instance
 // record, where nothing promotes it to a method -- the Go signature of the
 // callback field it is assigned to, the way emitIRPromotedHandler does for a
-// promoted one: the SNGL event parameter goes, and the two-way bind that opens
-// the body reads the callback's own parameter instead.
+// promoted one.
 func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
 	if lam.Func == nil || h.Signature == "" {
 		return lam
@@ -543,44 +538,31 @@ func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
 	if err != nil {
 		panic("fyne: " + err.Error())
 	}
-	stmts := lam.Func.Block
-	if h.Param != "" {
-		if bindVar := extractEventBindTarget(stmts, lam.Func.Params); bindVar != "" {
-			bind := stmts[0].(*ir.Assign)
-			stmts = append([]ir.Stmt{&ir.Assign{
-				Target: bind.Target,
-				Op:     ast.AssignSet,
-				Value:  &ir.Ident{Name: h.Param},
-			}}, stmts[1:]...)
-		}
-	}
-	stmts = substitutePayload(stmts, lam.Func.Params, h.Param, params)
 	fn := *lam.Func
-	fn.Params = params
-	fn.Block = stmts
+	fn.Params = namedAsHandler(params, lam.Func.Params)
 	out := *lam
 	out.Func = &fn
 	return &out
 }
 
-// substitutePayload reads the event's value off the callback's own parameter
-// named goParam, where its Go type is the field's.
-func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goParams []*ir.Param) []ir.Stmt {
-	if goParam == "" {
-		return stmts
-	}
-	var goType string
-	for _, p := range goParams {
-		if ref, ok := p.Type.Meta.(ir.NativeTypeRef); p.Name == goParam && ok {
-			goType = ref.Name
+// namedAsHandler is a callback's parameters as the SNGL handler declared them.
+// The two lists are one event's parameters, position for position --
+// `@toggle(flag bool)` is `func(b bool)` -- so the handler's own parameter is
+// the callback's, the declaration itself and not a copy: its body's reads name
+// it by symbol, and a copy the Go context did not know as a local resolved by
+// name instead, to a component field that happened to share it. Its type is
+// the event's, which the Spec's signature spells in Go. A parameter the
+// handler left unbound is the Spec's.
+func namedAsHandler(goParams, sngl []*ir.Param) []*ir.Param {
+	out := make([]*ir.Param, len(goParams))
+	for i, p := range goParams {
+		if i < len(sngl) && sngl[i] != nil && sngl[i].Name != "" {
+			out[i] = sngl[i]
+			continue
 		}
+		out[i] = p
 	}
-	return codegen.SubstituteEventPayload(stmts, sngl, func(f *ir.StructField) ir.Expr {
-		if f.Type == nil || golang.IRTypeToGo(f.Type) != goType {
-			return nil
-		}
-		return &ir.Ident{Name: goParam, Type: f.Type}
-	})
+	return out
 }
 
 // OnDetachHandler clears the callback field. Fyne holds one callback per
@@ -807,46 +789,20 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted
 // after the walk. A synthesized id is skipped: `c.__n0.click()` is not
 // something a test can write.
-func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, handler ir.Expr) {
+func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
-	inv := fyneEventInvoker{
+	params, err := signatureParams("", event, h.Signature)
+	if err != nil {
+		panic("fyne: " + err.Error())
+	}
+	t.invokerSink(fyneEventInvoker{
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
-		Param:     h.Param,
-		ParamType: fyneHandlerParamType(h),
-	}
-	if pt, sd := codegen.HandlerPayload(handler); sd != nil && inv.ParamType != "" {
-		for _, f := range sd.Fields {
-			if f != nil && f.Type != nil && f.Name != "value" && golang.IRTypeToGo(f.Type) == inv.ParamType {
-				inv.Payload = golang.IRTypeToGo(pt)
-				inv.PayloadField = golang.ExportName(f.Name)
-				break
-			}
-		}
-	}
-	t.invokerSink(inv)
-}
-
-// fyneHandlerParamType reads the parameter's Go type out of the declared
-// signature -- `func(s string)` gives "string". The declaration is the only
-// place it is written down, and only the single-parameter shape occurs.
-func fyneHandlerParamType(h fyneHandler) string {
-	if h.Param == "" {
-		return ""
-	}
-	open := strings.Index(h.Signature, "(")
-	close := strings.LastIndex(h.Signature, ")")
-	if open < 0 || close < open {
-		return ""
-	}
-	parts := strings.Fields(h.Signature[open+1 : close])
-	if len(parts) < 2 {
-		return ""
-	}
-	return parts[len(parts)-1]
+		Params:    params,
+	})
 }
 
 // emitFyneEventInvokers writes one Model method per (id, event) pair, invoking
@@ -865,27 +821,27 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
-		if inv.Payload != "" {
-			fmt.Fprintf(b, "func (m *Model) %s(e %s) {\n", name, inv.Payload)
-			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(e.%s)\n\t}\n}\n\n",
-				target, inv.Field, target, inv.Field, inv.PayloadField)
-			continue
-		}
-		if inv.Param != "" && inv.ParamType != "" {
+		if len(inv.Params) > 0 {
+			var decl, call []string
+			for _, p := range inv.Params {
+				decl = append(decl, p.Name+" "+golang.IRTypeToGo(p.Type))
+				call = append(call, p.Name)
+			}
 			// Detached while it runs: a widget calls it after taking the value,
 			// so the handler's write-back of the bound var is a no-op there,
 			// while here it would set a new value and fire the callback again.
-			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
+			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", name, strings.Join(decl, ", "))
 			// A commit hands on text the entry already holds, since a user
 			// cannot submit what they have not typed. Put it there first
 			// without firing OnChanged, as gtk4's invoker does, or a
 			// binding's write-back setting it would fire @input.
-			if inv.Field == "OnSubmitted" && inv.ParamType == "string" {
+			if inv.Field == "OnSubmitted" && len(inv.Params) == 1 && golang.IRTypeToGo(inv.Params[0].Type) == "string" {
+				v := inv.Params[0].Name
 				fmt.Fprintf(b, "\tif oc := m.%s.OnChanged; m.%s.Text != %s {\n\t\tm.%s.OnChanged = nil\n\t\tm.%s.SetText(%s)\n\t\tm.%s.OnChanged = oc\n\t}\n",
-					target, target, inv.Param, target, target, inv.Param, target)
+					target, target, v, target, target, v, target)
 			}
 			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
-				target, inv.Field, target, inv.Field, inv.Param, target, inv.Field)
+				target, inv.Field, target, inv.Field, strings.Join(call, ", "), target, inv.Field)
 			continue
 		}
 		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)

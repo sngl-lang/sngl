@@ -28,10 +28,8 @@ func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 		Setters:   map[string]string{"title": "SetTitle", "visible": "SetVisible"},
 		Currents:  map[string]string{},
 		Handlers: map[string]fyneHandler{
-			"closed": {Field: "OnClosed", Signature: "func()"},
-			// Named for the parameter the binding's write-back handler is
-			// given (passPropBindings), which is what its body reads.
-			"visible": {Field: "OnVisible", Signature: "func(__visible bool)", Param: "__visible"},
+			"closed":  {Field: "OnClosed", Signature: "func()"},
+			"visible": {Field: "OnVisible", Signature: "func(visible bool)"},
 		},
 		toplevel: true,
 	}

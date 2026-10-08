@@ -12,7 +12,7 @@ output { none { html } }
 
 component main node {
     var name = "Alice"
-    input(value=name, @input(myEvent) { name = myEvent.value })
+    input(value=name, @input(myEvent) { name = myEvent })
     text(value=name)
 }
 
@@ -44,13 +44,13 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
-    state.name__inst0 = e.target.value;
+    state.name__inst0 = state.value__inst2;
     __n2.textContent = state.name__inst0;
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
   });
   function __sngl_init() {
@@ -62,4 +62,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bc7f601a2a0b694200547bd6ec089841
+pass sha256:bda5ed867f3f570be23ab3cc3dc2ea3e

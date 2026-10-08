@@ -258,10 +258,10 @@ func (m *Model) pageClosed() {
 }
 
 // pageVisible invokes the OnVisible callback on the #page widget; for tests.
-func (m *Model) pageVisible(__visible bool) {
+func (m *Model) pageVisible(visible bool) {
 	if cb := m.page.OnVisible; cb != nil {
 		m.page.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.page.OnVisible = cb
 	}
 }
@@ -414,7 +414,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:84e99169a6f6780105376546a7f19dde
 -- run/go/fyne --
-pass sha256:8de6eae83abdcb9fdcd8c3e1892f2753
+pass sha256:0de77cafc03f4cd1ebe6e2ff60431d9a
 -- run/kotlin/android --
 pass sha256:7b382830db80c398c8042c693ca3b2a5
 -- run/none/html --

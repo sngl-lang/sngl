@@ -46,7 +46,16 @@ func (w *snapWriter) nodes(nodes []*interp.Node, depth int) {
 // does not appear and the text its body renders does. A body-less one
 // (`component holder { var n = 0 }`) renders nothing at all, which falls out of
 // the same rule: its expansion is empty.
+//
+// A control is printed as the component the program wrote -- `input(...)` --
+// and not as the interpreter's Control its override renders: that primitive is
+// what a test's trigger reaches, standing in for a host's widget, and a widget
+// is what the snapshot of a compiled target shows.
 func (w *snapWriter) node(n *interp.Node, depth int) {
+	if standsInForWidget(n) {
+		w.writeOpen(n.Name, propsOf(n), depth, false)
+		return
+	}
 	if n.IsUserComponent() {
 		w.nodes(n.Children, depth)
 		return
@@ -58,6 +67,13 @@ func (w *snapWriter) node(n *interp.Node, depth int) {
 	}
 	w.nodes(n.Children, depth+1)
 	fmt.Fprintf(w.b, "%s}\n", indent(depth))
+}
+
+// standsInForWidget reports whether n renders nothing but the interpreter's
+// Control primitive.
+func standsInForWidget(n *interp.Node) bool {
+	return len(n.Children) == 1 && n.Children[0].Component != nil &&
+		n.Children[0].Component.Intrinsic == interp.ControlIntrinsic
 }
 
 // prop is a rendered name/value pair (Name == "" for a bare marker).

@@ -272,13 +272,13 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 	m.__n0.SetVisible(m.visible__inst1)
 }
 
-func (m *Model) __n1_input_handler(s string) {
-	m.value__inst2 = s
+func (m *Model) __n1_input_handler(v string) {
+	m.value__inst2 = v
 	m.__n1.SetText(m.value__inst2)
 }
 
-func (m *Model) __n1_change_handler(s string) {
-	m.value__inst2 = s
+func (m *Model) __n1_change_handler(v string) {
+	m.value__inst2 = v
 	m.__n1.SetText(m.value__inst2)
 }
 
@@ -477,8 +477,6 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
-data class SnglInputEvent(val value: String)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -502,9 +500,8 @@ fun MainScreen() {
         }
         Column {
             Text(text = "user widget", modifier = Modifier.safeDrawingPadding())
-            OutlinedTextField(value = value__inst2, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
-                val e = SnglInputEvent(newValue)
-                value__inst2 = e.value
+            OutlinedTextField(value = value__inst2, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+                value__inst2 = v
             })
         }
     }
@@ -532,11 +529,11 @@ body { font-family: system-ui, sans-serif; }
   state.value__inst2 = state.name__inst0;
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n1.addEventListener("input", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst2 = e.target.value;
+    state.value__inst2 = e.currentTarget.value;
     __n1.value = state.value__inst2;
   });
   function __sngl_init() {
@@ -549,10 +546,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:336d9a9be809894d3a84f831b6d90551
 -- run/go/fyne --
-pass sha256:1ab26c285c40e9526a27a4a4e199bbd5
+pass sha256:cfcef221703e4ed377826d288dbcbb66
 -- run/go/gtk4 --
 pass sha256:73b400f8a2d7d0cf2ed3fa3095ffb8c0
 -- run/kotlin/android --
-pass sha256:cf0ce440d3f203ba2561312e88a75c34
+pass sha256:1169ba57e4bf20144a19b7ba439dd7d8
 -- run/none/html --
-pass sha256:53288f150aef850270a3fe1327a34a44
+pass sha256:96ffbef5bbef781cbd8d07e532ee0d64

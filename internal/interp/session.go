@@ -152,22 +152,12 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 	if !ok {
 		return nil, fmt.Errorf("no node at %s", key)
 	}
+	if d, name := forwardingDescendant(n, event); d != nil {
+		n, event = d, name
+	}
 	env := n.Env
 	if env == nil {
 		env = s.Env
-	}
-	if n.CompEnv.cellByEvent(n.Inst, event) && len(args) > 0 {
-		n.CompEnv.writeCells(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])})
-		if !boundByEvent(n.Inst, event) && !hasHandler(n.Handlers, event) {
-			s.Env.RebindFrom(env)
-			return s.Sync()
-		}
-	}
-	bound := boundByEvent(n.Inst, event)
-	if bound && len(args) > 0 {
-		if err := env.writeBindings(n.Inst, event, []any{coerceEventArg(eventPayload(n.Inst, event), args[0])}); err != nil {
-			return nil, err
-		}
 	}
 	for _, h := range n.Handlers {
 		if h.Name != event {
@@ -183,20 +173,7 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 		s.Env.RebindFrom(env)
 		return s.Sync()
 	}
-	if bound {
-		s.Env.RebindFrom(env)
-		return s.Sync()
-	}
 	return nil, fmt.Errorf("%s declares no @%s", key, event)
-}
-
-func hasHandler(hs []Handler, event string) bool {
-	for _, h := range hs {
-		if h.Name == event {
-			return true
-		}
-	}
-	return false
 }
 
 // Reload replaces the program with a freshly checked one and reports the

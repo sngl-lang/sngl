@@ -24,7 +24,7 @@ ui.window {
             ui.input(
                 value = name,
                 placeholder = $"Enter your name",
-                @input(e) { name = e.value },
+                @input(e) { name = e },
             )
         }
 

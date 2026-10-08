@@ -9,8 +9,8 @@ var last = ""
 
 window {
     vbox {
-        input #box(@change(e) { last = "got " + e.value })
-        select #pick(options=["x", "y"], @change(e) { last = "sel " + e.value })
+        input #box(@change(e) { last = "got " + e })
+        select #pick(options=["x", "y"], @change(e) { last = "sel " + e })
     }
 }
 `
@@ -38,7 +38,7 @@ func TestChangeCarriesTheCommittedValue(t *testing.T) {
 }
 `
 
-// An input's @change fires on commit with the committed text, the payload the
+// An input's @change fires on commit with the committed text, the value the
 // interpreter gives.
 func TestAnInputChangeRuns(t *testing.T) {
 	runEmitted(t, "fyne-input-change-", []byte(generateFyneModelBuilt(t, inputChangeSrc)), inputChangeDriver)

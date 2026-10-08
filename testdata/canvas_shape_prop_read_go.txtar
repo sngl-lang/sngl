@@ -292,10 +292,10 @@ func (m *Model) wClosed() {
 }
 
 // wVisible invokes the OnVisible callback on the #w widget; for tests.
-func (m *Model) wVisible(__visible bool) {
+func (m *Model) wVisible(visible bool) {
 	if cb := m.w.OnVisible; cb != nil {
 		m.w.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.w.OnVisible = cb
 	}
 }
@@ -342,4 +342,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:e2a56daa71314f462cd9a64aa86dc1a9
 -- run/go/fyne --
-pass sha256:f069b30a880586f7bd5620c7919139d7
+pass sha256:54fefc63ab6ee16dd4e6c23e6f8ee58f

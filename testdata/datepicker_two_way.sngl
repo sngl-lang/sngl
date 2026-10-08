@@ -15,10 +15,10 @@ component picker node {
 
 func testPickWritesTheBinding(t Test, c picker) {
     var day time.date = "2024-03-05"
-    c.d.change({value=day})
+    c.d.change(day)
     t.assert(c.picked == day)
     t.assert(c.changes == 1)
-    c.d.change({value=null})
+    c.d.change(null)
     t.assert(c.picked == null)
     t.assert(c.changes == 2)
 }

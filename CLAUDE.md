@@ -190,7 +190,7 @@ component back as a signature.
 ## Event syntax
 
 An event declares the parameters its handlers receive **as a function
-declares its own**: `@pick(index int, label string)`, `@change(e ChangeEvent)`.
+declares its own**: `@pick(index int, label string)`, `@change(checked bool)`.
 It is the same list read by the same code -- `EventParams` is `lparen [ ParamList ] rparen` in the grammar, the builder reads it with
 `buildParamList`, and the checker resolves it with `buildParams` -- so each
 parameter is named and typed, and `ir.EventDecl.Params` is that list. The
@@ -228,13 +228,26 @@ one with a type other than its position's, is a positioned error
 widget's event. An event used as a callback (`eventAsFunc`) takes the event's
 parameters exactly, or none.
 
-A host widget's event — a DOM click, a Fyne callback, a boundary's `@error` —
-hands its handler one value, and `EventDecl.Payload()` is the type the code
-dispatching one reads. A parameter list reaches a backend through a *user*
-component's event, where passInlinePure substitutes it and
-passInstanceEvents turns it into a func-typed prop with that signature;
-`testdata/event_params.txtar` and `testdata/event_params_instance.txtar` are
-the two routes.
+**An event's parameters are what it carries; there are no payload structs.**
+`sngl:ui` declares each event as a function declares its parameters:
+`@change(checked bool)` on a checkbox, `@input(value string)` on an input,
+`@change(value option<time.date>)` on a datepicker, `@click()` carrying
+nothing. A struct handed to a handler whole stays where the value *is* one:
+a boundary's `@error(e error)`, a user event whose author chose one. A host
+widget's own event is declared the host's way and read by the override that
+wraps it, which hands on the parameters the `sngl:ui` event declares (see
+*An event's parameters are its declaration's*). A parameter list reaches a
+backend through a *user* component's event, where passInlinePure substitutes
+it and passInstanceEvents turns it into a func-typed prop with that
+signature; `testdata/event_params.txtar` and
+`testdata/event_params_instance.txtar` are the two routes, and
+`testdata/ui_event_params.txtar` is the library's events on every target.
+
+**A test fires an event as the program would.** `c.box.change(true)`,
+`c.f.input(value="x")`, `c.b.click()`: a trigger's arguments bind to the
+event's parameters as an emit's do, positionally or by name, all of them.
+`c.row[1].change(true)` names one of the nodes a loop rendered under one
+id.
 
 ## Loop forms
 
@@ -611,7 +624,7 @@ because grouping by kind splits every subject in two.
 The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`, the error channel and `root`, the family a package body accepts. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: `stack` (pages one on top of another, `current`/`go`/`back` as `#[intrinsic]` methods each target answers), `page` and the unexported family `_page` it is the one member of, and `link`. See **Navigation** below.
@@ -1883,38 +1896,63 @@ declaration itself. Two things about the name that are easy to get wrong:
   callback carries an `int` user_data and cannot hold a Go pointer at all,
   which is what `pkg/go/cbind` is. The test is whether the host asked for it.
 
-**An event's payload is its declaration's, and each target hands it over in
-its own terms.** `sngl:ui` declares one struct per kind of event
-(`lib/ui/events.sngl`): `ChangeEvent{value string}` for a committed text or
-choice, `ToggleEvent{checked bool}` for a checkbox's and a toggle's flip,
-`DateEvent{value option<time.date>}` for a datepicker's pick (an input on
-every target: html's date input, gtk4's GtkCalendar, fyne's DateEntry,
-bubbletea's `tui.DateInput` and android's `SnglDateField`, the last typed or
-picked from Material's dialog),
-`ClickEvent{}` carrying nothing. A handler's parameter is typed by the
-component's `@event`, and a platform override forwards the host's value one of
-two ways: `change()` with no argument binds the handler's parameter to the
-override's own host event, which the emitter reads fields off
-(`e.target.checked`, fyne's `OnChanged(b bool)`, gtk4's
-`gtk_check_button_get_active`, and its calendar's day through
-`snglCalendarDate` or `gtk4rt.CalendarGetDate`); `change({checked = on})`
-builds the payload in place -- html's datepicker builds its date from the
-input's "YYYY-MM-DD" text -- and `bindEventParams` reads each field where it was built, holding one
-computed from state in a temp so a handler that writes that state reads the
-value the event carried (bubbletea's `{checked = !checked}`). A `:prop` binding
-writes back from the payload's field of the prop's type (`injectBind`) rather
-than toggling, since a host that reports its state also reports it when the
-program set it; `sngl test`'s interpreter, which runs the checked IR, does the
-same in `writeBindings`. A test's `c.box.change({checked=true})` reaches the
-platform's input path -- the element's state and a dispatched event on html,
-the widget's state on gtk4, the callback on fyne -- except on bubbletea and
-android, where a key press and a click flip the control whatever the payload
-says. The shake declares a library payload a handler or a test names, and each
-Go and Kotlin emitter prunes the ones nothing it wrote reads
-(`golang.PruneStructDecls`, `kotlin.PruneLibraryDataClasses`), html's
-`pruneDecls` doing the same for a constructor.
-`testdata/toggle_change_payload.txtar` and `canvas_click.txtar` are the code,
-`cmd/sngl/testdata/toggle_change_payload_runs.txt` the answer.
+**An event's parameters are its declaration's, and an override reads what the
+host reports and writes the prop it reports.** A platform override handles
+its host widget's event, writes the two-way prop the control holds from what
+the host reported, and emits the `sngl:ui` event with the same value:
+
+```sngl
+html.input(type="checkbox", checked=checked, @change(e) {
+    checked = e.currentTarget.checked
+    change(checked)
+})
+```
+
+The write is what `passPropBindings` already makes of a body writing its own
+two-way prop -- the `@checked` report a `:checked` binding's handler answers --
+so nothing guesses which event reports a prop or which of its values does.
+There used to be such a guess (`injectNativeEmit`): candidate event names by
+the prop's type, a payload field matched by type, and a toggle where none
+matched. Each target reads its host its own way, in its own `.sngl`:
+
+- **html**'s element declares the DOM's event as an external struct,
+  `#[js.native("Event")] struct Event { currentTarget Target }`, so a handler
+  on an element is handed the DOM event and reads `e.currentTarget.value`.
+- **fyne**'s primitives declare an event vocabulary by type, as their props
+  are -- `@change(text string)`, `@toggle(flag bool)`, `@adjust(number int)`,
+  `@pick(date option<time.date>)` -- and a `Handler` names the Go callback
+  whose `signature` spells the same parameters in Go. The promoted handler
+  takes the SNGL handler's own parameters (`namedAsHandler`), the declaration
+  and not a copy, so its body reads them by symbol; a Go lambda scopes its
+  parameters as locals (`evalLambda`), or one named like a component's var
+  read the var.
+- **gtk4**'s GIR signals hand their callback the instance they fired on, which
+  is what every generated event now declares, `@toggled(self GtkCheckButton)`; a component may name itself in its own signature for this.
+  The override reads that widget with a getter `gtk4.sngl` declares --
+  `checkActive`, `switchActive`, `entryText`, `calendarDate`, platform
+  intrinsics answered where a handler body is translated (`readWidgets`),
+  since which getter they become depends on the file's mode. The trampoline
+  passes nothing, so a signal handler's `self` is the node it is connected
+  on (`selfIsNode`); a widget a handler lifted out of a component built at
+  run time hands on arrives as a value and is asserted to its field's Go type.
+- **android**'s Compose callbacks pass the value: `func(on) { checked = on; change(on) }`; one passing nothing (radio's `onClick`) names the loop's
+  option.
+- **bubbletea**'s key press flips the state itself: `checked = !checked; change(checked)`.
+- **none** renders a `Control<T>` primitive (`none:Control`) the trigger
+  reaches, whose handler writes the prop; the snapshot prints the `sngl:ui`
+  component in its place.
+
+A test's trigger reaches the platform's input path: html writes the
+arguments, by their declared names, onto the element and the dispatched event;
+gtk4 sets the widget's state (which fires the signal) or its text; fyne calls
+the callback; bubbletea and android press the key and click the control,
+which flips it whatever the test passed. The interpreter enters at the node
+the override renders whose handler emits the event (`forwardingDescendant`),
+and a write of an instance's bound two-way prop writes the var its call site
+bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
+`ui_event_params.txtar` and `canvas_click.txtar` are the code,
+`cmd/sngl/testdata/toggle_change_payload_runs.txt` and
+`ui_event_params_runs.txt` the answer.
 
 **A slot population is a scope**, as a component declaration's body is --
 it reads like one and is scoped like one. Its node ids are hoisted there
@@ -2341,7 +2379,7 @@ no answer, since all it says is where the cell starts. A two-way prop cannot
 itself be `const` (`checkConstProp`), so the callee is the only question. The
 interpreter keeps the cell natively, on the prop's symbol in the instance's
 cached env: `bindProps` binds it on the first mount only, a node's prop shows
-the cell, and `writeCells` writes it from the payload before the handler runs.
+the cell, and the override's handler writes it as it would write a bound one.
 The interpreter also answers a `#id` read in a view now (`bindHandle`), which it
 never did for any prop. `testdata/unbound_prop_state.txtar`,
 `cmd/sngl/testdata/unbound_prop_state_runs.txt` and
@@ -2368,10 +2406,10 @@ away -- `listItem`'s checkbox under `if task == Task.none`, whose operands meet
 as constants only after the splice -- named a widget nobody built; the shake
 drops a promoted handler nothing names (`dropDetachedHandlers`), from every
 component's funcs as well as the package's, since a root component keeps its
-own. A handler lifted out of a slot body relays its event whole, which gtk4's
-parameterless trampoline answers by building the one-field payload from the
-widget (`codegen.SubstituteEventPayload`). The shake roots the payload types
-an instance's events and a closure's parameters name. And the test invokers:
+own. A handler lifted out of a slot body relays its event whole, which on
+gtk4 is the widget its signal fired on (see *An event's parameters are its
+declaration's*). The shake roots the types an instance's events and a
+closure's parameters name. And the test invokers:
 fyne's commit sets the entry's text quietly first, as gtk4's does, and
 bubbletea's writes the binding back before the handler, as Update does.
 
@@ -3639,9 +3677,9 @@ rules keep them agreeing:
   on Go and JS; on android the state members MainScreen spells as `state.<x>`,
   rebound to the instance). Each test starts from a fresh one — a new Model on
   the Go targets, a remounted page on html.
-- **An event invoker takes the widget-level value**: `c.f.input({value=v})`
-  hands the invoker `v`, which it puts in the widget before firing the one
-  event, as android's `performTextReplacement` does.
+- **An event invoker takes the event's arguments**: `c.f.input("v")` hands
+  the invoker `"v"`, which it puts in the widget before firing the one event,
+  as android's `performTextReplacement` does.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

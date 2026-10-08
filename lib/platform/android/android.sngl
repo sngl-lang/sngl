@@ -81,13 +81,11 @@ func install(dir string)
 // A func-typed prop is a Compose lambda argument, and the override supplies
 // the lambda: its body is emitted where the argument goes, so what the callback
 // does is ordinary code in this file rather than a case in the codegen. A
-// parameter typed as an event payload is the SNGL event, built from the value
-// Compose passes; one typed as that value is the value. A callback Compose
-// passes nothing to has neither, so the override names the value itself and
-// builds the event from the value it does have — `change({value = opt})`
-// in radio below. An event is handed its payload, never a value to build one
-// from: a shorthand for a single-field payload would stop checking the moment
-// that payload gained a second field.
+// callback's parameters are the values Compose passes, and the override writes
+// the prop the callback reports and hands the value on to the SNGL event:
+// `func(on) { checked = on; change(on) }`. A callback Compose passes nothing to
+// has no value to hand on, so the override names the value itself --
+// `value = opt` in radio below.
 //
 // A **slot** is the other kind of lambda Compose takes: content rather than a
 // callback. A named slot a call site populated is emitted as that argument,
@@ -251,9 +249,8 @@ component OutlinedTextField(
     minLines      int,
     readOnly      bool,
     modifier      ui.Style,
-    // Compose passes the new text; the SNGL event a handler reads is built
-    // from it at the boundary, which is what declaring the payload says.
-    onValueChange func(e ui.InputEvent),
+    // Compose passes the new text.
+    onValueChange func(value string),
     label         component ui.node,
 ) ui.node
 

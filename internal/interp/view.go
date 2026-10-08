@@ -259,6 +259,73 @@ func (v *View) Handling(event string) *Node {
 	return handlingDescendant(root, event)
 }
 
+// forwardingDescendant is the node a host reports event through, when n is a
+// component whose body hands that event on: the first node under n, in mount
+// order, whose handler emits event from n's instance -- the primitive an
+// override renders, `Control(@change(on) { checked = on; change(on) })`. The
+// handler it carries is returned with it. A trigger enters there rather than
+// at n's call site, so the override writes the prop it reports as a host's
+// report would make it, and its emit runs the call site's handler.
+//
+// Only the nodes n's own body rendered are asked: another component's
+// instance below them emits that component's events, not n's.
+func forwardingDescendant(n *Node, event string) (*Node, string) {
+	if n == nil || !n.Expanded {
+		return nil, ""
+	}
+	var find func(ns []*Node) (*Node, string)
+	find = func(ns []*Node) (*Node, string) {
+		for _, k := range ns {
+			for _, h := range k.Handlers {
+				if fn, ok := h.Body.(*ir.Func); ok && emitsEvent(fn.Block, event) {
+					return k, h.Name
+				}
+			}
+			if k.Expanded {
+				continue
+			}
+			if d, name := find(k.Children); d != nil {
+				return d, name
+			}
+		}
+		return nil, ""
+	}
+	return find(n.Children)
+}
+
+// instanceBody is what the component instance a handle map names rendered: n
+// itself once its body is mounted beneath it, and otherwise a mount of the
+// instance's own scope. A map a test reads off a handle was taken when the
+// node was, before the body beneath it was, so the node it carries holds none
+// of it.
+func instanceBody(m map[string]any, n *Node) *Node {
+	if n != nil && n.Expanded {
+		return n
+	}
+	ce, _ := m["__compEnv"].(*Env)
+	if ce == nil || len(ce.BodyStmts) == 0 {
+		return n
+	}
+	view, err := Mount(ce)
+	if err != nil {
+		return n
+	}
+	return &Node{Children: view.Roots, Expanded: true}
+}
+
+// emitsEvent reports whether stmts emit event, at any depth of their blocks.
+func emitsEvent(stmts []ir.Stmt, event string) bool {
+	found := false
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if e, ok := n.(*ir.Emit); ok && e.Name == event {
+			found = true
+			return ir.SkipDir
+		}
+		return nil
+	})
+	return found
+}
+
 // handlingDescendant is the first node under n, in mount order, carrying a
 // handler for event: where an event a component declares but its call site
 // did not handle comes from. A test clicking a `nav.link` clicks what the

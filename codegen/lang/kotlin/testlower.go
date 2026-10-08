@@ -183,7 +183,7 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	if carriesState(c.Args) {
 		// The tag sits on the override's root, the Row around the control and
 		// its label, so the click targets the toggleable inside it. It flips
-		// the control whatever the payload says: this is the input path, as
+		// the control whatever the test passed: this is the input path, as
 		// bubbletea's key press is.
 		tag := fmt.Sprintf("androidx.compose.ui.test.hasTestTag(%q)", id)
 		return fmt.Sprintf("composeTestRule.onNode(androidx.compose.ui.test.isToggleable() and (%s or androidx.compose.ui.test.hasAnyAncestor(%s))).performClick(); composeTestRule.waitForIdle()", tag, tag), true
@@ -207,11 +207,10 @@ const (
 )
 
 // composeAction maps a SNGL event name + invocation args to its
-// Compose-UI-test equivalent. Input/change events accept a single
-// stdlib event struct (InputEvent{value="x"}); composeAction pulls
-// the `value` field out and feeds it to performTextReplacement,
-// which clears the field first and then inserts — matching the
-// "test sets the value" semantic regardless of prior content.
+// Compose-UI-test equivalent. Input/change events take the text the field
+// now holds, which performTextReplacement puts there: it clears the field
+// first and then inserts, matching the "test sets the value" semantic
+// regardless of prior content.
 func composeAction(event string, args []ir.CallArg) string {
 	switch event {
 	case "click":
@@ -223,45 +222,24 @@ func composeAction(event string, args []ir.CallArg) string {
 	return ""
 }
 
-// carriesState reports whether a trigger's payload is a control's on/off
-// state -- a struct literal holding a bool, ToggleEvent's `checked`.
+// carriesState reports whether a trigger hands a control its on/off state --
+// a checkbox's or a toggle's `@change(checked bool)`.
 func carriesState(args []ir.CallArg) bool {
-	if len(args) != 1 {
+	if len(args) != 1 || args[0].Value == nil {
 		return false
 	}
-	sl, ok := args[0].Value.(*ir.StructLit)
-	if !ok {
-		return false
-	}
-	for _, f := range sl.Fields {
-		if f.Value == nil {
-			continue
-		}
-		if t := f.Value.ExprType(); t != nil && t.Kind == ir.TypeBool {
-			return true
-		}
-	}
-	return false
+	t := args[0].Value.ExprType()
+	return t != nil && t.Kind == ir.TypeBool
 }
 
-// extractEventValue pulls the `value` field expression out of a
-// single-arg InputEvent / ChangeEvent struct literal, returning a
-// Kotlin source string for the underlying value. Falls back to an
-// empty literal when the shape doesn't match.
+// extractEventValue is the Kotlin source for the value a trigger hands an
+// input or change event, its one argument, or an empty literal when it hands
+// none.
 func extractEventValue(args []ir.CallArg) string {
 	if len(args) != 1 {
 		return "\"\""
 	}
-	sl, ok := args[0].Value.(*ir.StructLit)
-	if !ok {
-		return lowerTestExpr(args[0].Value, TestSurface{}, nil)
-	}
-	for _, f := range sl.Fields {
-		if f.Name == "value" {
-			return lowerTestExpr(f.Value, TestSurface{}, nil)
-		}
-	}
-	return "\"\""
+	return lowerTestExpr(args[0].Value, TestSurface{}, nil)
 }
 
 // lowerTestExpr translates a SNGL test expression to Kotlin source.

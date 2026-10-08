@@ -142,11 +142,24 @@ func emitComponentInstance(
 			// Model's own slot funcs type it (see emitIRSlotFunc).
 			params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
 		}
+		block := fn.Block
+		if fn.LoweredFromTag != "" {
+			// A handler a widget's signal calls, promoted onto the record: the
+			// trampoline passes it nothing, so the signal's instance is the
+			// node it is attached to, as emitIRPromotedHandler reads it for
+			// one on the Model.
+			nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+			if mtr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
+				block = selfIsNode(block, fn.Params, &ir.Ident{Name: nodeID, IsElementRef: true})
+				params = nil
+			}
+		}
+		block = readWidgets(block, mtr.widgetReader())
 		emitted := &ir.Func{
 			Name:   instanceMethodName(fn),
 			Params: params,
 			Return: fn.Return,
-			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
+			Block:  codegen.WalkLowered(context.Background(), block, mtr),
 		}
 		for _, line := range igc.EmitFuncDef(emitted) {
 			methods.WriteString(line)

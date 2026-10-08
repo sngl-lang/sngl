@@ -8,12 +8,8 @@ container holds that in the canvas's place. gtk4 draws one in a
 controller does, and its `pressed` passes `(n_press, x, y)` ahead of the
 user_data the connect trampoline reads, so it has a trampoline of its own.
 
-No Fyne or GTK signature replaces the handler's SNGL parameter, so it keeps it
-and is handed the declared payload, a `ClickEvent`. That is why a payload named
-by a handler is declared: before, the handler said `ClickEvent` and nothing
-emitted the type. `ClickEvent` has no fields -- nothing reports where the click
-landed -- so a test may write `click()` or `click({})` and the Go invoker takes
-nothing.
+A canvas's `@click()` passes nothing -- nothing reports where the click
+landed -- so the handler takes no parameter and the Go invoker takes nothing.
 
 A test's `c.board` is found for a canvas written `draw.canvas #board`: the
 lookup resolved only a bare component name, so a node written through an import
@@ -46,11 +42,11 @@ component main node {
 
     vbox {
         text(value="hits {hits}")
-        draw.canvas #board(width=40px, height=40px, @click(e) { hits += 1 }) {
+        draw.canvas #board(width=40px, height=40px, @click { hits += 1 }) {
             draw.circle(cx=20.0, cy=20.0, r=10.0)
         }
         for var x = xs {
-            draw.canvas(width=40px, height=40px, @click(e) { hits += x }) {
+            draw.canvas(width=40px, height=40px, @click { hits += x }) {
                 draw.circle(cx=20.0, cy=20.0, r=float(x) * 5.0)
             }
         }
@@ -60,7 +56,7 @@ component main node {
 func testClickCounts(t Test, c main) {
     c.board.click()
     t.assert(c.hits == 1)
-    c.board.click({})
+    c.board.click()
     t.assert(c.hits == 2)
 }
 
@@ -102,9 +98,6 @@ type Measurement struct {
 	Vw  float64
 	Vh  float64
 	Pct float64
-}
-
-type ClickEvent struct {
 }
 
 type CanvasStyle struct {
@@ -166,7 +159,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.Set__p0(x)
-			__n1.Set__on0(func(e ClickEvent) {
+			__n1.Set__on0(func() {
 				m.hits += x
 				m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 			})
@@ -174,7 +167,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__canvas0Instance(m, x, func(e ClickEvent) {
+			__n1__new := new__canvas0Instance(m, x, func() {
 				m.hits += x
 				m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 			})
@@ -195,7 +188,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) board_click_handler(e ClickEvent) {
+func (m *Model) board_click_handler() {
 	m.hits += 1
 	m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 }
@@ -242,7 +235,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.board.FillMode = canvas.ImageFillOriginal
 	m.board.SetMinSize(fyne.NewSize(40, 40))
 	m.boardTap = fynelayout.NewTap(m.board)
-	m.boardTap.OnTapped = func() { m.board_click_handler(ClickEvent{}) }
+	m.boardTap.OnTapped = func() { m.board_click_handler() }
 	m.__n2.Add(m.boardTap)
 	m.__renderSlot0(m.__n2)
 	content := fyne.CanvasObject(m.__n2)
@@ -254,7 +247,7 @@ type __canvas0Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  int
-	__prop___on0 func(ClickEvent)
+	__prop___on0 func()
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
@@ -263,7 +256,7 @@ type __canvas0Instance struct {
 	__n3Tap      *fynelayout.Tap
 }
 
-func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEvent)) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -277,9 +270,9 @@ func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEven
 	c.__n3.SetMinSize(fyne.NewSize(40, 40))
 	c.__n3Tap = fynelayout.NewTap(c.__n3)
 	c.__n3Tap.OnTapped = func() {
-		func(__on0_0 ClickEvent) {
-			c.__prop___on0(__on0_0)
-		}(ClickEvent{})
+		func() {
+			c.__prop___on0()
+		}()
 	}
 	c.Root = c.__n3Tap
 	return c
@@ -293,7 +286,7 @@ func (c *__canvas0Instance) Set__p0(__v int) {
 	c.__n3.Refresh()
 }
 
-func (c *__canvas0Instance) Set__on0(__v func(ClickEvent)) {
+func (c *__canvas0Instance) Set__on0(__v func()) {
 	c.__prop___on0 = __v
 }
 
@@ -619,9 +612,6 @@ type Measurement struct {
 	Pct float64
 }
 
-type ClickEvent struct {
-}
-
 type CanvasStyle struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -720,14 +710,14 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
 			__n1.Set__p0(x)
-			__n1.Set__on0(func(e ClickEvent) {
+			__n1.Set__on0(func() {
 				m.hits += x
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__canvas0Instance(m, x, func(e ClickEvent) {
+			__n1__new := new__canvas0Instance(m, x, func() {
 				m.hits += x
 			})
 			__n1 = __n1__new
@@ -747,7 +737,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) board_click_handler(e ClickEvent) {
+func (m *Model) board_click_handler() {
 	m.hits += 1
 	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(m.__n0)), C.CString(("hits " + fmt.Sprint(m.hits))))
 }
@@ -765,7 +755,7 @@ type __canvas0Instance struct {
 	Root         *C.GtkWidget
 	__model      *Model
 	__prop___p0  int
-	__prop___on0 func(ClickEvent)
+	__prop___on0 func()
 	__root       *C.GtkBox
 	__slot0      []*C.GtkWidget
 	__slot0_at   *C.GtkWidget
@@ -773,7 +763,7 @@ type __canvas0Instance struct {
 	__n3Gesture  *C.GtkGesture
 }
 
-func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEvent)) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -786,9 +776,9 @@ func new__canvas0Instance(__model *Model, __a___p0 int, __a___on0 func(ClickEven
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); c._canvasDraw1(cr) })
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(c.__n3), C.int((len(snglDrawFuncs) - 1)))
 	snglCallbacks = append(snglCallbacks, func() {
-		func(__on0_0 ClickEvent) {
-			c.__prop___on0(__on0_0)
-		}(ClickEvent{})
+		func() {
+			c.__prop___on0()
+		}()
 	})
 	c.__n3Gesture = C.sngl_connect_click(unsafe.Pointer(c.__n3), C.int((len(snglCallbacks) - 1)))
 	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n3))
@@ -801,7 +791,7 @@ func (c *__canvas0Instance) Set__p0(__v int) {
 	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(c.__n3)))
 }
 
-func (c *__canvas0Instance) Set__on0(__v func(ClickEvent)) {
+func (c *__canvas0Instance) Set__on0(__v func()) {
 	c.__prop___on0 = __v
 }
 
@@ -855,7 +845,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_drawing_area_set_content_height(m.board, C.int(40))
 	snglDrawFuncs = append(snglDrawFuncs, func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, 40, 40, ""); m._canvasDraw0(cr) })
 	C.sngl_drawing_area_set_draw(unsafe.Pointer(m.board), C.int((len(snglDrawFuncs) - 1)))
-	snglCallbacks = append(snglCallbacks, func() { m.board_click_handler(ClickEvent{}) })
+	snglCallbacks = append(snglCallbacks, func() { m.board_click_handler() })
 	m.boardGesture = C.sngl_connect_click(unsafe.Pointer(m.board), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(m.board)))
 	m.__renderSlot0(__n2)
@@ -918,7 +908,7 @@ window.__sngl_boot = () => {
   function testClickCounts(t, c) {
     c.board();
     t.assert(c.hits === 1);
-    c.board({});
+    c.board();
     t.assert(c.hits === 2);
   }
   function paintStyle(ctx, style) {
@@ -933,7 +923,7 @@ window.__sngl_boot = () => {
     const __root = document.createElement("div");
     __root.style.display = "contents";
     let __p0 = props.__p0;
-    let __on0 = props.__on0 ?? ((__e0) => {
+    let __on0 = props.__on0 ?? (() => {
     });
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
@@ -955,8 +945,8 @@ window.__sngl_boot = () => {
     let __n3 = document.createElement("canvas");
     __n3.setAttribute("width", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
     __n3.setAttribute("height", { px: 40, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n3.addEventListener("click", (__on0_0) => {
-      __prop___on0(__on0_0);
+    __n3.addEventListener("click", () => {
+      __prop___on0();
     });
     __root.appendChild(__n3);
     _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw1);
@@ -995,7 +985,7 @@ window.__sngl_boot = () => {
       if (__inst1_live.length > __inst1_i) {
         __n1 = __inst1_live[__inst1_i];
         __n1.__set___p0(x);
-        __n1.__set___on0((e) => {
+        __n1.__set___on0(() => {
           state.hits += x;
           __n0.textContent = "hits " + String(state.hits);
         });
@@ -1003,7 +993,7 @@ window.__sngl_boot = () => {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n1__new = __cf___canvas0({ __p0: x, __on0: (e) => {
+        let __n1__new = __cf___canvas0({ __p0: x, __on0: () => {
           state.hits += x;
           __n0.textContent = "hits " + String(state.hits);
         } });
@@ -1078,7 +1068,7 @@ window.__sngl_boot = () => {
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  $0.addEventListener("click", function(e) {
+  $0.addEventListener("click", function() {
     state.hits += 1;
     __n0.textContent = "hits " + String(state.hits);
   });
@@ -1093,8 +1083,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:41368d3e3774f847b706c9387eff014c
+pass sha256:459d5f3fec4ed5890b642714bc9bc6d9
 -- run/go/gtk4 --
-pass sha256:7d673d511d08f85fafc7f19a5256c966
+pass sha256:5e71276228582c884c8d96d4037a053e
 -- run/none/html --
-pass sha256:32adce2982b59b6f3d22c40c9c6aa352
+pass sha256:aabb6fa3826e853065c27bf95ab5df03

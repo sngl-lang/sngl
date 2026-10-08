@@ -11,7 +11,7 @@ component modal(
     title    string,
     closable bool,
     size     string,
-    @close(e DismissEvent),
+    @close(),
     content  ...component,
 ) node
 
@@ -35,7 +35,7 @@ component drawer(
     open    bool,
     side    string,
     size    string,
-    @close(e DismissEvent),
+    @close(),
     content ...component,
 ) node {}
 
@@ -82,7 +82,7 @@ component popover(
     open     bool,
     position string,
     openOn   string,
-    @close(e DismissEvent),
+    @close(),
     content  ...component,
 ) node {}
 

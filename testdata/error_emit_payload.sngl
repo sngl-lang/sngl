@@ -1,24 +1,24 @@
-// An `event(...)` hands over the payload its declaration says it carries.
-// Nothing checked that, so an override body could forward a value of any type
+// An `event(...)` hands over what its declaration says it carries. Nothing
+// checked that once, so an override body could forward a value of any type
 // and the mismatch surfaced as a type error in the generated program rather
-// than against the declaration that was wrong -- gtk4's checkbox forwarded a
-// bool into a ChangeEvent, and android's textarea forwarded an InputEvent into
-// one, which is a different declaration and so a different type.
+// than against the declaration that was wrong.
 //
-// The argument is the payload or there is none. A shorthand taking the single
-// field of a one-field payload would tie the rule to the payload's shape: the
-// day that struct gained a second field, every such call site would stop being
-// checked. The argument is checked against the payload, so an anonymous
-// literal is typed by the declaration and names nothing.
+// A struct parameter takes the struct, or the call forwards. A shorthand
+// taking the single field of a one-field struct would tie the rule to the
+// struct's shape: the day it gained a second field, every such call site would
+// stop being checked. The argument is checked against the parameter, so an
+// anonymous literal is typed by the declaration and names nothing.
 import . "sngl:ui"
 
 struct Payload {
     value string
 }
 
+struct Empty {}
+
 component emitter(
     @one(v Payload),
-    @none(e FocusEvent),
+    @none(e Empty),
 ) node {
     text(value="a", @click { one({value="x"}) })
     text(value="b", @click { one(Payload{value="y"}) })
@@ -35,14 +35,14 @@ component wrongType(@one(v Payload)) node {
     text(value="e", @click { one(flag) }) // ERROR(check) "cannot pass bool as Payload"
 }
 
-// A payload with no fields is still a payload: an empty literal is one, and a
+// A struct with no fields is still a struct: an empty literal is one, and a
 // value of another type is not.
-component emptyPayload(@none(e FocusEvent)) node {
+component emptyPayload(@none(e Empty)) node {
     text(value="f", @click { none({}) })
 }
 
-component emptyPayloadWrongType(@none(e FocusEvent)) node {
-    text(value="g", @click { none("x") }) // ERROR(check) "cannot pass string as FocusEvent"
+component emptyPayloadWrongType(@none(e Empty)) node {
+    text(value="g", @click { none("x") }) // ERROR(check) "cannot pass string as Empty"
 }
 
 component tooManyArgs(@one(v Payload)) node {

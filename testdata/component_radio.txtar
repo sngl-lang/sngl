@@ -362,7 +362,7 @@ window.__sngl_boot = () => {
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __p1 = props.__p1;
-    let __on0 = props.__on0 ?? ((__e0) => {
+    let __on0 = props.__on0 ?? (() => {
     });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
@@ -388,8 +388,8 @@ window.__sngl_boot = () => {
     __n0.checked = __prop___p0 === __prop___p1;
     __n0.disabled = false;
     __n0.setAttribute("type", "radio");
-    __n0.addEventListener("change", (__on0_0) => {
-      __prop___on0(__on0_0);
+    __n0.addEventListener("change", () => {
+      __prop___on0();
     });
     __n4.appendChild(__n0);
     let __n1 = document.createElement("span");
@@ -419,8 +419,8 @@ window.__sngl_boot = () => {
         __n2 = __inst1_live[__inst1_i];
         __n2.__set___p0(opt);
         __n2.__set___p1(state.sel);
-        __n2.__set___on0((__event) => {
-          state.sel = __event.value;
+        __n2.__set___on0(() => {
+          state.sel = opt;
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.sel);
@@ -431,8 +431,8 @@ window.__sngl_boot = () => {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
-        let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: (__event) => {
-          state.sel = __event.value;
+        let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
+          state.sel = opt;
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.sel);
@@ -493,4 +493,4 @@ pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
 pass sha256:d6182b44f38d98379c05d91c0398ad26
 -- run/none/html --
-pass sha256:5c8b034be24f230bca4188c3127f77d3
+pass sha256:45a0d18bd64ec8c786181e3692c0c262

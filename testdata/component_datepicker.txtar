@@ -249,7 +249,7 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n0_change_handler(d *time.Time) {
+func (m *Model) __n0_pick_handler(d *time.Time) {
 	m.value__inst0 = d
 	m.__n0.SetDate(m.value__inst0)
 }
@@ -275,7 +275,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewDateEntry()
 	m.__n0.SetDate(m.value__inst0)
 	m.__n0.SetPlaceHolder("Pick a date")
-	m.__n0.OnChanged = m.__n0_change_handler
+	m.__n0.OnChanged = m.__n0_pick_handler
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -867,7 +867,7 @@ window.__sngl_boot = () => {
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   __n0.addEventListener("change", function(e) {
-    state.value__inst0 = e.target.value;
+    state.value__inst0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
     __n0.value = state.value__inst0 !== null ? String(state.value__inst0) : "";
   });
   function __sngl_init() {
@@ -882,10 +882,10 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:d8d1ead30f6aff90d680c0ac173aee32
 -- run/go/fyne --
-pass sha256:2f728d5ec39c7fe61838d38065f1b11c
+pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --
 pass sha256:e51d8b87b8ec51806497b14bacdc3719
 -- run/kotlin/android --
 pass sha256:0dd970b04703efe440e104a8eb079e8b
 -- run/none/html --
-pass sha256:5c21c5301aac936979bfcfad80311d29
+pass sha256:0dd52251f239491eadfdb23e5dbe3a22

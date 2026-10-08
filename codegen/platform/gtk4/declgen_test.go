@@ -55,7 +55,7 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 		"\n    spacing int,\n",
 		"\n    orientation dyn,\n",
 		"#[intrinsic(\"gtk4:GtkButton\")]\ncomponent GtkButton(",
-		"\n    @clicked,\n",
+		"\n    @clicked(self GtkButton),\n",
 		// Hyphenated GIR names are unwritable in SNGL as they stand, so the
 		// declaration carries the camel-cased spelling.
 		"\n    defaultWidth int,\n",
@@ -535,12 +535,12 @@ func TestClassInheritance_Merges(t *testing.T) {
 		t.Fatal(err)
 	}
 	decl := componentDecl(t, string(widgetSource(reg)), "GtkBox")
-	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy,\n"} {
+	for _, want := range []string{"\n    tooltipText string,\n", "\n    hexpand bool,\n", "\n    visible bool,\n", "\n    @destroy(self GtkBox),\n"} {
 		if !strings.Contains(decl, want) {
 			t.Errorf("the GtkBox declaration is missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{"\n    cssName ", "\n    @queryTooltip,\n"} {
+	for _, unwanted := range []string{"\n    cssName ", "\n    @queryTooltip("} {
 		if strings.Contains(decl, unwanted) {
 			t.Errorf("the GtkBox declaration carries %q, which the merge must withhold", unwanted)
 		}

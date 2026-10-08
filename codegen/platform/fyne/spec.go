@@ -45,13 +45,11 @@ type fyneArg struct {
 }
 
 // fyneHandler is the Fyne callback field one declared event is assigned to,
-// decoded from the SNGL `Handler` record. See that declaration for why
-// Signature is Fyne's shape rather than the SNGL event's, and what Param is
-// for.
+// decoded from the SNGL `Handler` record. Signature is Fyne's spelling of the
+// event's parameters.
 type fyneHandler struct {
 	Field     string
 	Signature string
-	Param     string
 }
 
 // fyneSpec is one widget's construction, decoded from the SNGL `Spec` record
@@ -268,7 +266,6 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 				var h fyneHandler
 				h.Field = specString(tag, "Handler.field", structField(sl, "field"))
 				h.Signature = specString(tag, "Handler.signature", structField(sl, "signature"))
-				h.Param = specString(tag, "Handler.param", structField(sl, "param"))
 				if _, err := signatureParams(tag, on, h.Signature); err != nil {
 					return nil, err
 				}

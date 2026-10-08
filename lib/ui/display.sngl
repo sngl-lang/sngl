@@ -4,7 +4,7 @@ component text(
     value      string, // the text shown
     selectable bool,   // lets the platform offer copy
     style      Style,
-    @click(e ClickEvent), // a tap or click, for text used as an action
+    @click(), // a tap or click, for text used as an action
 ) node
 
 component _example_text node {
@@ -21,8 +21,8 @@ component image(
     alt   string,    // the accessibility label
     fit   ObjectFit, // how the image is scaled into its frame
     style Style,
-    @click(e ClickEvent),
-    @load(e LoadEvent), // decoding completed
+    @click(),
+    @load(), // decoding completed
     // Fetching or decoding failed. The payload is the ambient `error` --
     // the value `error.raise` throws and a `boundary` catches, because a
     // failure is a failure whoever noticed it.
@@ -63,8 +63,8 @@ component chip(
     disabled  bool,
     focusable bool = true,
     style     Style,
-    @click(e ClickEvent),
-    @remove(e DismissEvent), // the remove affordance was used
+    @click(),
+    @remove(), // the remove affordance was used
 ) node {
     hbox(style={
         alignItems = center,
@@ -79,7 +79,7 @@ component chip(
     }) {
         text(value=label, @click { click() })
         if removable {
-            button(text="×", disabled=disabled, focusable=focusable, @click { remove({}) })
+            button(text="×", disabled=disabled, focusable=focusable, @click { remove() })
         }
     }
 }
@@ -107,7 +107,7 @@ component avatar(
     src      string,              // the image, a URL or asset path
     alt      string,              // the image's accessibility label
     style    Style,
-    @click(e ClickEvent),
+    @click(),
 ) node {
     if src != "" {
         image(
@@ -229,8 +229,8 @@ component table(
     sortable      bool,          // lets the user re-order by a column
     sortColumn    string,        // the column the rows are sorted by
     sortDirection SortDirection, // which way the sorted column runs
-    @select(e SelectEvent),      // the selection changed
-    @sort(e ChangeEvent),        // the user changed the sort
+    @select(),                   // the selection changed
+    @sort(column string),        // the user changed the sort
 ) node
 
 component _example_table node {
@@ -246,8 +246,8 @@ component tree(
     items     list<string>, // the visible row labels, in traversal order
     :selected string,       // the label of the selected row
     expanded  list<int>,    // the indices of the expanded nodes
-    @select(e SelectEvent), // a row was picked
-    @expand(e ExpandEvent), // the user expanded or collapsed a node
+    @select(),              // a row was picked
+    @expand(),              // the user expanded or collapsed a node
 ) node
 
 component _example_tree node {

@@ -1526,25 +1526,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		}
 	}
 
-	// Element-ref event invocation: `c.<id>.<event>(payload)`. When the
-	// field names a declared event on the addressed component, tag the
-	// call as an event trigger and type any payload arg against the
-	// event's declared type (so anonymous struct literals like
-	// InputEvent{value="x"} can be written {value="x"}).
+	// Element-ref event invocation: `c.<id>.<event>(args)`. When the field
+	// names a declared event on the addressed component, tag the call as an
+	// event trigger and bind its arguments as an emit's are: one per declared
+	// parameter, by position or by name -- `c.box.change(true)`,
+	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
 	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
 		event = evt.Name
-		if len(evt.Params) > 0 {
-			// Mark each param optional via a placeholder Default so
-			// `c.btn.click()` (zero args) and `c.entry.input({…})`
-			// (one struct arg) both pass arity, while each positional
-			// arg still gets its parameter's expected type.
-			argSig = &ir.FuncSig{Params: make([]*ir.Param, len(evt.Params))}
-			for i, p := range evt.Params {
-				argSig.Params[i] = &ir.Param{Name: p.Name, Type: p.Type, Default: &ir.Literal{Type: p.Type}}
-			}
-		}
+		argSig = &ir.FuncSig{Params: evt.Params}
 	}
 	args := c.checkCallArgs(call.Args, argSig)
 	if event == "" && isPrimitiveMethodReceiver(receiver) {
@@ -1583,6 +1574,11 @@ func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 // component-typed param/var and <id> matches a NodeInst inside c's
 // body. Returns nil for shapes the resolver doesn't recognise.
 func (c *checker) elementHostComponent(operand ast.Expr) *ir.Component {
+	// `c.row[1]`: one of the nodes a loop rendered under one id, which is the
+	// same component as each of the others.
+	if ix, ok := operand.(*ast.IndexExpr); ok {
+		operand = ix.Operand
+	}
 	sel, ok := operand.(*ast.SelectExpr)
 	if !ok {
 		return nil
@@ -4166,8 +4162,8 @@ func (c *checker) errorEventType() *ir.Type {
 		return nil
 	}
 	for _, e := range c.boundaryComp.Events {
-		if e.Name == "error" {
-			return e.Payload()
+		if e.Name == "error" && len(e.Params) == 1 {
+			return e.Params[0].Type
 		}
 	}
 	return nil

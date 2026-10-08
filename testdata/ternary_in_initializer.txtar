@@ -324,10 +324,10 @@ func (m *Model) homeClosed() {
 }
 
 // homeVisible invokes the OnVisible callback on the #home widget; for tests.
-func (m *Model) homeVisible(__visible bool) {
+func (m *Model) homeVisible(visible bool) {
 	if cb := m.home.OnVisible; cb != nil {
 		m.home.OnVisible = nil
-		cb(__visible)
+		cb(visible)
 		m.home.OnVisible = cb
 	}
 }
@@ -556,6 +556,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:63ef918482b8696b140f6cb97eac1e9b
 -- run/go/fyne --
-pass sha256:f08830608d25987ef01c0ff7c01464e1
+pass sha256:1e65f6af694f10b3bab5189256d769c9
 -- run/go/gtk4 --
 pass sha256:68b8d1ff6794daa0e67b7c5950b595b5

@@ -279,10 +279,6 @@ func (t *fyneTranslator) attachCanvasClick(id, event string, handler ir.Expr) []
 	if t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
 		t.invokerSink(fyneEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), Field: "OnTapped", Target: tap})
 	}
-	arg := ""
-	if pt, _ := codegen.HandlerPayload(handler); pt != nil {
-		arg = golang.IRTypeToGo(pt) + "{}"
-	}
 	tapRef := t.fieldRef(tap)
 	newTap := nativeCallAt("fynelayout.NewTap", fyneLayoutImportPath, []ir.Expr{t.fieldRef(id)}, ir.TypDyn)
 	return []ir.Stmt{
@@ -290,7 +286,7 @@ func (t *fyneTranslator) attachCanvasClick(id, event string, handler ir.Expr) []
 		&ir.Assign{
 			Target: &ir.Select{Operand: tapRef, Field: "OnTapped", Type: ir.TypDyn},
 			Op:     ast.AssignSet,
-			Value:  rawGoExpr(fmt.Sprintf("func() { %s(%s) }", t.gc.EvalExpr(t.qualifyHandlerFunc(handler)), arg)),
+			Value:  rawGoExpr(fmt.Sprintf("func() { %s() }", t.gc.EvalExpr(t.qualifyHandlerFunc(handler)))),
 		},
 	}
 }

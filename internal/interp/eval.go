@@ -1999,195 +1999,9 @@ func (env *Env) runEventHandlerValues(fn *ir.Func, vals []any) (any, error) {
 		if i >= len(vals) {
 			break
 		}
-		env.Set(p, coerceEventArg(p.Type, vals[i]))
+		env.Set(p, vals[i])
 	}
 	return env.execBlockForResult(fn.Block)
-}
-
-// coerceEventArg shapes what a host reported into what the handler declared.
-//
-// A toolkit reports positional values -- OnChanged hands over a string -- while
-// an event's payload is a declared struct, InputEvent{value string}. The
-// declaration is the only thing that knows which is which, so the adaptation
-// happens here rather than in a host that would have to know the field names.
-func coerceEventArg(want *ir.Type, v any) any {
-	if want == nil || want.Kind != ir.TypeStruct {
-		return v
-	}
-	if _, already := v.(*Struct); already {
-		return v
-	}
-	def, _ := want.Decl.(*ir.StructDef)
-	if def == nil || len(def.Fields) == 0 {
-		return v
-	}
-	// One value, one payload: it fills the first field. An event carrying more
-	// than one would need the host to report them in declaration order, which
-	// is what a Spec's param naming is for when that arrives.
-	out := NewStruct(def, want)
-	for i, f := range def.Fields {
-		if i == 0 {
-			out.Set(f.Name, v)
-			continue
-		}
-		out.Set(f.Name, zeroOf(f.Type))
-	}
-	return out
-}
-
-// zeroOf is the empty value of a type, for a payload field nothing reported.
-func zeroOf(t *ir.Type) any {
-	if t == nil {
-		return nil
-	}
-	switch t.Kind {
-	case ir.TypeString:
-		return ""
-	case ir.TypeBool:
-		return false
-	case ir.TypeInt:
-		return 0
-	case ir.TypeFloat:
-		return 0.0
-	}
-	return nil
-}
-
-// boundByEvent reports whether one of inst's `:prop` bindings is written back
-// by event, which boundPayloadField says.
-func boundByEvent(inst *ir.NodeInst, event string) bool {
-	if inst == nil {
-		return false
-	}
-	for _, b := range inst.Bindings {
-		if boundPayloadField(inst, b, event) != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// eventPayload is the payload type inst's component declares for event.
-func eventPayload(inst *ir.NodeInst, event string) *ir.Type {
-	if inst == nil || inst.Component == nil {
-		return nil
-	}
-	for _, e := range inst.Component.Events {
-		if e.Name == event {
-			return e.Payload()
-		}
-	}
-	return nil
-}
-
-// boundPayloadField is the field of event's payload that carries binding b's
-// new value: the one of the bound prop's type, which is what the lowering's
-// write-back reads on every compiled target.
-func boundPayloadField(inst *ir.NodeInst, b ir.PropBinding, event string) string {
-	comp := inst.Component
-	if comp == nil {
-		return ""
-	}
-	var propType *ir.Type
-	for _, p := range comp.Props {
-		if p.Name == b.PropName {
-			propType = p.Type
-		}
-	}
-	payload := eventPayload(inst, event)
-	if propType == nil || payload == nil {
-		return ""
-	}
-	sd, _ := payload.Decl.(*ir.StructDef)
-	if sd == nil {
-		return ""
-	}
-	for _, f := range sd.Fields {
-		if f.Type != nil && f.Type.Kind == propType.Kind {
-			return f.Name
-		}
-	}
-	return ""
-}
-
-// cellByEvent reports whether event writes one of the cells an instance keeps
-// for the two-way props its call site left unbound (ir.UnboundProps). env is
-// the instance's own scope, and nil for a node that is no component's.
-func (env *Env) cellByEvent(inst *ir.NodeInst, event string) bool {
-	if env == nil || inst == nil {
-		return false
-	}
-	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
-		if boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event) != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// writeCells is writeBindings for those cells: the payload's field of the
-// prop's type, written into the instance's scope, where bindProps leaves it
-// on every mount after the first.
-func (env *Env) writeCells(inst *ir.NodeInst, event string, vals []any) {
-	if env == nil || inst == nil || len(vals) == 0 {
-		return
-	}
-	st, ok := vals[0].(*Struct)
-	if !ok {
-		return
-	}
-	for _, p := range ir.UnboundProps(inst.Component, inst.Bindings) {
-		if field := boundPayloadField(inst, ir.PropBinding{PropName: p.Name}, event); field != "" {
-			v, _ := st.Get(field)
-			env.Set(p.Sym, v)
-			// The node's `#id` is bound to what the last mount showed
-			// (bindHandle); the handler about to run reads it before the
-			// next one does.
-			if inst.Handle != nil {
-				if m, ok := env.parentValue(inst.Handle).(map[string]any); ok {
-					m[p.Name] = v
-				}
-			}
-		}
-	}
-}
-
-// parentValue is sym's value in the scope env was mounted from, or nil.
-func (env *Env) parentValue(sym ir.Symbol) any {
-	if env.parent == nil {
-		return nil
-	}
-	v, _ := env.parent.Value(sym)
-	return v
-}
-
-// writeBindings writes an event's payload back through the node's bindings
-// before its handler runs, which is the order a compiled target runs them in.
-// `sngl test` runs the checked IR, where a binding is still the node's and no
-// lowering has made it a handler.
-func (env *Env) writeBindings(inst *ir.NodeInst, event string, vals []any) error {
-	if inst == nil || len(vals) == 0 {
-		return nil
-	}
-	st, ok := vals[0].(*Struct)
-	if !ok {
-		return nil
-	}
-	for _, b := range inst.Bindings {
-		field := boundPayloadField(inst, b, event)
-		if field == "" {
-			continue
-		}
-		v, _ := st.Get(field)
-		tmp := &ir.Param{Name: "__bound"}
-		env.Set(tmp, v)
-		err := env.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
-		delete(env.vals, tmp)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the
@@ -3041,20 +2855,24 @@ func (env *Env) underHandler(vals map[*ir.Context]any, fn func() (any, error)) (
 }
 
 // InvokeElementEvent runs the handler a rendered node carries for event, the
-// way a host reporting it would: the binding and the cell it writes first, then
-// the handler, in the scope the node was written in. It reports false when the
-// node handles nothing of the event.
+// way a host reporting it would, in the scope the node was written in. It
+// reports false when the node handles nothing of the event.
+//
+// A component whose body hands the event on enters where the host would
+// report it (forwardingDescendant): the override's handler writes the prop
+// the control reports, and its emit runs the call site's handler.
 //
 // A component whose call site handled nothing of the event still renders
 // something that reports it: the event reaches that, and the component's own
 // forwarding emit, if it has one, runs the call site's handler from there.
 func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() ([]any, error)) (any, bool, error) {
+	n, _ := m["__node"].(*Node)
+	if d, name := forwardingDescendant(instanceBody(m, n), event); d != nil {
+		return env.InvokeElementEvent(d.Map(), name, args)
+	}
 	h, _ := m["@"+event].(*ir.Func)
-	inst, _ := m["__inst"].(*ir.NodeInst)
-	cells, _ := m["__compEnv"].(*Env)
-	if h == nil && !boundByEvent(inst, event) && !cells.cellByEvent(inst, event) {
-		n, ok := m["__node"].(*Node)
-		if !ok || !n.Expanded {
+	if h == nil {
+		if n == nil || !n.Expanded {
 			return nil, false, nil
 		}
 		d := handlingDescendant(n, event)
@@ -3076,13 +2894,6 @@ func (env *Env) InvokeElementEvent(m map[string]any, event string, args func() (
 	}
 	provided, _ := m["__ownerContext"].(map[*ir.Context]any)
 	res, err := handlerEnv.underHandler(provided, func() (any, error) {
-		cells.writeCells(inst, event, vals)
-		if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
-			return nil, err
-		}
-		if h == nil {
-			return nil, nil
-		}
 		for i, p := range h.Params {
 			if i < len(vals) {
 				handlerEnv.Set(p, vals[i])

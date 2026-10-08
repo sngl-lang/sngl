@@ -1903,6 +1903,13 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	// Go rejected at the assignment and again for the missing return.
 	retType := goReturnType(n.Func.Return)
 
+	// The body reads its parameters as the locals they are: one sharing a
+	// field's name -- a platform override's `func(on bool)` inlined into a
+	// component with a `var on` -- read the field.
+	for _, p := range n.Func.Params {
+		gc = gc.WithLocal(p.Name)
+	}
+
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := gc.EvalExpr(ret.Value)

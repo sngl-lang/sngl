@@ -62,6 +62,10 @@ func init() {
 	g := &Generator{}
 	codegen.RegisterNative(platformName, g)
 	registerGIRScheme(g)
+	// The widget reads gtk4.sngl declares (`checkActive` and its siblings)
+	// are answered where a handler body is translated (readWidgets), since
+	// which getter a read becomes depends on the mode the file is emitted in.
+	codegen.DeclarePlatformImplements(platformName, "sngl:platform/gtk4")
 }
 
 // Generator implements codegen.PlatformGenerator for GTK4.

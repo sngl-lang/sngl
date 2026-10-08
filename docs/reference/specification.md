@@ -30,7 +30,7 @@ The core language is deliberately small. Two bodies of functionality live
 *outside* this specification and are required to build complete programs:
 
 - **The standard library** — components (`ui.text`, `ui.button`, `ui.vbox`,
-  …), types (`color`, `ui.Style`, the event payload structs, the
+  …), types (`color`, `ui.Style`, the
   `ui.measurement` and `time.duration` units), and functions, all written in
   SNGL and distributed as source under `lib/<package>/*.sngl`, one directory
   per importable package. A conforming implementation parses and checks the

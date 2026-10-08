@@ -1,4 +1,4 @@
-# A test drives a datepicker on every target: `c.d.change({value = day})`
+# A test drives a datepicker on every target: `c.d.change(day)`
 # commits a date, which the `:value` binding writes back.
 #
 # Each target's datepicker is an input with a value a test can put there:
@@ -48,7 +48,7 @@ component picker node {
 
 func testPick(t Test, c picker) {
     var day time.date = "2024-03-05"
-    c.d.change({value = day})
+    c.d.change(day)
     t.assert(c.picked == day)
 }
 -- testrun/android/kotlin/app.sngl/picker/1 --
@@ -62,7 +62,7 @@ sha256:4523baf012c7a8eb9b8a22ec7360bd5d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/picker/1 --
-sha256:af90fee4f436fc2a57b47bebfbe8f5cd
+sha256:9d3a67d858aac7624fd9c33e8e9ebf8d
 {
   "results": [
     {
@@ -72,7 +72,7 @@ sha256:af90fee4f436fc2a57b47bebfbe8f5cd
   ]
 }
 -- testrun/fyne/go/app.sngl/picker/1 --
-sha256:a0dd27614547201f48281877fe573059
+sha256:21ace0de9cd0a988bfef0dfc6298dd14
 {
   "results": [
     {
@@ -82,7 +82,7 @@ sha256:a0dd27614547201f48281877fe573059
   ]
 }
 -- testrun/gtk4/go/app.sngl/picker/1 --
-sha256:cf9681788dd3582bd513160af2f234a8
+sha256:ec0aa3cc75032d4ae9a8a180e0db9cc4
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:cf9681788dd3582bd513160af2f234a8
   ]
 }
 -- testrun/html/none/app.sngl/picker/1 --
-sha256:4bfcee6c76eeb11eda4a52abe84f0bbc
+sha256:660b587f6e36e1376f9cfabea684b4f4
 {
   "results": [
     {

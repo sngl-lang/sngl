@@ -5,13 +5,18 @@ gives that method the Go signature of the callback it is attached to: fyne's
 `OnChanged` is `func(bool)` on a check and `func(string)` on an entry, and a
 gtk4 signal trampoline passes nothing. An instance record's handlers are
 lambdas assigned where they are written, and reached the host as SNGL wrote
-them -- `func()` for a checkbox, `func(e InputEvent)` for an input -- so a
-record holding either did not build. A checkbox with no `@change` was the same
+them -- `func()` for a checkbox, a payload struct for an input -- so a record
+holding either did not build. A checkbox with no `@change` was the same
 failure through the empty handler the override hands it, which is what
 `sngl:ui/markup`'s task list item is.
 
+The lambda takes the override's own parameters, and its body reads them as
+the locals they are. `Row` declares a `var on` and the checkbox override names
+its parameter `on`: read by name, the write-back assigned the row's state to
+itself (`c.checked__inst0 = c.on`).
+
 deny out/go/fyne/model.go `OnChanged = func\(\)` -- a check's callback takes the bool
-deny * `InputEvent` -- no callback is handed the SNGL event
+deny out/go/fyne/model.go `= c\.on\n\t\tc\.__n` -- the write-back reads the callback's parameter, not the row's var of the same name
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -30,7 +35,7 @@ component Row(label string) node {
     hbox {
         checkbox(checked=on, @change { on = !on })
         checkbox(checked=true, disabled=true)
-        input(value=typed, @input(e) { typed = e.value })
+        input(value=typed, @input(e) { typed = e })
         text(value="{label} {on} {typed}")
     }
 }
@@ -174,8 +179,8 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0 = widget.NewCheck("", nil)
 	c.__n0.SetText("")
 	c.__n0.SetChecked(c.checked__inst0)
-	c.__n0.OnChanged = func(b bool) {
-		c.checked__inst0 = b
+	c.__n0.OnChanged = func(on bool) {
+		c.checked__inst0 = on
 		c.__n0.SetChecked(c.checked__inst0)
 		c.on = !c.on
 		c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
@@ -184,22 +189,22 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n1 = widget.NewCheck("", nil)
 	c.__n1.SetText("")
 	c.__n1.SetChecked(c.checked__inst1)
-	c.__n1.OnChanged = func(b bool) {
-		c.checked__inst1 = b
+	c.__n1.OnChanged = func(on bool) {
+		c.checked__inst1 = on
 		c.__n1.SetChecked(c.checked__inst1)
 	}
 	__n6.Add(c.__n1)
 	c.__n2 = widget.NewEntry()
 	c.__n2.SetText(c.value__inst2)
 	c.__n2.SetPlaceHolder("")
-	c.__n2.OnChanged = func(s string) {
-		c.value__inst2 = s
+	c.__n2.OnChanged = func(v string) {
+		c.value__inst2 = v
 		c.__n2.SetText(c.value__inst2)
-		c.typed = s
+		c.typed = v
 		c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	}
-	c.__n2.OnSubmitted = func(s string) {
-		c.value__inst2 = s
+	c.__n2.OnSubmitted = func(v string) {
+		c.value__inst2 = v
 		c.__n2.SetText(c.value__inst2)
 	}
 	__n6.Add(c.__n2)
@@ -382,7 +387,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	gtk4rt.Connect(c.__n2, "changed", func() {
 		c.value__inst2 = gtk4rt.EditableGetText(c.__n2)
 		gtk4rt.EditableSetText(c.__n2, c.value__inst2)
-		c.typed = gtk4rt.EditableGetText(c.__n2)
+		c.typed = c.value__inst2
 		gtk4rt.LabelSetText(c.__n3, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 	})
 	gtk4rt.Connect(c.__n2, "activate", func() {
@@ -442,6 +447,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:1b0191c470a0e2a0e1ffc66c66f7f447
+pass sha256:8248c97f41b9b3fb3fabdf57fb7c244e
 -- run/go/gtk4 --
-pass sha256:93dca6b00987eb17cbf14e8ed246a5b7
+pass sha256:b2b72ef6ef68ad1e66712a707ef4839c

@@ -243,19 +243,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					_ = index
 					_ = item
 					if m.__focusLoop2_cursor == __focusPos2 {
-						__bound_checked := !func() bool {
-							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
-								return __v
-							}
-							return item.Done
-						}()
 						__cell1_checked__inst0 := func() bool {
 							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
 								return __v
 							}
 							return item.Done
 						}()
-						__cell1_checked__inst0 = __bound_checked
+						__cell1_checked__inst0 = !func() bool {
+							if __v, __ok := m.checked__inst0[fmt.Sprint(index)]; __ok {
+								return __v
+							}
+							return item.Done
+						}()
 						m.checked__inst0[fmt.Sprint(index)] = __cell1_checked__inst0
 						m.todos[index].Done = !m.todos[index].Done
 						return

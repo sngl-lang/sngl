@@ -14,7 +14,7 @@ component main node {
         type = email,
         disabled = false,
         @input { count = count + 1 },
-        @change(e) { name = e.value },
+        @change(e) { name = e },
     )
 
     // Multi-line with style

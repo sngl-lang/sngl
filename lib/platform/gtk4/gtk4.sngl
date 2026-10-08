@@ -70,6 +70,23 @@ const component ui.window[platform] {
 
 // --- Leaf widgets ---
 
+// What a control holds, read off its widget. A GTK signal hands its handler
+// the widget it fired on and nothing else, so an override reporting a change
+// asks that widget: `@toggled(b) { checked = checkActive(b) }`.
+#[marks.intrinsic("gtk4.checkActive")]
+func checkActive(b gtk.GtkCheckButton) bool
+
+#[marks.intrinsic("gtk4.switchActive")]
+func switchActive(s gtk.GtkSwitch) bool
+
+#[marks.intrinsic("gtk4.entryText")]
+func entryText(e gtk.GtkEntry) string
+
+// The day a calendar has selected. A calendar always has one, so this is null
+// only where GTK reports no date at all.
+#[marks.intrinsic("gtk4.calendarDate")]
+func calendarDate(c gtk.GtkCalendar) option<time.date>
+
 const component ui.text[platform] {
     gtk.GtkLabel(label=value, style={...style}) {}
 }
@@ -79,7 +96,10 @@ const component ui.button[platform] {
 }
 
 const component ui.checkbox[platform] {
-    gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled { change() }) {}
+    gtk.GtkCheckButton(label=label, active=checked, style={...style}, @toggled(b) {
+        checked = checkActive(b)
+        change(checked)
+    }) {}
 }
 
 const component ui.image[platform] {
@@ -87,14 +107,36 @@ const component ui.image[platform] {
 }
 
 const component ui.input[platform] {
-    gtk.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
+    gtk.GtkEntry(
+        text = value,
+        style = {...style},
+        @changed(e) {
+            value = entryText(e)
+            input(value)
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
 const component ui.textarea[platform] {
-    gtk.GtkEntry(text=value, style={...style}, @changed { input() }, @activate { change() }) {}
+    gtk.GtkEntry(
+        text = value,
+        style = {...style},
+        @changed(e) {
+            value = entryText(e)
+            input(value)
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
 }
 
 // --- Container widgets ---
@@ -157,7 +199,10 @@ const component ui.link[platform] {
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
 const component ui.toggle[platform] {
-    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive { change() }) {}
+    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), style={...style}, @notifyActive(s) {
+        checked = switchActive(s)
+        change(checked)
+    }) {}
 }
 
 // GtkCalendar takes the day, month and year as three separate ints -- its own
@@ -174,7 +219,10 @@ func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
 // One calendar, which a bound date selects whenever it changes. With no date
 // it shows GTK's own, today: a calendar always has a day selected.
 const component ui.datepicker[platform] {
-    gtk.GtkCalendar #cal(sensitive=(disabled == false), style={...style}, @daySelected { change() }) {}
+    gtk.GtkCalendar #cal(sensitive=(disabled == false), style={...style}, @daySelected(c) {
+        value = calendarDate(c)
+        change(value)
+    }) {}
     effect(on=value, @mount(v) {
         if v != null {
             selectDay(cal, v.year(), v.month(), v.day())

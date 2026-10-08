@@ -87,9 +87,10 @@ const component ui.input[platform] {
         value = value,
         readOnly = readonly,
         modifier = {...style},
-        onValueChange = func(e) {
-            input(e)
-            change({value=e.value})
+        onValueChange = func(v) {
+            value = v
+            input(v)
+            change(v)
         },
     ) {
         component label {
@@ -102,7 +103,10 @@ const component ui.input[platform] {
 
 const component ui.checkbox[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Checkbox(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
+        Checkbox(checked=checked, onCheckedChange=func(on) {
+            checked = on
+            change(on)
+        }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -113,14 +117,17 @@ const component ui.checkbox[platform] {
 
 // Compose's RadioButton is one option, so the group is the loop: the
 // container is the direction the prop asks for and each option is a button
-// beside its label. onClick is passed nothing, so the override builds the
-// ChangeEvent itself from the option it looped over.
+// beside its label. onClick is passed nothing, so the override reports the
+// option it looped over.
 const component ui.radio[platform] {
     if direction == ui.Orientation.horizontal {
         Row(modifier={...style}) {
             for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() {
+                        value = opt
+                        change(opt)
+                    }) {}
                     Text(text=opt) {}
                 }
             }
@@ -129,7 +136,10 @@ const component ui.radio[platform] {
         Column(modifier={...style}) {
             for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
+                    RadioButton(selected=(value == opt), onClick=func() {
+                        value = opt
+                        change(opt)
+                    }) {}
                     Text(text=opt) {}
                 }
             }
@@ -139,7 +149,10 @@ const component ui.radio[platform] {
 
 const component ui.toggle[platform] {
     Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
-        Switch(checked=checked, onCheckedChange=func(on) { change({checked=on}) }) {}
+        Switch(checked=checked, onCheckedChange=func(on) {
+            checked = on
+            change(on)
+        }) {}
         if label != "" {
             Text(text=label) {}
         }
@@ -164,14 +177,12 @@ const component ui.textarea[platform] {
         value = value,
         minLines = 3,
         modifier = {...style},
-        onValueChange = func(e) {
-            input(e)
-            change({value=e.value})
+        onValueChange = func(v) {
+            value = v
+            input(v)
+            change(v)
         },
     ) {}
-    // @input carries the InputEvent Compose's text is built into;
-    // @change carries a ChangeEvent, a different declaration, so it
-    // takes the value rather than the other event.
 }
 
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the
@@ -186,7 +197,10 @@ const component ui.datepicker[platform] {
         label = placeholder,
         enabled = disabled == false,
         modifier = {...style},
-        onValueChange = func(v) { change({value=v}) },
+        onValueChange = func(v) {
+            value = v
+            change(v)
+        },
     ) {}
 }
 

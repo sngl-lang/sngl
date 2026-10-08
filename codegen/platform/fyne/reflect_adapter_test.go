@@ -195,7 +195,15 @@ func TestSignatureIsRecoverableFromTheGoType(t *testing.T) {
 			if !ok {
 				continue
 			}
-			if got := renderFuncSig(f.Type, h.Param); got != h.Signature {
+			params, err := signatureParams(name, event, h.Signature)
+			if err != nil {
+				t.Fatal(err)
+			}
+			names := make([]string, len(params))
+			for i, p := range params {
+				names[i] = p.Name
+			}
+			if got := renderFuncSig(f.Type, names); got != h.Signature {
 				t.Errorf("%s/%s: reflected signature %q, Spec says %q", name, event, got, h.Signature)
 			}
 			checked++
@@ -359,15 +367,15 @@ func bind(w any, sp *fyneSpec, event string, fn func([]reflect.Value) []reflect.
 
 // renderFuncSig prints a reflect func type the way fyne.sngl's Signature
 // spells it, so the two can be compared.
-func renderFuncSig(ft reflect.Type, param string) string {
+func renderFuncSig(ft reflect.Type, names []string) string {
 	var b strings.Builder
 	b.WriteString("func(")
 	for i := 0; i < ft.NumIn(); i++ {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		if param != "" {
-			b.WriteString(param + " ")
+		if i < len(names) {
+			b.WriteString(names[i] + " ")
 		}
 		b.WriteString(ft.In(i).String())
 	}

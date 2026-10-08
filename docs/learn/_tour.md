@@ -570,7 +570,7 @@ ui.window {
 
 ## Events
 
-Events use the `@name` prefix. The library's components declare `@click`, `@input`, `@change`, and friends; the handler is a statement block that can mutate `var`s and call functions. A handler that wants the event's payload names it: `@input(e) { query = e.value }` binds the `ui.InputEvent` to `e`.
+Events use the `@name` prefix. The library's components declare `@click`, `@input`, `@change`, and friends; the handler is a statement block that can mutate `var`s and call functions. An event declares the parameters its handlers receive, as a function does -- `input` declares `@input(value string)` -- and a handler that wants them names them: `@input(text) { query = text }` binds the field's text to `text`.
 
 ```sngl
 import ui "sngl:ui"
@@ -579,7 +579,7 @@ ui.window {
     var query = ""
     var results list<string>
     ui.vbox(style={gap=8px, padding=16px}) {
-        ui.input(@input(e) { query = e.value }, placeholder="Type to search")
+        ui.input(@input(text) { query = text }, placeholder="Type to search")
         ui.button(text="Add match", @click {
             if query.length > 0 {
                 results.push(query)

@@ -1,8 +1,9 @@
 A `:value` binding on radio writes back the option that was clicked. The
-override says so itself -- `onClick=func() { change({value = opt}) }` -- and
-the binding pass has to take the value from that emit.
+override says so itself -- `onClick=func() { value = opt; change(opt) }` --
+and its write of `value` is the binding's write-back.
 
-It invented a parameter on the callback instead. Compose's onClick is
+The binding pass once guessed where the write-back went, and invented a
+parameter on the callback. Compose's onClick is
 `() -> Unit`, so the emitted Kotlin did not compile, and `opt` -- the whole
 point of the loop -- never reached the write-back.
 

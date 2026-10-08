@@ -791,7 +791,7 @@ Events use the `@` prefix and contain mutation statements:
 var count = 0
 var name = ""
 ui.button(text="+", @click { count += 1 })
-ui.input(value=name, @input(e) { name = e.value })
+ui.input(value=name, @input(text) { name = text })
 ```
 
 A handler body may hold several statements, one per line:
@@ -811,7 +811,7 @@ ui.button(text="Add", @click {
 })
 ```
 
-Available events depend on the component (check its declaration with `sngl doc`). A handler names its payload parameter to read it: `@input(e) { ... e.value }`. There is no ambient `event` identifier.
+Available events depend on the component (check its declaration with `sngl doc`). An event declares its parameters as a function does -- `@input(value string)` -- and a handler names the ones it reads, by position: `@input(text) { ... text }`. There is no ambient `event` identifier.
 
 ### Bidirectional Bindings
 
@@ -823,7 +823,7 @@ Instead of manually wiring an event:
 
 ```sngl
 var name = ""
-ui.input(value=name, @input(e) { name = e.value })
+ui.input(value=name, @input(text) { name = text })
 ```
 
 Use a bidirectional binding:

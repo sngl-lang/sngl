@@ -91,16 +91,14 @@ struct Setter {
 
 // The Go callback field one declared event is assigned to.
 //
-// `signature` is the Go func literal type the field takes, which is Fyne's and
-// not the SNGL event's: `OnChanged` on an Entry is `func(string)` where the
-// SNGL `@input` carries an InputEvent. `param` names that parameter so a
-// promoted handler's two-way write-back reads the value from it (`m.name = s`)
-// rather than off an event struct the closure never receives.
+// `signature` is the Go func literal type the field takes. Its parameters are
+// the SNGL event's, position for position: `OnChanged` on an Entry is
+// `func(s string)` and the primitive's `@input` declares `(text string)`, so a
+// handler's parameter is the callback's.
 struct Handler {
     on        string
     field     string
     signature string
-    param     string
 }
 
 // Everything the Go emitter needs to build one Fyne widget.
@@ -163,9 +161,12 @@ component Widget(
     options     list<string>,
     date        option<time.date>,
     style       ui.Style,
-    @click(e ui.ClickEvent),
-    @change(e ui.ChangeEvent),
-    @input(e ui.InputEvent),
+    @click(),
+    @change(text string),
+    @input(text string),
+    @toggle(flag bool),
+    @adjust(number int),
+    @pick(date option<time.date>),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -178,9 +179,9 @@ component Container(
     flag        bool,
     options     list<string>,
     style       ui.Style,
-    @click(e ui.ClickEvent),
-    @change(e ui.ChangeEvent),
-    @input(e ui.InputEvent),
+    @click(),
+    @change(text string),
+    @input(text string),
     children    ...component,
 ) ui.node
 
@@ -194,9 +195,9 @@ component Wrapper(
     flag        bool,
     options     list<string>,
     style       ui.Style,
-    @click(e ui.ClickEvent),
-    @change(e ui.ChangeEvent),
-    @input(e ui.InputEvent),
+    @click(),
+    @change(text string),
+    @input(text string),
     content     ...component tr.one,
 ) ui.node
 
@@ -221,7 +222,7 @@ const component Label(text string, style ui.Style) ui.node {
     ) {}
 }
 
-const component Button(text string, style ui.Style, @click(e ui.ClickEvent)) ui.node {
+const component Button(text string, style ui.Style, @click()) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -236,7 +237,7 @@ const component Button(text string, style ui.Style, @click(e ui.ClickEvent)) ui.
     ) {}
 }
 
-const component Entry(text string, placeholder string, style ui.Style, @input(e ui.InputEvent), @change(e ui.ChangeEvent)) ui.node {
+const component Entry(text string, placeholder string, style ui.Style, @input(text string), @change(text string)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -246,8 +247,8 @@ const component Entry(text string, placeholder string, style ui.Style, @input(e 
                 Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
             handlers = [
-                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
-                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+                Handler{on="input", field="OnChanged", signature="func(s string)"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)"},
             ],
         },
         text = text,
@@ -263,8 +264,8 @@ const component MultiLineEntry(
     placeholder string,
     rows        int,
     style       ui.Style,
-    @input(e ui.InputEvent),
-    @change(e ui.ChangeEvent),
+    @input(text string),
+    @change(text string),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -276,8 +277,8 @@ const component MultiLineEntry(
                 Setter{prop="number", call="SetMinRowsVisible"},
             ],
             handlers = [
-                Handler{on="input", field="OnChanged", signature="func(s string)", param="s"},
-                Handler{on="change", field="OnSubmitted", signature="func(s string)", param="s"},
+                Handler{on="input", field="OnChanged", signature="func(s string)"},
+                Handler{on="change", field="OnSubmitted", signature="func(s string)"},
             ],
         },
         text = text,
@@ -289,7 +290,7 @@ const component MultiLineEntry(
     ) {}
 }
 
-const component Check(text string, checked bool, style ui.Style, @change(e ui.ToggleEvent)) ui.node {
+const component Check(text string, checked bool, style ui.Style, @change(checked bool)) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -299,12 +300,12 @@ const component Check(text string, checked bool, style ui.Style, @change(e ui.To
                 Setter{prop="text", call="SetText"},
                 Setter{prop="flag", call="SetChecked"},
             ],
-            handlers = [Handler{on="change", field="OnChanged", signature="func(b bool)", param="b"}],
+            handlers = [Handler{on="toggle", field="OnChanged", signature="func(b bool)"}],
         },
         text = text,
         flag = checked,
         style = {...style},
-        @change { change() },
+        @toggle { change() },
     ) {}
 }
 
@@ -316,7 +317,7 @@ const component Select(
     selected string,
     options  list<string>,
     style    ui.Style,
-    @change(e ui.ChangeEvent),
+    @change(value string),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -327,7 +328,7 @@ const component Select(
                 Setter{prop="text", call="SetSelected", current="Selected"},
                 Setter{prop="options", call="SetOptions"},
             ],
-            handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
+            handlers = [Handler{on="change", field="OnChanged", signature="func(s string)"}],
         },
         options = options,
         text = selected,
@@ -576,7 +577,7 @@ const component DateEntry(
     value       option<time.date>,
     placeholder string,
     style       ui.Style,
-    @change(e ui.DateEvent),
+    @change(date option<time.date>),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -586,17 +587,20 @@ const component DateEntry(
                 Setter{prop="date", call="SetDate"},
                 Setter{prop="placeholder", call="SetPlaceHolder"},
             ],
-            handlers = [Handler{on="change", field="OnChanged", signature="func(d *time.Time)", param="d"}],
+            handlers = [Handler{on="pick", field="OnChanged", signature="func(d *time.Time)"}],
         },
         date = value,
         placeholder = placeholder,
         style = {...style},
-        @change { change() },
+        @pick { change() },
     ) {}
 }
 
 const component ui.datepicker[platform] {
-    DateEntry(value=value, placeholder=placeholder, style={...style}, @change { change() }) {}
+    DateEntry(value=value, placeholder=placeholder, style={...style}, @change(d) {
+        value = d
+        change(d)
+    }) {}
 }
 
 // --- Controls ---
@@ -615,23 +619,44 @@ const component ui.image[platform] {
 }
 
 const component ui.checkbox[platform] {
-    Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    Check(text=label, checked=checked, style={...style}, @change(on) {
+        checked = on
+        change(on)
+    }) {}
 }
 
 // Fyne's Check is the switch affordance too: `widget.Switch` is not in the
 // widget set this platform builds from.
 const component ui.toggle[platform] {
-    Check(text=label, checked=checked, style={...style}, @change { change() }) {}
+    Check(text=label, checked=checked, style={...style}, @change(on) {
+        checked = on
+        change(on)
+    }) {}
 }
 
 const component ui.select[platform] {
-    Select(selected=value, options=options, style={...style}, @change { change() }) {}
+    Select(selected=value, options=options, style={...style}, @change(v) {
+        value = v
+        change(v)
+    }) {}
 }
 
 // --- Text entry ---
 
 const component ui.input[platform] {
-    Entry(text=value, placeholder=placeholder, style={...style}, @input { input() }, @change { change() }) {}
+    Entry(
+        text = value,
+        placeholder = placeholder,
+        style = {...style},
+        @input(v) {
+            value = v
+            input(v)
+        },
+        @change(v) {
+            value = v
+            change(v)
+        },
+    ) {}
 }
 
 const component ui.textarea[platform] {
@@ -640,8 +665,14 @@ const component ui.textarea[platform] {
         placeholder = placeholder,
         rows = rows,
         style = {...style},
-        @input { input() },
-        @change { change() },
+        @input(v) {
+            value = v
+            input(v)
+        },
+        @change(v) {
+            value = v
+            change(v)
+        },
     ) {}
 }
 

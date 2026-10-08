@@ -17,7 +17,7 @@ component sums(
     left     int,
     right    int,
     :total   int = 0,
-    @done(e ClickEvent),
+    @done(at int),
     children ...component,
 ) node {
     vbox {
