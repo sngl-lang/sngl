@@ -86,10 +86,14 @@ const words = [
     structSpread,
     viewStatements,
 )]
-#[gen.reserves(words)]
 #[gen.name("js")]
 #[gen.native("js")]
-component language(const platforms ...component build.platform) build.language
+component language(
+    // Names a program's declaration is renamed away from in generated
+    // JavaScript.
+    const reservedWords list<string> = words,
+    const platforms     ...component build.platform,
+) build.language
 
 // Names the JavaScript identifier a declaration *is*, rather than one it
 // corresponds to. The JS counterpart of `go.native`, and the same thin spelling

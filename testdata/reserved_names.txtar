@@ -14,7 +14,8 @@ name hides every read of it. A component `modifier` is android's
 a struct `model` is the Go targets' `Model`.
 
 Each target declares what it reserves -- a language its words, a platform the
-identifiers its generated code introduces -- with `#[gen.reserves]`, and
+identifiers its generated code introduces -- in a const prop of its
+build-target node, `reservedWords` and `reservedNames`, and
 `passReservedNames` renames a declaration whose name the build reserves, with
 every reference to it. A struct field keeps its name: Go exports it and
 JavaScript takes a keyword as a key, so only Kotlin escapes the field `class`,

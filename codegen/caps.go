@@ -30,8 +30,8 @@ func CapsFor(language, platform string) (lower.Features, error) {
 	return lower.FeaturesFrom(langComp, platComp)
 }
 
-// LanguageReserves is what the build-tree node of language reserves with
-// #[gen.reserves]: the words a declaration of that language cannot take. A
+// LanguageReserves is what the build-tree node of language reserves by
+// default in its reservedWords prop: the words a declaration of that language cannot take. A
 // translator escapes a name it is not free to rename with it -- a struct
 // field, a host's parameter -- which is the one use it has beside the rename
 // passReservedNames makes of the build's whole set. Nil when the language is
@@ -41,10 +41,7 @@ func LanguageReserves(language string) []string {
 	if err != nil {
 		return nil
 	}
-	if g := ir.GenCapsOf(c); g != nil {
-		return g.Reserves
-	}
-	return nil
+	return ir.TargetReserved(c)
 }
 
 // buildNode finds the component a target package declares for the build tree.

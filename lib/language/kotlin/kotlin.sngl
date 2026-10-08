@@ -22,41 +22,43 @@ import gen "sngl:x/gen"
     structSpread,
     viewStatements,
 )]
-// Kotlin's hard keywords, which no declaration may take. A field or a host's
-// parameter keeps its name and is written in backticks.
-#[gen.reserves(
-    "as",
-    "break",
-    "class",
-    "continue",
-    "do",
-    "else",
-    "false",
-    "for",
-    "fun",
-    "if",
-    "in",
-    "interface",
-    "is",
-    "null",
-    "object",
-    "package",
-    "return",
-    "super",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typealias",
-    "typeof",
-    "val",
-    "var",
-    "when",
-    "while",
-)]
 #[gen.name("kotlin")]
 #[gen.native("kotlin")]
-component language(const platforms ...component build.platform) build.language
+component language(
+    // Kotlin's hard keywords, which no declaration may take. A field or a
+    // host's parameter keeps its name and is written in backticks.
+    const reservedWords list<string> = [
+        "as",
+        "break",
+        "class",
+        "continue",
+        "do",
+        "else",
+        "false",
+        "for",
+        "fun",
+        "if",
+        "in",
+        "interface",
+        "is",
+        "null",
+        "object",
+        "package",
+        "return",
+        "super",
+        "this",
+        "throw",
+        "true",
+        "try",
+        "typealias",
+        "typeof",
+        "val",
+        "var",
+        "when",
+        "while",
+    ],
+    const platforms     ...component build.platform,
+) build.language
 
 // Names the Kotlin identifier a declaration *is*. The counterpart of
 // `go.native` and `js.native`, and the same thin spelling: a call becomes a

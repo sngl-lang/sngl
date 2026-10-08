@@ -22,34 +22,13 @@ import gtk "gir:Gtk-4.0"
 // reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
-// What its generated code introduces beside a program's names: the packages
-// it imports -- `C` is cgo's, which a Go export of `c` would be -- an instance
-// record's receiver, the Model's own members, and the locals and helpers its
-// application code declares.
-#[gen.reserves(
-    "gtk4rt",
-    "c",
-    "app",
-    "win",
-    "buildUI",
-    "buildWidgetTree",
-    "snglCallbacks",
-    "snglDrawFuncs",
-    "gtkPost",
-    "snglGoDispatch",
-    "snglIdleCallback",
-    "snglActivate",
-    "boolToInt",
-    "snglCalendarDate",
-    "snglCalendarSelect",
-)]
 #[gen.name("gtk4")]
 #[gen.native("gtk4")]
 component platform(
     // Go package name for the generated files.
-    const package string,
+    const package       string,
     // Emit a standalone main() or a library-style module.
-    const main    bool,
+    const main          bool,
     // The process start, wrapped: what the handler does before calling `run`
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
@@ -60,7 +39,28 @@ component platform(
     // Which introspection data to read the widget vocabulary from: "builtin"
     // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
     // system locations and fall back to the bundled subset.
-    const gir     string,
+    const gir           string,
+    // What its generated code introduces beside a program's names: the packages
+    // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
+    // instance record's receiver, the Model's own members, and the locals and
+    // helpers its application code declares.
+    const reservedNames list<string> = [
+        "gtk4rt",
+        "c",
+        "app",
+        "win",
+        "buildUI",
+        "buildWidgetTree",
+        "snglCallbacks",
+        "snglDrawFuncs",
+        "gtkPost",
+        "snglGoDispatch",
+        "snglIdleCallback",
+        "snglActivate",
+        "boolToInt",
+        "snglCalendarDate",
+        "snglCalendarSelect",
+    ],
 ) build.platform
 
 // --- Windows ---

@@ -149,20 +149,28 @@ const emitted = [
     viewStatements,
     asyncSpawn,
 )]
-#[gen.reserves(keywords, predeclared, imports, emitted)]
 #[gen.name("go")]
 #[gen.native("go")]
 component language(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.
-    const goVersion  string,
+    const goVersion     string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
     // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
-    const goModExtra string,
-    const platforms  ...component build.platform,
+    const goModExtra    string,
+    // Names a program's declaration is renamed away from in generated Go: Go's
+    // keywords and predeclared identifiers, and what every Go target's code
+    // declares beside a program's.
+    const reservedWords list<string> = [
+        ...keywords,
+        ...predeclared,
+        ...imports,
+        ...emitted,
+    ],
+    const platforms     ...component build.platform,
 ) build.language {
     gen.run(@run(dir, args) {
         var cmd = [buildModule(dir, dir + ".app", goVersion, goModExtra)]

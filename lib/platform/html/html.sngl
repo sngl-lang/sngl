@@ -41,66 +41,66 @@ func serve(dir string, listen string)
     structSpread,
 )]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas, navigationHrefs)]
-// Its page script is JavaScript whatever the language, so it reserves
-// JavaScript's words, and beside them what the script introduces: the `state`
-// object a page's vars live in, a factory's `props`, the `String` it
-// redefines, and the browser globals it calls.
-#[gen.reserves(
-    js.words,
-    "state",
-    "props",
-    "String",
-    "document",
-    "window",
-    "globalThis",
-    "Object",
-    "Array",
-    "Map",
-    "Set",
-    "Number",
-    "Math",
-    "JSON",
-    "Event",
-    "Error",
-    "Promise",
-    "Date",
-    "Intl",
-    "location",
-    "history",
-    "console",
-    "parseInt",
-    "parseFloat",
-    "decodeURIComponent",
-    "encodeURIComponent",
-    "setTimeout",
-    "clearTimeout",
-    "setInterval",
-    "clearInterval",
-    "requestAnimationFrame",
-)]
 #[gen.name("html")]
 #[gen.native("html")]
 component platform(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
-    const preview     bool,
+    const preview       bool,
     // Emit a test harness instead of the normal app bundle.
-    const test        bool,
+    const test          bool,
     // Relative path to a CSS file included in every page.
-    const stylesheet  string,
+    const stylesheet    string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    const projectDir  string,
+    const projectDir    string,
     // Route mode: target Go package name (default "ui", or "main" when main=true).
-    const package     string,
+    const package       string,
     // Route mode: emit a main() that calls ListenAndServe.
-    const main        bool,
+    const main          bool,
     // Route mode: HTTP framework (default "net/http").
-    const framework   string,
+    const framework     string,
     // Route mode: host:port for `sngl run` to listen on.
-    const listen      string,
+    const listen        string,
     // Minify emitted HTML and inline JS via esbuild.
-    const minify      bool,
+    const minify        bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
-    const noCacheBust bool,
+    const noCacheBust   bool,
+    // Its page script is JavaScript whatever the language, so it reserves
+    // JavaScript's words, and beside them what the script introduces: the
+    // `state` object a page's vars live in, a factory's `props`, the `String`
+    // it redefines, and the browser globals it calls.
+    const reservedNames list<string> = [
+        ...js.words,
+        "state",
+        "props",
+        "String",
+        "document",
+        "window",
+        "globalThis",
+        "Object",
+        "Array",
+        "Map",
+        "Set",
+        "Number",
+        "Math",
+        "JSON",
+        "Event",
+        "Error",
+        "Promise",
+        "Date",
+        "Intl",
+        "location",
+        "history",
+        "console",
+        "parseInt",
+        "parseFloat",
+        "decodeURIComponent",
+        "encodeURIComponent",
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "requestAnimationFrame",
+    ],
 ) build.platform {
     gen.run(@run(dir, args) {
         serve(dir, listen)

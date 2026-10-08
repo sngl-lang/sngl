@@ -87,7 +87,7 @@ func (t *Translator) ExportName(name string) string {
 // word, so what reaches here is a name that is not the program's to change --
 // a struct field, bound as its constructor's parameter.
 //
-// The words are sngl:language/js's own `#[gen.reserves]`.
+// The words are sngl:language/js's own reservedWords default.
 func SafeIdent(name string) string {
 	if words()[name] {
 		return name + "_"

@@ -146,8 +146,10 @@ type Features struct {
 	// page's href, and a go passing no params passes the page's own.
 	NavigationHrefs bool
 
-	// Reserved is every name the build's `#[gen.reserves]` marks list, the
-	// language's and the platform's together: passReservedNames renames a
+	// Reserved is every name the build's two build-tree nodes reserve by
+	// default -- the language's reservedWords and the platform's
+	// reservedNames props together -- for a build with no output block to
+	// read them from: passReservedNames renames a
 	// declaration the program gave one of them. Not a capability, so it is
 	// the one field String does not list and no pass is gated on.
 	Reserved []string

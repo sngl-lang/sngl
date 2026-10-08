@@ -13,49 +13,50 @@ import gen "sngl:x/gen"
 // re-rasterises with it, so an explicit redraw would be the second of two.
 #[gen.cannot(inlineComponents, implicitRecv, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
-// What its generated code introduces beside a program's names: the packages
-// it imports, the Model's own fields and the getters and setters a var named
-// `view`, `update`, `init` or `terminalSize` would collide with, and the
-// locals Update and View declare around the handler and view code they hold.
-#[gen.reserves(
-    "tea",
-    "lipgloss",
-    "textinput",
-    "tui",
-    "snglcanvas",
-    "image",
-    "width",
-    "height",
-    "toasts",
-    "view",
-    "update",
-    "init",
-    "terminalSize",
-    "resizeWidgets",
-    "snglToast",
-    "toastDismissMsg",
-    "remoteSettledMsg",
-    "msg",
-    "cmd",
-    "cmds",
-    "overlayOpen",
-    "content",
-    "parts",
-    "v",
-    "t",
-    "bg",
-    "toastStyle",
-    "slotContent",
-)]
 #[gen.name("bubbletea")]
 #[gen.native("bubbletea")]
 component platform(
     // Go package name for the generated files.
-    const package string,
+    const package       string,
     // Emit a standalone main() or a library-style module.
-    const main    bool,
+    const main          bool,
     // Emit companion test files (default: true; set "false" to skip).
-    const tests   bool,
+    const tests         bool,
+    // What its generated code introduces beside a program's names: the packages
+    // it imports, the Model's own fields and the getters and setters a var
+    // named `view`, `update`, `init` or `terminalSize` would collide with, and
+    // the locals Update and View declare around the handler and view code they
+    // hold.
+    const reservedNames list<string> = [
+        "tea",
+        "lipgloss",
+        "textinput",
+        "tui",
+        "snglcanvas",
+        "image",
+        "width",
+        "height",
+        "toasts",
+        "view",
+        "update",
+        "init",
+        "terminalSize",
+        "resizeWidgets",
+        "snglToast",
+        "toastDismissMsg",
+        "remoteSettledMsg",
+        "msg",
+        "cmd",
+        "cmds",
+        "overlayOpen",
+        "content",
+        "parts",
+        "v",
+        "t",
+        "bg",
+        "toastStyle",
+        "slotContent",
+    ],
 ) build.platform
 
 // --- Blueprint vocabulary ---

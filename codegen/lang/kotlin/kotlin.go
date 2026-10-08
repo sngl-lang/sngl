@@ -52,7 +52,7 @@ func (t *Translator) ExportName(name string) string { return SafeIdent(name) }
 // change: a struct field, which a serialized record and a constructor's named
 // arguments spell, and a native's parameter, which a host declared.
 //
-// The words are sngl:language/kotlin's own `#[gen.reserves]`.
+// The words are sngl:language/kotlin's own reservedWords default.
 func SafeIdent(name string) string {
 	if keywords()[name] {
 		return "`" + name + "`"

@@ -11,9 +11,10 @@ import (
 //	func f(m int) { … }     ->  func f(m__r0 int)      (the Go Model's receiver)
 //	button #go(…)           ->  button #go__r0(…)
 //
-// What a build reserves is what its two build-tree nodes say with
-// `#[gen.reserves]`: a language's words, and the identifiers a platform's own
-// generated code introduces beside a program's -- a receiver, an import, a
+// What a build reserves is what its two build-tree nodes declare in a const
+// prop -- a language's `reservedWords`, a platform's `reservedNames` -- or what
+// the program's output block set them to: a language's words, and the
+// identifiers a platform's own generated code introduces beside a program's -- a receiver, an import, a
 // field or method of a type it writes, a local it declares. Each target used
 // to escape a collision its own way at the point it wrote the name, and most
 // sites did not: Go escaped nothing, and JavaScript one site in twenty.
@@ -56,8 +57,8 @@ func reserveNames(pkg *ir.Package, f Features, opts Options, nodeIDs bool) error
 	if pkg == nil {
 		return nil
 	}
-	reserved := make(map[string]bool, len(f.Reserved))
-	for _, n := range f.Reserved {
+	reserved := map[string]bool{}
+	for _, n := range reservedFor(pkg, f, opts) {
 		reserved[n] = true
 	}
 	r := &reservedRenamer{
@@ -76,6 +77,29 @@ func reserveNames(pkg *ir.Package, f Features, opts Options, nodeIDs bool) error
 	}
 	r.rewrite(pkg)
 	return nil
+}
+
+// reservedFor is what this build reserves: the reservedWords and
+// reservedNames its output block holds for the target being built -- what the
+// program wrote, or the props' defaults -- and the defaults FeaturesFrom read
+// where the program wrote no output block for it.
+func reservedFor(pkg *ir.Package, f Features, opts Options) []string {
+	for _, o := range pkg.Outputs {
+		if o == nil || o.Lang != opts.Language || o.Platform != opts.Platform || o.Options == nil {
+			continue
+		}
+		var out []string
+		for _, name := range []string{ir.ReservedWordsProp, ir.ReservedNamesProp} {
+			for _, fi := range o.Options.Fields {
+				if fi.Name == name {
+					ss, _ := ir.ConstStrings(fi.Value)
+					out = append(out, ss...)
+				}
+			}
+		}
+		return out
+	}
+	return f.Reserved
 }
 
 type reservedRenamer struct {

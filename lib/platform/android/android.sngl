@@ -19,36 +19,6 @@ import gen "sngl:x/gen"
 #[gen.can(effects, instanceState, navigation)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
-// What its generated code introduces beside a program's names. A component,
-// struct or enum is written as a Kotlin type named by capitalizing it, and an
-// explicit import outranks a declaration of the file's own package, so a
-// program's `modifier` would be shadowed by Compose's `Modifier`; and the
-// types and parameters the screen itself declares.
-#[gen.reserves(
-    "modifier",
-    "alignment",
-    "textStyle",
-    "fontWeight",
-    "textAlign",
-    "dialog",
-    "pullToRefreshBox",
-    "composeColor",
-    "toast",
-    "localContext",
-    "golib",
-    "backHandler",
-    "activity",
-    "mainScreen",
-    "mainScreenState",
-    "errorEvent",
-    "snglRaise",
-    "color",
-    "canvasStyle",
-    "pathCmd",
-    "state",
-    "context",
-    "slotContent",
-)]
 #[gen.name("android")]
 #[gen.native("android")]
 component platform(
@@ -79,6 +49,36 @@ component platform(
     const minSdk        int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
+    // What its generated code introduces beside a program's names. A component,
+    // struct or enum is written as a Kotlin type named by capitalizing it, and
+    // an explicit import outranks a declaration of the file's own package, so a
+    // program's `modifier` would be shadowed by Compose's `Modifier`; and the
+    // types and parameters the screen itself declares.
+    const reservedNames list<string> = [
+        "modifier",
+        "alignment",
+        "textStyle",
+        "fontWeight",
+        "textAlign",
+        "dialog",
+        "pullToRefreshBox",
+        "composeColor",
+        "toast",
+        "localContext",
+        "golib",
+        "backHandler",
+        "activity",
+        "mainScreen",
+        "mainScreenState",
+        "errorEvent",
+        "snglRaise",
+        "color",
+        "canvasStyle",
+        "pathCmd",
+        "state",
+        "context",
+        "slotContent",
+    ],
 ) build.platform {
     gen.run(@run(dir, args) {
         install(dir)
