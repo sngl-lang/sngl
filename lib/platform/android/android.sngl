@@ -246,6 +246,16 @@ component TabRow(
     children         ...component,
 ) ui.node
 
+// One tab of a TabRow; `text` is its label, which Compose takes as content.
+#[gen.renders(identity)]
+#[intrinsic("android:Tab")]
+component Tab(
+    selected bool,
+    enabled  bool,
+    onClick  func(),
+    text     component ui.node,
+) ui.node
+
 #[gen.renders(identity)]
 #[intrinsic("android:Checkbox")]
 component Checkbox(

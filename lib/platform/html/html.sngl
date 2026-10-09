@@ -483,15 +483,40 @@ const component ui.spinner[platform] {
     }
 }
 
+// A tablist of the tabs' labels and a tabpanel showing the selected one's
+// content. `underline` marks the selected tab with a rule under it, `pills`
+// with a filled background.
 const component ui.tabs[platform] {
     html.div(style={...style, display=flex, flexDirection=column}) {
         html.div(role="tablist", style={display=flex, gap=4px, borderBottom="1px solid #ccc"}) {
-            for var label = items {
-                html.button(role="tab", textContent=label, style={paddingY=8px, paddingX=16px, border="none", background=#00000000, cursor="pointer"})
+            for var k, t = items {
+                html.button(
+                    role = "tab",
+                    textContent = t.label,
+                    disabled = t.disabled,
+                    style = {
+                        paddingY = 8px,
+                        paddingX = 16px,
+                        border = "none",
+                        borderBottom = variant == ui.TabsVariant.underline && k == selected ? "2px solid currentColor" : "2px solid transparent",
+                        borderRadius = variant == ui.TabsVariant.pills ? 16px : 0px,
+                        background = variant == ui.TabsVariant.pills && k == selected ? #00000014 : #00000000,
+                        fontWeight = k == selected ? ui.FontWeight.bold : ui.FontWeight.normal,
+                        cursor = "pointer",
+                    },
+                    @click {
+                        selected = k
+                        change(k)
+                    },
+                )
             }
         }
         html.div(role="tabpanel") {
-            panels
+            for var k, t = items {
+                if k == selected {
+                    t.content
+                }
+            }
         }
     }
 }

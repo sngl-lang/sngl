@@ -6,14 +6,24 @@ carries.
 import . "sngl:ui"
 import . "sngl:test"
 
-// tabs: state-binding fixture — mutating the bound `selected`
-// index changes the active tab.
+// tabs: each tab is a `tab` written as a child, and the panel shown is what
+// the selected one was written with. `selected` is two-way bound, so the
+// strip's click writes `idx`, and mutating `idx` changes the panel.
 component main node {
     var idx = 0
-    tabs(items=["Overview", "Details", "Settings"], selected=idx) {
-        text(value="Overview content")
-        text(value="Detail content")
-        text(value="Settings content")
+    var changed = -1
+    tabs(:selected=idx, @change(i) {
+        changed = i
+    }) {
+        tab(label="Overview") {
+            text(value="Overview content")
+        }
+        tab(label="Details") {
+            text(value="Detail content")
+        }
+        tab(label="Settings", disabled=true) {
+            text(value="Settings content")
+        }
     }
 }
 
@@ -33,6 +43,7 @@ output {
     go {
         bubbletea
         fyne
+        gtk4
     }
     kotlin {
         android
@@ -51,11 +62,29 @@ import (
 	"charm.land/lipgloss/v2"
 	"fmt"
 	"os"
+	"strings"
 )
+
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
+type Tab__record struct {
+	Label    string
+	Disabled bool
+	__id     int
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	idx int
+	idx                 int
+	changed             int
+	__focusID           int
+	__focusLoop0_cursor int
 
 	width, height int
 }
@@ -64,6 +93,9 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.idx = 0
+	m.changed = -1
+	m.__focusID = 0
+	m.__focusLoop0_cursor = 0
 	return m
 }
 
@@ -71,6 +103,38 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __focusLoop0_len() int {
+	var __focusCount int = 0
+	for range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
+func (m *Model) __focusNext() {
+	if m.__focusID == 0 {
+		var __focusLen int = m.__focusLoop0_len()
+		if (m.__focusLoop0_cursor + 1) < __focusLen {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
+		} else {
+			m.__focusID = 0
+			m.__focusLoop0_cursor = 0
+		}
+	}
+}
+
+func (m *Model) __focusPrev() {
+	if m.__focusID == 0 {
+		if m.__focusLoop0_cursor > 0 {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
+		} else {
+			var __focusLen int = m.__focusLoop0_len()
+			m.__focusID = 0
+			m.__focusLoop0_cursor = (__focusLen - 1)
+		}
+	}
 }
 
 func (m Model) Idx() int {
@@ -88,6 +152,21 @@ func SetIdxCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setIdxMsg{value: v} }
 }
 
+func (m Model) Changed() int {
+	return m.changed
+}
+
+func (m Model) SetChanged(v int) Model {
+	m.changed = v
+	return m
+}
+
+type setChangedMsg struct{ value int }
+
+func SetChangedCmd(v int) tea.Cmd {
+	return func() tea.Msg { return setChangedMsg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -99,6 +178,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setIdxMsg:
 		m = m.SetIdx(msg.value)
+	case setChangedMsg:
+		m = m.SetChanged(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -106,6 +187,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			func() {
+				__focusPos0 := 0
+				for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+					_ = k
+					_ = t__r0
+					if m.__focusLoop0_cursor == __focusPos0 {
+						m.idx = k
+						m.changed = k
+						return
+					}
+					__focusPos0++
+				}
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -115,15 +214,63 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Overview content"))
+	var content_0Children []string
+	var content_0_0 string
+	__focusPos0 := 0
+	_ = __focusPos0
+	var content_0_0Items []string
+	for k, t__r0 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		_ = k
+		_ = t__r0
+		var content_0_0Item string
+		var __lt0 string
+		if k == m.idx {
+			__lt0 = "bold"
+		} else {
+			__lt0 = "normal"
+		}
+		content_0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
+		content_0_0ItemPrefix := " "
+		if content_0_0ItemFocused {
+			content_0_0ItemPrefix = ">"
+		}
+		content_0_0Item = lipgloss.NewStyle().
+			Bold(__lt0 == "bold").Render(content_0_0ItemPrefix + " " + fmt.Sprint(t__r0.Label))
+		__focusPos0++
+		content_0_0Items = append(content_0_0Items, content_0_0Item)
+	}
+	content_0_0 = strings.Join(content_0_0Items, "")
+	if content_0_0 != "" {
+		content_0Children = append(content_0Children, content_0_0)
+	}
+	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint("Detail content"))
-	contentChildren = append(contentChildren, content_1)
-	var content_2 string
-	content_2 = lipgloss.NewStyle().Render(fmt.Sprint("Settings content"))
-	contentChildren = append(contentChildren, content_2)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	var content_1Items []string
+	for k, t__r1 := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		_ = k
+		_ = t__r1
+		var content_1Item string
+		if k == m.idx {
+			if t__r1.__id == 0 {
+				content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Overview content"))
+			} else {
+				if t__r1.__id == 1 {
+					content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Detail content"))
+				} else {
+					if t__r1.__id == 2 {
+						content_1Item = lipgloss.NewStyle().Render(fmt.Sprint("Settings content"))
+					}
+				}
+			}
+		}
+		content_1Items = append(content_1Items, content_1Item)
+	}
+	content_1 = strings.Join(content_1Items, "\n")
+	if content_1 != "" {
+		contentChildren = append(contentChildren, content_1)
+	}
+	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -164,24 +311,135 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
+type Tab__record struct {
+	Label    string
+	Disabled bool
+	__id     int
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	idx int
+	idx          int
+	changed      int
+	__root       *fyne.Container
+	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
+	__inst0_live []*__child0Instance
+	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
 
-	__n0 *fyne.Container
-	__n1 *widget.Label
-	__n2 *widget.Label
-	__n3 *widget.Label
+	__n5 *fyne.Container
+	__n6 *fyne.Container
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.idx = 0
+	m.changed = -1
+	m.__root = container.NewVBox()
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
+	m.__slot1 = nil
+	m.__slot1_at = nil
 	return m
+}
+
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
+	for _, __entry := range m.__slot0 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
+	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		var __n1 *__child0Instance
+		if len(m.__inst0_live) > __inst0_i {
+			__n1 = m.__inst0_live[__inst0_i]
+			__n1.Set__p0(t)
+			__n1.Set__p1(k)
+			__n1.Set__p2(m.idx)
+			__n1.Set__on0(func() {
+				m.idx = k
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+				}
+				m.__renderSlot1(m.__n5)
+				m.changed = k
+			})
+		} else {
+			if len(m.__inst0_live) > __inst0_i {
+				m.__inst0_live[__inst0_i].Destroy()
+			}
+			__n1__new := new__child0Instance(m, t, k, m.idx, func() {
+				m.idx = k
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+				}
+				m.__renderSlot1(m.__n5)
+				m.changed = k
+			})
+			__n1 = __n1__new
+		}
+		__inst0_next = append(__inst0_next, __n1)
+		__inst0_i = (__inst0_i + 1)
+		__n1__el := __n1.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n1__el)
+		m.__slot0 = append(m.__slot0, __n1__el)
+	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
+	for _, __entry := range m.__slot1 {
+		fynelayout.Remove(__parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
+	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		if k == m.idx {
+			if t.__id == 0 {
+				__n2 := widget.NewLabel("")
+				__n2.SetText("Overview content")
+				fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
+				m.__slot1 = append(m.__slot1, __n2)
+			} else {
+				if t.__id == 1 {
+					__n3 := widget.NewLabel("")
+					__n3.SetText("Detail content")
+					fynelayout.InsertBefore(__parent, m.__slot1_at, __n3)
+					m.__slot1 = append(m.__slot1, __n3)
+				} else {
+					if t.__id == 2 {
+						__n4 := widget.NewLabel("")
+						__n4.SetText("Settings content")
+						fynelayout.InsertBefore(__parent, m.__slot1_at, __n4)
+						m.__slot1 = append(m.__slot1, __n4)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (m *Model) Idx() int {
@@ -192,21 +450,99 @@ func (m *Model) SetIdx(v int) {
 	m.idx = v
 }
 
+func (m *Model) Changed() int {
+	return m.changed
+}
+
+func (m *Model) SetChanged(v int) {
+	m.changed = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewHBox()
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("Overview content")
-	m.__n0.Add(m.__n1)
-	m.__n2 = widget.NewLabel("")
-	m.__n2.SetText("Detail content")
-	m.__n0.Add(m.__n2)
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("Settings content")
-	m.__n0.Add(m.__n3)
-	content := fyne.CanvasObject(m.__n0)
+	m.__n5 = container.NewVBox()
+	m.__n6 = container.NewHBox()
+	m.__renderSlot0(m.__n6)
+	m.__n5.Add(m.__n6)
+	m.__renderSlot1(m.__n5)
+	content := fyne.CanvasObject(m.__n5)
 	return content
 }
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root         fyne.CanvasObject
+	__model      *Model
+	__prop___p0  Tab__record
+	__prop___p1  int
+	__prop___p2  int
+	__prop___on0 func()
+	__root       *fyne.Container
+	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
+	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
+	__n0         *widget.Button
+}
+
+func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___p2 = __a___p2
+	c.__prop___on0 = __a___on0
+	c.__root = container.NewVBox()
+	c.__slot0 = nil
+	c.__slot1 = nil
+	var __lt2 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt2 = "bold"
+	} else {
+		__lt2 = "normal"
+	}
+	c.__n0 = widget.NewButton("", nil)
+	c.__n0.SetText(c.__prop___p0.Label)
+	_ = __lt2
+	c.__n0.OnTapped = func() {
+		c.__prop___on0()
+	}
+	c.Root = c.__n0
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v Tab__record) {
+	c.__prop___p0 = __v
+	c.__n0.SetText(c.__prop___p0.Label)
+}
+
+func (c *__child0Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
+	var __lt0 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt0 = "bold"
+	} else {
+		__lt0 = "normal"
+	}
+	_ = __lt0
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt1 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt1 = "bold"
+	} else {
+		__lt1 = "normal"
+	}
+	_ = __lt1
+}
+
+func (c *__child0Instance) Set__on0(__v func()) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child0Instance) Destroy() {}
 
 func main() {
 	a := app.New()
@@ -243,6 +579,273 @@ func newTestComponent() *Model {
 	m.BuildUI()
 	return m
 }
+-- out/go/gtk4/callbacks.go --
+// Code generated by sngl (gtk4) from component_tabs.sngl; DO NOT EDIT.
+
+package main
+
+import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+
+func main() {
+	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
+		return New().BuildUI(app)
+	})
+}
+-- out/go/gtk4/model.go --
+// Code generated by sngl (gtk4) from component_tabs.sngl; DO NOT EDIT.
+
+package main
+
+import (
+	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+)
+
+type Tab__record struct {
+	Label    string
+	Disabled bool
+	__id     int
+}
+
+// Model holds the state and widget references for this SNGL UI.
+type Model struct {
+	idx          int
+	changed      int
+	__root       gtk4rt.Handle
+	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
+	__inst0_live []*__child0Instance
+	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
+	__n5         gtk4rt.Handle
+}
+
+// New creates a Model with default values. Binds initialize
+// sequentially so later inits can reference earlier `m.<name>` fields.
+func New() *Model {
+	m := &Model{}
+	m.idx = 0
+	m.changed = -1
+	m.__root = nil
+	m.__slot0 = nil
+	m.__slot0_at = nil
+	m.__inst0_live = []*__child0Instance{}
+	m.__slot1 = nil
+	m.__slot1_at = nil
+	return m
+}
+
+func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
+	for _, __entry := range m.__slot0 {
+		gtk4rt.BoxRemove(parent, __entry)
+	}
+	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
+	__inst0_next := []*__child0Instance{}
+	var __inst0_i int = 0
+	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		var __n1 *__child0Instance
+		if len(m.__inst0_live) > __inst0_i {
+			__n1 = m.__inst0_live[__inst0_i]
+			__n1.Set__p0(t)
+			__n1.Set__p1(k)
+			__n1.Set__p2(m.idx)
+			__n1.Set__on0(func() {
+				m.idx = k
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+				}
+				m.__renderSlot1(m.__n5)
+				m.changed = k
+			})
+		} else {
+			if len(m.__inst0_live) > __inst0_i {
+				m.__inst0_live[__inst0_i].Destroy()
+			}
+			__n1__new := new__child0Instance(m, t, k, m.idx, func() {
+				m.idx = k
+				for __inst0_live_ui, _ := range m.__inst0_live {
+					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+				}
+				m.__renderSlot1(m.__n5)
+				m.changed = k
+			})
+			__n1 = __n1__new
+		}
+		__inst0_next = append(__inst0_next, __n1)
+		__inst0_i = (__inst0_i + 1)
+		__n1__el := __n1.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
+		m.__slot0 = append(m.__slot0, __n1__el)
+	}
+	for __inst0_i_d, _ := range m.__inst0_live {
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		if __inst0_i_j >= __inst0_i {
+			m.__inst0_live[__inst0_i_j].Destroy()
+		}
+	}
+	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
+	for _, __entry := range m.__slot1 {
+		gtk4rt.BoxRemove(parent, __entry)
+	}
+	m.__slot1 = nil
+	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
+	for k, t := range []Tab__record{Tab__record{Label: "Overview", Disabled: false, __id: 0}, Tab__record{Label: "Details", Disabled: false, __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
+		if k == m.idx {
+			if t.__id == 0 {
+				__n2 := gtk4rt.LabelNew("")
+				gtk4rt.LabelSetText(__n2, "Overview content")
+				gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
+				m.__slot1 = append(m.__slot1, __n2)
+			} else {
+				if t.__id == 1 {
+					__n3 := gtk4rt.LabelNew("")
+					gtk4rt.LabelSetText(__n3, "Detail content")
+					gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
+					m.__slot1 = append(m.__slot1, __n3)
+				} else {
+					if t.__id == 2 {
+						__n4 := gtk4rt.LabelNew("")
+						gtk4rt.LabelSetText(__n4, "Settings content")
+						gtk4rt.InsertBefore(parent, m.__slot1_at, __n4)
+						m.__slot1 = append(m.__slot1, __n4)
+					}
+				}
+			}
+		}
+	}
+}
+
+// __child0Instance is one live instance of the __child0 component.
+type __child0Instance struct {
+	Root         gtk4rt.Handle
+	__model      *Model
+	__prop___p0  Tab__record
+	__prop___p1  int
+	__prop___p2  int
+	__prop___on0 func()
+	__root       gtk4rt.Handle
+	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
+	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
+	__n0         gtk4rt.Handle
+}
+
+func new__child0Instance(__model *Model, __a___p0 Tab__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
+	c := &__child0Instance{}
+	c.__model = __model
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___p2 = __a___p2
+	c.__prop___on0 = __a___on0
+	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	c.__slot0 = nil
+	c.__slot1 = nil
+	var __lt2 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt2 = "bold"
+	} else {
+		__lt2 = "normal"
+	}
+	c.__n0 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
+	_ = __lt2
+	gtk4rt.Connect(c.__n0, "clicked", func() {
+		c.__prop___on0()
+	})
+	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
+	return c
+}
+
+func (c *__child0Instance) Set__p0(__v Tab__record) {
+	c.__prop___p0 = __v
+	gtk4rt.ButtonSetLabel(c.__n0, c.__prop___p0.Label)
+}
+
+func (c *__child0Instance) Set__p1(__v int) {
+	c.__prop___p1 = __v
+	var __lt0 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt0 = "bold"
+	} else {
+		__lt0 = "normal"
+	}
+	_ = __lt0
+}
+
+func (c *__child0Instance) Set__p2(__v int) {
+	c.__prop___p2 = __v
+	var __lt1 string
+	if c.__prop___p1 == c.__prop___p2 {
+		__lt1 = "bold"
+	} else {
+		__lt1 = "normal"
+	}
+	_ = __lt1
+}
+
+func (c *__child0Instance) Set__on0(__v func()) {
+	c.__prop___on0 = __v
+}
+
+func (c *__child0Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
+}
+
+func (m *Model) Idx() int {
+	return m.idx
+}
+
+func (m *Model) SetIdx(v int) {
+	m.idx = v
+}
+
+func (m *Model) Changed() int {
+	return m.changed
+}
+
+func (m *Model) SetChanged(v int) {
+	m.changed = v
+}
+
+func (m *Model) buildWidgetTree() {
+	if m.__root != nil {
+		return
+	}
+	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
+	m.__n5 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n5, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n5, 6)
+	__n6 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n6, gtk4rt.OrientationHorizontal)
+	gtk4rt.BoxSetSpacing(__n6, 6)
+	m.__renderSlot0(__n6)
+	gtk4rt.BoxAppend(m.__n5, __n6)
+	m.__renderSlot1(m.__n5)
+	gtk4rt.BoxAppend(m.__root, m.__n5)
+}
+
+// BuildUI constructs the widget tree and returns the top-level window.
+func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
+	m.buildWidgetTree()
+	win := gtk4rt.ApplicationWindowNew(app)
+	gtk4rt.WindowSetDefaultSize(win, 480, 640)
+	gtk4rt.WindowSetChild(win, m.__root)
+	return win
+}
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from component_tabs.sngl; DO NOT EDIT.
 
@@ -268,6 +871,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.safeDrawingPadding
+
+data class Tab__record(
+    var label: String,
+    var disabled: Boolean,
+    var __id: Int
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -277,16 +887,39 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var idx by mutableStateOf(0)
+    var changed by mutableStateOf(-1)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    TabRow(selectedTabIndex = state.idx) {
-        Text(text = "Overview content", modifier = Modifier)
-        Text(text = "Detail content", modifier = Modifier)
-        Text(text = "Settings content", modifier = Modifier)
+    Column(modifier = Modifier.safeDrawingPadding()) {
+        TabRow(selectedTabIndex = state.idx) {
+            for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
+                Tab(selected = (k == state.idx), enabled = !t.disabled, onClick = {
+                    state.idx = k
+                    state.changed = k
+                }, text = {
+                    Text(text = t.label, modifier = Modifier)
+                })
+            }
+        }
+        for ((k, t) in listOf(Tab__record(label = "Overview", disabled = false, __id = 0), Tab__record(label = "Details", disabled = false, __id = 1), Tab__record(label = "Settings", disabled = true, __id = 2)).withIndex()) {
+            if ((k == state.idx)) {
+                if ((t.__id == 0)) {
+                    Text(text = "Overview content", modifier = Modifier)
+                } else {
+                    if ((t.__id == 1)) {
+                        Text(text = "Detail content", modifier = Modifier)
+                    } else {
+                        if ((t.__id == 2)) {
+                            Text(text = "Settings content", modifier = Modifier)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -342,15 +975,11 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column">
-  <div style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
-    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Overview</button>
-    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Details</button>
-    <button style="background-color:rgba(0,0,0,0);border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px" role="tab">Settings</button>
+  <div id="__n5" data-sngl-id="__n5" style="border-bottom:1px solid #ccc;display:flex;gap:4px" role="tablist">
+    <span data-sngl-slot="0" style="display:contents"></span>
   </div>
-  <div role="tabpanel">
-    <span>Overview content</span>
-    <span>Detail content</span>
-    <span>Settings content</span>
+  <div id="__n6" data-sngl-id="__n6" role="tabpanel">
+    <span data-sngl-slot="1" style="display:contents"></span>
   </div>
 </div>
 
@@ -368,7 +997,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { idx: 0 };
+  var state = { idx: 0, changed: -1 };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -382,16 +1011,215 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testTabsSelectedMutates });
   }
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __p1 = props.__p1;
+    let __p2 = props.__p2;
+    let __on0 = props.__on0 ?? (() => {
+    });
+    let __prop___p0 = __p0;
+    let __prop___p1 = __p1;
+    let __prop___p2 = __p2;
+    let __prop___on0 = __on0;
+    let __slot02 = [];
+    let __slot12 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = __prop___p0.label;
+      __n0.disabled = __prop___p0.disabled;
+    }
+    function __set___p1(__v) {
+      __prop___p1 = __v;
+      __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
+      __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
+      __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+    }
+    function __set___p2(__v) {
+      __prop___p2 = __v;
+      __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+      __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
+      __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
+      __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+    }
+    function __set___on0(__v) {
+      __prop___on0 = __v;
+    }
+    let __n0 = document.createElement("button");
+    __n0.textContent = __prop___p0.label;
+    __n0.disabled = __prop___p0.disabled;
+    __n0.setAttribute("style", "border-radius:0px;border:none;cursor:pointer;padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px");
+    __n0.style.setProperty("border-bottom", __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent");
+    __n0.style.setProperty("background-color", _snglStyleColor(false ? { r: 0, g: 0, b: 0, a: 20 } : { r: 0, g: 0, b: 0, a: 0 }));
+    __n0.style.setProperty("font-weight", _snglStyleKeyword(__prop___p1 === __prop___p2 ? "bold" : "normal"));
+    __n0.setAttribute("role", "tab");
+    __n0.addEventListener("click", () => {
+      __prop___on0();
+    });
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0,
+      __set___p1,
+      __set___p2,
+      __set___on0
+    };
+  }
+  var __slot0 = [];
+  var __inst1_live = [];
+  var __slot1 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
+    for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
+      let __n1 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n1 = __inst1_live[__inst1_i];
+        __n1.__set___p0(t);
+        __n1.__set___p1(k);
+        __n1.__set___p2(state.idx);
+        __n1.__set___on0(() => {
+          state.idx = k;
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+          }
+          ;
+          __renderSlot1(__slotAnchor_1);
+          state.changed = k;
+        });
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n1__new = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
+          state.idx = k;
+          for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+            ;
+            __inst1_live[__inst1_live_ui].__set___p2(state.idx);
+          }
+          ;
+          __renderSlot1(__slotAnchor_1);
+          state.changed = k;
+        } });
+        __n1 = __n1__new;
+      }
+      __inst1_next.push(__n1);
+      __inst1_i = __inst1_i + 1;
+      let __n1__el = __n1.__root;
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n1__el) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n1__el, __place0_i_ref0);
+      }
+      __slot0.push(__n1__el);
+    }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  function __renderSlot1(parent) {
+    let __place2_prev = __slot1;
+    let __place2_i = 0;
+    __slot1 = [];
+    for (const [k, t] of [{ label: "Overview", disabled: false, __id: 0 }, { label: "Details", disabled: false, __id: 1 }, { label: "Settings", disabled: true, __id: 2 }].entries()) {
+      if (k === state.idx) {
+        if (t.__id === 0) {
+          let __n2 = document.createElement("span");
+          __n2.textContent = "Overview content";
+          let __place2_i_ref0 = null;
+          if (__place2_i < __place2_prev.length) {
+            __place2_i_ref0 = __place2_prev[__place2_i];
+          }
+          if (__place2_i_ref0 === __n2) {
+            __place2_i = __place2_i + 1;
+          } else {
+            parent.insertBefore(__n2, __place2_i_ref0);
+          }
+          __slot1.push(__n2);
+        } else {
+          if (t.__id === 1) {
+            let __n3 = document.createElement("span");
+            __n3.textContent = "Detail content";
+            let __place2_i_ref1 = null;
+            if (__place2_i < __place2_prev.length) {
+              __place2_i_ref1 = __place2_prev[__place2_i];
+            }
+            if (__place2_i_ref1 === __n3) {
+              __place2_i = __place2_i + 1;
+            } else {
+              parent.insertBefore(__n3, __place2_i_ref1);
+            }
+            __slot1.push(__n3);
+          } else {
+            if (t.__id === 2) {
+              let __n4 = document.createElement("span");
+              __n4.textContent = "Settings content";
+              let __place2_i_ref2 = null;
+              if (__place2_i < __place2_prev.length) {
+                __place2_i_ref2 = __place2_prev[__place2_i];
+              }
+              if (__place2_i_ref2 === __n4) {
+                __place2_i = __place2_i + 1;
+              } else {
+                parent.insertBefore(__n4, __place2_i_ref2);
+              }
+              __slot1.push(__n4);
+            }
+          }
+        }
+      }
+    }
+    for (const __place2_prev_e of __place2_prev) {
+      if (__slot1.indexOf(__place2_prev_e) < 0) {
+        parent.removeChild(__place2_prev_e);
+      }
+    }
+  }
+  function _snglStyleColor(c) {
+    if (typeof c === "string") return c;
+    if (c.a < 255) return "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")";
+    return "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+  function _snglStyleKeyword(m) {
+    return m.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+  }
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:44fc62d5cbbdb7c31f7d4e392c8fcfbb
+pass sha256:8fff3c9ff8330a8b9d549a4a0d3113c6
 -- run/go/fyne --
-pass sha256:e12611b7ec23e94551cd1751fca4566a
+pass sha256:7e4ff3ab7862ad08a707e34031be9332
+-- run/go/gtk4 --
+pass sha256:e838dd90103804897f1d644be2fcc806
 -- run/kotlin/android --
-pass sha256:87434f98c9740458d1f5331a40062b2b
+pass sha256:206ef841e7dd320c81e7b866be73f8ba
 -- run/none/html --
-pass sha256:f3343e821e38400c950a3b09f4a444a9
+pass sha256:5462306a55a5206695fca38b35d8914c

@@ -671,7 +671,10 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
-	ctx *codegen.ExprCtx
+	// written is each element variable an element has been written under,
+	// so a second node carrying the same `#id` gets one of its own (nodeID).
+	written map[string]bool
+	ctx     *codegen.ExprCtx
 
 	// The Analysis is shared across windows; the Emission is per-window.
 	*codegen.CommonAnalysis
@@ -1153,9 +1156,13 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	switch {
 	case n != nil && strings.HasPrefix(n.ID, "__n"):
 		id = n.ID
-	case n != nil && n.ID != "" && g.refToVar[n.ID] != "":
+	case n != nil && n.ID != "" && g.refToVar[n.ID] != "" && !g.written[g.refToVar[n.ID]]:
 		// The prewalk already allocated for this ref so that a handler
-		// translated before the element is emitted can still resolve it.
+		// translated before the element is emitted can still resolve it --
+		// until an element is written under it. A constant loop the fold
+		// unrolled writes a copy of the node per iteration under the one id,
+		// and each is an element of its own: sharing the first's variable,
+		// every copy's listener went onto the first button.
 		id = g.refToVar[n.ID]
 	default:
 		id = g.allocID()
@@ -1943,6 +1950,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
+		if g.written == nil {
+			g.written = map[string]bool{}
+		}
+		g.written[id] = true
 		fmt.Fprintf(b, " id=%q", id)
 		if strings.HasPrefix(id, "__n") {
 			fmt.Fprintf(b, " data-sngl-id=%q", id)

@@ -235,6 +235,7 @@ ui.window {
 // whose android override is a declared #[intrinsic] rather than a Go switch
 // case. `tabs` also guards the bound `selected` index reaching TabRow: the
 // switch it replaced passed a literal 0, so a program could not select a tab.
+// Each `tab` is a Material Tab in the row.
 func TestFeedbackIntrinsicsFromDeclarations(t *testing.T) {
 	src := `import . "sngl:ui"
 import ui "sngl:ui"
@@ -246,9 +247,13 @@ ui.window {
         card(variant="outlined") {
             text(value="in a card")
         }
-        tabs(items=["One", "Two"], selected=idx) {
-            text(value="one")
-            text(value="two")
+        tabs(:selected=idx) {
+            tab(label="One") {
+                text(value="one")
+            }
+            tab(label="Two") {
+                text(value="two")
+            }
         }
     }
 }`
@@ -258,6 +263,7 @@ ui.window {
 		"CircularProgressIndicator(modifier = Modifier)",
 		"Card(modifier = Modifier) {",
 		"TabRow(selectedTabIndex = idx) {",
+		"Tab(selected = ",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q:\n%s", want, out)

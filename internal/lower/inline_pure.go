@@ -801,6 +801,14 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 	return substituteEventsIn(stmts, handlers, nil)
 }
 
+// SubstituteEvents is substituteEvents for the optimizer, which splices a
+// component's body into its caller as the inliners do and so has to answer
+// the body's emits the same way: each is the call site's handler for that
+// event, or nothing where the call site handled none.
+func SubstituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
+	return substituteEvents(stmts, handlers)
+}
+
 // substituteEventsIn carries the event parameter of the handler whose body is
 // being walked. A user handler that declared a parameter the wrapper passes no
 // argument for is naming that same event, so its references are bound to the

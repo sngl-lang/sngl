@@ -298,6 +298,21 @@ func (c *Component) DataSlotOf(p *Prop) *SlotDecl {
 	return nil
 }
 
+// ContentSlot is the rest slot a data component declares for content -- what
+// its call site writes in it, which the container renders where it inserts
+// `r.content` -- or nil.
+func (c *Component) ContentSlot() *SlotDecl {
+	if c == nil || !c.Data {
+		return nil
+	}
+	for _, s := range c.Slots {
+		if s.Rest && s.Values == nil {
+			return s
+		}
+	}
+	return nil
+}
+
 // EventFuncType is the function a data component's event is a field of its
 // record as: one taking the event's parameters and returning nothing.
 func EventFuncType(e *EventDecl) *Type {
@@ -1113,7 +1128,23 @@ type SlotDecl struct {
 	// the family's records, which lower.DataFamilies builds from the
 	// population at each call site. The slot itself is never inserted.
 	Values *Prop `json:"-"`
+	// Shows is set on the slot a container is given for the content of a data
+	// family's records: the family's content slot (Component.ContentSlot),
+	// whose population each record was written with. `t.content` in the
+	// container's body inserts it, handed the record, and lower.DataFamilies
+	// populates it at each call site with the content of every record, chosen
+	// by the record's RecordID. Nil on every other slot.
+	Shows *SlotDecl `json:"-"`
 }
+
+// RecordID is the field a data family's record carries when the family
+// declares content: which of the records written at the call site it is, so
+// the container's content slot can show what that one was written with.
+const RecordID = "__id"
+
+// ContentSlotName is the hidden slot a container taking fam's records is given
+// for their content (SlotDecl.Shows).
+func ContentSlotName(fam *Component) string { return "__" + fam.Name + "_content" }
 
 // Arity is how many names a population of the slot binds.
 func (s *SlotDecl) Arity() int { return len(s.Params) + len(s.Slots) }

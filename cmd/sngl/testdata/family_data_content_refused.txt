@@ -1,0 +1,40 @@
+# A record written under a `for` among records is one record mapped over the
+# list (lower.DataFamilies), so what it is written with is written once: the
+# content of the card below cannot read `n`, and a build refuses it at the
+# card rather than showing every copy the same thing. The interpreter, which
+# reads the population through the same lowering, refuses it too.
+
+! sngl generate --platform html --lang none --out out app.sngl
+stderr 'app.sngl:15:17: this card is one record mapped over the `for` around it, so what it is written with is written once and cannot read n; pass what differs as a prop of the card'
+
+! sngl test --platform=none app.sngl
+stderr 'cannot read n'
+
+-- app.sngl --
+import ui "sngl:ui"
+import . "sngl:test"
+
+component card(label string, content ...component ui.node) card
+
+component deck(cards ...component card) ui.node {
+    for var c = cards {
+        c.content
+    }
+}
+
+component app ui.node {
+    deck {
+        for var n = ["a", "b"] {
+            card(label=n) {
+                ui.text(value=n)
+            }
+        }
+    }
+}
+
+func testNothing(t Test, c app) {
+}
+
+ui.window {
+    app
+}

@@ -252,9 +252,26 @@ const component ui.link[platform] {
     ) {}
 }
 
+// Material's TabRow of a Tab per tab, and the selected one's content under it.
 const component ui.tabs[platform] {
-    TabRow(selectedTabIndex=selected) {
-        panels
+    Column(modifier={...style}) {
+        TabRow(selectedTabIndex=selected) {
+            for var k, t = items {
+                Tab(selected=(k == selected), enabled=!t.disabled, onClick=func() {
+                    selected = k
+                    change(k)
+                }) {
+                    component text {
+                        Text(text=t.label) {}
+                    }
+                }
+            }
+        }
+        for var k, t = items {
+            if k == selected {
+                t.content
+            }
+        }
     }
 }
 

@@ -383,10 +383,16 @@ component Tour ui.node {
             ui.spinner(label="Loading...")
         }
         ui.text(value="Tabs", style={fontSize=20px, fontWeight=bold})
-        ui.tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
-            ui.text(value="This is the overview content.")
-            ui.text(value="Here are the details.")
-            ui.text(value="Settings would go here.")
+        ui.tabs(:selected=selectedTab) {
+            ui.tab(label="Overview") {
+                ui.text(value="This is the overview content.")
+            }
+            ui.tab(label="Details") {
+                ui.text(value="Here are the details.")
+            }
+            ui.tab(label="Settings") {
+                ui.text(value="Settings would go here.")
+            }
         }
         ui.divider
 

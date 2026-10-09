@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -207,6 +208,13 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if !ok {
 		return nil
 	}
+	// Events before slots, as in the lowering's inliners: an emit in spliced
+	// slot content is the caller's own, and would otherwise be matched
+	// against the handlers this call site gave the callee. Left standing, an
+	// emit became one of the caller's events -- `emit("change", k)` in a
+	// root component that declares none, against nothing the Go targets
+	// define -- and a handler the call site did write was never run.
+	cloned = lower.SubstituteEvents(cloned, n.Handlers)
 	cloned = substituteSlots(cloned, site)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's

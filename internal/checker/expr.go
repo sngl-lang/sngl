@@ -1574,18 +1574,15 @@ func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 }
 
 // nestedElementEvent is the event a trigger names through a component the
-// one it starts at renders -- `c.b.btn.click()` -- read off the type the
-// receiver checked as: the shapes elementHostComponent reads off the source
-// stop one level down.
+// one it starts at renders -- `c.b.btn.click()`, or `c.opt[1].click()` for a
+// node a component `c` renders declares -- read off the type the receiver
+// checked as: the shapes elementHostComponent reads off the source stop at
+// the nodes `c`'s own body writes.
 func nestedElementEvent(operand ast.Expr, receiver *ir.Type, event string) *ir.EventDecl {
 	if ix, ok := operand.(*ast.IndexExpr); ok {
 		operand = ix.Operand
 	}
-	sel, ok := operand.(*ast.SelectExpr)
-	if !ok {
-		return nil
-	}
-	if _, ok := sel.Operand.(*ast.SelectExpr); !ok {
+	if _, ok := operand.(*ast.SelectExpr); !ok {
 		return nil
 	}
 	if receiver == nil || receiver.Kind != ir.TypeComponent {
@@ -3633,6 +3630,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				return c.checkVisualNodeIR(vn)
 			}
 		}
+		// `r.content(…)`: what a record was written with, inserted with
+		// parentheses.
+		if sel, ok := x.Call.Func.(*ast.SelectExpr); ok && x.Call.ID == "" {
+			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: sel, Args: x.Call.Args, Attrs: x.Attrs, HasParens: true}
+				if st, ok := c.recordContent(vn, id.Name+"."+sel.Field); ok {
+					return st
+				}
+			}
+		}
 		// A bare `event(args)` whose name matches an event declared on the
 		// enclosing component is an emit, not a function call. Events share
 		// the component's namespace but cannot collide with funcs/vars, so
@@ -4285,6 +4292,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	if slot := c.enclosingSlot(name); slot != nil {
 		return c.checkSlotInsertion(vn, slot, name, false)
+	}
+	if st, ok := c.recordContent(vn, name); ok {
+		return st
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.

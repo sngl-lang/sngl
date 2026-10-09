@@ -2,7 +2,10 @@ package lower
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -22,6 +25,15 @@ import (
 // It runs on checked IR ahead of the first optimize, which would otherwise
 // fold an unwritten prop to its empty default, and ahead of the interpreter.
 // analyze, when non-nil, gives a lambda it synthesizes its reads and purity.
+//
+// A record of a family that declares content (ir.Component.ContentSlot) is
+// numbered, ir.RecordID, and what it was written with is not dropped: it
+// becomes a branch of the population of the content slot the container was
+// given (ir.SlotDecl.Shows), chosen by the number of the record the container
+// hands it -- the shape navigation gives a page's content under
+// `if pages.current.id == N`. Numbers are unique across the run, so a
+// container forwarding another's records hands what it cannot show on to the
+// content slot of the component the population was written in.
 func DataFamilies(pkg *ir.Package, analyze func(owner *ir.Component, fn *ir.Func)) error {
 	if pkg == nil {
 		return nil
@@ -58,6 +70,21 @@ type dataFamilies struct {
 	owner   *ir.Component
 	analyze func(owner *ir.Component, fn *ir.Func)
 	err     error
+	// nextID numbers the records written with content, and contents is,
+	// per family, what each record of the node being read was written with.
+	nextID   int
+	contents map[*ir.Component][]recordContent
+	// forwards is each family whose records the node being read is handed
+	// from a data slot of the component it is written in.
+	forwards map[*ir.Component]bool
+	// loops is the `for`s among records around the member being read.
+	loops []*ir.For
+}
+
+// recordContent is what one record was written with, and its number.
+type recordContent struct {
+	id   int
+	body []ir.Stmt
 }
 
 func (d *dataFamilies) walk(stmts []ir.Stmt) {
@@ -79,6 +106,9 @@ func (d *dataFamilies) node(n *ir.NodeInst) {
 	if n.Component == nil {
 		return
 	}
+	outer, outerFwd := d.contents, d.forwards
+	d.contents, d.forwards = map[*ir.Component][]recordContent{}, map[*ir.Component]bool{}
+	defer func() { d.contents, d.forwards = outer, outerFwd }()
 	for _, slot := range n.Component.Slots {
 		if slot.Values == nil {
 			continue
@@ -87,6 +117,47 @@ func (d *dataFamilies) node(n *ir.NodeInst) {
 			n.Props = append(n.Props, ir.Arg{Name: slot.Name, Value: list})
 		}
 	}
+	for _, slot := range n.Component.Slots {
+		if slot.Shows != nil {
+			d.populateContent(n, slot)
+		}
+	}
+}
+
+// populateContent writes the population of n's content slot: a branch per
+// record written with content, on the record's number, and where n is handed
+// records it forwards, an insertion of the content slot of the component it is
+// written in for the rest.
+func (d *dataFamilies) populateContent(n *ir.NodeInst, slot *ir.SlotDecl) {
+	fam := slot.Params[0].Type.Decl.(*ir.StructDef).RecordOf
+	contents := d.contents[fam]
+	var rest []ir.Stmt
+	r := &ir.Param{Name: "__record", Type: slot.Params[0].Type}
+	if d.forwards[fam] && d.owner != nil {
+		for _, os := range d.owner.Slots {
+			if os.Shows == slot.Shows {
+				rest = []ir.Stmt{&ir.SlotInst{Name: os.Name, Decl: os, Args: []ir.Expr{&ir.Ident{Name: r.Name, Type: r.Type, Sym: r}}}}
+			}
+		}
+	}
+	if len(contents) == 0 && len(rest) == 0 {
+		return
+	}
+	body := rest
+	for _, c := range slices.Backward(contents) {
+
+		cond := &ir.Binary{
+			Type:  ir.TypBool,
+			Op:    ast.BinEq,
+			Left:  &ir.Select{Type: ir.TypInt, Operand: &ir.Ident{Name: r.Name, Type: r.Type, Sym: r}, Field: ir.RecordID},
+			Right: &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(c.id)},
+		}
+		body = []ir.Stmt{&ir.If{Cond: cond, Body: c.body, Else: body}}
+	}
+	if n.Slots == nil {
+		n.Slots = map[string]*ir.SlotContent{}
+	}
+	n.Slots[slot.Name] = &ir.SlotContent{Params: []*ir.Param{r}, Body: body}
 }
 
 // takePopulation removes from n what its call site wrote in slot, and
@@ -174,6 +245,7 @@ func (d *dataFamilies) elems(fam *ir.Component, stmts []ir.Stmt, depth int) []ir
 				d.fail(n, "slot %s holds no members of %s to read", n.Name, fam.Name)
 				return nil
 			}
+			d.forwards[fam] = true
 			out = append(out, &ir.Spread{Type: list, Operand: &ir.Ident{Name: decl.Values.Name, Type: list, Sym: decl.Values.Sym}})
 		case *ir.If:
 			out = append(out, &ir.Spread{Type: list, Operand: &ir.Ternary{
@@ -203,7 +275,9 @@ func (d *dataFamilies) loop(fam *ir.Component, fs *ir.For, depth int) ir.Expr {
 		d.fail(fs, "a `for` among the records of %s walks a list with one variable and no else", fam.Name)
 		return nil
 	}
+	d.loops = append(d.loops, fs)
 	body := d.elems(fam, fs.Body, depth)
+	d.loops = d.loops[:len(d.loops)-1]
 	if d.err != nil {
 		return nil
 	}
@@ -294,7 +368,47 @@ func (d *dataFamilies) record(fam *ir.Component, n *ir.NodeInst, depth int) ir.E
 	for _, e := range fam.Events {
 		lit.Fields = append(lit.Fields, ir.FieldInit{Name: e.Name, Value: d.eventFunc(e, n)})
 	}
+	if cs := fam.ContentSlot(); cs != nil {
+		id := d.nextID
+		d.nextID++
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: ir.RecordID, Value: &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(id)}})
+		body := takePopulation(n, cs)
+		if v := d.readsLoopVar(body); v != "" {
+			d.fail(n, "this %s is one record mapped over the `for` around it, so what it is written with is written once and cannot read %s; pass what differs as a prop of the %s", fam.Name, v, fam.Name)
+			return nil
+		}
+		if len(body) > 0 {
+			d.contents[fam] = append(d.contents[fam], recordContent{id: id, body: body})
+		}
+	}
 	return lit
+}
+
+// readsLoopVar is the name of a variable of a `for` among records that body
+// reads, or "". A record under one is a single record mapped over the list,
+// so its content is written once and cannot see the element.
+func (d *dataFamilies) readsLoopVar(body []ir.Stmt) string {
+	if len(d.loops) == 0 {
+		return ""
+	}
+	vars := map[ir.Symbol]bool{}
+	for _, fs := range d.loops {
+		if fs.KeySym != nil {
+			vars[fs.KeySym] = true
+		}
+		if fs.ValueSym != nil {
+			vars[fs.ValueSym] = true
+		}
+	}
+	found := ""
+	_ = ir.Walk(body, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && vars[id.Sym] && found == "" {
+			found = id.Name
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // eventFunc is what a record's event field holds: the handler n's call site

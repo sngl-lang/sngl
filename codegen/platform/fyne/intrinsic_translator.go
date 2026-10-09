@@ -673,7 +673,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// the widget root by the override bodies. Neither is a value with a
 		// setter behind it, which is the same exemption gtk4 makes for its
 		// `style`.
-		return nil
+		return codegen.KeepLocalsRead(value)
 	}
 	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
 		return nil

@@ -1,0 +1,167 @@
+# The optimizer splices a component whose body it can fold into its caller
+# before lowering, and the body's emits are the call site's handlers there as
+# in the lowering's inliners. They were left standing: a handler the call site
+# wrote never ran -- `emit("chose", x)` in a test build of `app`, against
+# nothing the Go targets define -- and an event it did not handle became one
+# of the caller's own (`emit("change", k)` from sngl:ui's tabs).
+
+sngl test --platform=none app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import . "sngl:test"
+
+component pick(items list<string>, @chose(s string)) ui.node {
+    for var x = items {
+        ui.button #opt(text=x, @click {
+            chose(x)
+        })
+    }
+}
+
+component app ui.node {
+    var last = ""
+    pick(items=["a", "b"], @chose(s) {
+        last = s
+    })
+}
+
+func testTheCallSitesHandlerRuns(t Test, c app) {
+    c.opt[1].click()
+    t.assert(c.last == "b")
+}
+
+// A library body's emit the call site handles no event for is nothing: in a
+// build rooted at `app` it used to be left as an emit of `app`'s own, which
+// declares none.
+component plain ui.node {
+    var idx = 0
+    ui.tabs(:selected=idx) {
+        ui.tab(label="one")
+    }
+}
+
+func testAnUnhandledEventIsNothing(t Test, c plain) {
+    t.assert(c.idx == 0)
+}
+
+ui.window {
+    app
+    plain
+}
+-- testrun/android/kotlin/app.sngl/app/1 --
+sha256:c073959e1faf9cc618b0d58f31e7cdbe
+{
+  "results": [
+    {
+      "Desc": "TheCallSitesHandlerRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/plain/1 --
+sha256:4732b52d300180d77aa6b1735a66e465
+{
+  "results": [
+    {
+      "Desc": "AnUnhandledEventIsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/app/1 --
+sha256:1078f3256c6e51b814e07487fb6f4eb9
+{
+  "results": [
+    {
+      "Desc": "TheCallSitesHandlerRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/plain/1 --
+sha256:2d001a0ff2a3ff7aab6cb57517b67595
+{
+  "results": [
+    {
+      "Desc": "AnUnhandledEventIsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/app/1 --
+sha256:266b346a67ab2c19ca47549b78be9ed7
+{
+  "results": [
+    {
+      "Desc": "TheCallSitesHandlerRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/plain/1 --
+sha256:c7b9cdc80d62104f32639c815e0f04ab
+{
+  "results": [
+    {
+      "Desc": "AnUnhandledEventIsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:75d8c805fc098ecf529670f0ae9f68c0
+{
+  "results": [
+    {
+      "Desc": "TheCallSitesHandlerRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/plain/1 --
+sha256:f772b1f4579ef24703c955de59ee2462
+{
+  "results": [
+    {
+      "Desc": "AnUnhandledEventIsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/app/1 --
+sha256:1f39308a2c66a1413979c5b390e3a45e
+{
+  "results": [
+    {
+      "Desc": "TheCallSitesHandlerRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/plain/1 --
+sha256:39557372decb33c18bb40421e35de1e6
+{
+  "results": [
+    {
+      "Desc": "AnUnhandledEventIsNothing",
+      "Passed": true
+    }
+  ]
+}

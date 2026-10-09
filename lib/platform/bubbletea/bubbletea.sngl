@@ -419,12 +419,6 @@ const component ui.link[platform] {
     Styled(content=text, style={...style}) {}
 }
 
-const component ui.tabs[platform] {
-    Layout(join=JoinDir.horizontal, style={...style}) {
-        panels
-    }
-}
-
 const component ui.modal[platform] {
     if open {
         Overlay(placement="center", dim=true, style={...style}) {

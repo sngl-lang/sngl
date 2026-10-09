@@ -526,16 +526,10 @@ const component ui.tooltip[platform] {
 
 // --- Navigation ---
 //
-// A tab strip, menu bar and toolbar are all a row of their entries. Fyne's
-// own AppTabs/MainMenu/Toolbar take their items as typed constructor
-// arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no `Arg` can
-// build out of a SNGL prop.
-
-const component ui.tabs[platform] {
-    HBox(style={...style}) {
-        panels
-    }
-}
+// A menu bar and toolbar are a row of their entries, and tabs are sngl:ui's
+// own body. Fyne's own AppTabs/MainMenu/Toolbar take their items as typed
+// constructor arguments (`[]*container.TabItem`, `[]*fyne.MenuItem`), which no
+// `Arg` can build out of a SNGL prop.
 
 const component ui.toolbar[platform] {
     HBox(style={...style}) {
