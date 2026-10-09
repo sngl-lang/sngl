@@ -52,7 +52,7 @@ func TestExtensionMergeBasic(t *testing.T) {
 import sngl "sngl:ui"
 
 const component sngl.text[extstub.platform] {
-    image(src=value)
+    image(alt=value)
 }
 `
 	const userSource = `

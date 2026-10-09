@@ -1993,6 +1993,10 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							c.reportUnusable(x.Pos, ident.Name+"."+x.Field, fsym)
+							if f, isComp := fsym.(*ir.Component); isComp && f.IsFamily() {
+								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, x.Field)
+								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+							}
 							// A context reached through its package is the
 							// same context: `i18n.locale` reads what `locale`
 							// reads where the name is in scope unqualified.

@@ -57,7 +57,7 @@ import ui "sngl:ui"
 ui.window { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
 	{"image", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+ui.window { image(alt="pic") { remote(url="/x.png") } }`, []string{"<img", `src="/x.png"`, `aria-label="pic"`}},
 	{"link", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},

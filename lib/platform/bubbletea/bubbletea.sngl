@@ -1,6 +1,7 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import markup "sngl:ui/markup"
+import shapes "sngl:ui/draw"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
@@ -236,8 +237,37 @@ const component ui.button[platform] {
     ) {}
 }
 
+// An image is a box holding the source it shows, or the placeholder where it
+// holds none. A drawing is a canvas, as one is anywhere in a terminal; a
+// picture a URL names is drawn in half-block cells fitted into a box of
+// `Picture`'s choosing, since a terminal has no size a pixel has.
 const component ui.image[platform] {
-    Styled(content="[image]", style={...style}) {}
+    Layout(join=JoinDir.vertical, style={...style}) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+#[intrinsic("bubbletea:Picture")]
+component Picture(url string) ui.imageSource
+
+#[intrinsic("bubbletea:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+const component ui.file[platform] {
+    Picture(url=path)
+}
+
+const component ui.remote[platform] {
+    Picture(url=url)
+}
+
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 const component ui.input[platform] {

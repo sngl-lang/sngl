@@ -14,13 +14,13 @@ func TestCanvasReactiveRedraw(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:test"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 output { none { html() } }
 var size float = 100.0
 
 window(title="Canvas Reactive Test") {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=size, h=50.0, style=CanvasStyle{fill=color{r=255}}) {}
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=size, h=50.0, style=draw.CanvasStyle{fill=color{r=255}}) {}
     }
 }
 `
@@ -48,11 +48,11 @@ func TestCanvasIntegration(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:test"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 output { none { html() } }
 window(title="Canvas Test") {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{fill=color{r=255}}) {}
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0, style=draw.CanvasStyle{fill=color{r=255}}) {}
     }
 }
 `

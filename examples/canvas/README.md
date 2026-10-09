@@ -32,5 +32,5 @@ Everything below comes from `sngl:ui/draw`, which the app imports as
 - `draw.line(x1, y1, x2, y2, style)` — stroked line
 - `draw.path(cmds, style)` — a path built from a `list<draw.PathCmd>`
 - `draw.canvasText(x, y, content, style)` — drawn text
-- `draw.canvasImage(x, y, w, h, src)` — a drawn image
+- `draw.canvasImage(x, y, w, h) { source }` — an image drawn from any source a `ui.image` takes
 - `draw.CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`

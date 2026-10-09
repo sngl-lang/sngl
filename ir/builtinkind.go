@@ -81,6 +81,9 @@ const (
 	// TreeShape is the drawing tree. A node hosting its members is a canvas,
 	// whose shapes passShapeDraw turns into the statements that paint them.
 	BuiltinFamilyShape BuiltinKind = "familyShape"
+	// FamilyImageSource is where an image's pixels come from: a shape hosting
+	// one paints it (passShapeDraw).
+	BuiltinFamilyImageSource BuiltinKind = "familyImageSource"
 	// TreeLanguage and TreePlatform are `sngl:build`'s `language` and
 	// `platform`: the families a build-target node is a member of, which is
 	// what makes a component a target and says which tier it is.
@@ -181,13 +184,13 @@ func (b BuiltinKind) IsSlotBound() bool {
 }
 
 // IsFamilyRole reports whether the kind marks a family the compiler itself has
-// to name. Six do -- the family of families, the package body's, the rich-text
-// family, the drawing family and the two build-target tiers -- because a phase
+// to name. Seven do -- the family of families, the package body's, the rich-text
+// family, the drawing family, the image source family and the two build-target tiers -- because a phase
 // asks after each by role rather than by declaration. Every other family is compared by declaration
 // and never spelled.
 func (b BuiltinKind) IsFamilyRole() bool {
 	switch b {
-	case BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape,
+	case BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
 		BuiltinFamilyLanguage, BuiltinFamilyPlatform:
 		return true
 	}
@@ -254,7 +257,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
-		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape,
+		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape, BuiltinFamilyImageSource,
 		BuiltinFamilyLanguage, BuiltinFamilyPlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,

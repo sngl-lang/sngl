@@ -93,6 +93,9 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
+	if t.imageTagOf(m.ID) == imageDrawingTag {
+		return []ir.Stmt{t.paintImageDrawing(m)}
+	}
 	widget := cgoCast("GtkWidget", t.fieldRef(m.ID))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
 }

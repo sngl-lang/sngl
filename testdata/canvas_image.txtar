@@ -33,7 +33,9 @@ output {
 
 component main() ui.node {
     draw.canvas(width=40px, height=20px) {
-        draw.canvasImage(x=1.0, y=2.0, w=8.0, h=4.0, src="logo.png")
+        draw.canvasImage(x=1.0, y=2.0, w=8.0, h=4.0) {
+            ui.remote(url="logo.png")
+        }
     }
 }
 

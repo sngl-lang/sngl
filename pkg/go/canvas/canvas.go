@@ -11,6 +11,7 @@ import (
 	"math"
 	"sync"
 
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font/gofont/goregular"
@@ -155,6 +156,15 @@ func (s *Surface) Begin(pw, ph int, w, h float64, mode string) *Context {
 // Save / Restore bracket transform/clip state.
 func (c *Context) Save()    { c.dc.Push() }
 func (c *Context) Restore() { c.dc.Pop() }
+
+// Translate, Scale and ClipRect place what is drawn after them, until the
+// Restore matching the Save before them.
+func (c *Context) Translate(x, y float64) { c.dc.Translate(x, y) }
+func (c *Context) Scale(x, y float64)     { c.dc.Scale(x, y) }
+func (c *Context) ClipRect(x, y, w, h float64) {
+	c.dc.DrawRectangle(x, y, w, h)
+	c.dc.Clip()
+}
 
 // ApplyStyle sets the style used by the next primitive.
 func (c *Context) ApplyStyle(s Style) { c.pending = s }
@@ -326,10 +336,11 @@ func (c *Context) Text(x, y float64, content string) {
 	c.dc.DrawString(content, x, y)
 }
 
-// Image decodes src (a local file path) and draws it scaled into (x,y,w,h).
-// A missing/undecodable path draws nothing.
+// Image draws the picture src names scaled into (x,y,w,h): a file the program
+// carries, or a fetched one once it has arrived. One that is missing, still on
+// its way or undecodable draws nothing.
 func (c *Context) Image(x, y, w, h float64, src string) {
-	img, err := gg.LoadImage(src)
+	img, err := snglimage.Load(src)
 	if err != nil {
 		return
 	}

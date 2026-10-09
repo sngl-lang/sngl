@@ -13,14 +13,14 @@ import "testing"
 func TestACanvasUnderAComponentDeclaredWindowEmitsItsDrawFunc(t *testing.T) {
 	files := generateGTK4FilesBuilt(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 var radius = 50.0
 
 component main root {
     window #w(title="c") {
-        canvas(width=400px, height=280px) {
-            circle(cx=200.0, cy=140.0, r=radius, style=CanvasStyle{fill=color{r=99, g=102, b=241, a=255}}) {}
+        draw.canvas(width=400px, height=280px) {
+            draw.circle(cx=200.0, cy=140.0, r=radius, style=draw.CanvasStyle{fill=color{r=99, g=102, b=241, a=255}}) {}
         }
     }
 }

@@ -98,6 +98,9 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
+	if isImageDrawing(m.Node) {
+		return t.paintImageDrawing(m)
+	}
 	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
 	// size the widget is now.
 	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {

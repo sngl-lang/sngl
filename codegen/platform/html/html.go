@@ -568,7 +568,8 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.shareConsts = shareConsts
-		gen.irBodyStmts = win.Body
+		content, icon := splitFavicon(win.Body)
+		gen.irBodyStmts = content
 		// Per document: a drawing is keyed by its node, and the document's nodes
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
@@ -582,8 +583,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowTitle)); ok {
 			gen.title = s
 		}
-		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowFavicon)); ok {
+		if s, ok := codegen.IRLiteralString(icon.Prop(ir.ImageSourceURL)); ok && !isImageDrawing(icon) {
 			gen.favicon = s
+		} else {
+			gen.faviconNode = icon
 		}
 		body, err := gen.generate()
 		if err != nil {
@@ -610,12 +613,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return ctx.BuildMutation(mainStmts), nil
 }
 
-// The props of html's Window a document reads: what its <title> and its icon
-// are. They are the primitive's own, declared in html.sngl.
-const (
-	windowTitle   = "title"
-	windowFavicon = "favicon"
-)
+// The prop of html's Window a document reads for its <title>, declared in
+// html.sngl.
+const windowTitle = "title"
 
 // documentView is what a page is generated from: the Window it is written
 // from. A harness rendering its root component has none, and takes the vars
@@ -689,6 +689,9 @@ type htmlGen struct {
 	stylesheet string
 
 	favicon string
+	// faviconNode is the image source a document's icon is when no literal URL
+	// says it: a drawing, or a URL that reads state.
+	faviconNode *ir.NodeInst
 
 	wasmLoader string
 
@@ -1185,6 +1188,11 @@ func (g *htmlGen) generate() (string, error) {
 	g.rewriteSlotCallsOnce()
 	g.rewriteDocumentSlotCalls()
 
+	var icon strings.Builder
+	if g.faviconNode != nil {
+		g.renderIRNode(&icon, g.faviconNode, 1)
+	}
+
 	var b strings.Builder
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
@@ -1196,6 +1204,7 @@ func (g *htmlGen) generate() (string, error) {
 	if g.favicon != "" {
 		fmt.Fprintf(&b, "  <link rel=\"icon\" href=\"%s\">\n", html.EscapeString(g.favicon))
 	}
+	b.WriteString(icon.String())
 	if g.stylesheet != "" {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
@@ -1841,6 +1850,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
+	tag = elementTag(tag)
+	favicon := n == g.faviconNode
+	if favicon {
+		tag = "link"
+	}
 
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
@@ -1858,9 +1872,22 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			g.idToNode[id] = n
 		}
 	}
+	if favicon {
+		if id == "" {
+			id = g.nodeID(n)
+		}
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_icon", id[1:]),
+			body:     faviconInit(id),
+			initOnly: true,
+		})
+	}
 	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n), image: isImageDrawing(n)}
+		if cs.image {
+			g.ctx.Helpers[imageDrawHelper] = true
+		}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -1878,7 +1905,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := nodeInlineCSS(n)
-	if css := canvasScalingCSS(n, drawing != nil); css != "" {
+	if css := canvasScalingCSS(n, drawing != nil && !isImageDrawing(n)); css != "" {
 		if style != "" {
 			style += ";"
 		}
@@ -1887,6 +1914,14 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
+	if isImageSource(n) {
+		props, style = sourceAttrs(props, favicon), ""
+		if !favicon {
+			for _, r := range imageRules {
+				g.AddStyle(r)
+			}
+		}
+	}
 	// The tag names the element rather than being one of its attributes.
 	delete(props, tagProp)
 	var attrs strings.Builder
@@ -2554,6 +2589,9 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	}
 	if g.ctx.Helpers["native:_snglDrawImage"] {
 		b.WriteString(snglDrawImageHelper)
+	}
+	if g.ctx.Helpers[imageDrawHelper] {
+		b.WriteString(snglImageDrawHelper)
 	}
 	b.WriteString(snglCanvasHelper)
 }
@@ -3734,6 +3772,9 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	fmt.Fprintf(b, "%s  <header>\n%s    <span>%s</span>\n", indent, indent, escapeTextContent(title))
 	fmt.Fprintf(b, "%s    <button id=%q aria-label=\"Close\">\n%s      <span>×</span>\n%s    </button>\n%s  </header>\n", indent, close, indent, indent, indent)
 	for _, s := range ir.WidgetChildren(n) {
+		if c, ok := s.(*ir.NodeInst); ok && isImageSource(c) {
+			continue
+		}
 		g.renderIRStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</dialog>\n", indent)

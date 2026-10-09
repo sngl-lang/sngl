@@ -304,6 +304,9 @@ func methodCall(receiver ir.Expr, method string, args []ir.Expr, retType *ir.Typ
 }
 
 func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	if m := t.canvasByID[id]; m != nil && isImageDrawing(m.Node) {
+		return t.emitImageDrawingCreate(id)
+	}
 	if tag == "canvas" {
 		if _, ok := t.canvasByID[id]; ok {
 			return t.emitCanvasCreate(id)

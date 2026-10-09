@@ -49,7 +49,9 @@ component members() ui.node {
                 markup.text(value="func")
             }
         }
-        markup.image(src="/icon.png", alt="an icon")
+        markup.image(alt="an icon") {
+            ui.remote(url="/icon.png")
+        }
     }
 }
 

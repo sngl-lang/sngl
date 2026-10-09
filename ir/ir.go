@@ -356,6 +356,9 @@ func IsShapeFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyShap
 // IsSpanFamily reports whether f is the inline rich-text family.
 func IsSpanFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilySpan) }
 
+// IsImageSourceFamily reports whether f is the family an image's source belongs to.
+func IsImageSourceFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyImageSource) }
+
 // IsRootFamily reports whether f is the family a package body accepts.
 func IsRootFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyRoot) }
 

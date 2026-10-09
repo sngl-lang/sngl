@@ -51,7 +51,9 @@ var fyneCtors = map[string]any{
 	"fyne.io/fyne/v2/container.NewVScroll":        container.NewVScroll,
 	// The window's Toplevel is this platform's own runtime type, not a Fyne
 	// widget, and is held to the same reflection as the rest.
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewToplevel": fynelayout.NewToplevel,
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewToplevel":    fynelayout.NewToplevel,
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewImage":       fynelayout.NewImage,
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout.NewImageSource": fynelayout.NewImageSource,
 }
 
 // allSpecs decodes every Spec the fyne overrides reach, keyed by the stdlib

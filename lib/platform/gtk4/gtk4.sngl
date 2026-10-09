@@ -8,6 +8,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import go "sngl:language/go"
 import gen "sngl:x/gen"
+import family "sngl:family"
 import gtk "gir:Gtk-4.0"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
@@ -85,6 +86,8 @@ const component ui.window[platform] {
         boundary(@error(e) { error(e) }) {
             content
         }
+        #[family.crosses]
+        favicon
     }
 }
 
@@ -123,7 +126,23 @@ const component ui.checkbox[platform] {
 }
 
 const component ui.image[platform] {
-    gtk.GtkImage(file=src, style={...style}) {}
+    Image(
+        fit = string(fit),
+        @click {
+            click()
+        },
+        @load {
+            load()
+        },
+        @failed(m) {
+            error({message=m, kind="image"})
+        },
+    ) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
 }
 
 const component ui.input[platform] {
@@ -633,54 +652,93 @@ const component shapes.canvasText[platform] {
 
 // --- Images ---
 //
-// GdkPixbuf rather than cairo's own PNG loader: it is already linked into any
-// GTK application, it reads JPEG and SVG as well as PNG, and it scales in the
-// loader so no `cairo_scale` is needed -- which would scale the stroke of
-// anything drawn after it.
-//
-// A nullable C pointer is `option<T>`: both `option` and `ref` render as `*T`,
-// so `option<Pixbuf>` is the `GdkPixbuf*` the loader answers and a null test
-// is the NULL check. The `GError**` out-parameter is the one place the extra
-// indirection is right, and `option<ref<GError>>` is it.
-//
-// The functions that consume the pointer declare `option<Pixbuf>` as well,
-// even inside the null test: narrowing an option yields the *referent*, so a
-// parameter typed `Pixbuf` is handed `(*pb)` -- the struct, where the C
-// function wants the pointer.
-#[cnative("C.GdkPixbuf")]
-struct Pixbuf {}
+// An image is gtk4rt's rather than a GIR class: a box holding the source it
+// shows, fitted as `fit` says, or the placeholder where it holds none. A
+// source is a GtkPicture showing the texture its bytes or its drawing make --
+// a file the program carries, one fetched, or a picture a drawing paints --
+// and reports to the image whether it arrived. Appended to a window, it is the
+// window's icon.
+#[marks.intrinsic("gtk4:Image")]
+component Image(
+    fit     string,
+    @click(),
+    @load(),
+    @failed(message string),
+    content ...component ui.node,
+) ui.node
 
-#[cnative("C.GError")]
-struct GError {}
+#[marks.intrinsic("gtk4:ImageUrl")]
+component ImageUrl(url string) ui.imageSource
 
-#[cnative("gdk_pixbuf_new_from_file_at_scale")]
-func loadPixbuf(path string, w int, h int, keepAspect int, err option<ref<GError>>) option<Pixbuf>
+#[marks.intrinsic("gtk4:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
 
-#[cnative("gdk_cairo_set_source_pixbuf")]
-func CairoContext.setSourcePixbuf(pb option<Pixbuf>, x float, y float)
+const component ui.file[platform] {
+    ImageUrl(url=path)
+}
 
-#[cnative("cairo_paint")]
-func CairoContext.paintSource()
+const component ui.remote[platform] {
+    ImageUrl(url=url)
+}
 
-#[cnative("sngl_unref_pixbuf")]
-func unrefPixbuf(pb option<Pixbuf>)
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
+}
 
-// A missing or unreadable file draws nothing rather than failing the render:
-// the loader answers NULL and the null test is what reads it. This is the gap
-// #223 recorded -- gtk4 emitted nothing at all for canvasImage, where every
-// other target loads a local path.
+#[cnative("cairo_translate")]
+func CairoContext.translate(x float, y float)
+
+#[cnative("cairo_scale")]
+func CairoContext.scale(x float, y float)
+
+#[cnative("cairo_clip")]
+func CairoContext.clip()
+
+// Paints the picture a URL names into a box, decoded once per URL: a file the
+// program carries at once, and one fetched the next time the drawing paints
+// after it arrives.
+#[go.native(_rtPkg, "gtk4rt.CairoPaintURL")]
+func paintURL(cr CairoContext, url string, x float, y float, w float, h float)
+
+// What a `drawSource` paints a carried or fetched image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx CairoContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[marks.intrinsic("gtk4:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
+
 const component shapes.canvasImage[platform] {
-    draw(@draw(e) {
-        var pb = loadPixbuf(src, int(w), int(h), 0, null)
-
-        if pb != null {
+    drawSource(
+        @url(e) {
+            paintURL(e.ctx, e.url, x, y, w, h)
+        },
+        @enter(e) {
             e.ctx.save()
-            e.ctx.setSourcePixbuf(pb, x, y)
-            e.ctx.paintSource()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.rectangle(0.0, 0.0, float(e.width), float(e.height))
+            e.ctx.clip()
+        },
+        @leave(e) {
             e.ctx.restore()
-            unrefPixbuf(pb)
-        }
-    })
+        },
+    ) {
+        src
+    }
 }
 
 // --- Rich text ---

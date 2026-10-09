@@ -95,7 +95,7 @@ component main node {
 
 component main node {
     vbox {
-        image(src="a.png")
+        image(alt="a")
         text #greeting(value="hi")
     }
 }
@@ -126,7 +126,7 @@ component main node {
 
 component main node {
     vbox {
-        image(src="a.png")
+        image(alt="a")
         text(value="hi")
     }
 }

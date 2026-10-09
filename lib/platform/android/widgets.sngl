@@ -1,5 +1,6 @@
 import ui "sngl:ui"
 import time "sngl:time"
+import shapes "sngl:ui/draw"
 import . "sngl:internal/marks"
 
 // The portable components, implemented for this platform.
@@ -68,12 +69,38 @@ const component ui.button[platform] {
     }
 }
 
-// Compose has no image loader in the box: an `Image` needs a painter, and
-// every source SNGL accepts (a URL, an asset path) needs a different one, so
-// android draws no image yet. The emitter used to render a TODO comment,
-// which draws nothing; an unsized Spacer is the declared spelling of that.
+// An image is a box holding the source it shows, or the placeholder where it
+// holds none. A file the program carries is SnglAssetImage, Kotlin the
+// platform ships with the app, which reads the picture out of the app's
+// assets; a drawing is a Canvas. Compose has no image loader in the box, so a
+// picture a URL names draws nothing.
 const component ui.image[platform] {
-    Spacer(modifier={...style}) {}
+    Box(modifier={...style}) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+#[intrinsic("android:SnglAssetImage")]
+component SnglAssetImage(url string) ui.imageSource
+
+#[intrinsic("android:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+const component ui.file[platform] {
+    SnglAssetImage(url=path)
+}
+
+const component ui.remote[platform] {
+    SnglAssetImage(url=url)
+}
+
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 // The placeholder is Compose's floating `label`. A field given none must get

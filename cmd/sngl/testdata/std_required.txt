@@ -65,9 +65,10 @@ stderr 'unknown component "canvas"; sngl:ui/draw declares it, add import draw "s
 sngl check draw_imported.sngl
 stdout 'draw_imported.sngl: ok'
 
-# std and draw dot-imported together do not collide.
-sngl check draw_both_dotted.sngl
-stdout 'draw_both_dotted.sngl: ok'
+# std and draw dot-imported together collide: each declares an `image`, a
+# widget in one and a drawn image source in the other.
+! sngl check draw_both_dotted.sngl
+stderr 'dot import of "sngl:ui/draw" lifts "image", already lifted by dot import of "sngl:ui"'
 
 # Without draw, the names are the file's own to use.
 sngl check draw_names_free.sngl

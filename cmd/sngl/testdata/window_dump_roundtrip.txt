@@ -12,7 +12,8 @@
 sngl dump --stage checked --format sngl win.sngl
 stdout 'window #home\('
 stdout 'title ?= ?"Hi"'
-stdout 'favicon ?= ?"f.ico"'
+stdout 'component favicon'
+stdout 'file\(path ?= ?"f.ico"\)'
 stdout '@error\(e error\)'
 
 cp stdout out.sngl
@@ -31,10 +32,13 @@ stdout 'component content\(v\)'
 -- win.sngl --
 import . "sngl:ui"
 
-window #home(title="Hi", favicon="f.ico", @error(e) {
+window #home(title="Hi", @error(e) {
     output.print("{e.message}")
 }) {
     text(value="hi")
+    component favicon {
+        file(path="f.ico")
+    }
 }
 
 -- route.sngl --

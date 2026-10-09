@@ -6,11 +6,13 @@ carries.
 import . "sngl:ui"
 import . "sngl:test"
 
-// image: state-binding fixture — mutating the bound `src` var
-// propagates to the image component.
+// image: state-binding fixture — mutating the `src` var its source reads
+// propagates to the image.
 component main node {
     var src = "https://example.com/a.png"
-    image(src=src, alt="test")
+    image(alt="test") {
+        remote(url=src)
+    }
 }
 
 func testImageSrcMutates(t Test, c main) {
@@ -45,6 +47,8 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -108,7 +112,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint("[image]"))
+	var contentChildren []string
+	var content_0 string
+	content_0 = tui.Picture(m.src, 24, 12)
+	contentChildren = append(contentChildren, content_0)
+	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -116,6 +124,7 @@ func (m Model) View() tea.View {
 
 func main() {
 	p := tea.NewProgram(New())
+	snglimage.OnArrive(func() { p.Send(struct{}{}) })
 	_, err := p.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -145,7 +154,7 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -153,7 +162,8 @@ import (
 type Model struct {
 	src string
 
-	__n0 *canvas.Image
+	__n1 *fynelayout.Image
+	__n0 *fynelayout.ImageSource
 }
 
 // New creates a Model with default values.
@@ -161,6 +171,15 @@ func New() *Model {
 	m := &Model{}
 	m.src = "https://example.com/a.png"
 	return m
+}
+
+func (m *Model) __n1_click_handler() {
+}
+
+func (m *Model) __n1_load_handler() {
+}
+
+func (m *Model) __n1_failed_handler(m__r0 string) {
 }
 
 func (m *Model) Src() string {
@@ -173,8 +192,15 @@ func (m *Model) SetSrc(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = canvas.NewImageFromResource(nil)
-	content := fyne.CanvasObject(m.__n0)
+	m.__n1 = fynelayout.NewImage()
+	m.__n1.SetFit("contain")
+	m.__n1.OnTapped = m.__n1_click_handler
+	m.__n1.OnLoad = m.__n1_load_handler
+	m.__n1.OnError = m.__n1_failed_handler
+	m.__n0 = fynelayout.NewImageSource()
+	m.__n0.SetURL(m.src)
+	m.__n1.Add(m.__n0)
+	content := fyne.CanvasObject(m.__n1)
 	return content
 }
 
@@ -246,6 +272,15 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __n1_click_handler() {
+}
+
+func (m *Model) __n1_load_handler() {
+}
+
+func (m *Model) __n1_failed_handler(m__r0 string) {
+}
+
 func (m *Model) Src() string {
 	return m.src
 }
@@ -259,9 +294,15 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n0 := gtk4rt.ImageNew()
-	gtk4rt.ImageSetFromFile(__n0, m.src)
-	gtk4rt.BoxAppend(m.__root, __n0)
+	__n1 := gtk4rt.ImageFrameNew()
+	gtk4rt.ImageFrameSetFit(__n1, "contain")
+	gtk4rt.ImageFrameOnClick(__n1, m.__n1_click_handler)
+	gtk4rt.ImageFrameOnLoad(__n1, m.__n1_load_handler)
+	gtk4rt.ImageFrameOnError(__n1, m.__n1_failed_handler)
+	__n0 := gtk4rt.ImageSourceNew()
+	gtk4rt.ImageSourceSetURL(__n0, m.src)
+	gtk4rt.BoxAppend(__n1, __n0)
+	gtk4rt.BoxAppend(m.__root, __n1)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -313,7 +354,51 @@ class MainScreenState {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    Spacer(modifier = Modifier.safeDrawingPadding())
+    Box(modifier = Modifier.safeDrawingPadding()) {
+        SnglAssetImage(url = state.src)
+    }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
 // Code generated by sngl (android) from component_image.sngl; DO NOT EDIT.
@@ -362,7 +447,16 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<img id="__n0" data-sngl-id="__n0" alt="test"/>
+<span class="sngl-image sngl-image-contain" style="display:inline-block;overflow:hidden" aria-label="test" role="img" class="sngl-image sngl-image-contain">
+  <img id="__n0" data-sngl-id="__n0" alt=""/>
+</span>
+<style>
+.sngl-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sngl-image-cover img { object-fit: cover; }
+.sngl-image-fill img { object-fit: fill; }
+.sngl-image-none img { object-fit: none; }
+.sngl-image-scaleDown img { object-fit: scale-down; }
+</style>
 
 <script>
 window.__sngl_markup = Array.from(document.body.childNodes)
@@ -401,12 +495,12 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af4dd10f8fd5414881807c79cf987f0d
+pass sha256:fa05f0be5819033c50af81bb19b950ce
 -- run/go/fyne --
-pass sha256:26ea3b2afd2e41a4b38e92295cfb2ff2
+pass sha256:cac8fd6ebbf88371fdc0bb38bfd2b09e
 -- run/go/gtk4 --
-pass sha256:da268fb705f3bbf2a1676a95e7aec1bf
+pass sha256:5b12fee5213bff4ed25d575238bb6ab8
 -- run/kotlin/android --
-pass sha256:d2fa83600f825b8dcb72fa2ec6fb233d
+pass sha256:5a22faf13be064bb499b95ae8e386394
 -- run/none/html --
-pass sha256:47e372160b6056d70906b955406d560f
+pass sha256:239be933fd48476ec4259fdd2ed8d3bb

@@ -111,9 +111,26 @@ component path(cmds list<PathCmd>, style CanvasStyle = CanvasStyle{}) shape
 // a program can import this package alongside `sngl:ui`.
 component canvasText(x float, y float, content string, style CanvasStyle = CanvasStyle{}) shape
 
-// Image drawn into the box at x, y sized w by h. `src` takes the same URL
-// or asset path as `ui.image`.
-component canvasImage(x float, y float, w float, h float, src string) shape
+// Image drawn into the box at x, y sized w by h, from any source a `ui.image`
+// takes: a file, a fetched URL, or another drawing, which is painted in place
+// scaled to the box rather than rasterised first.
+component canvasImage(
+    x   float,
+    y   float,
+    w   float,
+    h   float,
+    src ...component family.one<ui.imageSource>,
+) shape
+
+// A drawing as an image source: the shapes it holds, painted into a picture
+// `width` by `height` pixels, which is what an `image`, a window's favicon or a
+// `canvasImage` shows. Repainted when what the shapes read changes, as a
+// canvas is.
+component image(
+    width  float,
+    height float,
+    shapes ...component shape,
+) ui.imageSource
 
 // --- Geometry ---
 //

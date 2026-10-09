@@ -1,5 +1,6 @@
 import ui "sngl:ui"
 import build "sngl:build"
+import family "sngl:family"
 import marks "sngl:internal/marks"
 
 // The tree the inline pieces form. Declaring it here is what makes `span` a
@@ -303,7 +304,7 @@ const func colorOf(p Palette, fallback Palette, kind Token) color {
 component link(href string, content ...component span) span
 
 // A picture on the line with the words -- an icon, a badge, an inline
-// formula. `alt` is the description: what the picture shows, for a reader who
+// formula -- from any source a `ui.image` takes. `alt` is the description: what the picture shows, for a reader who
 // is not looking at it and for a platform that cannot draw one inside a flow
 // of text.
 //
@@ -316,7 +317,7 @@ component link(href string, content ...component span) span
 // the author was offered a choice that was never theirs.
 //
 // So an importer flattens: the words between the brackets, and nothing else.
-component image(src string, alt string = "") span
+component image(alt string = "", src ...component family.one<ui.imageSource>) span
 
 // --- Document blocks ---
 //

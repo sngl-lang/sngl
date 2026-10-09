@@ -97,7 +97,9 @@ const logo = public.path("logo.txt")
 
 window #app(title="t") {
     text(value=greeting)
-    image(src=logo)
+    image {
+        file(path=logo)
+    }
 }
 `
 	root := repoRoot(t)

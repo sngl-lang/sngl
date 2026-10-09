@@ -278,8 +278,46 @@ const component ui.button[platform] {
     }
 }
 
+// An image is a frame around the `<img>` its source renders: the frame carries
+// the style, the click and the description, as an `img` role, so the
+// placeholder stands in the same box where there is no source. The page's
+// rules fill the frame with the picture and fit it by the frame's class.
 const component ui.image[platform] {
-    html.img(src=src, alt=alt, style={...style}) {}
+    html.span(
+        class = "sngl-image sngl-image-" + string(fit),
+        attrs = {"role"="img", "aria-label"=alt},
+        style = {display=inlineBlock, overflow=hidden, ...style},
+        @click { click() },
+    ) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+// Where an image's pixels come from, each an `<img>` in the image's frame: a
+// URL the browser fetches, which is what a `file:` asset's path is too, or a
+// drawing painted in the page and handed over as a data URL. In a window's
+// favicon either is the page's `<link rel="icon">`.
+#[intrinsic("html:imageUrl")]
+component ImageUrl(url string) ui.imageSource
+
+#[intrinsic("html:imageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
+const component ui.file[platform] {
+    ImageUrl(url=path)
+}
+
+const component ui.remote[platform] {
+    ImageUrl(url=url)
+}
+
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 const component ui.input[platform] {
@@ -424,58 +462,6 @@ const component ui.chip[platform] {
     }
 }
 
-const component ui.avatar[platform] {
-    if src != "" {
-        html.img(
-            class = "sngl-avatar sngl-avatar-" + string(size) + " sngl-avatar-" + string(variant),
-            src = src,
-            alt = alt,
-            style = {
-                width = avatarSide(size),
-                height = avatarSide(size),
-                borderRadius = avatarRadius(size, variant),
-                ...style,
-            },
-            @click { click() },
-        ) {}
-    } else {
-        html.span(
-            class = "sngl-avatar sngl-avatar-" + string(size) + " sngl-avatar-" + string(variant),
-            textContent = initials,
-            style = {
-                display = inlineFlex,
-                alignItems = center,
-                justifyContent = center,
-                width = avatarSide(size),
-                height = avatarSide(size),
-                borderRadius = avatarRadius(size, variant),
-                background = #CCCCCC,
-                ...style,
-            },
-            @click { click() },
-        ) {}
-    }
-}
-
-// The side of an avatar of each preset size, as sngl:ui's body sizes one.
-const func avatarSide(size ui.SizePreset) ui.measurement {
-    if size == ui.SizePreset.small {
-        return 24px
-    }
-    if size == ui.SizePreset.large {
-        return 64px
-    }
-    return 40px
-}
-
-// A circle's radius is half its side; a square keeps a small rounding.
-const func avatarRadius(size ui.SizePreset, variant ui.AvatarVariant) ui.measurement {
-    if variant == ui.AvatarVariant.square {
-        return 4px
-    }
-    return avatarSide(size) * 0.5
-}
-
 const component ui.spinner[platform] {
     html.span(style={display=inlineFlex, alignItems=center, gap=8px, ...style}) {
         html.span(class="sngl-spinner") {}
@@ -522,7 +508,6 @@ const component ui.divider[platform] {
 #[intrinsic("html:window")]
 component Window(
     title    string,
-    favicon  string,
     :visible bool = true,
     @closed(),
     content  ...component ui.node,
@@ -531,10 +516,12 @@ component Window(
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
 const component ui.window[platform] {
-    Window(title=title, favicon=favicon, :visible=visible, @closed { closed() }) {
+    Window(title=title, :visible=visible, @closed { closed() }) {
         boundary(@error(e) { error(e) }) {
             content
         }
+        #[family.crosses]
+        favicon
     }
 }
 
@@ -731,7 +718,6 @@ component inline(
     classStyle     markup.SpanStyle,
     classStyleDark markup.SpanStyle,
     href           string,
-    src            string,
     alt            string,
     textContent    string,
     content        ...component markup.span,
@@ -829,10 +815,12 @@ const component markup.link[platform] {
     }
 }
 
-// `<img>` is a void element, so the description has nowhere to go but the
-// attribute it is already a string for.
+// A picture among the words is an image like any other, in a frame on the line.
 const component markup.image[platform] {
-    inline(tag="img", src=src, alt=alt) {}
+    #[family.crosses]
+    ui.image(alt=alt) {
+        src
+    }
 }
 
 // A class, so what a keyword looks like stays the page's to say: the default
@@ -1012,6 +1000,18 @@ func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
 #[js.native("closePath", "", method)]
 func DrawContext.closePath()
 
+#[js.native("translate", "", method)]
+func DrawContext.translate(x float, y float)
+
+#[js.native("scale", "", method)]
+func DrawContext.scale(x float, y float)
+
+#[js.native("rect", "", method)]
+func DrawContext.rect(x float, y float, w float, h float)
+
+#[js.native("clip", "", method)]
+func DrawContext.clip()
+
 #[js.native("fillText", "", method)]
 func DrawContext.fillText(text string, x float, y float)
 
@@ -1033,6 +1033,25 @@ struct DrawEvent {
 
 #[intrinsic("html:draw")]
 component draw(@draw(e DrawEvent)) shapes.shape
+
+// What a `drawSource` paints a fetched or shipped image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx DrawContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[intrinsic("html:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style
@@ -1169,9 +1188,24 @@ const component shapes.path[platform] {
 func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
 
 const component shapes.canvasImage[platform] {
-    html.draw(@draw(e) {
-        drawImage(e.ctx, src, x, y, w, h)
-    })
+    drawSource(
+        @url(e) {
+            drawImage(e.ctx, e.url, x, y, w, h)
+        },
+        @enter(e) {
+            e.ctx.save()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.beginPath()
+            e.ctx.rect(0.0, 0.0, float(e.width), float(e.height))
+            e.ctx.clip()
+        },
+        @leave(e) {
+            e.ctx.restore()
+        },
+    ) {
+        src
+    }
 }
 
 const component shapes.canvasText[platform] {

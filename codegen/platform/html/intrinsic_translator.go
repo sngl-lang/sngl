@@ -66,6 +66,9 @@ type htmlTranslator struct {
 	// element built at run time: the page walk sees only the page's markup.
 	classProps map[string][]ir.Arg
 	addStyle   func(string)
+	// sources are the image sources this scope created, by the primitive's
+	// name: an element built at run time has no declaration to ask.
+	sources map[string]string
 	// windows are the names a lowering creates a Window under, each a
 	// `<dialog>` built by _snglDialog (htmlGen.windowIDs).
 	windows map[string]bool
@@ -76,6 +79,7 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode, pageCanvas: g.pageCanvas,
 		classProps: map[string][]ir.Arg{}, addStyle: g.AddStyle,
+		sources: map[string]string{},
 		windows: g.windowIDs(),
 	}
 }
@@ -151,7 +155,17 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// button, ...) with html.sngl's native element bodies before this
 	// translator runs, so every tag landing here is a native HTML
 	// element name (span, button, input, div, ...).
+	source := tag == imageURLElement || tag == imageDrawingElement
+	if source {
+		t.sources[id] = tag
+	}
+	tag = elementTag(tag)
 	t.idTags[id] = tag
+	if source && t.addStyle != nil {
+		for _, r := range imageRules {
+			t.addStyle(r)
+		}
+	}
 	t.topLevel = append(t.topLevel, id)
 	if m := t.canvasByID[id]; m != nil {
 		t.canvasDraws = append(t.canvasDraws, m)
@@ -183,6 +197,18 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Type: ir.TypDyn,
 		Init: createCall,
 	}}
+	// The frame carries the description, as sourceAttrs writes it in markup.
+	if source && tag == imageTag {
+		out = append(out, &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: &ir.Ident{Name: id},
+			Func:     &ir.Func{Name: "setAttribute"},
+			Args: []ir.CallArg{
+				{Value: &ir.Literal{Type: ir.TypString, Value: "alt"}},
+				{Value: &ir.Literal{Type: ir.TypString, Value: ""}},
+			},
+		}})
+	}
 	// An element a program named, built at run time -- by a factory or a
 	// slot renderer -- is marked the way the page's markup marks one, so a
 	// test's invoker can find it when it is called (emitEventInvokers).
@@ -264,6 +290,13 @@ func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
 				break
 			}
+		}
+	}
+	// A dialog's favicon has nowhere to go: the page has one icon, the
+	// document's.
+	if p, ok := parent.(*ir.Ident); ok && (t.windows[p.Name] || t.idTags[p.Name] == windowElement) {
+		if c, ok := child.(*ir.Ident); ok && t.sources[c.Name] != "" {
+			return nil
 		}
 	}
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
@@ -363,6 +396,9 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if isEmptyIDProp(prop, value) {
 		return nil
+	}
+	if stmts, ok := t.sourcePropAssign(node, prop, value); ok {
+		return stmts
 	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
@@ -549,8 +585,7 @@ func attachWindowHandler(node *ir.Ident, event string, handler ir.Expr) []ir.Stm
 }
 
 // windowPropWrite is a write of one of a Window's props: `visible` is the
-// dialog's `open`, the title is its label and the header's text, and the
-// favicon is the page's alone.
+// dialog's `open`, the title is its label and the header's text.
 func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool) {
 	switch prop {
 	case "visible":
@@ -571,8 +606,6 @@ func windowPropWrite(node ir.Expr, prop string, value ir.Expr) ([]ir.Stmt, bool)
 			}},
 			&ir.Assign{Target: &ir.Select{Operand: header, Field: "textContent", Type: ir.TypDyn}, Op: ast.AssignSet, Value: value},
 		}, true
-	case windowFavicon:
-		return nil, true
 	}
 	return nil, false
 }

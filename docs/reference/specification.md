@@ -1998,8 +1998,8 @@ output {
 }
 ```
 
-A window's props are `title` and `favicon`; a window is a surface, not a
-destination. The destinations a user moves between are the pages of a
+A window's prop is its `title`, and its `favicon` slot takes an image source
+as a `ui.image` does; a window is a surface, not a destination. The destinations a user moves between are the pages of a
 `sngl:ui/nav` stack the window holds, each with an `href`. A page whose href
 has `{name}` placeholders is handed their values as one struct value in its
 `params` prop; the body that reads them is the population of the page's

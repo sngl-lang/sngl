@@ -108,35 +108,39 @@ component PlatformCarousel() ui.node {
         ui.stack {
             if active == 0 {
                 ui.image(
-                    src = screenshotWeb,
                     alt = "SNGL Todo App on Web",
                     fit = contain,
                     style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+                ) {
+                    ui.file(path=screenshotWeb)
+                }
             }
             if active == 1 {
                 ui.image(
-                    src = screenshotTerminal,
                     alt = "SNGL Todo App in Terminal",
                     fit = contain,
                     style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+                ) {
+                    ui.file(path=screenshotTerminal)
+                }
             }
             if active == 2 {
                 ui.image(
-                    src = screenshotDesktop,
                     alt = "SNGL Todo App on Desktop",
                     fit = contain,
                     style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+                ) {
+                    ui.file(path=screenshotDesktop)
+                }
             }
             if active == 3 {
                 ui.image(
-                    src = screenshotAndroid,
                     alt = "SNGL Todo App on Android",
                     fit = contain,
                     style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+                ) {
+                    ui.file(path=screenshotAndroid)
+                }
             }
         }
         ui.hbox(style={gap=8px}) {
@@ -315,7 +319,10 @@ component TutorialContent() ui.node {
 // root family so they read as one declaration. Nothing renders it until
 // `site()` at the end of the file.
 component site() root {
-    ui.window(title=pages.current.title, favicon=logo) {
+    ui.window(title=pages.current.title) {
+        component favicon {
+            ui.file(path=logo)
+        }
         nav.stack #pages {
             // Components — the starter set, in reading order. Everything else is one
             // click on, in the package the component belongs to.

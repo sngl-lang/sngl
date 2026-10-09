@@ -126,6 +126,11 @@ func domPropForProp(comp *ir.Component, prop string) (string, bool) {
 	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
 		return "open", true
 	}
+	// A URL source is an `<img>`, which takes its URL in `src`, and the icon
+	// `<link>` standing in for one answers a write of it (faviconInit).
+	if comp != nil && comp.Intrinsic == imageURLIntrinsic && prop == ir.ImageSourceURL {
+		return "src", true
+	}
 	if domOnlyProps[prop] {
 		return domName(prop), true
 	}

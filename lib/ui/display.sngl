@@ -15,26 +15,6 @@ component _example_text node {
     }
 }
 
-// Displays an image from a URL or asset path.
-component image(
-    src   string,                        // the URL or asset path
-    alt   string = "",                   // the accessibility label
-    fit   ObjectFit = ObjectFit.contain, // how the image is scaled into its frame
-    style Style = Style{},
-    @click(),
-    @load(), // decoding completed
-    // Fetching or decoding failed. The payload is the ambient `error` --
-    // the value `error.raise` throws and a `boundary` catches, because a
-    // failure is a failure whoever noticed it.
-    @error(e error),
-) node
-
-component _example_image node {
-    vbox(style={gap=8px, padding=16px}) {
-        image(src="https://placehold.co/200x100", alt="Placeholder image", fit=contain)
-    }
-}
-
 // Small status label — a compact chip showing a status, count, or
 // category tag.
 component badge(
@@ -98,46 +78,46 @@ enum SizePreset { small, medium, large }
 // The outline an avatar is clipped to.
 enum AvatarVariant { circle, square }
 
-// User profile image with fallback: the image where there is one, and the
-// initials in a styled placeholder otherwise.
+// User profile image with fallback: the picture its source holds where it was
+// given one, and the initials in a styled placeholder where it was not.
 component avatar(
-    initials string = "",                          // shown when there is no `src`
+    initials string = "",                          // shown when there is no source
     size     SizePreset = medium,                  // a preset; `style.width` and `style.height` set any other size
     variant  AvatarVariant = AvatarVariant.circle, // the outline it is clipped to
-    src      string = "",                          // the image, a URL or asset path
     alt      string = "",                          // the image's accessibility label
     style    Style = Style{},
     @click(),
+    src      ...component option<imageSource>,
 ) node {
-    if src != "" {
-        image(
-            src = src,
-            alt = alt,
-            fit = cover,
-            style = {
-                width = _avatarSide(size),
-                height = _avatarSide(size),
-                borderRadius = _avatarRadius(size, variant),
-                ...style,
-            },
-            @click { click() },
-        )
-    } else {
-        text(
-            value = initials,
-            style = {
-                display = inlineFlex,
-                alignItems = center,
-                justifyContent = center,
-                width = _avatarSide(size),
-                height = _avatarSide(size),
-                textAlign = center,
-                borderRadius = _avatarRadius(size, variant),
-                background = #CCCCCC,
-                ...style,
-            },
-            @click { click() },
-        )
+    image(
+        alt = alt,
+        fit = cover,
+        style = {
+            width = _avatarSide(size),
+            height = _avatarSide(size),
+            borderRadius = _avatarRadius(size, variant),
+            ...style,
+        },
+        @click { click() },
+    ) {
+        src
+        component placeholder {
+            text(
+                value = initials,
+                style = {
+                    display = inlineFlex,
+                    alignItems = center,
+                    justifyContent = center,
+                    width = _avatarSide(size),
+                    height = _avatarSide(size),
+                    textAlign = center,
+                    borderRadius = _avatarRadius(size, variant),
+                    background = #CCCCCC,
+                    ...style,
+                },
+                @click { click() },
+            )
+        }
     }
 }
 

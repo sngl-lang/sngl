@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -133,7 +134,10 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Stmts)
+	// The call site dissolves here, so an event the body fires runs the
+	// handler it wrote, or nothing; left standing, the emit fired the caller's
+	// event of that name, or one the caller does not declare.
+	cloned := lower.SubstituteEvents(cloneStmts(comp.Stmts), n.Handlers)
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the

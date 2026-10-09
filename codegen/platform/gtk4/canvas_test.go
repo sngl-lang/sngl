@@ -19,12 +19,12 @@ func TestCanvas_EmitsCairoDrawAndRedraw(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 window {
     var radius = 50.0
-    canvas(width=400px, height=280px) {
-        rect(x=0.0, y=0.0, w=400.0, h=280.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
-        circle(cx=200.0, cy=140.0, r=radius, style=CanvasStyle{fill=color{r=99, g=102, b=241, a=255}, stroke=color{r=67, g=56, b=202, a=255}, strokeWidth=3.0}) {}
+    draw.canvas(width=400px, height=280px) {
+        draw.rect(x=0.0, y=0.0, w=400.0, h=280.0, style=draw.CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
+        draw.circle(cx=200.0, cy=140.0, r=radius, style=draw.CanvasStyle{fill=color{r=99, g=102, b=241, a=255}, stroke=color{r=67, g=56, b=202, a=255}, strokeWidth=3.0}) {}
     }
     button(text="Grow", @click { radius = radius + 10.0 })
 }
@@ -122,10 +122,10 @@ func TestCanvas_EllipseUsesBezierPath(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 window {
-    canvas(width=200px, height=120px) {
-        ellipse(cx=100.0, cy=60.0, rx=60.0, ry=35.0, style=CanvasStyle{fill=color{r=52, g=211, b=153, a=255}, stroke=color{r=5, g=150, b=105, a=255}, strokeWidth=2.0}) {}
+    draw.canvas(width=200px, height=120px) {
+        draw.ellipse(cx=100.0, cy=60.0, rx=60.0, ry=35.0, style=draw.CanvasStyle{fill=color{r=52, g=211, b=153, a=255}, stroke=color{r=5, g=150, b=105, a=255}, strokeWidth=2.0}) {}
     }
 }
 `

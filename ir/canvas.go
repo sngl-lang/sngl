@@ -79,3 +79,20 @@ func WidgetChildren(n *NodeInst) []Stmt {
 	}
 	return n.Children
 }
+
+// What passShapeDraw reads off a shape primitive hosting an image source -- a
+// target's `canvasImage` -- and off the source it hosts: the handler painting an
+// image a URL names, the pair bracketing a drawing painted in place, and the
+// prop a URL source carries.
+const (
+	DrawSourceURL   = "url"
+	DrawSourceEnter = "enter"
+	DrawSourceLeave = "leave"
+	ImageSourceURL  = "url"
+)
+
+// IsImageSourceHost reports whether a shape primitive paints the image source
+// its rest slot holds.
+func IsImageSourceHost(comp *Component) bool {
+	return comp != nil && comp.Intrinsic != "" && IsShapeFamily(comp.Family) && IsImageSourceFamily(RestSlotFamily(comp))
+}

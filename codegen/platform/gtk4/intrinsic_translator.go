@@ -49,6 +49,11 @@ type emitShared struct {
 	// scaffold writes on the window BuildUI makes.
 	toplevels      map[string]bool
 	toplevelTitles map[string]ir.Expr
+	// images are every image primitive id the file creates, by tag.
+	images map[string]string
+	// toplevelIcons is each window's icon source in an inline-cgo build, by
+	// the window's id.
+	toplevelIcons map[string]string
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -420,6 +425,8 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	switch tag {
 	case toplevelTag:
 		return t.emitToplevelCreate(id)
+	case imageTag, imageURLTag, imageDrawingTag:
+		return t.emitImageCreate(id, tag)
 	case flowTag:
 		return t.emitFlowCreate(id)
 	case spanTag:
@@ -728,6 +735,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	if ir.IsAppParent(parent) {
 		return t.appAttach(child)
 	}
+	if t.windowIcon(parent, child) {
+		return nil
+	}
 	cType := t.parentCType(parent)
 	if cType == "" {
 		cType = "GtkBox"
@@ -851,6 +861,9 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelPropAssign(node, prop, value)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imagePropAssign(node, tag, prop, value)
 	}
 	cType, ok := t.idCTypes[bare]
 	if !ok {
@@ -1151,6 +1164,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {
 		return t.toplevelAttachHandler(node, event, handler)
+	}
+	if tag := t.imageTagOf(bare); tag != "" {
+		return t.imageAttachHandler(node, tag, event, handler)
 	}
 	cType := t.idCTypes[bare]
 	if event == "click" && t.canvasMetaForID(bare) != nil {

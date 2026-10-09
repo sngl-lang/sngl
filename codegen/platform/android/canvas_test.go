@@ -38,7 +38,7 @@ func compileCanvasSrc(t *testing.T, src string) string {
 }
 
 const canvasReactiveSrc = `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 output {
     none { html }
@@ -47,16 +47,16 @@ output {
 ui.window {
     var radius = 50.0
 
-    func circleStyle() => CanvasStyle{
+    func circleStyle() => draw.CanvasStyle{
         fill        = color{r=99, g=102, b=241, a=255},
         stroke      = color{r=67, g=56,  b=202, a=255},
         strokeWidth = 3.0,
     }
 
     vbox {
-        canvas(width=400px, height=280px) {
-            rect(x=0.0, y=0.0, w=400.0, h=280.0, style=circleStyle) {}
-            circle(cx=200.0, cy=140.0, r=radius, style=circleStyle) {}
+        draw.canvas(width=400px, height=280px) {
+            draw.rect(x=0.0, y=0.0, w=400.0, h=280.0, style=circleStyle) {}
+            draw.circle(cx=200.0, cy=140.0, r=radius, style=circleStyle) {}
         }
         button(text="Grow", @click { radius = radius + 10.0 })
     }
@@ -112,11 +112,11 @@ func TestCanvasComposeEmission(t *testing.T) {
 // no-op.
 func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
 	src := `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
-    canvas(width=200px, height=80px) {
-        canvasText(x=10.0, y=40.0, content="hi", style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
+    draw.canvas(width=200px, height=80px) {
+        draw.canvasText(x=10.0, y=40.0, content="hi", style=draw.CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
     }
 }`
 	out := compileCanvasSrc(t, src)
@@ -130,15 +130,17 @@ ui.window {
 	}
 }
 
-// TestCanvasImageRenders guards that a canvasImage shape decodes + draws a
-// bitmap (best-effort, local file path) rather than being a silent no-op.
+// TestCanvasImageRenders guards that a canvasImage shape draws the bitmap its
+// source names rather than being a silent no-op.
 func TestCanvasImageRenders(t *testing.T) {
 	src := `import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
-    canvas(width=100px, height=100px) {
-        canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
+    draw.canvas(width=100px, height=100px) {
+        draw.canvasImage(x=5.0, y=5.0, w=40.0, h=40.0) {
+            remote(url="/tmp/p.png")
+        }
     }
 }`
 	out := compileCanvasSrc(t, src)
@@ -146,7 +148,7 @@ ui.window {
 	// its body alone would pass with no image in the program at all.
 	for _, want := range []string{
 		`snglDrawImage(src = "/tmp/p.png"`,
-		"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(",
+		"SnglAssets.bitmap(src)", "drawImage(",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("canvasImage missing %q:\n%s", want, out)

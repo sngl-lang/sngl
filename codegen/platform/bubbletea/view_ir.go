@@ -477,6 +477,11 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
+	if btIntrinsic(n) == pictureIntrinsic {
+		vc.renderPicture(n, resultVar)
+		return
+	}
+
 	// Inlined blueprint primitive — render off its blueprint record. Every
 	// stdlib wrapper inlines to one of these at lower time, and the #[intrinsic]
 	// id on the declaration is what identifies one; see bubbletea.sngl +

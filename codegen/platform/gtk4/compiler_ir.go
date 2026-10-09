@@ -306,7 +306,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), toplevelTitles: map[string]ir.Expr{}}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg), toplevels: collectToplevels(c.ctx.Pkg), images: collectImages(c.ctx.Pkg), toplevelIcons: map[string]string{}, toplevelTitles: map[string]ir.Expr{}}
 	if !wrapped {
 		if err := refuseCgoVisibleWrites(c.ctx.Pkg, c.shared.toplevels); err != nil {
 			c.shared.fail(err)
@@ -435,13 +435,14 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// The inline-cgo scaffold has no runtime to attach a window to, so it puts
 	// the first one's box in the window BuildUI makes, as it did the one
 	// window it could build before a window was a node.
-	cgoTitle := ""
+	cgoTitle, cgoIcon := "", ""
 	if appRoot && !c.wrapped {
 		topLevelRefs = append(slices.Clip(topLevelRefs), appChildren...)
 		if len(appChildren) > 0 {
 			if t := c.shared.toplevelTitles[appChildren[0]]; t != nil {
 				cgoTitle = gc.EvalExpr(t)
 			}
+			cgoIcon = c.shared.toplevelIcons[appChildren[0]]
 		}
 	}
 	// The Model struct needs the __root field whenever emitBuildUI will emit
@@ -475,7 +476,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		emitBuildUIApp(&buildUIBuf, &buildBuf, first, widgetFieldNames(widgetFields))
 	} else {
-		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, widgetFieldNames(widgetFields))
+		emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, cgoTitle, cgoIcon, widgetFieldNames(widgetFields))
 	}
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
@@ -886,13 +887,32 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 // makes, whichever scope makes it: a slot at the root of the package body
 // creates a window that a handler emitted before it shows and hides.
 func collectToplevels(pkg *ir.Package) map[string]bool {
-	_, tops := collectNodeTags(pkg)
+	_, prims := collectNodeTags(pkg)
+	tops := map[string]bool{}
+	for id, tag := range prims {
+		if tag == toplevelTag {
+			tops[id] = true
+		}
+	}
 	return tops
 }
 
-func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
+// collectImages is every image primitive id a `lower.CreateNode` in the
+// package makes, by its tag, for the reason collectToplevels is.
+func collectImages(pkg *ir.Package) map[string]string {
+	_, prims := collectNodeTags(pkg)
 	out := map[string]string{}
-	tops := map[string]bool{}
+	for id, tag := range prims {
+		if imagePrimitive(tag) {
+			out[id] = tag
+		}
+	}
+	return out
+}
+
+func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]string) {
+	out := map[string]string{}
+	prims := map[string]string{}
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -906,9 +926,9 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 						if strings.HasPrefix(tag, "Gtk") {
 							out[n.Name] = tag
 						}
-						if tag == toplevelTag {
-							out[n.Name] = "GtkBox"
-							tops[n.Name] = true
+						if cType := primitiveCType(tag); cType != "" {
+							out[n.Name] = cType
+							prims[n.Name] = tag
 						}
 					}
 				}
@@ -929,7 +949,7 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 		}
 	}
 	if pkg == nil {
-		return out, tops
+		return out, prims
 	}
 	for _, comp := range pkg.Components {
 		walk(comp.Stmts)
@@ -945,7 +965,7 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 			walk(fn.Block)
 		}
 	}
-	return out, tops
+	return out, prims
 }
 
 // collectCreateComponentTargets returns the components instantiated via a
@@ -1217,7 +1237,7 @@ func isWindowClass(cType string) bool {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string, fields map[string]bool) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title, icon string, fields map[string]bool) {
 	if wrapped {
 		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
 		return
@@ -1314,6 +1334,14 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	}
 	for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setChildCall}) {
 		fmt.Fprintf(b, "\t%s\n", line)
+	}
+	if icon != "" {
+		setIcon := rtCall("WindowSetIcon",
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", winRef)},
+			&ir.Conversion{Type: gtk4rtHandleIRType(), Operand: cgoCast("", buildRef(icon, fields))})
+		for _, line := range gc.EvalStmt(&ir.CallStmt{Call: setIcon}) {
+			fmt.Fprintf(b, "\t%s\n", line)
+		}
 	}
 	b.WriteString("\treturn win\n")
 	b.WriteString("}\n\n")

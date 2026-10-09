@@ -105,7 +105,9 @@ window {
         button(text="go", @click { on = !on })
         input(value=name, @input(e) { name = e })
         checkbox(checked=on, label="check")
-        image(src="/x.png", alt="x")
+        image(alt="x") {
+            remote(url="/x.png")
+        }
         hbox {
             text(value="a")
             text(value="b")

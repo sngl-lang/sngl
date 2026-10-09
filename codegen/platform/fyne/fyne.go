@@ -69,6 +69,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if err := c.EmitFromMutation(m, req, sink); err != nil {
 		return err
 	}
+	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
+		return fmt.Errorf("fyne: assets: %w", err)
+	}
 	if golang.PackageUsesI18n(req.Pkg) {
 		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
 			return fmt.Errorf("fyne: i18n manifest embed: %w", err)
