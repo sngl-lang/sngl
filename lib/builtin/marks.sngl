@@ -3,7 +3,7 @@
 // own declarations, declared here so the package imports no macros: it is the
 // first package checked, and what every other package's `int` and `string`
 // resolve to. They are private, so a program writes sngl:internal/marks' and
-// sngl:tree's, which the compiler answers the same way.
+// sngl:family's, which the compiler answers the same way.
 struct _Macro {}
 
 // What the compiler may assume about a call to an intrinsic, as
@@ -41,7 +41,7 @@ enum _Kind {
     effect
     errorBoundary
     output
-    treeRoot
+    familyRoot
     targetPlatform
     targetLanguage
 }
@@ -55,9 +55,6 @@ func _builtin(kind _Kind) _Macro
 // Names the native implementation behind a function: sngl:internal/marks'
 // `intrinsic`.
 func _intrinsic(id string, flags list<_IntrinsicFlag> = []) _Macro
-
-// Marks a component as belonging to no family: sngl:tree's `none`.
-func _none() _Macro
 
 // A truth value; `true` and `false` are its two.
 #[_builtin(bool)]

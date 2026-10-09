@@ -3,7 +3,7 @@
 // feature rather than something one generic in the tree package special-cases.
 
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
 struct Pair<A, B = string> {
     left  A
@@ -41,9 +41,9 @@ component show(
     p    Pair<int> = {left=1, right="s"},
     q    Pair<int, bool> = {left=2, right=true},
     b    Boxed = {v=3},
-    // tr.one's parameter defaults to the tree an ordinary component belongs
+    // family.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
-    body component tr.one,
+    body component family.one,
 ) node {
     vbox {
         text(value=p.right)

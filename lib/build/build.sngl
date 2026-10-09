@@ -8,17 +8,17 @@ import marks "sngl:internal/marks"
 // family names it in the return position, and there is nothing left for it to
 // name. A family holds nothing and is never rendered -- naming one says which
 // family a component joins, or which a slot accepts.
-#[marks.builtin("treeFamily")]
+#[marks.builtin("familyOfFamilies")]
 component family
 
 // The family a build-target language belongs to: the members `output` hosts.
 // A member read as a value is that language's identity -- `go.language` -- and
 // LANGUAGE is one.
-#[marks.builtin("treeLanguage")]
+#[marks.builtin("familyLanguage")]
 component language family
 
 // The family a build-target platform belongs to: the members a language node
 // hosts. A member read as a value is that platform's identity --
 // `html.platform` -- and PLATFORM is one.
-#[marks.builtin("treePlatform")]
+#[marks.builtin("familyPlatform")]
 component platform family

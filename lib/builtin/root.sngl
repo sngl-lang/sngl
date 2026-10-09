@@ -15,5 +15,5 @@ import build "sngl:build"
 // member declared anywhere names it without importing the package the
 // members happen to come from, and `output`, declared here, is one like any
 // other.
-#[_builtin(treeRoot)]
+#[_builtin(familyRoot)]
 component root build.family

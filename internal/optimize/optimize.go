@@ -618,7 +618,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 		ctx.nodeHandlesSet = true
 		_ = ir.Walk(ctx.pkg, func(n ir.Node) error {
 			inst, ok := n.(*ir.NodeInst)
-			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Tree == nil || !ir.IsAppRootTree(inst.Component.Tree) {
+			if !ok || inst.Handle == nil || inst.Component == nil || isPrimitiveDecl(inst.Component) || inst.Component.Family == nil || !ir.IsRootFamily(inst.Component.Family) {
 				return nil
 			}
 			if ctx.nodeHandles == nil {

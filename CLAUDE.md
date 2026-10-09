@@ -648,7 +648,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/ui/nav/` → `sngl:ui/nav`** — navigation: `stack` (pages one on top of another, `current`/`go`/`back` as `#[intrinsic]` methods each target answers), `page` and the unexported family `_page` it is the one member of, and `link`. See **Navigation** below.
-- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
+- **`lib/family/` → `sngl:family`** — the family *vocabulary* and no families: the `crosses` mark a placement writes to stand outside the family its position accepts, the `eventless` mark a family writes, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `family.default` here. It was `sngl:tree`, whose `none` mark is gone: a component that takes the family it is placed in returns a type parameter (see *A wrapper whose family is whatever it was handed*).
 - **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. The two target families double as the target identities: a target's node read as a value is a value of its family, and `PLATFORM` and `LANGUAGE` are declared `build.platform` and `build.language`. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, a date's `year()`, `month()` and `day()` and `parseDate(s)` for text a program did not write (written in SNGL over `string(d)`, which every target spells as the literal), and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
@@ -658,7 +658,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, which measures it against the return position `bindTree` read, beside the other rules about what a component's marks say of its tree.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
   **`sngl run` and `sngl build` are commands a target writes**, not Go
   interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
   the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
@@ -703,7 +703,7 @@ gtk4 opens with one -- out of that package's description. A leading comment in a
 file is an ordinary comment about that file. Target packages
 follow the same rule, each with a `doc.sngl` beside its source.
 
-Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
+Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:family` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
@@ -777,25 +777,28 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`errorBoundary`, `effect`, `context`, `output`, and
 `sngl:ui/nav`'s `navStack`, `navPage`, `navLink`) mark a component, and the checker dispatches a visual node to the matching IR construct
-off the mark. Six tree kinds mark a *family* — itself a component, but one
-that is never rendered: `treeFamily` (the family of families), `treeRoot` (the
-family a package body accepts), `treeNode` (the widget family), `treeShape`
-(the drawing family), and `treeLanguage` and `treePlatform` (`sngl:build`'s two
+off the mark. Six family kinds mark a *family* — itself a component, but one
+that is never rendered: `familyOfFamilies` (the family of families), `familyRoot` (the
+family a package body accepts), `familySpan` (the rich-text family), `familyShape`
+(the drawing family), and `familyLanguage` and `familyPlatform` (`sngl:build`'s two
 build-target tiers). Each is a family the compiler itself has to name — to
-know what a family is, to check the body against, to tell an ordinary component
-from a rendered one, to know which node is a canvas, to know which node is a
+know what a family is, to check the body against, to know which node is a
+rich-text flow, to know which node is a canvas, to know which node is a
 target and of which tier (`ir.TargetTier`) — and every other family it
 compares by declaration alone. Marking them is what keeps `ir.go` from holding
-a package URI and a name for each: `ir.IsUITree` and its siblings read
+a package URI and a name for each: `ir.IsShapeFamily` and its siblings read
 `Component.Builtin`, so a family may be renamed or moved and a program's own
-`shape` family does not become the painted one.
+`shape` family does not become the painted one. The widget family carries no
+mark: no pass lowers it specially, and a family needs one only where a pass
+does -- `ui.node` used to carry `treeNode` so that a span could be told by
+elimination (a family, not the widgets, not the shapes), which every new family
+would have been misread as.
 The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **sngl:builtin marks itself with private macros**, and imports nothing but
-`sngl:build`. `lib/builtin/marks.sngl` declares `_builtin`, `_intrinsic` and
-`_none` -- the same implementations as `marks.builtin`, `marks.intrinsic` and
-`tree.none`, returning the package's own `_Macro` -- so an ambient package
+`sngl:build`. `lib/builtin/marks.sngl` declares `_builtin` and `_intrinsic`
+-- the same implementations as `marks.builtin` and `marks.intrinsic`, returning the package's own `_Macro` -- so an ambient package
 does not reach the compiler's tier, and its underscore names are no program's
 to write. `_builtin` takes an enum member written bare, `#[_builtin(int)]`,
 so its signature names none of the scalars its marks make; `_intrinsic(id string, …)` does name one, which resolves because a struct's kind is read off
@@ -807,14 +810,14 @@ last declaration registers and before the initializers -- const, package var,
 context default -- that may read what a mark said. So a mark may name a macro
 its own package declares anywhere, with no registration order to arrange, and
 a check that reads a mark is queued behind it: the intrinsic-with-a-body rule,
-a const with no value, and what `finishTreeMarks` asks of `tree.none`,
-`tree.eventless` and the gen marks. Outside pass1's registration a mark runs
+a const with no value, and what `finishFamilyMarks` asks of
+`family.eventless` and the gen marks. Outside pass1's registration a mark runs
 where it is met. Two things registration cannot wait for, and both are read
 off the source rather than by running a mark. A struct's or family's
 `#[builtin]` **kind** (`writtenBuiltinKind`, stamped by `stampBuiltinKind`):
 `list<T>` in sngl:builtin's own signatures resolves to the kind's
 constructor, and a family's members, registered after it (`familiesFirst`),
-are measured against the family of families (`bindTree`). The mark then binds
+are measured against the family of families (`bindFamily`). The mark then binds
 the role and refuses a kind the stamp did not read. And **publishing**
 sngl:builtin's `list` and `map` (`publishBuiltinStruct`): `ListOf` attaches
 the published one to every list type, so published after the marks, the
@@ -835,11 +838,11 @@ declaration shadows both; a conversion `int16(x)` is any symbol `scalarOf`
 answers. There is no list of scalar names in Go.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.none]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
+`#[family.crosses]` needs `import "sngl:family"`, and `#[marks.builtin("...")]` and
 `#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which
 is why every `lib/` file carrying a mark declares it. The alias is an
-ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
-means `#[t.none]`.
+ordinary file-scope binding, so the mark follows it: `import t "sngl:family"`
+means `#[t.crosses]`.
 
 **Write the qualified form.** A dot import stays legal and supported — with
 `import . "sngl:internal/marks"` the mark is the bare `#[builtin("...")]` —
@@ -849,7 +852,7 @@ segment (`marks`, `ui`, `seq`, `draw` for `sngl:ui/draw`). `sngl:builtin` is
 unaffected: it is ambient rather than dot-imported, and it is how `int`,
 `string` and `color` are named.
 
-A lib package may carry macros alongside its declarations — `sngl:tree`
+A lib package may carry macros alongside its declarations — `sngl:family`
 ships the `none` mark next to the `one` count — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
 makes a package exist, macro-only ones included. `sngl:internal/<name>` is
@@ -880,9 +883,9 @@ error: a children contract is a slot's to declare.
 
 The family is the *declaration*, not its name, so a misspelling is an
 unresolved name where it is written, and two packages each declaring a `shape`
-family declare two. `ir.Component.Tree` points at it, and `Component.IsFamily`
+family declare two. `ir.Component.Family` points at it, and `Component.IsFamily`
 is "a member of the family of families", which is the one declaration that is a
-member of itself (`#[marks.builtin("treeFamily")]` on `build.family`, where the
+member of itself (`#[marks.builtin("familyOfFamilies")]` on `build.family`, where the
 regress stops). A family has no body — a body is where how a family is
 generated will be written, and nothing reads one yet, so it is refused rather
 than dropped — and writing one in a tree is an error rather than a membership
@@ -998,8 +1001,8 @@ other: naming it in a slot accepts widgets and nothing else, which is what
 makes `vbox { circle(…) }` an error. It is named for what a member *is* — a
 member of `draw.shape` is a shape, a member of this one is a node — which is
 also what keeps `ui.ui` from appearing in every declaration that spells it. It used to be `tree.default`, and the default
-tree was not a family at all — `checkTreeMembership` opened with `if want == nil { return }`, so membership was enforced *into* a named tree and never *out
-of* the unnamed one. `sngl:tree` keeps the `kind` mark, the `none` mark and
+tree was not a family at all — `checkFamilyMembership` opened with `if want == nil { return }`, so membership was enforced *into* a named tree and never *out
+of* the unnamed one. `sngl:family` keeps the `kind` mark, the `none` mark and
 the count wrappers; the families live where their members do.
 
 **Naming nothing asks the compiler which family it joins**, and the body is
@@ -1015,24 +1018,24 @@ one that renders members of two families, and one that renders members of
 none — a cycle of declarations taking their evidence from each other being the
 second case spread over several declarations.
 
-`inferComponentTrees` is that, and it is a **fixed point** rather than one
+`inferComponentFamilies` is that, and it is a **fixed point** rather than one
 ordered pass, because the evidence may be a declaration whose own family is
 unsettled and two declarations may be mutually recursive. It runs in two
 rounds: settle everyone whose evidence is complete, repeatedly; then settle
 what is left — necessarily a cycle — from the evidence that did resolve, so
 `a` renders a widget and the `b` that renders an `a` is one too.
 
-**Every membership check waits for it.** `checkTreeMembership` opens with
+**Every membership check waits for it.** `checkFamilyMembership` opens with
 `if want == nil { return }`, so a check that ran while its subject was still
 unsettled would compare against no family and pass in *silence* — the same
 nothing an unrestricted position reports. So the six call sites record a
-closure (`deferTreeCheck`) and `runTreeChecks` drains them once every body has
+closure (`deferFamilyCheck`) and `runFamilyChecks` drains them once every body has
 been read, which is why the function takes the component the content was
 written in rather than reading `c.currentComponent`.
 One fixture per position holds that, each naming a declaration written *below*
 it: `error_tree_inferred_late.sngl` for a node's bare children,
 `error_tree_inferred_positions.sngl` for four more,
-`error_tree_inferred_treeless_contains.sngl` for the tree-less rule, which
+`error_tree_inferred_treeless_contains.sngl` for the family-parameter rule, which
 reads an inferred family too, and `error_tree_component_body.sngl` for the
 body. Move the matching check back inline and the fixture passes clean rather
 than failing — which is how each was confirmed.
@@ -1043,12 +1046,12 @@ which leaves what a declaration itself puts in the tree unmeasured. So
 `component c ui.node { window … }` type-checked, and every backend then
 swallowed the window *and its siblings* without a word (#214) — five golden
 archives in this repository were written that way. The check is
-`checkTreeMembership` against `comp.Tree` at the end of `checkComponentBody`,
-which makes `output` and a `#[tree.none]` component exempt for free: both carry
-a nil `Tree`, so the first is never asked and the second is left to
-`checkTreelessBody` rather than reported twice.
+`checkFamilyMembership` against `comp.Family` at the end of `checkComponentBody`,
+which makes `output` and a component returning a type parameter exempt for
+free: both carry a nil `Family`, so the first is never asked and the second is
+left to `checkFamilyParamBody` rather than reported twice.
 
-**Four constructs are reached through, and `treeTransparent` is the one list
+**Four constructs are reached through, and `familyTransparent` is the one list
 of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
 says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
 for what is under it. None puts anything in the tree itself, so every tree
@@ -1059,7 +1062,7 @@ view tree in a later phase asks those rather than writing its switch.
 It returns **two** lists. `all` is every block, for the callers that ask whether
 content belongs to a family. `binds` is the blocks that may *supply* one, which
 is every block but a boundary's fallback: that stands where the content stood
-and is held to the content's answer rather than giving one. `childrenTree` is
+and is held to the content's answer rather than giving one. `childrenFamily` is
 the only caller of `binds`, and handing it `all` made a diagnostic depend on
 source order — `T` bound to `shape` off the fallback of a boundary whose content
 was empty, and the widget beside it was blamed
@@ -1071,24 +1074,24 @@ There were **five** copies of that walk and each was missing a different
 member, which is why the list is now a function rather than a `switch` per
 caller:
 
-- `checkTreeMembership` walked `if`/`for`. A boundary is the subtle one — its
+- `checkFamilyMembership` walked `if`/`for`. A boundary is the subtle one — its
   own check binds `T` off its content and holds the rest to that, so reaching
   through it is what holds the `T` it settled on to the family the surrounding
   *position* accepts. Without it, `vbox { boundary { circle(…) } }` passed in
   silence.
-- `treeEvidence` is the same question from the other side, and missed the
+- `familyEvidence` is the same question from the other side, and missed the
   provider: a component with no return position whose body was
   `theme("dark") { ui.text(…) }` rendered nothing the inference could see and
   was refused as a body that names no tree — a correct program refused.
-- `checkTreelessBody` walked `if`/`for`, so a `#[tree.none]` component rendered
+- `checkFamilyParamBody` walked `if`/`for`, so a component of no family rendered
   a widget under either wrapper and passed.
-- `childrenTree` and `insertsSlot` each had their own partial copy.
+- `childrenFamily` and `insertsSlot` each had their own partial copy.
 
 Two of those gaps were found one at a time, each as a silent acceptance; the
 third is what made the list shared rather than corrected a third time. Fixtures:
 `tree_inferred_context.sngl` (inference), `error_tree_component_body.sngl`'s
-`scoped` (membership) and `error_tree_treeless_wrapped.sngl` (tree-less, both
-wrappers). Deleting the `ContextProvider` case from `treeTransparent` fails all
+`scoped` (membership) and `error_tree_treeless_wrapped.sngl` (family parameter, both
+wrappers). Deleting the `ContextProvider` case from `familyTransparent` fails all
 three, which is the unification doing its job.
 
 A **sixth** copy was `internal/checker/effects.go`'s `walkVisualErrors`, which
@@ -1101,7 +1104,7 @@ is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
 `cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`internal/interp/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
-Two of those deferrals are subtler than the rest. The tree-less check captures
+Two of those deferrals are subtler than the rest. The family-parameter check captures
 the body it was asked about instead of re-reading `comp.Stmts`, because
 `checkPendingExtensions` swaps an override's statements onto the declaration
 and restores the base body after: read late, it checks the base body once per
@@ -1116,13 +1119,18 @@ A **library** declaration names its family and is not inferred. Most of
 package's declarations are a published contract, which a body should not be
 quietly restating.
 
-**`#[tree.none]` says a component belongs to no family**, which is what a
-component that renders nothing wants — `effect`, `timer`, `context`, and each
-platform's `Timer` primitive.
+**A type parameter in the return position takes the family a component is
+placed in** -- `component effect<T, F>(…) F` -- which is what a component that
+renders nothing wants: `effect`, `timer`, `context`, `gen.emit`, `gen.node`,
+and each platform's `Timer` primitive. Nothing binds `F` at a call site with
+no children, so such a node has a nil `Family` and `ir.IsFamilyGenericNode` is
+the question a pass asks of it. `#[tree.none]` said this until the generic form
+could, and the generic form could only once its body was held to `F`: before,
+`component sneak<F>(…) F { ui.text(…) }` placed in a canvas checked clean.
 
 **A canvas keeps them and draws the rest.** `passShapeDraw` replaces a
 canvas's shape children with the statements that paint them, in place, and
-`emitShape` passes a tree-less node through as a child rather than painting it:
+`emitShape` passes a family-generic node through as a child rather than painting it:
 it paints nothing, and its lifetime is the canvas's, so `passEffect` finds it
 there as it would under a vbox. Under `emitShapes` an `if` and a `for` are
 rebuilt around what they held, so a bracket under one survives too — which is
@@ -1132,27 +1140,28 @@ so the bracket went with them and a canvas that scheduled its own animation
 compiled clean and never moved. `testdata/canvas_schedules_itself.txtar` holds
 it.
 
-Two rules follow from the mark, and they are each other's halves:
+Two rules follow from the type parameter, and they are each other's halves:
 
 - it may be placed in **any** tree, so a lifetime bracket belongs in a drawing
-  as readily as in a layout (`checkTreeMembership`);
-- it may contain a member of **none**, because a body that rendered a widget
+  as readily as in a layout (`checkFamilyMembership`);
+- its body may render only what is generic in `F` the same way -- another
+  such component, or a slot typed `F` -- because a body that rendered a widget
   would have joined that family without saying so, and would then be
-  placeable in a canvas (`checkTreelessBody`). The rule reaches through
-  everything `treeTransparent` lists, so a widget wrapped in a boundary or a
+  placeable in a canvas (`checkFamilyParamBody`). The rule reaches through
+  everything `familyTransparent` lists, so a widget wrapped in a boundary or a
   context override is still a widget this component renders -- and it counts
   a slot insertion, which puts what the slot takes where it stands. Passed
-  over, `#[tree.none] component sneak(content ...component ui.node) { content }` carried a button into a canvas, where html painted nothing for
-  it (`error_tree_treeless_slot.sngl`).
+  over, `component sneak<F>(content ...component ui.node) F { content }`
+  carried a button into a canvas, where html painted nothing for it
+  (`error_tree_treeless_slot.sngl`).
 
-`#[tree.none]` is being weeded out for type parameters, which say "any
-family" without saying "no family". **Crossing a family is said at the
-placement, with `#[tree.crosses]`** (`sngl:tree`, for any package): written on
+**Crossing a family is said at the
+placement, with `#[family.crosses]`** (`sngl:family`, for any package): written on
 a node or a slot insertion in a view, it lifts the one check the position
 makes of it -- that it belongs to the family accepted there -- and nothing
 else. The node's own body, slots and children are checked as ever, it is no
-evidence for a family the body is inferring (`treeEvidence`), and on anything
-else the mark is refused (`markTreeCrosses`). On the placement rather than the
+evidence for a family the body is inferring (`familyEvidence`), and on anything
+else the mark is refused (`markFamilyCrosses`). On the placement rather than the
 declaration, so a platform permits exactly the use it means: html's window
 override marks the `html.dialog` it renders in a `root` member's body, and
 each `nav.page` override marks the `Page` primitive it stands in, which is a
@@ -1165,7 +1174,7 @@ as a `VisualNode` does. `testdata/tree_crosses.sngl` and
 parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
 needs to: a slot's content *is* an argument, so the children bind `T` — the
 first one that belongs to a family says which, and the rest are held to it
-(`slotWant`, `childrenTree`). An empty body binds nothing and leaves `T`
+(`slotWant`, `childrenFamily`). An empty body binds nothing and leaves `T`
 unbound: there is no content for a binding to have checked, and a default
 would name a family the wrapper has no reason to prefer. `failed` is held to
 the *content's* answer rather than to its own, because it stands where the
@@ -1296,12 +1305,12 @@ the build when something instantiates it.
 
 It is **ambient** because it describes every package rather than widgets. It
 lived in `sngl:ui`, and that forced an exemption: `output` is declared in
-`sngl:builtin`, which cannot import `sngl:ui`, so `treeOptional` let the
+`sngl:builtin`, which cannot import `sngl:ui`, so `familyOptional` let the
 directives — `output` and `cache.inputs` — omit a return position. Both now
-name `root` like `window` does, and `treeOptional` answers only for an
+name `root` like `window` does, and `familyOptional` answers only for an
 extension body. Load order is not a problem: `lib/builtin/root.sngl` imports
-`sngl:tree` for the mark, which `sngl:builtin` already reached through
-`sngl:build`, and nothing in `sngl:tree` needs the ambient scope. `ir.Convert`
+`sngl:family` for the mark, which `sngl:builtin` already reached through
+`sngl:build`, and nothing in `sngl:family` needs the ambient scope. `ir.Convert`
 spells it bare, as it spells every ambient name.
 
 What membership does *not* replace is the directives' own rule: each is
@@ -1524,10 +1533,10 @@ choose a window, and went with a window's `href` since
 which destination a build opens at is a stack's question -- the page at `/`,
 or its first.
 
-The facts land on `ir.Component.Tree` at registration and on
-`ir.Package.TreeKinds` — keyed by declaration — for the lowering passes to gate
-on. A family may carry a rule of its own for its members: `#[tree.eventless]`
-(`sngl:tree`) says they raise no events, and `checkFamilyMember` refuses one
+The facts land on `ir.Component.Family` at registration and on
+`ir.Package.FamilyKinds` — keyed by declaration — for the lowering passes to gate
+on. A family may carry a rule of its own for its members: `#[family.eventless]`
+(`sngl:family`) says they raise no events, and `checkFamilyMember` refuses one
 that declares any, an `#[intrinsic]` primitive excepted since its event is the
 target calling in. `sngl:ui/draw`'s `shape` says it, because a painted shape is
 pixels and has nothing to raise one from; the checker knows no more about
@@ -1540,8 +1549,8 @@ the parameter list beside the props and events, so a component's whole API is
 one list. `slot` is not a keyword. The type carries the whole of a slot's
 contract: `component(Row)`'s parenthesised list is what the slot is *invoked*
 with at its insertion point, and the trailing type is the tree it *accepts*,
-wrapped in whatever bounds the count — bare is any number, `tree.one<T>`
-exactly one, `option<T>` none or one. Bare `tree.one` is a count and no
+wrapped in whatever bounds the count — bare is any number, `family.one<T>`
+exactly one, `option<T>` none or one. Bare `family.one` is a count and no
 family: "exactly one of whatever this slot already accepts", which is the
 tree the component declaring it belongs to. It used to say that through a
 defaulted type parameter, `one<T = default>`, and there is no default family
@@ -1689,14 +1698,26 @@ package declares is "already declared in this scope", and two nodes writing one
 are a duplicate (`error_window_id_takes_a_declared_name.sngl`,
 `error_window_id_collision.sngl`). A component body already refused both.
 
-**`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
+**`...` and a count wrapper compose**, and deliberately: `content ...component family.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
 wrapper says *how many* — so they are orthogonal rather than two spellings of
-one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
-`Wrapper`'s codegen assigns the single child to a field, so the combination is
-load-bearing rather than tolerated. #193 briefly specified it as an error on
-the grounds that both were count bounds; that would have left the contract
-unspellable and is retracted there.
+one bound. `tooltip`'s trigger is of that shape, and `scroll` and fyne's
+`Wrapper` are its `option<…>` half: `Wrapper`'s codegen assigns the single
+child to a field, so the combination is load-bearing rather than tolerated.
+#193 briefly specified it as an error on the grounds that both were count
+bounds; that would have left the contract unspellable and is retracted there.
+
+**A count is what the population renders**, not the statements written in it
+(`renderedRange`, `internal/checker/family.go`): a node is one, an `if` the
+least and most of its branches, a `for` any number from its body's least, a
+boundary its content or its fallback, an insertion of another slot that slot's
+count. So `one { for … }` is refused and `one { if c { a } else { b } }` is not;
+counting statements, the first passed and a wrapper assigning its one child to
+a field was handed several. A bare `if` is none or one, which is why `scroll`
+takes `option<node>`: the two goldens putting a reactive `if` in a scroll are
+what the backends render into a box. The count says nothing about how many
+times a body inserts the slot, which is not bounded
+(`testdata/error_children_count_rendered.sngl`).
 
 **A slot's invocation list may declare a component entry**, and it is the same
 slot mechanism one level down: `layout component(page Page, content component ui.node) T` says an insertion of `layout` hands its population a
@@ -2653,7 +2674,7 @@ first, and a `sngl:` library package may not carry one at all
 (`registerOutput`).
 
 **Its contents are an ordinary component tree**, and the second user of
-`sngl:tree`. `output`'s slot takes `build.language` members, a language node's
+`sngl:family`. `output`'s slot takes `build.language` members, a language node's
 takes `build.platform` ones, and a target declares its own node in its own
 package: `sngl:language/go` declares `go`, `sngl:platform/html` declares `html`.
 So the nesting rule is a slot's type, a misspelled target is an unresolved name,
@@ -3257,7 +3278,7 @@ renders is decided per node: html overrides it with `ui.link(href=nav.href(to, p
   answers them and `nav._follow`, keeping the
   page showing on the stack's instance and the params a page is showing on
   the page's. The primitives cannot name `_page`: `Stack<F>` binds the family
-  from what it holds, and `Page` is `#[tree.none]`.
+  from what it holds, and `Page` is a `ui.node`.
 - **A target declaring `#[gen.can(navigation)]`** renders them in its own
   codegen -- html's documents and routes, and android's `NavHost`
   (`codegen/platform/android/nav.go`). On android a page's content is a
@@ -3447,7 +3468,7 @@ What it needed from the checker is general:
   (`handleArgs`). A qualified component name (`nav.page`) is a type too, not
   only a family.
 - **A family may take type parameters**, and a member binds them in its
-  return position: `page<T, M>` is a `_page<M>` (`Component.TreeArgs`,
+  return position: `page<T, M>` is a `_page<M>` (`Component.FamilyTypeArgs`,
   `ir.FamilyArgs`). A member declares each family prop at the family's type
   under that binding, a member's handle is assignable to the family at the
   arguments it binds, and a select through a family value reads its props at

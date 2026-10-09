@@ -187,17 +187,17 @@ component block b.family
 	if !family.IsFamily() {
 		t.Fatalf("block is not a family")
 	}
-	if para.Tree != family {
-		t.Errorf("para.Tree = %v, want the block declaration", para.Tree)
+	if para.Family != family {
+		t.Errorf("para.Tree = %v, want the block declaration", para.Family)
 	}
 }
 
 // A misspelled tree is an unresolved name where it is written, which is the
 // whole reason a tree is a declaration rather than a string.
 func TestAMisspelledTreeIsUnresolved(t *testing.T) {
-	_, errs := checkMarkStub(t, `import t "sngl:tree"
+	_, errs := checkMarkStub(t, `import t "sngl:family"
 
-#[t.kind]
+#[t.crosses]
 struct block {}
 
 component para() blcok {}

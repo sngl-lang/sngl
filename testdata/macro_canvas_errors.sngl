@@ -1,5 +1,5 @@
 // A painted shape has nothing to raise an event from, which the family says
-// with #[tree.eventless], and the checker holds every member to it without
+// with #[family.eventless], and the checker holds every member to it without
 // knowing what a shape is.
 
 import . "sngl:ui"

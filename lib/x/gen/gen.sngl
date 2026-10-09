@@ -1,6 +1,5 @@
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
-import tree "sngl:tree"
 
 // A SNGL construct a target may emit without help.
 //
@@ -176,8 +175,7 @@ func renders(these list<Rendered>) ir.Macro
 // A handler's annotation is what says what `T` is, as `render`'s does in code
 // mode.
 #[marks.builtin("genEmit")]
-#[tree.none]
-component emit<T = struct {}>(
+component emit<T = struct {}, F>(
     file    string = "",
     open    string = "",
     close   string = "",
@@ -191,7 +189,7 @@ component emit<T = struct {}>(
     @start(members func() list<T>),
     @change(text string),
     @generate(out Out, members list<Member<T>>),
-) {
+) F {
     effect(@mount {
         start(members)
     })
@@ -227,5 +225,4 @@ struct Member<T> {
 //         gen.node(value=Entry{full=full, click=click})
 //     }
 #[marks.builtin("genNode")]
-#[tree.none]
-component node<T = struct {}>(open string = "", close string = "", value T = {}) {}
+component node<T = struct {}, F>(open string = "", close string = "", value T = {}) F {}

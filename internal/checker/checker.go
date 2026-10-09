@@ -469,9 +469,9 @@ type checker struct {
 	synthTargets map[string]*ir.Component
 
 	// The two `sngl:build` tree kinds, resolved once.
-	langTree      *ir.Component
-	platformTree  *ir.Component
-	buildTreesSet bool
+	langFamily     *ir.Component
+	platformFamily *ir.Component
+	buildTreesSet  bool
 
 	// stdlibPkg is the loaded standard library, bound as a namespace by an
 	// `import <alias> "sngl:ui"` and flattened by the dot form.
@@ -557,13 +557,13 @@ type checker struct {
 	// of, so captureHint can tell a name the enclosing function declared from
 	// one nobody did.
 	nestedHidden *ir.Scope
-	// inferTrees are the declarations that named no family in their return
+	// inferFamilies are the declarations that named no family in their return
 	// position, awaiting the fixed point that reads one off their bodies.
 	// treeChecks are the membership checks that wait for it: a family a
 	// declaration has not settled on yet reads as none, and a check against
 	// none passes in silence.
-	inferTrees []*ir.Component
-	treeChecks []func()
+	inferFamilies []*ir.Component
+	treeChecks    []func()
 	// familyMembers are the members of a family that declares props, held to
 	// declaring each once the package's components are registered.
 	familyMembers []*ir.Component
@@ -595,10 +595,10 @@ type checker struct {
 	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
 	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
+	// rootFamily is the #[builtin("familyRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
-	rootTree *ir.Component
+	rootFamily *ir.Component
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
@@ -1708,8 +1708,8 @@ func (c *checker) registerImport(imp *ast.Import) {
 	// one of its nodes: inlining will bring the nodes here, and the pass that
 	// lowers them runs on this package.
 	if irImport.Pkg != nil {
-		for kind := range irImport.Pkg.TreeKinds {
-			owner.NoteTreeKind(kind)
+		for kind := range irImport.Pkg.FamilyKinds {
+			owner.NoteFamilyKind(kind)
 		}
 	}
 
@@ -1843,8 +1843,8 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Structs = append(dst.Structs, src.Structs...)
 	dst.Enums = append(dst.Enums, src.Enums...)
 	dst.Units = append(dst.Units, src.Units...)
-	for kind := range src.TreeKinds {
-		dst.NoteTreeKind(kind)
+	for kind := range src.FamilyKinds {
+		dst.NoteFamilyKind(kind)
 	}
 	dst.Funcs = append(dst.Funcs, src.Funcs...)
 	dst.Components = append(dst.Components, src.Components...)
@@ -2972,7 +2972,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	if comp.ChildrenType != nil {
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
-	named := c.bindTree(comp, irComp, c.declPkg())
+	named := c.bindFamily(comp, irComp, c.declPkg())
 	c.afterMarks(func() {
 		// The converse of the rule reportBodylessComponents applies:
 		// #[intrinsic] answers where a bodyless component's render comes
@@ -2985,7 +2985,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
 				comp.Name, irComp.Intrinsic)
 		}
-		c.finishTreeMarks(comp, irComp, named)
+		c.finishFamilyMarks(comp, irComp, named)
 	})
 	c.finishRestSlot(irComp)
 	c.popScope()
@@ -3275,12 +3275,12 @@ func (c *checker) checkPackageBody() {
 	// what makes a window top-level: no rule names the construct, so a
 	// component whose own family is the root one renders windows
 	// conditionally and an `if` at the root goes on working.
-	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
+	if pos := firstStmtPos(c.pendingPkgBody); c.rootFamily != nil {
 		// No owner: the package body is the one position in a program that is
 		// not inside a component, so a slot insertion cannot be written there.
 		body := c.pkg.Body
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(nil, pos, body, c.rootTree, "at the root of a file")
+		c.deferFamilyCheck(func() {
+			c.checkFamilyMembership(nil, pos, body, c.rootFamily, "at the root of a file")
 		})
 	}
 }
@@ -3388,7 +3388,7 @@ func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	if c.cfg == nil {
 		return nil
 	}
-	if kind == ir.BuiltinTreeLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		for _, l := range c.cfg.Languages {
 			if l.LanguageIdentifier() == name {
 				return l
@@ -3482,13 +3482,13 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 	// to take it from.
 	where := "in " + visualNodeTarget(vn)
 	owner, at := c.currentComponent, vn.Pos
-	c.deferTreeCheck(func() {
-		want := childrenTree(eb.Children)
+	c.deferFamilyCheck(func() {
+		want := childrenFamily(eb.Children)
 		if want == nil {
-			want = childrenTree(eb.Failed)
+			want = childrenFamily(eb.Failed)
 		}
-		c.checkTreeMembership(owner, at, eb.Children, want, where)
-		c.checkTreeMembership(owner, at, eb.Failed, want, where)
+		c.checkFamilyMembership(owner, at, eb.Children, want, where)
+		c.checkFamilyMembership(owner, at, eb.Failed, want, where)
 	})
 	return eb
 }
@@ -3579,7 +3579,7 @@ func (c *checker) pass2() {
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn. A library
 	// names its family, so only a program infers one.
-	c.inferComponentTrees()
+	c.inferComponentFamilies()
 
 	c.finishDeclarations(c.pkg)
 }
@@ -3673,7 +3673,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	// and a hoisted func can take the name it is emitted under.
 	c.renameNestedFuncs(pkg)
 
-	c.runTreeChecks()
+	c.runFamilyChecks()
 
 	// Purity + access analysis, over the checked IR with resolved symbols,
 	// each function against the state its owner can reach (stateVars).
@@ -4374,15 +4374,15 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// and restores the base body after, so a drain-time read would check the
 	// base body once per override and the override's body never.
 	body := comp.Stmts
-	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
+	c.deferFamilyCheck(func() { c.checkFamilyParamBody(comp, body) })
 	// What a body puts in the tree is held to the family the component is a
 	// member of, which is the one position nothing else asks about: the other
 	// five are a container asking about its children. A tree-less component
 	// has a nil Tree and falls out of checkTreeMembership, which is what keeps
 	// it to checkTreelessBody's rule alone rather than reporting it twice.
 	at := compDeclPos(comp)
-	c.deferTreeCheck(func() {
-		c.checkTreeMembership(comp, at, body, comp.Tree, "in the body of "+comp.Name)
+	c.deferFamilyCheck(func() {
+		c.checkFamilyMembership(comp, at, body, comp.Family, "in the body of "+comp.Name)
 	})
 }
 

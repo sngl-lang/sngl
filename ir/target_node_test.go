@@ -7,26 +7,26 @@ import "testing"
 // convention; and the family is found by its mark, not by its name, so a
 // package declaring a `platform` family of its own declares a different one.
 func TestTargetNodeOfFindsTheNodeByItsFamily(t *testing.T) {
-	familyOfFamilies := &Component{Name: "family", Builtin: BuiltinTreeFamily}
-	familyOfFamilies.Tree = familyOfFamilies
-	plat := &Component{Name: "platform", Tree: familyOfFamilies, Builtin: BuiltinTreePlatform}
-	lang := &Component{Name: "language", Tree: familyOfFamilies, Builtin: BuiltinTreeLanguage}
-	impostor := &Component{Name: "platform", Tree: familyOfFamilies}
+	familyOfFamilies := &Component{Name: "family", Builtin: BuiltinFamilyOfFamilies}
+	familyOfFamilies.Family = familyOfFamilies
+	plat := &Component{Name: "platform", Family: familyOfFamilies, Builtin: BuiltinFamilyPlatform}
+	lang := &Component{Name: "language", Family: familyOfFamilies, Builtin: BuiltinFamilyLanguage}
+	impostor := &Component{Name: "platform", Family: familyOfFamilies}
 
-	shell := &Component{Name: "shell", Tree: plat, Gen: &GenCaps{TargetName: "shell"}}
-	other := &Component{Name: "platform", Tree: impostor, Gen: &GenCaps{TargetName: "fake"}}
+	shell := &Component{Name: "shell", Family: plat, Gen: &GenCaps{TargetName: "shell"}}
+	other := &Component{Name: "platform", Family: impostor, Gen: &GenCaps{TargetName: "fake"}}
 	pkg := &Package{Components: []*Component{other, shell}}
 
-	if got := TargetNodeOf(pkg, BuiltinTreePlatform); got != shell {
+	if got := TargetNodeOf(pkg, BuiltinFamilyPlatform); got != shell {
 		t.Errorf("TargetNodeOf(platform) = %v, want the node named shell", got)
 	}
-	if got := TargetNodeOf(pkg, BuiltinTreeLanguage); got != nil {
+	if got := TargetNodeOf(pkg, BuiltinFamilyLanguage); got != nil {
 		t.Errorf("TargetNodeOf(language) = %v, want none", got)
 	}
-	if TargetTier(lang) != BuiltinTreeLanguage || TargetTier(plat) != BuiltinTreePlatform {
+	if TargetTier(lang) != BuiltinFamilyLanguage || TargetTier(plat) != BuiltinFamilyPlatform {
 		t.Error("the marked families answer their tiers")
 	}
-	if IsBuildTargetTree(impostor) {
+	if IsBuildTargetFamily(impostor) {
 		t.Error("a family named platform without the mark is not the build tier")
 	}
 }

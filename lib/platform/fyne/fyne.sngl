@@ -1,7 +1,6 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import markup "sngl:ui/markup"
-import tr "sngl:tree"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
@@ -227,7 +226,7 @@ component Wrapper(
     @click(),
     @change(text string),
     @input(text string),
-    content     ...component tr.one,
+    content     ...component option<ui.node>,
 ) ui.node
 
 // --- The Fyne widgets ---
@@ -433,7 +432,7 @@ const component HBox(style ui.Style = ui.Style{}, children ...component) ui.node
     }
 }
 
-const component VScroll(style ui.Style = ui.Style{}, content ...component tr.one) ui.node {
+const component VScroll(style ui.Style = ui.Style{}, content ...component option<ui.node>) ui.node {
     Wrapper(
         spec = Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},

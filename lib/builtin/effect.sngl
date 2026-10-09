@@ -29,10 +29,9 @@
 // It belongs to no tree, which is what lets one bracket a lifetime inside a
 // drawing or a menu as readily as inside a layout: an effect renders nothing,
 // so it is no more a widget than it is a shape.
-#[_none]
 #[_builtin(effect)]
-component effect<T = struct {}>(
+component effect<T = struct {}, F>(
     on T,
     @mount(key T),
     @unmount(key T),
-) {}
+) F {}

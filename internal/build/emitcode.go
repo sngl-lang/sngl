@@ -211,7 +211,7 @@ func (w *codeWalker) walkMember(ni *ir.NodeInst) ([]codeStmt, error) {
 	}
 	if comp.Bodyless {
 		return nil, posErr(at, "the %s family emits for %s, and %s says nothing about what it contributes: give it an override whose body is a gen.node, or a body of its own",
-			comp.Tree.Name, describe(w.t), comp.Name)
+			comp.Family.Name, describe(w.t), comp.Name)
 	}
 	if len(ni.Handlers) > 0 {
 		return nil, posErr(at, "%s composes the members its body renders, and a handler written on it reaches none of them", comp.Name)

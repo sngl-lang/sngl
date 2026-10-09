@@ -4370,25 +4370,34 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 		c.specializeHandle(vn.ID, comp, spec)
 	}
 	if spec != nil && spec.AST != nil {
-		ct := spec.ChildrenType
+		rest := spec.RestSlot()
 		n := len(children)
-		if rest := spec.RestSlot(); rest != nil && slotContent[rest.Name] != nil {
+		if rest != nil && slotContent[rest.Name] != nil {
 			// The rest slot was populated by name, and checkSlotContent has
 			// already held that content to the slot's count. Bare children
 			// alongside it are the double population, reported there.
-			ct, n = nil, 0
+			rest, n = nil, 0
 		}
 		switch {
-		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
-		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
-			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
-		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
-			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
+		case rest == nil:
+			if n > 0 {
+				c.error(vn.Pos, "component %s does not accept children", spec.DisplayName())
+			}
+		default:
+			// The count is what the children render, not how many
+			// statements wrote them: a `for` is one statement.
+			if lo, hi := c.renderedRange(c.currentComponent, children); !fitsCard(rest.Card, lo, hi) {
+				switch rest.Card {
+				case ir.SlotOne:
+					c.error(vn.Pos, "component %s requires exactly one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				case ir.SlotOptional:
+					c.error(vn.Pos, "component %s accepts at most one child, and this renders %s", spec.Name, rangeWords(lo, hi))
+				}
+			}
 		}
 		owner, node, at := c.currentComponent, spec, vn.Pos
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
+		c.deferFamilyCheck(func() {
+			c.checkFamilyMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.DisplayName())
 		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
@@ -5649,7 +5658,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), decl.Arity())
 	}
 	if cd.ChildrenType != nil {
-		c.error(cd.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", cd.Name)
+		c.error(cd.Pos, "slot %q: a population names no family; what it accepts is the declaration's", cd.Name)
 	}
 	sc := &ir.SlotContent{}
 	var entries map[string]*ir.SlotDecl
@@ -5702,10 +5711,10 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkScopeBlockIR(&cd.Body, bound...)
 	c.entryScopes = c.entryScopes[:len(c.entryScopes)-1]
 	c.popScope()
-	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
+	c.checkSlotArity(cd.Pos, decl, sc.Body, "slot \""+cd.Name+"\"")
 	written, at := c.currentComponent, cd.Pos
-	c.deferTreeCheck(func() {
-		c.checkTreeMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	c.deferFamilyCheck(func() {
+		c.checkFamilyMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
 	})
 	return sc
 }
@@ -5726,25 +5735,34 @@ func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	return ir.ListOf(elem)
 }
 
-func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what string) {
-	switch slot.Card {
-	case ir.SlotOne:
-		if n != 1 {
-			c.error(pos, "%s takes exactly one node, got %d", what, n)
-		}
-	case ir.SlotOptional:
-		if n > 1 {
-			c.error(pos, "%s takes at most one node, got %d", what, n)
+func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, body []ir.Stmt, what string) {
+	if lo, hi := c.renderedRange(c.currentComponent, body); !fitsCard(slot.Card, lo, hi) {
+		switch slot.Card {
+		case ir.SlotOne:
+			c.error(pos, "%s takes exactly one node, and this renders %s", what, rangeWords(lo, hi))
+		case ir.SlotOptional:
+			c.error(pos, "%s takes at most one node, and this renders %s", what, rangeWords(lo, hi))
 		}
 	}
 }
 
-// slotTree is the segmented tree a slot accepts, or nil where nothing pins one
+// rangeWords spells a renderedRange for a diagnostic.
+func rangeWords(lo, hi int) string {
+	switch {
+	case hi == unbounded:
+		return fmt.Sprintf("%d or more", lo)
+	case lo == hi:
+		return strconv.Itoa(lo)
+	}
+	return fmt.Sprintf("%d to %d", lo, hi)
+}
+
+// slotFamily is the segmented tree a slot accepts, or nil where nothing pins one
 // — a tree-less owner's bare slot, or a tree parameter no call site has bound.
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
-func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
+func slotFamily(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 	if slot == nil {
 		return nil
 	}
@@ -5752,7 +5770,7 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 		if owner == nil {
 			return nil
 		}
-		return owner.Tree
+		return owner.Family
 	}
 	return ir.TypeFamily(slot.Content)
 }
@@ -5765,16 +5783,16 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.Component {
 // pinned is already substituted and only an unpinned one reaches the second
 // case.
 func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Component {
-	if sd := slotTree(owner, slot); sd != nil {
+	if sd := slotFamily(owner, slot); sd != nil {
 		return sd
 	}
-	if owner == nil || owner.TreeParam == nil || slot == nil || !slot.Content.Equal(owner.TreeParam) {
+	if owner == nil || owner.FamilyParam == nil || slot == nil || !slot.Content.Equal(owner.FamilyParam) {
 		return nil
 	}
-	return childrenTree(content)
+	return childrenFamily(content)
 }
 
-// childrenTree is the tree the nodes written in a block belong to, for a slot
+// childrenFamily is the tree the nodes written in a block belong to, for a slot
 // whose content type is the component's own tree parameter. Nothing at the
 // call site names a type argument, so the children are what binds it: the
 // first one that belongs to a family says which, and checkTreeMembership then
@@ -5787,18 +5805,18 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Com
 // treeTransparent's *binding* blocks, which is every block but a boundary's
 // fallback: that one stands where the content stood and is held to the
 // content's answer rather than supplying one.
-func childrenTree(content []ir.Stmt) *ir.Component {
+func childrenFamily(content []ir.Stmt) *ir.Component {
 	for _, st := range content {
-		if _, binds, ok := treeTransparent(st); ok {
+		if _, binds, ok := familyTransparent(st); ok {
 			for _, b := range binds {
-				if sd := childrenTree(b); sd != nil {
+				if sd := childrenFamily(b); sd != nil {
 					return sd
 				}
 			}
 			continue
 		}
-		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Tree != nil {
-			return ni.Component.Tree
+		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Family != nil {
+			return ni.Component.Family
 		}
 	}
 	return nil
@@ -5813,7 +5831,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 	return s.StmtPos()
 }
 
-// checkTreeMembership holds every supplied node to the tree the position
+// checkFamilyMembership holds every supplied node to the tree the position
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
 //
@@ -5828,7 +5846,7 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.
-func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
+func (c *checker) checkFamilyMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.Component, where string) {
 	if want == nil {
 		return
 	}
@@ -5839,9 +5857,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// the subtle one: its own check binds T off its content, and reaching
 		// through it here is what holds that T to the family this position
 		// accepts.
-		if blocks, _, ok := treeTransparent(st); ok {
+		if blocks, _, ok := familyTransparent(st); ok {
 			for _, b := range blocks {
-				c.checkTreeMembership(owner, pos, b, want, where)
+				c.checkFamilyMembership(owner, pos, b, want, where)
 			}
 			continue
 		}
@@ -5853,7 +5871,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 			if s.Crosses {
 				continue
 			}
-			if got := c.insertedTree(owner, s); got != nil && got != want {
+			if got := c.insertedFamily(owner, s); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it
@@ -5861,7 +5879,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
 		case *ir.NodeInst:
-			if s.Crosses || s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
+			if s.Crosses || s.Component == nil || s.Component.Family == nil || s.Component.Family == want {
 				continue
 			}
 			// The offending child is a better place to point than the position
@@ -5875,9 +5893,9 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 	}
 }
 
-// insertedTree is the family a slot insertion puts where it stands: the slot's
+// insertedFamily is the family a slot insertion puts where it stands: the slot's
 // own, read off the declaration the insertion names.
-func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Component {
+func (c *checker) insertedFamily(owner *ir.Component, s *ir.SlotInst) *ir.Component {
 	decl := c.entrySpec[s]
 	if decl == nil {
 		decl = s.Entry
@@ -5885,7 +5903,7 @@ func (c *checker) insertedTree(owner *ir.Component, s *ir.SlotInst) *ir.Componen
 	if decl == nil {
 		decl = ownerSlot(owner, s.Name)
 	}
-	return slotTree(owner, decl)
+	return slotFamily(owner, decl)
 }
 
 // errorEventName spells the payload type for a diagnostic, falling back to the

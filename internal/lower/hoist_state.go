@@ -205,7 +205,7 @@ func (st *blockState) promote(o *stateOwner, stmts []ir.Stmt) []ir.Stmt {
 // wrap is the instantiation of a component synthesized for a block rendered
 // other than once, with the block as its body and the block's vars its own.
 func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
-	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Tree: treeOfStmts(stmts)}
+	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Family: treeOfStmts(stmts)}
 	st.made = append(st.made, w)
 	w.Stmts, w.Vars = promoteLocalVarsToVars(stmts, nil)
 	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true)
@@ -280,8 +280,8 @@ func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
 func treeOfStmts(stmts []ir.Stmt) *ir.Component {
 	var tree *ir.Component
 	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Tree != nil {
-			tree = n.Component.Tree
+		if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Family != nil {
+			tree = n.Component.Family
 			return ir.SkipAll
 		}
 		return nil

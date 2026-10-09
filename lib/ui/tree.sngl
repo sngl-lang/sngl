@@ -1,5 +1,4 @@
 import build "sngl:build"
-import marks "sngl:internal/marks"
 
 // The family the widgets form: a button, a label and a layout box are members
 // of it, and any of them goes anywhere another does. Every component in this
@@ -11,11 +10,4 @@ import marks "sngl:internal/marks"
 // `node` members and nothing else, which is what makes putting a `draw.shape`
 // in a `vbox` an error — the two are different families and were always meant
 // to be.
-//
-// The builtin mark is what the passes asking "is this rendered rather than
-// composed" read: this is the one family whose members are ordinary
-// components, and every other family answers yes by existing. It names the
-// tree by the mark and not by the pair "sngl:ui" and "node", so renaming
-// either leaves the role where it was written.
-#[marks.builtin("treeNode")] // TODO How important is this marker? Component families should be mostly compiler agnostic now.
 component node build.family

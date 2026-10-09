@@ -13,10 +13,10 @@ import (
 func StripForCompare(pkg *Package) {
 	s := &stripper{}
 	s.stripPackage(pkg)
-	clearReachableTreeKinds(pkg)
+	clearReachableFamilyKinds(pkg)
 }
 
-// clearReachableTreeKinds nils TreeKinds on every package the graph reaches,
+// clearReachableFamilyKinds nils TreeKinds on every package the graph reaches,
 // not only the one being stripped.
 //
 // It is a derived index keyed by declaration, and DeepEqual compares map keys
@@ -24,7 +24,7 @@ func StripForCompare(pkg *Package) {
 // Imports are cut above, but a *library* package is still reachable through
 // the scope chain a symbol carries -- and every program reaches sngl:ui that
 // way now that its window names a tree.
-func clearReachableTreeKinds(pkg *Package) {
+func clearReachableFamilyKinds(pkg *Package) {
 	seen := map[uintptr]bool{}
 	var walk func(v reflect.Value, depth int)
 	walk = func(v reflect.Value, depth int) {
@@ -45,7 +45,7 @@ func clearReachableTreeKinds(pkg *Package) {
 				}
 				seen[v.Pointer()] = true
 				if p, ok := v.Interface().(*Package); ok {
-					p.TreeKinds = nil
+					p.FamilyKinds = nil
 				}
 			}
 			walk(v.Elem(), depth+1)
@@ -86,7 +86,7 @@ func (s *stripper) stripPackage(pkg *Package) {
 	pkg.Symbols = nil
 	// A derived index keyed by declaration. DeepEqual compares map keys by
 	// pointer, so a clone's own declarations could never match the original's.
-	pkg.TreeKinds = nil
+	pkg.FamilyKinds = nil
 
 	// Normalize nil slices to empty for DeepEqual.
 	if pkg.Imports == nil {

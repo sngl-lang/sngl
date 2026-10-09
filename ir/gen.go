@@ -135,7 +135,7 @@ func GenCapsOf(c *Component) *GenCaps {
 // its value is that name.
 func TargetNode(sym Symbol) (*Component, string, bool) {
 	c, ok := sym.(*Component)
-	if !ok || c.Gen == nil || c.Gen.TargetName == "" || !IsBuildTargetTree(c.Tree) {
+	if !ok || c.Gen == nil || c.Gen.TargetName == "" || !IsBuildTargetFamily(c.Family) {
 		return nil, "", false
 	}
 	return c, c.Gen.TargetName, true
@@ -160,16 +160,16 @@ func EmittedFamily(host *Component) *Component {
 	if host == nil || !host.Bodyless {
 		return nil
 	}
-	f := RestSlotTree(host)
+	f := RestSlotFamily(host)
 	if f == nil || f == host || (len(f.PlatformOverrides) == 0 && len(f.LanguageOverrides) == 0) {
 		return nil
 	}
 	return f
 }
 
-// IsBuildTargetTree reports whether f is `build.language` or `build.platform`
+// IsBuildTargetFamily reports whether f is `build.language` or `build.platform`
 // -- the families a target package's own node is a member of.
-func IsBuildTargetTree(f *Component) bool {
+func IsBuildTargetFamily(f *Component) bool {
 	return TargetTier(f) != ""
 }
 
@@ -179,10 +179,10 @@ func IsBuildTargetTree(f *Component) bool {
 // `language` family of its own declares a different one.
 func TargetTier(f *Component) BuiltinKind {
 	switch {
-	case isTreeRole(f, BuiltinTreeLanguage):
-		return BuiltinTreeLanguage
-	case isTreeRole(f, BuiltinTreePlatform):
-		return BuiltinTreePlatform
+	case isFamilyRole(f, BuiltinFamilyLanguage):
+		return BuiltinFamilyLanguage
+	case isFamilyRole(f, BuiltinFamilyPlatform):
+		return BuiltinFamilyPlatform
 	}
 	return ""
 }
@@ -195,7 +195,7 @@ func TargetNodeOf(pkg *Package, tier BuiltinKind) *Component {
 		return nil
 	}
 	for _, c := range pkg.Components {
-		if node, _, ok := TargetNode(c); ok && TargetTier(node.Tree) == tier {
+		if node, _, ok := TargetNode(c); ok && TargetTier(node.Family) == tier {
 			return node
 		}
 	}
@@ -215,10 +215,10 @@ func (c *Component) RendersFromDeclaration() bool {
 	if c == nil {
 		return false
 	}
-	if c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != BuiltinNone || IsBuildTargetTree(c.Tree) {
+	if c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != BuiltinNone || IsBuildTargetFamily(c.Family) {
 		return true
 	}
-	if rest := c.RestSlot(); rest != nil && rest.Content != nil && IsDrawShapeTree(TypeFamily(rest.Content)) {
+	if rest := c.RestSlot(); rest != nil && rest.Content != nil && IsShapeFamily(TypeFamily(rest.Content)) {
 		return true
 	}
 	return false

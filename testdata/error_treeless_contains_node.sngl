@@ -1,26 +1,23 @@
-// The tightening that keeps "a tree-less component goes anywhere" from being
-// a hole. A component marked `#[tree.none]` may be placed in a canvas as
-// readily as in a layout — so if its body could render a widget, it would be
-// a `ui` member without saying so, and putting it in a canvas would put a
-// widget there.
+// The tightening that keeps "a component generic in its family goes anywhere"
+// from being a hole. A component returning a type parameter may be placed in a
+// canvas as readily as in a layout — so if its body could render a widget, it
+// would be a `ui` member without saying so, and putting it in a canvas would
+// put a widget there. Before the rule, `logger` below checked clean.
 //
 // An `if` or a `for` is how the nodes under it got there rather than a node,
 // so the rule reaches through both.
 
-import tree "sngl:tree"
 import ui "sngl:ui"
 
 var loud = true
 
-#[tree.none]
-component logger(label string) {
-    ui.text(value=label) // ERROR(check) "component logger names no tree, so it may not contain the node component text"
+component logger<F>(label string) F {
+    ui.text(value=label) // ERROR(check) "component logger takes the family it is placed in, so it may not contain the node component text"
 }
 
-#[tree.none]
-component branching(label string) {
+component branching<F>(label string) F {
     if loud {
-        ui.text(value=label) // ERROR(check) "component branching names no tree, so it may not contain the node component text"
+        ui.text(value=label) // ERROR(check) "component branching takes the family it is placed in, so it may not contain the node component text"
     }
 }
 

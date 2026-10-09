@@ -329,13 +329,12 @@ const component ui.toolbar[platform] {
 // variable name the analysis used to reduce it to. `enabled=true` produced
 // `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
 // an android timer to say so.
-#[tree.none]
 #[intrinsic("android:Timer")]
-component Timer(
+component Timer<F>(
     interval time.duration,
     enabled  bool,
     @tick,
-)
+) F
 
 const component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}

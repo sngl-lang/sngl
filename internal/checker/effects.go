@@ -199,7 +199,7 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 		// walk had its own copy of it and was missing the context provider, so
 		// a raise from a handler under one resolved past every boundary it was
 		// written inside and came out uncaught.
-		if blocks, _, ok := treeTransparent(s); ok {
+		if blocks, _, ok := familyTransparent(s); ok {
 			for _, b := range blocks {
 				walkVisualErrors(b, scope)
 			}

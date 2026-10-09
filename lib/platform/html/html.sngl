@@ -9,7 +9,7 @@ import markup "sngl:ui/markup"
 import math "sngl:math"
 import gen "sngl:x/gen"
 import nav "sngl:ui/nav"
-import tree "sngl:tree"
+import family "sngl:family"
 
 // Serves dir over HTTP at listen, ":0" when empty, printing the address, until
 // the process is stopped. What `sngl run` does with a site. Declared above the
@@ -1189,7 +1189,7 @@ const component nav.stack[platform] {
 }
 
 const component nav.page[platform] {
-    #[tree.crosses]
+    #[family.crosses]
     Page {
         content(params)
     }

@@ -1,4 +1,4 @@
-import tr "sngl:tree"
+import family "sngl:family"
 
 // Dialog overlay. Renders its children in a centered modal dialog
 // atop a scrim when `open` is true. `title` is the dialog heading;
@@ -61,7 +61,7 @@ component tooltip(
     text     string,
     position string = "",
     delay    int = 0,
-    trigger  ...component tr.one<node>,
+    trigger  ...component family.one<node>,
 ) node {}
 
 component _example_tooltip node {

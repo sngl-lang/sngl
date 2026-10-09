@@ -13,12 +13,12 @@ import (
 // `build.platform` ones.
 const buildPkg = "build"
 
-// buildTrees are the families `sngl:build` declares, resolved once. Membership
+// buildFamilies are the families `sngl:build` declares, resolved once. Membership
 // is compared against these declarations, so a package declaring its own
 // `language` family declares a different one and its nodes do not pass.
-func (c *checker) buildTrees() (lang, platform *ir.Component) {
+func (c *checker) buildFamilies() (lang, platform *ir.Component) {
 	if c.buildTreesSet {
-		return c.langTree, c.platformTree
+		return c.langFamily, c.platformFamily
 	}
 	c.buildTreesSet = true
 	pkg := c.libPkgOutsideDirective(buildPkg)
@@ -30,13 +30,13 @@ func (c *checker) buildTrees() (lang, platform *ir.Component) {
 			continue
 		}
 		switch ir.TargetTier(f) {
-		case ir.BuiltinTreeLanguage:
-			c.langTree = f
-		case ir.BuiltinTreePlatform:
-			c.platformTree = f
+		case ir.BuiltinFamilyLanguage:
+			c.langFamily = f
+		case ir.BuiltinFamilyPlatform:
+			c.platformFamily = f
 		}
 	}
-	return c.langTree, c.platformTree
+	return c.langFamily, c.platformFamily
 }
 
 // targetNode is the build-directive node a target package declares under name.
@@ -52,9 +52,9 @@ func (c *checker) buildTrees() (lang, platform *ir.Component) {
 // loaded: which targets load is decided by the caller's selection, and a
 // directive names targets that selection does not.
 func (c *checker) targetNode(name string, depth int) *ir.Component {
-	tiers := [2]ir.BuiltinKind{ir.BuiltinTreeLanguage, ir.BuiltinTreePlatform}
+	tiers := [2]ir.BuiltinKind{ir.BuiltinFamilyLanguage, ir.BuiltinFamilyPlatform}
 	if depth != 1 {
-		tiers = [2]ir.BuiltinKind{ir.BuiltinTreePlatform, ir.BuiltinTreeLanguage}
+		tiers = [2]ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage}
 	}
 	for _, kind := range tiers {
 		target := c.lookupTargetIn(name, kind)
@@ -97,17 +97,17 @@ func (c *checker) judgesTargets(depth int) bool {
 // it declares no props and carries no AST, which is what turns off the schema
 // checks a declaration it does not have could not support.
 func (c *checker) unregisteredTargetNode(name string, depth int) *ir.Component {
-	key := targetTierMember(ir.BuiltinTreePlatform) + "/" + name
+	key := targetTierMember(ir.BuiltinFamilyPlatform) + "/" + name
 	if depth == 1 {
-		key = targetTierMember(ir.BuiltinTreeLanguage) + "/" + name
+		key = targetTierMember(ir.BuiltinFamilyLanguage) + "/" + name
 	}
 	if comp, ok := c.synthTargets[key]; ok {
 		return comp
 	}
-	langTree, platTree := c.buildTrees()
-	comp := &ir.Component{Name: name, Tree: platTree, Gen: &ir.GenCaps{TargetName: name}}
+	langTree, platTree := c.buildFamilies()
+	comp := &ir.Component{Name: name, Family: platTree, Gen: &ir.GenCaps{TargetName: name}}
 	if depth == 1 {
-		comp.Tree = langTree
+		comp.Family = langTree
 		comp.ChildrenType = &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypDyn}}
 	}
 	if c.synthTargets == nil {
@@ -153,15 +153,15 @@ func (c *checker) checkOutputTree() {
 // skipped: the diagnostic is written, and reading past it would invent a
 // target out of a mistake.
 func (c *checker) collectOutputs(root *ir.NodeInst) {
-	langTree, platTree := c.buildTrees()
+	langTree, platTree := c.buildFamilies()
 	for _, langStmt := range root.Children {
 		langNode, ok := langStmt.(*ir.NodeInst)
-		if !ok || langNode.Component == nil || langNode.Component.Tree != langTree {
+		if !ok || langNode.Component == nil || langNode.Component.Family != langTree {
 			continue
 		}
 		for _, platStmt := range langNode.Children {
 			platNode, ok := platStmt.(*ir.NodeInst)
-			if !ok || platNode.Component == nil || platNode.Component.Tree != platTree {
+			if !ok || platNode.Component == nil || platNode.Component.Family != platTree {
 				continue
 			}
 			out := &ir.Output{

@@ -1,7 +1,6 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
-import tree "sngl:tree"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"

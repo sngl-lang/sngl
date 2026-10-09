@@ -19,22 +19,10 @@ package ir
 // shape is spliced into the calls that paint it and there is nothing left to
 // ask. Refusing the id said the same thing by saying nothing.
 
-// TreeHosted is the segmented tree a component's rest slot accepts, or nil.
-//
-// A canvas hosts shapes; a rect, being one, hosts its own. The distinction is
-// the slot, not the return position, which is what IsShapeContainer puts
-// together.
-func TreeHosted(comp *Component) *Component {
-	if f := RestSlotTree(comp); IsSegmentedTree(f) {
-		return f
-	}
-	return nil
-}
-
-// RestSlotTree is the family a component's rest slot accepts, whichever family
+// RestSlotFamily is the family a component's rest slot accepts, whichever family
 // that is, and nil for a component that declares no rest slot or whose slot
 // names no tree.
-func RestSlotTree(comp *Component) *Component {
+func RestSlotFamily(comp *Component) *Component {
 	if comp == nil {
 		return nil
 	}
@@ -54,19 +42,19 @@ func RestSlotTree(comp *Component) *Component {
 // draws it, so only the outermost host is a drawing.
 func IsShapeContainer(ni *NodeInst) bool {
 	return ni != nil && ni.Component != nil &&
-		!IsDrawShapeTree(ni.Component.Tree) &&
-		IsDrawShapeTree(TreeHosted(ni.Component))
+		!IsShapeFamily(ni.Component.Family) &&
+		IsShapeFamily(RestSlotFamily(ni.Component))
 }
 
-// IsTreelessNode reports whether a node's declaration belongs to no family,
+// IsFamilyGenericNode reports whether a node's declaration belongs to no family,
 // which is what `#[tree.none]` says and what `effect` and `timer` carry.
 //
 // Such a node may be placed in any tree, so a drawing holds them beside its
 // shapes: an `effect` written in a canvas is the bracket that animates it. It
 // paints nothing, so the draw walk keeps it as a child rather than painting
 // it, and it is not a shape, so the widget walks skip it too.
-func IsTreelessNode(n *NodeInst) bool {
-	return n != nil && n.Component != nil && n.Component.Tree == nil
+func IsFamilyGenericNode(n *NodeInst) bool {
+	return n != nil && n.Component != nil && n.Component.Family == nil
 }
 
 // WidgetChildren is what a walk over the *widget* tree sees beneath a node.

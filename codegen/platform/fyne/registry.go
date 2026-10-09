@@ -57,7 +57,7 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || c.PkgPath() == "" || c.Builtin != ir.BuiltinNone {
+		if !ok || c.PkgPath() == "" || c.Builtin != ir.BuiltinNone || c.IsFamily() {
 			return true
 		}
 		// A body of its own is what every platform renders where it has

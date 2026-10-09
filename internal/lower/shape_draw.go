@@ -162,7 +162,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// stays a child the way it would under a vbox, and passEffect finds it
 	// there. A canvas that animates itself is exactly this case, and dropping
 	// these is what made one compile clean and never move.
-	if ir.IsTreelessNode(ni) {
+	if ir.IsFamilyGenericNode(ni) {
 		*body = append(*body, ni)
 		return
 	}
@@ -251,7 +251,7 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 	if ni.Component == nil || ni.Component.Intrinsic == "" {
 		return nil, false
 	}
-	if !ir.IsSegmentedTree(ni.Component.Tree) {
+	if !ir.IsShapeFamily(ni.Component.Family) {
 		return nil, false
 	}
 	var out []ir.Stmt

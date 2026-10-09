@@ -341,8 +341,8 @@ semicolon insertion so the decorated construct may begin on the following line.
 
 A macro is an ordinary declaration of a package, and none is ambient: the
 attribute names it through the file's import of that package, qualified by the
-import's alias like any other member — `#[tree.none]` after
-`import tree "sngl:tree"`, `#[macro.foreign(…)]` after
+import's alias like any other member — `#[family.crosses]` after
+`import family "sngl:family"`, `#[macro.foreign(…)]` after
 `import macro "sngl:macro"`. A macro name that does not resolve is an error.
 
 ### The slashdash prefix
@@ -761,7 +761,7 @@ under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 | `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
 | `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
 | `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
-| `sngl:tree`         | the `kind` and `none` marks, and the `one<T>` slot count                                           |
+| `sngl:family`       | the `crosses` and `eventless` marks, and the `one<T>` slot count                                   |
 | `sngl:math`         | `pi`, `tau`                                                                                        |
 | `sngl:async`        | `start`, `do`                                                                                      |
 | `sngl:dialog`       | `Alert`, `File`                                                                                    |
@@ -790,8 +790,8 @@ so a top-level declaration named like a library entity takes precedence over it
 within the package.
 
 A library package may carry macros next to the declarations they apply to:
-`import tree "sngl:tree"` brings the `#[tree.none]` mark beside the
-`tree.one` count it qualifies slots with (see
+`import family "sngl:family"` brings the `#[family.crosses]` mark beside the
+`family.one` count it qualifies slots with (see
 [Trees and families](#trees-and-families)).
 
 Packages under `sngl:internal/` are the compiler's own tier. They declare the
@@ -1605,7 +1605,7 @@ and slots — is one parameter list:
 - `header component` — any number of nodes, of whatever family the component
   itself belongs to;
 - `shapes component draw.shape` — any number of that family's members;
-- `body component tree.one<ui.node>` — exactly one (bare `tree.one` is exactly
+- `body component family.one<ui.node>` — exactly one (bare `family.one` is exactly
   one of whatever the slot already accepts);
 - `badge component option<ui.node>` — zero or one;
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
@@ -1666,7 +1666,7 @@ ui.window {
 ```
 
 A component declares at most one rest slot, and a component that declares none
-accepts no children at all. `...` composes with a count bound — `content ...component tree.one` is "the bare children, of which exactly one" — because
+accepts no children at all. `...` composes with a count bound — `content ...component family.one` is "the bare children, of which exactly one" — because
 the two say different things: `...` says which children arrive here, the
 wrapper how many. Populating a rest slot by name *and* writing bare children
 populates it twice.
@@ -1941,15 +1941,22 @@ The rules:
   places, reached through any `if`, `for`, `boundary` or context provider
   around it. A body rendering members of two families, or of none, is an
   error. A library declaration always names its family.
-- **`#[tree.none]` says a component belongs to no family.** It may be placed in
-  any tree and may not render a member of any: `effect`, `context`, and
-  `time.timer` are such components.
+- **A type parameter in the return position takes the family a component is
+  placed in.** `component effect<T, F>(…) F` may be placed in any family, and
+  its body may render only what is generic in `F` the same way -- another such
+  component, or a slot typed `F` -- so a widget cannot reach a drawing through
+  it. `effect`, `context` and `time.timer` are such components.
 - **`if`, `for`, `boundary` and context providers are transparent**: they say
   when, how many, and under what conditions nodes appear, but put nothing in
   the tree themselves, so every membership rule looks through them.
 
 A component generic over the family it wraps writes a type parameter where a
 family goes — `component boundary<T>(…, content ...component T, failed component T) T` — and the children written in the slot bind `T`.
+
+A slot's count is what its population renders, not the statements written in
+it: `family.one` takes one node, so a `for` there is an error and an `if` must
+render one in each branch; `option<T>` takes none or one. How many times a
+body inserts a slot is not bounded.
 
 ## Programs
 

@@ -220,5 +220,5 @@ func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 // is its generator's, so with no command to write it has no body to give --
 // `{}` would say it renders nothing -- and is exempt as a family is.
 func isTargetNode(comp *ir.Component) bool {
-	return ir.TargetTier(comp.Tree) != ""
+	return ir.TargetTier(comp.Family) != ""
 }

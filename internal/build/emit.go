@@ -61,7 +61,7 @@ func emitFamilies(pkg *ir.Package, t Target, o Options) (map[string][]byte, erro
 		e.reached[comp] = true
 	}
 	for _, comp := range pkg.Components {
-		if comp != nil && ir.IsAppRootTree(comp.Tree) && !comp.IsFamily() {
+		if comp != nil && ir.IsRootFamily(comp.Family) && !comp.IsFamily() {
 			comp.Stmts = e.stmts(comp.Stmts, comp, nil)
 		}
 	}
@@ -459,7 +459,7 @@ func (w *walker) walkMember(ni *ir.NodeInst) ([]emittedNode, error) {
 	}
 	if comp.Bodyless {
 		return nil, posErr(at, "the %s family emits for %s, and %s says nothing about what it writes: give it an override whose body is a gen.node, or a body of its own",
-			comp.Tree.Name, describe(w.t), comp.Name)
+			comp.Family.Name, describe(w.t), comp.Name)
 	}
 	for p, v := range props {
 		w.env.Set(p.Sym, v)

@@ -29,17 +29,17 @@ import (
 // symbol.
 func (c *checker) targetValueType(sym ir.Symbol) *ir.Type {
 	node, _, ok := ir.TargetNode(sym)
-	if !ok || node.Tree == nil {
+	if !ok || node.Family == nil {
 		return nil
 	}
-	return node.Tree.SymType()
+	return node.Family.SymType()
 }
 
 // targetTierMember is the word for a tier: the segment of a target package's
 // URI (`sngl:platform/html`), and what a message calls one. Its node is
 // conventionally named the same, but is found by its family (ir.TargetNodeOf).
 func targetTierMember(kind ir.BuiltinKind) string {
-	if kind == ir.BuiltinTreeLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		return "language"
 	}
 	return "platform"
@@ -110,7 +110,7 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 		c.error(pos, "%s is not a target identity: an override names a target's build node, e.g. html.platform", spelling)
 		return "", ir.BuiltinNone, false
 	}
-	return name, ir.TargetTier(node.Tree), true
+	return name, ir.TargetTier(node.Family), true
 }
 
 // collectUserOverrides merges each `component X[target] { ... }` a program
@@ -307,7 +307,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		}
 	}
 	overrides := &base.PlatformOverrides
-	if kind == ir.BuiltinTreeLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		overrides = &base.LanguageOverrides
 	}
 	if *overrides == nil {
@@ -432,7 +432,7 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
-		if po.kind == ir.BuiltinTreeLanguage {
+		if po.kind == ir.BuiltinFamilyLanguage {
 			po.fn.LanguageOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
 		} else {
 			po.fn.PlatformOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
@@ -498,7 +498,7 @@ func (c *checker) reportTargetNames() {
 	})
 	first := map[string]*ir.Component{}
 	for _, n := range nodes {
-		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
+		tierKind, name := ir.TargetTier(n.Family), n.Gen.TargetName
 		tier := targetTierMember(tierKind)
 		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.PkgPath(), "sngl:")); ok &&
 			kind == tierKind && owner != name {

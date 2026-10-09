@@ -6,7 +6,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// inferComponentTrees settles the family of every declaration that named none,
+// inferComponentFamilies settles the family of every declaration that named none,
 // reading it off what the body renders. Two rounds, and the order is the
 // point:
 //
@@ -15,16 +15,16 @@ import (
 //     part that has arrived so far.
 //  2. What is left is in a cycle, so waiting for it to settle is waiting
 //     forever. Settle those from the evidence that did resolve.
-func (c *checker) inferComponentTrees() {
-	pending := make(map[*ir.Component]bool, len(c.inferTrees))
-	for _, comp := range c.inferTrees {
+func (c *checker) inferComponentFamilies() {
+	pending := make(map[*ir.Component]bool, len(c.inferFamilies))
+	for _, comp := range c.inferFamilies {
 		pending[comp] = true
 	}
 	for _, partial := range []bool{false, true} {
 		for progress := true; progress; {
 			progress = false
-			for _, comp := range c.inferTrees {
-				if !pending[comp] || !c.settleTree(comp, pending, partial) {
+			for _, comp := range c.inferFamilies {
+				if !pending[comp] || !c.settleFamily(comp, pending, partial) {
 					continue
 				}
 				delete(pending, comp)
@@ -32,7 +32,7 @@ func (c *checker) inferComponentTrees() {
 			}
 		}
 	}
-	for _, comp := range c.inferTrees {
+	for _, comp := range c.inferFamilies {
 		if !pending[comp] {
 			continue
 		}
@@ -42,31 +42,31 @@ func (c *checker) inferComponentTrees() {
 		// one.
 		if insertsSlot(comp.Stmts) {
 			c.error(compDeclPos(comp),
-				"component %s: the body renders only what a caller supplies, so name the tree it belongs to in the return position -- or a type parameter, for a wrapper whose family is whatever it was handed",
+				"component %s: the body renders only what a caller supplies, so name the family it belongs to in the return position -- or a type parameter, for a wrapper whose family is whatever it was handed",
 				comp.Name)
 			continue
 		}
 		c.error(compDeclPos(comp),
-			"component %s: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]",
+			"component %s: the body names no family, so name the family it belongs to in the return position, or return a type parameter, `<F>(…) F`, to take the family it is placed in",
 			comp.Name)
 	}
 	// A call site's specialization is a copy of the declaration, and one taken
 	// before the fixed point ran holds the family the declaration had then.
 	for spec, decl := range c.specOrigin {
-		spec.Tree = decl.Tree
+		spec.Family = decl.Family
 	}
-	c.inferTrees, c.specOrigin = nil, nil
+	c.inferFamilies, c.specOrigin = nil, nil
 }
 
-// settleTree gives comp the family its body renders, and reports whether the
+// settleFamily gives comp the family its body renders, and reports whether the
 // question is now answered -- an ambiguous body is answered too, with a
 // diagnostic and no family.
 //
 // partial says whether evidence that is still pending may be ignored. It may
 // once every component that can settle on complete evidence has, since what is
 // left then is a cycle, and waiting on a cycle is waiting forever.
-func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool, partial bool) bool {
-	found, unsettled := c.treeEvidence(comp.Stmts, pending, nil)
+func (c *checker) settleFamily(comp *ir.Component, pending map[*ir.Component]bool, partial bool) bool {
+	found, unsettled := c.familyEvidence(comp.Stmts, pending, nil)
 	if unsettled && !partial {
 		return false
 	}
@@ -74,18 +74,18 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 	case 0:
 		return false
 	case 1:
-		comp.Tree = found[0]
-		c.declPkg().NoteTreeKind(found[0])
+		comp.Family = found[0]
+		c.declPkg().NoteFamilyKind(found[0])
 		c.checkFamilyMember(comp)
 		return true
 	}
 	c.error(compDeclPos(comp),
-		"component %s: the body renders both %s and %s, so name the tree it belongs to in the return position",
+		"component %s: the body renders both %s and %s, so name the family it belongs to in the return position",
 		comp.Name, found[0].Name, found[1].Name)
 	return true
 }
 
-// treeEvidence is the distinct families the statements render, in the order
+// familyEvidence is the distinct families the statements render, in the order
 // they are written, and whether any node among them belongs to a declaration
 // whose own family is still pending.
 //
@@ -102,12 +102,12 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 // the answer off the question. Its *fallback* is evidence, and the distinction
 // is who wrote the nodes: the insertion stands for the caller's, the fallback
 // is this component's own, rendered when the caller supplies none.
-func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.Component) ([]*ir.Component, bool) {
+func (c *checker) familyEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.Component) ([]*ir.Component, bool) {
 	var unsettled bool
 	nested := func(blocks ...[]ir.Stmt) {
 		for _, b := range blocks {
 			var u bool
-			found, u = c.treeEvidence(b, pending, found)
+			found, u = c.familyEvidence(b, pending, found)
 			unsettled = unsettled || u
 		}
 	}
@@ -119,7 +119,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 	for _, st := range stmts {
 		// An `if`, a `for`, a boundary and a context override put nothing in
 		// the tree themselves, so the evidence is whatever is under them.
-		if blocks, _, ok := treeTransparent(st); ok {
+		if blocks, _, ok := familyTransparent(st); ok {
 			nested(blocks...)
 			continue
 		}
@@ -131,8 +131,8 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			// A node crossing into this body says it is not of the family the
 			// body is, so it is no evidence of which that is.
 			case s.Component == nil, s.Crosses:
-			case s.Component.Tree != nil:
-				note(s.Component.Tree)
+			case s.Component.Family != nil:
+				note(s.Component.Family)
 			case pending[s.Component]:
 				unsettled = true
 			}
@@ -145,7 +145,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 // one thing treeEvidence deliberately does not read.
 func insertsSlot(stmts []ir.Stmt) bool {
 	for _, st := range stmts {
-		if blocks, _, ok := treeTransparent(st); ok {
+		if blocks, _, ok := familyTransparent(st); ok {
 			if slices.ContainsFunc(blocks, insertsSlot) {
 				return true
 			}
@@ -158,17 +158,17 @@ func insertsSlot(stmts []ir.Stmt) bool {
 	return false
 }
 
-// deferTreeCheck holds a membership check back until inferComponentTrees has
+// deferFamilyCheck holds a membership check back until inferComponentTrees has
 // settled every family. Run where it is written, a check whose subject is a
 // declaration that has not been read yet would compare against no family and
 // pass in silence -- which is the same nothing an unrestricted position
 // reports, so the hole would be quiet.
-func (c *checker) deferTreeCheck(check func()) {
+func (c *checker) deferFamilyCheck(check func()) {
 	c.treeChecks = append(c.treeChecks, check)
 }
 
-// runTreeChecks drains them.
-func (c *checker) runTreeChecks() {
+// runFamilyChecks drains them.
+func (c *checker) runFamilyChecks() {
 	checks := c.treeChecks
 	c.treeChecks = nil
 	for _, check := range checks {

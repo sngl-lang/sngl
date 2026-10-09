@@ -1,7 +1,7 @@
 A canvas that animates itself keeps the bracket that drives it, and on fyne it
 now repaints.
 
-`#[tree.none]` says a component belongs to no family, which is what lets an
+a type parameter in the return position says a component belongs to no family, which is what lets an
 `effect` or a `timer` be placed in a drawing as readily as in a layout -- and
 `component_treeless_in_canvas.sngl` is the fixture for that rule, whose own
 prose says scheduling inside a drawing is what an animated canvas is made of.

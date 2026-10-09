@@ -1,16 +1,5 @@
-// TODO tree isn't a great name here. "family" is the accepted name.
 import ir "sngl:internal/ir"
 import marks "sngl:internal/marks"
-
-// TODO This isn't needed anymore. We have generics on components to handle the families
-// Marks a component as belonging to no tree. It may be placed in any of them
-// and may contain a member of none, which is what a component that renders
-// nothing wants: a lifetime bracket, a scheduler, a context override.
-//
-// Written rather than left out. An omitted return position is a declaration
-// that has not said which family it joins, and the compiler reports it as
-// one — so tree-lessness is a claim the declaration makes.
-func none() ir.Macro
 
 // Marks a family whose members raise no events: what they are has nothing to
 // raise one from -- a painted shape is pixels, not an element. A member that
@@ -32,18 +21,18 @@ func eventless() ir.Macro
 // and a program crosses into a family of its own the same way:
 //
 //     component slide(caption string) deck {
-//         #[tree.crosses]
+//         #[family.crosses]
 //         ui.text(value=caption)
 //     }
 func crosses() ir.Macro
 
-// TODO should we switch to list<T> for multiple so this can go? Or replace option<T> with a decl here.
-// TODO Do we need to control the number of children anywhere yet?
-// Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
-// any number, so this is what narrows it; `option<T>` is the other narrowing.
+// Exactly one member of the family T, as a slot's content type. Bare `T`
+// accepts any number, so this is what narrows it; `option<T>` is the other
+// narrowing. The count is what the population renders: an `if` with an `else`
+// rendering one node in each branch is one, and a `for` is any number.
 //
-// Written bare, `tree.one` is a count and no family: "exactly one child, of
-// whatever this slot already accepts", which is the tree the component
+// Written bare, `family.one` is a count and no family: "exactly one child, of
+// whatever this slot already accepts", which is the family the component
 // declaring it belongs to.
-#[marks.builtin("treeOne")]
+#[marks.builtin("familyOne")]
 struct one<T> {}

@@ -3,7 +3,6 @@ import time "sngl:time"
 import markup "sngl:ui/markup"
 import . "sngl:macro"
 import . "sngl:internal/marks"
-import tree "sngl:tree"
 import build "sngl:build"
 import gen "sngl:x/gen"
 
@@ -553,13 +552,12 @@ const component ui.toolbar[platform] {
 //
 // The gate is a prop rather than the position the node is written at, because
 // arming happens in Init and Update, outside the view the position describes.
-#[tree.none]
 #[intrinsic("bubbletea:Timer")]
-component Timer(
+component Timer<F>(
     interval time.duration,
     enabled  bool,
     @tick,
-)
+) F
 
 const component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}

@@ -19,10 +19,8 @@ var markImpls = map[markKey]markImpl{
 	// sngl:builtin's private copies, which keep the package free of imports.
 	{"builtin", "_builtin"}:       markBuiltin,
 	{"builtin", "_intrinsic"}:     markIntrinsic,
-	{"builtin", "_none"}:          markTreeNone,
-	{"tree", "none"}:              markTreeNone,
-	{"tree", "crosses"}:           markTreeCrosses,
-	{"tree", "eventless"}:         markTreeEventless,
+	{"family", "crosses"}:         markFamilyCrosses,
+	{"family", "eventless"}:       markFamilyEventless,
 	{"macro", "wildcard"}:         markWildcard,
 	{"macro", "construct"}:        markConstruct,
 	{"macro", "foreign"}:          markForeign,
@@ -604,36 +602,21 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 	return flags, nil
 }
 
-// markTreeNone implements #[tree.none]: this component belongs to no family.
-//
-// It has to be written rather than left out, because leaving the return
-// position out is now the error that drove every declaration to name `ui`.
-// The mark is the difference between "renders nothing, so it goes anywhere"
-// and "somebody forgot".
-func markTreeNone(m *mark) error {
-	comp, ok := m.sym.(*ir.Component)
-	if !ok {
-		return fmt.Errorf("#[tree.none] cannot mark %s; only a component belongs to a tree", ast.DeclFormName(m.decl))
-	}
-	comp.Treeless = true
-	return nil
-}
-
-// markTreeEventless implements #[tree.eventless]: the members of this family
+// markFamilyEventless implements #[family.eventless]: the members of this family
 // raise no events (checkFamilyMember).
-func markTreeEventless(m *mark) error {
+func markFamilyEventless(m *mark) error {
 	comp, ok := m.sym.(*ir.Component)
 	if !ok {
-		return fmt.Errorf("#[tree.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[family.eventless] cannot mark %s; only a family has members", ast.DeclFormName(m.decl))
 	}
 	comp.Eventless = true
 	return nil
 }
 
-// markTreeCrosses implements #[tree.crosses]: this placement may stand where
+// markFamilyCrosses implements #[tree.crosses]: this placement may stand where
 // its family is not the one accepted. It marks the placement and never the
 // declaration, so a platform says exactly which use of a node it permits.
-func markTreeCrosses(m *mark) error {
+func markFamilyCrosses(m *mark) error {
 	switch s := m.sym.(type) {
 	case *ir.NodeInst:
 		s.Crosses = true
@@ -649,7 +632,7 @@ func markTreeCrosses(m *mark) error {
 	case *ir.ContextProvider:
 		form = "a context override"
 	}
-	return fmt.Errorf("#[tree.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a tree", form)
+	return fmt.Errorf("#[family.crosses] cannot mark %s; only a node or a slot insertion in a view is placed in a family", form)
 }
 
 // markWildcard implements #[macro.wildcard("pattern")], which says what a

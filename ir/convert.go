@@ -285,12 +285,12 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	// The return position is the tree the component is a member of. Its
 	// children type is derived from the default slot, which prints itself.
 	switch {
-	case comp.Tree != nil:
-		cd.ChildrenType = c.treeName(comp.Tree)
-	case comp.TreeParam != nil:
+	case comp.Family != nil:
+		cd.ChildrenType = c.familyName(comp.Family)
+	case comp.FamilyParam != nil:
 		// A wrapper's family is whatever it was handed, and the parameter is
 		// the component's own -- so it is spelled bare, never qualified.
-		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam.ParamName}
+		cd.ChildrenType = &ast.NamedType{Name: comp.FamilyParam.ParamName}
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -605,7 +605,7 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		ID:     n.ID,
 	}
 	if n.Crosses {
-		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
 	}
 
 	var args []ast.ArgOrEventHandler
@@ -734,7 +734,7 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 		// A count with no tree of its own: bare `tree.one` is one of whatever
 		// the slot already accepts, which is its owner's family.
 		if s.Card == SlotOne {
-			return &ast.NamedType{Package: c.treePkg(), Name: "one"}
+			return &ast.NamedType{Package: c.familyPkg(), Name: "one"}
 		}
 		return nil
 	}
@@ -742,21 +742,21 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if f := TypeFamily(s.Content); f != nil {
 		// A family is spelled through whatever this file imported its package
 		// as; convertType reads the name off the declaration and loses that.
-		elem = c.treeName(f)
+		elem = c.familyName(f)
 	} else {
 		elem = c.convertType(s.Content)
 	}
 	switch s.Card {
 	case SlotOne:
-		return &ast.NamedType{Package: c.treePkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
+		return &ast.NamedType{Package: c.familyPkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
 	case SlotOptional:
 		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
 	}
 	return elem
 }
 
-// treePkg is what this file imported sngl:tree as.
-func (c *converter) treePkg() string { return c.aliasFor("tree") }
+// familyPkg is what this file imported sngl:family as.
+func (c *converter) familyPkg() string { return c.aliasFor("family") }
 
 // aliasFor is what this file imported a library package as, defaulting to the
 // last segment of its URI — which is the alias an unaliased import binds.
@@ -776,9 +776,9 @@ func (c *converter) aliasFor(uri string) string {
 	return uri
 }
 
-// treeName spells a family the way the file that names it does: qualified when
+// familyName spells a family the way the file that names it does: qualified when
 // it was declared elsewhere, bare when it was declared here.
-func (c *converter) treeName(f *Component) *ast.NamedType {
+func (c *converter) familyName(f *Component) *ast.NamedType {
 	nt := &ast.NamedType{Name: f.Name}
 	if f.PkgPath() != "" {
 		nt.Package = c.aliasFor(f.PkgPath())
@@ -795,7 +795,7 @@ func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
 	// Every insertion is written by name now, the rest slot included.
 	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: s.Name}}
 	if s.Crosses {
-		vn.Attrs = []ast.MacroAttr{c.attr("tree", "crosses")}
+		vn.Attrs = []ast.MacroAttr{c.attr("family", "crosses")}
 	}
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})

@@ -196,8 +196,8 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	}
 
 	w := &ir.Component{
-		Name: "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
-		Tree: comp.Tree,
+		Name:   "__" + identSafe(comp.Name) + "_state" + strconv.Itoa(len(st.made)),
+		Family: comp.Family,
 	}
 	st.made = append(st.made, w)
 

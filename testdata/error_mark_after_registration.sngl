@@ -1,12 +1,11 @@
 // What a mark says is judged against the rest of the declaration, so each of
 // these is reported however the checker orders running a mark against
 // registering what it marks: the props a component wildcard binds into, a
-// const prop's construct mark, a const with neither a value nor a host
-// identity, and a tree-less component naming a tree. And a mark is applied
-// before a package-level initializer reads what it marked.
+// const prop's construct mark, and a const with neither a value nor a host
+// identity. And a mark is applied before a package-level initializer reads
+// what it marked.
 import go "sngl:language/go"
 import macro "sngl:macro"
-import tree "sngl:tree"
 import ui "sngl:ui"
 
 #[macro.wildcard("x.+", "name")] // ERROR(check) "no prop \"name\" to bind the matched name to"
@@ -26,9 +25,6 @@ component seeded(
 }
 
 const pi float // ERROR(check) "const \"pi\" has no value"
-
-#[tree.none] // ERROR(check) "#[tree.none] says it belongs to no tree"
-component quiet() ui.node {}
 
 #[go.native("example.com/api", "*api.Entry")]
 struct Entry {

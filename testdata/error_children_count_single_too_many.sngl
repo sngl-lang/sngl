@@ -1,9 +1,9 @@
 import . "sngl:ui"
-import tr "sngl:tree"
+import family "sngl:family"
 
 // Component declares exactly one child (bare type T).
 // Two children: error.
-component RequiresOne(content ...component tr.one) node {
+component RequiresOne(content ...component family.one) node {
     vbox {
         content
     }

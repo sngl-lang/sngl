@@ -474,13 +474,13 @@ func (nv *navigation) index(v any, n *ir.NodeInst, o ir.Owner) {
 func (nv *navigation) familyOf(p *ir.NodeInst) *navFamily {
 	lit, ok := p.Record.(*ir.StructLit)
 	if !ok || lit.Def == nil {
-		return nv.family(p.Component.Tree, ir.FamilyArgs(p.Component, pageArgs(p)))
+		return nv.family(p.Component.Family, ir.FamilyArgs(p.Component, pageArgs(p)))
 	}
 	key := fmt.Sprintf("record:%p", lit.Def)
 	if fam := nv.families[key]; fam != nil {
 		return fam
 	}
-	fam := &navFamily{comp: p.Component.Tree, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
+	fam := &navFamily{comp: p.Component.Family, record: lit.Def, typ: &ir.Type{Kind: ir.TypeStruct, Decl: lit.Def}, copied: hasField(lit.Def, "copy")}
 	nv.families[key] = fam
 	return fam
 }
@@ -1382,8 +1382,8 @@ func (nv *navigation) navFamilyOf(t *ir.Type) *navFamily {
 	if c.IsFamily() {
 		return nv.families[familyKey(c, familyArgs(c, t.Elems))]
 	}
-	if c.Tree != nil && c.Builtin == ir.BuiltinNavPage {
-		return nv.families[familyKey(c.Tree, familyArgs(c.Tree, ir.FamilyArgs(c, t.Elems)))]
+	if c.Family != nil && c.Builtin == ir.BuiltinNavPage {
+		return nv.families[familyKey(c.Family, familyArgs(c.Family, ir.FamilyArgs(c, t.Elems)))]
 	}
 	return nil
 }
@@ -1556,15 +1556,15 @@ func spliceComposedPages(pkg *ir.Package) error {
 	used := map[*ir.Component]bool{}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
-			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Tree != nil {
-				pageFamilies[inst.Component.Tree] = true
+			if isNavNode(inst, ir.BuiltinNavPage) && inst.Component.Family != nil {
+				pageFamilies[inst.Component.Family] = true
 			}
 			used[inst.Component] = true
 		}
 		return nil
 	})
 	pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
-		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Tree])
+		return c != nil && !used[c] && (spliced[c] || composesPages(c) && pageFamilies[c.Family])
 	})
 	return nil
 }

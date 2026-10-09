@@ -218,7 +218,7 @@ func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 // isDrawShape reports whether n is a shape, whose handlers are its canvas's
 // drawing rather than anything the program subscribes to.
 func isDrawShape(n *ir.NodeInst) bool {
-	return n.Component != nil && ir.IsDrawShapeTree(n.Component.Tree)
+	return n.Component != nil && ir.IsShapeFamily(n.Component.Family)
 }
 
 // handlerParams is the parameters of every handler under n, which no lifting

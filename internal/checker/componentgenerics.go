@@ -162,7 +162,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 	var walk func([]ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, st := range stmts {
-			if _, binds, ok := treeTransparent(st); ok {
+			if _, binds, ok := familyTransparent(st); ok {
 				for _, b := range binds {
 					walk(b)
 				}
@@ -171,7 +171,7 @@ func (c *checker) bindFromChildren(comp, spec *ir.Component, children []ir.Stmt)
 			n, ok := st.(*ir.NodeInst)
 			// A member that is no value of the family has no one type to
 			// hold; the members it composes are checked where it is.
-			if !ok || n.Component == nil || n.Component.Tree != fam || !ir.IsFamilyValue(n.Component) {
+			if !ok || n.Component == nil || n.Component.Family != fam || !ir.IsFamilyValue(n.Component) {
 				continue
 			}
 			got := &ir.Type{Kind: ir.TypeComponent, Decl: fam, Elems: ir.FamilyArgs(n.Component, c.nodeArgs[n])}

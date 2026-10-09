@@ -61,7 +61,7 @@ const (
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 	// TreeOne narrows a slot's content to exactly one member.
-	BuiltinTreeOne BuiltinKind = "treeOne"
+	BuiltinFamilyOne BuiltinKind = "familyOne"
 
 	// The families the compiler itself has to name, each marked on the
 	// component that declares it so no phase spells a package and a name.
@@ -69,24 +69,23 @@ const (
 	// TreeFamily is `sngl:build`'s `family`, the family of families: every
 	// family is a component that is a member of it, and it is the one member of
 	// itself. The mark is where that regress stops.
-	BuiltinTreeFamily BuiltinKind = "treeFamily"
+	BuiltinFamilyOfFamilies BuiltinKind = "familyOfFamilies"
 	// TreeRoot is the tree a package body accepts: the windows a program opens
 	// and the build directive saying what it compiles to. It is what makes
 	// those top-level without a syntactic rule naming them.
-	BuiltinTreeRoot BuiltinKind = "treeRoot"
-	// TreeNode is the widget family. It is the one tree whose members are
-	// ordinary components -- a button composes away into its caller the way
-	// any wrapper does -- so the passes asking "is this rendered rather than
-	// composed" have to tell it from a specialised family.
-	BuiltinTreeNode BuiltinKind = "treeNode"
+	BuiltinFamilyRoot BuiltinKind = "familyRoot"
+	// TreeSpan is the inline rich-text family. A node hosting its members is a
+	// flow, which passReactivity makes the render slot where a target cannot
+	// render one among spans (slotFlows).
+	BuiltinFamilySpan BuiltinKind = "familySpan"
 	// TreeShape is the drawing tree. A node hosting its members is a canvas,
 	// whose shapes passShapeDraw turns into the statements that paint them.
-	BuiltinTreeShape BuiltinKind = "treeShape"
+	BuiltinFamilyShape BuiltinKind = "familyShape"
 	// TreeLanguage and TreePlatform are `sngl:build`'s `language` and
 	// `platform`: the families a build-target node is a member of, which is
 	// what makes a component a target and says which tier it is.
-	BuiltinTreeLanguage BuiltinKind = "treeLanguage"
-	BuiltinTreePlatform BuiltinKind = "treePlatform"
+	BuiltinFamilyLanguage BuiltinKind = "familyLanguage"
+	BuiltinFamilyPlatform BuiltinKind = "familyPlatform"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
@@ -178,18 +177,18 @@ func (b BuiltinKind) IsUnit() bool {
 // is resolved rather than constructed as a type. Nothing builds an ir.Type from
 // one, which is why it is not IsGeneric.
 func (b BuiltinKind) IsSlotBound() bool {
-	return b == BuiltinTreeOne
+	return b == BuiltinFamilyOne
 }
 
-// IsTreeRole reports whether the kind marks a family the compiler itself has
-// to name. Six do -- the family of families, the package body's, the widget
+// IsFamilyRole reports whether the kind marks a family the compiler itself has
+// to name. Six do -- the family of families, the package body's, the rich-text
 // family, the drawing family and the two build-target tiers -- because a phase
 // asks after each by role rather than by declaration. Every other family is compared by declaration
 // and never spelled.
-func (b BuiltinKind) IsTreeRole() bool {
+func (b BuiltinKind) IsFamilyRole() bool {
 	switch b {
-	case BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinTreeLanguage, BuiltinTreePlatform:
+	case BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape,
+		BuiltinFamilyLanguage, BuiltinFamilyPlatform:
 		return true
 	}
 	return false
@@ -255,8 +254,8 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption,
-		BuiltinTreeOne, BuiltinTreeFamily, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
-		BuiltinTreeLanguage, BuiltinTreePlatform,
+		BuiltinFamilyOne, BuiltinFamilyOfFamilies, BuiltinFamilyRoot, BuiltinFamilySpan, BuiltinFamilyShape,
+		BuiltinFamilyLanguage, BuiltinFamilyPlatform,
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
@@ -268,5 +267,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsConst()
 }

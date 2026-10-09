@@ -85,10 +85,10 @@ func targetTier(pkg string) bool {
 // so what tells them apart is the kind, not a separate code path.
 func targetTierName(pkg string) (string, ir.BuiltinKind, bool) {
 	if name, ok := strings.CutPrefix(pkg, "platform/"); ok {
-		return name, ir.BuiltinTreePlatform, true
+		return name, ir.BuiltinFamilyPlatform, true
 	}
 	if name, ok := strings.CutPrefix(pkg, "language/"); ok {
-		return name, ir.BuiltinTreeLanguage, true
+		return name, ir.BuiltinFamilyLanguage, true
 	}
 	return "", ir.BuiltinNone, false
 }
@@ -343,7 +343,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	// Library source has its own file scopes, but loading is lazy: it happens
 	// part-way through the importing document's pass1, whose claims are still
 	// in c.topLevel. A lib file's import alias would otherwise collide with a
-	// name the user's dot imports lifted — `import tree "sngl:tree"`
+	// name the user's dot imports lifted — `import family "sngl:family"`
 	// against std's `tree` component.
 	savedTopLevel := c.topLevel
 	c.topLevel = nil
@@ -985,7 +985,7 @@ func qualifiedComponentName(ns, local string) string {
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
 	overrides := &comp.PlatformOverrides
-	if kind == ir.BuiltinTreeLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		overrides = &comp.LanguageOverrides
 	}
 	if *overrides == nil {
@@ -1277,7 +1277,7 @@ func (c *checker) checkPendingExtensions() {
 			c.checkOverrideNestedBodies(bodyDecls)
 			c.checkOverrideConst(pe)
 			checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
-			if pe.kind == ir.BuiltinTreeLanguage {
+			if pe.kind == ir.BuiltinFamilyLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
 				pe.comp.PlatformOverrides[pe.platform] = checked
@@ -1552,7 +1552,7 @@ func ownTarget(name string) []ir.StaticTarget {
 	if !ok {
 		return nil
 	}
-	if kind == ir.BuiltinTreeLanguage {
+	if kind == ir.BuiltinFamilyLanguage {
 		return []ir.StaticTarget{{Language: target}}
 	}
 	return []ir.StaticTarget{{Platform: target}}

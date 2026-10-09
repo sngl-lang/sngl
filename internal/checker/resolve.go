@@ -745,14 +745,14 @@ func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
 		return c.resolveType(t), ir.SlotAny
 	}
 	if card, elem := c.slotWrapper(nt); card != ir.SlotAny {
-		return c.requireTree(nt.Pos, elem), card
+		return c.requireFamily(nt.Pos, elem), card
 	}
-	return c.requireTree(nt.Pos, c.resolveType(t)), ir.SlotAny
+	return c.requireFamily(nt.Pos, c.resolveType(t)), ir.SlotAny
 }
 
-// requireTree holds a slot's content to naming a tree. What lands in a slot is
+// requireFamily holds a slot's content to naming a tree. What lands in a slot is
 // components, so a value type there says nothing a caller could satisfy.
-func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
+func (c *checker) requireFamily(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t == nil || t.Kind == ir.TypeDyn {
 		return t
 	}
@@ -804,7 +804,7 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	}
 	var card ir.SlotCard
 	switch sd.Builtin {
-	case ir.BuiltinTreeOne:
+	case ir.BuiltinFamilyOne:
 		card = ir.SlotOne
 	case ir.BuiltinOption:
 		card = ir.SlotOptional

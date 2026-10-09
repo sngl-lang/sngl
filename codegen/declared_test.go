@@ -62,7 +62,7 @@ func fileOf(d *ast.Document) string {
 // mark, and the package through the layout. Nothing in Go serves the package.
 func TestNativeTargetFoundThroughItsMark(t *testing.T) {
 	pkg := checker.LibPackage("platform/html")
-	node := ir.TargetNodeOf(pkg, ir.BuiltinTreePlatform)
+	node := ir.TargetNodeOf(pkg, ir.BuiltinFamilyPlatform)
 	if node == nil || node.Gen == nil || node.Gen.Native != "html" {
 		t.Fatalf("sngl:platform/html's node does not say #[gen.native(\"html\")]")
 	}

@@ -101,7 +101,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// it renders is decided here -- an `if` over what its call site handed it
 	// folds against the member it is about, which nothing after the splice can
 	// do.
-	composes := comp.Tree != nil && !ir.IsFamilyValue(comp)
+	composes := comp.Family != nil && !ir.IsFamilyValue(comp)
 	if !composes && !bodyHasFoldableParamUse(comp.Stmts, propNames) {
 		return nil
 	}

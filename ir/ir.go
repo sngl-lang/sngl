@@ -86,13 +86,13 @@ type Package struct {
 	// without a special case (#135).
 	Body []Stmt `json:",omitempty"`
 
-	// TreeKinds records the segmented trees whose members
+	// FamilyKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
 	// it: an import of sngl:ui/draw is neither necessary (a package may declare
 	// its own shapes) nor sufficient (inlining flattens a canvas out of the
 	// package that imported it), so the declarations are the only honest
 	// signal.
-	TreeKinds map[*Component]bool `json:"-"`
+	FamilyKinds map[*Component]bool `json:"-"`
 
 	// LiftedCaptures records, for every lifted closure Func produced by
 	// NoLambda, the mapping from each captured Symbol to the synthesized
@@ -261,31 +261,31 @@ func (p *Package) IsProgram() bool {
 	return found
 }
 
-// usesTreeRole reports whether a member of the tree carrying kind reaches this
+// usesFamilyRole reports whether a member of the tree carrying kind reaches this
 // package. Matched on the mark rather than on a name, because a tree is its
 // declaration: a program's own `struct shape` is not the one sngl:ui/draw
 // paints, and carries no mark saying it is.
-func (p *Package) usesTreeRole(kind BuiltinKind) bool {
+func (p *Package) usesFamilyRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
-	for f := range p.TreeKinds {
-		if isTreeRole(f, kind) {
+	for f := range p.FamilyKinds {
+		if isFamilyRole(f, kind) {
 			return true
 		}
 	}
 	return false
 }
 
-// NoteTreeKind records that a member of a family reaches this package.
-func (p *Package) NoteTreeKind(f *Component) {
+// NoteFamilyKind records that a member of a family reaches this package.
+func (p *Package) NoteFamilyKind(f *Component) {
 	if p == nil || f == nil {
 		return
 	}
-	if p.TreeKinds == nil {
-		p.TreeKinds = map[*Component]bool{}
+	if p.FamilyKinds == nil {
+		p.FamilyKinds = map[*Component]bool{}
 	}
-	p.TreeKinds[f] = true
+	p.FamilyKinds[f] = true
 }
 
 // IsFamilyValue reports whether a handle to c, a member of a family, is a
@@ -297,13 +297,13 @@ func (p *Package) NoteTreeKind(f *Component) {
 // question: a member declaring the props may compose others too, and either
 // kind is inlined where its family's members are collected.
 func IsFamilyValue(c *Component) bool {
-	if c == nil || c.Tree == nil {
+	if c == nil || c.Family == nil {
 		return false
 	}
-	if len(c.Tree.Props) == 0 {
+	if len(c.Family.Props) == 0 {
 		return true
 	}
-	for _, fp := range c.Tree.Props {
+	for _, fp := range c.Family.Props {
 		for _, p := range c.Props {
 			if p.Name == fp.Name {
 				return true
@@ -315,38 +315,34 @@ func IsFamilyValue(c *Component) bool {
 
 // IsFamily reports whether c declares a family: a component that is itself a
 // member of `build.family`. The family of families is the one declaration that
-// is a member of itself, which is what its #[builtin("treeFamily")] mark says.
+// is a member of itself, which is what its #[builtin("familyOfFamilies")] mark says.
 func (c *Component) IsFamily() bool {
-	return c != nil && c.Tree != nil && c.Tree.Builtin == BuiltinTreeFamily
+	return c != nil && c.Family != nil && c.Family.Builtin == BuiltinFamilyOfFamilies
 }
 
-// isTreeRole reports whether f is the family carrying kind. The roles a phase
+// isFamilyRole reports whether f is the family carrying kind. The roles a phase
 // asks after are marked on their declarations (#[marks.builtin]), so nothing
 // here spells a package and a name: a family renamed or moved keeps its role,
 // and a program declaring a `shape` family of its own does not acquire one.
-func isTreeRole(f *Component, kind BuiltinKind) bool {
+func isFamilyRole(f *Component, kind BuiltinKind) bool {
 	return f.IsFamily() && f.Builtin == kind
 }
 
-// IsDrawShapeTree reports whether f is the drawing family.
-func IsDrawShapeTree(f *Component) bool { return isTreeRole(f, BuiltinTreeShape) }
+// IsShapeFamily reports whether f is the drawing family.
+func IsShapeFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyShape) }
 
-// IsUITree reports whether f is the widget family.
-func IsUITree(f *Component) bool { return isTreeRole(f, BuiltinTreeNode) }
+// IsSpanFamily reports whether f is the inline rich-text family.
+func IsSpanFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilySpan) }
 
-// IsAppRootTree reports whether f is the family a package body accepts.
-func IsAppRootTree(f *Component) bool { return isTreeRole(f, BuiltinTreeRoot) }
-
-// IsSegmentedTree reports whether f is a family with its own rendering rules --
-// any family but the widget one.
-func IsSegmentedTree(f *Component) bool { return f.IsFamily() && !IsUITree(f) }
+// IsRootFamily reports whether f is the family a package body accepts.
+func IsRootFamily(f *Component) bool { return isFamilyRole(f, BuiltinFamilyRoot) }
 
 // TypeFamily is the family t names in a return position or a slot, or nil.
 // FamilyArgs is what a member's type, at the type arguments it carries, hands
 // its family's type parameters: `page<Pkg, Meta>` is a `_page<Meta>`. A
 // member written bare is its defaults, as a struct type is.
 func FamilyArgs(m *Component, args []*Type) []*Type {
-	if m == nil || len(m.TreeArgs) == 0 {
+	if m == nil || len(m.FamilyTypeArgs) == 0 {
 		return nil
 	}
 	bindings := map[string]*Type{}
@@ -358,8 +354,8 @@ func FamilyArgs(m *Component, args []*Type) []*Type {
 			bindings[tp.Name] = tp.Default
 		}
 	}
-	out := make([]*Type, len(m.TreeArgs))
-	for i, a := range m.TreeArgs {
+	out := make([]*Type, len(m.FamilyTypeArgs))
+	for i, a := range m.FamilyTypeArgs {
 		out[i] = a.Substitute(bindings)
 	}
 	return out
@@ -376,7 +372,7 @@ func TypeFamily(t *Type) *Component {
 }
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
-func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
+func (p *Package) UsesDrawShapes() bool { return p.usesFamilyRole(BuiltinFamilyShape) }
 
 // Import records a resolved import.
 type Import struct {
@@ -883,30 +879,25 @@ type Override struct {
 type Component struct {
 	AST *ast.ComponentDecl
 	DeclInfo
-	// Tree is the family this component is a member of, named in its return
+	// Family is the family this component is a member of, named in its return
 	// position: a component that is itself a member of `build.family`. Nil for
 	// a component that belongs to no family: it may be placed in any of them
 	// and may contain none of their members.
-	Tree *Component `json:"-"`
-	// TreeArgs are the type arguments the return position hands a generic
+	Family *Component `json:"-"`
+	// FamilyTypeArgs are the type arguments the return position hands a generic
 	// family, in terms of the member's own type parameters: `page<T, M>`
 	// returning `_page<M>` holds M here. Nil for a family that takes none.
-	TreeArgs []*Type `json:"-"`
-	// Treeless is the #[tree.none] mark: the declaration belongs to no family
-	// and says so. Nil Tree without it is a declaration that forgot to name
-	// one, which is an error, so the two states are told apart here rather
-	// than by the absence of a pointer.
-	Treeless bool `json:",omitempty"`
+	FamilyTypeArgs []*Type `json:"-"`
 	// Eventless is the #[tree.eventless] mark on a family: its members raise
 	// no events, an #[intrinsic] primitive's being the target calling in.
 	Eventless bool `json:",omitempty"`
-	// TreeParam is the return position when it names one of the component's
+	// FamilyParam is the return position when it names one of the component's
 	// own type parameters, for a wrapper whose family is whatever it was
 	// handed: the TypeTypeParam it resolved to, as Tree is the family it
-	// resolved to otherwise. Nil Tree and a TreeParam is a third state:
+	// resolved to otherwise. Nil Tree and a FamilyParam is a third state:
 	// tree-less at the declaration, and a member of whatever its children
 	// turn out to be at each call site.
-	TreeParam *Type `json:",omitempty"`
+	FamilyParam *Type `json:",omitempty"`
 	// Bodyless is a declaration written with no block at all, as against one
 	// written `{}`, which renders nothing. The two are different declarations
 	// and only this says which: ast.StmtBlock.IsDefined() reports whether a
