@@ -207,8 +207,6 @@ const component ui.datepicker[platform] {
 
 const component ui.link[platform] {}
 
-const component ui.tabs[platform] {}
-
 const component ui.menu[platform] {}
 
 const component ui.menubar[platform] {}

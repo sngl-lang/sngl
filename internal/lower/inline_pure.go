@@ -801,8 +801,10 @@ func substituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 	return substituteEventsIn(stmts, handlers, nil)
 }
 
-// SubstituteEvents is substituteEvents for the optimizer's splice, which
-// dissolves a call site before this package's inliners see it.
+// SubstituteEvents is substituteEvents for the optimizer, which splices a
+// component's body into its caller as the inliners do and so has to answer
+// the body's emits the same way: each is the call site's handler for that
+// event, or nothing where the call site handled none.
 func SubstituteEvents(stmts []ir.Stmt, handlers []ir.EventHandler) []ir.Stmt {
 	return substituteEvents(stmts, handlers)
 }

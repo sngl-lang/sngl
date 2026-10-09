@@ -278,6 +278,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// typeParamSyms holds one symbol per declared type parameter, by where it
+	// is written, so every push of a declaration's parameters binds the same
+	// one (typeParamSym).
+	typeParamSyms map[typeParamKey]*ir.TypeParamSym
+
 	// docs is the package being checked: every file of it, registered as one
 	// declaration set. doc is whichever one is being registered or checked
 	// right now.
@@ -2019,13 +2024,7 @@ func (c *checker) registerConsts(decl *ast.ConstDecl) {
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			// Infer type from init if not declared.
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred const type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			v := &ir.Var{
@@ -2160,13 +2159,7 @@ func (c *checker) checkPendingConstInits() {
 		}
 
 		initExpr = c.coerce(p.spec.Default, initExpr, typ, initSlot(p.decl.Pos))
-		initType := exprType(initExpr)
-		finalType := typ
-		if initType.Kind == ir.TypeVoid {
-			// Don't propagate void into an inferred const type.
-		} else if typ.Kind == ir.TypeDyn {
-			finalType = initType
-		}
+		finalType := c.typeFromInit(typ, initExpr, *p.spec.Default.ExprPos())
 		for _, v := range p.vars {
 			v.Init = initExpr
 			v.Type = finalType
@@ -2360,13 +2353,7 @@ func (c *checker) checkVarInit(decl *ast.VarDecl, spec ast.VarSpec, typ *ir.Type
 			c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 		}
 		initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-		initType := exprType(initExpr)
-		// Infer type from init if not declared.
-		if initType.Kind == ir.TypeVoid {
-			// Don't propagate void into an inferred type.
-		} else if typ.Kind == ir.TypeDyn {
-			typ = initType
-		}
+		typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 	} else if sd, ok := structDeclOf(typ); ok {
 		// A struct var with no initializer is that struct's zero value,
 		// which is its fields' defaults -- not an empty struct. Built here
@@ -2423,12 +2410,7 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred component var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		} else if sd, ok := structDeclOf(typ); ok {
 			// See registerVars: a struct var with no initializer is that
 			// struct's zero value, which is its fields' defaults.
@@ -2461,12 +2443,7 @@ func (c *checker) checkComponentConsts(decl *ast.ConstDecl, comp *ir.Component) 
 			}
 			initExpr = c.checkExprExpecting(spec.Default, typ)
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Don't propagate void into an inferred const type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			for _, v := range comp.Vars {
@@ -3886,7 +3863,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		// name, so inferring `color.rgb(...) => color{...}` as the struct
 		// makes it collide with the primitive in callers.
 		if fn.Return == nil {
-			fn.Return = bodyType
+			fn.Return = c.inferredType(bodyType, *body.ExprPos())
 		} else if c.inLibSource() && fn.Return.Kind == ir.TypeDyn &&
 			bodyType != nil && isPrimitiveTypeKind(bodyType.Kind) {
 			fn.Return = bodyType
@@ -4285,7 +4262,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					}
 					initType := exprType(prop.Default)
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
-						prop.Type = initType
+						prop.Type = c.inferredType(initType, *pd.Default.ExprPos())
 					}
 				}
 				propIdx++

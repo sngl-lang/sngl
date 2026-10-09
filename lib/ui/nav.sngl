@@ -27,28 +27,65 @@ component _example_link node {
 // How a tab strip marks the selected tab.
 enum TabsVariant { underline, pills }
 
-// Tabbed navigation. `items` labels each tab; `selected` is the
-// 0-based index of the active tab and is two-way bound. Children of
-// `tabs` are the panels: one per item, in the same order. `variant`
-// styles the tab strip; `@change` fires with
-// the newly selected index.
-// TODO Use families pass the tabs as children
+// One tab of a `tabs`: data, since it names itself as its family, so the tabs
+// read their tabs as a list rather than rendering them. What it is written
+// with is its panel, shown while it is the selected tab.
+component tab(
+    label    string,       // what the tab shows in the strip
+    disabled bool = false, // whether it can be chosen
+    // The panel: shown while this tab is selected.
+    content  ...component node,
+) tab
+
+// Tabbed navigation. Each tab is a `tab` written as a child -- under an `if`
+// or a `for` where the list depends on something -- and the panel shown is
+// what the selected one was written with. `selected` is the 0-based index of
+// the selected tab and is two-way bound; `@change` fires with the index the
+// user chose. `variant` styles the tab strip, where a target draws one of its
+// own.
 component tabs(
-    items    list<string>,
-    selected int = 0,
-    variant  TabsVariant = TabsVariant.underline,
-    style    Style = Style{},
-    @change(),
-    panels   ...component,
-) node
+    :selected int,
+    variant   TabsVariant = TabsVariant.underline,
+    style     Style = Style{},
+    @change(index int),
+    // The tabs, in the order the strip shows them.
+    items     ...component tab,
+) node {
+    vbox(style={...style}) {
+        hbox(style={gap=4px}) {
+            for var k, t = items {
+                button(
+                    text = t.label,
+                    disabled = t.disabled,
+                    style = {fontWeight=k == selected ? FontWeight.bold : FontWeight.normal},
+                    @click {
+                        selected = k
+                        change(k)
+                    },
+                )
+            }
+        }
+        for var k, t = items {
+            if k == selected {
+                t.content
+            }
+        }
+    }
+}
 
 component _example_tabs node {
     var selected = 0
     vbox(style={padding=16px}) {
-        tabs(items=["Overview", "Details", "Settings"], selected=selected) {
-            text(value="Overview content")
-            text(value="Detail content")
-            text(value="Settings content")
+        tabs(:selected=selected) {
+            tab(label="Overview") {
+                text(value="Overview content")
+            }
+            tab(label="Details") {
+                text(value="Detail content")
+            }
+            tab(label="Settings", disabled=true) {
+                text(value="Settings content")
+            }
         }
     }
 }

@@ -32,7 +32,7 @@ var passNodePropReads = pass{
 	apply:   lowerNodePropReads,
 }
 
-func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
+func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -66,6 +66,7 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 	// `b is 5` with the read after the canvas and an empty span with it before.
 	// A declarative position has no order to appeal to, so the answer must not
 	// have one either.
+	tests := testInstances(pkg, opts)
 	for {
 		changed := false
 		if err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
@@ -74,6 +75,9 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 				return n, nil
 			}
 			e := rewriteNodePropRead(sel, handles)
+			if e == nil {
+				e = rewriteTestPropRead(sel, tests)
+			}
 			if e == nil {
 				return n, nil
 			}
@@ -262,4 +266,164 @@ func refuseNodePropCycle(handles map[*ir.Var]*ir.NodeInst) error {
 		}
 	}
 	return nil
+}
+
+// testInstances is the component parameter of every test this build emits:
+// the instance a test reaches what its component renders through. A build
+// rooted at a component emits the tests handed it, and a build of the whole
+// program emits every test or, where Options.Tests is off, none. A test the
+// build does not emit is left as it was checked, so that nothing it names is
+// kept alive for it.
+func testInstances(pkg *ir.Package, opts Options) map[*ir.Param]bool {
+	out := map[*ir.Param]bool{}
+	if !opts.Tests {
+		return out
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || !fn.IsTest {
+			continue
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil || p.Type.Kind != ir.TypeComponent {
+				continue
+			}
+			if c, ok := p.Type.Decl.(*ir.Component); ok && (opts.RootComponent == "" || c.Name == opts.RootComponent) {
+				out[p] = true
+			}
+		}
+	}
+	return out
+}
+
+// rewriteTestPropRead answers a test's read of a node's one-way prop --
+// `c.t.value`, `c.b.shown.value` -- with the expression the node's call site
+// gave it, read through the instance the node belongs to. A one-way prop says
+// what the node shows for as long as it is rendered, so that expression is
+// what the node holds; and no target's test reaches the host widget to ask it,
+// which spells the prop its own way, if it keeps it at all.
+//
+// What the expression reads of the component that renders the node is read
+// through the instance (`hits` in bar's body is `c.b.hits` in the test), which
+// passNoInlineComponents then repoints at the spliced copy as it repoints any
+// other member a test reads. What it reads of something a test cannot name --
+// a loop's variable, a slot's parameter -- has no value at the test, and such
+// a read is left as it was.
+func rewriteTestPropRead(sel *ir.Select, tests map[*ir.Param]bool) ir.Expr {
+	inner, ok := sel.Operand.(*ir.Select)
+	if !ok || !rootedAtTest(inner.Operand, tests) {
+		return nil
+	}
+	comp := componentOf(inner.Operand)
+	if comp == nil {
+		return nil
+	}
+	node, always := ownNode(comp, inner.Field)
+	if node == nil || node.Component == nil {
+		return nil
+	}
+	for _, p := range node.Component.Props {
+		if p.Name == sel.Field && p.Bidirectional {
+			return nil
+		}
+	}
+	v := nodePropExpr(node, sel.Field)
+	if v == nil {
+		return nil
+	}
+	// One rendered only some of the time has the expression's value only
+	// while it is, and the interpreter answers nothing while it is not; a
+	// read of it is left to the targets that keep the node.
+	if !always {
+		return nil
+	}
+	return rebaseOnInstance(ir.CloneExprSharingDecls(v), comp, inner.Operand)
+}
+
+// rootedAtTest reports whether e is a test's instance or a select through it.
+func rootedAtTest(e ir.Expr, tests map[*ir.Param]bool) bool {
+	for {
+		switch x := e.(type) {
+		case *ir.Select:
+			e = x.Operand
+		case *ir.Ident:
+			p, ok := x.Sym.(*ir.Param)
+			return ok && tests[p]
+		default:
+			return false
+		}
+	}
+}
+
+func componentOf(e ir.Expr) *ir.Component {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeComponent {
+		return nil
+	}
+	c, _ := t.Decl.(*ir.Component)
+	return c
+}
+
+// ownNode is the node comp's body renders under the id, or nil, and whether
+// the body renders it always. One under a `for` is a copy per iteration, which
+// a select names none of; one under an `if`, or in a page's content, is there
+// only while the condition holds or the page shows.
+func ownNode(comp *ir.Component, id string) (node *ir.NodeInst, always bool) {
+	var walk func(stmts []ir.Stmt, looped, conditional bool)
+	walk = func(stmts []ir.Stmt, looped, conditional bool) {
+		for _, s := range stmts {
+			if n, ok := s.(*ir.NodeInst); ok && n.ID == id && !looped && node == nil {
+				node, always = n, !conditional
+			}
+			_, isFor := s.(*ir.For)
+			_, isIf := s.(*ir.If)
+			page := false
+			if n, ok := s.(*ir.NodeInst); ok && n.Component != nil && n.Component.Builtin == ir.BuiltinNavPage {
+				page = true
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, looped || isFor, conditional || isIf || page)
+			}
+		}
+	}
+	walk(comp.Stmts, false, false)
+	return node, always
+}
+
+// rebaseOnInstance rewrites e, written in comp's body, to read comp's members
+// through inst, or nil where e reads what a test cannot name.
+func rebaseOnInstance(e ir.Expr, comp *ir.Component, inst ir.Expr) ir.Expr {
+	own := map[ir.Symbol]bool{}
+	for _, v := range comp.Vars {
+		own[v] = true
+	}
+	for _, p := range comp.Props {
+		if p.Sym != nil {
+			own[p.Sym] = true
+		}
+	}
+	ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok && n.Handle != nil {
+			own[n.Handle] = true
+		}
+		return true
+	})
+	unnamed := false
+	out := newExprWalker(func(x ir.Expr) ir.Expr {
+		id, ok := x.(*ir.Ident)
+		if !ok || id.Sym == nil {
+			return x
+		}
+		if own[id.Sym] {
+			return &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(inst), Field: id.Name}
+		}
+		switch id.Sym.(type) {
+		case *ir.Param, *ir.LoopVar:
+			unnamed = true
+		}
+		return x
+	}).expr(e)
+	if unnamed {
+		return nil
+	}
+	return out
 }

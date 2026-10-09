@@ -3,9 +3,14 @@
 // because the form that declares one has to be available wherever a package
 // declares state, and the mark is what the checker matches — the name
 // `context` is shadowable like any other.
+//
+// The context's type is its default's, which every provider's value is held
+// to. A default whose type says too little -- `null`, an empty list -- is
+// written as a typed const: `const nobody option<User> = null`, then
+// `context #who(nobody)`.
+//
+// TODO Investigate type arguments at a call site, spelled with brackets as Go
+// does (`context[option<User>] #who(null)`), which would state the type in
+// place; `<…>` there is not LL(1) against a comparison.
 #[_builtin(context)]
-component context<F>(default dyn) F {}
-
-//TODO Should be generic
-//component context<T, V>(default V) T
-//func context.value<T,V>() V 
+component context<V, F>(default V) F {}

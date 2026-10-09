@@ -351,9 +351,12 @@ func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang code
 	// overrides on both axes, so the program under test was not the program
 	// `sngl generate` builds.
 	if err := lower.Lower(pkg, feats, lower.Options{
-		Platform:        plat.PlatformIdentifier(),
-		Language:        langIdent(lang),
-		RootComponent:   root,
+		Platform:      plat.PlatformIdentifier(),
+		Language:      langIdent(lang),
+		RootComponent: root,
+		// A group rooted at no component emits the tests handed none, so
+		// it repoints nothing; another group roots at each other component.
+		Tests:           root != "",
 		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
 	}); err != nil {
 		return nil, fmt.Errorf("lower for tests: %w", err)

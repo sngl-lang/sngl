@@ -6,11 +6,13 @@
 # its params, and a page not showing is not mounted: the effect on the home
 # page mounts again each time it comes back.
 #
-# The tests read what a compiled test can reach -- the component's state, its
-# own handles, a page's record -- rather than nav_stack.sngl's reads of a
-# label's value and of a counter nested in a page, which no Go target's test
-# emitter compiles yet. So the params a page shows are what an effect keyed
-# on them in its content saw.
+# The tests read the component's state, its own handles, a page's record and
+# the heading's value -- a one-way prop, which a test reads as the expression
+# its call site gave. Not nav_stack.sngl's reads of a label in a page's content
+# or of a counter nested in one: a node there is rendered only while its page
+# shows, and a component there is built at run time on the targets that keep
+# an instance's state, so neither is one thing a compiled test can name. So
+# the params a page shows are what an effect keyed on them in its content saw.
 #
 # testdata/nav_stack_lowered.txtar is the code.
 #
@@ -78,7 +80,7 @@ component site ui.node {
             }
         }
     }
-    ui.text(value="Site - {pages.current.title}")
+    ui.text #heading(value="Site - {pages.current.title}")
     ui.button #toAbout(text="About", @click {
         pages.go(about)
     })
@@ -99,12 +101,14 @@ func testAStackStartsAtTheRootPage(t Test, c site) {
     t.assert(c.pages.current == c.home)
     t.assert(c.pages.current.title == "Home")
     t.assert(c.pages.current.meta.label == "home")
+    t.assert(c.heading.value == "Site - Home")
 }
 
 func testGoShowsThePageAndBackReturns(t Test, c site) {
     c.toAbout.click()
     t.assert(c.pages.current == c.about)
     t.assert(c.pages.current.title == "About")
+    t.assert(c.heading.value == "Site - About")
     c.back.click()
     t.assert(c.pages.current == c.home)
     c.back.click()
@@ -177,7 +181,7 @@ func testAPageNotShowingIsNotMounted(t Test, c site) {
     t.assert(c.aboutMounts == 0)
 }
 -- testrun/android/kotlin/app.sngl/site/1 --
-sha256:48210a11f91fab4808a1df5e8ad307e3
+sha256:87d54af5ffbcd0573daf547293252d03
 {
   "results": [
     {
@@ -203,7 +207,7 @@ sha256:48210a11f91fab4808a1df5e8ad307e3
   ]
 }
 -- testrun/bubbletea/go/app.sngl/site/1 --
-sha256:b721184d17d1b431f7312b18e106497b
+sha256:b9dd3339b3c4670e170312a4af9379d9
 {
   "results": [
     {
@@ -229,7 +233,7 @@ sha256:b721184d17d1b431f7312b18e106497b
   ]
 }
 -- testrun/fyne/go/app.sngl/site/1 --
-sha256:dec6356b82bd460f2bef31c80e127f23
+sha256:d5f423d47ed94da23a4976c9a3775de1
 {
   "results": [
     {
@@ -255,7 +259,7 @@ sha256:dec6356b82bd460f2bef31c80e127f23
   ]
 }
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:c955855443cd430081024356650decd9
+sha256:bdc7e5bd42bd607665ba848bb1acee80
 {
   "results": [
     {

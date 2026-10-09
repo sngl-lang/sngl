@@ -74,7 +74,7 @@ import ui "sngl:ui"
 ui.window { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
 	{"tabs", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
+ui.window { var sel = 0 tabs(:selected=sel) { tab(label="One") { text(value="panel") } tab(label="Two") { text(value="other") } } }`,
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
 	{"table", `import . "sngl:ui"
 import ui "sngl:ui"

@@ -856,7 +856,7 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// (GtkTextTag, GtkCellRendererText) do have a property of that name; the
 	// declaration reserves the name for style, so it is not theirs.
 	if prop == stylePropName {
-		return nil
+		return codegen.KeepLocalsRead(value)
 	}
 	bare := codegen.IdentBareName(node)
 	if t.isToplevel(bare) {

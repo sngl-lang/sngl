@@ -105,6 +105,9 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
+	// Every runtime takes an i18n call's arguments as a map, whatever the
+	// target.
+	"RecordArgs",
 	"RecursionDepth",
 	"RefLoop",
 	// What a target reserves is read off its marks, and a target reserving

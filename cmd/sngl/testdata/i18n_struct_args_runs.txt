@@ -1,0 +1,110 @@
+# i18n.tr and i18n.format take their arguments as a struct and format them on
+# every target as the interpreter does: each runtime is handed the map keyed by
+# field name it always took, and a computed argument is evaluated once
+# (testdata/i18n_struct_args.txtar is the code).
+
+sngl test --platform none app.sngl
+stdout 'ok   4 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   4 tests, 0 failures'
+
+sngl test --platform html app.sngl
+stdout 'ok   4 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import "sngl:i18n"
+
+// i18n.tr and i18n.format take their arguments as a struct whose fields are
+// the template's placeholders, and the template as written.
+struct Who {
+    name  string
+    count int
+}
+
+component Greeter node {
+    var who = Who{name="Ada", count=3}
+    var calls = 0
+
+    func next() Who {
+        calls = calls + 1
+        return who
+    }
+
+    func literal() => i18n.format(`Hello, {name}!`, {name=who.name})
+    func named() => i18n.format(`{name} has {count, plural, one{# item} other{# items}}`, who)
+    func computed() => i18n.format(`{name}:{count}`, next())
+    func translated() => i18n.tr(`Hi {name}`, {name="Bo"})
+    text(value=literal())
+}
+
+func testLiteral(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.literal() == "Hello, Ada!")
+}
+
+func testNamedStruct(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.named() == "Ada has 3 items")
+}
+
+func testComputedOnce(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.computed() == "Ada:3")
+    t.assert(c.calls == 1)
+}
+
+func testTranslated(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.translated() == "Hi Bo")
+}
+
+window {
+    Greeter
+}
+-- testrun/bubbletea/go/app.sngl/Greeter/1 --
+sha256:1a77cf01a34e78eccd83953a80f26efb
+{
+  "results": [
+    {
+      "Desc": "ComputedOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "Literal",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedStruct",
+      "Passed": true
+    },
+    {
+      "Desc": "Translated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/Greeter/1 --
+sha256:a06cb143d743c8e0c71fb711d1ae3529
+{
+  "results": [
+    {
+      "Desc": "ComputedOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "Literal",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedStruct",
+      "Passed": true
+    },
+    {
+      "Desc": "Translated",
+      "Passed": true
+    }
+  ]
+}

@@ -657,8 +657,21 @@ func comparableEq(left, right *ir.Type) bool {
 // operand's type fits. A component method's synthesized `this` names the
 // declaration bare, which a handle carrying its call site's type arguments
 // does not equal, and is the receiver all the same.
+//
+// A parameter typed by a bare type parameter is the receiver only where it is
+// marked so: every operand fits one, so fitting says nothing, and
+// `Test.setContext<V>(ctx V, value V)` took `t` as its context.
 func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
-	return p.Receiver || receiver.IsAssignableTo(p.Type)
+	if p.Receiver {
+		return true
+	}
+	return !bareTypeParam(p) && receiver.IsAssignableTo(p.Type)
+}
+
+// bareTypeParam reports whether p's type is a type parameter and nothing
+// else, which any operand fits.
+func bareTypeParam(p *ir.Param) bool {
+	return p.Type != nil && p.Type.Kind == ir.TypeTypeParam
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
@@ -972,7 +985,13 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
 }
 
-func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
+	// What a call to one of these intrinsics is handed is held to rules its
+	// signature cannot state.
+	defer func() {
+		c.refuseSetContextName(out)
+		c.checkI18nCall(x, out)
+	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
 	if x != stmtCall {
@@ -1416,7 +1435,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
 			// that e.g. list<int>.length() binds T=int.
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && (sig.Params[0].Receiver || !bareTypeParam(sig.Params[0])) {
 				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
@@ -1533,7 +1552,11 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
-	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
+	evt := c.elementEvent(sel.Operand, sel.Field)
+	if evt == nil {
+		evt = nestedElementEvent(sel.Operand, receiver, sel.Field)
+	}
+	if evt != nil {
 		event = evt.Name
 		argSig = &ir.FuncSig{Params: evt.Params}
 	}
@@ -1559,6 +1582,33 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 	comp := c.elementHostComponent(operand)
 	if comp == nil {
+		return nil
+	}
+	for _, e := range comp.Events {
+		if e.Name == event {
+			return e
+		}
+	}
+	return nil
+}
+
+// nestedElementEvent is the event a trigger names through a component the
+// one it starts at renders -- `c.b.btn.click()`, or `c.opt[1].click()` for a
+// node a component `c` renders declares -- read off the type the receiver
+// checked as: the shapes elementHostComponent reads off the source stop at
+// the nodes `c`'s own body writes.
+func nestedElementEvent(operand ast.Expr, receiver *ir.Type, event string) *ir.EventDecl {
+	if ix, ok := operand.(*ast.IndexExpr); ok {
+		operand = ix.Operand
+	}
+	if _, ok := operand.(*ast.SelectExpr); !ok {
+		return nil
+	}
+	if receiver == nil || receiver.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := receiver.Decl.(*ir.Component)
+	if !ok {
 		return nil
 	}
 	for _, e := range comp.Events {
@@ -2265,6 +2315,13 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
+	// of the same component as the id names.
+	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+		if _, ok := operandExpr.(*ir.Select); ok {
+			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
+		}
+	}
 	switch operand.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
 		c.error(x.Pos, "cannot index %s", operand)
@@ -2336,7 +2393,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				if len(x.Fields) > 0 {
 					c.error(x.Pos, "%s is a type parameter: its literal is its zero value, %s{}, and takes no fields", tp.Name, tp.Name)
 				}
-				return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}}
+				return &ir.StructLit{AST: x, Type: tp.SymType()}
 			}
 		} else {
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
@@ -2802,7 +2859,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			// that yields nothing gives it nothing to return, and the lowered
 			// `return xs.push(v)` is not something any target can spell.
 			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
-			fn.Return = exprType(bodyExpr)
+			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
@@ -3401,14 +3458,10 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Prevent void propagation into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			} else {
+			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeDyn {
 				initExpr = wrapIfNeeded(initExpr, typ)
 			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			sym := &ir.Var{
@@ -3536,12 +3589,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(x.Init, initExpr, typ, initSlot(x.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Avoid propagating void into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *x.Init.ExprPos())
 		}
 		sym := &ir.Var{
 			AST:  x,
@@ -3594,6 +3642,16 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 					Attrs:  x.Attrs,
 				}
 				return c.checkVisualNodeIR(vn)
+			}
+		}
+		// `r.content(…)`: what a record was written with, inserted with
+		// parentheses.
+		if sel, ok := x.Call.Func.(*ast.SelectExpr); ok && x.Call.ID == "" {
+			if id, ok := sel.Operand.(*ast.IdentExpr); ok {
+				vn := &ast.VisualNode{Pos: x.Pos, Target: sel, Args: x.Call.Args, Attrs: x.Attrs, HasParens: true}
+				if st, ok := c.recordContent(vn, id.Name+"."+sel.Field); ok {
+					return st
+				}
 			}
 		}
 		// A bare `event(args)` whose name matches an event declared on the
@@ -4248,6 +4306,9 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	}
 	if slot := c.enclosingSlot(name); slot != nil {
 		return c.checkSlotInsertion(vn, slot, name, false)
+	}
+	if st, ok := c.recordContent(vn, name); ok {
+		return st
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.

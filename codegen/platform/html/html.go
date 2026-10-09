@@ -671,7 +671,10 @@ type htmlGen struct {
 	lang codegen.LangTranslator
 
 	pkg *ir.Package
-	ctx *codegen.ExprCtx
+	// written is each element variable an element has been written under,
+	// so a second node carrying the same `#id` gets one of its own (nodeID).
+	written map[string]bool
+	ctx     *codegen.ExprCtx
 
 	// The Analysis is shared across windows; the Emission is per-window.
 	*codegen.CommonAnalysis
@@ -1156,9 +1159,13 @@ func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	switch {
 	case n != nil && strings.HasPrefix(n.ID, "__n"):
 		id = n.ID
-	case n != nil && n.ID != "" && g.refToVar[n.ID] != "":
+	case n != nil && n.ID != "" && g.refToVar[n.ID] != "" && !g.written[g.refToVar[n.ID]]:
 		// The prewalk already allocated for this ref so that a handler
-		// translated before the element is emitted can still resolve it.
+		// translated before the element is emitted can still resolve it --
+		// until an element is written under it. A constant loop the fold
+		// unrolled writes a copy of the node per iteration under the one id,
+		// and each is an element of its own: sharing the first's variable,
+		// every copy's listener went onto the first button.
 		id = g.refToVar[n.ID]
 	default:
 		id = g.allocID()
@@ -1288,6 +1295,12 @@ func (g *htmlGen) generate() (string, error) {
 		}
 		preamble.WriteString(snippet)
 		preamble.WriteString("\n")
+		// A test module is bundled beside the page, so a test body calling
+		// i18n itself -- an i18n call the optimizer inlined into it -- finds
+		// the runtime on window, as it finds the page's functions.
+		if g.testMode {
+			preamble.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { i18n }); }\n")
+		}
 		script = preamble.String() + script
 	}
 
@@ -1978,6 +1991,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	fmt.Fprintf(b, "%s<%s", indent, tag)
 	if id != "" {
+		if g.written == nil {
+			g.written = map[string]bool{}
+		}
+		g.written[id] = true
 		fmt.Fprintf(b, " id=%q", id)
 		if strings.HasPrefix(id, "__n") {
 			fmt.Fprintf(b, " data-sngl-id=%q", id)
@@ -3549,28 +3566,54 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // onto the event, which is where the DOM puts what the event itself carries.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
-	emit := func(h eventHandler, snglID string) {
+	// Every element written under one id, in render order: an id a constant
+	// loop unrolled is one per copy, and the `At` variant names a copy by its
+	// index there as it does among elements built at run time.
+	copies := map[string][]string{}
+	event := map[string]string{}
+	var order []string
+	collect := func(h eventHandler, snglID string, own bool) {
 		if snglID == "" {
 			return
 		}
 		name := snglID + capitalizeFirst(h.event)
-		if seen[name] {
+		event[name] = h.event
+		if own && slices.Contains(copies[name], h.elemID) {
 			return
 		}
-		seen[name] = true
-		if h.event == "click" {
-			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-			return
+		if _, ok := copies[name]; !ok {
+			order = append(order, name)
 		}
-		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, h.elemID, h.elemID, h.event)
+		if own || len(copies[name]) == 0 {
+			copies[name] = append(copies[name], h.elemID)
+		}
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
 	for _, h := range g.handlers {
-		emit(h, g.snglIDByElem[h.elemID])
+		collect(h, g.snglIDByElem[h.elemID], true)
 	}
 	for _, h := range g.handlers {
-		emit(h, h.snglID)
+		collect(h, h.snglID, false)
+	}
+	// Only an id a test indexes needs the variant, as on fyne and gtk4.
+	indexed := codegen.IndexedTriggerIDs(g.pkg)
+	for _, name := range order {
+		seen[name] = true
+		els := copies[name]
+		at := indexed[strings.TrimSuffix(name, capitalizeFirst(event[name]))]
+		all := "[" + strings.Join(els, ", ") + "]"
+		if event[name] == "click" {
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, els[0])
+			if at {
+				fmt.Fprintf(b, "state.%s = (i) => %s[i].click();\n", codegen.InvokerAt(name), all)
+			}
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, els[0], els[0], event[name])
+		if at {
+			fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s[i]; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), all, event[name])
+		}
 	}
 	// An element built at run time -- inside a component instance or a
 	// render slot -- does not exist when the page starts, so its invoker

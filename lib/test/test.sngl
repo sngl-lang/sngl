@@ -27,12 +27,15 @@ func Test.must(b bool)
 func Test.setLocale(loc string)
 
 // Override a context value for the duration of this test. The first argument
-// must be a bare context name (a reference to a context declaration); the
-// second argument is the new value for that context. Subsequent reads of the
+// names the context (a bare context name, a reference to its declaration);
+// the second is the new value, of the context's type. Subsequent reads of the
 // context — including component vars initialised from it — see the overridden
 // value. Replaces t.setLocale when the locale context is declared.
 #[marks.intrinsic("test.setContext")]
-func Test.setContext(name string, value string)
+func Test.setContext<V>(
+    ctx   V, // the context to set
+    value V, // what it reads from here on
+)
 
 // Pump the platform main loop until either the predicate returns true
 // or the timeout (in milliseconds) elapses. Used to gate assertions on
