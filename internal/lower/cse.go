@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passCSE binds a pure call that a statement makes more than once to a local,

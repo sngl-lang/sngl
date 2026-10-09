@@ -48,8 +48,8 @@ import (
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 	"slices"
 )
@@ -258,11 +258,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"slices"
 )
@@ -611,9 +611,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5806d77541487bec20c1ba1571315cb9
+pass sha256:9aa4afa2f1f5a8e3bd614d1c9987f77b
 -- run/go/fyne --
-pass sha256:61d36d0cce36cb4e0398ef81b82c2a8e
+pass sha256:5c9f1f4c66647146331e5d05cde19f28
 -- run/kotlin/android --
 pass sha256:3d96764ead5e227b75857a3ade13bd05
 -- run/none/html --

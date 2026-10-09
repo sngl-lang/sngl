@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // canvasMeta aliases the shared platform-neutral canvas metadata type. The
@@ -45,7 +45,7 @@ type canvasMeta = canvasutil.Meta
 // forced import alias (the path's default "canvas" collides with fyne's own
 // canvas package).
 const (
-	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasImportPath = "duckfam.us/sngl/pkg/go/canvas"
 	snglCanvasAlias      = "snglcanvas"
 )
 

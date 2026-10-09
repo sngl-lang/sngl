@@ -37,7 +37,7 @@ import (
 	"slices"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/cbind"
 )
 
 // A Toplevel is what a `ui.window` is on gtk4: a node whose handle is the box

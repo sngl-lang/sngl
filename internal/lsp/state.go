@@ -3,7 +3,7 @@ package lsp
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // fileState holds the current state for an open file.

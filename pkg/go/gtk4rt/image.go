@@ -95,8 +95,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/snglimage"
 )
 
 // An image is what a `ui.image` is on gtk4: a box holding the source it shows,

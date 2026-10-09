@@ -114,11 +114,11 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -438,17 +438,17 @@ func main() {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
+	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"image/color"
 	"os"
 )
@@ -1034,8 +1034,8 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
 
@@ -1922,11 +1922,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0ddfc147ea647b5ca267b034fb3e1329
+pass sha256:7630993bf7954a37c064056bf7331180
 -- run/go/fyne --
-pass sha256:e50108564ba419ebe25f73f023d2dc55
+pass sha256:5c3c89624c3038504927afdaddbd3bc6
 -- run/go/gtk4 --
-pass sha256:d73da04679a9e5b6d82efd821ee2e01b
+pass sha256:039d3340fd434dee54b10ac6b995d765
 -- run/kotlin/android --
 pass sha256:34d250aa09a334b50c4190ac2f463e29
 -- run/none/html --

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 	"github.com/charmbracelet/x/cellbuf"
 )
 
@@ -21,7 +21,7 @@ type htmlSnapshotter interface {
 
 // snapshotGoMod builds the go.mod for a snapshot harness module. It mirrors the
 // go.buildModule path: codegen.DetectHostGoMod supplies the host Go version and
-// — critically — a `replace git.duckfam.us/jonathan/sngl => <repo>` directive
+// — critically — a `replace duckfam.us/sngl => <repo>` directive
 // when run from inside the sngl source tree. Without that replace the harness
 // resolves pkg/go/tui to the *published* module, so any tui helper added in an
 // unpublished commit (e.g. WidgetWidth) fails `go mod tidy`, the harness never

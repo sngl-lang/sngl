@@ -1,8 +1,8 @@
 package html
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // html's image source primitives, declared in html.sngl. Each is the `<img>`

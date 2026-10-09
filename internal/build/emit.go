@@ -6,10 +6,10 @@ import (
 	"path"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/plugin"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/plugin"
+	"duckfam.us/sngl/ir"
 )
 
 // A family is generated rather than rendered when a target overrides the

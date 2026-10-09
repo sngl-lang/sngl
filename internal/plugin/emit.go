@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // EmitProducer names the files a family's @generate handler writes.

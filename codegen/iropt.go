@@ -4,7 +4,7 @@ import (
 	"maps"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // OptimizeMutation runs optimization passes on a MutationModel:

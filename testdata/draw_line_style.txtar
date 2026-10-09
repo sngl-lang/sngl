@@ -47,10 +47,10 @@ package main
 
 import (
 	"charm.land/bubbletea/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -229,12 +229,12 @@ func main() {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
@@ -570,7 +570,7 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"math"
 	"unsafe"
 )
@@ -1212,11 +1212,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5f2176afa00b9dbb7ba339b7f5efff11
+pass sha256:bf1ca9cf86a9da811d15103a86f210b8
 -- run/go/fyne --
-pass sha256:afd48d8fc73c4f39fcb595c2516d970d
+pass sha256:c518cbdbf4f27f98f2071091c583ac43
 -- run/go/gtk4 --
-pass sha256:4435b8afe63158730082db1da2592475
+pass sha256:fdb378108feba0f3d741cdbab4e246cc
 -- run/kotlin/android --
 pass sha256:bf9118f5f3903427c7d3a3d31ddc372a
 -- run/none/html --

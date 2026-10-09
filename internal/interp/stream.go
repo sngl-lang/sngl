@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A Stream is an iter<T> whose elements arrive one at a time from outside the

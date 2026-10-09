@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // spliceNestedCaptures substitutes every instantiation of a capturing
 // body-local component into the body that declared it, before that body is

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/imports"
+	"duckfam.us/sngl/ir"
 )
 
 // An import scheme is served three ways: by an importer compiled into the

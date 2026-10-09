@@ -65,7 +65,7 @@ func TestATimerFires(t *testing.T) {
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // The settle is what arms the schedules, and buildWidgetTree is where the

@@ -1,6 +1,6 @@
 package interp
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // emit runs the handler the call site supplied for the event a component
 // emitted.

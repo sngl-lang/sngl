@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // SchemeImporter resolves a scheme-based import URI (e.g., "go:pkg/path")

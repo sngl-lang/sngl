@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // The protocol lives in pkg/go/snglhost, where a generated worker can reach it

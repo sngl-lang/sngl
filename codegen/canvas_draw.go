@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // The drawings in a package, for the platforms that paint one.

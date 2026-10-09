@@ -7,7 +7,7 @@ import (
 	"os"
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // ConstructorParam is one parameter in a GIR constructor.

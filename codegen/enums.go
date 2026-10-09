@@ -3,7 +3,7 @@ package codegen
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // collectUsedEnums returns the package's own enums followed by every library

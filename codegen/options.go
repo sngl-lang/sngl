@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // ApplyOptions writes the values of a checked options struct literal into the

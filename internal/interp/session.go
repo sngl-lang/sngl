@@ -3,8 +3,8 @@ package interp
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // Session is a program the interpreter is holding open: its scope, its mounted

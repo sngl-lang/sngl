@@ -55,10 +55,10 @@ package main
 
 import (
 	"charm.land/bubbletea/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -285,6 +285,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a9f9448e04efea86dfe3563b4a0ac6f5
+pass sha256:8e50e425dbb10965e261b816ba63e9ca
 -- run/none/html --
 pass sha256:d014a6836fe61ad6fea5e7e440276ba2

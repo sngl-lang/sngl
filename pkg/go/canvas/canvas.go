@@ -11,7 +11,7 @@ import (
 	"math"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/snglimage"
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font/gofont/goregular"

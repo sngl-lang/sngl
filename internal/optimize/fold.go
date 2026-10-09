@@ -5,8 +5,8 @@ import (
 	"math"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // foldExpr attempts to evaluate an expression as a constant, falling back

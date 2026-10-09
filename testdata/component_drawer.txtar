@@ -47,8 +47,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -382,7 +382,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:880027166e53d1f622b689fde7766af7
+pass sha256:1e614a9a67186b609d4e8d62efe3fb01
 -- run/go/fyne --
 pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for bubbletea.
@@ -33,9 +33,9 @@ import (
 // method calls is gone with them.
 
 const (
-	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasImportPath = "duckfam.us/sngl/pkg/go/canvas"
 	snglCanvasAlias      = "snglcanvas"
-	tuiImportPath        = "git.duckfam.us/jonathan/sngl/pkg/go/tui"
+	tuiImportPath        = "duckfam.us/sngl/pkg/go/tui"
 )
 
 // canvasCtxType is the IR native type for the draw-func ctx parameter:

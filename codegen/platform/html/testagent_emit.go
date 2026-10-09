@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/codegen/testharness"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/codegen/testharness"
+	"duckfam.us/sngl/ir"
 )
 
 // emitTestagentFiles writes the JS test files into sink when html

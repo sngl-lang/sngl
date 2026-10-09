@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/ir"
 )
 
 func TestHoverFixtures(t *testing.T) {

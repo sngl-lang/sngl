@@ -3,7 +3,7 @@ package lower
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNodeEscape runs only for MutationModel platforms (those that flatten

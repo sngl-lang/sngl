@@ -4,7 +4,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // purityOf imports src as a js: module and reports the purity of each

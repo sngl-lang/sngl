@@ -3,7 +3,7 @@ package parser
 import (
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // stmtBlocks lists every brace-delimited block a statement opens, in source

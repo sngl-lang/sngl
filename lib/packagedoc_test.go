@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/lib"
 )
 
 // A package's prose lives in its doc.sngl and nowhere else

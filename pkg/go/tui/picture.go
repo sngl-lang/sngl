@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/snglimage"
 )
 
 // Picture is the picture url names in half-block cells, fitted into cols by

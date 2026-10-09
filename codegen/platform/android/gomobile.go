@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
-	"git.duckfam.us/jonathan/sngl/internal/jdk"
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/jdk"
 )
 
 // gomobileBind runs "gomobile bind" on the Go module at goLibDir, producing

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // writeGoModule lays down a self-contained module whose package p declares

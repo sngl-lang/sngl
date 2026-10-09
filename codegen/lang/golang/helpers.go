@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // ModelFreeFuncs names the user functions a Model-receiver platform

@@ -9,7 +9,7 @@ package irwalk
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // Renderer is the per-language plug-in for irwalk. Each Render*

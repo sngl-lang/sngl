@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/interp"
+	"duckfam.us/sngl/internal/interp"
 )
 
 // renderSnapshot renders the component's current tree as deterministic SNGL

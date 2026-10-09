@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 func TestLowerTestFile_agentModeEmitsRegisterInit(t *testing.T) {
@@ -36,7 +36,7 @@ func testFoo(t Test, c box) {
 		t.Fatal("no test func in package")
 	}
 	out := LowerTestFile("ui", nil, []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent)
-	if !strings.Contains(out, "import \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"") {
+	if !strings.Contains(out, "import \"duckfam.us/sngl/pkg/go/testagent\"") {
 		t.Errorf("agent mode missing testagent import; got:\n%s", out)
 	}
 	if !strings.Contains(out, "func testFoo(t *testagent.T)") {

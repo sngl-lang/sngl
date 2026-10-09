@@ -3,8 +3,8 @@ package docsite_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/docsite"
 )
 
 // A hand-picked list rots unless something holds it to the library. The tier

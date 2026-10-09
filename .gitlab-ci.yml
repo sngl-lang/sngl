@@ -181,7 +181,7 @@ warm-cache:
   script:
     - >-
       go list -deps -test ./...
-      | grep -v '^git.duckfam.us/jonathan/sngl'
+      | grep -v '^duckfam.us/sngl'
       | grep '\.'
       | xargs go build -p 2
     - du -sh .gocache

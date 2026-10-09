@@ -13,7 +13,7 @@ import (
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
+	snglast "duckfam.us/sngl/ast"
 )
 
 // DocumentComponent is the name the generated component takes. One name

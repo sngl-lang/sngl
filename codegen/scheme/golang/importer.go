@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 	"golang.org/x/tools/go/packages"
 )
 

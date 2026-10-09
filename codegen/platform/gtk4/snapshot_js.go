@@ -5,8 +5,8 @@ package gtk4
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 func (g *Generator) Snapshot(*ir.Package, codegen.LangTranslator, int, int) ([]byte, error) {

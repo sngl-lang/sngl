@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/irwalk"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/irwalk"
+	"duckfam.us/sngl/ir"
 )
 
 // SNGL's built-in `color` maps to the shared pkg/go/snglcolor.Color struct
@@ -18,7 +18,7 @@ import (
 // registered on demand at the emit sites that actually reference the type:
 // StructLit (a color value) and the canvas emitters (CanvasStyle decls).
 const (
-	colorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	colorImportPath = "duckfam.us/sngl/pkg/go/snglcolor"
 	colorGoType     = "snglcolor.Color"
 )
 

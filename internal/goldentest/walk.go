@@ -3,7 +3,7 @@ package goldentest
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // walkDivergence reports where ir.Walk and a no-op ir.Rewrite first visit pkg

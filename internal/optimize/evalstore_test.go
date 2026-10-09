@@ -3,15 +3,15 @@
 package optimize
 
 import (
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/trust"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	_ "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/storeprobe"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/gencache"
+	_ "duckfam.us/sngl/internal/optimize/testdata/storeprobe"
+	"duckfam.us/sngl/ir"
 )
 
 var (
@@ -94,7 +94,7 @@ func TestSourceEditInvalidates(t *testing.T) {
 		old := time.Now().Add(-time.Minute)
 		os.Chtimes(path, old, old)
 	}
-	importPath := "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/" + filepath.Base(pkgDir)
+	importPath := "duckfam.us/sngl/internal/optimize/testdata/" + filepath.Base(pkgDir)
 	fn := &ir.Func{
 		Name:    "Version",
 		Foreign: ir.Foreign{Name: "srcedit.Version", Path: "srcedit"},

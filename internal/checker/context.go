@@ -1,9 +1,9 @@
 package checker
 
 import (
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // isContextDeclCallStmt reports whether s has the shape `context #id(arg)`:

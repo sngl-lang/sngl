@@ -3,7 +3,7 @@ package javascript
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // JS has a single number type (IEEE float64), so sized SNGL numerics need

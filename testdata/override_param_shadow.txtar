@@ -60,8 +60,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -1159,7 +1159,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:26e3b7796748e188d318010d8e3fe067
+pass sha256:94757b41d04db3fffdc0725370db3a69
 -- run/go/fyne --
 pass sha256:c150b4e322eae5301eae4deb84de4977
 -- run/go/gtk4 --

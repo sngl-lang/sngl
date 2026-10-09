@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // testAgentDir is where the generated project carries pkg/kotlin/testagent,

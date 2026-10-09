@@ -3,7 +3,7 @@ $(error Windows is not supported)
 endif
 
 LANGUAGE_NAME := tree-sitter-sngl
-HOMEPAGE_URL := https://sngl.duckfam.us/
+HOMEPAGE_URL := https://sngl-lang.github.io/
 VERSION := 0.1.0
 
 # repository

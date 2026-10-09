@@ -6,9 +6,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/docs/lookup"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"strings"
 )
 

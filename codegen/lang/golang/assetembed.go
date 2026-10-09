@@ -3,11 +3,11 @@ package golang
 import (
 	"os"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // SnglImageImportPath is the runtime a Go target's image sources load through.
-const SnglImageImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+const SnglImageImportPath = "duckfam.us/sngl/pkg/go/snglimage"
 
 // EmitAssetEmbed writes the `file:` assets a build copied beside the program,
 // and `assets.go`, which embeds them and hands them to snglimage, so a file

@@ -492,11 +492,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -910,7 +910,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -924,7 +924,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type Row struct {
@@ -1523,8 +1523,8 @@ fun MainScreen() {
 -- run/go/bubbletea --
 pass sha256:a699a43aedd02e8c7c4e7dbe138efcf5
 -- run/go/fyne --
-pass sha256:43263a3eec9bed74f9e3e95e33547e32
+pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
-pass sha256:e22b49ba9b415333c06c53f6e405d4c4
+pass sha256:5539452db21961c44f0109adcfc0cbb2
 -- run/kotlin/android --
 pass sha256:8ce1a13014300d97ef0e16f90f59fd3b

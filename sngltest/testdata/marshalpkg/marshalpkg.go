@@ -5,7 +5,7 @@ package marshalpkg
 import (
 	"encoding/base64"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // Item has no marshalling of its own: the encoder walks it by reflection and

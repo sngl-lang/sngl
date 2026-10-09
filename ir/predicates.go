@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // IR-level predicates and accessors shared by the checker and every codegen

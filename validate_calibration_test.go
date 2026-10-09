@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	sngl "git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	sngl "duckfam.us/sngl"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // TestValidateNoFalsePositives calibrates ir.Validate: every testdata fixture

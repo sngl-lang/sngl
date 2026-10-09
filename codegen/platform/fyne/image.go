@@ -1,8 +1,8 @@
 package fyne
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // fyne.sngl's image primitives, which are this platform's runtime and not Fyne

@@ -1,8 +1,8 @@
 package bubbletea
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // pictureIntrinsic is bubbletea.sngl's Picture: the picture a URL names, drawn

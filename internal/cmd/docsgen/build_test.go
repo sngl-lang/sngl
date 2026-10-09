@@ -57,6 +57,16 @@ func TestWebsiteProducesContent(t *testing.T) {
 	if !strings.Contains(html, `rel="stylesheet"`) {
 		t.Error("components/index.html has no <link rel=\"stylesheet\"> — site CSS dropped")
 	}
+
+	// The md: importer drops an html block, so the marker injectDownloads
+	// replaces has to reach the page some other way.
+	install, err := os.ReadFile(filepath.Join(out, "learn", "installation.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(install), downloadsMarker) {
+		t.Errorf("learn/installation.html has no %s for the download table", downloadsMarker)
+	}
 }
 
 // TestWebsiteTypeChecks is the cheap half of TestWebsiteProducesContent: it

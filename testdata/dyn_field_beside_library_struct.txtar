@@ -217,11 +217,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -408,4 +408,4 @@ func main() {
 -- run/go/bubbletea --
 pass sha256:163615e1d766b3639342f7ba785e10bc
 -- run/go/fyne --
-pass sha256:0397fa6f5b90c50d7e70167ca6e02338
+pass sha256:914543fc1a4719f3de95f6f013aa0316

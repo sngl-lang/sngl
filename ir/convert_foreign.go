@@ -1,6 +1,6 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // foreignAttrs renders a declaration's Foreign record back as the marks that
 // would have set it.

@@ -33,8 +33,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/i18n"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 	"os"
 	"strings"
 )
@@ -167,4 +167,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:137257104356f2e6876bc5883c27909b
+pass sha256:5edd7e8224cbba43afd7e0cc1488e29f

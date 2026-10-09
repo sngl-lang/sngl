@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/lower"
 )
 
 // A fyne widget written directly in user code must build its widget — issue

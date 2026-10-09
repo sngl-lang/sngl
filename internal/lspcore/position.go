@@ -1,6 +1,6 @@
 package lspcore
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // AstPosToLSP converts 1-based ast.Pos to 0-based LSP Position.
 func AstPosToLSP(p ast.Pos) Position {

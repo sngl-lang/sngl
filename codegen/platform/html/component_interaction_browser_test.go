@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
 	"github.com/go-rod/rod"
 )
 

@@ -5,7 +5,7 @@ package golang
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 func (t *Translator) BuildWASM(_, _ string, _ []codegen.WASMFunc) ([]byte, error) {

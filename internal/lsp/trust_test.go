@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/trust"
 )
 
 // A plugin's handler runs while the server checks a file, under the grants it

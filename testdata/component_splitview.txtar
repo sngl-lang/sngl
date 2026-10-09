@@ -144,11 +144,11 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -312,7 +312,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:35cb5ee9515c9ef7c52951ae98db2938
 -- run/go/fyne --
-pass sha256:eb47bff6835282cdce3bd253d37f5e47
+pass sha256:653b4714842831b824826247fa72032d
 -- run/kotlin/android --
 pass sha256:422e2192f7098fdcd722986ba7b84c55
 -- run/none/html --

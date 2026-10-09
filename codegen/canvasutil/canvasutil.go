@@ -21,8 +21,8 @@ package canvasutil
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Meta records a flattened canvas element discovered via a
@@ -103,7 +103,7 @@ var StructDecls = map[string]string{
 // string elsewhere. Canvas emitters must register ColorImportPath when they
 // emit CanvasStyle. Kept in sync with lib/types.sngl by the golang lang layer.
 const (
-	ColorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	ColorImportPath = "duckfam.us/sngl/pkg/go/snglcolor"
 	ColorGoType     = "snglcolor.Color"
 )
 

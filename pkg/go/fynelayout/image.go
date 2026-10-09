@@ -12,7 +12,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglimage"
+	"duckfam.us/sngl/pkg/go/snglimage"
 )
 
 // Image is what a `ui.image` is on fyne: a widget showing the source it holds

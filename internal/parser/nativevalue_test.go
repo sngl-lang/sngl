@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // A native value is one expression, and the shapes an encoder writes all parse

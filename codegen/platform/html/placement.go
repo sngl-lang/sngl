@@ -3,8 +3,8 @@ package html
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Placement classifies where a piece of SNGL code runs in an html build:

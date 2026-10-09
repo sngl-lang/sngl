@@ -3,11 +3,11 @@ package android
 import (
 	"io/fs"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/android/i18nruntime"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/codegen/platform/android/i18nruntime"
+	"duckfam.us/sngl/ir"
 )
 
 // emitI18nRuntimeFile writes the Kotlin i18n runtime into sink.

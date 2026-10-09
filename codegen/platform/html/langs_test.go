@@ -1,8 +1,8 @@
 package html
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/ir"
 )
 
 // htmlLangs is what a check of this platform needs registered: html.sngl

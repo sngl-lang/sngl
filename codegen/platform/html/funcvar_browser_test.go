@@ -9,8 +9,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
 	rodproto "github.com/go-rod/rod/lib/proto"
 )
 

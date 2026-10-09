@@ -4,7 +4,7 @@ import (
 	"embed"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 //go:embed templates/*

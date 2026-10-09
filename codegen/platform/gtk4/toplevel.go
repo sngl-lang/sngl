@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // toplevelTag is gtk4.sngl's `Toplevel`, the primitive `ui.window` is on this

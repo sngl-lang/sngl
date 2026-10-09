@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/canvasutil"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestWindowSharedDerivesPackageAnalysisOnce pins the split a site of many

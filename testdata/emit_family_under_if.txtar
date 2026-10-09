@@ -108,11 +108,11 @@ ui.window(title="Main") {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 	"strings"
 )
@@ -438,7 +438,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -452,8 +452,8 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 	"strings"
 )
 
@@ -771,6 +771,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:4ca072000dc06b526e1145807474248d
+pass sha256:8831f7160c47143bd7a3627369689bc6
 -- run/go/gtk4 --
-pass sha256:ff078055c1b5d080ab8a58c638f25fdb
+pass sha256:a17f3898a03223fb4bb67ddccc1bffc6

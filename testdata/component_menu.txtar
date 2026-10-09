@@ -54,8 +54,8 @@ package main
 import (
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbletea/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
 
@@ -488,7 +488,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:583557af1be5039e55ff41add6bb28b3
+pass sha256:95f83ddde8cbef64250a41cc961359de
 -- run/go/fyne --
 pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --

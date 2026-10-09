@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // MountedEffect is one `effect` the current tree holds.

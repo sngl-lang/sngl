@@ -1,6 +1,6 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // analyzeEffects computes a function's direct purity and its Reads/Writes sets
 // by walking the checked IR body (fn.Block), using resolved identifier symbols

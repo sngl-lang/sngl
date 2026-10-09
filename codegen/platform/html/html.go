@@ -14,15 +14,15 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/internal/asset"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/internal/asset"
+	"duckfam.us/sngl/internal/htmlutil"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 func init() {
@@ -212,7 +212,7 @@ type windowShared struct {
 	i18nLoaded   bool
 	// Both describe the package, which no window changes.
 	usedComponents map[string]bool
-	prewalked      map[string]*ir.NodeInst
+	prewalked      *prewalkedNodes
 	slotsRewritten bool
 	// constAssets are the consts written once for every page (sharedConst),
 	// and constFiles the scripts that carry them.
@@ -906,16 +906,48 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	return g
 }
 
-// prewalkShared seeds idToNode from the cached package walk. The __n* ids are
-// the same for every window; the $N ids allocated while rendering are not, so
-// each window still gets its own map to add them to.
+// prewalkShared runs prewalkNode over every node the package and the document
+// hold, in the order the package's components, the document's body and the
+// package's funcs list them. The package's nodes are the same for every
+// document, so only their order is cached; the document's body is a clone of
+// its own and is walked each time.
 func (g *htmlGen) prewalkShared() {
-	if g.shared.prewalked == nil {
-		g.prewalkNodes()
-		g.shared.prewalked = maps.Clone(g.idToNode)
+	if g.pkg == nil {
 		return
 	}
-	maps.Copy(g.idToNode, g.shared.prewalked)
+	if g.shared.prewalked == nil {
+		var comps, funcs []*ir.NodeInst
+		for _, c := range g.pkg.Components {
+			if c == nil {
+				continue
+			}
+			comps = prewalkOrder(comps, c.Stmts)
+			for _, fn := range c.Funcs {
+				if fn != nil {
+					comps = prewalkOrder(comps, fn.Block)
+				}
+			}
+		}
+		for _, fn := range g.pkg.Funcs {
+			if fn != nil {
+				funcs = prewalkOrder(funcs, fn.Block)
+			}
+		}
+		g.shared.prewalked = &prewalkedNodes{components: comps, funcs: funcs}
+	}
+	for _, n := range g.shared.prewalked.components {
+		g.prewalkNode(n)
+	}
+	for _, n := range prewalkOrder(nil, g.irBodyStmts) {
+		g.prewalkNode(n)
+	}
+	for _, n := range g.shared.prewalked.funcs {
+		g.prewalkNode(n)
+	}
+}
+
+type prewalkedNodes struct {
+	components, funcs []*ir.NodeInst
 }
 
 // rewriteSlotCallsOnce runs the slot retarget for the first window only: the
@@ -953,12 +985,33 @@ func (g *htmlGen) allocID() string {
 	return id
 }
 
-// prewalkNodes seeds g.idToNode with every NodeInst carrying an `__n*` id from
-// the NoReactivity lowering. See generate().
-func (g *htmlGen) prewalkNodes() {
-	if g.pkg == nil {
-		return
+// prewalkNode records what a handler needs of a node before any is translated:
+// its element var, its declaration and its class rules. See generate().
+func (g *htmlGen) prewalkNode(n *ir.NodeInst) {
+	if strings.HasPrefix(n.ID, "__n") {
+		g.idToNode[n.ID] = n
+	} else if n.ID != "" {
+		// Allocated here rather than when the element is emitted:
+		// a handler is translated as its own node is reached, which
+		// may be before the node its updater writes to. The element
+		// var has to be known by then or the updater renders against
+		// the name the op used, which nothing declares.
+		g.nodeID(n)
 	}
+	// A node the lowering creates later — a `for` body's — gets its
+	// id then, so it never reaches idToNode. Every raw element of a
+	// package shares one declaration, so keeping the one seen here
+	// answers for those too.
+	if g.elemDecl == nil && isElement(n.Component) {
+		g.elemDecl = n.Component
+	}
+	for _, rule := range classRules(n) {
+		g.AddStyle(rule)
+	}
+}
+
+// prewalkOrder appends the nodes prewalkNode visits in stmts to out.
+func prewalkOrder(out []*ir.NodeInst, stmts []ir.Stmt) []*ir.NodeInst {
 	var visit func(s ir.Stmt)
 	visitStmts := func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -977,26 +1030,7 @@ func (g *htmlGen) prewalkNodes() {
 				visitStmts(n.Children)
 				return
 			}
-			if strings.HasPrefix(n.ID, "__n") {
-				g.idToNode[n.ID] = n
-			} else if n.ID != "" {
-				// Allocated here rather than when the element is emitted:
-				// a handler is translated as its own node is reached, which
-				// may be before the node its updater writes to. The element
-				// var has to be known by then or the updater renders against
-				// the name the op used, which nothing declares.
-				g.nodeID(n)
-			}
-			// A node the lowering creates later — a `for` body's — gets its
-			// id then, so it never reaches idToNode. Every raw element of a
-			// package shares one declaration, so keeping the one seen here
-			// answers for those too.
-			if g.elemDecl == nil && isElement(n.Component) {
-				g.elemDecl = n.Component
-			}
-			for _, rule := range classRules(n) {
-				g.AddStyle(rule)
-			}
+			out = append(out, n)
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
 				if h.Func != nil {
@@ -1016,28 +1050,11 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 		default:
-			panic(fmt.Sprintf("html.collectNodeIDs: unhandled ir.Stmt %T", n))
+			panic(fmt.Sprintf("html.prewalkOrder: unhandled ir.Stmt %T", n))
 		}
 	}
-	for _, c := range g.pkg.Components {
-		if c == nil {
-			continue
-		}
-		visitStmts(c.Stmts)
-		for _, fn := range c.Funcs {
-			if fn != nil {
-				visitStmts(fn.Block)
-			}
-		}
-	}
-	// The document's own body, which is a clone of the package's and so
-	// reached from nothing above.
-	visitStmts(g.irBodyStmts)
-	for _, fn := range g.pkg.Funcs {
-		if fn != nil {
-			visitStmts(fn.Block)
-		}
-	}
+	visitStmts(stmts)
+	return out
 }
 
 func slotIndexFromRenderFunc(name string) string {

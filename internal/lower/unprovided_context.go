@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passUnprovidedContext replaces every read of a context nothing provides with
 // its default, when the default is a constant, and drops the context.

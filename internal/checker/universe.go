@@ -3,8 +3,8 @@ package checker
 import (
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // scalarUniverse is every scalar sngl:builtin declares, by the name it is

@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // dateFieldKt is SnglDateField's source, the composable `android:SnglDateField`

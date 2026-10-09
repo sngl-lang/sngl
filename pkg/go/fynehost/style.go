@@ -6,9 +6,9 @@ import (
 	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // style is the part of sngl.Style this host can answer, in the

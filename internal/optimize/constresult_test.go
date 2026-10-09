@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen/scheme/golang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
 )
 
 // purepkgImport resolves the purepkg test package through the real go:

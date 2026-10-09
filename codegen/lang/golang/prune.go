@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // PayloadPruneCandidates are the library structs the shake declared in pkg

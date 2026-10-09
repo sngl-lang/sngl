@@ -5,8 +5,8 @@ import (
 	"iter"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // Which documents a program is, on a target whose view is markup: the answer

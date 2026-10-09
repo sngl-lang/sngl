@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // validateRawElements rejects a raw element this platform cannot render.

@@ -43,8 +43,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 	"strings"
 )
@@ -3923,15 +3923,15 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
+	"duckfam.us/sngl/pkg/go/fynetheme"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetheme"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"image/color"
 	"os"
 )
@@ -10493,8 +10493,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:aaadc85473a605e0c22a74a11f1d9ff5
+pass sha256:10017f91696f59baa911a3945ff29dd3
 -- run/go/fyne --
-pass sha256:caca06febab8647950b52faaa9285e59
+pass sha256:0d5702360ec060658e9f36dd22627f9c
 -- run/none/html --
 pass sha256:53fea75bee1b71a439deb5ec23e8e4bd

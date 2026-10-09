@@ -352,7 +352,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -365,7 +365,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 	"strconv"
 )
 
@@ -458,4 +458,4 @@ pass sha256:caae766dea21ebf12e8f36b21f523d76
 -- run/go/fyne --
 pass sha256:40fe7af2d13abba34d13cf99c0e069b9
 -- run/go/gtk4 --
-pass sha256:8a9a0ee3730cb66ea77b48790a34cc85
+pass sha256:d5a0c18231d6c0e4e6a553adf6017c85

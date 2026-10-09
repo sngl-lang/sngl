@@ -182,7 +182,7 @@ window {
 }
 
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:0be1e40af5f5a705fe20e72b411af2c7
+sha256:5fd9c0b6f79c4ed84a1d91279d8356d5
 {
   "results": [
     {

@@ -6,8 +6,8 @@ import (
 	"path"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // assetsKt is SnglAssets and SnglAssetImage, which read the pictures the

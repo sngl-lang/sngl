@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/headless"
+	"duckfam.us/sngl/internal/headless"
 )
 
 const windowsChildEnv = "SNGL_GTK4RT_WINDOWS_CHILD"

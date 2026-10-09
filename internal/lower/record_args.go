@@ -1,7 +1,7 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passRecordArgs is RecordArgs for a pipeline that lowers checked IR without

@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // builder converts an egg parse tree ([]int32) into AST nodes.

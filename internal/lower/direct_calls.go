@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // passDirectCalls turns a call through a name that holds a declared function
 // into a call of that function.

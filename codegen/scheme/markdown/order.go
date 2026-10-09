@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strconv"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
+	snglast "duckfam.us/sngl/ast"
 )
 
 // mdPackage is where #[md.order] is declared.

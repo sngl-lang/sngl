@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/lspcore"
 )
 
 // componentSnapshotPath returns the absolute filesystem path to

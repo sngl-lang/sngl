@@ -21,7 +21,7 @@ import (
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
 	const src = `import . "sngl:ui"
 import . "sngl:ui"
-import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
+import lib "go:duckfam.us/sngl/internal/optimize/testdata/purepkg"
 
 const items = lib.Anything()
 
@@ -81,7 +81,7 @@ func repoRoot(t *testing.T) string {
 	return filepath.Dir(mod)
 }
 
-const purepkgPath = "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
+const purepkgPath = "duckfam.us/sngl/internal/optimize/testdata/purepkg"
 
 // An import is a Go import only where the emitted code names it. A `file:`
 // import's path is a directory on disk rather than a Go package, and a `go:`
@@ -89,7 +89,7 @@ const purepkgPath = "git.duckfam.us/jonathan/sngl/internal/optimize/testdata/pur
 // refuses as an unused import -- so neither may reach the import block.
 func TestFoldedImportsLeaveNoGoImport(t *testing.T) {
 	const src = `import . "sngl:ui"
-import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
+import lib "go:duckfam.us/sngl/internal/optimize/testdata/purepkg"
 import "file:public"
 
 const greeting = lib.Greet("sngl")

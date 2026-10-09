@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // The test binary doubles as a worker when this is set, so the spawn path can

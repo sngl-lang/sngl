@@ -1,6 +1,6 @@
 // Package i18n is the Go runtime for the SNGL i18n stdlib package.
 // Generated SNGL code targeting Go imports this package via the path
-// git.duckfam.us/jonathan/sngl/pkg/go/i18n.
+// duckfam.us/sngl/pkg/go/i18n.
 package i18n
 
 import (

@@ -7,7 +7,7 @@ output {
     }
 }
 
-import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
+import "go:duckfam.us/sngl/examples/http-session/session"
 
 ui.window(title=pages.current.title) {
     var sidebarOpen = false

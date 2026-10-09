@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func TestPassRegistry_StubsAreNoOps(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/testrpc"
 )
 
 func TestT_LogEmitsNotification(t *testing.T) {

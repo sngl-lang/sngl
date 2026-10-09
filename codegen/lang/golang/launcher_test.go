@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testrpc"
+	"duckfam.us/sngl/internal/testrpc"
 )
 
 func TestLaunchTest_endToEnd(t *testing.T) {
@@ -18,7 +18,7 @@ func TestLaunchTest_endToEnd(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "main.go"), `package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+import "duckfam.us/sngl/pkg/go/testagent"
 
 func init() {
 	testagent.RegisterTest("ok", func(t *testagent.T) { t.Log("ran") })

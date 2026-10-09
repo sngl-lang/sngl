@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // reportBodylessComponents requires a component declared with no body to get

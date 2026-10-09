@@ -211,8 +211,8 @@ import (
 	"time"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 // Handle re-exports cbind.Handle so generated code references a single opaque
@@ -697,6 +697,35 @@ func SnapshotModel(build func(app Handle) Handle, width, height int, outPath str
 	return os.WriteFile(outPath, data, 0o644)
 }
 
+// snapshotApp is registered once per process. The window a snapshot presents
+// outlives it and holds the application, which stays exported on the session
+// bus, so registering a second one under the same path is refused wherever a
+// session bus exists.
+var snapshotApp *C.GtkApplication
+
+// snapshotApplication registers without running the main loop, so build and
+// the pump execute on the current (locked) OS thread without re-entrancy.
+func snapshotApplication() (*C.GtkApplication, error) {
+	if snapshotApp != nil {
+		return snapshotApp, nil
+	}
+	appID, freeID := cstr("dev.sngl.snapshot")
+	defer freeID()
+	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "unknown error"
+		if gerr != nil {
+			msg = C.GoString(gerr.message)
+			C.g_error_free(gerr)
+		}
+		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
+	}
+	snapshotApp = app
+	return app, nil
+}
+
 // SnapshotModelBytes is SnapshotModel returning the PNG as bytes rather than
 // writing a file. Used by the test-agent snapshot bridge. The GTK bindings it
 // needs are compiled once here rather than per generated program.
@@ -741,36 +770,6 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 		return nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
 	}
 	return os.ReadFile(f.Name())
-}
-
-// snapshotApp is the application every snapshot in this process builds its
-// window in. One, because a registered application is exported on the
-// session bus for as long as a window holds it, and a second registered at
-// the same path fails with "An object is already exported".
-var snapshotApp *C.GtkApplication
-
-// snapshotApplication registers snapshotApp the first time it is asked for,
-// without running its main loop, so a build and the pump run on the locked
-// OS thread without re-entrancy.
-func snapshotApplication() (*C.GtkApplication, error) {
-	if snapshotApp != nil {
-		return snapshotApp, nil
-	}
-	appID, freeID := cstr("dev.sngl.snapshot")
-	defer freeID()
-	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		msg := "no reason given"
-		if gerr != nil {
-			msg = C.GoString(gerr.message)
-			C.g_error_free(gerr)
-		}
-		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-		return nil, fmt.Errorf("g_application_register failed: %s", msg)
-	}
-	snapshotApp = app
-	return app, nil
 }
 
 // ---- Rich text ----

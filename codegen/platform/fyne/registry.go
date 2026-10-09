@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // WidgetProbeSource pulls this platform in and does nothing else, which is all

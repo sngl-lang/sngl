@@ -3,8 +3,8 @@ package gtk4
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // gtk4.sngl's image primitives, gtk4rt's rather than GIR classes, written here
