@@ -209,7 +209,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	start = time.Now()
-	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, Tests: optionBool(target.Options, "test"), ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	slog.Info("lower", "dir", o.Dir, "caps", feats.String(), "duration", time.Since(start))

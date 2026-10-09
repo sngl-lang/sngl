@@ -1491,6 +1491,17 @@ func (env *Env) evalIndex(e *ir.Index) (any, error) {
 		}
 		return list[i], nil
 	}
+	// One copy of a node a loop rendered under one id, where the loop rendered
+	// it once: ResolveElementRef hands a single node back as itself rather
+	// than as a list of one.
+	if e.Type != nil && e.Type.Kind == ir.TypeComponent && obj != nil {
+		if _, isList := obj.([]any); !isList {
+			if i := ToInt(idx); i != 0 {
+				return nil, fmt.Errorf("index %d out of range (len 1)", i)
+			}
+			return obj, nil
+		}
+	}
 	if m, ok := obj.(map[string]any); ok {
 		key := fmt.Sprintf("%v", idx)
 		if v, ok := m[key]; ok {

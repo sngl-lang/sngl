@@ -41,6 +41,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	}
 	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}}
 	cellOwners := implicitCellOwners(pkg)
+	st.reach = testReachRoots(pkg, main, opts)
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -61,7 +62,10 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 			contextProps(c)
 		}
 	}
-	return uniqueNodeIDs(pkg)
+	if err := uniqueNodeIDs(pkg); err != nil {
+		return err
+	}
+	return repointTestReaches(pkg, st.reach, st.insts)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -358,6 +362,10 @@ type inlineCompState struct {
 	// methods is, per node handle, each method of the component splicing that
 	// node cloned and the clones, for repointHandleCalls.
 	methods map[*ir.Var]map[*ir.Func][]*ir.Func
+	// insts is what each spliced node carrying an id became, for a test
+	// reaching into it (repointTestReaches).
+	insts []splice
+	reach *testReach
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -1282,6 +1290,9 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// about what it became belongs where the program wrote the node.
 	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
+	}
+	if n.ID != "" || st.reach.takes(comp) {
+		st.recordInstance(n, symRenames, body)
 	}
 
 	return body, nil

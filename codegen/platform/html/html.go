@@ -3511,28 +3511,54 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // onto the event, which is where the DOM puts what the event itself carries.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
-	emit := func(h eventHandler, snglID string) {
+	// Every element written under one id, in render order: an id a constant
+	// loop unrolled is one per copy, and the `At` variant names a copy by its
+	// index there as it does among elements built at run time.
+	copies := map[string][]string{}
+	event := map[string]string{}
+	var order []string
+	collect := func(h eventHandler, snglID string, own bool) {
 		if snglID == "" {
 			return
 		}
 		name := snglID + capitalizeFirst(h.event)
-		if seen[name] {
+		event[name] = h.event
+		if own && slices.Contains(copies[name], h.elemID) {
 			return
 		}
-		seen[name] = true
-		if h.event == "click" {
-			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-			return
+		if _, ok := copies[name]; !ok {
+			order = append(order, name)
 		}
-		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, h.elemID, h.elemID, h.event)
+		if own || len(copies[name]) == 0 {
+			copies[name] = append(copies[name], h.elemID)
+		}
 	}
 	// An element's own id outranks one it inherits, whichever was rendered
 	// first.
 	for _, h := range g.handlers {
-		emit(h, g.snglIDByElem[h.elemID])
+		collect(h, g.snglIDByElem[h.elemID], true)
 	}
 	for _, h := range g.handlers {
-		emit(h, h.snglID)
+		collect(h, h.snglID, false)
+	}
+	// Only an id a test indexes needs the variant, as on fyne and gtk4.
+	indexed := codegen.IndexedTriggerIDs(g.pkg)
+	for _, name := range order {
+		seen[name] = true
+		els := copies[name]
+		at := indexed[strings.TrimSuffix(name, capitalizeFirst(event[name]))]
+		all := "[" + strings.Join(els, ", ") + "]"
+		if event[name] == "click" {
+			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, els[0])
+			if at {
+				fmt.Fprintf(b, "state.%s = (i) => %s[i].click();\n", codegen.InvokerAt(name), all)
+			}
+			continue
+		}
+		fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(Object.assign(new Event(%q), p)); };\n", name, els[0], els[0], event[name])
+		if at {
+			fmt.Fprintf(b, "state.%s = (i, p) => { const el = %s[i]; Object.assign(el, p); el.dispatchEvent(Object.assign(new Event(%q), p)); };\n", codegen.InvokerAt(name), all, event[name])
+		}
 	}
 	// An element built at run time -- inside a component instance or a
 	// render slot -- does not exist when the page starts, so its invoker

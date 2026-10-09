@@ -1,0 +1,55 @@
+# A test reaching into a component the one under test builds at run time --
+# here one under an `if` over state -- names no one instance on a target that
+# keeps state per instance, and is refused at the read. bubbletea keeps no
+# state of an instance's own, so it splices the component where it is written
+# and the read is the splice's; the interpreter reads the instance it mounted.
+
+! sngl test --platform=html app.sngl
+stderr 'app.sngl:21:15: `#b` is built at run time on this target, so there is no one instance whose hits a test can reach'
+
+! sngl test --platform=fyne --language=go app.sngl
+stderr 'app.sngl:21:15: `#b` is built at run time on this target'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component bar node {
+    var hits = 0
+    button #btn(text="go", @click {
+        hits = hits + 1
+    })
+}
+
+component main node {
+    var show = true
+    vbox {
+        if show {
+            bar #b
+        }
+    }
+}
+
+func testReachesARuntimeInstance(t Test, c main) {
+    t.assert(c.b.hits == 0)
+}
+
+window {
+    main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:59f23aef6c67d9798d476dba7b99f0cc
+{
+  "results": [
+    {
+      "Desc": "ReachesARuntimeInstance",
+      "Passed": true
+    }
+  ]
+}

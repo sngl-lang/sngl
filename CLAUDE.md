@@ -3258,8 +3258,10 @@ Known gaps, each refused or documented where it bites:
 - bubbletea splices a stateful component in a page, or a window under an `if`,
   into the Model, so its state survives the page being left.
 - A page handle read above its `nav.page` does not check
-  (`specializeHandle` runs only when the node is), and no Go test emitter
-  reaches a node's prop or a nested component.
+  (`specializeHandle` runs only when the node is).
+- A compiled test cannot reach into a component built at run time, nor read
+  the prop of a node rendered only some of the time (see *A test reaches
+  into what its component renders*).
 - `sngl dump` prints a qualified node by its local name, so a dump of a
   program writing `nav.page` does not check again.
 - A component's props, events and slots keep their names whatever a target
@@ -3536,9 +3538,10 @@ page is spliced into the Model, so its state survives the page being left --
 the divergence a window under an `if` has there. A `nav.link` above its
 `nav.page` in source does not check (`cannot use page as page<struct {}>`):
 `specializeHandle` completes a handle's type only when its node is checked, so
-a read above the node sees the bare declaration. And no Go target's test
-emitter compiles a read of a node's prop (`c.heading.value`) or of a component
-nested in the one under test (`c.tally.hits`), which is why `nav_stack_runs`
+a read above the node sees the bare declaration. And a node in a page's
+content is rendered only while the page shows, and a component there is built
+at run time on the targets that keep an instance's state, so a compiled test
+reads neither (`c.label.value`, `c.tally.hits`), which is why `nav_stack_runs`
 tests a narrower surface than `testdata/nav_stack.sngl`.
 
 What it needed from the checker is general:
@@ -3894,6 +3897,40 @@ rules keep them agreeing:
 - **An event invoker takes the event's arguments**: `c.f.input("v")` hands
   the invoker `"v"`, which it puts in the widget before firing the one event,
   as android's `performTextReplacement` does.
+
+**A test reaches into what its component renders** -- `c.b.hits`,
+`c.b.btn.click()`, `c.b.row[0].click()`, `c.b.reset()` -- and reads a node's
+one-way prop, `c.t.value`. Each emitter reaches only the instance's own
+members by name, so the lowering says the rest in those terms:
+
+- **A one-way prop is the expression its call site gave**, read through the
+  instance (`rewriteTestPropRead`, in passNodePropReads, before an override
+  replaces the node with a primitive whose props are its own): `"{hits}"` in
+  `bar`'s body is `"{c.b.hits}"` in the test. A node rendered only some of the
+  time -- under an `if`, in a page's content -- or a prop reading a loop's
+  variable or a slot's parameter is left as written.
+- **A spliced instance's members are what the splice made of them**
+  (`internal/lower/test_reach.go`): the inliner records each splice of a node
+  carrying an id by its handle, and a test's select through it becomes the
+  var's clone, the node selected off the instance by the id it now carries,
+  or a call of the method's clone. By handle rather than by node, because a
+  spliced body may be cloned again -- a population is, where the body inserts
+  it -- and every clone shares the handle, which a rename of the id renames
+  too. One built at run time, or rendered more than once, names no one
+  instance, and a build rooted at the component under test refuses the read
+  (`test_reach_runtime_instance_refused.txt`).
+- **A build of the whole program reaches a test's instance where the program
+  renders it**, which is how a golden whose tests take two components is
+  compiled: each is spliced, and each test reaches what its splice made of it
+  (`testdata/test_reach_two_roots.txtar`). Nothing is refused there, since a
+  build that roots at none emits no test.
+- **A trigger is an event of the receiver's type**, so the checker tags one
+  through a nested instance (`nestedElementEvent`), and `c.row[1]` types as
+  the node's component. html's `At` invoker indexes a constant loop's unrolled
+  copies as it does the copies built at run time, and the interpreter takes
+  `[0]` of a loop that rendered one copy as that copy.
+
+`cmd/sngl/testdata/test_reach_nested_runs.txt` runs it on all six.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 

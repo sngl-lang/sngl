@@ -147,6 +147,12 @@ type Options struct {
 	// against the declaration -- asks for `n` (#136).
 	RootComponent string
 
+	// Tests says the build emits the program's tests, which reach into what
+	// their component renders through what the inliner made of it
+	// (repointTestReaches). A build that emits none leaves its tests as they
+	// were checked, so that nothing a test names is kept alive for them.
+	Tests bool
+
 	// ClaimsIntrinsic reports whether the target implements an #[intrinsic]
 	// component id from another platform's namespace. A platform primitive is
 	// the emitting codegen's dispatch key, so one platform's is meaningless to

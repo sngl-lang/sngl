@@ -1,0 +1,172 @@
+# A test reaches into a component the one under test renders, on every target:
+# its state (`c.b.hits`), its nodes (`c.b.btn.click()`, one copy of a loop's
+# `c.b.row[0]`), its methods (`c.b.reset()`), and a node's one-way prop, which
+# is the expression its call site gave (`c.t.value`, `c.b.shown.value`, and an
+# instance's own `c.b.label`).
+#
+# The interpreter reads each off the instance it mounted. Every compiled
+# target splices `bar` into `main`, so the inliner points each read at what
+# the splice made of it (internal/lower/test_reach.go), and a prop read is
+# answered before the override replaces the node (rewriteTestPropRead).
+
+sngl test --platform=none app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component bar(label string) node {
+    var hits = 0
+    func reset() {
+        hits = 0
+    }
+    vbox {
+        button #btn(text=label, @click {
+            hits = hits + 1
+        })
+        text #shown(value="{label}: {hits}")
+        for var i = [1] {
+            button #row(text="r{i}", @click {
+                hits = hits + 10
+            })
+        }
+    }
+}
+
+component main node {
+    var greeting = "hello"
+    vbox {
+        bar #b(label="go")
+        text #t(value=greeting)
+    }
+}
+
+func testANestedComponentsStateAndNodes(t Test, c main) {
+    c.b.btn.click()
+    t.assert(c.b.hits == 1)
+    t.assert(c.b.shown.value == "go: 1")
+    c.b.reset()
+    t.assert(c.b.hits == 0)
+}
+
+func testANodesOneWayProp(t Test, c main) {
+    t.assert(c.t.value == "hello")
+    c.greeting = "bye"
+    t.assert(c.t.value == "bye")
+    t.assert(c.b.label == "go")
+}
+
+func testOneCopyOfALoopInANestedComponent(t Test, c main) {
+    c.b.row[0].click()
+    t.assert(c.b.hits == 10)
+}
+
+window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:20888392bc79ce001117c4a5ee4ac44b
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:8a80ec8d193a38549ea552d0217fa246
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:0ad31f0198c67aa7b7345964a9208b22
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:183681d2c7d7aa188dc3d5fe6aaeb78b
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:b5d62ba04e8acd6442a91d90fdd21fef
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}

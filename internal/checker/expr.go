@@ -1533,7 +1533,11 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// `c.f.input(value="x")`. A test fires the event as the program would.
 	var argSig *ir.FuncSig
 	event := ""
-	if evt := c.elementEvent(sel.Operand, sel.Field); evt != nil {
+	evt := c.elementEvent(sel.Operand, sel.Field)
+	if evt == nil {
+		evt = nestedElementEvent(sel.Operand, receiver, sel.Field)
+	}
+	if evt != nil {
 		event = evt.Name
 		argSig = &ir.FuncSig{Params: evt.Params}
 	}
@@ -1559,6 +1563,36 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 func (c *checker) elementEvent(operand ast.Expr, event string) *ir.EventDecl {
 	comp := c.elementHostComponent(operand)
 	if comp == nil {
+		return nil
+	}
+	for _, e := range comp.Events {
+		if e.Name == event {
+			return e
+		}
+	}
+	return nil
+}
+
+// nestedElementEvent is the event a trigger names through a component the
+// one it starts at renders -- `c.b.btn.click()` -- read off the type the
+// receiver checked as: the shapes elementHostComponent reads off the source
+// stop one level down.
+func nestedElementEvent(operand ast.Expr, receiver *ir.Type, event string) *ir.EventDecl {
+	if ix, ok := operand.(*ast.IndexExpr); ok {
+		operand = ix.Operand
+	}
+	sel, ok := operand.(*ast.SelectExpr)
+	if !ok {
+		return nil
+	}
+	if _, ok := sel.Operand.(*ast.SelectExpr); !ok {
+		return nil
+	}
+	if receiver == nil || receiver.Kind != ir.TypeComponent {
+		return nil
+	}
+	comp, ok := receiver.Decl.(*ir.Component)
+	if !ok {
 		return nil
 	}
 	for _, e := range comp.Events {
@@ -2260,6 +2294,13 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	if operand.Kind == ir.TypeList && len(operand.Elems) > 0 {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
+	}
+	// One copy of a node a loop rendered under one id, `c.row[1]`, is a node
+	// of the same component as the id names.
+	if operand.Kind == ir.TypeComponent && operand.Decl != nil {
+		if _, ok := operandExpr.(*ir.Select); ok {
+			return &ir.Index{AST: x, Type: operand, Operand: operandExpr, Idx: indexExpr}
+		}
 	}
 	switch operand.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
