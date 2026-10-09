@@ -278,6 +278,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
+	// typeParamSyms holds one symbol per declared type parameter, by where it
+	// is written, so every push of a declaration's parameters binds the same
+	// one (typeParamSym).
+	typeParamSyms map[typeParamKey]*ir.TypeParamSym
+
 	// docs is the package being checked: every file of it, registered as one
 	// declaration set. doc is whichever one is being registered or checked
 	// right now.

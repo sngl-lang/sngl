@@ -2389,7 +2389,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				if len(x.Fields) > 0 {
 					c.error(x.Pos, "%s is a type parameter: its literal is its zero value, %s{}, and takes no fields", tp.Name, tp.Name)
 				}
-				return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeTypeParam, ParamName: tp.Name}}
+				return &ir.StructLit{AST: x, Type: tp.SymType()}
 			}
 		} else {
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))

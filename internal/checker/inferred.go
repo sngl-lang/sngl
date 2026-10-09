@@ -30,9 +30,9 @@ func (c *checker) typeFromInit(declared *ir.Type, init ir.Expr, at ast.Pos) *ir.
 // A type parameter no enclosing declaration has in scope is the other: a call
 // that bound none of its callee's parameters leaves one in its result, and
 // `var xs = empty()` held a `list<T>` naming a type nothing declares. One in
-// scope -- the enclosing generic's own -- is a type like any other. Scope is
-// by name, so a callee's parameter spelled like the enclosing one's is not
-// told apart.
+// scope -- the enclosing generic's own -- is a type like any other. In scope
+// means the name here resolves to the parameter the type refers to (its
+// Decl), so a callee's `T` is not taken for the `T` of the generic calling it.
 func (c *checker) inferredType(t *ir.Type, at ast.Pos) *ir.Type {
 	if holdsNull(t) {
 		c.error(at, "cannot infer a type from null; add a type annotation")
@@ -63,8 +63,11 @@ func (c *checker) unboundTypeParam(t *ir.Type) string {
 		if p.Kind != ir.TypeTypeParam {
 			return true
 		}
-		if sym, ok := c.scope.Lookup(p.ParamName); ok {
-			if _, isParam := sym.(*ir.TypeParamSym); isParam {
+		sym, ok := c.scope.Lookup(p.ParamName)
+		if declared, isParam := sym.(*ir.TypeParamSym); ok && isParam {
+			// A type built with no reference to its parameter is matched by
+			// name, the only thing it carries.
+			if p.Decl == nil || p.Decl == ir.Symbol(declared) {
 				return true
 			}
 		}

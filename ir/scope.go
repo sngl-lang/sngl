@@ -15,10 +15,15 @@ type Symbol interface {
 
 // TypeParamSym binds a type parameter's name in the scope its declaration
 // opens. Nothing else declares one, so a repeat is the ordinary redeclaration.
+// One parameter has one: the type it stands for carries it as its Decl, which
+// is how a parameter is told from another of the same name -- a callee's `T`
+// left in a call's result from the `T` of the generic it was called in.
 type TypeParamSym struct{ Name string }
 
 func (t *TypeParamSym) SymName() string { return t.Name }
-func (t *TypeParamSym) SymType() *Type  { return &Type{Kind: TypeTypeParam, ParamName: t.Name} }
+func (t *TypeParamSym) SymType() *Type {
+	return &Type{Kind: TypeTypeParam, ParamName: t.Name, Decl: t}
+}
 
 // LoopVar is a for-loop iteration variable.
 type LoopVar struct {

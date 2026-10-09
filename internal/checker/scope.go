@@ -206,10 +206,36 @@ func pushTypeParams[T typeParamLike](c *checker, groups ...[]T) func() {
 	c.pushScope()
 	for _, g := range groups {
 		for _, p := range g {
-			c.declare(p.ParamPos(), &ir.TypeParamSym{Name: p.ParamName()})
+			c.declare(p.ParamPos(), c.typeParamSym(p.ParamName(), p.ParamPos()))
 		}
 	}
 	return c.popScope
+}
+
+// typeParamSym is the symbol of the type parameter declared at pos. A
+// declaration's parameters are pushed more than once -- its signature, then
+// its body -- and each push has to bind the one symbol, since a type refers
+// to its parameter by that symbol. A parameter with no position is a new one.
+func (c *checker) typeParamSym(name string, pos ast.Pos) *ir.TypeParamSym {
+	if !pos.IsSet() {
+		return &ir.TypeParamSym{Name: name}
+	}
+	key := typeParamKey{pos: pos, name: name}
+	if sym, ok := c.typeParamSyms[key]; ok {
+		return sym
+	}
+	if c.typeParamSyms == nil {
+		c.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
+	}
+	sym := &ir.TypeParamSym{Name: name}
+	c.typeParamSyms[key] = sym
+	return sym
+}
+
+// typeParamKey names a declared type parameter: where it is written, and what.
+type typeParamKey struct {
+	pos  ast.Pos
+	name string
 }
 
 // receiverType is the receiver a method declared on name has: the type of the

@@ -19,6 +19,14 @@ func keep<U>(u U) U {
     return copy
 }
 
+// The callee's T is not the T of the generic calling it, though it is
+// spelled the same.
+func shadow<T>(t T) T {
+    var mine = t
+    var leaked = empty() // ERROR(check) "cannot infer T"
+    return mine
+}
+
 const none = empty() // ERROR(check) "cannot infer T"
 
 func make() => empty() // ERROR(check) "cannot infer T"
