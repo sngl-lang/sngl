@@ -160,7 +160,7 @@ func (c *checker) resolveNamedType(t *ast.NamedType) *ir.Type {
 					return c.applyComponentTypeArgs(t.Pos, typ, comp, t.TypeArgs)
 				}
 			}
-			return typ
+			return c.dataRecord(typ)
 		}
 	}
 
@@ -281,7 +281,7 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 			if len(f.TypeParams) > 0 {
 				return c.applyComponentTypeArgs(t.Pos, f.SymType(), f, args)
 			}
-			return f.SymType()
+			return c.dataRecord(f.SymType())
 		}
 	}
 	c.error(ast.Pos{}, "unknown type %q in namespace %q", name, pkg)
@@ -740,6 +740,8 @@ func isComparable(t *ir.Type) bool {
 // wrappers narrow it, and neither is a type the slot content ever has — they
 // say a count, so they are read here rather than constructed as types.
 func (c *checker) resolveSlotContent(t ast.TypeExpr) (*ir.Type, ir.SlotCard) {
+	c.familyPosition++
+	defer func() { c.familyPosition-- }()
 	nt, ok := t.(*ast.NamedType)
 	if !ok {
 		return c.resolveType(t), ir.SlotAny
@@ -824,4 +826,18 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	}
 	c.error(nt.Pos, "%s takes exactly one type argument", name)
 	return card, &ir.Type{Kind: ir.TypeComponent}
+}
+
+// dataRecord is the type a data component's name stands for in a value
+// position: its record (Component.Data). In a family position -- a return
+// position, a slot's content -- the name is the family, and typ is returned as
+// it is.
+func (c *checker) dataRecord(typ *ir.Type) *ir.Type {
+	if c.familyPosition > 0 || typ == nil || typ.Kind != ir.TypeComponent {
+		return typ
+	}
+	if f, ok := typ.Decl.(*ir.Component); ok && f.Data && f.Record != nil {
+		return &ir.Type{Kind: ir.TypeStruct, Decl: f.Record}
+	}
+	return typ
 }

@@ -269,14 +269,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
-}
-
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__ctx_listDepth int
@@ -456,4 +448,4 @@ func (m *Model) moreClick() {
 -- run/go/fyne --
 pass sha256:59c0d27b84bc19c5d4e021faa7180a36
 -- run/go/gtk4 --
-pass sha256:10ea4eed80293cef7f3de5133a94fdb5
+pass sha256:2166dd79090ed20fc64b93c2997a99bb

@@ -1124,6 +1124,19 @@ func ktZeroFor(t *ir.Type) string {
 		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
 			return EnumName(ed) + "." + EnumEntry(ed.Members[0].Name)
 		}
+	case ir.TypeFunc:
+		// A function that does nothing, returning its result's zero.
+		if t.Sig != nil {
+			params := make([]string, len(t.Sig.Params))
+			for i, p := range t.Sig.Params {
+				params[i] = "_: " + IRTypeToKt(p.Type)
+			}
+			body := ""
+			if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+				body = " " + ktZeroFor(t.Sig.Return)
+			}
+			return "{ " + strings.Join(params, ", ") + " ->" + body + " }"
+		}
 	}
 	return "null"
 }
@@ -1330,7 +1343,21 @@ func IRTypeToKt(t *ir.Type) string {
 	case ir.TypeUnit:
 		return UnitKtType(ir.UnitDeclOf(t))
 	case ir.TypeFunc:
-		return "Any" // TODO: proper function types
+		// A function type is its parameters and its result, which is what a
+		// record's event field holds and what calling one needs: `Any` cannot
+		// be invoked.
+		if t.Sig == nil {
+			return "Any"
+		}
+		params := make([]string, len(t.Sig.Params))
+		for i, p := range t.Sig.Params {
+			params[i] = IRTypeToKt(p.Type)
+		}
+		ret := "Unit"
+		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+			ret = IRTypeToKt(t.Sig.Return)
+		}
+		return "(" + strings.Join(params, ", ") + ") -> " + ret
 	case ir.TypeNull, ir.TypeDyn:
 		// dyn holds anything including null (recursive structs like TreeNode
 		// use `dyn = null` for absent children).

@@ -14,9 +14,11 @@ func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}
-	// See interp.NewSession: the interpreter takes its platform's bodies, and
-	// the test runner builds envs without going through a Session.
-	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
+	// See interp.Prepare: the test runner builds envs without going through a
+	// Session, so it takes what a Session takes from the pipeline itself.
+	if err := interp.Prepare(pkg); err != nil {
+		return nil, err
+	}
 	var results []*codegen.TestResult
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {

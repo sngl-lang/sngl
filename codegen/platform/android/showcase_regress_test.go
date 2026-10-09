@@ -198,8 +198,15 @@ ui.window {
     var size = "medium"
     var dob option<date> = date("2000-01-01")
     vbox {
-        select(options=["Apple", "Banana"], placeholder="File.pick", :value=fruit)
-        radio(direction=horizontal, options=["small", "medium", "large"], :value=size)
+        select(placeholder="File.pick", :value=fruit) {
+            choice(label="Apple")
+            choice(label="Banana")
+        }
+        radio(direction=horizontal, :value=size) {
+            choice(label="small")
+            choice(label="medium")
+            choice(label="large")
+        }
         datepicker(placeholder="Birthday", :value=dob)
     }
 }`
@@ -214,7 +221,7 @@ ui.window {
 		}
 	}
 	// radio: a RadioButton per option, selected reflects the bound value.
-	if !strings.Contains(out, "RadioButton(selected = (size == opt)") {
+	if !strings.Contains(out, "RadioButton(selected = (size == opt.label)") {
 		t.Errorf("radio not rendered as RadioButton group:\n%s", out)
 	}
 	// datepicker: SnglDateField, the field a date is typed or picked in,

@@ -48,7 +48,7 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 				if len(before)+len(after) > 0 {
 					d.Body = slices.Concat(dfold.Stmts(dfold.Clone(before)), d.Body, dfold.Stmts(dfold.Clone(after)))
 				}
-				return yieldDocument(yield, d, dfold)
+				return yieldDocument(yield, d, dfold, static)
 			})
 			if err != nil {
 				yield(nil, err)
@@ -68,7 +68,7 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 		if stack == nil {
 			dfold := fold.Child()
 			body := dfold.Stmts(dfold.Clone(root.Stmts))
-			yieldDocument(yield, &codegen.Document{Body: body}, dfold)
+			yieldDocument(yield, &codegen.Document{Body: body}, dfold, static)
 			return
 		}
 		for _, pc := range documentCopies(stack, fold) {
@@ -76,14 +76,14 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Stmts) })
 			page := pageDocument(&body, pc, dfold, true)
 			body = dfold.Stmts(body)
-			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold) {
+			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold, static) {
 				return
 			}
 		}
 	}
 }
 
-func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Document, fold codegen.Fold) bool {
+func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Document, fold codegen.Fold, static bool) bool {
 	if err := fold.Err(); err != nil {
 		yield(nil, err)
 		return false
@@ -93,6 +93,14 @@ func yieldDocument(yield func(*codegen.Document, error) bool, doc *codegen.Docum
 	if err := codegen.RefuseUnfoldedBuildCalls(doc.Body); err != nil {
 		yield(nil, err)
 		return false
+	}
+	// A served page renders a loop on the server, over what the request
+	// brought; only a static one has nowhere to run it.
+	if static {
+		if err := refuseUnrolledViewLoops(doc.Body); err != nil {
+			yield(nil, err)
+			return false
+		}
 	}
 	doc.FileAssets = append(doc.FileAssets, fold.TakeFileAssets()...)
 	return yield(doc, nil)
@@ -446,4 +454,56 @@ func foldSurface(n *ir.NodeInst, fold codegen.Fold) {
 		}
 	}
 	n.Children = fold.Stmts(n.Children)
+}
+
+// refuseUnrolledViewLoops reports a `for` left standing in a document's view.
+// A loop over state is a render slot by now, so one still here is a loop the
+// page writes into its markup, and the fold could not work out what it
+// iterates: written as it stands, its body came out once with its variable
+// bound to nothing -- an empty row and a handler naming a variable nothing
+// declared. Only a loop that writes markup is asked: a canvas's children are
+// the statements that paint it by now, and a loop among them is drawing code
+// the page runs. A loop an override's body wrote is reported at the node the
+// program wrote, since the override's is no position the program can act on.
+func refuseUnrolledViewLoops(stmts []ir.Stmt) error {
+	var err error
+	var walk func(stmts []ir.Stmt, site ir.Stmt)
+	walk = func(stmts []ir.Stmt, site ir.Stmt) {
+		for _, s := range stmts {
+			if err != nil {
+				return
+			}
+			if fs, ok := s.(*ir.For); ok && rendersNodes(fs.Body) {
+				pos := ir.StmtPos(fs)
+				if n, ok := site.(*ir.NodeInst); ok && n.Site != nil {
+					if at := ir.NodePos(n); at.File != pos.File {
+						pos = at
+					}
+				}
+				err = fmt.Errorf("%s: this loop is written into the page, and what it iterates cannot be worked out while the page is built: iterate a constant, or state, which the page's script renders", pos)
+				return
+			}
+			inner := site
+			if n, ok := s.(*ir.NodeInst); ok && n.Site != nil {
+				inner = n
+			}
+			for _, b := range ir.ViewBlocks(s) {
+				walk(*b, inner)
+			}
+		}
+	}
+	walk(stmts, nil)
+	return err
+}
+
+// rendersNodes reports whether stmts put a node in the tree.
+func rendersNodes(stmts []ir.Stmt) bool {
+	found := false
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if _, ok := s.(*ir.NodeInst); ok {
+			found = true
+		}
+		return !found
+	})
+	return found
 }

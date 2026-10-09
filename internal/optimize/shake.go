@@ -163,6 +163,14 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 		want(fn.Return)
 	}
+	// A data component's record (Component.Data) is built at each call site,
+	// where nothing else may name its type, and a literal spells it.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if lit, ok := n.(*ir.StructLit); ok && lit.Def != nil && lit.Def.RecordOf != nil {
+			want(&ir.Type{Kind: ir.TypeStruct, Decl: lit.Def})
+		}
+		return nil
+	})
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
 		// to spell.

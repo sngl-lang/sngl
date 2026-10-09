@@ -10,7 +10,16 @@ import . "sngl:test"
 // shows/hides the menu.
 component main node {
     var open = false
-    menu(items=["Cut", "Copy", "Paste"], open=open)
+    var last = ""
+    menu(open=open) {
+        menuItem(label="Cut", @select {
+            last = "cut"
+        })
+        menuItem(label="Copy", @select {
+            last = "copy"
+        })
+        menuItem(label="Paste", disabled=true)
+    }
 }
 
 func testMenuOpenToggles(t Test, c main) {
@@ -50,9 +59,17 @@ import (
 	"os"
 )
 
+type MenuItem__record struct {
+	Label    string
+	Disabled bool
+	Children []MenuItem__record
+	Select   func()
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	open      bool
+	last      string
 	__focusID int
 
 	widget0 list.Model
@@ -64,8 +81,25 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.open = false
+	m.last = ""
 	m.__focusID = 0
-	m.widget0 = tui.NewList(tui.StringItems([]string{"Cut", "Copy", "Paste"}), 40, 10)
+	m.widget0 = tui.NewList(tui.StringItems(func() []string {
+		__out := make([]string, len([]MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m.last = "cut"
+		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m.last = "copy"
+		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
+		}}}))
+		for __i, __item := range []MenuItem__record{MenuItem__record{Label: "Cut", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m.last = "cut"
+		}}, MenuItem__record{Label: "Copy", Disabled: false, Children: []MenuItem__record{}, Select: func() {
+			m.last = "copy"
+		}}, MenuItem__record{Label: "Paste", Disabled: true, Children: []MenuItem__record{}, Select: func() {
+		}}} {
+			__out[__i] = func(it MenuItem__record) string { return it.Label }(__item)
+		}
+		return __out
+	}()), 40, 10)
 	m.resizeWidgets()
 	return m
 }
@@ -109,6 +143,21 @@ func SetOpenCmd(v bool) tea.Cmd {
 	return func() tea.Msg { return setOpenMsg{value: v} }
 }
 
+func (m Model) Last() string {
+	return m.last
+}
+
+func (m Model) SetLast(v string) Model {
+	m.last = v
+	return m
+}
+
+type setLastMsg struct{ value string }
+
+func SetLastCmd(v string) tea.Cmd {
+	return func() tea.Msg { return setLastMsg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -120,6 +169,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setOpenMsg:
 		m = m.SetOpen(msg.value)
+	case setLastMsg:
+		m = m.SetLast(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -191,6 +242,7 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	open bool
+	last string
 
 	__n0 *fyne.Container
 }
@@ -199,6 +251,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.open = false
+	m.last = ""
 	return m
 }
 
@@ -208,6 +261,14 @@ func (m *Model) Open() bool {
 
 func (m *Model) SetOpen(v bool) {
 	m.open = v
+}
+
+func (m *Model) Last() string {
+	return m.last
+}
+
+func (m *Model) SetLast(v string) {
+	m.last = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
@@ -287,6 +348,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var open by mutableStateOf(false)
+    var last by mutableStateOf("")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -347,8 +409,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div style="background-color:#fff;border-radius:4px;border:1px solid #ddd;padding:4px;position:absolute;z-index:100">
-</div>
+<span data-sngl-slot="0" style="display:contents"></span>
 
 <script>
 window.__sngl_markup = Array.from(document.body.childNodes)
@@ -364,7 +425,7 @@ window.__sngl_reset = () => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { open: false };
+  var state = { open: false, last: "" };
   if (typeof window !== "undefined") {
     window.__sngl_state = state;
   }
@@ -378,16 +439,59 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testMenuOpenToggles });
   }
+  var __slot0 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    if (state.open) {
+      let __n0 = document.createElement("div");
+      __n0.setAttribute("style", "background-color:#fff;border-radius:4px;border:1px solid #ddd;display:flex;flex-direction:column;padding:4px;position:absolute;z-index:100");
+      __n0.setAttribute("role", "menu");
+      for (const it of [{ label: "Cut", disabled: false, children: [], select: () => {
+        state.last = "cut";
+      } }, { label: "Copy", disabled: false, children: [], select: () => {
+        state.last = "copy";
+      } }, { label: "Paste", disabled: true, children: [], select: () => {
+      } }]) {
+        let __n1 = document.createElement("button");
+        __n1.setAttribute("disabled", it.disabled);
+        __n1.textContent = it.label;
+        __n1.setAttribute("role", "menuitem");
+        __n1.addEventListener("click", () => {
+          it.select();
+        });
+        __n0.appendChild(__n1);
+      }
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n0) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n0, __place0_i_ref0);
+      }
+      __slot0.push(__n0);
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
+  }
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
 })();
 };
 window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:48dab0e90f0699524775fcbc6cd64cda
+pass sha256:583557af1be5039e55ff41add6bb28b3
 -- run/go/fyne --
-pass sha256:05bdeb23cb8803a70cdf9f88202d9710
+pass sha256:17d6fd94936c8122bf533b2208fa4ec4
 -- run/kotlin/android --
-pass sha256:1ac9cb52ea268d7804d25e4c0f031548
+pass sha256:fa9a7c16df43b93ae2b5ca3ab2c4d614
 -- run/none/html --
-pass sha256:0a26d963db118a25e85c67ac3cfc8c4f
+pass sha256:20272ea643334c9281e2cdac28c0be26

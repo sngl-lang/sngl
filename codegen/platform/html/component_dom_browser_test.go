@@ -63,11 +63,11 @@ import ui "sngl:ui"
 ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
 	{"select", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
+ui.window { var f = "b" select(:value=f, placeholder="pick") { choice(label="a") choice(label="b") choice(label="c") } }`,
 		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
 	{"radio", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { var r = "y" radio(options=["x","y"], :value=r) }`,
+ui.window { var r = "y" radio(:value=r) { choice(label="x") choice(label="y") } }`,
 		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
 	{"textarea", `import . "sngl:ui"
 import ui "sngl:ui"
@@ -78,11 +78,11 @@ ui.window { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="pa
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
 	{"table", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
+ui.window { table(columns=["A","B"]) { tableRow(cells=["1","2"]) tableRow(cells=["3","4"]) } }`,
 		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
 	{"tree", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
+ui.window { tree { treeItem(label="root") { treeItem(label="child") } } }`, []string{"<ul", "<li", "root", "child"}},
 	{"modal", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,

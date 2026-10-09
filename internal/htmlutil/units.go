@@ -1,6 +1,9 @@
 package htmlutil
 
 import (
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -36,4 +39,45 @@ func UnitLiteralToCSS(lit *ir.Literal) (string, bool) {
 		name = base
 	}
 	return ir.FormatUnitMagnitude(mag) + name, true
+}
+
+// UnitSumToCSS renders a sum or difference of unit literals as a CSS calc():
+// `16em + 2px` is what a folded value of a multi-base unit spells, one literal
+// per base it carries. Reports false for anything else.
+func UnitSumToCSS(b *ir.Binary) (string, bool) {
+	var terms []string
+	var walk func(e ir.Expr, sign string) bool
+	walk = func(e ir.Expr, sign string) bool {
+		switch x := e.(type) {
+		case *ir.Literal:
+			css, ok := UnitLiteralToCSS(x)
+			if !ok {
+				return false
+			}
+			if len(terms) > 0 {
+				css = sign + " " + css
+			} else if sign == "-" {
+				css = "-" + css
+			}
+			terms = append(terms, css)
+			return true
+		case *ir.Binary:
+			if x.Op != ast.BinAdd && x.Op != ast.BinSub {
+				return false
+			}
+			if !walk(x.Left, sign) {
+				return false
+			}
+			right := "+"
+			if (x.Op == ast.BinSub) != (sign == "-") {
+				right = "-"
+			}
+			return walk(x.Right, right)
+		}
+		return false
+	}
+	if !walk(b, "+") || len(terms) < 2 {
+		return "", false
+	}
+	return "calc(" + strings.Join(terms, " ") + ")", true
 }

@@ -124,11 +124,11 @@ const component ui.radio[platform] {
         Row(modifier={...style}) {
             for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() {
-                        value = opt
-                        change(opt)
+                    RadioButton(selected=(value == opt.label), onClick=func() {
+                        value = opt.label
+                        change(opt.label)
                     }) {}
-                    Text(text=opt) {}
+                    Text(text=opt.label) {}
                 }
             }
         }
@@ -136,11 +136,11 @@ const component ui.radio[platform] {
         Column(modifier={...style}) {
             for var opt = options {
                 Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
-                    RadioButton(selected=(value == opt), onClick=func() {
-                        value = opt
-                        change(opt)
+                    RadioButton(selected=(value == opt.label), onClick=func() {
+                        value = opt.label
+                        change(opt.label)
                     }) {}
-                    Text(text=opt) {}
+                    Text(text=opt.label) {}
                 }
             }
         }

@@ -10,7 +10,11 @@ import . "sngl:test"
 // changes the selected radio option.
 component main node {
     var sel = "medium"
-    radio(options=["small", "medium", "large"], :value=sel, direction=horizontal)
+    radio(:value=sel, direction=horizontal) {
+        choice(label="small")
+        choice(label="medium")
+        choice(label="large")
+    }
 }
 
 func testRadioValueMutates(t Test, c main) {
@@ -248,6 +252,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
 
+data class Choice__record(
+    var label: String
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -263,12 +271,12 @@ class MainScreenState {
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     Row(modifier = Modifier.safeDrawingPadding()) {
-        for (opt in listOf("small", "medium", "large")) {
+        for (opt in listOf(Choice__record(label = "small"), Choice__record(label = "medium"), Choice__record(label = "large"))) {
             Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = (state.sel == opt), onClick = {
-                    state.sel = opt
+                RadioButton(selected = (state.sel == opt.label), onClick = {
+                    state.sel = opt.label
                 })
-                Text(text = opt, modifier = Modifier)
+                Text(text = opt.label, modifier = Modifier)
             }
         }
     }
@@ -370,13 +378,13 @@ window.__sngl_boot = () => {
     let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n0.value = __prop___p0;
-      __n0.checked = __prop___p0 === __prop___p1;
-      __n1.textContent = __prop___p0;
+      __n0.value = __prop___p0.label;
+      __n0.checked = __prop___p0.label === __prop___p1;
+      __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n0.checked = __prop___p0 === __prop___p1;
+      __n0.checked = __prop___p0.label === __prop___p1;
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
@@ -384,8 +392,8 @@ window.__sngl_boot = () => {
     let __n4 = document.createElement("label");
     __n4.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
     let __n0 = document.createElement("input");
-    __n0.value = __prop___p0;
-    __n0.checked = __prop___p0 === __prop___p1;
+    __n0.value = __prop___p0.label;
+    __n0.checked = __prop___p0.label === __prop___p1;
     __n0.disabled = false;
     __n0.setAttribute("type", "radio");
     __n0.addEventListener("change", () => {
@@ -393,7 +401,7 @@ window.__sngl_boot = () => {
     });
     __n4.appendChild(__n0);
     let __n1 = document.createElement("span");
-    __n1.textContent = __prop___p0;
+    __n1.textContent = __prop___p0.label;
     __n4.appendChild(__n1);
     __root.appendChild(__n4);
     return {
@@ -413,14 +421,14 @@ window.__sngl_boot = () => {
     __slot0 = [];
     let __inst1_next = [];
     let __inst1_i = 0;
-    for (const opt of ["small", "medium", "large"]) {
+    for (const opt of [{ label: "small" }, { label: "medium" }, { label: "large" }]) {
       let __n2 = null;
       if (__inst1_live.length > __inst1_i) {
         __n2 = __inst1_live[__inst1_i];
         __n2.__set___p0(opt);
         __n2.__set___p1(state.sel);
         __n2.__set___on0(() => {
-          state.sel = opt;
+          state.sel = opt.label;
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.sel);
@@ -432,7 +440,7 @@ window.__sngl_boot = () => {
           __inst1_live[__inst1_i].__destroy();
         }
         let __n2__new = __cf___child0({ __p0: opt, __p1: state.sel, __on0: () => {
-          state.sel = opt;
+          state.sel = opt.label;
           for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
             ;
             __inst1_live[__inst1_live_ui].__set___p1(state.sel);
@@ -491,6 +499,6 @@ pass sha256:984e7f369b862c28d153b7a804dd078f
 -- run/go/fyne --
 pass sha256:be140ef1caa7387aa9b64424900ce3b0
 -- run/kotlin/android --
-pass sha256:d6182b44f38d98379c05d91c0398ad26
+pass sha256:b48670e6066904c3c142fafadbd796d1
 -- run/none/html --
-pass sha256:45a0d18bd64ec8c786181e3692c0c262
+pass sha256:004429f5d6b981c4bb046f72ed1061ae

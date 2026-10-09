@@ -599,6 +599,13 @@ type checker struct {
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootFamily *ir.Component
+	// familyPosition is non-zero while a return position or a slot's content
+	// resolves, where a data family's name is the family rather than its
+	// record (dataRecord).
+	familyPosition int
+	// dataPopulation is non-zero while a data slot's population is checked,
+	// where inserting another data slot forwards it rather than rendering.
+	dataPopulation int
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
@@ -2918,6 +2925,13 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	c.pushScope()
 	if _, taken := c.scope.Lookup(comp.Name); !taken {
 		_ = c.scope.Declare(irComp)
+		// A component naming itself as its family is data, and is read off
+		// the source before its signature resolves: a slot of its own type,
+		// the tree a record may be, names a data family there (bindFamily).
+		// Where the name already finds something, that is what it means.
+		if nt, ok := comp.ChildrenType.(*ast.NamedType); ok && nt.Package == "" && nt.Name == comp.Name && len(nt.TypeArgs) == 0 {
+			irComp.Data = true
+		}
 	}
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
@@ -2970,9 +2984,12 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	// `into`).
 	c.applyMarks(comp, irComp)
 	if comp.ChildrenType != nil {
+		c.familyPosition++
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
+		c.familyPosition--
 	}
 	named := c.bindFamily(comp, irComp, c.declPkg())
+	c.bindDataFamily(irComp)
 	c.afterMarks(func() {
 		// The converse of the rule reportBodylessComponents applies:
 		// #[intrinsic] answers where a bodyless component's render comes

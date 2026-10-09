@@ -20,9 +20,13 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		defer func() { ctx.copyShared = true }()
 	}
 
-	if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
-		if expr := irFromValue(val, e.ExprType()); expr != nil {
-			return expr
+	// A lambda on its own folds its body in place (below); as a value it is
+	// only itself.
+	if _, lambda := e.(*ir.Lambda); !lambda {
+		if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
+			if expr := irFromValue(val, e.ExprType()); expr != nil {
+				return expr
+			}
 		}
 	}
 
@@ -91,6 +95,11 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Call:
 		if x.Receiver != nil {
 			x.Receiver = foldExpr(x.Receiver, ctx)
+		}
+		// A call through a value: a record's event field read off a loop
+		// variable the unroll bound is that copy's handler.
+		if x.Callee != nil {
+			x.Callee = foldExpr(x.Callee, ctx)
 		}
 		for i := range x.Args {
 			x.Args[i].Value = foldCallArg(x, i, ctx)
@@ -317,6 +326,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		if n.Call != nil {
 			if n.Call.Receiver != nil {
 				n.Call.Receiver = foldExpr(n.Call.Receiver, ctx)
+			}
+			if n.Call.Callee != nil {
+				n.Call.Callee = foldExpr(n.Call.Callee, ctx)
 			}
 			for i := range n.Call.Args {
 				n.Call.Args[i].Value = foldCallArg(n.Call, i, ctx)

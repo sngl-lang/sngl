@@ -46,6 +46,9 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 	if amounts, ok := interp.UnitAmounts(val); ok {
 		return unitValueExpr(amounts, typ)
 	}
+	if l, ok := val.(constLambda); ok {
+		return ir.CloneExprSharingDecls(l.lam)
+	}
 	switch v := val.(type) {
 	case nil:
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}

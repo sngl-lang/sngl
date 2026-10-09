@@ -46,7 +46,9 @@ component main node {
         toolbar(style={padding=9px}) {
             button(text="New")
         }
-        menubar(items=["File"])
+        menubar {
+            menuItem(label="File")
+        }
         avatar(initials="JD")
     }
 }

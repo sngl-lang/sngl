@@ -102,13 +102,11 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		n.Body = st.transformBlock(n.Body)
 		n.Else = st.transformBlock(n.Else)
 	case *ir.NodeInst:
-		for i := range n.Props {
-			if n.Props[i].Value != nil {
-				p, v := st.transformExpr(n.Props[i].Value)
-				pre = append(pre, p...)
-				n.Props[i].Value = v
-			}
-		}
+		// A prop is left for the emitter, which writes the call as an
+		// expression of its own: hoisted, the loop building it was a
+		// statement of the view, which reactivity made a render slot when the
+		// list read state -- and the temp it filled stayed declared where the
+		// node was built, out of the slot's reach.
 		n.Children = st.transformBlock(n.Children)
 		for i := range n.Handlers {
 			if n.Handlers[i].Func != nil {

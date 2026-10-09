@@ -358,18 +358,19 @@ component Tour ui.node {
                 @change { darkMode!! },
             )
             ui.toggle(:checked=toggleOn, label="Notifications")
-            ui.radio(
-                direction = horizontal,
-                options = ["small", "medium", "large"],
-                value = selectedRadio,
-            )
+            ui.radio(direction=horizontal, value=selectedRadio) {
+                ui.choice(label="small")
+                ui.choice(label="medium")
+                ui.choice(label="large")
+            }
         }
         ui.text(value="Select", style={fontSize=20px, fontWeight=bold})
-        ui.select(
-            options = ["Apple", "Banana", "Cherry", "Date"],
-            placeholder = "Pick a fruit",
-            value = selectedOption,
-        )
+        ui.select(placeholder="Pick a fruit", value=selectedOption) {
+            ui.choice(label="Apple")
+            ui.choice(label="Banana")
+            ui.choice(label="Cherry")
+            ui.choice(label="Date")
+        }
         ui.divider
 
         // --- Progress / Spinner / Tabs ---------------------------
@@ -464,14 +465,32 @@ component Tour ui.node {
         }
         ui.divider
         ui.text(value="Table", style={fontSize=20px, fontWeight=bold})
-        ui.table(columns=["Name", "Role", "Status"])
+        ui.table(columns=["Name", "Role", "Status"]) {
+            ui.tableRow(cells=["Ada", "Engineer", "Active"])
+            ui.tableRow(cells=["Grace", "Admiral", "Retired"])
+        }
         ui.text(value="Tree", style={fontSize=20px, fontWeight=bold})
-        ui.tree(items=["Documents", "Photos", "Music", "Videos"])
+        ui.tree {
+            ui.treeItem(label="Documents") {
+                ui.treeItem(label="Taxes")
+                ui.treeItem(label="Letters")
+            }
+            ui.treeItem(label="Photos")
+            ui.treeItem(label="Music")
+        }
         ui.divider
 
         // --- Menubar / Toolbar / DatePicker ----------------------
         ui.text(value="Menubar", style={fontSize=20px, fontWeight=bold})
-        ui.menubar(items=["File", "Edit", "View", "Help"])
+        ui.menubar {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Open")
+                ui.menuItem(label="Save")
+            }
+            ui.menuItem(label="Edit")
+            ui.menuItem(label="View")
+            ui.menuItem(label="Help")
+        }
         ui.text(value="Toolbar", style={fontSize=20px, fontWeight=bold})
         ui.toolbar {
             ui.button(text="New")

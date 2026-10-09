@@ -317,11 +317,11 @@ const component ui.radio[platform] {
     html.fieldset(style={display=flex, flexDirection=(direction == ui.Orientation.horizontal ? row : column), gap=8px, border="none", padding=0, ...style}) {
         for var opt = options {
             html.label(style={display=inlineFlex, alignItems=center, gap=4px}) {
-                html.input(type="radio", value=opt, checked=(opt == value), disabled=disabled, @change {
-                    value = opt
-                    change(opt)
+                html.input(type="radio", value=opt.label, checked=(opt.label == value), disabled=disabled, @change {
+                    value = opt.label
+                    change(opt.label)
                 })
-                html.span(textContent=opt)
+                html.span(textContent=opt.label)
             }
         }
     }
@@ -346,7 +346,7 @@ const component ui.select[platform] {
             html.option(value="", disabled=true, selected=true, textContent=placeholder)
         }
         for var opt = options {
-            html.option(value=opt, selected=(opt == value), textContent=opt)
+            html.option(value=opt.label, selected=(opt.label == value), textContent=opt.label)
         }
     }
 }
@@ -587,7 +587,7 @@ const component ui.table[platform] {
         html.tbody {
             for var row = rows {
                 html.tr {
-                    for var cell = row {
+                    for var cell = row.cells {
                         html.td(textContent=cell, style={padding=8px, borderBottom="1px solid #eee"})
                     }
                 }
@@ -596,21 +596,50 @@ const component ui.table[platform] {
     }
 }
 
+// A tree's row: a node's label, and how far its depth indents it.
+struct _TreeRow {
+    label  string
+    indent ui.measurement
+}
+
+// A tree's rows, in traversal order, each node's below it and indented one
+// step further.
+const func _treeRows(items list<ui.treeItem>, indent ui.measurement) list<_TreeRow> {
+    var out list<_TreeRow> = []
+    for var it = items {
+        out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + 16px)]
+    }
+    return out
+}
+
 const component ui.tree[platform] {
     html.ul(style={listStyleType=none, paddingLeft=16px, ...style}) {
-        for var item = items {
-            html.li(textContent=item)
+        for var row = _treeRows(items, 0px) {
+            html.li(textContent=row.label, style={paddingLeft=row.indent})
         }
     }
 }
 
 const component ui.menu[platform] {
-    html.div(style={...style, position=absolute, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+    if open {
+        html.div(role="menu", style={...style, position=absolute, display=flex, flexDirection=column, background="#fff", border="1px solid #ddd", borderRadius=4px, padding=4px, zIndex=100}) {
+            for var it = items {
+                html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
+                    it.select()
+                })
+            }
+        }
     }
 }
 
+// The top-level entries; a submenu is not drawn yet.
 const component ui.menubar[platform] {
-    html.nav(style={...style, display=flex, gap=4px}) {
+    html.nav(role="menubar", style={...style, display=flex, gap=4px}) {
+        for var it = items {
+            html.button(role="menuitem", disabled=it.disabled, textContent=it.label, @click {
+                it.select()
+            })
+        }
     }
 }
 

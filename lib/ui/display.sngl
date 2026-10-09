@@ -216,14 +216,16 @@ component _example_spinner node {
 // Which way a table's sorted column runs, if it is sorted at all.
 enum SortDirection { none, asc, desc }
 
-// Tabular data display.
-// TODO should use families to define rows as children
+// One of a table's rows: data, since it names itself as its family, so a
+// table reads its rows as a list rather than rendering them. Each cell is
+// aligned to its column by position.
+component tableRow(cells list<string>) tableRow
+
+// Tabular data display. Its rows are written as its children, each a `tableRow`,
+// under an `if` or a `for` where they depend on something.
 component table(
     style         Style = Style{},
-    columns       list<string>, // the column headers
-    // The cell grid: one list per row, each cell aligned to its column by
-    // position.
-    rows          list<list<string>> = [],
+    columns       list<string>,                       // the column headers
     selectable    bool = false,                       // lets the user select a row
     :selected     int,                                // the selected row's index from 0
     sortable      bool = false,                       // lets the user re-order by a column
@@ -231,28 +233,51 @@ component table(
     sortDirection SortDirection = SortDirection.none, // which way the sorted column runs
     @select(),                                        // the selection changed
     @sort(column string),                             // the user changed the sort
+    // The rows, in the order they are shown.
+    rows          ...component tableRow,
 ) node
 
 component _example_table node {
     vbox(style={padding=16px}) {
-        table(columns=["Name", "Role", "Status"])
+        table(columns=["Name", "Role", "Status"]) {
+            tableRow(cells=["Ada", "Engineer", "Active"])
+            tableRow(cells=["Grace", "Admiral", "Retired"])
+        }
     }
 }
 
-// Hierarchical data display.
-// TODO should use families to define nodes as children
+// One node of a tree: data, since it names itself as its family, so a tree
+// reads its nodes as a list rather than rendering them. The nodes under it
+// are written as its children, as a tree's own are.
+component treeItem(
+    label    string, // what the node's row shows
+    // The nodes under this one, in order.
+    children ...component treeItem,
+) treeItem
+
+// Hierarchical data display. Its top-level nodes are written as its
+// children, each a `treeItem`, under an `if` or a `for` where they depend on
+// something.
 component tree(
     style     Style = Style{},
-    items     list<string>,   // the visible row labels, in traversal order
     :selected string,         // the label of the selected row
-    expanded  list<int> = [], // the indices of the expanded nodes
+    expanded  list<int> = [], // the indices of the expanded nodes, in traversal order
     @select(),                // a row was picked
     @expand(),                // the user expanded or collapsed a node
+    // The top-level nodes, in order.
+    items     ...component treeItem,
 ) node
 
 component _example_tree node {
     vbox(style={padding=16px}) {
-        tree(items=["Documents", "Photos", "Music", "Videos"])
+        tree {
+            treeItem(label="Documents") {
+                treeItem(label="Taxes")
+                treeItem(label="Letters")
+            }
+            treeItem(label="Photos")
+            treeItem(label="Music")
+        }
     }
 }
 

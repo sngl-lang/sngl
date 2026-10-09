@@ -912,6 +912,92 @@ values. `testdata/family_props.sngl`, `family_generic.sngl`,
 `error_family_member_props.sngl`, `error_nav_surface.sngl` and
 `error_family_decl.sngl`.
 
+**A component that names itself as its family is data**
+(`component choice(label string) choice`, `ir.Component.Data`): its own
+family and the only member of it. Written in a slot of its type it is a record
+of its props, never rendered, and the slot is never inserted: in the
+container's body its name is the list of those records, `options list<choice>` for `options ...component choice`. It is how a widget that takes
+its choices as a list is written with them as children --
+`ui.select { ui.choice(label="Apple") … }`, `ui.radio` likewise, and a
+`ui.table`'s `ui.tableRow`s and a `ui.tree`'s `ui.treeItem`s -- and the
+caller's population may
+hold `if`s, `for`s and components that compose records. Its name in a value
+position is its record (`Component.Record`, a struct `<name>__record` declared
+beside it, which `promoteForeignStructs` declares in a program that builds
+one), and in a family position (a return position, a slot's content) it is the
+component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognises
+the self-reference, and refuses another component naming a data component as
+its family; `checkDataComponent` refuses a block, an event and a slot of
+anything but records, since a record holds its props and nothing else. A slot
+of records is a field of the record, so a record may be a tree --
+`component treeItem(label string, children ...component treeItem) treeItem`
+-- and each level's population is read as a container's is
+(`testdata/family_data_nested.sngl`). The self-reference is read off the source
+before the signature resolves, where the name finds nothing else: a
+`component node(…) node` in a body that sees `ui.node` returns that.
+
+**A data component's events are functions of its record**
+(`ir.EventFuncType`): `component action(label string, @run()) action` is a
+record with a `run func()` field, which the container calls where it means the
+record was acted on -- `a.run()` in its own handler. The call site's handler
+is that function, a lambda closing over the call site's scope, and one nobody
+wrote does nothing (`dataFamilies.eventFunc`); a record never emits, having no
+body. A write in one patches what reads it on a mutation target, since
+passReactivity reaches every lambda, and a raise in one resolves against the
+caller's boundaries, past any the container wraps it in
+(`testdata/family_data_events.sngl`, `family_data_events.txtar`,
+`cmd/sngl/testdata/family_data_events_runs.txt`). It needed four general
+fixes: `codegen.WalkLowered` reaches a lambda in a `for`'s iterable, a
+spread, a ternary and a conversion, or html's patch in one kept the node's
+source name; Kotlin spells a function type as one (`(Int) -> Unit`, zero `{ _: Int -> }`) rather than `Any`; JavaScript parenthesizes a function literal it
+calls where it stands; and the interpreter's lambda closing over another
+call's ended snapshot reads and writes through to where that snapshot was
+taken (`LambdaValue.Call`), or a closure made inside a `map` wrote nothing.
+
+On html a loop over records a page writes into its markup unrolls with each
+record's handler a constant: in a document's fold a function literal is a
+value, a copy reading the values the fold bound for it (`heldLambda`), and
+`list.map`/`list.filter` with one evaluate per element (`evalListLambda`), so
+each copy's `it.select()` folds to a call of its own handler -- the fold
+folds a call's callee too. A view loop the fold still cannot evaluate on a
+static site -- a served page renders one on the server -- is refused at the loop, or at the node the program wrote where an override's
+body holds it (`refuseUnrolledViewLoops`); it used to be written once with its
+variable bound to nothing (`component_menubar.txtar`,
+`cmd/sngl/testdata/html_static_loop_unevaluable_refused.txt`). `ui.menu` and
+`ui.menubar` take `ui.menuItem` records, each with its own `@select` and a
+submenu of its children; `ui.toolbar` takes widgets and nothing else. A prop's default is the record's
+field's where the call site omits it. A data slot inserted anywhere but in
+another data slot's population is refused (`refuseDataSlotInsertion`); there
+it forwards. A population is read in every package the import closure
+reaches -- an `md:` document's tables are written in the document's package --
+and the rewrite is idempotent, since the library IR it touches is shared.
+
+The slot's prop (`SlotDecl.Values`) is synthesized at registration, and the
+checker writes no default for it at a call site: `lower.DataFamilies` builds
+the list from the population and binds it, at the start of `optimize.Optimize`
+-- which every pipeline reaches before anything could fold the prop to its
+empty default -- and in `interp.Prepare`. It splices each component composing
+records first (one with state is refused), then reads a record, an
+`if` as a ternary of two lists spread in place, a `for` over a list as a `map`
+(a `filter` first where the body is a member under an `if`), and an insertion
+of the container's own data slot -- forwarding -- as that list spread. A `for`
+holding more than one record would map to a list of lists, which nothing
+flattens yet, and is refused. From there the list is an ordinary prop, so
+reactivity, a component built at run time, the interpreter and every backend
+read it unchanged (`testdata/family_data.sngl`,
+`testdata/error_family_data.sngl`, `testdata/select_choices.txtar`). The
+general shape is nav's -- pages read as data -- and nav is to be
+reimplemented on it.
+
+Two general fixes it needed. A lambda handed to a generic method takes an
+unannotated parameter's type from what the call has bound
+(`inferArgExpr`): `ps.map(func(p) => p.name)` was `list<dyn>`
+(`testdata/lambda_param_from_receiver.sngl`). And `passNoListLambdas` no longer
+hoists a `map` or `filter` out of a node's prop: the Go emitter writes the call
+as an expression of its own, and hoisted, fyne and gtk4 made the accumulator a
+render slot appending to a list it could not see
+(`testdata/list_map_in_view_body.txtar`).
+
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name
 nothing. `familiesFirst` orders pass1's component registration by the
@@ -3668,6 +3754,22 @@ Four things follow, and the first three are the record restated:
 
 The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
 duration is single-base.
+
+**The optimizer holds a multi-base value as the interpreter's**
+(`interp.UnitLiteralValue`, combined by `interp.UnitBinary`), since no number
+can stand for one, and `irFromValue` spells it back one literal per base. It
+used to be unevaluable, and so was any struct or list holding one: html's
+static unroll of a loop over rows carrying an indent wrote one copy with its
+variable bound to nothing. html spells a folded sum as `calc(…)`
+(`htmlutil.UnitSumToCSS`). Two values are one unit when their tables come from
+one declaration (`unitTable.Decl`): each environment builds its own tables,
+and compared by pointer, `Add` across two returned its left operand
+(`testdata/html_unroll_measurement.txtar`). A declaration copied for another
+target is the same unit, compared by name and bases. And the interpreter
+reads a literal's unit off its type (`Env.unitTableOf`) rather than its
+suffix: a program declaring its own `unit length { px, … }` claimed `px` for
+every body it ran, so a measurement sum met a `length` it could not be added
+to (`testdata/unit_suffix_two_units.sngl`).
 
 **Equality is per base on all four**, and the three compiled targets get there
 differently: Go compares its `Measurement` struct field-wise and Kotlin its

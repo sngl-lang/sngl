@@ -53,53 +53,69 @@ component _example_tabs node {
     }
 }
 
-// Context or dropdown menu. `items` is the list of entry labels;
-// `open` is two-way bound visibility. `@select` fires with the chosen
-// item, `@close` when the menu dismisses without selection (click
-// outside, Escape).
-// TODO Use families pass the items as children
+// One entry of a menu or a menu bar: data, since it names itself as its
+// family, so the menu reads its entries as a list rather than rendering them.
+// `@select` fires when the user picks it; the entries under it are its
+// submenu.
+component menuItem(
+    label    string,       // what the entry shows
+    disabled bool = false, // shown, but cannot be picked
+    @select(),             // the user picked this entry
+    // The entries of this one's submenu, in order.
+    children ...component menuItem,
+) menuItem
+
+// Context or dropdown menu. Its entries are written as its children, each a
+// `menuItem` carrying its own `@select`. `open` is its visibility. `@close`
+// fires when the menu dismisses without a selection (click outside, Escape).
 component menu(
     style Style = Style{},
-    items list<string>,
     open  bool = false,
-    @select(),
     @close(),
+    // The entries, in order.
+    items ...component menuItem,
 ) node
 
 component _example_menu node {
     var showMenu = false
+    var picked = ""
     vbox(style={padding=16px}) {
         button(text="Show Menu", @click { showMenu = true })
-        menu(items=["Cut", "Copy", "Paste"], open=showMenu)
+        menu(open=showMenu) {
+            menuItem(label="Cut", @select { picked = "Cut" })
+            menuItem(label="Copy", @select { picked = "Copy" })
+            menuItem(label="Paste", disabled=true)
+        }
     }
 }
 
-// Horizontal menu bar — typically at the top of a window on desktop.
-// Each entry in `items` is rendered as a top-level menu title;
-// sub-menu items are provided by the host platform's menu
-// integration. `@select` fires with the activated menu path.
-// TODO Use families pass the items as children
+// Horizontal menu bar — typically at the top of a window on desktop. Its
+// top-level entries are written as its children, each a `menuItem` whose own
+// children are its menu.
 component menubar(
     style Style = Style{},
-    items list<string>,
-    @select(),
+    // The top-level entries, in order.
+    items ...component menuItem,
 ) node
 
 component _example_menubar node {
     vbox(style={padding=16px}) {
-        menubar(items=["File", "Edit", "View", "Help"])
+        menubar {
+            menuItem(label="File") {
+                menuItem(label="Open")
+                menuItem(label="Save")
+            }
+            menuItem(label="Edit")
+            menuItem(label="View")
+            menuItem(label="Help")
+        }
     }
 }
 
-// Horizontal bar of action buttons. `items` populates the default
-// buttons; nesting children lets you build custom toolbar contents
-// (mix of buttons, separators, spacers). `@select` fires when an
-// item from `items` is activated.
-// TODO Use families pass the items as children
+// Horizontal bar of controls: its children, a mix of buttons, separators and
+// spacers, each answering for itself.
 component toolbar(
     style    Style = Style{},
-    items    list<string> = [],
-    @select(),
     controls ...component,
 ) node
 

@@ -663,7 +663,7 @@ const component ui.toggle[platform] {
 }
 
 const component ui.select[platform] {
-    Select(selected=value, options=options, style={...style}, @change(v) {
+    Select(selected=value, options=options.map(func(o) => o.label), style={...style}, @change(v) {
         value = v
         change(v)
     }) {}

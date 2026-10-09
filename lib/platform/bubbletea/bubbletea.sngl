@@ -303,7 +303,7 @@ const component ui.select[platform] {
         },
         focus = Focus{enabled=true},
         binds = [Bind{prop="value", get="tui.SelectedString"}],
-        options = options,
+        options = options.map(func(o) => o.label),
         style = {...style},
     ) {}
 }
@@ -476,9 +476,20 @@ const component ui.table[platform] {
         focus = Focus{enabled=true},
         binds = [Bind{prop="selected", get="tui.Cursor"}],
         columns = columns,
-        rows = rows,
+        rows = rows.map(func(r) => r.cells),
         style = {...style},
     ) {}
+}
+
+// A tree's labels in traversal order, each node's below it. bubbles' list
+// reports its selection as the item's text, which is what `selected` holds, so
+// a label is not indented: the depth would be read back as part of it.
+const func _treeLabels(items list<ui.treeItem>) list<string> {
+    var out list<string> = []
+    for var it = items {
+        out = [...out, it.label, ..._treeLabels(it.children)]
+    }
+    return out
 }
 
 const component ui.tree[platform] {
@@ -493,7 +504,7 @@ const component ui.tree[platform] {
         },
         focus = Focus{enabled=true},
         binds = [Bind{prop="selected", get="tui.SelectedString"}],
-        items = items,
+        items = _treeLabels(items),
         style = {...style},
     ) {}
 }
@@ -513,7 +524,7 @@ const component ui.menu[platform] {
                 resize = ".SetSize($\{w\}, $\{h\})",
             },
             focus = Focus{enabled=true},
-            items = items,
+            items = items.map(func(it) => it.label),
             style = {...style},
         ) {}
     }

@@ -60,7 +60,7 @@ func (c *checker) reportBodylessLibComponents() {
 			if comp == nil || comp.AST == nil || !comp.Bodyless {
 				continue
 			}
-			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
+			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) || ir.IsDataMember(comp) {
 				continue
 			}
 			if !used[comp] {
@@ -140,7 +140,7 @@ func renderSuppliedElsewhere(comp *ir.Component) bool {
 	if f := ir.EmittedFamily(comp); f != nil && renderSuppliedElsewhere(f) {
 		return true
 	}
-	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
+	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || ir.IsDataMember(comp) ||
 		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
 }
 

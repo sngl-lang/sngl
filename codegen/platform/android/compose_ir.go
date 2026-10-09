@@ -251,9 +251,11 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 		// write-back as a @change handler (like `input`), so selecting an
 		// option calls it with the chosen label. `expanded` is per-instance
 		// local state controlling the menu.
+		// The choices arrive as records (a choice is data), and the menu shows
+		// each one's label.
 		optionsExpr := "listOf<String>()"
 		if o := codegen.NodeProp(n, "options"); o != nil {
-			optionsExpr = cc.kc.EvalExpr(o)
+			optionsExpr = "(" + cc.kc.EvalExpr(o) + ").map { it.label }"
 		}
 		valueExpr := "\"\""
 		if v := codegen.NodeProp(n, "value"); v != nil {

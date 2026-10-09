@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -34,7 +35,9 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	// from the pipeline: without it `sngl:time`'s `timer` is the empty stub
 	// every stdlib component is before a platform implements it, and schedules
 	// nothing.
-	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	if err := Prepare(pkg); err != nil {
+		return nil, err
+	}
 	env, err := sessionEnv(pkg, comp)
 	if err != nil {
 		return nil, err
@@ -202,7 +205,9 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	// The reloaded program is a program this target runs, so it takes this
 	// platform's bodies exactly as the first one did. Without it a reload
 	// silently dropped every timer: `timer` reverted to the empty stub.
-	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	if err := Prepare(pkg); err != nil {
+		return nil, err
+	}
 	env, err := sessionEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
@@ -297,4 +302,14 @@ func sameType(a, b *ir.Type) bool {
 		return a == b
 	}
 	return a.String() == b.String()
+}
+
+// Prepare is what the interpreter takes from the pipeline before it runs a
+// checked package. A target gets the bodies its own platform package declares
+// (sngl:time's `timer` is an empty stub until a platform implements it), and a
+// data family's slot is the list its call site's population renders, which
+// lower.DataFamilies builds once the compositions in it are spliced.
+func Prepare(pkg *ir.Package) error {
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
+	return lower.DataFamilies(pkg, nil)
 }

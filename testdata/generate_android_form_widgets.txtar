@@ -40,7 +40,10 @@ window {
 
     input(placeholder="Name", value=name, @input(e) { name = e })
     input(value=plain)
-    select(options=["Apple", "Banana"], placeholder="Pick", value=fruit)
+    select(placeholder="Pick", value=fruit) {
+        choice(label="Apple")
+        choice(label="Banana")
+    }
     progress(value=2.0, max=10.0)
     datepicker(placeholder="Birthday")
     datepicker(value=birthday)
@@ -74,6 +77,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
+
+data class Choice__record(
+    var label: String
+)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
@@ -119,7 +126,7 @@ fun MainScreen() {
                     Text(if (value__inst2.isNotEmpty()) value__inst2 else "Pick")
                 }
                 DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
-                    listOf("Apple", "Banana").forEach { opt ->
+                    (listOf(Choice__record(label = "Apple"), Choice__record(label = "Banana"))).map { it.label }.forEach { opt ->
                         DropdownMenuItem(text = { Text(opt) }, onClick = {
                             value__inst2 = opt
                             expanded1 = false
@@ -227,4 +234,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:730a2f541af5b456ca8a4001cfe43b4d
+pass sha256:b01d7a4feb3c3aa7bc597339f73a968a

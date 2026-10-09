@@ -1,0 +1,31 @@
+// A lambda handed to a generic method takes an unannotated parameter's type
+// from what the call has already bound: `ps.map(func(p) => p.name)` reads p as
+// the list's element, so `p.name` is a string and the result a list of them.
+// Inferring the call's type parameters checked the lambda with nothing
+// expected, so p was dyn, `p.name` dyn, and the result `list<dyn>` -- which a
+// `list<string>` refused.
+
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Pet {
+    name string
+    legs int
+}
+
+func names(ps list<Pet>) list<string> {
+    return ps.map(func(p) => p.name)
+}
+
+func legs(ps list<Pet>) list<int> {
+    return ps.map(func(p) => p.legs * 2)
+}
+
+func testTheParameterIsTheElement(t Test) {
+    var ps = [Pet{name="cat", legs=4}, Pet{name="hen", legs=2}]
+    t.assert(names(ps).join(",") == "cat,hen")
+    t.assert(legs(ps)[1] == 4)
+}
+
+ui.window {
+}

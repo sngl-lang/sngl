@@ -53,8 +53,24 @@ func funcValue(fn *ir.Func, env *Env) *LambdaValue {
 //
 // Rebound even when the body failed, because the statements before the failure
 // did run.
+//
+// A lambda made while another lambda ran closes over that call's snapshot,
+// which nothing reads once the call has returned: its values were carried back
+// to where it was taken from, and go stale there as the program runs on. So a
+// lambda closing over an ended call reads the scopes that call was taken from
+// first, and writes back to them after -- a handler a record holds is made
+// inside the `map` that builds the list, and its writes reached nobody
+// (testdata/family_data_events.sngl). A call still running is left alone: what
+// it has written has not reached its origin yet.
 func (lv *LambdaValue) Call(args []any) (any, error) {
+	ended := lv.env.ended
+	if ended {
+		for o := lv.env.origin; o != nil; o = o.origin {
+			lv.env.refreshFrom(o)
+		}
+	}
 	child := lv.env.Snapshot()
+	defer func() { child.ended = true }()
 	for i, p := range lv.params(args) {
 		if i < len(args) {
 			child.Set(p, args[i])
@@ -63,6 +79,9 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 	defer child.enterFrame(lv.site)()
 	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
+	if ended {
+		lv.env.writeBack()
+	}
 	return res, err
 }
 
@@ -110,6 +129,75 @@ func UnitAmounts(v any) (map[string]float64, bool) {
 	return u.Amounts, true
 }
 
+// UnitLiteralValue is a unit literal's value, for an evaluator outside the
+// interpreter that holds one: the optimizer, folding a constant that holds a
+// multi-base unit, which no number can stand for. It is the interpreter's own
+// value, so UnitAmounts spells it back and UnitBinary combines it with one the
+// interpreter made.
+func UnitLiteralValue(lit *ir.Literal) (any, bool) {
+	ud := ir.UnitDeclOf(lit.Type)
+	mag, base, ok := ir.UnitMagnitude(lit)
+	if ud == nil || !ok {
+		return nil, false
+	}
+	amounts := map[string]float64{}
+	if mag != 0 {
+		amounts[base] = mag
+	}
+	return newUnitValue(buildUnitTableFromDef(ud), lit.Suffix, amounts), true
+}
+
+// UnitBinary is op on a and b where either is a unit value (isUnit): the sum
+// or difference of two values of one unit, a value scaled by a number, and
+// equality base by base. Anything else is not evaluable (ok false) -- the
+// checker refuses an ordering of a multi-base unit, and a raw comparison of two
+// values would compare maps.
+func UnitBinary(op ast.BinaryOp, a, b any) (val any, ok, isUnit bool) {
+	ua, aUnit := a.(unitValue)
+	ub, bUnit := b.(unitValue)
+	if !aUnit && !bUnit {
+		return nil, false, false
+	}
+	num := func(v any) (float64, bool) {
+		switch n := v.(type) {
+		case int:
+			return float64(n), true
+		case float64:
+			return n, true
+		}
+		return 0, false
+	}
+	switch {
+	case aUnit && bUnit && ua.sameUnit(ub):
+		switch op {
+		case ast.BinAdd:
+			return ua.Add(ub), true, true
+		case ast.BinSub:
+			return ua.Sub(ub), true, true
+		case ast.BinEq:
+			return ua.Equal(ub), true, true
+		case ast.BinNeq:
+			return !ua.Equal(ub), true, true
+		}
+	case aUnit && !bUnit:
+		if f, ok := num(b); ok {
+			switch op {
+			case ast.BinMul:
+				return ua.Scale(f), true, true
+			case ast.BinDiv:
+				if f != 0 {
+					return ua.Scale(1 / f), true, true
+				}
+			}
+		}
+	case bUnit && !aUnit:
+		if f, ok := num(a); ok && op == ast.BinMul {
+			return ub.Scale(f), true, true
+		}
+	}
+	return nil, false, true
+}
+
 // newUnitValue takes ownership of amounts, so every caller passes a map it
 // built.
 func newUnitValue(table *unitTable, suffix string, amounts map[string]float64) unitValue {
@@ -142,8 +230,24 @@ func (u unitValue) eachBase(peers []unitValue, f func(base string)) {
 	}
 }
 
+// sameUnit reports whether u and other are values of one unit declaration.
+// Each environment builds its own tables, so two tables of one declaration
+// are one unit; and a build clones the package per target, so two
+// declarations of one name and the same bases are one declaration copied --
+// the optimizer's value of a literal and the interpreter's met as two.
+func (u unitValue) sameUnit(other unitValue) bool {
+	if u.Table == other.Table {
+		return true
+	}
+	a, b := u.Table, other.Table
+	if a == nil || b == nil || a.Decl == nil || b.Decl == nil {
+		return false
+	}
+	return a.Decl == b.Decl || a.Decl.Name == b.Decl.Name && slices.Equal(a.Bases, b.Bases)
+}
+
 func (u unitValue) Equal(other unitValue) bool {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return false
 	}
 	equal := true
@@ -167,14 +271,14 @@ func (u unitValue) combine(other unitValue, op func(a, b float64) float64) unitV
 }
 
 func (u unitValue) Add(other unitValue) unitValue {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return u
 	}
 	return u.combine(other, func(a, b float64) float64 { return a + b })
 }
 
 func (u unitValue) Sub(other unitValue) unitValue {
-	if u.Table != other.Table {
+	if !u.sameUnit(other) {
 		return u
 	}
 	return u.combine(other, func(a, b float64) float64 { return a - b })
@@ -258,11 +362,14 @@ func (u unitValue) firstBase() string {
 }
 
 func (u unitValue) sameFamily(other unitValue) bool {
-	return u.Table != nil && u.Table == other.Table
+	return u.Table != nil && u.sameUnit(other)
 }
 
 // unitTable maps suffixes to conversion factors.
 type unitTable struct {
+	// Decl is the declaration the table was built from, which is what makes
+	// two values one unit.
+	Decl        *ir.UnitDef
 	Base        string
 	Conversions map[string]float64
 	// BaseOf is the base each suffix reduces to (a base reduces to itself),
@@ -344,6 +451,9 @@ type Env struct {
 	inst *ir.NodeInst
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
+	// ended says this is the snapshot a lambda call ran in, and the call has
+	// returned (LambdaValue.Call).
+	ended bool
 	// spreadVals holds the operands of the spreads the running statement
 	// evaluates once (ir.StatementSpreads), by site.
 	spreadVals map[int]any
@@ -2546,6 +2656,27 @@ func (env *Env) evalTailAware(e ir.Expr, fn *ir.Func) (any, []any, bool, error) 
 	}
 }
 
+// unitTableOf is the table of the unit lit is a literal of: its type's
+// declaration where the checker recorded one, and the table its suffix names
+// otherwise. A suffix alone is ambiguous -- a program declaring its own `unit
+// length { px, … }` claims `px` for the whole environment, and a library body
+// writing `16px` for a measurement was then a length the measurement it was
+// added to could not be added to.
+func (env *Env) unitTableOf(lit *ir.Literal) *unitTable {
+	if ud := ir.UnitDeclOf(lit.Type); ud != nil {
+		if t := env.Units[lit.Suffix]; t != nil && t.Decl == ud {
+			return t
+		}
+		for _, t := range env.Units {
+			if t.Decl == ud {
+				return t
+			}
+		}
+		return buildUnitTableFromDef(ud)
+	}
+	return env.Units[lit.Suffix]
+}
+
 // makeUnitValue converts a unit literal to a unitValue.
 func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	suffix := lit.Suffix
@@ -2558,7 +2689,7 @@ func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 	if err != nil {
 		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Value, err)
 	}
-	table := env.Units[suffix]
+	table := env.unitTableOf(lit)
 	base, amount := suffix, num
 	if table != nil {
 		if factor, ok := table.Conversions[suffix]; ok {

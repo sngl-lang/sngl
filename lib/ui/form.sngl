@@ -116,24 +116,29 @@ component _example_checkbox node {
 // The axis a group of controls is laid out along.
 enum Orientation { vertical, horizontal }
 
-// Group of mutually exclusive options. `options` is the list of choice
-// labels; `value` is the currently selected label (matched by string
-// equality). `direction` is the axis the choices are laid out along. `@change` fires with the newly selected
+// Group of mutually exclusive options. Its choices are written as its
+// children, each a `choice`, as a select's are. `value` is the currently
+// selected choice's label (matched by string equality). `direction` is the
+// axis the choices are laid out along. `@change` fires with the newly selected
 // value on user selection.
-// TODO Should this use children for the options?
 component radio(
-    options   list<string>,
     :value    string,
     disabled  bool = false,
     direction Orientation = Orientation.vertical,
     style     Style = Style{},
     @change(value string),
+    // The choices, in the order they are laid out.
+    options   ...component choice,
 ) node
 
 component _example_radio node {
     var size = "medium"
     vbox(style={gap=8px, padding=16px}) {
-        radio(options=["small", "medium", "large"], :value=size, direction=horizontal)
+        radio(:value=size, direction=horizontal) {
+            choice(label="small")
+            choice(label="medium")
+            choice(label="large")
+        }
         text(value="Selected: " + size)
     }
 }
@@ -158,13 +163,17 @@ component _example_toggle node {
     }
 }
 
-// Dropdown selection control. `options` is the list of choices;
-// `value` is the current selection, two-way bound. Set `multiple=true`
-// to allow multi-select (value becomes a newline-joined string of
-// selected labels). `placeholder` shows when nothing is selected.
-// TODO Should this use children for the options?
+// One of a select's choices: data, since it names itself as its family, so a
+// select reads its choices as a list rather than rendering them. `label` is
+// what it shows and what the select's `value` holds while it is selected.
+component choice(label string) choice
+
+// Dropdown selection control. Its choices are written as its children, each a
+// `choice`, under an `if` or a `for` where the list depends on something.
+// `value` is the current selection's label, two-way bound. Set
+// `multiple=true` to allow multi-select (value becomes a newline-joined string
+// of selected labels). `placeholder` shows when nothing is selected.
 component select(
-    options     list<string>,
     placeholder string = "",
     :value      string,
     disabled    bool = false,
@@ -174,12 +183,18 @@ component select(
     @change(value string),
     @focus(),
     @blur(),
+    // The choices, in the order they are offered.
+    options     ...component choice,
 ) node
 
 component _example_select node {
     var fruit = ""
     vbox(style={gap=8px, padding=16px}) {
-        select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", :value=fruit)
+        select(placeholder="Pick a fruit", :value=fruit) {
+            choice(label="Apple")
+            choice(label="Banana")
+            choice(label="Cherry")
+        }
         text(value="Selected: " + fruit)
     }
 }

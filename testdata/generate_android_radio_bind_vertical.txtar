@@ -1,5 +1,5 @@
 A `:value` binding on radio writes back the option that was clicked. The
-override says so itself -- `onClick=func() { value = opt; change(opt) }` --
+override says so itself -- `onClick=func() { value = opt.label; change(opt.label) }` --
 and its write of `value` is the binding's write-back.
 
 The binding pass once guessed where the write-back went, and invented a
@@ -7,9 +7,9 @@ parameter on the callback. Compose's onClick is
 `() -> Unit`, so the emitted Kotlin did not compile, and `opt` -- the whole
 point of the loop -- never reached the write-back.
 
-The write-back is `pick = opt`: the loop variable, in the loop. It used to
+The write-back is `pick = opt.label`: the loop variable's label, in the loop. It used to
 read `pick = "a"` and `pick = "b"` because a literal `options` was unrolled
-here; Kotlin emits the loop now, so `opt` is what the assignment names.
+here; Kotlin emits the loop now, so `opt` is what the assignment reads.
 
 With no `direction`, the override takes its else-branch and lays the options
 out in a Column. Both branches are fixtures because the injection used to stop
@@ -29,7 +29,10 @@ output {
 
 component main node {
     var pick string = "a"
-    radio(:value=pick, options=["a", "b"])
+    radio(:value=pick) {
+        choice(label="a")
+        choice(label="b")
+    }
     text(value=pick)
 }
 
@@ -66,6 +69,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.compose.foundation.layout.safeDrawingPadding
 
+data class Choice__record(
+    var label: String
+)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -88,12 +95,12 @@ fun MainScreen() {
         }
         Column {
             Column(modifier = Modifier.safeDrawingPadding()) {
-                for (opt in listOf("a", "b")) {
+                for (opt in listOf(Choice__record(label = "a"), Choice__record(label = "b"))) {
                     Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (pick__inst0 == opt), onClick = {
-                            pick__inst0 = opt
+                        RadioButton(selected = (pick__inst0 == opt.label), onClick = {
+                            pick__inst0 = opt.label
                         })
-                        Text(text = opt, modifier = Modifier)
+                        Text(text = opt.label, modifier = Modifier)
                     }
                 }
             }
@@ -102,4 +109,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:b4077a3a03dc3d56df4ced211a7870f6
+pass sha256:8d631c1d8f1532098bee5bf298a4338d

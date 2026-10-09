@@ -54,7 +54,7 @@ func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 import . "sngl:ui"
 window {
     text(value="visible")
-    menubar(items=["a"])
+    menubar { menuItem(label="a") }
 }
 `)
 	if err == nil {

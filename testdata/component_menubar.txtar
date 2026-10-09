@@ -2,13 +2,31 @@ A component fixture: the source, the code every target generates from it,
 and the record saying a host toolchain built that and ran whatever tests it
 carries.
 
+html writes the bar's entries into the page, one button per record, so the
+loop over them unrolls at build time with each record's `@select` handler a
+constant: each button calls its own entry's handler.
+
+deny out/none/html/index.html `it\.select` -- each copy calls its record's handler, not a loop variable nothing declares
+
 -- component_menubar.sngl --
 import . "sngl:ui"
 import . "sngl:dialog"
 
 // menubar: A-tier — declaration only.
 component main node {
-    menubar(items=["File", "Edit", "View", "Help"])
+    var last = ""
+    menubar {
+        menuItem(label="File") {
+            menuItem(label="Open", @select {
+                last = "open"
+            })
+        }
+        menuItem(label="Edit", @select {
+            last = "edit"
+        })
+        menuItem(label="View")
+        menuItem(label="Help")
+    }
 }
 
 window {
@@ -255,13 +273,38 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<nav style="display:flex;gap:4px">
+<nav style="display:flex;gap:4px" role="menubar">
+  <button id="$1" role="menuitem">File</button>
+  <button id="$2" role="menuitem">Edit</button>
+  <button id="$3" role="menuitem">View</button>
+  <button id="$4" role="menuitem">Help</button>
 </nav>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { visible__inst0: true };
+  var state = { last__inst0: "", visible__inst0: true };
+  var $1 = document.getElementById("$1");
+  var $2 = document.getElementById("$2");
+  var $3 = document.getElementById("$3");
+  var $4 = document.getElementById("$4");
+  $1.addEventListener("click", function() {
+    /* @__PURE__ */ (() => {
+    })();
+  });
+  $2.addEventListener("click", function() {
+    (() => {
+      state.last__inst0 = "edit";
+    })();
+  });
+  $3.addEventListener("click", function() {
+    /* @__PURE__ */ (() => {
+    })();
+  });
+  $4.addEventListener("click", function() {
+    /* @__PURE__ */ (() => {
+    })();
+  });
 })();
 </script>
 </body></html>
@@ -272,4 +315,4 @@ pass sha256:bc0c75c67bec157cd32bf924db524a76
 -- run/kotlin/android --
 pass sha256:7fd5d648189ac63d82b3544a490d8335
 -- run/none/html --
-pass sha256:f51b5d6e8560c38d50e5cab70fe71b3f
+pass sha256:cbd191691bd5be366d001da4788660f5

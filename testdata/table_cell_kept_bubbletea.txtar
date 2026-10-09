@@ -14,8 +14,13 @@ output {
 
 ui.window(title="table") {
     ui.vbox {
-        ui.table #t(columns=["name"], rows=[["a"], ["b"]])
-        ui.table(columns=["name"], rows=[["c"]])
+        ui.table #t(columns=["name"]) {
+            ui.tableRow(cells=["a"])
+            ui.tableRow(cells=["b"])
+        }
+        ui.table(columns=["name"]) {
+            ui.tableRow(cells=["c"])
+        }
         ui.text(value="{t.selected}")
     }
 }
@@ -32,6 +37,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 )
+
+type TableRow__record struct {
+	Cells []string
+}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
@@ -53,8 +62,20 @@ func New() Model {
 	m.selected__inst1 = 0
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"a"}, []string{"b"}}), 10)
-	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows([][]string{[]string{"c"}}), 10)
+	m.widget0 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
+		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}}))
+		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"a"}}, TableRow__record{Cells: []string{"b"}}} {
+			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+		}
+		return __out
+	}()), 10)
+	m.widget1 = tui.NewTable(tui.Columns([]string{"name"}), tui.Rows(func() [][]string {
+		__out := make([][]string, len([]TableRow__record{TableRow__record{Cells: []string{"c"}}}))
+		for __i, __item := range []TableRow__record{TableRow__record{Cells: []string{"c"}}} {
+			__out[__i] = func(r TableRow__record) []string { return r.Cells }(__item)
+		}
+		return __out
+	}()), 10)
 	m.resizeWidgets()
 	return m
 }
@@ -214,4 +235,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:1fa7e9d4f4c2e06beb7ffc02e85c99ab
+pass sha256:f35a22f2a56bd28cf8b6914169440cc8

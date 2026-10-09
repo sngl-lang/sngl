@@ -12,13 +12,13 @@ The shape is not about timers, though that is where it was found: html's timer
 override arms setInterval with a lambda that emits `tick`. Any component that
 hands a callback to a function has it.
 
-Two unrelated defects are visible in the goldens below and deliberately left
-alone, since neither is this walk: android types a func-valued parameter as
-`Any` and then calls it, and html leaves a listener for the component event on
-the element even though the substitution has removed the only emit of it.
+One unrelated defect is visible in the goldens below and deliberately left
+alone, since it is not this walk: html leaves a listener for the component
+event on the element even though the substitution has removed the only emit of
+it. android typed a func-valued parameter as `Any` and then called it, which
+did not compile, until Kotlin spelled a function type as one.
 
 deny * `emit\(` -- an emit is substituted away by lowering; one reaching a backend is a call to a function no target defines
-broken out/kotlin/android -- MainScreen.kt calls `f`, which the Compose emitter declares nowhere: `Unresolved reference 'f'`
 -- app.sngl --
 import . "sngl:ui"
 
@@ -270,7 +270,7 @@ fun MainScreen() {
     }
 }
 
-fun run(f: Any) {
+fun run(f: () -> Unit) {
     f()
 }
 -- out/none/html/index.html --
@@ -324,6 +324,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:610afb3de7c1ca64d3a7364bcb9f39e9
 -- run/kotlin/android --
-broken sha256:cf4cd146ffdc4bee02877cc18d586b6b
+pass sha256:b4723003609b65700e7970be22d843a2
 -- run/none/html --
 pass sha256:92f03d70015ac148fe4cadad2f4a2716

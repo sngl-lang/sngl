@@ -2843,7 +2843,7 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 			continue
 		}
 		if pos < len(sig.Params) {
-			bind(sig.Params[pos], exprType(c.checkExpr(arg.Value)))
+			bind(sig.Params[pos], exprType(c.inferArgExpr(arg.Value, sig.Params[pos].Type, bindings)))
 		}
 		pos++
 	}
@@ -2873,6 +2873,29 @@ func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig
 		return sig
 	}
 	return sig.Substitute(bindings)
+}
+
+// inferArgExpr checks an argument for inference. A lambda whose parameters
+// carry no annotation takes their types from the parameter it fills, with what
+// is bound so far substituted -- `ps.map(func(p) => p.name)` has its p from the
+// receiver -- and its return type from its body wherever the parameter's
+// still names a type parameter, which is what the body is binding.
+func (c *checker) inferArgExpr(e ast.Expr, want *ir.Type, bindings map[string]*ir.Type) ir.Expr {
+	lam, ok := e.(*ast.LambdaExpr)
+	if !ok || want == nil || want.Kind != ir.TypeFunc || want.Sig == nil {
+		return c.checkExpr(e)
+	}
+	sig := want.Sig.Substitute(bindings)
+	for _, p := range sig.Params {
+		if mentionsTypeParam(p.Type) {
+			return c.checkExpr(e)
+		}
+	}
+	exp := &ir.FuncSig{Params: sig.Params}
+	if lam.ReturnType == nil && sig.Return != nil && !mentionsTypeParam(sig.Return) {
+		exp.Return = sig.Return
+	}
+	return c.checkExprExpecting(e, &ir.Type{Kind: ir.TypeFunc, Sig: exp})
 }
 
 // bindTypeParams recursively matches a param type pattern against a concrete
@@ -4363,7 +4386,13 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	if vn == c.outputDecl || outerOutputDepth > 0 {
 		c.outputDepth = outerOutputDepth + 1
 	}
+	data := 0
+	if rest := spec.RestSlot(); rest != nil && rest.Values != nil {
+		data = 1
+	}
+	c.dataPopulation += data
 	children := c.checkBlockIR(&childBlock)
+	c.dataPopulation -= data
 	c.outputDepth = outerOutputDepth
 	if bound := c.bindFromChildren(comp, spec, children); bound != spec {
 		spec = bound
@@ -4966,7 +4995,9 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 		// names a type only this call site has bound.
 		fromDecl := comp.RendersFromDeclaration() || comp.Bodyless
 		for _, p := range comp.Props {
-			if p.Default == nil || boundProps[p.Name] {
+			// A data slot's list is what lower.DataFamilies writes from the
+			// population, which is not written yet.
+			if p.Default == nil || boundProps[p.Name] || comp.DataSlotOf(p) != nil {
 				continue
 			}
 			if fromDecl && (!typeParamZero(p.Default) || mentionsTypeParam(p.Type)) {
@@ -5517,6 +5548,11 @@ func (c *checker) boundEntry(name string) *ir.SlotDecl {
 // entries, and the fallback block. written is the name the insertion was
 // written under, which for an entry is the population's and not the entry's.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
+	// A data slot is a value, inserted only where it is forwarded: into
+	// another data slot's population, whose list it is spread into.
+	if c.dataPopulation == 0 && c.refuseDataSlotInsertion(vn.Pos, slot) {
+		return nil
+	}
 	inst := &ir.SlotInst{AST: vn, Name: written, Rest: slot.Rest}
 	if entry {
 		inst.Entry = slot

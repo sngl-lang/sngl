@@ -11,8 +11,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/buildhost"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -243,6 +245,15 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	// place before anything folds or inlines against it. Lowering swaps the
 	// rest; this moves only what already has a body to replace.
 	ir.SpecializeOverriddenBodies(pkg, cfg.Platform, cfg.Language)
+	// A data family's slot is read as the list its call site's population
+	// renders, built before anything folds: the prop is otherwise unwritten,
+	// and would fold to its empty default. A second run finds no population
+	// left to read.
+	if err := lower.DataFamilies(pkg, func(owner *ir.Component, fn *ir.Func) {
+		checker.AnalyzeSynthesizedFunc(pkg, owner, fn)
+	}); err != nil {
+		return err
+	}
 	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with

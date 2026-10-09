@@ -25,6 +25,10 @@ func ExprToStaticValueIR(e ir.Expr) string {
 	if id, ok := e.(*ir.Ident); ok && id.Member != "" {
 		return kebabCase(id.Member)
 	}
+	if b, ok := e.(*ir.Binary); ok {
+		css, _ := UnitSumToCSS(b)
+		return css
+	}
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {
 		return ""

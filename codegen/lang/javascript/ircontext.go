@@ -703,6 +703,13 @@ func jsMethodTail(name string) string {
 
 func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {
 	calleeJS := jc.EvalExpr(n.Callee)
+	// A function literal called where it is written -- a slot's func argument
+	// substituted for the parameter its population calls -- is parenthesized:
+	// `function() {…}()` is a declaration followed by a stray `()`, and an
+	// arrow binds looser than a call.
+	if _, ok := n.Callee.(*ir.Lambda); ok {
+		calleeJS = "(" + calleeJS + ")"
+	}
 	args := jc.evalCallArgs(n.Args)
 	call := calleeJS + "(" + strings.Join(args, ", ") + ")"
 
@@ -1005,6 +1012,11 @@ func (jc *JsIRContext) evalLambda(n *ir.Lambda) string {
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := bodyJC.EvalExpr(ret.Value)
+			// An arrow reads `{` as the start of a block, so a body that is an
+			// object literal -- a struct value -- is parenthesized.
+			if strings.HasPrefix(body, "{") {
+				body = "(" + body + ")"
+			}
 			if asyncPrefix == "" && len(params) == 1 {
 				return params[0] + " => " + body
 			}

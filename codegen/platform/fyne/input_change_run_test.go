@@ -10,7 +10,10 @@ var last = ""
 window {
     vbox {
         input #box(@change(e) { last = "got " + e })
-        select #pick(options=["x", "y"], @change(e) { last = "sel " + e })
+        select #pick(@change(e) { last = "sel " + e }) {
+            choice(label="x")
+            choice(label="y")
+        }
     }
 }
 `

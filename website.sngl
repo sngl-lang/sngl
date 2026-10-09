@@ -365,11 +365,23 @@ component site() root {
                         }
 
                         markup.heading2 { markup.text(value="Properties") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=propRows(comp.props))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = propRows(comp.props) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.heading2 { markup.text(value="Slots") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=slotRows(comp.slots))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = slotRows(comp.slots) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.heading2 { markup.text(value="Events") }
-                        ui.table(columns=["Name", "Payload Type", "Description"], rows=eventRows(comp.events))
+                        ui.table(columns=["Name", "Payload Type", "Description"]) {
+                            for var r = eventRows(comp.events) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                         markup.paragraph { markup.text(value="Children: " + comp.children) }
                     }
                 }
@@ -402,17 +414,29 @@ component site() root {
 
                     markup.heading2 { markup.text(value="Global Options") }
                     md.document(source="Declared by the standard library and set on `output` itself; accepted by every target.")
-                    ui.table(columns=["Name", "Type", "Description"], rows=optionRows(targets.globalOptions))
+                    ui.table(columns=["Name", "Type", "Description"]) {
+                        for var r = optionRows(targets.globalOptions) {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     markup.heading2 { markup.text(value="Capabilities") }
-                    ui.table(columns=targets.platformMatrix.columns, rows=targets.platformMatrix.rows)
+                    ui.table(columns=targets.platformMatrix.columns) {
+                        for var r = targets.platformMatrix.rows {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     for var p = targets.platforms {
                         markup.heading3 { markup.text(value=p.name) }
                         markup.paragraph { markup.text(value=p.doc) }
                         markup.paragraph { markup.text(value="Supported languages: " + p.languages.join(", ")) }
                         markup.heading4 { markup.text(value="Options") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=optionRows(p.options))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(p.options) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                     }
                 }
             }
@@ -423,13 +447,21 @@ component site() root {
                     md.document(source="A language decides what code to emit. The matrix below shows which optional capabilities each language implements; each section documents its options, which a program sets as props on the target in its `output` block, or `--opt key=value` sets from the command line.")
 
                     markup.heading2 { markup.text(value="Capabilities") }
-                    ui.table(columns=targets.languageMatrix.columns, rows=targets.languageMatrix.rows)
+                    ui.table(columns=targets.languageMatrix.columns) {
+                        for var r = targets.languageMatrix.rows {
+                            ui.tableRow(cells=r)
+                        }
+                    }
 
                     for var l = targets.languages {
                         markup.heading3 { markup.text(value=l.name) }
                         markup.paragraph { markup.text(value=l.doc) }
                         markup.heading4 { markup.text(value="Options") }
-                        ui.table(columns=["Name", "Type", "Description"], rows=optionRows(l.options))
+                        ui.table(columns=["Name", "Type", "Description"]) {
+                            for var r = optionRows(l.options) {
+                                ui.tableRow(cells=r)
+                            }
+                        }
                     }
                 }
             }

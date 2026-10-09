@@ -169,6 +169,7 @@ func buildUnitTables(pkg *ir.Package) map[string]*unitTable {
 
 func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
 	t := &unitTable{
+		Decl:        u,
 		Conversions: make(map[string]float64),
 		BaseOf:      make(map[string]string),
 	}

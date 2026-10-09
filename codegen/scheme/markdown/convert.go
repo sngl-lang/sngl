@@ -370,16 +370,16 @@ func (e *emitter) table(n *east.Table) {
 			columns = cells
 			continue
 		}
-		rows = append(rows, "["+strings.Join(cells, ", ")+"]")
+		rows = append(rows, "ui.tableRow(cells=["+strings.Join(cells, ", ")+"])")
 	}
 	// `ui.table`'s cells are plain strings, so a table's inline formatting
 	// flattens to its words. A table of prose wants a layout of `richText`
 	// runs, which is a document writing rows rather than an importer.
-	args := "columns=[" + strings.Join(columns, ", ") + "]"
-	if len(rows) > 0 {
-		args += ", rows=[" + strings.Join(rows, ", ") + "]"
-	}
-	e.line("ui.table(" + args + ")")
+	e.wrap("ui.table", "columns=["+strings.Join(columns, ", ")+"]", func(e *emitter) {
+		for _, r := range rows {
+			e.line(r)
+		}
+	})
 }
 
 // --- Inlines ---

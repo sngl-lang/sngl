@@ -37,7 +37,17 @@ func (c *checker) bindFamily(decl *ast.ComponentDecl, comp *ir.Component, pkg *i
 	if named == nil {
 		return nil
 	}
+	// A component naming itself is data: a record of its props, its own
+	// family and the only member of it.
+	if named.Kind == ir.TypeComponent && named.Decl == comp {
+		comp.Family, comp.Data = comp, true
+		return named
+	}
 	if f := ir.TypeFamily(named); f != nil {
+		if f.Data {
+			c.error(decl.Pos, "component %s names %s as its family, which is data: only %s itself is one", comp.Name, f.Name, f.Name)
+			return named
+		}
 		comp.Family = f
 		if !comp.IsFamily() {
 			comp.FamilyTypeArgs = familyArgsWritten(f, named.Elems)

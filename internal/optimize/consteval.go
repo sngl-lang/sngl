@@ -26,6 +26,8 @@ func isConstExpr(e ir.Expr, ctx *evalCtx) bool {
 	switch x := e.(type) {
 	case *ir.Literal:
 		return true
+	case *ir.Lambda:
+		return lambdaIsConst(x, ctx)
 	case *ir.Ident:
 		if x.Member != "" {
 			return true // an enum member is written, not computed
@@ -160,6 +162,8 @@ func evalExpr(e ir.Expr, ctx *evalCtx) (any, bool) {
 		return nil, false
 	}
 	switch x := e.(type) {
+	case *ir.Lambda:
+		return heldLambda(x, ctx)
 	case *ir.Literal:
 		val := parseLiteral(x)
 		// parseLiteral returns nil for kinds it can't represent (units, etc.);
@@ -393,6 +397,9 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// program's own function of that name too.
 	if call.Func != nil && call.Func.Intrinsic != "" {
 		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unroll); ok {
+			return v, true
+		}
+		if v, ok := evalListLambda(call.Func.Intrinsic, args, ctx); ok {
 			return v, true
 		}
 	}
@@ -708,8 +715,17 @@ func parseLiteral(lit *ir.Literal) any {
 		// those anyway dropped the unit on the way back and every rem and vw
 		// in a style came out as a bare number.
 		ud := ir.UnitDeclOf(lit.Type)
-		if ud == nil || !ud.IsSingleBase() {
+		if ud == nil {
 			return nil
+		}
+		// A multi-base one is the interpreter's value, a magnitude per base,
+		// which irFromValue spells back base by base; it used to be
+		// unevaluable, and so was a struct or list holding one -- a constant
+		// view loop over rows carrying an indent unrolled to one copy with its
+		// variable bound to nothing (testdata/html_unroll_measurement.txtar).
+		if !ud.IsSingleBase() {
+			v, _ := interp.UnitLiteralValue(lit)
+			return v
 		}
 		mag, _, ok := ir.UnitMagnitude(lit)
 		if !ok {
@@ -825,6 +841,9 @@ func numKindOf(t *ir.Type) opeval.NumKind {
 }
 
 func evalBinaryOp(op ast.BinaryOp, left, right any, kind opeval.NumKind) (any, bool) {
+	if v, ok, isUnit := interp.UnitBinary(op, left, right); isUnit {
+		return v, ok
+	}
 	switch op {
 	case ast.BinEq:
 		return numericOrNativeEq(left, right), true
@@ -1418,4 +1437,94 @@ func foldFloatExtreme(args []any, least bool) (float64, bool) {
 		}
 	}
 	return m, true
+}
+
+// constLambda is a function literal held as a value: the literal itself,
+// which irFromValue spells back where the value lands. A record a page holds
+// carries its handlers so -- a data component's event fields -- and a loop
+// over such records unrolls with each copy calling its own.
+type constLambda struct{ lam *ir.Lambda }
+
+// lambdaIsConst reports whether a function literal can stand as a value here:
+// only in a document's fold (evalCtx.unroll), where the program's own lambdas
+// were folded before lowering and what the value is needed for is unrolling a
+// loop over records holding one. Anywhere else a lambda is folded in place,
+// body and all.
+func lambdaIsConst(lam *ir.Lambda, ctx *evalCtx) bool {
+	return lam.Func != nil && ctx.unroll
+}
+
+// heldLambda is lam as a value: a copy in which every symbol the fold has
+// bound for this scope -- a loop variable being unrolled, a parameter being
+// substituted -- reads the value bound, which is what a closure made here
+// would have captured, and which the spelled-back literal would otherwise
+// name with nothing declaring it.
+func heldLambda(lam *ir.Lambda, ctx *evalCtx) (any, bool) {
+	cp, _ := ir.CloneExprSharingDecls(lam).(*ir.Lambda)
+	if cp == nil || cp.Func == nil {
+		return nil, false
+	}
+	ok := true
+	_ = ir.RewriteExprs(cp.Func, func(e ir.Expr) (ir.Expr, error) {
+		id, isIdent := e.(*ir.Ident)
+		if !isIdent || id.Sym == nil {
+			return e, nil
+		}
+		v, bound := ctx.values[id.Sym]
+		if !bound {
+			return e, nil
+		}
+		repl := irFromValue(v, id.Type)
+		if repl == nil {
+			ok = false
+			return e, ir.SkipAll
+		}
+		return repl, nil
+	})
+	if !ok {
+		return nil, false
+	}
+	return constLambda{cp}, true
+}
+
+// evalListLambda folds `list.map` and `list.filter` over a list with a held
+// function whose body is one expression, by evaluating it per element. A data
+// slot's list is written this way where its records stand under a `for`.
+func evalListLambda(id string, args []any, ctx *evalCtx) (any, bool) {
+	if (id != "list.map" && id != "list.filter") || len(args) != 2 {
+		return nil, false
+	}
+	// A nil is an absent list -- a Go value's empty slice -- not an
+	// unevaluable one, as loopItems reads it.
+	items, isList := args[0].([]any)
+	if args[0] == nil {
+		isList = true
+	}
+	fn, isFn := args[1].(constLambda)
+	if !isList || !isFn || len(fn.lam.Func.Params) != 1 || len(fn.lam.Func.Block) != 1 {
+		return nil, false
+	}
+	ret, isRet := fn.lam.Func.Block[0].(*ir.Return)
+	if !isRet || ret.Value == nil {
+		return nil, false
+	}
+	out := make([]any, 0, len(items))
+	for _, item := range items {
+		child := ctx.child()
+		child.values[fn.lam.Func.Params[0]] = item
+		v, ok := evalExpr(ret.Value, child)
+		if !ok {
+			return nil, false
+		}
+		if id == "list.map" {
+			out = append(out, v)
+			continue
+		}
+		if keep, isBool := v.(bool); !isBool {
+			return nil, false
+		} else if keep {
+			out = append(out, item)
+		}
+	}
+	return out, true
 }

@@ -418,13 +418,10 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { testFuncValueReadsProvider });
   }
-  function String(v) {
-    return "" + v;
-  }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.got = [2].map((x) => "5:" + String(x))[0];
+    state.got = "5:2";
     __n0.textContent = state.got;
   });
   function __sngl_init() {
@@ -443,4 +440,4 @@ pass sha256:2044f3aac50b00cba81ecc6270c8d745
 -- run/kotlin/android --
 pass sha256:2b17c5586382c9dc08c615e8141208d6
 -- run/none/html --
-pass sha256:683e3f303a8ea209aa1f456c34e3439f
+pass sha256:a2f3f29da4e11898d0d2b3f9bc3639dc

@@ -288,6 +288,28 @@ func (p *Package) NoteFamilyKind(f *Component) {
 	p.FamilyKinds[f] = true
 }
 
+// DataSlotOf is the data slot p is the list of (SlotDecl.Values), or nil.
+func (c *Component) DataSlotOf(p *Prop) *SlotDecl {
+	for _, s := range c.Slots {
+		if s.Values != nil && s.Values == p {
+			return s
+		}
+	}
+	return nil
+}
+
+// EventFuncType is the function a data component's event is a field of its
+// record as: one taking the event's parameters and returning nothing.
+func EventFuncType(e *EventDecl) *Type {
+	return &Type{Kind: TypeFunc, Sig: &FuncSig{Params: e.Params}}
+}
+
+// IsDataMember reports whether c is a data component (Component.Data): a
+// record of its props, never rendered.
+func IsDataMember(c *Component) bool {
+	return c != nil && c.Data
+}
+
 // IsFamilyValue reports whether a handle to c, a member of a family, is a
 // value of the family: a record of the props the family declares, read off
 // whichever member it holds. A member declaring the family's props is one;
@@ -365,7 +387,7 @@ func TypeFamily(t *Type) *Component {
 	if t == nil || t.Kind != TypeComponent {
 		return nil
 	}
-	if f, ok := t.Decl.(*Component); ok && f.IsFamily() {
+	if f, ok := t.Decl.(*Component); ok && (f.IsFamily() || f.Data) {
 		return f
 	}
 	return nil
@@ -888,9 +910,16 @@ type Component struct {
 	// family, in terms of the member's own type parameters: `page<T, M>`
 	// returning `_page<M>` holds M here. Nil for a family that takes none.
 	FamilyTypeArgs []*Type `json:"-"`
-	// Eventless is the #[tree.eventless] mark on a family: its members raise
+	// Eventless is the #[family.eventless] mark on a family: its members raise
 	// no events, an #[intrinsic] primitive's being the target calling in.
 	Eventless bool `json:",omitempty"`
+	// Data says the component names itself as its family: it is a record of
+	// its props, never rendered, and a slot of its type is a list of them its
+	// container reads (SlotDecl.Values). Family is then the component itself.
+	Data bool `json:",omitempty"`
+	// Record is the struct a data component's values are: a field per prop.
+	// Nil for any other component.
+	Record *StructDef `json:"-"`
 	// FamilyParam is the return position when it names one of the component's
 	// own type parameters, for a wrapper whose family is whatever it was
 	// handed: the TypeTypeParam it resolved to, as Tree is the family it
@@ -1080,6 +1109,10 @@ type SlotDecl struct {
 	// Const is the `const` prefix on the slot parameter: a population is held
 	// to a const component's render rule.
 	Const bool `json:",omitempty"`
+	// Values is the prop a slot of a data family is read through: a list of
+	// the family's records, which lower.DataFamilies builds from the
+	// population at each call site. The slot itself is never inserted.
+	Values *Prop `json:"-"`
 }
 
 // Arity is how many names a population of the slot binds.
@@ -1203,6 +1236,9 @@ type StructDef struct {
 	DeclInfo
 	TypeParams []TypeParam // generic parameters, e.g. ["T"] for list<T>, ["K","V"] for map<K,V>
 	Fields     []*StructField
+	// RecordOf is the data family this struct is the record of
+	// (Component.Record), nil for any other.
+	RecordOf *Component `json:"-"`
 	// Anon says the declaration was synthesized for an anonymous struct, one
 	// per canonical field signature. It is an ordinary declaration in every
 	// other respect — a backend emits it and a value names it — and this only
