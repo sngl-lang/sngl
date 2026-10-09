@@ -1,0 +1,41 @@
+import . "sngl:ui"
+
+// A call that binds none of a generic function's type parameters leaves the
+// parameter in its result, so a declaration taking that type named a type
+// nothing declares. Refused where the type is inferred; annotated, or bound
+// by an argument, the same calls are fine. Inside a generic function its own
+// parameters are in scope and are types like any other.
+const func empty<T>() list<T> {
+    return []
+}
+
+func same<T>(x T) T {
+    return x
+}
+
+func keep<U>(u U) U {
+    var held = u
+    var copy = same(held)
+    return copy
+}
+
+const none = empty() // ERROR(check) "cannot infer T"
+
+func make() => empty() // ERROR(check) "cannot infer T"
+
+component C node {
+    var xs = empty() // ERROR(check) "cannot infer T"
+    var ys list<int> = empty()
+    var n = same(3)
+    var f = func() => empty() // ERROR(check) "cannot infer T"
+
+    func local() {
+        var zs = empty() // ERROR(check) "cannot infer T"
+    }
+
+    text(value="{n}")
+}
+
+window {
+    C
+}
