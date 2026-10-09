@@ -1,4 +1,4 @@
-A stroke's cap and join and a path's steps are enums of sngl:ui/draw, and each
+A stroke's cap and join and a path step's op are enums of sngl:ui/draw, and each
 target maps the member to its own drawing API: cairo's enum values on gtk4,
 Compose's StrokeCap and StrokeJoin on android, the Canvas2D strings on html,
 and the Go rasteriser's names on fyne and bubbletea.
@@ -10,16 +10,13 @@ import draw "sngl:ui/draw"
 component art ui.node {
     draw.canvas(width=60px, height=40px) {
         draw.line(x1=4.0, y1=4.0, x2=56.0, y2=4.0, style={stroke=#336699, strokeWidth=4.0, lineCap=round})
-        draw.path(
-            cmds = [
-                draw.PathCmd{op=moveTo, x=4.0, y=12.0},
-                draw.PathCmd{op=lineTo, x=30.0, y=36.0},
-                draw.PathCmd{op=bezierTo, cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0},
-                draw.PathCmd{op=arcTo, cx1=56.0, cy1=12.0, x=40.0, y=12.0, r=4.0},
-                draw.PathCmd{op=close},
-            ],
-            style = {stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel},
-        )
+        draw.path(style={stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel}) {
+            draw.moveTo(x=4.0, y=12.0)
+            draw.lineTo(x=30.0, y=36.0)
+            draw.bezierTo(cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0)
+            draw.arcTo(cx=56.0, cy=12.0, x=40.0, y=12.0, r=4.0)
+            draw.close()
+        }
     }
 }
 
@@ -64,7 +61,7 @@ type Measurement struct {
 	Pct float64
 }
 
-type PathCmd struct {
+type _step__record struct {
 	Op  string
 	X   float64
 	Y   float64
@@ -114,7 +111,7 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
 		}
@@ -238,7 +235,15 @@ import (
 	"os"
 )
 
-type PathCmd struct {
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
+type _step__record struct {
 	Op  string
 	X   float64
 	Y   float64
@@ -247,14 +252,6 @@ type PathCmd struct {
 	Cx2 float64
 	Cy2 float64
 	R   float64
-}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
 }
 
 type CanvasStyle struct {
@@ -307,7 +304,7 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 	ctx.Save()
 	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c__r0 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c__r0 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c__r0.Op == "moveTo" {
 			ctx.MoveTo(c__r0.X, c__r0.Y)
 		}
@@ -575,17 +572,6 @@ import (
 	"unsafe"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
 // shown at its own size wants.
@@ -616,6 +602,17 @@ type Measurement struct {
 	Vw  float64
 	Vh  float64
 	Pct float64
+}
+
+type _step__record struct {
+	Op  string
+	X   float64
+	Y   float64
+	Cx1 float64
+	Cy1 float64
+	Cx2 float64
+	Cy2 float64
+	R   float64
 }
 
 type Color struct {
@@ -767,7 +764,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_restore(ctx)
 	at := Point{X: 0.0, Y: 0.0}
 	C.cairo_save(ctx)
-	for _, c__r2 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c__r2 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c__r2.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
 			at = Point{X: c__r2.X, Y: c__r2.Y}
@@ -871,15 +868,15 @@ data class Measurement(
     val pct: Double = 0.0
 )
 
-data class PathCmd(
+data class _step__record(
     var op: SnglPathOp,
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
+    var x: Double,
+    var y: Double,
+    var cx1: Double,
+    var cy1: Double,
+    var cx2: Double,
+    var cy2: Double,
+    var r: Double
 )
 
 data class Point(
@@ -1001,7 +998,7 @@ fun MainScreen() {
             drawLine(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 153, alpha = 255), start = Offset(4.0.toFloat(), 4.0.toFloat()), end = Offset(56.0.toFloat(), 4.0.toFloat()), strokeWidth = 4.0.toFloat())
             var p = Path()
             var at = Point(x = 0.0, y = 0.0)
-            for (c in listOf(PathCmd(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), PathCmd(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), PathCmd(op = SnglPathOp.BEZIERTO, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, x = 56.0, y = 36.0, r = 0.0), PathCmd(op = SnglPathOp.ARCTO, cx1 = 56.0, cy1 = 12.0, x = 40.0, y = 12.0, r = 4.0, cx2 = 0.0, cy2 = 0.0), PathCmd(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
+            for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), _step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
                 if ((c.op == SnglPathOp.MOVETO)) {
                     p.moveTo(c.x.toFloat(), c.y.toFloat())
                 }
@@ -1212,12 +1209,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bf1ca9cf86a9da811d15103a86f210b8
+pass sha256:c960743e94a496b02461deb380cc2e53
 -- run/go/fyne --
-pass sha256:c518cbdbf4f27f98f2071091c583ac43
+pass sha256:2da7aeb5bd0c8fc0c33111a438ed776d
 -- run/go/gtk4 --
-pass sha256:fdb378108feba0f3d741cdbab4e246cc
+pass sha256:cfea3d45ded3351d8bf90cd2f599423e
 -- run/kotlin/android --
-pass sha256:bf9118f5f3903427c7d3a3d31ddc372a
+pass sha256:32a0a982ced8a96a42dd615147c1dd6d
 -- run/none/html --
 pass sha256:db768984fd227ac56783d7a933a47519

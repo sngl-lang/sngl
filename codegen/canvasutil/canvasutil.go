@@ -10,7 +10,7 @@
 //
 //  1. the flattened canvas metadata in the shape these platforms read it
 //     (Collect / Meta), and
-//  2. emitting the Go stdlib struct decls for Color/CanvasStyle/PathCmd,
+//  2. emitting the Go stdlib struct decls for Color/CanvasStyle,
 //     which the draw funcs reference but which aren't carried on pkg.Structs
 //     for the Go path.
 //
@@ -77,7 +77,7 @@ func Collect(draws *codegen.CanvasDraws) (byID map[string]*Meta, byNode map[*ir.
 // StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by
 // struct name so a collision with a user-declared struct can omit just that
 // one decl. Field names/types mirror the stdlib definitions in
-// lib/canvas.sngl (CanvasStyle, PathCmd); their color fields reference the
+// lib/ui/draw/draw.sngl (CanvasStyle); their color fields reference the
 // shared ColorGoType. The per-platform drift-guard tests assert every stdlib
 // field is present.
 var StructDecls = map[string]string{
@@ -89,11 +89,6 @@ var StructDecls = map[string]string{
 		"\tLineJoin    string\n" +
 		"\tFontSize    float64\n" +
 		"\tFontFamily  string\n" +
-		"}\n",
-	"PathCmd": "type PathCmd struct {\n" +
-		"\tOp  string\n" +
-		"\tX   float64\n\tY   float64\n" +
-		"\tCx1 float64\n\tCy1 float64\n\tCx2 float64\n\tCy2 float64\n\tR float64\n" +
 		"}\n",
 }
 
@@ -108,7 +103,7 @@ const (
 )
 
 // StructOrder fixes the emission order of StructDecls.
-var StructOrder = []string{"CanvasStyle", "PathCmd"}
+var StructOrder = []string{"CanvasStyle"}
 
 // StructDeclsExcluding returns the canvas stdlib struct decls, omitting any
 // whose name is in declared (a set of user-declared struct names that already

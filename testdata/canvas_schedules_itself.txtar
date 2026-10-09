@@ -93,17 +93,6 @@ import (
 	"time"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -582,6 +571,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c1b8e9d7c1f042a1d2dff9454cd2e9e0
+pass sha256:e3f05c46e0f1c84c1bbb77f03681991f
 -- run/none/html --
 pass sha256:605647f3bf0f2589139868f92622d51d

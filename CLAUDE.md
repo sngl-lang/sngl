@@ -964,8 +964,8 @@ position is its record (`Component.Record`, a struct `<name>__record` declared
 beside it, which `promoteForeignStructs` declares in a program that builds
 one), and in a family position (a return position, a slot's content) it is the
 component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognises
-the self-reference, and refuses another component naming a data component as
-its family; `checkDataComponent` refuses a block and a slot of anything but
+the self-reference, and refuses another *bodyless* component naming a data
+component as its family; `checkDataComponent` refuses a block and a slot of anything but
 records or content (below), since a record holds its props and nothing else. A slot
 of records is a field of the record, so a record may be a tree --
 `component treeItem(label string, children ...component treeItem) treeItem`
@@ -973,6 +973,18 @@ of records is a field of the record, so a record may be a tree --
 (`testdata/family_data_nested.sngl`). The self-reference is read off the source
 before the signature resolves, where the name finds nothing else: a
 `component node(…) node` in a body that sees `ui.node` returns that.
+
+**A component with a body that names a data family composes its records**,
+and is no record itself: `component moveTo(x float, y float) _step { _step(op=PathOp.moveTo, x=x, y=y) }`. A library declaration has to say so,
+since it is never inferred; a program's may leave it to the body, which
+answers the same. A data family's props are its record's fields rather than
+props its members share, so `checkFamilyMember` asks nothing of a composer,
+which may declare some of them under its own meaning and omit the rest. That
+is how a record stays private while a program writes it: `sngl:ui/draw`'s
+`path` takes `steps ...component _step`, and `moveTo`, `lineTo`, `bezierTo`,
+`arcTo` and `close` each compose one `_step` with only its own fields set, so
+an override reads `steps` as `list<_step__record>` and switches on `op`
+(`testdata/draw_path_steps.sngl`, `draw_path_steps.txtar`).
 
 **A data component may declare content**: one rest slot of anything but
 records, `component tab(label string, content ...component node) tab`, which

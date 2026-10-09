@@ -44,8 +44,8 @@ func (c *checker) bindFamily(decl *ast.ComponentDecl, comp *ir.Component, pkg *i
 		return named
 	}
 	if f := ir.TypeFamily(named); f != nil {
-		if f.Data {
-			c.error(decl.Pos, "component %s names %s as its family, which is data: only %s itself is one", comp.Name, f.Name, f.Name)
+		if f.Data && comp.Bodyless {
+			c.error(decl.Pos, "component %s names %s as its family, which is data: only %s itself is a record, and a component composing them has a body", comp.Name, f.Name, f.Name)
 			return named
 		}
 		comp.Family = f
@@ -200,7 +200,9 @@ func (c *checker) checkFamilyDecl(decl *ast.ComponentDecl, comp *ir.Component) {
 // collected.
 func (c *checker) checkFamilyMember(comp *ir.Component) {
 	f := comp.Family
-	if comp.AST == nil || f == nil || comp.IsFamily() {
+	// A data family's props are its record's fields, and what composes its
+	// records is no value of it, whichever of those props it also declares.
+	if comp.AST == nil || f == nil || comp.IsFamily() || f.Data {
 		return
 	}
 	if len(f.Props) > 0 && !slices.ContainsFunc(f.Props, func(fp *ir.Prop) bool {

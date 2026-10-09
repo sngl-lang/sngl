@@ -442,7 +442,7 @@ const component shapes.path[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }

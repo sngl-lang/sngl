@@ -610,7 +610,7 @@ const component shapes.path[platform] {
         var at = shapes.Point{x=0.0, y=0.0}
 
         e.ctx.save()
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
                 at = shapes.Point{x=c.x, y=c.y}

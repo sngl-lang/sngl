@@ -251,7 +251,7 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib
-// structs (CanvasStyle/PathCmd) plus the SNGL-color→Compose-Color helper.
+// struct (CanvasStyle) plus the SNGL-color→Compose-Color helper.
 // These structs are stdlib-only and aren't carried on pkg.Structs, so — like
 // canvasutil does for the Go platforms — they're materialized here. declared is
 // the set of user-declared struct names (data classes already emitted) so a
@@ -270,15 +270,6 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 		b.WriteString("    var lineJoin: String = \"miter\",\n")
 		b.WriteString("    var fontSize: Double = 16.0,\n")
 		b.WriteString("    var fontFamily: String = \"sans-serif\"\n")
-		b.WriteString(")\n\n")
-	}
-	if _, ok := declared["PathCmd"]; !ok {
-		b.WriteString("data class PathCmd(\n")
-		b.WriteString("    var op: String = \"\",\n")
-		b.WriteString("    var x: Double = 0.0,\n    var y: Double = 0.0,\n")
-		b.WriteString("    var cx1: Double = 0.0,\n    var cy1: Double = 0.0,\n")
-		b.WriteString("    var cx2: Double = 0.0,\n    var cy2: Double = 0.0,\n")
-		b.WriteString("    var r: Double = 0.0\n")
 		b.WriteString(")\n\n")
 	}
 	// Two DrawScope extensions the shape overrides call, for the drawing this

@@ -12,7 +12,7 @@ import (
 // TestCanvasKotlinDeclsInSync guards against drift between the hand-written
 // Kotlin data class decls (canvasKotlinDecls, colorKotlinDecl) and the
 // source-of-truth SNGL struct declarations in lib/ui/draw/draw.sngl
-// (CanvasStyle, PathCmd) and lib/builtin/color.sngl (color → Color). These
+// (CanvasStyle) and lib/builtin/color.sngl (color → Color). These
 // Kotlin decls are hand-written because
 // the canvas stdlib structs aren't carried on pkg.Structs for the Kotlin path
 // (mirrors what canvasutil_sync_test.go does for the Go-emitting platforms).
@@ -27,13 +27,11 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// SNGL name except `color` → `Color` (capitalized data class).
 	want := map[string]string{
 		"CanvasStyle": "ui/draw/draw.sngl",
-		"PathCmd":     "ui/draw/draw.sngl",
 		"color":       "builtin/color.sngl",
 	}
 	// SNGL struct name → Kotlin data class name as emitted.
 	kotlinName := map[string]string{
 		"CanvasStyle": "CanvasStyle",
-		"PathCmd":     "PathCmd",
 		"color":       "Color",
 	}
 

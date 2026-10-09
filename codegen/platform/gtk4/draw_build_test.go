@@ -28,7 +28,13 @@ component art(rad float) node {
         draw.canvasImage(x=1.0, y=1.0, w=8.0, h=8.0) {
             remote(url="logo.png")
         }
-        draw.path(cmds=[draw.PathCmd{op=moveTo, x=0.0, y=0.0}, draw.PathCmd{op=lineTo, x=4.0, y=4.0}, draw.PathCmd{op=bezierTo, cx1=1.0, cy1=1.0, cx2=2.0, cy2=2.0, x=3.0, y=3.0}, draw.PathCmd{op=arcTo, cx1=5.0, cy1=0.0, x=5.0, y=5.0, r=2.0}, draw.PathCmd{op=close}], style=draw.CanvasStyle{fill=#222222, stroke=#333333}) {}
+        draw.path(style=draw.CanvasStyle{fill=#222222, stroke=#333333}) {
+            draw.moveTo(x=0.0, y=0.0)
+            draw.lineTo(x=4.0, y=4.0)
+            draw.bezierTo(cx1=1.0, cy1=1.0, cx2=2.0, cy2=2.0, x=3.0, y=3.0)
+            draw.arcTo(cx=5.0, cy=0.0, x=5.0, y=5.0, r=2.0)
+            draw.close()
+        }
     }
 }
 

@@ -142,17 +142,6 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	radius__inst0   float64
@@ -452,17 +441,6 @@ import (
 	"image/color"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 var _snglTheme0 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color.NRGBA{R: 204, G: 204, B: 204, A: 255}, Radius: 20}
 
@@ -1039,17 +1017,6 @@ import (
 	"unsafe"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
 // shown at its own size wants.
@@ -1517,17 +1484,6 @@ data class CanvasStyle(
     var fontFamily: String = "sans-serif"
 )
 
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
-)
-
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
     drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
         color = c.toArgb()
@@ -1922,12 +1878,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7630993bf7954a37c064056bf7331180
+pass sha256:5cb955e52742ac94aee50d108181e084
 -- run/go/fyne --
-pass sha256:5c3c89624c3038504927afdaddbd3bc6
+pass sha256:5ad1a20843b01842aa45b1baf46dc828
 -- run/go/gtk4 --
-pass sha256:039d3340fd434dee54b10ac6b995d765
+pass sha256:96735719407e898a6dc986586b6a2bfb
 -- run/kotlin/android --
-pass sha256:34d250aa09a334b50c4190ac2f463e29
+pass sha256:a6112891a9273aea1419614942dff321
 -- run/none/html --
 pass sha256:ffd84b2d4f26130243510ec55360b461

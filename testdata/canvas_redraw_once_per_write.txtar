@@ -67,17 +67,6 @@ import (
 	"os"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -206,4 +195,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:c5e37e56fee94d6c3592ecf16ca03c40
+pass sha256:4b8dd23ce712ad6774d41c0f626b142c

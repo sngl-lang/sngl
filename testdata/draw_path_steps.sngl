@@ -1,0 +1,53 @@
+// A path's steps are written as its children: each step component composes
+// one record of the path's private step family, and the path reads them as a
+// list in the order its population renders them, `if`s and `for`s included.
+
+import . "sngl:test"
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+func ops(p draw.path) string {
+    return p.steps.map(func(s) => string(s.op)).join(",")
+}
+
+component art ui.node {
+    var closed = false
+    var corners = [draw.Point{x=30.0, y=36.0}, draw.Point{x=56.0, y=36.0}]
+    draw.canvas(width=60px, height=40px) {
+        draw.path #p(style={stroke=#993366}) {
+            draw.moveTo(x=4.0, y=12.0)
+            for var c = corners {
+                draw.lineTo(x=c.x, y=c.y)
+            }
+            draw.bezierTo(cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0)
+            draw.arcTo(cx=56.0, cy=12.0, x=40.0, y=12.0, r=4.0)
+            if closed {
+                draw.close()
+            }
+        }
+    }
+    ui.button #shut(text="close", @click {
+        closed = true
+    })
+}
+
+func testStepsAreReadInOrder(t Test, c art) {
+    t.assert(ops(c.p) == "moveTo,lineTo,lineTo,bezierTo,arcTo")
+}
+
+func testAStepSetsOnlyItsOwnFields(t Test, c art) {
+    t.assert(c.p.steps[2].x == 56.0)
+    t.assert(c.p.steps[3].cx2 == 44.0)
+    t.assert(c.p.steps[4].cx1 == 56.0)
+    t.assert(c.p.steps[4].r == 4.0)
+    t.assert(c.p.steps[4].cx2 == 0.0)
+}
+
+func testTheStepsFollowState(t Test, c art) {
+    c.shut.click()
+    t.assert(ops(c.p) == "moveTo,lineTo,lineTo,bezierTo,arcTo,close")
+}
+
+ui.window {
+    art()
+}

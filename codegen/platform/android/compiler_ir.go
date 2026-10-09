@@ -629,7 +629,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 
-	// Canvas2D stdlib structs (CanvasStyle/PathCmd). Stdlib-only structs
+	// Canvas2D stdlib struct (CanvasStyle). Stdlib-only structs
 	// aren't carried on pkg.Structs, so materialize them here (analogous to
 	// canvasutil for the Go platforms) whenever the program contains a canvas.
 	if hasCanvas {

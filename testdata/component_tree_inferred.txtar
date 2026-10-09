@@ -109,17 +109,6 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	on             bool
@@ -346,17 +335,6 @@ data class CanvasStyle(
     var lineJoin: String = "miter",
     var fontSize: Double = 16.0,
     var fontFamily: String = "sans-serif"
-)
-
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
 )
 
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
@@ -586,8 +564,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:51ea231ac2292b6d6be32f3848ec1df6
+pass sha256:b411d9683d49a56242d0a42f22848e78
 -- run/kotlin/android --
-pass sha256:a36d893b52be55ea506ab8ab1cb02eb2
+pass sha256:dd6090cfdd7e9101d7a1c5e5069c3891
 -- run/none/html --
 pass sha256:809eeaec1ec0c54e2319bdff09ff02f0

@@ -32,20 +32,6 @@ struct CanvasStyle {
 // What one step of a path does.
 enum PathOp { moveTo, lineTo, bezierTo, arcTo, close }
 
-// One step of a path. Each `op` reads only the fields it needs: `bezierTo`
-// both control points and the end point, `arcTo` one control point, the end
-// point and the radius `r`. The rest keep their zero value.
-struct PathCmd {
-    op  PathOp
-    x   float = 0.0
-    y   float = 0.0
-    cx1 float = 0.0
-    cy1 float = 0.0
-    cx2 float = 0.0
-    cy2 float = 0.0
-    r   float = 0.0
-}
-
 // The tree the shapes form. Declaring it here is what makes `shape` a name a
 // component can resolve, so a misspelling is an unresolved name rather than a
 // family nobody joins.
@@ -103,9 +89,50 @@ component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle = Ca
 // meaningless on a line and is ignored.
 component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle = CanvasStyle{}) shape
 
-// Arbitrary shape built from a list of PathCmd steps.
-// TODO Should the path commands be another family with the children on the path?
-component path(cmds list<PathCmd>, style CanvasStyle = CanvasStyle{}) shape
+// Arbitrary shape built from the steps it holds, in order: `moveTo`, `lineTo`,
+// `bezierTo`, `arcTo` and `close`.
+component path(style CanvasStyle = CanvasStyle{}, steps ...component _step) shape
+
+// One step of a path, as the overrides read it. Each `op` reads only the
+// fields it needs and the rest keep their zero, which is why a program writes
+// the step components below rather than this.
+component _step(
+    op  PathOp,
+    x   float = 0.0,
+    y   float = 0.0,
+    cx1 float = 0.0,
+    cy1 float = 0.0,
+    cx2 float = 0.0,
+    cy2 float = 0.0,
+    r   float = 0.0,
+) _step
+
+// Starts a new subpath at x, y without drawing.
+component moveTo(x float, y float) _step {
+    _step(op=PathOp.moveTo, x=x, y=y)
+}
+
+// A straight segment to x, y.
+component lineTo(x float, y float) _step {
+    _step(op=PathOp.lineTo, x=x, y=y)
+}
+
+// A cubic Bézier curve to x, y, pulled toward the control points cx1, cy1
+// and cx2, cy2.
+component bezierTo(cx1 float, cy1 float, cx2 float, cy2 float, x float, y float) _step {
+    _step(op=PathOp.bezierTo, cx1=cx1, cy1=cy1, cx2=cx2, cy2=cy2, x=x, y=y)
+}
+
+// The corner at cx, cy rounded off with radius r, tangent to the segment
+// arriving at it and to the one leaving toward x, y.
+component arcTo(cx float, cy float, x float, y float, r float) _step {
+    _step(op=PathOp.arcTo, cx1=cx, cy1=cy, x=x, y=y, r=r)
+}
+
+// A straight segment back to where the subpath started, joined to it.
+component close() _step {
+    _step(op=PathOp.close)
+}
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
 // a program can import this package alongside `sngl:ui`.
@@ -202,7 +229,7 @@ const func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inn
 
 // --- The tangent arc ---
 
-// Arc is the corner `PathCmd{op = arcTo}` asks for, solved: round off
+// Arc is the corner `arcTo` asks for, solved: round off
 // the corner at `corner` with radius `r`, tangent to the segment arriving from
 // `from` and to the one leaving toward `to`.
 //

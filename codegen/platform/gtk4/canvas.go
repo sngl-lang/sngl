@@ -79,7 +79,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "CanvasStyle":
 			declared[s.Name] = struct{}{}
 		}
 	}

@@ -51,17 +51,6 @@ import (
 	"os"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -422,17 +411,6 @@ import (
 	"unsafe"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
 // shown at its own size wants.
@@ -745,8 +723,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:02306b20b3e9c50ac03538c8f000fafc
+pass sha256:1c97169de961bfd9135ebc6772bd3f5f
 -- run/go/gtk4 --
-pass sha256:beba53a05e752db51fc8a2a30018e2a6
+pass sha256:11182ece99e2fb3b725bf04811386ab1
 -- run/none/html --
 pass sha256:523fc3baf813fbbb32f7b4dee3954419

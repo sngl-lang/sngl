@@ -243,7 +243,7 @@ const component shapes.path[platform] {
         // will not hand back.
         var at = shapes.Point{x=0.0, y=0.0}
 
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 pathMoveTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}

@@ -82,17 +82,6 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -290,17 +279,6 @@ data class CanvasStyle(
     var fontFamily: String = "sans-serif"
 )
 
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
-)
-
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
     drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
         color = c.toArgb()
@@ -493,8 +471,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:46f4e8b15742843e667a6317b9f6b313
+pass sha256:6efd926ab42afb84371e77d960129e92
 -- run/kotlin/android --
-pass sha256:3be39dd934a6f7d10e6fc34ef7436d2d
+pass sha256:6d9d897b3c9d73281a50d93c7373c29f
 -- run/none/html --
 pass sha256:b048c35cf2daca88cee830fd47cc31d4

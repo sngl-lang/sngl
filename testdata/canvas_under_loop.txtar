@@ -74,17 +74,6 @@ import (
 	"os"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -652,17 +641,6 @@ import (
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -1356,8 +1334,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9680da0b2e8046f1ecb7895b39d9d843
+pass sha256:1f19d87d706d07379a21c28b27b1d4d3
 -- run/go/gtk4 --
-pass sha256:d753da264194d621d12e949ff7d8a90b
+pass sha256:c01ed902732c8178c8a87fd8f9f2b1ed
 -- run/none/html --
 pass sha256:263f4fef5f8997eeaf19dbf6f042c3e8

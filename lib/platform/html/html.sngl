@@ -1178,7 +1178,7 @@ const component shapes.path[platform] {
         e.ctx.lineCap = string(style.lineCap)
         e.ctx.lineJoin = string(style.lineJoin)
         e.ctx.beginPath()
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }

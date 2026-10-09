@@ -64,13 +64,13 @@ func terminalCells(w, h int) (cols, rows int) {
 }
 
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs
-// (Color/CanvasStyle/PathCmd), omitting any whose name a user struct already
+// (Color/CanvasStyle), omitting any whose name a user struct already
 // declares (those emit their own type decl).
 func canvasStdlibDecls(structs []*ir.StructDef) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "CanvasStyle":
 			declared[s.Name] = struct{}{}
 		}
 	}

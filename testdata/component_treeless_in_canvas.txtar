@@ -78,17 +78,6 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -345,17 +334,6 @@ import (
 	"os"
 	"time"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type ErrorEvent struct {
 	Message string
@@ -878,17 +856,6 @@ import (
 	"unsafe"
 )
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
 // shown at its own size wants.
@@ -1260,17 +1227,6 @@ data class CanvasStyle(
     var fontFamily: String = "sans-serif"
 )
 
-data class PathCmd(
-    var op: String = "",
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
-)
-
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
     drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
         color = c.toArgb()
@@ -1564,12 +1520,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1d2dd97bd115191a3e423f0fc929e703
+pass sha256:27e99fa54e9b7a327020e79ea946c43a
 -- run/go/fyne --
-pass sha256:ac2ab225080abffa6c81f59680b54c5c
+pass sha256:cd59039c3c7b475c34bc0496b70d1d73
 -- run/go/gtk4 --
-pass sha256:56645e2bf70c8fae56509864c571a9a8
+pass sha256:a71fd364ca35ee5dc6ff99e9ad07f93e
 -- run/kotlin/android --
-pass sha256:1de2a336f3756601c6a2d3d9ad1d9c51
+pass sha256:815dbe3b2108df789753a71f28b3f174
 -- run/none/html --
 pass sha256:0ca2cbd4a03ffe7a8af009f02bdad3a0

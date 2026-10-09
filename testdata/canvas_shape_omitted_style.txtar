@@ -82,17 +82,6 @@ type CanvasStyle struct {
 	FontFamily  string
 }
 
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	visible__inst0 bool
@@ -285,6 +274,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8e50e425dbb10965e261b816ba63e9ca
+pass sha256:923f0cf9865a0855f3351658b474a94c
 -- run/none/html --
 pass sha256:d014a6836fe61ad6fea5e7e440276ba2

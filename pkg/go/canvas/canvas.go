@@ -228,11 +228,10 @@ func (c *Context) Circle(cx, cy, r float64)       { c.dc.DrawCircle(cx, cy, r); 
 func (c *Context) Ellipse(cx, cy, rx, ry float64) { c.dc.DrawEllipse(cx, cy, rx, ry); c.paint() }
 func (c *Context) Line(x1, y1, x2, y2 float64)    { c.dc.DrawLine(x1, y1, x2, y2); c.strokeOnly() }
 
-// Path-builder methods. Generated code emits a loop over the SNGL PathCmd list,
+// Path-builder methods. Generated code emits a loop over a path's step records,
 // dispatching on the op to MoveTo/LineTo/CubicTo/ClosePath, then PaintPath to
-// fill+stroke the built path per the pending style. This keeps the SNGL-side
-// PathCmd slice on the generated-code side (no canvas.PathCmd crosses the
-// boundary).
+// fill+stroke the built path per the pending style. The records stay on the
+// generated-code side: no step type crosses the boundary.
 func (c *Context) MoveTo(x, y float64) { c.dc.MoveTo(x, y) }
 func (c *Context) LineTo(x, y float64) { c.dc.LineTo(x, y) }
 func (c *Context) CubicTo(x1, y1, x2, y2, x3, y3 float64) {
