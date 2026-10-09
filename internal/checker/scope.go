@@ -92,7 +92,7 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	prev, isFunc := red.Prev.(*ir.Func)
 	// A package may shadow a method another package declared on the same
 	// receiver; two in one package are a redeclaration.
-	if isFunc && prev.Pkg != fn.Pkg {
+	if isFunc && prev.PkgPath() != fn.PkgPath() {
 		if err := ir.ReplaceMethod(c.scope, fn.RecvName(), fn); err != nil {
 			return nil
 		}

@@ -209,7 +209,7 @@ func (c *checker) macroFrom(attr ast.MacroAttr, sym ir.Symbol) (string, *ir.Func
 	if pkg := c.macroHome(fn); pkg != nil && pkg.Symbols != nil {
 		c.resolveMacroSig(pkg, fn)
 	}
-	return strings.TrimPrefix(fn.Pkg, "sngl:"), fn, true
+	return strings.TrimPrefix(fn.PkgPath(), "sngl:"), fn, true
 }
 
 // refuseParamMarks reports the marks written on a function or lambda
@@ -469,18 +469,18 @@ func macroImportHint(alias string) string {
 func pkgURIOf(pkg *ir.Package, alias string) string {
 	if pkg != nil {
 		for _, sd := range pkg.Structs {
-			if sd.Pkg != "" {
-				return sd.Pkg
+			if sd.PkgPath() != "" {
+				return sd.PkgPath()
 			}
 		}
 		for _, fn := range pkg.Funcs {
-			if fn.Pkg != "" {
-				return fn.Pkg
+			if fn.PkgPath() != "" {
+				return fn.PkgPath()
 			}
 		}
 		for _, m := range pkg.Macros {
-			if m.Pkg != "" {
-				return m.Pkg
+			if m.PkgPath() != "" {
+				return m.PkgPath()
 			}
 		}
 	}
@@ -489,10 +489,10 @@ func pkgURIOf(pkg *ir.Package, alias string) string {
 
 // macroHome is the package a macro was declared in, without re-entering a load.
 func (c *checker) macroHome(fn *ir.Func) *ir.Package {
-	if fn.Pkg == "" || fn.Pkg == c.libPkgName {
+	if fn.Pkg == nil || fn.PkgPath() == "" {
 		return c.declPkg()
 	}
-	return c.libPkg(strings.TrimPrefix(fn.Pkg, "sngl:"))
+	return fn.Pkg
 }
 
 // markConstValue resolves a package-level `const NAME = <expr>` for a mark

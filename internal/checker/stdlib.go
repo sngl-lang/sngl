@@ -429,6 +429,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	defer func() { c.libDepth--; c.libPkgName = savedPkgName }()
 
 	stdlibPkg := &ir.Package{
+		Path:           c.libPkgName,
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},
@@ -617,8 +618,8 @@ func (c *checker) isMacroSig(t *ir.Type) bool {
 	// resolved is a different *StructDef from this checker's — equal in every
 	// way that matters and not the same pointer. Comparing the two made a mark
 	// in an imported package "not a macro".
-	return (sd.Name == macroTypeName && sd.Pkg == "sngl:"+irPkg) ||
-		(sd.Name == builtinMacroTypeName && sd.Pkg == "sngl:builtin")
+	return (sd.Name == macroTypeName && sd.PkgPath() == "sngl:"+irPkg) ||
+		(sd.Name == builtinMacroTypeName && sd.PkgPath() == "sngl:builtin")
 }
 
 // declarePluralKeyConstants registers the six CLDR plural categories on the

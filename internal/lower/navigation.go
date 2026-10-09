@@ -1423,7 +1423,7 @@ func (nv *navigation) retype() {
 	for _, c := range nv.pkg.Components {
 		// A library declaration is shared by every build, so retyping it
 		// here would retype it for the next one.
-		if c.Pkg != "" {
+		if c.PkgPath() != "" {
 			continue
 		}
 		for _, v := range c.Vars {

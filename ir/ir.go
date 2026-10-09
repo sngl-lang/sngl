@@ -31,6 +31,10 @@ func isExportedName(name string) bool {
 
 // Package is the top-level IR for a checked .sngl package.
 type Package struct {
+	// Path is the package's global name -- "sngl:ui" for a library package --
+	// and empty for a program's, whose declarations mean nothing outside a
+	// build. A declaration's identity is this and its name (DeclInfo.Pkg).
+	Path       string `json:",omitempty"`
 	Imports    []*Import
 	Structs    []*StructDef
 	Enums      []*EnumDef
@@ -507,13 +511,15 @@ func IndexNativeDecls(p *Package) NativeDecls {
 type DeclInfo struct {
 	// Name is the declared name; empty for a lambda and an event handler.
 	Name string
-	// Pkg is the URI of the package that declared it, for a package whose
-	// identity is global -- the embedded library's "sngl:ui", "sngl:builtin",
-	// "sngl:ui/draw". Empty for a program's own declarations, whose names are
-	// only meaningful relative to a build. Pkg and Name are a named type's
-	// identity (sameDecl), and a mark is bound to the declaration it was
-	// written from by the pair.
-	Pkg string
+	// Pkg is the package that declared it. Its Path is what makes a
+	// declaration's identity global -- the embedded library's "sngl:ui",
+	// "sngl:builtin", "sngl:ui/draw" -- and is empty for a program's own,
+	// whose names are only meaningful relative to a build; PkgPath reads it.
+	// That path and Name are a named type's identity (sameDecl), and a mark
+	// is bound to the declaration it was written from by the pair.
+	//
+	// Not encoded: the package holds the declaration back.
+	Pkg *Package `json:"-"`
 	// Doc is the doc comment of a declaration a scheme imported; a SNGL
 	// declaration's own is read off its AST.
 	Doc string `json:",omitempty"`
@@ -535,6 +541,15 @@ type DeclInfo struct {
 	// load-bearing: without it Foreign.Name and Name collide in the encoder
 	// and neither is written.
 	Foreign `json:"Foreign,omitzero"`
+}
+
+// PkgPath is the path of the package that declared d, empty for a program's
+// own declaration and for one nothing recorded a package for.
+func (d *DeclInfo) PkgPath() string {
+	if d.Pkg == nil {
+		return ""
+	}
+	return d.Pkg.Path
 }
 
 // Foreign records what a declaration corresponds to outside SNGL: the package

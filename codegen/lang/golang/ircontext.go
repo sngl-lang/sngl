@@ -1359,7 +1359,7 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 	}
 	find := func(own bool) (match *ir.StructDef, ambiguous bool) {
 		for _, sd := range gc.Ctx.Pkg.Structs {
-			if own && sd.Pkg != "" {
+			if own && sd.PkgPath() != "" {
 				continue
 			}
 			for _, f := range sd.Fields {

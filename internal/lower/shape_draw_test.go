@@ -16,9 +16,9 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	// The family is a declaration, so both the member and its host name this
 	// one. It is a family by being a member of the family of families, which
 	// is a member of itself.
-	families := &ir.Component{Name: "family", Pkg: "sngl:build", Builtin: ir.BuiltinTreeFamily}
+	families := &ir.Component{Name: "family", Pkg: &ir.Package{Path: "sngl:build"}, Builtin: ir.BuiltinTreeFamily}
 	families.Tree = families
-	shapeTree := &ir.Component{Name: "shape", Pkg: "sngl:ui/draw", Builtin: ir.BuiltinTreeShape, Tree: families}
+	shapeTree := &ir.Component{Name: "shape", Pkg: &ir.Package{Path: "sngl:ui/draw"}, Builtin: ir.BuiltinTreeShape, Tree: families}
 	shapeSlot := func() []*ir.SlotDecl {
 		return []*ir.SlotDecl{{
 			Name:    "shapes",

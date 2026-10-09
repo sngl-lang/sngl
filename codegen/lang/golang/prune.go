@@ -23,7 +23,7 @@ func PayloadPruneCandidates(pkg *ir.Package, testArgs map[string][]*ir.Type) []s
 	}
 	var out []string
 	for _, sd := range pkg.Structs {
-		if sd != nil && sd.Pkg != "" && !keep[sd.Name] {
+		if sd != nil && sd.PkgPath() != "" && !keep[sd.Name] {
 			out = append(out, ExportName(sd.Name))
 		}
 	}

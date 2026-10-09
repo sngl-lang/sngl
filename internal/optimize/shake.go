@@ -118,7 +118,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		if t != nil && t.Kind == ir.TypeEnum {
 			// Kotlin emits an enum as a class of its own, so a helper taking
 			// `markup.Token` named a type the file never declared.
-			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.Pkg != "" && ed.Foreign.Name == "" {
+			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.PkgPath() != "" && ed.Foreign.Name == "" {
 				haveEnum[ed] = true
 				addedEnums = append(addedEnums, ed)
 			}
@@ -128,7 +128,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			return
 		}
 		sd, ok := t.Decl.(*ir.StructDef)
-		if !ok || sd == nil || have[sd] || sd.Pkg == "" || sd.Foreign.Name != "" {
+		if !ok || sd == nil || have[sd] || sd.PkgPath() == "" || sd.Foreign.Name != "" {
 			return
 		}
 		have[sd] = true
@@ -155,7 +155,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		})
 	}
 	for _, fn := range pkg.Funcs {
-		if fn == nil || fn.Pkg == "" {
+		if fn == nil || fn.PkgPath() == "" {
 			continue
 		}
 		for _, p := range fn.Params {
@@ -166,7 +166,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	for _, t := range handlerPayloadTypes(pkg) {
 		// sngl:builtin's `error`, an @error handler's, is each backend's own
 		// to spell.
-		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && sd.Builtin == ir.BuiltinNone && sd.Pkg != "sngl:builtin" {
+		if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && sd.Builtin == ir.BuiltinNone && sd.PkgPath() != "sngl:builtin" {
 			want(t)
 		}
 	}
@@ -185,7 +185,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		if other, clash := byName[sd.Name]; clash {
 			return fmt.Errorf("%s declares struct %q and so does %s, which a function this build emits names in its signature; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
-				pkgLabel(other.Pkg), sd.Name, pkgLabel(sd.Pkg))
+				pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
 		}
 		byName[sd.Name] = sd
 	}

@@ -412,7 +412,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 			// is a primitive missing its mark, and nothing downstream can tell
 			// that from a wrapper that implements nothing.
 			return nil, fmt.Errorf("platform stdlib wrapper %q has no body to inline; mark it #[intrinsic] if it is a platform primitive (at %s)", comp.Name, compPos(comp))
-		case st.platform != "" && comp.Pkg == "":
+		case st.platform != "" && comp.PkgPath() == "":
 			return nil, nil
 		}
 		return []ir.Stmt{n}, nil

@@ -479,13 +479,13 @@ func (c *checker) reportTargetNames() {
 	// A library's nodes first: a program's node that takes a shipped
 	// target's name is the one that has to change, so it is the one reported.
 	slices.SortStableFunc(nodes, func(a, b *ir.Component) int {
-		if (a.Pkg == "") != (b.Pkg == "") {
-			if a.Pkg == "" {
+		if (a.PkgPath() == "") != (b.PkgPath() == "") {
+			if a.PkgPath() == "" {
 				return 1
 			}
 			return -1
 		}
-		if n := cmp.Compare(a.Pkg, b.Pkg); n != 0 {
+		if n := cmp.Compare(a.PkgPath(), b.PkgPath()); n != 0 {
 			return n
 		}
 		if n := cmp.Compare(a.AST.Pos.File, b.AST.Pos.File); n != 0 {
@@ -500,9 +500,9 @@ func (c *checker) reportTargetNames() {
 	for _, n := range nodes {
 		tierKind, name := ir.TargetTier(n.Tree), n.Gen.TargetName
 		tier := targetTierMember(tierKind)
-		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.Pkg, "sngl:")); ok &&
+		if owner, kind, ok := targetTierName(strings.TrimPrefix(n.PkgPath(), "sngl:")); ok &&
 			kind == tierKind && owner != name {
-			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.Pkg, tier, name, owner)
+			c.error(n.AST.Pos, "%s names its %s %q: a target package's node carries the package's own name, %q", n.PkgPath(), tier, name, owner)
 			continue
 		}
 		key := tier + "/" + name

@@ -332,7 +332,7 @@ func (c *checker) buildStructDef(s *ast.StructDef) *ir.StructDef {
 	return &ir.StructDef{
 		AST:        s,
 		Name:       s.Name,
-		Pkg:        c.libPkgName,
+		Pkg:        c.declPkg(),
 		TypeParams: c.resolveTypeParams(s.TypeParams),
 		Fields:     c.resolveStructFields(s),
 	}
@@ -441,7 +441,7 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	return &ir.EnumDef{
 		AST:     e,
 		Name:    e.Name,
-		Pkg:     c.libPkgName,
+		Pkg:     c.declPkg(),
 		Members: members,
 	}
 }
@@ -474,7 +474,7 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 	ud := &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
-		Pkg:      c.libPkgName,
+		Pkg:      c.declPkg(),
 		Suffixes: suffixes,
 	}
 	// The member table, built here so it exists wherever a UnitDef does --
@@ -672,7 +672,7 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 	fn := &ir.Func{
 		AST:            f,
 		Name:           f.Name,
-		Pkg:            c.libPkgName,
+		Pkg:            c.declPkg(),
 		TypeParams:     c.resolveTypeParams(f.TypeParams),
 		RecvTypeParams: c.resolveTypeParams(f.RecvTypeParams),
 		Params:         c.buildParams(f.Params),

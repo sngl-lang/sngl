@@ -37,7 +37,7 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	// own functions are what its generated code is made of: a computed reading
 	// state is readonly, and dissolving it into every prop that names it is a
 	// different program to read.
-	if f.Purity != ir.PurityPure && f.Pkg == "" {
+	if f.Purity != ir.PurityPure && f.PkgPath() == "" {
 		return nil
 	}
 	// A foreign declaration's body describes the function rather than

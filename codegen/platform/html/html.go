@@ -1523,7 +1523,7 @@ func isUserIRComponent(n *ir.NodeInst) bool {
 	if isElement(n.Component) {
 		return false
 	}
-	return n.Component.Pkg == ""
+	return n.Component.PkgPath() == ""
 }
 
 // pts returns the funcvar points-to analysis results, or nil if not yet
@@ -2218,7 +2218,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		// A library function the view called may have been folded away in
 		// every document -- `md.document`'s helpers are -- so it is declared
 		// only where the script still names it.
-		lib := fn.Pkg != "" && !fn.IsMethod()
+		lib := fn.PkgPath() != "" && !fn.IsMethod()
 		if lib {
 			openDecl(b, fn.Name)
 		}

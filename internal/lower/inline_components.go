@@ -951,7 +951,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// -- `ui.window`, whose methods keep passInlinePure off it, composed
 		// under a reactive `if` on bubbletea, where the implicit-state wrapper
 		// around it was spliced per copy.
-		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.Pkg != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
@@ -1280,7 +1280,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// A library body -- a builtin node this target composes, and the
 	// override it renders -- was written in the library, and a diagnostic
 	// about what it became belongs where the program wrote the node.
-	if comp.Pkg != "" {
+	if comp.PkgPath() != "" {
 		ir.AttachNodeSite(body, n)
 	}
 

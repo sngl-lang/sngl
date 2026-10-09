@@ -2,6 +2,7 @@ package ir
 
 import (
 	"reflect"
+	"sync"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -27,7 +28,10 @@ func clearReachableTreeKinds(pkg *Package) {
 	seen := map[uintptr]bool{}
 	var walk func(v reflect.Value, depth int)
 	walk = func(v reflect.Value, depth int) {
-		if depth > 64 || !v.IsValid() {
+		// No depth bound: seen ends a cycle, and a declaration the walk
+		// stopped short of would keep its package on one side of a compare
+		// and not the other.
+		if !v.IsValid() {
 			return
 		}
 		switch v.Kind() {
@@ -46,6 +50,18 @@ func clearReachableTreeKinds(pkg *Package) {
 			}
 			walk(v.Elem(), depth+1)
 		case reflect.Struct:
+			// A declaration's package is compared by its path, which is all
+			// of a declaration's identity it contributes: a program's points
+			// back at the package being compared, and a library's at whichever
+			// load of the library that check made.
+			if v.Type() == reflect.TypeFor[DeclInfo]() && v.CanAddr() {
+				d := v.Addr().Interface().(*DeclInfo)
+				if path := d.PkgPath(); path == "" {
+					d.Pkg = nil
+				} else {
+					d.Pkg = comparePkg(path)
+				}
+			}
 			for i := range v.NumField() {
 				if v.Type().Field(i).PkgPath == "" {
 					walk(v.Field(i), depth+1)
@@ -207,8 +223,8 @@ func (s *stripper) stripComponent(c *Component) {
 	if c.Funcs == nil {
 		c.Funcs = []*Func{}
 	}
-	if c.Body == nil {
-		c.Body = []Stmt{}
+	if c.Stmts == nil {
+		c.Stmts = []Stmt{}
 	}
 	for _, p := range c.Props {
 		p.Type = nil
@@ -227,7 +243,7 @@ func (s *stripper) stripComponent(c *Component) {
 	for _, f := range c.Funcs {
 		s.stripFunc(f)
 	}
-	s.stripStmts(c.Body)
+	s.stripStmts(c.Stmts)
 }
 
 // --- Statements ---
@@ -378,4 +394,22 @@ func (s *stripper) stripExpr(e Expr) {
 		e.Type = nil
 		s.stripFunc(e.Func)
 	}
+}
+
+var (
+	comparePkgsMu sync.Mutex
+	comparePkgs   = map[string]*Package{}
+)
+
+// comparePkg is the one package StripForCompare leaves a declaration of path
+// pointing at, so two loads of one library compare equal.
+func comparePkg(path string) *Package {
+	comparePkgsMu.Lock()
+	defer comparePkgsMu.Unlock()
+	p, ok := comparePkgs[path]
+	if !ok {
+		p = &Package{Path: path}
+		comparePkgs[path] = p
+	}
+	return p
 }

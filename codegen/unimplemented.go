@@ -61,7 +61,7 @@ func UnimplementedNode(comp *ir.Component, src ast.Stmt, tag, platform string) *
 	}
 	if comp != nil {
 		e.Decl = comp.Name
-		e.DeclPkg = comp.Pkg
+		e.DeclPkg = comp.PkgPath()
 		e.Wildcard = comp.Wildcard != ""
 	}
 	return e

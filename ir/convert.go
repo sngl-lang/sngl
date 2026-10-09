@@ -780,8 +780,8 @@ func (c *converter) aliasFor(uri string) string {
 // it was declared elsewhere, bare when it was declared here.
 func (c *converter) treeName(f *Component) *ast.NamedType {
 	nt := &ast.NamedType{Name: f.Name}
-	if f.Pkg != "" {
-		nt.Package = c.aliasFor(f.Pkg)
+	if f.PkgPath() != "" {
+		nt.Package = c.aliasFor(f.PkgPath())
 	}
 	return nt
 }

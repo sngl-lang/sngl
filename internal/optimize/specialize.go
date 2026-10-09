@@ -149,7 +149,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
 	// A library body was written where the program cannot see it, so a
 	// diagnostic about what it became belongs at the node the program wrote.
-	if comp.Pkg != "" && !childCtx.site.IsValid() {
+	if comp.PkgPath() != "" && !childCtx.site.IsValid() {
 		childCtx.site = ir.NodePos(n)
 	}
 	for name, val := range propValues {

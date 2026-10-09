@@ -59,7 +59,7 @@ func validateRawElements(pkg *ir.Package) error {
 func firstUnrenderedNode(pkg *ir.Package) error {
 	var bad error
 	declines := func(c *ir.Component) bool {
-		return c != nil && c.Bodyless && c.Pkg != "sngl:platform/html" && !slices.Contains(pkg.Components, c)
+		return c != nil && c.Bodyless && c.PkgPath() != "sngl:platform/html" && !slices.Contains(pkg.Components, c)
 	}
 	ir.WalkStmts(pkg, func(s ir.Stmt) error {
 		if bad != nil {

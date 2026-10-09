@@ -227,7 +227,7 @@ func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:     "raise",
-			Pkg:      "sngl:builtin",
+			Pkg:      &ir.Package{Path: "sngl:builtin"},
 			Receiver: ir.ReceiverNamed("error"),
 			Params: []*ir.Param{
 				{Name: "message", Type: ir.TypString},

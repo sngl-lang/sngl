@@ -1484,7 +1484,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// A native is excluded because it *is* a host identifier: its
 			// parameters are the host's, and the receiver arrives before the
 			// dot under `method` and as argument zero without it.
-			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+			if fn.PkgPath() == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
 						fn.RecvName(), fn.Name, fn.RecvName(), fn.Name)

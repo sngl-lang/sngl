@@ -1146,7 +1146,7 @@ func EnumName(decl ir.Symbol) string {
 	if !ok {
 		return exportName(decl.SymName())
 	}
-	if ed.Pkg != "" {
+	if ed.PkgPath() != "" {
 		return "Sngl" + exportName(ed.Name)
 	}
 	return exportName(ed.Name)

@@ -7,6 +7,8 @@ import "reflect"
 // metadata carried in `any` fields, and other foreign types).
 var irPkgPath = reflect.TypeFor[Package]().PkgPath()
 
+var declInfoType = reflect.TypeFor[DeclInfo]()
+
 // ClonePackage returns a deep, independent copy of pkg. Every internal
 // cross-reference — Ident.Sym, Call.Func, StructLit.Def, Type.Decl, the
 // Symbols table, and the LiftedCaptures/AddressedVars maps keyed by node
@@ -161,6 +163,18 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 			// hop only: the declarations reached from inside that body are
 			// references like any other.
 			c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
+			// A declaration's package is where it came from, not part of it:
+			// the package being cloned maps to its clone, and any other -- a
+			// library package -- is shared rather than copied whole.
+			if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+				p := v.Field(i)
+				if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
+					out.Field(i).Set(cv)
+				} else {
+					out.Field(i).Set(p)
+				}
+				continue
+			}
 			if c.only != nil && carriesOverrides(v.Type()) {
 				if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
 					out.Field(i).Set(c.cloneOverride(v.Field(i), key))

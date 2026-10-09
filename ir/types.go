@@ -336,13 +336,13 @@ func declIdentity(sym Symbol) (declRef, bool) {
 	var ref declRef
 	switch d := sym.(type) {
 	case *StructDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *EnumDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *UnitDef:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	case *Component:
-		ref = declRef{d.Pkg, d.Name}
+		ref = declRef{d.PkgPath(), d.Name}
 	default:
 		return declRef{}, false
 	}
@@ -392,22 +392,22 @@ func typeOrigin(t *Type) string {
 	var pos ast.Pos
 	switch d := t.Decl.(type) {
 	case *StructDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *EnumDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *UnitDef:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}
 	case *Component:
-		pkg = d.Pkg
+		pkg = d.PkgPath()
 		if d.AST != nil {
 			pos = d.AST.Pos
 		}

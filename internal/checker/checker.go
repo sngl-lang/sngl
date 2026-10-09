@@ -1901,7 +1901,7 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 // methods) in a later pass1 sub-pass, once every type shell exists.
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
-	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName, Builtin: c.stampBuiltinKind(s.Attrs)}
+	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.declPkg(), Builtin: c.stampBuiltinKind(s.Attrs)}
 	// Macro carries no #[builtin] kind: a kind names the IR construct a
 	// declaration dispatches to, and this one dispatches to none. It is found
 	// by name within the compiler's own package, which no program can import.
@@ -2902,7 +2902,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	irComp := &ir.Component{
 		AST:        comp,
 		Name:       comp.Name,
-		Pkg:        c.libPkgName,
+		Pkg:        c.declPkg(),
 		Bodyless:   !comp.Body.IsDefined(),
 		Const:      comp.Const,
 		TypeParams: c.resolveTypeParams(comp.TypeParams),

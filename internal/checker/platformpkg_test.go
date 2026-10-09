@@ -99,8 +99,8 @@ component main node {
 	if wrap == nil {
 		t.Fatal("platform package contributed no Wrap component")
 	}
-	if wrap.Pkg != "sngl:platform/extstub" {
-		t.Errorf("Wrap.Pkg = %q; want sngl:platform/extstub", wrap.Pkg)
+	if wrap.PkgPath() != "sngl:platform/extstub" {
+		t.Errorf("Wrap.Pkg = %q; want sngl:platform/extstub", wrap.PkgPath())
 	}
 	if len(wrap.Body) == 0 {
 		t.Fatal("Wrap has no checked body")

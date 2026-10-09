@@ -64,7 +64,7 @@ func TestInternAnonStructUniquifiesAName(t *testing.T) {
 // either spelling.
 func TestAnonSignatureSeparatesByPackage(t *testing.T) {
 	mine := &ir.StructDef{Name: "Style"}
-	theirs := &ir.StructDef{Name: "Style", Pkg: "sngl:ui"}
+	theirs := &ir.StructDef{Name: "Style", Pkg: &ir.Package{Path: "sngl:ui"}}
 	fieldsOf := func(sd *ir.StructDef) []*ir.StructField {
 		return []*ir.StructField{{Name: "s", Type: sd.SymType()}}
 	}
