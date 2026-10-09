@@ -521,6 +521,22 @@ mount: a mounted node and an effect keep the values they were mounted under
 `testdata/context_read_in_user_func.txtar` and
 `cmd/sngl/testdata/context_read_in_user_func.txt` are the two halves.
 
+**A context's type is its default's**, and `sngl:builtin` says so:
+`component context<V, F>(default V) F`. The checker reads the default itself
+(`registerRootContextDecl`) rather than binding the declaration's parameters,
+and holds every provider's value to it. A default whose type says too little
+-- `null`, `[]` -- is written as a typed const, `const nobody option<User> = null` then `context #who(nobody)`; stating the type in place would need type
+arguments at a call site, which the language does not have (a TODO in
+`lib/builtin/context.sngl` names brackets, `<…>` not being LL(1) there).
+`t.setContext<V>(ctx V, value V)` takes any context and a value of its type,
+and a first argument that is not a context is a positioned error
+(`refuseSetContextName`), where it used to fail only when the test ran
+(`error_test_set_context_not_a_context.sngl`,
+`cmd/sngl/testdata/set_context_typed_runs.txt`). That needed a general fix:
+a `sngl:` method whose first parameter is a bare type parameter took its
+operand as that parameter, since every operand fits one, so such a parameter
+receives the operand only where it is marked the receiver (`receivesOperand`).
+
 ## Build & Test Commands
 
 ```bash

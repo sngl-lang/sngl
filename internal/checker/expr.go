@@ -657,8 +657,21 @@ func comparableEq(left, right *ir.Type) bool {
 // operand's type fits. A component method's synthesized `this` names the
 // declaration bare, which a handle carrying its call site's type arguments
 // does not equal, and is the receiver all the same.
+//
+// A parameter typed by a bare type parameter is the receiver only where it is
+// marked so: every operand fits one, so fitting says nothing, and
+// `Test.setContext<V>(ctx V, value V)` took `t` as its context.
 func receivesOperand(receiver *ir.Type, p *ir.Param) bool {
-	return p.Receiver || receiver.IsAssignableTo(p.Type)
+	if p.Receiver {
+		return true
+	}
+	return !bareTypeParam(p) && receiver.IsAssignableTo(p.Type)
+}
+
+// bareTypeParam reports whether p's type is a type parameter and nothing
+// else, which any operand fits.
+func bareTypeParam(p *ir.Param) bool {
+	return p.Type != nil && p.Type.Kind == ir.TypeTypeParam
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
@@ -1235,7 +1248,8 @@ func isTypeSym(sym ir.Symbol) bool {
 	return false
 }
 
-func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
+func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) (out ir.Expr) {
+	defer func() { c.refuseSetContextName(out) }()
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 
@@ -1416,7 +1430,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// For instance calls using the old-style receiver-as-param convention,
 			// bind receiver to param[0] before inferring from explicit args so
 			// that e.g. list<int>.length() binds T=int.
-			if recvParamStyle && !isStatic && len(sig.Params) > 0 {
+			if recvParamStyle && !isStatic && len(sig.Params) > 0 && (sig.Params[0].Receiver || !bareTypeParam(sig.Params[0])) {
 				bindings := make(map[string]*ir.Type)
 				bindTypeParams(sig.Params[0].Type, receiver, bindings)
 				if len(bindings) > 0 {
