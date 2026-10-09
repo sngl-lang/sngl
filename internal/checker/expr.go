@@ -2855,7 +2855,7 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 			// that yields nothing gives it nothing to return, and the lowered
 			// `return xs.push(v)` is not something any target can spell.
 			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
-			fn.Return = exprType(bodyExpr)
+			fn.Return = c.inferredType(exprType(bodyExpr), *x.Body.ExprPos())
 			c.returnType = fn.Return
 		}
 		fn.Block = []ir.Stmt{&ir.Return{AST: &ast.ReturnStmt{Pos: *x.Body.ExprPos(), Value: x.Body}, Value: bodyExpr}}
@@ -3454,14 +3454,10 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				c.error(decl.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(spec.Default, initExpr, typ, initSlot(decl.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Prevent void propagation into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			} else {
+			if exprType(initExpr).Kind != ir.TypeVoid && typ.Kind != ir.TypeDyn {
 				initExpr = wrapIfNeeded(initExpr, typ)
 			}
+			typ = c.typeFromInit(typ, initExpr, *spec.Default.ExprPos())
 		}
 		for _, name := range spec.Names {
 			sym := &ir.Var{
@@ -3589,12 +3585,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				c.error(x.Pos, "context value cannot be captured into a local var (read at use site instead)")
 			}
 			initExpr = c.coerce(x.Init, initExpr, typ, initSlot(x.Pos))
-			initType := exprType(initExpr)
-			if initType.Kind == ir.TypeVoid {
-				// Avoid propagating void into an inferred var type.
-			} else if typ.Kind == ir.TypeDyn {
-				typ = initType
-			}
+			typ = c.typeFromInit(typ, initExpr, *x.Init.ExprPos())
 		}
 		sym := &ir.Var{
 			AST:  x,

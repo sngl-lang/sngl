@@ -98,7 +98,7 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 		c.reportSelfReferentialDefault(s.Pos, ctx, def)
 		ctx.Default = def
 		if def != nil {
-			ctx.Typ = def.ExprType()
+			ctx.Typ = c.inferredType(def.ExprType(), *a.Value.ExprPos())
 		}
 	})
 	// A context is program-global whichever tier declared it: the one sngl:i18n
