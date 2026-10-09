@@ -985,7 +985,13 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	return &ir.Ternary{AST: x, Type: typ, Cond: condExpr, Then: thenExpr, Else: elseExpr}
 }
 
-func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+func (c *checker) inferCall(x *ast.CallExpr) (out ir.Expr) {
+	// What a call to one of these intrinsics is handed is held to rules its
+	// signature cannot state.
+	defer func() {
+		c.refuseSetContextName(out)
+		c.checkI18nCall(x, out)
+	}()
 	stmtCall := c.stmtCall
 	c.stmtCall = nil
 	if x != stmtCall {
@@ -1248,8 +1254,7 @@ func isTypeSym(sym ir.Symbol) bool {
 	return false
 }
 
-func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) (out ir.Expr) {
-	defer func() { c.refuseSetContextName(out) }()
+func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 

@@ -52,6 +52,7 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	passRecordArgs,
 	passSpreadOnce,
 	passViewForElse,
 	passBoundaryFailed,

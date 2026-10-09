@@ -14,25 +14,25 @@ context #locale(defaultLocale())
 
 // --- Translation entry points ---
 
-// Translate `key` against the loaded manifest, formatting via ICU.
-// The lowering of $"..." passes the synthesized ICU template as `key`
-// and the placeholder values as `args`.
-// TODO Generic struct for the args (die dyn die)
+// Translate `key` against the loaded manifest, formatting via ICU. `args`
+// is a struct with a field per placeholder, `{name=n}`. Write the key in
+// backticks, or escape its braces: a double-quoted string is interpolated
+// where it is written, before tr could read its placeholders.
 #[marks.intrinsic("i18n.tr")]
-func tr(key string, args map<string, dyn>) string { return _translate(locale, key, "", args) }
+func tr<A>(key string, args A) string { return _translate(locale, key, "", args) }
 
 // Internal: target of $"..." string interpolation lowering. Carries both
 // the canonical key and the synthesized ICU template at the call site so
 // the runtime can fall back to the inlined template when the manifest
 // lookup misses.
-// TODO Generic struct for the args (die dyn die)
 #[marks.intrinsic("i18n.trInline")]
-func trInline(key string, inlinedTemplate string, args map<string, dyn>) string { return _translate(locale, key, inlinedTemplate, args) }
+func trInline<A>(key string, inlinedTemplate string, args A) string { return _translate(locale, key, inlinedTemplate, args) }
 
-// Format an ICU template directly, no manifest lookup.
-// TODO Generic struct for the args (die dyn die)
+// Format an ICU template directly, no manifest lookup. `args` is a struct
+// with a field per placeholder, and the template is written in backticks, as
+// tr's key is.
 #[marks.intrinsic("i18n.format")]
-func format(template string, args map<string, dyn>) string { return _format(locale, template, args) }
+func format<A>(template string, args A) string { return _format(locale, template, args) }
 
 // --- Direct formatters ---
 
@@ -94,8 +94,7 @@ func datetime(
 
 // --- Direct selectors ---
 
-// Free-form value-based selection.
-// TODO Generic struct for the cases?
+// Free-form value-based selection: the case whose key is value, else `other`.
 #[marks.intrinsic("i18n.select")]
 func select(value string, cases map<string, string>) string { return _select(locale, value, cases) }
 
@@ -129,10 +128,10 @@ func selectordinal(count int, forms map<PluralKey, string>) string { return _sel
 func _defaultLocale() string
 
 #[marks.intrinsic("i18n._translate")]
-const func _translate(locale string, key string, inlinedTemplate string, args map<string, dyn>) string
+const func _translate<A>(locale string, key string, inlinedTemplate string, args A) string
 
 #[marks.intrinsic("i18n._format")]
-const func _format(locale string, template string, args map<string, dyn>) string
+const func _format<A>(locale string, template string, args A) string
 
 #[marks.intrinsic("i18n._numberInt")]
 const func _numberInt(locale string, n int, style string) string
@@ -154,8 +153,9 @@ const func _select(locale string, value string, cases map<string, string>) strin
 
 // PluralKey identifies a CLDR plural category or an exact numeric match.
 // Write the predeclared constants (i18n.zero, i18n.one, …, i18n.other) or
-// i18n.exactly(n); the fields are the runtime's business.
-// TODO Should PluralKey be anynomous?
+// i18n.exactly(n); the fields are the runtime's business. It is a declared
+// type rather than an anonymous one so that those are the only ways to write
+// one.
 struct PluralKey {
     n     int
     exact bool

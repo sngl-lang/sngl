@@ -254,6 +254,11 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	}); err != nil {
 		return err
 	}
+	// A record an intrinsic reads by field name is the map its runtime takes,
+	// converted before the shake so its struct is declared by no target.
+	if err := lower.RecordArgs(pkg); err != nil {
+		return err
+	}
 	// A pure native call can only fold once a subprocess has computed it, and
 	// building that subprocess is worth doing once for the whole batch. Learn
 	// the batch from throwaway passes over a clone, then fold pkg itself with

@@ -1,0 +1,51 @@
+import . "sngl:ui"
+import . "sngl:test"
+import "sngl:i18n"
+
+// i18n.tr and i18n.format take their arguments as a struct whose fields are
+// the template's placeholders, and the template as written.
+struct Who {
+    name  string
+    count int
+}
+
+component Greeter node {
+    var who = Who{name="Ada", count=3}
+    var calls = 0
+
+    func next() Who {
+        calls = calls + 1
+        return who
+    }
+
+    func literal() => i18n.format(`Hello, {name}!`, {name=who.name})
+    func named() => i18n.format(`{name} has {count, plural, one{# item} other{# items}}`, who)
+    func computed() => i18n.format(`{name}:{count}`, next())
+    func translated() => i18n.tr(`Hi {name}`, {name="Bo"})
+    text(value=literal())
+}
+
+func testLiteral(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.literal() == "Hello, Ada!")
+}
+
+func testNamedStruct(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.named() == "Ada has 3 items")
+}
+
+func testComputedOnce(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.computed() == "Ada:3")
+    t.assert(c.calls == 1)
+}
+
+func testTranslated(t Test, c Greeter) {
+    t.setContext(i18n.locale, "en")
+    t.assert(c.translated() == "Hi Bo")
+}
+
+window {
+    Greeter
+}

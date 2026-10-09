@@ -10,6 +10,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -82,6 +83,11 @@ func lowerTestFileFixture(t *testing.T, path string) string {
 	}
 	if pkg == nil {
 		t.Fatal("nil pkg")
+	}
+	// Every pipeline converts an i18n call's record of arguments to the map
+	// the runtime takes before a test body reaches an emitter.
+	if err := lower.RecordArgs(pkg); err != nil {
+		t.Fatal(err)
 	}
 	fns, suffixes, methodFields := codegen.CollectTestFuncs(pkg)
 	surf := kotlin.TestSurface{

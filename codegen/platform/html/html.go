@@ -1286,6 +1286,12 @@ func (g *htmlGen) generate() (string, error) {
 		}
 		preamble.WriteString(snippet)
 		preamble.WriteString("\n")
+		// A test module is bundled beside the page, so a test body calling
+		// i18n itself -- an i18n call the optimizer inlined into it -- finds
+		// the runtime on window, as it finds the page's functions.
+		if g.testMode {
+			preamble.WriteString("if (typeof window !== 'undefined') { Object.assign(window, { i18n }); }\n")
+		}
 		script = preamble.String() + script
 	}
 
