@@ -172,7 +172,7 @@ func bodiedPackage() *Package {
 			},
 		}},
 		Components: []*Component{{
-			Body:  body("Component.Body"),
+			Stmts: body("Component.Body"),
 			Funcs: []*Func{fn("Component.Funcs")},
 			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		}},

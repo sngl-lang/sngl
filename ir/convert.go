@@ -312,8 +312,8 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 		bodyStmts = append(bodyStmts, fd)
 	}
-	if len(comp.Body) > 0 {
-		bodyBlock := c.convertStmtBlock(comp.Body)
+	if len(comp.Stmts) > 0 {
+		bodyBlock := c.convertStmtBlock(comp.Stmts)
 		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
 	}
 	// A signature keeps no block; anything else gets one even when it is

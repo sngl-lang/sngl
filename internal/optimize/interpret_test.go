@@ -296,7 +296,7 @@ func textValuesInMain(t *testing.T, pkg *ir.Package) []string {
 		t.Fatal("component main not found")
 	}
 	var vals []string
-	for _, s := range main.Body {
+	for _, s := range main.Stmts {
 		ni, ok := s.(*ir.NodeInst)
 		if !ok {
 			continue

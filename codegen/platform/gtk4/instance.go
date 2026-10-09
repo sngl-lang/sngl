@@ -72,7 +72,7 @@ func emitComponentInstance(
 		// this map does not carry resolves to no widget and stops the build.
 		// collectNodeCTypes answers over every component's funcs already, for
 		// the same reason.
-		tr.collectTagComponents(comp.Body)
+		tr.collectTagComponents(comp.Stmts)
 		for _, fn := range comp.Funcs {
 			if fn != nil {
 				tr.collectTagComponents(fn.Block)
@@ -86,9 +86,9 @@ func emitComponentInstance(
 	// the Model as it is built: the invoker reaches whichever instance built
 	// it last, which is the one on screen.
 	var invokers []gtkEventInvoker
-	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv gtkEventInvoker) { invokers = append(invokers, inv) })
-	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {

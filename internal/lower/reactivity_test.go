@@ -24,7 +24,7 @@ func TestReactivity_ComponentInSlotEmitsCreateComponent(t *testing.T) {
 	main := &ir.Component{
 		Name: "main",
 		Vars: []*ir.Var{items},
-		Body: []ir.Stmt{
+		Stmts: []ir.Stmt{
 			&ir.For{
 				Key:  "x",
 				Iter: &ir.Ident{Name: "items", Sym: items, Type: items.Type},

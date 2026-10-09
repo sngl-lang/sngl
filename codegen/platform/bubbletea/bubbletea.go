@@ -143,7 +143,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
-		stmts = main.Body
+		stmts = main.Stmts
 	}
 	return c.ctx.BuildRender(stmts), nil
 }

@@ -124,7 +124,7 @@ func IsUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // Mount builds the retained tree for env's component body.
@@ -606,7 +606,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 			Env:       env,
 			Inst:      inst,
 			Component: inst.Component,
-			Expanded:  len(inst.Component.Body) > 0,
+			Expanded:  len(inst.Component.Stmts) > 0,
 		}
 		node.Props, node.PropOrder = evalProps(env, inst.Props)
 		node.Handlers = handlersOf(inst)
@@ -723,7 +723,7 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 			child := env.ComponentEnvFromCallStmt(comp, cs)
 			child.RenderDepth = env.RenderDepth + 1
 			node.CompEnv = child
-			node.Expanded = len(comp.Body) > 0
+			node.Expanded = len(comp.Stmts) > 0
 			if !node.Expanded {
 				return []*Node{node}, nil
 			}

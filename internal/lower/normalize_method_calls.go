@@ -39,7 +39,7 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Features, _ Options) error {
 	// callback's error (an injection failure) bubbles straight out of Inspect.
 	walk := func(stmts []ir.Stmt) error { return ir.Walk(stmts, recvVisit) }
 	for _, comp := range pkg.Components {
-		if err := walk(comp.Body); err != nil {
+		if err := walk(comp.Stmts); err != nil {
 			return err
 		}
 		for _, fn := range comp.Funcs {

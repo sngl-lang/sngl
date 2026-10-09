@@ -58,7 +58,7 @@ func runTestFunc(pkg *ir.Package, fn *ir.Func) *codegen.TestResult {
 			fx:       interp.NewEffects(),
 		}
 		if cVal.comp != nil {
-			cVal.body = cVal.comp.Body
+			cVal.body = cVal.comp.Stmts
 		}
 		// Mounted here rather than on the first read. A test whose opening
 		// statement is a write -- `c.running = false` before any assertion --

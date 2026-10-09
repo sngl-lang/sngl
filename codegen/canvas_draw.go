@@ -100,7 +100,7 @@ func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 	}
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			owner(comp, comp.Body, comp.Funcs)
+			owner(comp, comp.Stmts, comp.Funcs)
 		}
 	}
 	for _, body := range roots {

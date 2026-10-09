@@ -20,7 +20,7 @@ func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
 		Func: status,
 		Args: nil,
 	}
-	main.Body = []ir.Stmt{&ir.Return{Value: call}}
+	main.Stmts = []ir.Stmt{&ir.Return{Value: call}}
 	main.Funcs = []*ir.Func{status}
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
@@ -56,7 +56,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 		Func: status,
 		Args: []ir.CallArg{{Value: explicitRecv}},
 	}
-	main.Body = []ir.Stmt{&ir.Return{Value: call}}
+	main.Stmts = []ir.Stmt{&ir.Return{Value: call}}
 	main.Funcs = []*ir.Func{status}
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
@@ -89,7 +89,7 @@ func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 			{Value: &ir.Literal{Type: &ir.Type{Kind: ir.TypeInt}, Value: "2"}},
 		},
 	}
-	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.Return{Value: call}}}
+	main := &ir.Component{Name: "main", Stmts: []ir.Stmt{&ir.Return{Value: call}}}
 	pkg := &ir.Package{Components: []*ir.Component{main}, Funcs: []*ir.Func{add}}
 
 	if err := lowerNoImplicitRecv(pkg, without("implicitRecv"), Options{}); err != nil {

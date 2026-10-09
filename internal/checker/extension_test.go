@@ -92,8 +92,8 @@ component main node {
 	if len(body.Stmts) == 0 {
 		t.Errorf("expected stashed extstub body to be non-empty, got %d stmts", len(body.Stmts))
 	}
-	if len(stdText.Body) != 0 {
-		t.Errorf("expected stdlib text Body still empty pre-lower, got %d stmts", len(stdText.Body))
+	if len(stdText.Stmts) != 0 {
+		t.Errorf("expected stdlib text Body still empty pre-lower, got %d stmts", len(stdText.Stmts))
 	}
 
 	// Lower with the matching active platform — swap pass should move the
@@ -101,12 +101,12 @@ component main node {
 	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{Platform: "extstub"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
-	if len(stdText.Body) == 0 {
+	if len(stdText.Stmts) == 0 {
 		t.Errorf("expected stdlib text Body to be swapped in by lower, got 0 stmts")
 	}
 }
 
-func keys(m map[string]ir.Body) []string {
+func keys(m map[string]ir.Override) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)

@@ -112,7 +112,7 @@ func Owners(pkg *Package) []Owner {
 	out := make([]Owner, 0, 1+len(pkg.Components))
 	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Stmts})
 	}
 	return out
 }

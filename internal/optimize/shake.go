@@ -453,9 +453,9 @@ func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Sym
 				walk(f)
 			}
 			if s.Name == pkg.RootComponent {
-				view(s.Body)
+				view(s.Stmts)
 			} else {
-				walkStmts(s.Body, used, walk)
+				walkStmts(s.Stmts, used, walk)
 			}
 		}
 	}

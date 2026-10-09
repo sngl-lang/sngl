@@ -54,7 +54,7 @@ func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	pkg.Body = st.walk(po, pkg.Body, false, true)
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			comp.Body = st.walk(st.componentOwner(comp), comp.Body, false, true)
+			comp.Stmts = st.walk(st.componentOwner(comp), comp.Stmts, false, true)
 		}
 	}
 	pkg.Components = append(pkg.Components, st.made...)
@@ -207,11 +207,11 @@ func (st *blockState) promote(o *stateOwner, stmts []ir.Stmt) []ir.Stmt {
 func (st *blockState) wrap(o *stateOwner, stmts []ir.Stmt) ir.Stmt {
 	w := &ir.Component{Name: "__block_state" + strconv.Itoa(len(st.made)), Tree: treeOfStmts(stmts)}
 	st.made = append(st.made, w)
-	w.Body, w.Vars = promoteLocalVarsToVars(stmts, nil)
-	w.Body = st.walk(st.componentOwner(w), w.Body, false, true)
+	w.Stmts, w.Vars = promoteLocalVarsToVars(stmts, nil)
+	w.Stmts = st.walk(st.componentOwner(w), w.Stmts, false, true)
 
 	site := &ir.NodeInst{Name: w.Name, Component: w}
-	inside := declaredWithin(w.Body)
+	inside := declaredWithin(w.Stmts)
 	for _, v := range w.Vars {
 		inside[v] = true
 	}

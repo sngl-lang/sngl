@@ -38,7 +38,7 @@ takes no part in reactivity. Four meanings, one idea:
 follows), `StructBodyDecl` and `EnumBodyItem` take `kw_const FuncDecl`, and
 `Param` takes `kw_const ident [Type]`. The flag is `Const` on `ast.FuncDef`,
 `ast.ComponentDecl` and `ast.Param`, and on `ir.Func`, `ir.Component`,
-`ir.Param`, `ir.Prop`, `ir.SlotDecl` and `ir.Body` (an override's own).
+`ir.Param`, `ir.Prop`, `ir.SlotDecl` and `ir.Override` (an override's own).
 
 **`ir.IsConst` asks the declaration, never the inference.** A call is a
 constant because `Func.Const` says so; `Func.Purity` is still inferred for
@@ -972,7 +972,7 @@ holds, as `list<gen.Member<T>>`; the annotation on the handler's parameter is
 what binds `T`, by the general rule that a handler's written type binds a type
 parameter its event names (`bindFromHandlers`). It runs in the interpreter
 under the build host (`internal/plugin`'s `Runner.Emit`) as the package the
-family's override is written in -- `ir.Body.Pkg`, nil for a target package's,
+family's override is written in -- `ir.Override.Pkg`, nil for a target package's,
 which is library source -- so `gen.exec`, which takes a `stdin`, is that
 package's grant and not the program's. `out.write` takes any path inside the
 output directory, and what it wrote is stored as `sngl.emit` keyed by the
@@ -1102,7 +1102,7 @@ since `passBoundaryFailed` puts the fallback exactly where the content was.
 `cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`internal/interp/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
-the body it was asked about instead of re-reading `comp.Body`, because
+the body it was asked about instead of re-reading `comp.Stmts`, because
 `checkPendingExtensions` swaps an override's statements onto the declaration
 and restores the base body after: read late, it checks the base body once per
 registered override and the override's body never. And a library package
@@ -2271,7 +2271,9 @@ override's vars, props and body decls onto the declaration and restores the
 base after, so the nested bodies are checked while it still holds
 (`checkOverrideNestedBodies`) rather than in pass2, which runs after the
 restore. And the owner link has to survive to lowering, so `ir.Body` carries
-`BodyDecls` beside `Vars` and `specializeComp` swaps all three — without it
+`BodyDecls` beside `Vars` and `Stmts`. A component embeds its `ir.Body`, an
+override is an `ir.Override` holding one, and `specializeComp` swaps the body
+whole — without the body decls in it
 every backend emitted the captured names bare, which
 `testdata/component_override_body_capture.txtar` denies on both of its targets.
 `ir.BodyOwners` and `ir.CapturesEnclosingState` read the overrides too, because
@@ -2286,7 +2288,7 @@ by `collectExtensionDecls` and desugared onto the component by the same
 own helper and a nested body reaches it through `lookupBodyMethod` — the route
 a method takes, since a component-body func is a method on its owner rather
 than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
-by `specializeComp` with the rest; without that swap bubbletea emitted
+with the rest; without that swap bubbletea emitted
 `func (m *outer) Bump()` against a type it never declares, which
 `component_override_body_func.txtar` denies.
 

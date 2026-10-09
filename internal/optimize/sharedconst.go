@@ -212,9 +212,9 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 		p, ok := s.(*ir.Param)
 		return ok && p.Name == name
 	}
-	got := w.escapes(ir.Body{Stmts: comp.Body, Vars: comp.Vars, Funcs: comp.Funcs}, isProp)
+	got := w.escapes(comp.Body, isProp)
 	if b, ok := ir.ComponentOverride(comp, w.platform, w.language); ok {
-		got = got || w.escapes(b, isProp)
+		got = got || w.escapes(b.Body, isProp)
 	}
 	w.props[key] = got
 	return got
@@ -227,7 +227,7 @@ func (w *writesAnalysis) renderedByPlatform(comp *ir.Component) bool {
 	if comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone {
 		return true
 	}
-	if len(comp.Body) > 0 {
+	if len(comp.Stmts) > 0 {
 		return false
 	}
 	_, ok := ir.ComponentOverride(comp, w.platform, w.language)

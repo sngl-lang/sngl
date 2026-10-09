@@ -45,7 +45,7 @@ func ComponentKeys(comp *ir.Component) []Key {
 		return nil
 	}
 	w := &keyWalk{comp: comp.Name}
-	w.stmts(comp.Body, "")
+	w.stmts(comp.Stmts, "")
 	return w.out
 }
 

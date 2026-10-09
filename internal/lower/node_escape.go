@@ -81,7 +81,7 @@ func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 		addScope(f.Block, &f.Lowered.LocalRefs)
 	}
 	for _, comp := range pkg.Components {
-		addScope(comp.Body, &comp.LocalRefs)
+		addScope(comp.Stmts, &comp.LocalRefs)
 		for _, f := range comp.Funcs {
 			addScope(f.Block, &f.Lowered.LocalRefs)
 		}

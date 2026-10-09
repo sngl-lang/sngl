@@ -40,7 +40,7 @@ func (c *checker) inferComponentTrees() {
 		// wrong answer for it: it renders its caller's nodes rather than none,
 		// so what it wants is to be handed a family rather than to disclaim
 		// one.
-		if insertsSlot(comp.Body) {
+		if insertsSlot(comp.Stmts) {
 			c.error(compDeclPos(comp),
 				"component %s: the body renders only what a caller supplies, so name the tree it belongs to in the return position -- or a type parameter, for a wrapper whose family is whatever it was handed",
 				comp.Name)
@@ -66,7 +66,7 @@ func (c *checker) inferComponentTrees() {
 // once every component that can settle on complete evidence has, since what is
 // left then is a cycle, and waiting on a cycle is waiting forever.
 func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool, partial bool) bool {
-	found, unsettled := c.treeEvidence(comp.Body, pending, nil)
+	found, unsettled := c.treeEvidence(comp.Stmts, pending, nil)
 	if unsettled && !partial {
 		return false
 	}

@@ -33,7 +33,7 @@ func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	st := newDeclarativeState(pkg, caps)
 	st.seedCounter(pkg)
 	for _, comp := range pkg.Components {
-		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
+		comp.Stmts = st.processStmts(comp.Stmts, &comp.Funcs)
 		destroyBuiltInstances(comp, st)
 	}
 	// The package body's parent is the application: each node there is
@@ -429,7 +429,7 @@ func hasRealComponentBody(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose
@@ -623,7 +623,7 @@ func destroyBuiltInstances(comp *ir.Component, st *declarativeState) {
 		}
 		return out
 	}
-	for _, s := range top(comp.Body) {
+	for _, s := range top(comp.Stmts) {
 		lv, ok := s.(*ir.LocalVar)
 		if !ok {
 			continue

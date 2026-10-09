@@ -198,14 +198,14 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	if !caps.InlineSlots {
 		for _, comp := range pkg.Components {
-			comp.Body = st.slotFlows(comp.Body)
+			comp.Stmts = st.slotFlows(comp.Stmts)
 		}
 		pkg.Body = st.slotFlows(pkg.Body)
 	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
-		st.collectFromStmts(comp.Body)
+		st.collectFromStmts(comp.Stmts)
 	}
 	// The package body is a view like the others, and its parent is the
 	// application: a reactive `if` there -- a window under `if details` --
@@ -229,7 +229,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
-		comp.Body = st.rewriteAndInject(comp.Body)
+		comp.Stmts = st.rewriteAndInject(comp.Stmts)
 		for _, f := range comp.Funcs {
 			if injected[f] {
 				continue

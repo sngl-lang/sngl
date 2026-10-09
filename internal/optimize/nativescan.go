@@ -91,7 +91,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range comp.Funcs {
 			scanStmts(f.Block, visit)
 		}
-		scanStmts(comp.Body, visit)
+		scanStmts(comp.Stmts, visit)
 	}
 	scanStmts(pkg.Body, visit)
 	return found

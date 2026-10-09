@@ -1738,7 +1738,7 @@ func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[
 	// Another package's body names things through that package's scope,
 	// which this checker does not hold; its IR is already checked.
 	if !slices.Contains(c.pkg.Components, comp) {
-		host, children := nodesInCheckedBody(comp.Body, id)
+		host, children := nodesInCheckedBody(comp.Stmts, id)
 		if host != nil {
 			return host
 		}

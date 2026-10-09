@@ -22,7 +22,7 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
 	for _, c := range append([]*ir.Component(nil), pkg.Components...) {
 		if c != nil {
-			st.canvasesUnderLoops(c.Body, false)
+			st.canvasesUnderLoops(c.Stmts, false)
 		}
 	}
 	st.canvasesUnderLoops(pkg.Body, false)
@@ -39,7 +39,7 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 	l := newLift(comp, inst)
 	liftNodeHandlers(n, l, nil)
 	st.liftValues(n, l, handlerParams(n, declaredWithin([]ir.Stmt{n})))
-	comp.Body = []ir.Stmt{n}
+	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
 }

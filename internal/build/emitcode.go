@@ -190,7 +190,7 @@ func (w *codeWalker) walkMember(ni *ir.NodeInst) ([]codeStmt, error) {
 		return nil, posErr(at, "%s is a member of a generated family, which has no slot to fill", comp.Name)
 	}
 	body, ok := override(comp, w.t)
-	if ok && soleGenNode(body, ir.BuiltinGenNode) != nil {
+	if ok && soleGenNode(body.Body, ir.BuiltinGenNode) != nil {
 		if len(ni.Children) > 0 {
 			return nil, posErr(at, "%s contributes a value to its family's code, which has nowhere to put children", comp.Name)
 		}
@@ -240,7 +240,7 @@ func (w *codeWalker) walkMember(ni *ir.NodeInst) ([]codeStmt, error) {
 		w.binds = w.binds[:len(w.binds)-1]
 		w.composing = w.composing[:len(w.composing)-1]
 	}()
-	return w.walk(comp.Body)
+	return w.walk(comp.Stmts)
 }
 
 // subst is e as written, with the props of each composed member the walk is
@@ -409,7 +409,7 @@ func (r *snglRunner) stmts(tree []codeStmt) ([]ir.Stmt, error) {
 func (r *snglRunner) member(at ast.Pos, m *codeMember) (ir.Stmt, error) {
 	comp := r.table.decls[m.decl]
 	body, _ := override(comp, r.t)
-	node := soleGenNode(body, ir.BuiltinGenNode)
+	node := soleGenNode(body.Body, ir.BuiltinGenNode)
 	value := argNamed(node.Props, ir.GenNodeValue)
 	if value == nil {
 		return nil, posErr(at, "the %s family generates code for %s, and %s's gen.node gives no value to contribute", r.family.Name, describe(r.t), comp.Name)

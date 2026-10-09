@@ -6,12 +6,12 @@ package ir
 // declaration's body; after specialization the active override is the live one
 // too, and both callers build sets, so seeing it twice costs nothing.
 func eachBody(comp *Component, yield func(b Body)) {
-	yield(Body{Vars: comp.Vars, BodyDecls: comp.BodyDecls, Funcs: comp.Funcs})
+	yield(comp.Body)
 	for _, b := range comp.PlatformOverrides {
-		yield(b)
+		yield(b.Body)
 	}
 	for _, b := range comp.LanguageOverrides {
-		yield(b)
+		yield(b.Body)
 	}
 }
 

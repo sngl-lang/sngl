@@ -305,7 +305,7 @@ func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValu
 		Env:      childEnv,
 		comp:     comp,
 		compName: comp.Name,
-		body:     comp.Body,
+		body:     comp.Stmts,
 	}
 }
 
@@ -567,7 +567,7 @@ func isUserComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
+	return len(comp.Stmts) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // InstanceEnv is the instance this wrapper stands for, which is what a

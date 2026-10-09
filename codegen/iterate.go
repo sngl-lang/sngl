@@ -41,7 +41,7 @@ func (ctx *CodegenCtx) Harness() *ViewCtx {
 	}
 	vars := append(append([]*ir.Var{}, ctx.Pkg.Vars...), root.Vars...)
 	funcs := append(append([]*ir.Func{}, ctx.Pkg.Funcs...), root.Funcs...)
-	return &ViewCtx{Body: root.Body, Vars: vars, Funcs: funcs, Name: root.Name}
+	return &ViewCtx{Body: root.Stmts, Vars: vars, Funcs: funcs, Name: root.Name}
 }
 
 // Components returns a ComponentCtx for each component in the package.
@@ -58,7 +58,7 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 			Events:    c.Events,
 			Vars:      c.Vars,
 			Funcs:     c.Funcs,
-			Body:      c.Body,
+			Body:      c.Stmts,
 		}
 		for _, f := range c.Funcs {
 			if IsComputed(f) {

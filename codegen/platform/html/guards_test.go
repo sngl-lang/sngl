@@ -44,7 +44,7 @@ func backendHandlerPkg() *ir.Package {
 	}
 	return &ir.Package{
 		Imports:    []*ir.Import{imp},
-		Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{win}}},
+		Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{win}}},
 	}
 }
 
@@ -78,7 +78,7 @@ func directivePkg(binding ir.Expr) *ir.Package {
 		Props: []ir.Arg{{Value: binding}},
 	}
 	return &ir.Package{
-		Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{text}}},
+		Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{text}}},
 	}
 }
 
@@ -115,7 +115,7 @@ func TestFrontendOnBackendValueErrors(t *testing.T) {
 // a bare go: call under html.frontend is the WASM opt-in and must NOT error.
 func TestFrontendGoCallAllowed(t *testing.T) {
 	pkg := pkgWithImport("go", "example.com/api")
-	pkg.Components = []*ir.Component{{Name: "main", Body: []ir.Stmt{
+	pkg.Components = []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 		&ir.NodeInst{Name: "text", Props: []ir.Arg{{
 			Value: intrinsicCall("html.frontend", goCall("example.com/api")),
 		}}},

@@ -47,7 +47,7 @@ func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 				return err
 			}
 		}
-		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
+		lowerFocusInOwner(comp.Stmts, &comp.Vars, &comp.Funcs)
 	}
 	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
 	return nil
@@ -101,7 +101,7 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 // refuseFocusInRecursion: Tab and Update reach only the stops the window
 // renders, and a recursion renders each level from a function of its own.
 func refuseFocusInRecursion(comp *ir.Component) error {
-	slots := gatherFocusSlots(comp.Body)
+	slots := gatherFocusSlots(comp.Stmts)
 	if len(slots) == 0 {
 		return nil
 	}

@@ -989,7 +989,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		overrides = &comp.LanguageOverrides
 	}
 	if *overrides == nil {
-		*overrides = map[string]ir.Body{}
+		*overrides = map[string]ir.Override{}
 	}
 	if _, dup := (*overrides)[target]; dup {
 		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
@@ -997,7 +997,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
-	(*overrides)[target] = ir.Body{}
+	(*overrides)[target] = ir.Override{}
 	// An override is the body a target renders, so there is nothing left for
 	// one with no body to be -- and it would satisfy the base declaration's
 	// own no-body rule while rendering nothing, which is the silence that rule
@@ -1225,10 +1225,7 @@ func (c *checker) checkPendingExtensions() {
 				c.scope = libBodyScope
 			}
 			savedAST := pe.comp.AST.Body
-			savedBody := pe.comp.Body
-			savedVars := pe.comp.Vars
-			savedBodyDecls := pe.comp.BodyDecls
-			savedFuncs, savedMethods := pe.comp.Funcs, pe.comp.Methods
+			saved := pe.comp.Body
 			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
 			// An override that listed the props it consumes reads those and no
 			// others: the list is what makes the names in its body traceable
@@ -1238,29 +1235,29 @@ func (c *checker) checkPendingExtensions() {
 				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
 			}
 			pe.comp.AST.Body = pe.body
-			pe.comp.Body = nil
+			pe.comp.Stmts = nil
 			// pass1 only ever saw the component's parenless stub, so the
 			// override's own state has to be collected before the body check
 			// that declares it. Starting from the component's own keeps a var
 			// the stdlib declaration made visible to the override.
 			c.pushScope()
 			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
-			pe.comp.Vars = append(slices.Clip(savedVars), vars...)
-			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
+			pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
+			pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
 			// A method is attached by receiver, so the base's table is where
 			// an override's helper would land and stay -- visible to the base
 			// body and to every other target's override, and a redeclaration
 			// of the next target's helper of the same name. The clone is what
 			// keeps each override's helpers to itself; it starts from the
 			// base's so a method the declaration made stays callable.
-			pe.comp.Methods = maps.Clone(savedMethods)
+			pe.comp.Methods = maps.Clone(saved.Methods)
 			// Registered inside the collect scope: a signature may name a type
 			// the override body declared, which is bound there and nowhere
 			// else.
-			funcDefs = c.reportOverrideFuncShadows(pe, savedMethods, funcDefs)
+			funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
 			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
 			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
-			pe.comp.Funcs = append(slices.Clip(savedFuncs), overrideFuncs...)
+			pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
 			c.popScope()
 			// checkComponentBody checks comp.Funcs in the component's own
 			// scope, so the override's are checked with its vars and props
@@ -1279,25 +1276,14 @@ func (c *checker) checkPendingExtensions() {
 			// nested body captured are declared by nobody.
 			c.checkOverrideNestedBodies(bodyDecls)
 			c.checkOverrideConst(pe)
-			checked := ir.Body{
-				Vars:      pe.comp.Vars,
-				Stmts:     pe.comp.Body,
-				BodyDecls: pe.comp.BodyDecls,
-				Funcs:     pe.comp.Funcs,
-				Methods:   pe.comp.Methods,
-				Const:     pe.isConst,
-				Pkg:       pe.pkg,
-			}
+			checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
 			if pe.kind == ir.BuiltinTreeLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
 				pe.comp.PlatformOverrides[pe.platform] = checked
 			}
 			pe.comp.AST.Body = savedAST
-			pe.comp.Body = savedBody
-			pe.comp.Vars = savedVars
-			pe.comp.BodyDecls = savedBodyDecls
-			pe.comp.Funcs, pe.comp.Methods = savedFuncs, savedMethods
+			pe.comp.Body = saved
 			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
 				c.popScope()

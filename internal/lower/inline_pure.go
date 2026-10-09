@@ -43,11 +43,11 @@ func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	}
 	for _, comp := range pkg.Components {
 		st.hoist = &comp.Vars
-		body, err := st.inlineStmts(comp.Body)
+		body, err := st.inlineStmts(comp.Stmts)
 		if err != nil {
 			return err
 		}
-		comp.Body = body
+		comp.Stmts = body
 		// passReactivity synthesizes __renderSlotN Funcs whose bodies still
 		// contain NodeInsts referencing stdlib wrapper components; inline
 		// those too so the platform translator only ever sees native tags.
@@ -173,7 +173,7 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 			}
 		}
 	}
-	visit(comp.Body)
+	visit(comp.Stmts)
 	return out
 }
 
@@ -396,7 +396,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// so Body is what answers for one. Not comp.Bodyless either: `{}` holds
 	// nothing too, and a bodyless declaration a target overrode holds the
 	// override's body by now.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
+	if len(comp.Stmts) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		// A user component declaring nothing at all renders nothing, so the
 		// node goes rather than reaching a codegen that has to guess what an
 		// empty component means — each platform guessed differently, and two
@@ -423,7 +423,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// one that holds a var and renders nothing, which passNoInlineComponents
 	// keeps so the state survives. Reached only since a var the rendered tree
 	// does not read stopped making a component impure.
-	if len(comp.Body) == 0 {
+	if len(comp.Stmts) == 0 {
 		return []ir.Stmt{n}, nil
 	}
 
@@ -562,7 +562,7 @@ func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 // the wrapper's body, returning a fresh stmt slice ready to splice into
 // the caller's position.
 func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst) ([]ir.Stmt, error) {
-	if len(comp.Body) == 0 {
+	if len(comp.Stmts) == 0 {
 		return nil, fmt.Errorf("component %q has no body to inline", comp.Name)
 	}
 
@@ -598,7 +598,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Deep-clone the wrapper body so substitution mutations don't leak
 	// across call sites.
 	provided := providedContextVars(comp, callsite.Props)
-	body := substituteVars(deepCloneStmts(comp.Body), provided)
+	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
@@ -685,7 +685,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// explicit @name() emit in the body have been substituted in place above
 	// and are skipped here to avoid double-emission.
 	if len(callsite.Handlers) > 0 {
-		emitted := emittedHandlerNames(comp.Body)
+		emitted := emittedHandlerNames(comp.Stmts)
 		var pending []ir.EventHandler
 		for _, h := range callsite.Handlers {
 			if _, ok := emitted[h.Name]; ok {

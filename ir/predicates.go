@@ -278,7 +278,7 @@ func ComponentSelfRefs(comp *Component) bool {
 		return false
 	}
 	found := false
-	Walk(comp.Body, func(n Node) error {
+	Walk(comp.Stmts, func(n Node) error {
 		if inst, ok := n.(*NodeInst); ok && inst.Component == comp {
 			found = true
 		}

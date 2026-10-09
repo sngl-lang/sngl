@@ -196,7 +196,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		maps.Copy(a.UsedComponents, o.UsedComponents)
 	} else {
 		for _, comp := range pkg.Components {
-			collectUsedIRStmts(comp.Body, a.UsedComponents)
+			collectUsedIRStmts(comp.Stmts, a.UsedComponents)
 		}
 	}
 

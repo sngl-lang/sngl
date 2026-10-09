@@ -405,7 +405,7 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 		walk(fn.Block)
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}
@@ -467,12 +467,12 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		// bodiless here. Judged so, it never joined the list, so a node of it
 		// that survived inlining had no declaration for a backend to emit --
 		// html called `__cf_timer(...)`, a factory nothing defined.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !overrideNeedsDeclFor(c, platform) {
+		if len(c.Stmts) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !overrideNeedsDeclFor(c, platform) {
 			return
 		}
 		seen[c] = true
 		out = append(out, c)
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}
@@ -508,7 +508,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Body)
+		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
 		}

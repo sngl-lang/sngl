@@ -47,11 +47,11 @@ func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 			}
 			c := inst.Component
 			seen[c] = true
-			if len(c.Body) == 0 {
+			if len(c.Stmts) == 0 {
 				return nil
 			}
-			c.Body = rewritePropBindingStmts(c.Body)
-			visit(c.Body)
+			c.Stmts = rewritePropBindingStmts(c.Stmts)
+			visit(c.Stmts)
 			return nil
 		})
 	}
@@ -110,7 +110,7 @@ func lowerPropBindings(inst *ir.NodeInst) {
 			// which is lowered first so the write it becomes is one of these:
 			// left for later, it was a second report of the prop beside the
 			// emit, and the node carried the handler twice.
-			comp.Body = rewritePropBindingStmts(comp.Body)
+			comp.Stmts = rewritePropBindingStmts(comp.Stmts)
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
 		}
 
@@ -182,7 +182,7 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 		}
 		return out
 	}
-	comp.Body = walk(comp.Body)
+	comp.Stmts = walk(comp.Stmts)
 	for _, fn := range comp.Funcs {
 		fn.Block = walk(fn.Block)
 	}

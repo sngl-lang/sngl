@@ -62,7 +62,7 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 		}
 		// A body of its own is what every platform renders where it has
 		// nothing better: badge is a styled text.
-		if !c.Bodyless && len(c.Body) > 0 {
+		if !c.Bodyless && len(c.Stmts) > 0 {
 			return true
 		}
 		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {
@@ -216,7 +216,7 @@ func fynePrimitiveNodes(stmts []ir.Stmt) []*ir.NodeInst {
 			}
 			if !seen[n.Component] {
 				seen[n.Component] = true
-				walk(n.Component.Body)
+				walk(n.Component.Stmts)
 			}
 			return false
 		})

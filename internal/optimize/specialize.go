@@ -102,7 +102,7 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// folds against the member it is about, which nothing after the splice can
 	// do.
 	composes := comp.Tree != nil && !ir.IsFamilyValue(comp)
-	if !composes && !bodyHasFoldableParamUse(comp.Body, propNames) {
+	if !composes && !bodyHasFoldableParamUse(comp.Stmts, propNames) {
 		return nil
 	}
 
@@ -128,12 +128,12 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 
-	paramSyms := findParamSyms(comp.Body, propNames)
+	paramSyms := findParamSyms(comp.Stmts, propNames)
 	if len(paramSyms) == 0 && !composes {
 		return nil
 	}
 
-	cloned := cloneStmts(comp.Body)
+	cloned := cloneStmts(comp.Stmts)
 
 	// When inlining a cross-package component, native-call resolution
 	// inside the body (e.g. `docs.Highlight(...)`) needs to consult the

@@ -492,7 +492,7 @@ component main node {
 			}
 		}
 	}
-	for _, stmt := range pkg.Components[0].Body {
+	for _, stmt := range pkg.Components[0].Stmts {
 		if node, ok := stmt.(*ir.NodeInst); ok {
 			for _, p := range node.Props {
 				if p.Name == "value" {

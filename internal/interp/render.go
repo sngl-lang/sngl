@@ -133,7 +133,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst, at string) *
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}
-	child.BodyStmts = comp.Body
+	child.BodyStmts = comp.Stmts
 	env.childEnvs[key] = child
 	return child
 }
@@ -243,7 +243,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}
-	child.BodyStmts = comp.Body
+	child.BodyStmts = comp.Stmts
 	return child
 }
 

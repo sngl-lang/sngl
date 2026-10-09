@@ -232,7 +232,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	appRoot := ctx.RootDecl() == nil
 	bodyStmts := ctx.Pkg.Body
 	if main := ctx.RootDecl(); main != nil {
-		bodyStmts = main.Body
+		bodyStmts = main.Stmts
 	}
 	var appChildren []string
 	// The ids a test drives one copy of, whose copies the Model lists.
@@ -1037,7 +1037,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 	}
 	if pkg != nil {
 		for _, comp := range pkg.Components {
-			walk(comp.Body)
+			walk(comp.Stmts)
 			// And its funcs. `funcs` above is what the Model emits, which is
 			// not the same set: a component the build could not inline keeps
 			// its slot renderer on itself, and the widgets that renderer

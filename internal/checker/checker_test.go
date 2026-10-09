@@ -1087,14 +1087,14 @@ component main node {
 	if main == nil {
 		t.Fatal("main component not found")
 	}
-	if len(main.Body) == 0 {
+	if len(main.Stmts) == 0 {
 		t.Fatal("Body is empty")
 	}
 
 	// First statement: greeting() → NodeInst (component instantiation).
-	ni, ok := main.Body[0].(*ir.NodeInst)
+	ni, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Body[0])
+		t.Fatalf("Body[0]: want *NodeInst, got %T", main.Stmts[0])
 	}
 	if ni.Name != "greeting" {
 		t.Errorf("NodeInst.Name = %q, want %q", ni.Name, "greeting")
@@ -1107,9 +1107,9 @@ component main node {
 	// disambiguation this test is about is between a component call and a
 	// function call; a function call is only a statement in a body that runs,
 	// so the function half of the pair is asserted in a handler.
-	btn, ok := main.Body[1].(*ir.NodeInst)
+	btn, ok := main.Stmts[1].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Body[1])
+		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Stmts[1])
 	}
 	if len(btn.Handlers) != 1 || btn.Handlers[0].Func == nil {
 		t.Fatalf("Body[1]: want one resolved handler, got %#v", btn.Handlers)
@@ -1125,9 +1125,9 @@ component main node {
 	}
 
 	// Third statement: if → If with nested NodeInst.
-	ifStmt, ok := main.Body[2].(*ir.If)
+	ifStmt, ok := main.Stmts[2].(*ir.If)
 	if !ok {
-		t.Fatalf("Body[2]: want *If, got %T", main.Body[2])
+		t.Fatalf("Body[2]: want *If, got %T", main.Stmts[2])
 	}
 	if len(ifStmt.Body) != 1 {
 		t.Fatalf("If.Body length = %d, want 1", len(ifStmt.Body))
@@ -1158,7 +1158,7 @@ component main node {
 
 	// Find the For statement (skip any non-For stmts).
 	var forStmt *ir.For
-	for _, s := range main.Body {
+	for _, s := range main.Stmts {
 		if f, ok := s.(*ir.For); ok {
 			forStmt = f
 			break

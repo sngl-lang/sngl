@@ -60,20 +60,20 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 			return
 		}
 		// A harness renders its root component in place of a surface.
-		stack, err := documentStack(root.Body, fold)
+		stack, err := documentStack(root.Stmts, fold)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		if stack == nil {
 			dfold := fold.Child()
-			body := dfold.Stmts(dfold.Clone(root.Body))
+			body := dfold.Stmts(dfold.Clone(root.Stmts))
 			yieldDocument(yield, &codegen.Document{Body: body}, dfold)
 			return
 		}
 		for _, pc := range documentCopies(stack, fold) {
 			dfold := fold.Child()
-			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Body) })
+			body := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone(root.Stmts) })
 			page := pageDocument(&body, pc, dfold, true)
 			body = dfold.Stmts(body)
 			if !yieldDocument(yield, &codegen.Document{Body: body, Page: page.node}, dfold) {
@@ -125,7 +125,7 @@ func documentSurface(pkg *ir.Package) (*ir.NodeInst, []ir.Stmt) {
 		return d, body
 	}
 	if root := pkg.RootDecl(); root != nil {
-		return walk(root.Body)
+		return walk(root.Stmts)
 	}
 	return nil, nil
 }

@@ -616,10 +616,10 @@ type Func struct {
 	// function nobody overrides. A function has no state of its own, so the
 	// Body's Vars are always empty -- it shares the type so one collapse rule
 	// covers a component and a function alike.
-	PlatformOverrides map[string]Body `json:",omitempty"`
+	PlatformOverrides map[string]Override `json:",omitempty"`
 	// LanguageOverrides is the same, keyed by language. A declaration may be
 	// overridden on either axis; the platform's wins where both apply.
-	LanguageOverrides map[string]Body `json:",omitempty"`
+	LanguageOverrides map[string]Override `json:",omitempty"`
 	// SpecializedFor is the target whose override body was swapped into Block,
 	// so a second swap for the same target is a no-op rather than a reset of
 	// the block lowering has since rewritten.
@@ -859,10 +859,16 @@ type Body struct {
 	// The three below travel for the same reason Vars does. BodyDecls is what
 	// links a component nested in this body to its owner (ir.BodyOwners).
 	BodyDecls []Symbol `json:"-"`
-	Funcs     []*Func  `json:"-"`
+	Funcs     []*Func
 	// Methods is the receiver's member table, per body rather than merged, so
 	// two targets may each write a `func helper`.
 	Methods map[string]*Func `json:"-"`
+}
+
+// Override is the body one target implements a declaration with, and what the
+// override says beyond its body.
+type Override struct {
+	Body
 	// Const is the override's own `const` prefix. The component a target
 	// renders is const when its base declaration is or this is.
 	Const bool `json:",omitempty"`
@@ -955,9 +961,10 @@ type Component struct {
 	Slots      []*SlotDecl `json:",omitempty"`
 
 	ChildrenType *Type
-	Vars         []*Var // TODO: Several of these should be replaced with an embedded Body. That should simplify handling overrides
-	Funcs        []*Func
-	Body         []Stmt // type-checked body statements
+	// Body is what the component renders: its statements and the vars,
+	// funcs, member table and body-scoped declarations they read. A target's
+	// override is swapped in whole (SpecializeForTarget).
+	Body
 	// PlatformOverrides holds the body each target implements this component
 	// with, keyed by platform, and LanguageOverrides the same keyed by
 	// language --
@@ -968,8 +975,8 @@ type Component struct {
 	// know which one a build picks; ir.SpecializeForTarget swaps the chosen
 	// one into the declaration before the passes that read a body run. nil for
 	// a component nobody overrides.
-	PlatformOverrides map[string]Body `json:"-"`
-	LanguageOverrides map[string]Body `json:"-"`
+	PlatformOverrides map[string]Override `json:"-"`
+	LanguageOverrides map[string]Override `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel
 	// platforms only): the set of synthesized widget ref ids (__nN)
 	// created in this component's Body that do NOT escape to any other
@@ -977,13 +984,7 @@ type Component struct {
 	// as function-local variables rather than shared Model fields, so a
 	// recursive component's render method gets fresh locals per frame.
 	// nil when the pass did not run. See internal/lower/node_escape.go.
-	LocalRefs map[string]bool  `json:"-"`
-	Methods   map[string]*Func `json:"-"`
-	// BodyDecls are the declarations written inside this component's body: a
-	// struct, enum, unit or component. Each is an ordinary member of the
-	// package collection its kind lands in; this records which body bound its
-	// name, so pass2 can rebind it in the scope pass1 declared it in.
-	BodyDecls []Symbol `json:"-"`
+	LocalRefs map[string]bool `json:"-"`
 }
 
 // RestSlot is the slot the children a caller writes bare go to, or nil for a

@@ -15,11 +15,11 @@ func TestFindRecursiveCycles(t *testing.T) {
 	d := &ir.Component{Name: "D"}
 	e := &ir.Component{Name: "E"}
 
-	a.Body = []ir.Stmt{&ir.NodeInst{Component: b}}
-	b.Body = []ir.Stmt{&ir.NodeInst{Component: a}}
-	c.Body = []ir.Stmt{&ir.NodeInst{Component: c}}
-	d.Body = []ir.Stmt{&ir.NodeInst{Component: e}}
-	e.Body = []ir.Stmt{}
+	a.Stmts = []ir.Stmt{&ir.NodeInst{Component: b}}
+	b.Stmts = []ir.Stmt{&ir.NodeInst{Component: a}}
+	c.Stmts = []ir.Stmt{&ir.NodeInst{Component: c}}
+	d.Stmts = []ir.Stmt{&ir.NodeInst{Component: e}}
+	e.Stmts = []ir.Stmt{}
 
 	pkg := &ir.Package{Components: []*ir.Component{a, b, c, d, e}}
 	got := findRecursiveCycles(pkg, Options{})
@@ -38,7 +38,7 @@ func TestFindRecursiveCycles(t *testing.T) {
 
 func TestFindRecursiveCyclesThroughIfBranch(t *testing.T) {
 	tv := &ir.Component{Name: "TreeView"}
-	tv.Body = []ir.Stmt{
+	tv.Stmts = []ir.Stmt{
 		&ir.If{Body: []ir.Stmt{&ir.NodeInst{Component: tv}}},
 	}
 	pkg := &ir.Package{Components: []*ir.Component{tv}}
@@ -58,13 +58,13 @@ func TestFindRecursiveCyclesThroughNamedSlot(t *testing.T) {
 	endless := &ir.Component{Name: "endless"}
 	// panel() { slot header { endless() } } -- the recursion is in the slot
 	// content the call site supplies, which is `endless`'s own body.
-	endless.Body = []ir.Stmt{&ir.NodeInst{
+	endless.Stmts = []ir.Stmt{&ir.NodeInst{
 		Component: panel,
 		Slots: map[string]*ir.SlotContent{
 			"header": {Body: []ir.Stmt{&ir.NodeInst{Component: endless}}},
 		},
 	}}
-	panel.Body = []ir.Stmt{&ir.SlotInst{Name: "header"}}
+	panel.Stmts = []ir.Stmt{&ir.SlotInst{Name: "header"}}
 
 	pkg := &ir.Package{Components: []*ir.Component{panel, endless}}
 	got := findRecursiveCycles(pkg, Options{})
@@ -83,7 +83,7 @@ func TestFindRecursiveCyclesThroughNamedSlot(t *testing.T) {
 func TestUniqueNodeIDsReachesEveryBody(t *testing.T) {
 	inst := func() *ir.NodeInst { return &ir.NodeInst{Name: "text", ID: "inc"} }
 	first, inProvider, inLambda := inst(), inst(), inst()
-	main := &ir.Component{Name: "main", Body: []ir.Stmt{
+	main := &ir.Component{Name: "main", Stmts: []ir.Stmt{
 		first,
 		&ir.ContextProvider{Children: []ir.Stmt{inProvider}},
 		&ir.LocalVar{Init: &ir.Lambda{Func: &ir.Func{Block: []ir.Stmt{inLambda}}}},
@@ -133,9 +133,9 @@ func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 	}
 
 	main := &ir.Component{
-		Name: "main",
-		Vars: []*ir.Var{items},
-		Body: []ir.Stmt{forStmt, mutatingHandler},
+		Name:  "main",
+		Vars:  []*ir.Var{items},
+		Stmts: []ir.Stmt{forStmt, mutatingHandler},
 	}
 
 	pkg := &ir.Package{Components: []*ir.Component{card, main}}
@@ -166,11 +166,11 @@ func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 func TestInlineComponents_SkipsRecursiveComponent(t *testing.T) {
 	// component tree { tree(...) } — self-recursive.
 	tree := &ir.Component{Name: "tree"}
-	tree.Body = []ir.Stmt{&ir.NodeInst{Component: tree}}
+	tree.Stmts = []ir.Stmt{&ir.NodeInst{Component: tree}}
 
 	main := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{&ir.NodeInst{Component: tree}},
+		Name:  "main",
+		Stmts: []ir.Stmt{&ir.NodeInst{Component: tree}},
 	}
 
 	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
@@ -186,12 +186,12 @@ func TestInlineComponents_SkipsRecursiveComponent(t *testing.T) {
 	}
 
 	// The NodeInst in main.Body should still target tree.
-	if len(main.Body) != 1 {
-		t.Fatalf("main.Body length: got %d, want 1", len(main.Body))
+	if len(main.Stmts) != 1 {
+		t.Fatalf("main.Body length: got %d, want 1", len(main.Stmts))
 	}
-	got, ok := main.Body[0].(*ir.NodeInst)
+	got, ok := main.Stmts[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("main.Body[0]: got %T, want *ir.NodeInst", main.Body[0])
+		t.Fatalf("main.Body[0]: got %T, want *ir.NodeInst", main.Stmts[0])
 	}
 	if got.Component != tree {
 		t.Errorf("main.Body NodeInst.Component: got %v, want tree", got.Component)

@@ -67,10 +67,10 @@ func emitComponentInstance(
 	// it last, which is the one on screen.
 	var invokers []fyneEventInvoker
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
-		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Body).
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar, comp.Stmts).
 		withInvokerSink(func(inv fyneEventInvoker) { invokers = append(invokers, inv) })
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
-	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
+	bodyStmts := codegen.WalkLowered(context.Background(), comp.Stmts, tr)
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {

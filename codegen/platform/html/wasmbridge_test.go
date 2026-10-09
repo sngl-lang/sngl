@@ -114,7 +114,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 		}},
 		Components: []*ir.Component{{
 			Name: "main",
-			Body: []ir.Stmt{
+			Stmts: []ir.Stmt{
 				frontendUse("Plain"),
 				frontendUse("TakesRef"),
 				frontendUse("ReturnsRef"),
@@ -168,7 +168,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 	t.Run("bare backend call ships no WASM", func(t *testing.T) {
 		pkg := &ir.Package{
 			Imports: []*ir.Import{imp},
-			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+			Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 				&ir.CallStmt{Call: call()},
 			}}},
 		}
@@ -180,7 +180,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 	t.Run("html.frontend call ships WASM", func(t *testing.T) {
 		pkg := &ir.Package{
 			Imports: []*ir.Import{imp},
-			Components: []*ir.Component{{Name: "main", Body: []ir.Stmt{
+			Components: []*ir.Component{{Name: "main", Stmts: []ir.Stmt{
 				&ir.CallStmt{Call: intrinsicCall("html.frontend", call())},
 			}}},
 		}

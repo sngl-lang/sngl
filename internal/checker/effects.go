@@ -46,7 +46,7 @@ func (c *checker) analyzeErrors() {
 	// Phase 2: walk visual trees with a scope stack of error handlers.
 	walkVisualErrors(pkg.Body, nil)
 	for _, comp := range pkg.Components {
-		walkVisualErrors(comp.Body, nil)
+		walkVisualErrors(comp.Stmts, nil)
 	}
 
 	// Phase 3: walk function bodies — fallible calls inside bubble up.

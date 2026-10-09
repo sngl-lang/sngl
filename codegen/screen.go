@@ -100,7 +100,7 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 					entered[n.Component] = true
 					outer := owner
 					owner = n.Component
-					err := walk(n.Component.Body, nil, inLoop)
+					err := walk(n.Component.Stmts, nil, inLoop)
 					owner = outer
 					if err != nil {
 						return err

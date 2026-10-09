@@ -48,7 +48,7 @@ func findCommand(t Target, kind ir.BuiltinKind) (*command, error) {
 		if n.node == nil {
 			continue
 		}
-		if h := commandIn(n.node.Body, kind); h != nil {
+		if h := commandIn(n.node.Stmts, kind); h != nil {
 			return &command{handler: h, node: n.node, pkg: n.pkg}, nil
 		}
 	}

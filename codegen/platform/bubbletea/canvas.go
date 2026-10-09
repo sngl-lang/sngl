@@ -190,7 +190,7 @@ func loopCanvases(ctx *codegen.CodegenCtx) map[*ir.NodeInst]bool {
 	}
 	walk(viewStmts(ctx), false)
 	for _, comp := range ctx.Pkg.Components {
-		walk(comp.Body, false)
+		walk(comp.Stmts, false)
 	}
 	return out
 }

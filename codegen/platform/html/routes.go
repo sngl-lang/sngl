@@ -234,7 +234,7 @@ func backendHandlerWindow(pkg *ir.Package) (string, bool) {
 	}
 	walk(pkg.Body, "")
 	for _, c := range pkg.Components {
-		walk(c.Body, "")
+		walk(c.Stmts, "")
 	}
 	return name, found
 }

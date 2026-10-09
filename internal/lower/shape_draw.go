@@ -214,7 +214,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// reports. What used to stand here was a switch over the seven stdlib
 	// shape names, which rendered any shape it did not recognise as nothing at
 	// all, silently.
-	if ni.Component != nil && len(ni.Component.Body) > 0 {
+	if ni.Component != nil && len(ni.Component.Stmts) > 0 {
 		// A shape that renders itself has no finite drawing: expanding its body
 		// meets the same call again, and this pass has no depth to stop at the
 		// way an inliner does. Refused where it is written.
@@ -280,7 +280,7 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 // The body is cloned: one declaration is drawn once per call site, and each
 // gets its own arguments.
 func shapeBody(ni *ir.NodeInst) []ir.Stmt {
-	if ni.Component == nil || len(ni.Component.Body) == 0 {
+	if ni.Component == nil || len(ni.Component.Stmts) == 0 {
 		return nil
 	}
 	bindings := map[string]ir.Expr{}
@@ -303,7 +303,7 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 	for i := range ni.Props {
 		bindings[ni.Props[i].Name] = ni.Props[i].Value
 	}
-	return substituteParams(deepCloneStmts(ni.Component.Body), bindings)
+	return substituteParams(deepCloneStmts(ni.Component.Stmts), bindings)
 }
 
 // drawPayload is what a draw handler's parameter binds to.

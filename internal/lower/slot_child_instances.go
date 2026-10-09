@@ -77,7 +77,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	// each of their bodies is a view body with slots of its own.
 	for i := 0; i < len(pkg.Components); i++ {
 		if c := pkg.Components[i]; c != nil {
-			st.liftSlotBodies(c.Body)
+			st.liftSlotBodies(c.Stmts)
 		}
 	}
 	st.liftSlotBodies(pkg.Body)
@@ -92,7 +92,7 @@ func lowerSlotChildInstances(pkg *ir.Package, caps Features, opts Options) error
 	// nothing else.
 	for _, c := range pkg.Components {
 		if c != nil {
-			st.walk(c.Body)
+			st.walk(c.Stmts)
 		}
 	}
 	st.walk(pkg.Body)
@@ -185,7 +185,7 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 		st.cells[p.Sym] = true
 	}
 
-	comp.Body = []ir.Stmt{n}
+	comp.Stmts = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
 }

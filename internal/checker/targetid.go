@@ -311,7 +311,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 		overrides = &base.LanguageOverrides
 	}
 	if *overrides == nil {
-		*overrides = map[string]ir.Body{}
+		*overrides = map[string]ir.Override{}
 	}
 	if _, dup := (*overrides)[plat]; dup {
 		c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
@@ -319,7 +319,7 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 	}
 	// Reserve the key so a duplicate is caught even when the body check
 	// contributes nothing, as addOverrideBody does for a component.
-	(*overrides)[plat] = ir.Body{}
+	(*overrides)[plat] = ir.Override{}
 	c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI})
 }
 
@@ -433,9 +433,9 @@ func (c *checker) checkPendingFuncOverrides() {
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
 		if po.kind == ir.BuiltinTreeLanguage {
-			po.fn.LanguageOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+			po.fn.LanguageOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
 		} else {
-			po.fn.PlatformOverrides[po.platform] = ir.Body{Stmts: po.fn.Block}
+			po.fn.PlatformOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
 		}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
@@ -530,15 +530,15 @@ func (c *checker) reportEmitterPlacement() {
 	allowed := map[*ir.NodeInst]bool{}
 	var bodies [][]ir.Stmt
 	for _, comp := range c.pkg.Components {
-		bodies = append(bodies, comp.Body)
-		for _, overrides := range []map[string]ir.Body{comp.PlatformOverrides, comp.LanguageOverrides} {
+		bodies = append(bodies, comp.Stmts)
+		for _, overrides := range []map[string]ir.Override{comp.PlatformOverrides, comp.LanguageOverrides} {
 			for _, target := range slices.Sorted(maps.Keys(overrides)) {
 				body := overrides[target]
 				want := ir.BuiltinGenNode
 				if comp.IsFamily() {
 					want = ir.BuiltinGenEmit
 				}
-				if ni := soleEmitterNode(body, want); ni != nil {
+				if ni := soleEmitterNode(body.Body, want); ni != nil {
 					allowed[ni] = true
 				} else if comp.IsFamily() && comp.AST != nil {
 					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)

@@ -73,7 +73,7 @@ func pkgUsesErrorHandling(pkg *ir.Package) bool {
 		return true
 	}
 	for _, comp := range pkg.Components {
-		if stmtsUseErrorHandling(comp.Body) {
+		if stmtsUseErrorHandling(comp.Stmts) {
 			return true
 		}
 		for _, f := range comp.Funcs {

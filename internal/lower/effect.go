@@ -996,7 +996,7 @@ func (st *effectState) buildGroups() {
 		// created -- which at the effect's own position it need not have been.
 		switch {
 		case g.comp != nil:
-			g.comp.Body = append(g.comp.Body, callOf(g.settle))
+			g.comp.Stmts = append(g.comp.Stmts, callOf(g.settle))
 		default:
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}

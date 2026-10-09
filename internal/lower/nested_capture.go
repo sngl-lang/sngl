@@ -31,11 +31,11 @@ func (st *inlineCompState) spliceNestedCaptures() error {
 		}
 		st.hoist = componentHoist(owner)
 		for {
-			body, changed, err := st.inlineStmts(owner.Body)
+			body, changed, err := st.inlineStmts(owner.Stmts)
 			if err != nil {
 				return err
 			}
-			owner.Body = body
+			owner.Stmts = body
 			if !changed {
 				break
 			}

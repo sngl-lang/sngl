@@ -90,8 +90,8 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	}
 
 	mainComp := &ir.Component{
-		Name: "main",
-		Body: []ir.Stmt{canvasInst},
+		Name:  "main",
+		Stmts: []ir.Stmt{canvasInst},
 	}
 	pkg := &ir.Package{
 		Components: []*ir.Component{mainComp},

@@ -538,7 +538,7 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	for _, f := range comp.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
 	}
-	comp.Body = foldStmts(comp.Body, ctx)
+	comp.Stmts = foldStmts(comp.Stmts, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.

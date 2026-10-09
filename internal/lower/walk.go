@@ -181,6 +181,6 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 		}
 	}
 	if fns.stmts != nil {
-		c.Body = fns.stmts(c.Body)
+		c.Stmts = fns.stmts(c.Stmts)
 	}
 }

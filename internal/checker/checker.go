@@ -3759,7 +3759,7 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	c.reportDeclarativeCycles(pkg)
 	for _, comp := range pkg.Components {
 		if comp.Const {
-			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
+			c.checkConstRender(constComponentLabel(comp.Name), comp.Stmts, compDeclPos(comp))
 		}
 	}
 }
@@ -4361,19 +4361,19 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // registered in pass1, rebound above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
-					comp.Body = append(comp.Body, s)
+					comp.Stmts = append(comp.Stmts, s)
 				}
 			}
 		}
 	}
 
-	c.checkViewVarHandlers(comp.Body)
+	c.checkViewVarHandlers(comp.Stmts)
 
 	// The body is captured rather than re-read: checkPendingExtensions swaps an
 	// override's statements onto the declaration for the length of one check
 	// and restores the base body after, so a drain-time read would check the
 	// base body once per override and the override's body never.
-	body := comp.Body
+	body := comp.Stmts
 	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
 	// What a body puts in the tree is held to the family the component is a
 	// member of, which is the one position nothing else asks about: the other

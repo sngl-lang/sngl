@@ -35,7 +35,7 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 		env.Set(p.Sym, evalInit(env, p.Default))
 	}
 	env.Comp = comp
-	env.BodyStmts = comp.Body
+	env.BodyStmts = comp.Stmts
 	return env, nil
 }
 

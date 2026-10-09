@@ -1193,7 +1193,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	// left to it.
 	own := decl.DeclaredBody
 	if own == nil {
-		own = decl.Body
+		own = decl.Stmts
 	}
 	if len(own) == 0 {
 		return nil, fmt.Errorf("%s: nav.link has no body to render here", ir.NodePos(n))
@@ -1233,7 +1233,7 @@ func (nv *navigation) link(n *ir.NodeInst) (ir.Stmt, error) {
 	}
 	cp := *decl
 	cp.Builtin = ""
-	cp.Body = body
+	cp.Stmts = body
 	n.Component = &cp
 	if n.Handle != nil {
 		n.Handle.Type = cp.SymType()
@@ -1517,7 +1517,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 						return out
 					}
 					spliced[c] = true
-					body := substituteParams(deepCloneStmts(c.Body), pageBindings(c, n))
+					body := substituteParams(deepCloneStmts(c.Stmts), pageBindings(c, n))
 					body = substituteSlots(body, n)
 					out = append(out, pages(body, depth+1)...)
 					continue
@@ -1574,7 +1574,7 @@ func spliceComposedPages(pkg *ir.Package) error {
 // program's with a body. The page builtin -- or a target's primitive standing
 // for it -- is what the composition comes down to.
 func composesPages(c *ir.Component) bool {
-	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Body) > 0
+	return c != nil && !isPrimitiveComponent(c) && !c.Bodyless && len(c.Stmts) > 0
 }
 
 // maxInlinePagesDepth bounds a composition of pages that renders a

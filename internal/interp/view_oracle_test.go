@@ -100,7 +100,7 @@ func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) 
 
 func oracleNodeByID(env *Env, node *ir.NodeInst, id string, out *[]map[string]any) {
 	// User-defined component with a real body — expand inline.
-	if node.Component != nil && len(node.Component.Body) > 0 {
+	if node.Component != nil && len(node.Component.Stmts) > 0 {
 		if env.RenderDepth >= maxCallDepth {
 			return
 		}

@@ -98,7 +98,7 @@ func renderedPrimitive(comp *Component, seen map[*Component]bool) *Component {
 		return comp
 	}
 	seen[comp] = true
-	return firstPrimitive(comp.Body, seen)
+	return firstPrimitive(comp.Stmts, seen)
 }
 
 func firstPrimitive(stmts []Stmt, seen map[*Component]bool) *Component {

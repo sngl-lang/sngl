@@ -178,7 +178,7 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 	// only reads library declarations -- but what it renders is.
 	if c.pkg != nil {
 		for _, comp := range c.pkg.Components {
-			reach(comp.Body)
+			reach(comp.Stmts)
 		}
 		reach(c.pkg.Body)
 	}
@@ -202,8 +202,8 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 // reached.
 func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
 	var out [][]ir.Stmt
-	if len(comp.Body) > 0 {
-		out = append(out, comp.Body)
+	if len(comp.Stmts) > 0 {
+		out = append(out, comp.Stmts)
 	}
 	for _, t := range targets {
 		if b, ok := comp.PlatformOverrides[t.Platform]; ok {

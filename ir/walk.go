@@ -263,7 +263,7 @@ func (w *walker) component(c *Component) {
 	for _, f := range c.Funcs {
 		w.fn(f)
 	}
-	w.stmts(c.Body)
+	w.stmts(c.Stmts)
 }
 
 func (w *walker) varDecl(v *Var) {

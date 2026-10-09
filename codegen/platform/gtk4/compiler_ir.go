@@ -128,7 +128,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 // the whole program.
 func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 	if main := ctx.RootDecl(); main != nil {
-		return main.Body
+		return main.Stmts
 	}
 	return ctx.Pkg.Body
 }
@@ -932,7 +932,7 @@ func collectNodeTags(pkg *ir.Package) (map[string]string, map[string]bool) {
 		return out, tops
 	}
 	for _, comp := range pkg.Components {
-		walk(comp.Body)
+		walk(comp.Stmts)
 		for _, fn := range comp.Funcs {
 			if fn != nil {
 				walk(fn.Block)
@@ -988,7 +988,7 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 		}
 	}
 	for _, comp := range pkg.Components {
-		walk(comp.Body)
+		walk(comp.Stmts)
 		for _, fn := range comp.Funcs {
 			if fn != nil {
 				walk(fn.Block)

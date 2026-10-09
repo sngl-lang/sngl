@@ -336,7 +336,7 @@ func (w *rewriter) component(c *Component) {
 	for _, f := range c.Funcs {
 		w.fn(f)
 	}
-	c.Body = w.stmts(c.Body)
+	c.Stmts = w.stmts(c.Stmts)
 }
 
 func (w *rewriter) varDecl(v *Var) {

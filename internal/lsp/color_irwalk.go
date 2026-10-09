@@ -45,7 +45,7 @@ func (w *irLitWalker) component(c *ir.Component) {
 	for _, f := range c.Funcs {
 		w.fn_(f)
 	}
-	w.stmts(c.Body)
+	w.stmts(c.Stmts)
 }
 
 func (w *irLitWalker) fn_(f *ir.Func) {

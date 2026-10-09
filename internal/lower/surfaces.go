@@ -96,7 +96,7 @@ func findSurfaces(pkg *ir.Package, opts Options) (*surfaceSet, error) {
 				}
 				if c := n.Component; c != nil && !seen[c] {
 					seen[c] = true
-					walk(c.Body, always)
+					walk(c.Stmts, always)
 				}
 			case *ir.ErrorBoundary:
 				// Its content stands where it does; its fallback only once
@@ -116,7 +116,7 @@ func findSurfaces(pkg *ir.Package, opts Options) (*surfaceSet, error) {
 	walk(pkg.Body, true)
 	// A harness renders its root component in place of the package body.
 	if root := pkg.RootDecl(); root != nil && set == nil {
-		walk(root.Body, true)
+		walk(root.Stmts, true)
 	}
 	if set != nil && set.doc == nil {
 		return nil, fmt.Errorf("%s: this target writes its document from the first %s that no `if` over state and no `for` can take away, and every one here is under one", ir.NodePos(first), first.Name)
@@ -130,7 +130,7 @@ func rootsAtSurface(c *ir.Component, opts Options) bool {
 	if ir.IsSurface(c) {
 		return true
 	}
-	body := c.Body
+	body := c.Stmts
 	if o, ok := ir.ComponentOverride(c, opts.Platform, opts.Language); ok {
 		body = o.Stmts
 	}

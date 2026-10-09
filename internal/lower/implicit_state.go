@@ -95,11 +95,11 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 // Only asked of a node with no `#id`: a read of the prop through the handle
 // names the cell, so a node something reads keeps one.
 func hostReports(comp *ir.Component, p *ir.Prop) bool {
-	if isPrimitiveComponent(comp) || len(comp.Body) == 0 {
+	if isPrimitiveComponent(comp) || len(comp.Stmts) == 0 {
 		return true
 	}
 	named := false
-	_ = ir.Walk(comp.Body, func(n ir.Node) error {
+	_ = ir.Walk(comp.Stmts, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.Ident:
 			named = x.Name == p.Name
@@ -301,7 +301,7 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 		w.Slots = []*ir.SlotDecl{fwd}
 		inner.Children = []ir.Stmt{&ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}}
 	}
-	w.Body = []ir.Stmt{inner}
+	w.Stmts = []ir.Stmt{inner}
 
 	if n.Handle != nil {
 		st.reads[n.Handle] = cells
@@ -439,8 +439,8 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 
 func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
 	pos, id := "<unknown>", "?"
-	if len(w.Body) > 0 {
-		if inner, ok := w.Body[0].(*ir.NodeInst); ok {
+	if len(w.Stmts) > 0 {
+		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
 			pos, id = nodePos(inner), inner.ID
 		}
 	}

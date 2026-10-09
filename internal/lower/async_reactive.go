@@ -108,7 +108,7 @@ func hoistInlineAsyncReactive(pkg *ir.Package) error {
 	hoistInStmts(h, pkg.Body)
 	// Walk components.
 	for _, comp := range pkg.Components {
-		hoistInStmts(h, comp.Body)
+		hoistInStmts(h, comp.Stmts)
 	}
 	return nil
 }

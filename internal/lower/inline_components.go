@@ -413,11 +413,11 @@ func (st *inlineCompState) run() error {
 		ch, anyFuncCh := false, false
 		if st.main != nil {
 			st.hoist = componentHoist(st.main)
-			body, mch, err := st.inlineStmts(st.main.Body)
+			body, mch, err := st.inlineStmts(st.main.Stmts)
 			if err != nil {
 				return err
 			}
-			st.main.Body = body
+			st.main.Stmts = body
 			ch = mch
 			// Indexed: inlining a call inside a func body appends to this very
 			// slice, and the appended clones need walking too.
@@ -465,11 +465,11 @@ func (st *inlineCompState) run() error {
 				continue
 			}
 			st.hoist = componentHoist(c)
-			body, cch, err := st.inlineStmts(c.Body)
+			body, cch, err := st.inlineStmts(c.Stmts)
 			if err != nil {
 				return err
 			}
-			c.Body = body
+			c.Stmts = body
 			anyKeptCh = anyKeptCh || cch
 			for j := 0; j < len(c.Funcs); j++ {
 				fbody, fch, err := st.inlineStmts(c.Funcs[j].Block)
@@ -511,7 +511,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 		if c == nil || !st.cycles[c] {
 			continue
 		}
-		if n := firstCanvas(c.Body); n != nil {
+		if n := firstCanvas(c.Stmts); n != nil {
 			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
 		}
 	}
@@ -554,7 +554,7 @@ func usedVar(c *ir.Component) *ir.Var {
 		}
 		return nil
 	}
-	_ = ir.Walk(c.Body, visit)
+	_ = ir.Walk(c.Stmts, visit)
 	for _, fn := range c.Funcs {
 		if found == nil && fn != nil {
 			_ = ir.Walk(fn.Block, visit)
@@ -584,7 +584,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
 		var found, lifetime *ir.NodeInst
-		_ = ir.WalkStmts(c.Body, func(s ir.Stmt) error {
+		_ = ir.WalkStmts(c.Stmts, func(s ir.Stmt) error {
 			n, ok := s.(*ir.NodeInst)
 			if !ok || found != nil || n.Component == nil || st.cycles[n.Component] {
 				return nil
@@ -593,7 +593,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 				lifetime = n
 				return ir.SkipAll
 			}
-			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body) {
+			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts) {
 				found = n
 				return ir.SkipAll
 			}
@@ -806,7 +806,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	// how it was written, and stays true once specializeComp has swapped an
 	// override's body in -- every `ui.text` a target implements is bodyless
 	// and has a body to splice by here.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
+	if len(comp.Stmts) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
 	return true
@@ -823,7 +823,7 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 		return false
 	}
 	renders := false
-	_ = ir.Walk(comp.Body, func(node ir.Node) error {
+	_ = ir.Walk(comp.Stmts, func(node ir.Node) error {
 		if renders {
 			return nil
 		}
@@ -941,7 +941,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		// A target that keeps no state of an instance's own is given the state
 		// where the component is written instead, one cell per copy.
-		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Stmts)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			return st.expandPerCopy(n, rc)
 		}
 		// A library declaration with no state of its own is spliced even here:
@@ -951,7 +951,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// -- `ui.window`, whose methods keep passInlinePure off it, composed
 		// under a reactive `if` on bubbletea, where the implicit-state wrapper
 		// around it was spliced per copy.
-		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Body) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+		if rc.perCopy(n.Component) && st.captureOnly == nil && n.Component != nil && n.Component.PkgPath() != "" && len(n.Component.Vars) == 0 && !holdsLifetime(n.Component.Stmts) && !st.cycles[n.Component] && st.inlinable(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
 				return nil, false, err
@@ -1221,7 +1221,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Reads = renameVarList(fn.Reads, symRenames)
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
-	body := substituteVars(deepCloneStmts(comp.Body), provided)
+	body := substituteVars(deepCloneStmts(comp.Stmts), provided)
 	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}

@@ -890,7 +890,7 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	helpers := g.ctx.Helpers
 	native := g.ctx.NativeImports
 	if main := ctx.RootDecl(); main != nil {
-		g.irBodyStmts = main.Body
+		g.irBodyStmts = main.Stmts
 		g.ctx = ctx.ExprCtx.ForComponent(main)
 	} else {
 		g.ctx = ctx.ExprCtx.Clone()
@@ -1017,7 +1017,7 @@ func (g *htmlGen) prewalkNodes() {
 		if c == nil {
 			continue
 		}
-		visitStmts(c.Body)
+		visitStmts(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				visitStmts(fn.Block)
@@ -1071,7 +1071,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	// which the lowering already named, and a page anchor would point every
 	// instance at one node.
 	for _, c := range g.pageComponents() {
-		visit(c.Body)
+		visit(c.Stmts)
 		for _, fn := range c.Funcs {
 			if fn != nil {
 				visit(fn.Block)
@@ -3684,7 +3684,7 @@ func (g *htmlGen) bodyCalls() []string {
 		}
 	}
 	for _, c := range g.pageComponents() {
-		collect(c.Body)
+		collect(c.Stmts)
 	}
 	collect(pkg.Body)
 	return out

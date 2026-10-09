@@ -227,7 +227,7 @@ func normalizeComponent(c *Component) {
 	for _, f := range c.Funcs {
 		normalizeFunc(f)
 	}
-	c.Body = normalizeStmts(c.Body)
+	c.Stmts = normalizeStmts(c.Stmts)
 }
 
 func normalizeStmts(stmts []Stmt) []Stmt {

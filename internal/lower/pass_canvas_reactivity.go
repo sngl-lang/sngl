@@ -25,7 +25,7 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Features, _ Options) error {
 	pkgVars := mutableVars(pkg.Vars)
 	for _, comp := range pkg.Components {
 		stateVars := mergeVarSets(pkgVars, mutableVars(comp.Vars))
-		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
+		injectCanvasRedraws(comp.Stmts, comp.Vars, stateVars, &comp.Funcs)
 	}
 	injectCanvasRedraws(pkg.Body, nil, pkgVars, &pkg.Funcs)
 	return nil
@@ -157,9 +157,9 @@ func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Va
 				}
 				// Once per declaration: a shape drawn twenty times reads the
 				// same names, and a shape that renders itself would not stop.
-				if n.Component != nil && len(n.Component.Body) > 0 && !seen[n.Component] {
+				if n.Component != nil && len(n.Component.Stmts) > 0 && !seen[n.Component] {
 					seen[n.Component] = true
-					walk(n.Component.Body)
+					walk(n.Component.Stmts)
 				}
 				walk(n.Children)
 			case *ir.CallStmt:
