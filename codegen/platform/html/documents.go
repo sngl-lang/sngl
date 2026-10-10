@@ -30,9 +30,10 @@ import (
 // is its own params or the request's.
 func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*codegen.Document, error] {
 	return func(yield func(*codegen.Document, error) bool) {
-		// A document that asked for no call in one round was folded whole, and
-		// answers to other documents' calls cannot change it, so a later round
-		// probes only the documents that asked.
+		// A document that asked for no call in a round that finished was folded
+		// whole, and answers to other documents' calls cannot change it, so the
+		// next round probes only the documents that asked. A round that failed
+		// may not have reached every document, or known them all.
 		var askers map[int]bool
 		if err := fold.SettleNatives(func(probe codegen.Fold) error {
 			doc, _ := documentSurface(pkg)
@@ -48,6 +49,9 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 				return true
 			})
 			askers = asked
+			if err != nil {
+				askers = nil
+			}
 			return err
 		}); err != nil {
 			yield(nil, err)
@@ -179,7 +183,8 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 // surfaceDocuments hands each document w, a surface, is written as to yield:
 // w itself when it holds no stack, and one per page copy when it holds one.
 // False when yield stopped the walk. want, when not nil, picks the documents
-// to write by their index in that order, and yield is handed the index.
+// to write by their index in that order, and yield is handed the index; the
+// order is the same on every call that finds the same pages.
 //
 // A surface holding a nav.stack is one document per page: the whole surface,
 // with the stack standing for that page alone. A page is the node carrying a

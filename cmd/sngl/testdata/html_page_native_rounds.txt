@@ -1,21 +1,32 @@
 # A native call only a page's loop variable makes constant is answered before
-# the first document is written, one batch per round. A call whose argument is
-# another call's answer takes a second round, and that round probes only the
-# document that asked: the others were folded whole in the first. Were it
-# skipped, the page would still come out right, answered one call at a time,
-# so the round lines are what this asserts.
+# the first document is written, one batch per round, and a later round
+# probes again the documents that asked. A page that the round skipped would
+# still come out right, answered one call at a time, so the round lines are
+# what this asserts.
 exec sh -c 'printf "module example.com/app\n\ngo %s\n\nrequire duckfam.us/sngl v0.0.0\n\nreplace duckfam.us/sngl => %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> go.mod'
 env GOPROXY=off GOFLAGS=-mod=mod
 exec go mod tidy
 env SNGL_GENCACHE_DIR=$WORK/store
 
-sngl -v generate --lang=none --platform=html -o out --allow-eval=go:example.com/app/lib app.sngl
+# A call whose argument is another call's answer takes a second round, for
+# the one page that makes it.
+sngl -v generate --lang=none --platform=html -o out --allow-eval=go:example.com/app/lib nested.sngl
 stderr -count=2 'consteval round.*calls=1'
 grep 'twice 8' out/two/index.html
 grep 'plain 1' out/index.html
 grep 'plain 3' out/three/index.html
 
--- app.sngl --
+# Pages under a loop over a call's answer are not known until it is answered,
+# so the round that asks for it finds no pages; the next probes every page,
+# and their calls are one batch.
+sngl -v generate --lang=none --platform=html -o out2 --allow-eval=go:example.com/app/lib iterated.sngl
+stderr 'consteval round.*calls=2'
+stderr 'consteval round.*calls=3'
+grep '/!' out2/index.html
+grep '/a!' out2/a/index.html
+grep '/b!' out2/b/index.html
+
+-- nested.sngl --
 import ui "sngl:ui"
 import nav "sngl:ui/nav"
 import lib "go:example.com/app/lib"
@@ -40,8 +51,37 @@ ui.window(title="t") {
         }
     }
 }
+-- iterated.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import lib "go:example.com/app/lib"
+
+const groups = [1, 2]
+
+ui.window(title="t") {
+    nav.stack #stack {
+        for var g = groups {
+            for var h = lib.Hrefs(g) {
+                nav.page(href=h, title="p") {
+                    ui.text(value=lib.Shout(h))
+                }
+            }
+        }
+    }
+}
 -- lib/lib.go --
 package lib
 
 //sngl:pure
 func Double(n int) int { return n * 2 }
+
+//sngl:pure
+func Shout(s string) string { return s + "!" }
+
+//sngl:pure
+func Hrefs(g int) []string {
+	if g == 1 {
+		return []string{"/", "/a"}
+	}
+	return []string{"/b"}
+}

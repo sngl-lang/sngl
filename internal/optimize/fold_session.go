@@ -127,9 +127,9 @@ func (f *Fold) TakeFileAssets() []codegen.FileAsset {
 // SettleNatives is evalNativeRounds for the calls a loop variable makes
 // constant, which the first Optimize could not see: `lookup.PackageIndex(p.path)`
 // in a page per package. Each round probes the documents that may still hold
-// an unanswered pure native call and discards them, and hands the calls it could not answer to one
-// generated program -- answered one at a time instead, a site of a hundred
-// such pages built a hundred programs.
+// an unanswered pure native call and discards them, and hands the calls it
+// could not answer to one generated program -- answered one at a time
+// instead, a site of a hundred such pages built a hundred programs.
 func (f *Fold) SettleNatives(probe func(codegen.Fold) error) error {
 	ctx := f.ctx
 	cfg := ctx.cfg
