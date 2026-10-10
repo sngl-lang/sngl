@@ -914,6 +914,9 @@ type Override struct {
 	// @generate. Nil for a target package's override, which is library
 	// source and trusted.
 	Pkg *Package `json:"-"`
+	// RecvParam is the `this` a function override's body names where the
+	// declaration it overrides bound none, installed with the body.
+	RecvParam *Param `json:"-"`
 }
 
 // Component represents a resolved component declaration.

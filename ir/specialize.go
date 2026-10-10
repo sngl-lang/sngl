@@ -202,6 +202,9 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 		MustWrite(fn.Pkg, "specializing "+fn.Name)
 		fn.SpecializedFor = t.key()
 		fn.Block = body.Stmts
+		if body.RecvParam != nil {
+			fn.RecvParam = body.RecvParam
+		}
 	}
 }
 

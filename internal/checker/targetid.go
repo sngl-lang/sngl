@@ -439,7 +439,11 @@ func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 		}
 		ov.Block = nil
 		c.checkFuncBody(ov)
-		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = ir.Override{Stmts: ov.Block}
+		checked := ir.Override{Stmts: ov.Block}
+		if po.fn.RecvParam == nil {
+			checked.RecvParam = ov.RecvParam
+		}
+		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = checked
 	}
 }
 

@@ -755,10 +755,10 @@ package's. A cache shared between checks (`libCache.shared`, a test's
 outermost check on it returns: `ir.Freeze` marks its packages, and the known
 writers -- a package root's bindings, `AttachMethod`, `specializeComp`, a
 `Builtins` registration -- panic on one (`ir.MustWrite`). Two writes are let
-through until each override is owned by the package that declares it: a
-target package's override is recorded on the declaration it overrides, since
-a later check may build for a target an earlier one never loaded
-(`TestFrozenLibraryTakesANewTarget`), and a build writes the checked library
+through. A target package's override is recorded on the declaration it
+overrides until each override is owned by the package that declares it,
+since a later check may build for a target an earlier one never loaded
+(`TestFrozenLibraryTakesANewTarget`). And a build writes the checked library
 until it starts from a copy of it, which is why a cache only one check reads
 is never frozen.
 

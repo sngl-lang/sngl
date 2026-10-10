@@ -3907,13 +3907,17 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	// on an abstract key type.
 	if fn.AST != nil && fn.AST.Body != nil && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
-		if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.RecvName(), fn.RecvTypeParams)); thisType != nil {
-			recv := &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
-			c.declare(funcDeclPos(fn), recv)
-			// Kept on the declaration as well as in the scope: the body names
-			// it, so whoever replaces the body's parameters has to know which
-			// symbol the receiver is.
-			fn.RecvParam = recv
+		// Kept on the declaration as well as in the scope: the body names it,
+		// so whoever replaces the body's parameters has to know which symbol
+		// the receiver is. An override reuses the declaration's, whose body
+		// it replaces.
+		if fn.RecvParam == nil {
+			if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.RecvName(), fn.RecvTypeParams)); thisType != nil {
+				fn.RecvParam = &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
+			}
+		}
+		if fn.RecvParam != nil {
+			c.declare(funcDeclPos(fn), fn.RecvParam)
 		}
 	}
 
