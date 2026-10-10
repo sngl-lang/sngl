@@ -180,7 +180,7 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// subtree and the free-value scan should not then see what it reads.
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
-	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
+	st.liftValues(n, l, handlerParams(n, boundWithin(n)))
 	for _, p := range comp.Props {
 		st.cells[p.Sym] = true
 	}

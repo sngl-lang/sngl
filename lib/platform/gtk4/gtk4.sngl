@@ -306,6 +306,44 @@ const component ui.popover[platform] {
     }
 }
 
+// A row per box, each homogeneous so every cell takes an equal share and the
+// columns line up. GtkColumnView is GTK's table, but it is fed through a list
+// model and item factories, which nothing here can declare. A selectable
+// row's cells are buttons that select it, bold where it is selected, as a tab
+// strip marks its tab; a sortable header's are buttons reporting the column.
+const component ui.table[platform] {
+    gtk.GtkBox(orientation="vertical", spacing=0, style={...style}) {
+        gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+            for var col = columns {
+                if sortable {
+                    gtk.GtkButton(label=col, style={fontWeight=ui.FontWeight.bold}, @clicked { sort(col) }) {}
+                } else {
+                    gtk.GtkLabel(label=col, xalign=0.0, style={fontWeight=ui.FontWeight.bold}) {}
+                }
+            }
+        }
+        gtk.GtkSeparator() {}
+        for var k, row = rows {
+            gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+                for var cell = row.cells {
+                    if selectable {
+                        gtk.GtkButton(
+                            label = cell,
+                            style = {fontWeight=k == selected ? ui.FontWeight.bold : ui.FontWeight.normal},
+                            @clicked {
+                                selected = k
+                                select()
+                            },
+                        ) {}
+                    } else {
+                        gtk.GtkLabel(label=cell, xalign=0.0) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- The timer ---
 //
 // GLib already schedules, so this platform needs no timer primitive: the

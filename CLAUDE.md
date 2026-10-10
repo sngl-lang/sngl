@@ -3270,7 +3270,7 @@ follows from the tree being rendered rather than written out:
   one span member the scheme writes around it. Three things differ. A run
   under two spans is one `markup.run` carrying both, the parse handing it its
   styles rather than their nesting. A table is rows of text: `ui.table`
-  renders nothing on fyne or android and has no gtk4 implementation. And a
+  renders nothing on fyne or android. And a
   list nests three deep, one component per level, since a component calling
   itself is built at run time; deeper items are laid out in their parent's
   place.
