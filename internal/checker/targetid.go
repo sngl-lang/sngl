@@ -401,9 +401,10 @@ func (c *checker) funcOverrideBase(decl *ast.FuncDef) *ir.Func {
 // checkPendingFuncOverrides checks each override body against the signature of
 // the function it overrides, and stashes the result under its platform.
 //
-// The body is checked with the base's AST in place of the override's so the
-// params and the return type in scope are the ones the override inherits: the
-// override declares neither, and checkFuncBody reads both off the declaration.
+// The body is checked on a copy of the base carrying the override's body, so
+// the params and the return type in scope are the ones the override inherits:
+// the override declares neither, and checkFuncBody reads both off the
+// declaration.
 func (c *checker) checkPendingFuncOverrides() {
 	c.checkFuncOverrides(c.pendingFuncOverrides)
 }
@@ -426,19 +427,19 @@ func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 				c.scope = ps
 			}
 		}
-		saved := po.fn.AST
-		savedBlock := po.fn.Block
-		if saved != nil {
-			swapped := *saved
+		// On a copy, as a component override is, so the declaration is not
+		// written.
+		ov := new(ir.Func)
+		*ov = *po.fn
+		if po.fn.AST != nil {
+			swapped := *po.fn.AST
 			swapped.Body = po.decl.Body
 			swapped.Block = po.decl.Block
-			po.fn.AST = &swapped
+			ov.AST = &swapped
 		}
-		po.fn.Block = nil
-		c.checkFuncBody(po.fn)
-		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = ir.Override{Stmts: po.fn.Block}
-		po.fn.AST = saved
-		po.fn.Block = savedBlock
+		ov.Block = nil
+		c.checkFuncBody(ov)
+		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = ir.Override{Stmts: ov.Block}
 	}
 }
 
@@ -614,7 +615,13 @@ func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *m
 			return c.pkg.Overlay.For(decl).Of(kind)
 		}
 	}
-	ir.MustWrite(ir.DeclaringPackage(decl), "an override of "+decl.SymName())
+	// A target package's override is still recorded on the declaration it
+	// overrides, frozen or not, until each override is owned by the package
+	// that declares it: a later check may build for a target an earlier one
+	// never loaded.
+	if user {
+		ir.MustWrite(ir.DeclaringPackage(decl), "an override of "+decl.SymName())
+	}
 	switch d := decl.(type) {
 	case *ir.Component:
 		if kind == ir.BuiltinFamilyLanguage {

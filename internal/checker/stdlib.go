@@ -981,11 +981,11 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		}
 	}()
 	// The package's own overrides are the package's, so they are checked as
-	// part of loading it: what one declares -- a helper, a body struct --
-	// belongs to this package and not to the program that happened to load it.
-	own := slices.Clone(c.pendingExtensions[ext:])
-	ownFuncs := slices.Clone(c.pendingFuncOverrides[funcs:])
-	c.pendingExtensions, c.pendingFuncOverrides = c.pendingExtensions[:ext], c.pendingFuncOverrides[:funcs]
+	// part of loading it: what one declares -- a body struct, an anonymous
+	// struct it interns -- belongs to this package and not to the program
+	// that happened to load it.
+	own, ownFuncs := c.pendingExtensions[ext:], c.pendingFuncOverrides[funcs:]
+	c.pendingExtensions, c.pendingFuncOverrides = c.pendingExtensions[:ext:ext], c.pendingFuncOverrides[:funcs:funcs]
 	c.inTargetLoad(pkgName, func() {
 		c.checkExtensions(own)
 		c.checkFuncOverrides(ownFuncs)
@@ -1202,10 +1202,9 @@ type pendingExtension struct {
 }
 
 // checkPendingExtensions checks the program's own overrides, after its pass1
-// so its declarations are in scope. Each extension body is checked with the platform block temporarily installed as the stdlib
-// component's AST.Body, then the slot is restored: the component is left with
-// an empty Body, and lower's passPlatformExtensionBody swaps the active
-// platform's in.
+// so its declarations are in scope. Each body is checked on a copy of the
+// declaration it overrides, and recorded as that declaration's override for
+// its target; the declaration itself is never written.
 func (c *checker) checkPendingExtensions() {
 	c.checkExtensions(c.pendingExtensions)
 }

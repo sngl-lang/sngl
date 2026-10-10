@@ -968,8 +968,8 @@ func funcDeclPos(fn *ir.Func) ast.Pos {
 	return ast.Pos{}
 }
 
-// overrideFile is the override whose body is installed on comp while
-// checkPendingExtensions checks it. A program's override may be written in a
+// overrideFile is the override whose body comp, the copy
+// checkPendingExtensions checks it on, holds. A program's override may be written in a
 // file other than the declaration's, and it is the override's file whose
 // imports its body was written against.
 type overrideFile struct {
@@ -3653,9 +3653,9 @@ func hasDeclaredBody(fn *ir.Func) bool {
 	return funcHasBody(fn.AST)
 }
 
-// pendingExtensionComps is the base of every override this check installs.
-// An override's base need not be this package's: every stdlib and
-// target-package one is declared elsewhere, so pkg.Components omits it.
+// pendingExtensionComps is the base of every override the program declares.
+// An override's base need not be the program's: one of a library component is
+// declared elsewhere, so pkg.Components omits it.
 func (c *checker) pendingExtensionComps() []*ir.Component {
 	out := make([]*ir.Component, 0, len(c.pendingExtensions))
 	for _, pe := range c.pendingExtensions {
@@ -3691,10 +3691,9 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 	// comp.Funcs too, but they don't need component scope; we check them
 	// here so their return type is inferred BEFORE any top-level test func
 	// (which may call them) is checked.
-	// ir.BodyFuncs rather than comp.Funcs: checkPendingExtensions has restored
-	// the base by now, so a func an override body declared is no longer on the
-	// live list, and checking it here resolves it at package scope where the
-	// component's own vars are undefined (#230).
+	// ir.BodyFuncs rather than comp.Funcs: a func an override body declared is
+	// on the override and never on the live list, and checking it here resolves
+	// it at package scope where the component's own vars are undefined (#230).
 	owned := map[*ir.Func]bool{}
 	noteOwned := func(comp *ir.Component) {
 		for _, fn := range ir.BodyFuncs(comp) {
@@ -4221,7 +4220,7 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 
 // checkOverrideNestedBodies checks the bodies of the components an override
 // body declared, and records them as checked so pass2 does not check them
-// again with the base declaration restored. checkBodyOnce's owner-first
+// again against the base declaration, which never holds the override. checkBodyOnce's owner-first
 // ordering from the other end: the caller has checked the owner already,
 // because pass2 never reaches an override body.
 func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {

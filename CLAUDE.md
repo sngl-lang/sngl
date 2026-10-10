@@ -753,11 +753,14 @@ loading it (`mergeTargetExtensions`), so what one declares is the target
 package's. A cache shared between checks (`libCache.shared`, a test's
 `SharedLibrary` until a process holds one library) is frozen when the
 outermost check on it returns: `ir.Freeze` marks its packages, and the known
-writers -- a package root's bindings, `AttachMethod`, `specializeComp`, the
-checker's `overrideMap`, a `Builtins` registration -- panic on one
-(`ir.MustWrite`). A build still writes the checked library until a build
-starts from a copy of it, which is why a cache only one check reads is never
-frozen.
+writers -- a package root's bindings, `AttachMethod`, `specializeComp`, a
+`Builtins` registration -- panic on one (`ir.MustWrite`). Two writes are let
+through until each override is owned by the package that declares it: a
+target package's override is recorded on the declaration it overrides, since
+a later check may build for a target an earlier one never loaded
+(`TestFrozenLibraryTakesANewTarget`), and a build writes the checked library
+until it starts from a copy of it, which is why a cache only one check reads
+is never frozen.
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
@@ -2521,9 +2524,9 @@ types is where it lifts, and the diagnostic says so
 `Component.Funcs` is the base declaration's and never names the override's
 helper — checked at package scope instead, it reported the
 component's own vars as undefined. That set is asked of `c.pendingExtensions`
-as well as `pkg.Components`: an override's base is usually *not* this package's
-declaration, and every override in `lib/` and in a target package has a stdlib
-one.
+as well as `pkg.Components`: the base of a program's override of a library
+component is not the program's declaration. A target package's overrides are
+checked in its load and never reach pass2.
 
 **A helper needs the base reachable by its bare name**, which an override
 written through a qualified alias does not have: a component-body func is a

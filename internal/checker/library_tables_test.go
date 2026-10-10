@@ -7,6 +7,7 @@ import (
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
 	"duckfam.us/sngl/ir"
 )
 
@@ -45,6 +46,24 @@ component table(name string) suits.suit {
 		}
 		if !refused {
 			t.Errorf("the check that %s accepted setting an inherited prop: %v", run, diags)
+		}
+	}
+}
+
+// A check sharing a library that an earlier one froze may build for a target
+// the earlier one did not, whose overrides the library has not seen yet.
+func TestFrozenLibraryTakesANewTarget(t *testing.T) {
+	shared := checker.NewSharedLibrary()
+	langs, plats := testtargets.Targets()
+	for _, plat := range []string{"html", "bubbletea"} {
+		doc, err := parser.Parse("main.sngl", []byte("import ui \"sngl:ui\"\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats, Targets: []ir.StaticTarget{{Platform: plat}}}
+		shared.Use(cfg)
+		if _, diags := checker.Check(doc, cfg); len(diags) > 0 {
+			t.Fatalf("%s: %s", plat, diags[0].Error())
 		}
 	}
 }
