@@ -76,7 +76,8 @@ func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
 // attachMethod makes fn a member of the declaration name resolves to. A
 // program's method on one another package declared is held on the program's
 // root scope (ir.Scope.Added) rather than in that declaration's table, which
-// every check reading the declaration's package shares.
+// every check reading the declaration's package shares -- except an override's
+// helper, which belongs to that override's own copy of the table.
 func (c *checker) attachMethod(name string, fn *ir.Func) error {
 	if !c.inLibSource() {
 		if sym, ok := c.scope.Lookup(name); ok && sym != c.overrideHelpers && sym != c.installedOverride {

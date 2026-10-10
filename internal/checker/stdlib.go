@@ -1257,7 +1257,18 @@ func (c *checker) checkPendingExtensions() {
 			// Registered inside the collect scope: a signature may name a type
 			// the override body declared, which is bound there and nowhere
 			// else.
-			funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
+			// A program's own additions to the component are its methods as much
+			// as the declaration's are, and a helper of one's name would be
+			// shadowed by it at every call.
+			known := saved.Methods
+			if added := c.symtab.Root.Added[pe.comp]; len(added) > 0 {
+				known = maps.Clone(saved.Methods)
+				if known == nil {
+					known = map[string]*ir.Func{}
+				}
+				maps.Copy(known, added)
+			}
+			funcDefs = c.reportOverrideFuncShadows(pe, known, funcDefs)
 			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
 			c.overrideHelpers = pe.comp
 			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
