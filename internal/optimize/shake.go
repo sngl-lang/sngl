@@ -146,13 +146,24 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// spells its type: `for b := range []_Block{…}` is md.document's on
 	// bubbletea. It used to be declared only because a helper's signature
 	// happened to name it.
-	for _, o := range ir.Owners(pkg) {
-		ir.WalkView(*o.Body, func(s ir.Stmt) bool {
-			if f, ok := s.(*ir.For); ok && f.Iter != nil {
-				want(f.Iter.ExprType())
+	// After lowering such a loop may stand in a render slot's func rather than
+	// a view, so every loop is asked.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if f, ok := n.(*ir.For); ok && f.Iter != nil && !namesBuiltinStruct(f.Iter.ExprType()) {
+			want(f.Iter.ExprType())
+		}
+		return nil
+	})
+	// A component built at run time takes what its body read as props, and its
+	// constructor spells each one's type as a signature does.
+	for _, c := range pkg.Components {
+		if c != nil && c.RuntimeInstance {
+			for _, p := range c.Props {
+				if !namesBuiltinStruct(p.Type) {
+					want(p.Type)
+				}
 			}
-			return true
-		})
+		}
 	}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || fn.PkgPath() == "" {

@@ -23,8 +23,10 @@ type ConstructorParam struct {
 	// typedef of a name that looks just as opaque: Gio.File is a GFile*,
 	// Gio.ApplicationFlags is a GApplicationFlags. Empty for a parameter
 	// GIR describes with <array> or <varargs> instead of a <type>.
-	CType  string
-	IRType *ir.Type
+	CType string
+	// Nullable is GIR's nullable="1": the parameter accepts NULL.
+	Nullable bool
+	IRType   *ir.Type
 }
 
 // ConstructorInfo holds the C identifier and parameters for a widget constructor.
@@ -242,6 +244,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 		currentMethod *methodInfo
 
 		paramName         string
+		paramNullable     bool
 		paramTypeName     string
 		propName          string
 		propWritable      string
@@ -366,6 +369,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "parameter" && inCtorParams && acceptCtor:
 				inParam = true
 				paramName = attrVal(t.Attr, "", "name")
+				paramNullable = attrVal(t.Attr, "", "nullable") == "1"
 				paramTypeName = ""
 				paramCType = ""
 
@@ -466,10 +470,11 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 			case local == "parameter" && inParam:
 				inParam = false
 				cp := ConstructorParam{
-					Name:    paramName,
-					GIRType: paramTypeName,
-					CType:   paramCType,
-					IRType:  girTypeToIR(paramTypeName),
+					Name:     paramName,
+					GIRType:  paramTypeName,
+					CType:    paramCType,
+					Nullable: paramNullable,
+					IRType:   girTypeToIR(paramTypeName),
 				}
 				// Append to the in-progress (last) Constructors entry.
 				if n := len(currentClass.Constructors); n > 0 {

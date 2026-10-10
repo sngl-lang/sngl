@@ -424,14 +424,14 @@ func (m *Model) buildWidgetTree() {
 	m.__n1 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n1)), C.GTK_ORIENTATION_HORIZONTAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n1)), C.int(6))
-	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(nil)))
+	m.__n2 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(C.CString(""))))
 	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n2)), C.CString("https://example.com"))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n2)), C.CString("Example"))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n2)), C.gboolean(boolToInt(true)))
 	snglCallbacks = append(snglCallbacks, m.__n2_clicked_handler)
 	C.sngl_connect(unsafe.Pointer(m.__n2), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n1)), (*C.GtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(nil)))
+	m.__n3 = (*C.GtkLinkButton)(unsafe.Pointer(C.gtk_link_button_new(C.CString(""))))
 	C.gtk_link_button_set_uri((*C.GtkLinkButton)(unsafe.Pointer(m.__n3)), C.CString("https://example.com"))
 	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(m.__n3)), C.CString("New tab"))
 	C.gtk_widget_set_sensitive((*C.GtkWidget)(unsafe.Pointer(m.__n3)), C.gboolean(boolToInt(true)))
@@ -548,7 +548,7 @@ pass sha256:dcd4f7cdb9702baa7d9dcb569a9ce88d
 -- run/go/fyne --
 pass sha256:308f4d8734be5df67713371a8178a229
 -- run/go/gtk4 --
-pass sha256:78265a1a8a5b965e8b4b159279921566
+pass sha256:c330e949261d58b5a781ab6ce43defb3
 -- run/kotlin/android --
 pass sha256:571f606da1e45beeddfab0779d1c445a
 -- run/none/html --
