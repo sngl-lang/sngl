@@ -9,8 +9,7 @@ import (
 // ownCopy is stmts copied for a fold to rewrite, every loop body in it still
 // shared: an unroll copies a body per iteration, so copying it here as well
 // was spent on loops about to be replaced and on branches about to be
-// dropped, which in an html document was nearly all of it. A loop the fold
-// keeps copies its body before folding it.
+// dropped. A loop the fold keeps copies its body before folding it.
 //
 // What the copy holds that a shared body may name -- a boundary's handler, a
 // canvas -- is recorded on ctx, so a body copied later in the same region
@@ -77,7 +76,6 @@ func pairCanvases(orig, cp []ir.Stmt) map[*ir.NodeInst]*ir.NodeInst {
 // a catch block and a resolved raise at a copied handler, a redraw at a copied
 // canvas. It stops at a loop body, which a sharing clone left shared.
 func repointCopied(root []ir.Stmt, handlers map[*ir.EventHandler]*ir.EventHandler, canvases map[*ir.NodeInst]*ir.NodeInst) {
-	seen := map[*ir.EventHandler]bool{}
 	var visit func(n ir.Node) error
 	visit = func(n ir.Node) error {
 		switch x := n.(type) {
@@ -93,15 +91,10 @@ func repointCopied(root []ir.Stmt, handlers map[*ir.EventHandler]*ir.EventHandle
 				x.Canvas = c
 			}
 		case *ir.If:
+			// A handler not copied here is the program's own, and ownHandler
+			// repoints the copy it folds rather than this walk writing into it.
 			if h, ok := handlers[x.Catch]; ok {
 				x.Catch = h
-			}
-			// The walk does not follow a catch block's handler, and once a
-			// boundary with no fallback is spliced away it is the handler's
-			// only route; see repointRedraws.
-			if h := x.Catch; h != nil && h.Func != nil && !seen[h] && len(canvases) > 0 {
-				seen[h] = true
-				_ = ir.Walk(h.Func.Block, visit)
 			}
 		}
 		return nil
@@ -109,15 +102,29 @@ func repointCopied(root []ir.Stmt, handlers map[*ir.EventHandler]*ir.EventHandle
 	_ = ir.Walk(root, visit)
 }
 
+// holdsRedraw reports whether pkg redraws a canvas, a window's @error
+// included, which a spliced boundary leaves reachable only through a catch
+// block.
 func holdsRedraw(pkg *ir.Package) bool {
 	found := false
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if _, ok := n.(*ir.CanvasRedrawStmt); ok {
+	seen := map[*ir.EventHandler]bool{}
+	var visit func(n ir.Node) error
+	visit = func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.CanvasRedrawStmt:
 			found = true
+		case *ir.If:
+			if h := x.Catch; h != nil && h.Func != nil && !seen[h] {
+				seen[h] = true
+				_ = ir.Walk(h.Func.Block, visit)
+			}
+		}
+		if found {
 			return ir.SkipAll
 		}
 		return nil
-	})
+	}
+	_ = ir.Walk(pkg, visit)
 	return found
 }
 
