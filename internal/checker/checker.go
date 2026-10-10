@@ -3909,8 +3909,8 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		// Kept on the declaration as well as in the scope: the body names it,
 		// so whoever replaces the body's parameters has to know which symbol
-		// the receiver is. An override reuses the declaration's, whose body
-		// it replaces.
+		// the receiver is. An override reuses the declaration's where it has
+		// one.
 		if fn.RecvParam == nil {
 			if thisType := c.resolveType(synthRecvTypeExpr(funcDeclPos(fn), fn.RecvName(), fn.RecvTypeParams)); thisType != nil {
 				fn.RecvParam = &ir.Param{Name: ir.ReceiverParam, Type: thisType, Receiver: true}
