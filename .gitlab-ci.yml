@@ -77,10 +77,8 @@ build-image:
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
-  # A failed image build must not take the pipeline with it: `test` and
-  # `pages` fall back to the $IMAGE:latest already in the registry, and an
-  # `optional` need is only optional about the job *existing*.
-  allow_failure: true
+  # A failed build fails the pipeline: it only runs when an image input changed,
+  # and the jobs after it would otherwise test that change on the stale :latest.
   rules:
     # An MR pipeline's `changes` is already diffed against the target branch.
     # Must come first: CI_COMMIT_BEFORE_SHA is zeroed here too.
@@ -154,6 +152,9 @@ warm-cache:
   stage: dependencies
   image: $IMAGE:latest
   allow_failure: true
+  needs:
+    - job: build-image
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: always
