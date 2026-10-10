@@ -39,6 +39,15 @@ var passForeignPrimitive = pass{
 			if !ok || n.Component == nil || bad != nil {
 				return nil
 			}
+			if f := n.Component.Foreign; n.Component.IsNative() {
+				// A host's own widget is the same case from the other side:
+				// only the platform built on that host can call it.
+				if opts.RendersNative == nil || !opts.RendersNative(f.Scheme) {
+					bad = fmt.Errorf("component %q is %s's %s (#[%s.native]) and this build targets %s, which renders no %s widget",
+						n.Component.Name, f.Scheme, f.Name, f.Scheme, opts.Platform, f.Scheme)
+				}
+				return nil
+			}
 			ns, _, ok := strings.Cut(n.Component.Intrinsic, ":")
 			if !ok || ns == opts.Platform {
 				return nil

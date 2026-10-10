@@ -2979,6 +2979,12 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
 				comp.Name, irComp.Intrinsic)
 		}
+		// A native mark says the same of a host's widget: the declaration is
+		// that identifier, and a body beside it would be a second render.
+		if irComp.IsNative() && !irComp.Bodyless {
+			c.error(comp.Pos, "component %q is the host's %s and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+				comp.Name, irComp.Foreign.Name)
+		}
 		c.finishFamilyMarks(comp, irComp, named)
 	})
 	c.finishRestSlot(irComp)

@@ -2,16 +2,39 @@
 # build targeting a different platform has no answer, and inventing one emitted
 # `<Switch onCheckedChange="...">` from a build that reported success.
 
-! sngl generate --lang none --platform html --out out app.sngl
+! sngl generate --lang none --platform html --out out intrinsic.sngl
 stderr 'platform primitive'
 stderr 'android'
 stderr 'targets html'
 
-# Its own platform still builds it.
-sngl generate --lang kotlin --platform android --out out2 app.sngl
-exists out2/MainScreen.kt
+# A host's own widget is the same case from the other side: a `#[kt.native]`
+# composable -- which is what android declares Switch as, and what a program
+# writes for one the platform never heard of -- is called only by the platform
+# whose screen is Kotlin.
+! sngl generate --lang none --platform html --out out native.sngl
+stderr 'kotlin''s Switch'
+stderr 'targets html, which renders no kotlin widget'
 
--- app.sngl --
+# Its own platform still builds both.
+sngl generate --lang kotlin --platform android --out out2 intrinsic.sngl
+exists out2/MainScreen.kt
+sngl generate --lang kotlin --platform android --out out3 native.sngl
+exists out3/MainScreen.kt
+
+-- intrinsic.sngl --
+import . "sngl:ui"
+import "sngl:platform/android"
+
+component main node {
+    vbox {
+        android.SnglDateField(label="when")
+    }
+}
+
+window {
+    main
+}
+-- native.sngl --
 import . "sngl:ui"
 import "sngl:platform/android"
 

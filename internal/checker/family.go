@@ -103,8 +103,8 @@ func (c *checker) finishFamilyMarks(decl *ast.ComponentDecl, comp *ir.Component,
 		if g.Native != "" && !ir.IsBuildTargetFamily(ir.TypeFamily(named)) {
 			c.error(decl.Pos, "component %s: #[gen.native] names the Go generator of a build target, and belongs on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
 		}
-		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
-			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
+		if len(g.Renders) > 0 && !comp.Primitive() {
+			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic], #[wildcard] or native declaration", comp.Name)
 		}
 	}
 
@@ -143,7 +143,7 @@ func (c *checker) finishFamilyMarks(decl *ast.ComponentDecl, comp *ir.Component,
 	// A family that says its members raise nothing (#[tree.eventless]):
 	// a handler written for one would never run. A platform primitive is
 	// exempt, its event being the target calling in.
-	if f.Eventless && len(comp.Events) > 0 && comp.Intrinsic == "" {
+	if f.Eventless && len(comp.Events) > 0 && !comp.Primitive() {
 		c.error(decl.Pos, "component %s: a member of %s raises no events, so it declares none", comp.Name, f.Name)
 	}
 }

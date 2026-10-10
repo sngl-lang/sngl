@@ -176,6 +176,25 @@ func ClaimsIntrinsicFunc(p PlatformGenerator) func(string) bool {
 	return nil
 }
 
+// NativeWidgets is optionally implemented by a PlatformGenerator that renders a
+// component a native mark names -- `#[kt.native]` on android, whose widgets are
+// composables. Naming one on any other platform is an error (lower's
+// ForeignPrimitive pass).
+type NativeWidgets interface {
+	// RendersNative reports whether this platform calls a component a native
+	// mark of scheme names, e.g. "kotlin".
+	RendersNative(scheme string) bool
+}
+
+// RendersNativeFunc returns p's native-widget predicate, or nil when it renders
+// none. Shaped for lower.Options.RendersNative.
+func RendersNativeFunc(p PlatformGenerator) func(string) bool {
+	if nw, ok := p.(NativeWidgets); ok {
+		return nw.RendersNative
+	}
+	return nil
+}
+
 // PlatformAvailability is optionally implemented by PlatformGenerators whose
 // component vocabulary depends on files outside this repository — today only
 // gtk4 and its GIR file.

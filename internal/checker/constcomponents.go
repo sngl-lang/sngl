@@ -242,7 +242,7 @@ func (c *checker) checkTargetComponentsConst(pkg *ir.Package) {
 		// A target's build node is never rendered: its body holds the
 		// commands the CLI reads, and the output block it is written in is
 		// read before anything runs.
-		if comp.Bodyless || comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
+		if comp.Bodyless || comp.Primitive() || comp.Builtin != ir.BuiltinNone || isTargetNode(comp) {
 			continue
 		}
 		// `{}` renders nothing, which depends on nothing: anything declared

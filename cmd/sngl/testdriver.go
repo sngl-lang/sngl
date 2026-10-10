@@ -357,7 +357,7 @@ func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang code
 		// A group rooted at no component emits the tests handed none, so
 		// it repoints nothing; another group roots at each other component.
 		Tests:           root != "",
-		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
+		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat),
 	}); err != nil {
 		return nil, fmt.Errorf("lower for tests: %w", err)
 	}

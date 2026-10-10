@@ -161,6 +161,11 @@ type Options struct {
 	// this is how it says so. Nil means it claims none.
 	ClaimsIntrinsic func(id string) bool
 
+	// RendersNative reports whether the target renders a component a native
+	// mark of this scheme names -- a host's own widget, which only the
+	// platform built on that host can call. Nil means it renders none.
+	RendersNative func(scheme string) bool
+
 	// names numbers what the inliners rename: the `__instN` each substituted
 	// component's state and funcs take, and the `__pN` a spliced body's
 	// parameter takes where it would shadow a name the call site's code reads

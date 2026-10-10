@@ -652,7 +652,7 @@ func (ctx *evalCtx) nodeForHandle(v *ir.Var) *ir.NodeInst {
 // isPrimitiveDecl reports whether c is rendered by a target rather than
 // composed: an #[intrinsic] primitive, a wildcard element or a builtin node.
 func isPrimitiveDecl(c *ir.Component) bool {
-	return c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != ""
+	return c.Primitive() || c.Builtin != ""
 }
 
 // oneWayProp reports whether c declares field as a one-way prop: a two-way

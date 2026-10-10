@@ -224,7 +224,7 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 // emitter rather than by a body, which is to say read as literals. A body
 // another target overrides the component with is not one this build renders.
 func (w *writesAnalysis) renderedByPlatform(comp *ir.Component) bool {
-	if comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone {
+	if comp.Primitive() || comp.Builtin != ir.BuiltinNone {
 		return true
 	}
 	if len(comp.Stmts) > 0 {

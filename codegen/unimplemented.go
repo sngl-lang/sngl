@@ -76,7 +76,7 @@ func UnimplementedNode(comp *ir.Component, src ast.Stmt, tag, platform string) *
 // before it asks. A component with a body is left to the caller; one reaching
 // a leaf has an empty body and draws nothing.
 func DeclinesNode(comp *ir.Component) bool {
-	return comp == nil || comp.Bodyless || comp.Intrinsic != "" || comp.Wildcard != ""
+	return comp == nil || comp.Bodyless || comp.Primitive()
 }
 
 // nodeKind is the #[builtin] kind a built-in visual node lowers from, for the

@@ -531,7 +531,7 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	// family is the ordinary thing it reads as -- `richText` hosts the inline
 	// family the way `vbox` hosts widgets -- and a platform may implement such
 	// a component in its own package like any other.
-	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ""
+	return comp.Primitive() || comp.Builtin != ""
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
@@ -541,7 +541,7 @@ func isPlatformStdlibComponent(pkg *ir.Package, comp *ir.Component) bool {
 	// a declared native widget — not a wrapper over one. It has no body to
 	// inline, so the strict check would read it as an impure wrapper and fail
 	// the build. A wildcard component is one by construction.
-	if comp != nil && (comp.Intrinsic != "" || comp.Wildcard != "") {
+	if comp.Primitive() {
 		return false
 	}
 	for _, imp := range pkg.Imports {

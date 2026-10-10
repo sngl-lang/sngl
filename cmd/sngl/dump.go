@@ -182,7 +182,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -214,7 +214,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -277,7 +277,7 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, feats, lower.Options{StopAfter: stopAfter, Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{StopAfter: stopAfter, Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", feats.String(), "stopAfter", stopAfter, "duration", time.Since(start))
@@ -331,7 +331,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		return err
 	}
 	start = time.Now()
-	if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", feats.String(), "duration", time.Since(start))

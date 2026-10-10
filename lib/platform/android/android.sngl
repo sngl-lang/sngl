@@ -98,14 +98,20 @@ func buildApk(dir string, out string)
 #[intrinsic("android.install", build)]
 func install(dir string)
 
-// --- The intrinsics ---
+// --- The composables ---
+//
+// A composable is declared as what it is: `#[kt.native(name, import)]` on a
+// bodyless component names the Compose function, and the import that reaches
+// it. A program describes one the platform never heard of the same way, and
+// these are written in no other form than that, so they are also the examples.
 //
 // A prop's name is the Compose argument it is emitted as, in declaration
-// order. Three names are the emitter's own: `modifier` takes a Style and
+// order. Five names are the emitter's own: `modifier` takes a Style and
 // becomes the `Modifier` chain built from it, `chain` appends further Modifier
-// calls verbatim after those, and `args` is arguments spelled in Kotlin, for a
+// calls verbatim after those, `args` is arguments spelled in Kotlin, for a
 // value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
-// has no way to write.
+// has no way to write, and `colors` and `shape` take a Style rendered as the
+// widget's own colour set and outline.
 //
 // A func-typed prop is a Compose lambda argument, and the override supplies
 // the lambda: its body is emitted where the argument goes, so what the callback
@@ -121,11 +127,10 @@ func install(dir string)
 // and one whose body renders nothing is left out — an absent argument and one
 // given empty content are two different widgets.
 //
-// The id is `android:` plus the composable's name — namespaced by the
-// platform whose codegen answers to it, so a platform primitive can never
-// collide with a stdlib intrinsic or with another platform's. It names no
-// Kotlin package: the platform codegen emits the call, not the language
-// translator.
+// What this platform's codegen answers for itself rather than by a call --
+// the screen, a nav link, a markup flow, the date field it ships -- is an
+// `#[intrinsic("android:…")]`, namespaced by the platform so it can never
+// collide with a stdlib intrinsic or with another platform's.
 
 // The screen: what a `ui.window` is on android, which shows one. It is not
 // a composable: MainScreen draws its content, and a program declares one
@@ -143,7 +148,7 @@ component Screen(
 ) root
 
 #[gen.renders(identity)]
-#[intrinsic("android:Column")]
+#[kt.native("Column", "androidx.compose.foundation.layout.Column")]
 component Column(
     modifier ui.Style,
     chain    list<string>,
@@ -151,7 +156,7 @@ component Column(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Box")]
+#[kt.native("Box", "androidx.compose.foundation.layout.Box")]
 component Box(
     modifier ui.Style,
     chain    list<string>,
@@ -159,7 +164,7 @@ component Box(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Row")]
+#[kt.native("Row", "androidx.compose.foundation.layout.Row")]
 component Row(
     modifier ui.Style,
     chain    list<string>,
@@ -168,14 +173,14 @@ component Row(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Spacer")]
+#[kt.native("Spacer", "androidx.compose.foundation.layout.Spacer")]
 component Spacer(
     modifier ui.Style,
     chain    list<string>,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Text")]
+#[kt.native("Text", "androidx.compose.material3.Text")]
 component Text(
     text     string,
     modifier ui.Style,
@@ -186,16 +191,13 @@ component Text(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:HorizontalDivider")]
+#[kt.native("HorizontalDivider", "androidx.compose.material3.HorizontalDivider")]
 component HorizontalDivider(
     modifier ui.Style,
 ) ui.node
 
-// TODO I don't think we followed the pattern right. We should have an android.Component(name = "CircularProgressIndicator", ...)
-// This is needed to make it possible for end-users to describe native Kotlin components to re-use.
-// We can define the standard android components in terms of that dynamic one. If there's machine-readable metadata we can generate it (like GIR)
 #[gen.renders(identity)]
-#[intrinsic("android:CircularProgressIndicator")]
+#[kt.native("CircularProgressIndicator", "androidx.compose.material3.CircularProgressIndicator")]
 component CircularProgressIndicator(
     modifier ui.Style,
 ) ui.node
@@ -206,7 +208,7 @@ component CircularProgressIndicator(
 // prop is a func returning `float32`: `float` is a Kotlin Double, and the
 // declaration is what says otherwise.
 #[gen.renders(identity)]
-#[intrinsic("android:LinearProgressIndicator")]
+#[kt.native("LinearProgressIndicator", "androidx.compose.material3.LinearProgressIndicator")]
 component LinearProgressIndicator(
     progress func() float32,
     modifier ui.Style,
@@ -216,7 +218,7 @@ component LinearProgressIndicator(
 // surface, so a background in the modifier lands behind the pill rather than
 // on it -- the colour has to go through the widget's own colour set.
 #[gen.renders(identity)]
-#[intrinsic("android:Button")]
+#[kt.native("Button", "androidx.compose.material3.Button")]
 component Button(
     onClick  func(),
     modifier ui.Style,
@@ -226,21 +228,21 @@ component Button(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Badge")]
+#[kt.native("Badge", "androidx.compose.material3.Badge")]
 component Badge(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Card")]
+#[kt.native("Card", "androidx.compose.material3.Card")]
 component Card(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:TabRow")]
+#[kt.native("TabRow", "androidx.compose.material3.TabRow")]
 component TabRow(
     selectedTabIndex int,
     children         ...component,
@@ -248,7 +250,7 @@ component TabRow(
 
 // One tab of a TabRow; `text` is its label, which Compose takes as content.
 #[gen.renders(identity)]
-#[intrinsic("android:Tab")]
+#[kt.native("Tab", "androidx.compose.material3.Tab")]
 component Tab(
     selected bool,
     enabled  bool,
@@ -257,21 +259,21 @@ component Tab(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Checkbox")]
+#[kt.native("Checkbox", "androidx.compose.material3.Checkbox")]
 component Checkbox(
     checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Switch")]
+#[kt.native("Switch", "androidx.compose.material3.Switch")]
 component Switch(
     checked         bool,
     onCheckedChange func(bool),
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:RadioButton")]
+#[kt.native("RadioButton", "androidx.compose.material3.RadioButton")]
 component RadioButton(
     selected bool,
     onClick  func(),
@@ -282,7 +284,7 @@ component RadioButton(
 // empty gets no `label` argument at all, which is not the same widget as one
 // labelled with nothing.
 #[gen.renders(identity)]
-#[intrinsic("android:OutlinedTextField")]
+#[kt.native("OutlinedTextField", "androidx.compose.material3.OutlinedTextField")]
 component OutlinedTextField(
     value         string,
     minLines      int,
@@ -310,14 +312,14 @@ component SnglDateField(
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Dialog")]
+#[kt.native("Dialog", "androidx.compose.ui.window.Dialog")]
 component Dialog(
     onDismissRequest func(),
     children         ...component,
 ) ui.node
 
 #[gen.renders(identity)]
-#[intrinsic("android:Surface")]
+#[kt.native("Surface", "androidx.compose.material3.Surface")]
 component Surface(
     args     list<string>,
     children ...component,

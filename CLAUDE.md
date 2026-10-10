@@ -1974,9 +1974,9 @@ makes.
 mark names a signature in `ir.Intrinsics` that every language backend must
 implement. On a component there is no signature to register — the declaration
 *is* the contract for props and events, and one platform's codegen emits the
-widget from it (android's `Column`/`Row`/`Spacer`/`Text` in
+widget from it (android's `Screen`, `Link` and `SnglDateField` in
 `lib/platform/android/android.sngl`). The id is that codegen's dispatch key, namespaced by
-the emitting platform (`android:Column`) so it can never collide with a stdlib
+the emitting platform (`android:Screen`) so it can never collide with a stdlib
 intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a
 component id must not be, and must carry its namespace.
@@ -1994,8 +1994,8 @@ The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
 lower down to have to be exempt.
-`isPrimitiveComponent` reads `Component.Intrinsic` for that, alongside
-`Wildcard` (html's raw element) and `Builtin` (a node kind) — the marks are the
+`isPrimitiveComponent` reads `Component.Primitive()` for that -- `Intrinsic`,
+`Wildcard` (html's raw element) and a native mark -- alongside `Builtin` (a node kind) — the marks are the
 whole list, and each says in its own vocabulary that the declaration is
 rendered rather than composed away. A **tree kind** is deliberately not on it:
 belonging to a segmented tree says which family a declaration joins, not that a
@@ -2017,6 +2017,18 @@ declaration itself. Two things about the name that are easy to get wrong:
   platform built on a C library (gtk4 on cairo) names C identifiers and no
   language at all. The Go backend renders those as cgo and supplies the
   `C.double`/`C.int` conversions from the declared parameter types.
+- **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
+  composable: android calls it with the props as arguments by name and the rest
+  slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a
+  star import of its package already reaches it. android declares its plain
+  composables this way rather than as `#[intrinsic]`, so a program describing a
+  widget the platform never heard of writes what the platform writes
+  (`testdata/android_native_composable.txtar`). It is `Component.IsNative`, a
+  `Primitive` like an intrinsic, and the native rule below applies:
+  `codegen.componentsFor` skips one. Any other platform refuses it in
+  `passForeignPrimitive` unless its generator claims the scheme
+  (`codegen.NativeWidgets`); a body or a call flag beside the mark is a checker
+  error (`error_native_component.sngl`).
 - **A native is never emitted.** Every call became a call to the host
   identifier, so a declaration would be read by nobody — and it is written as
   a stub over the zero value, which reads exactly like a real implementation.

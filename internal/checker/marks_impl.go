@@ -185,6 +185,18 @@ func markKotlinNative(m *mark) error {
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
+	case *ir.Component:
+		// A host's own widget -- a Compose composable, whose props are its
+		// arguments by name. A platform rendering Kotlin emits it from the
+		// declaration as it does one of its own #[intrinsic] primitives, which
+		// is what lets a program describe a composable the compiler never
+		// heard of. Arguments go by name already, so `named` says nothing.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a component is passed its props by name", name, flags[0])
+		}
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Var:
 		// A const or var names a host value: `math.Pi` is a constant, Kotlin's
 		// `StrokeCap.Round` a property, `os.Args` a package var. None has a
@@ -200,7 +212,7 @@ func markKotlinNative(m *mark) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct, a const or a var names a Kotlin identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct, a component, a const or a var names a Kotlin identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }

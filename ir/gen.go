@@ -94,7 +94,7 @@ func renderedPrimitive(comp *Component, seen map[*Component]bool) *Component {
 	// only the intrinsic left that platform with no primitive for any widget,
 	// which is indistinguishable from a widget that renders nothing -- and the
 	// pass that asks then answered a live read at build time.
-	if comp.Intrinsic != "" || comp.Wildcard != "" {
+	if comp.Primitive() {
 		return comp
 	}
 	seen[comp] = true
@@ -202,6 +202,23 @@ func TargetNodeOf(pkg *Package, tier BuiltinKind) *Component {
 	return nil
 }
 
+// Primitive reports whether a platform's codegen emits c from its declaration
+// rather than composing a body: a primitive a platform declares
+// (#[intrinsic]), a raw element a wildcard matched, or a host's own widget a
+// native mark names (`#[kt.native("Card", "androidx.compose.material3.Card")]`).
+// The last is the one a program may write, which is how it describes a widget
+// of the host's that the compiler never heard of.
+func (c *Component) Primitive() bool {
+	return c != nil && (c.Intrinsic != "" || c.Wildcard != "" || c.IsNative())
+}
+
+// IsNative reports whether c is a host's own widget, named by a native mark:
+// the declaration is that host identifier, and its props are the arguments
+// the host takes.
+func (c *Component) IsNative() bool {
+	return c != nil && c.Foreign.Scheme != "" && c.Foreign.Name != ""
+}
+
 // RendersFromDeclaration reports whether a target reads c's props off the
 // declaration rather than off a body: a primitive a platform's codegen emits
 // (#[intrinsic]), a raw element a wildcard matched, a builtin node the
@@ -215,7 +232,7 @@ func (c *Component) RendersFromDeclaration() bool {
 	if c == nil {
 		return false
 	}
-	if c.Intrinsic != "" || c.Wildcard != "" || c.Builtin != BuiltinNone || IsBuildTargetFamily(c.Family) {
+	if c.Primitive() || c.Builtin != BuiltinNone || IsBuildTargetFamily(c.Family) {
 		return true
 	}
 	if rest := c.RestSlot(); rest != nil && rest.Content != nil && IsShapeFamily(TypeFamily(rest.Content)) {

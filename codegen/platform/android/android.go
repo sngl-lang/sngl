@@ -79,6 +79,10 @@ func (g *Generator) Description() string {
 func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
 
+// RendersNative claims `#[kt.native]` components: a composable is called by the
+// name the mark gives, under either language, since the screen is Kotlin.
+func (g *Generator) RendersNative(scheme string) bool { return scheme == nativeScheme }
+
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {

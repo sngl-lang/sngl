@@ -1,9 +1,8 @@
 
-The Compose intrinsics android declares are ordinary components, so a program
-can call one directly to reach a composable no stdlib wrapper covers. The
-generic emitter reads the declaration: the #[intrinsic] id is the composable's
-name, each declared prop is the Compose argument of that name in declaration
-order, and children are a trailing lambda. A childless intrinsic takes no
+The composables android declares are ordinary components, so a program can
+call one directly to reach a composable no stdlib wrapper covers. The generic
+emitter reads the declaration: the #[kt.native] name is the composable's name,
+each declared prop is the Compose argument of that name in declaration order, and children are a trailing lambda. A childless composable takes no
 lambda, and a #id carried onto one becomes a testTag.
 
 `chain` appends Modifier calls the Style has no field for. The window's own
@@ -14,7 +13,7 @@ behind the TextStyle are distinct props.
 
 The stdlib wrappers reach the same emitter: hbox's android override is written
 in terms of Row and scroll's adds a chain entry, and both inline to the
-intrinsic, so neither name survives into codegen. stack layers its children, so
+composable, so neither name survives into codegen. stack layers its children, so
 it is a Box and not a Column.
 -- app.sngl --
 import . "sngl:ui"

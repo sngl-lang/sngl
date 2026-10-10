@@ -210,7 +210,7 @@ func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newVa
 }
 
 func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
-	return slices.Contains(cc.ctx.Pkg.Components, comp)
+	return !comp.IsNative() && slices.Contains(cc.ctx.Pkg.Components, comp)
 }
 
 // declaredName is the name the component was declared under, which is what the
@@ -626,13 +626,22 @@ func composeModifier(prop, val string) string {
 // another platform's.
 const intrinsicNS = "android:"
 
+// nativeScheme is the language whose native widgets this platform renders: a
+// `#[kt.native]` component is a composable, called by the name it gives.
+const nativeScheme = "kotlin"
+
 // composeIntrinsic returns the composable name behind n when n is a component
-// marked #[intrinsic] in this platform's namespace. A stdlib component whose
-// android override is written in the extension form is inlined into its caller
-// at lower time, so what reaches codegen is the intrinsic the override named.
+// marked #[intrinsic] in this platform's namespace, or a composable a
+// `#[kt.native]` mark names -- the form a program writes for one the platform
+// never heard of. A stdlib component whose android override is written in the
+// extension form is inlined into its caller at lower time, so what reaches
+// codegen is the primitive the override named.
 func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 	if n.Component == nil {
 		return nil, ""
+	}
+	if f := n.Component.Foreign; n.Component.IsNative() && f.Scheme == nativeScheme {
+		return n.Component, f.Name
 	}
 	name, ok := strings.CutPrefix(n.Component.Intrinsic, intrinsicNS)
 	if !ok || name == "" {
@@ -653,6 +662,7 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 // widget's own colour set and `shape` as its own outline — because none of
 // the five is a value Compose takes as written.
 func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
+	cc.requireNativeImport(comp.Foreign.Path)
 	var args []string
 	for _, p := range comp.Props {
 		switch p.Name {
@@ -716,6 +726,19 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	}
 	cc.indent--
 	cc.line("}")
+}
+
+// requireNativeImport adds the import a `#[kt.native]` composable names,
+// unless a star import of its package -- one of the structural imports every
+// screen carries -- already reaches it.
+func (cc *irComposeContext) requireNativeImport(path string) {
+	if path == "" {
+		return
+	}
+	if i := strings.LastIndexByte(path, '.'); i > 0 && slices.Contains(cc.kc.Imports(), path[:i]+".*") {
+		return
+	}
+	cc.kc.RequireImport(path)
 }
 
 // slotArgs emits each named slot a call site populated as the composable

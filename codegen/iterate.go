@@ -52,6 +52,12 @@ func (ctx *CodegenCtx) Components() []*ComponentCtx {
 func componentsFor(comps []*ir.Component) []*ComponentCtx {
 	out := make([]*ComponentCtx, 0, len(comps))
 	for _, c := range comps {
+		// A host's own widget is that widget: every node naming it is a call
+		// of the host identifier, so a declaration would be read by nobody --
+		// the rule AllFuncs applies to a native func.
+		if c.IsNative() {
+			continue
+		}
 		cc := &ComponentCtx{
 			Component: c,
 			Props:     c.Props,

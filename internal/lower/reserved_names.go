@@ -221,7 +221,7 @@ func (r *reservedRenamer) typeDecl(s ir.Symbol, name string, set func(string), m
 // primitive reports whether comp is rendered by a backend from its
 // declaration rather than composed, so its name is a dispatch key.
 func primitive(comp *ir.Component) bool {
-	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" || comp.Gen != nil || comp.IsFamily()
+	return comp.Primitive() || comp.Builtin != "" || comp.Gen != nil || comp.IsFamily()
 }
 
 func (r *reservedRenamer) collect(pkg *ir.Package) {
