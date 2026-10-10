@@ -2303,7 +2303,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						}
 					}
 					if descendant != nil {
-						return &ir.Select{AST: x, Type: ir.ListOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
+						return &ir.Select{AST: x, Type: c.listOf(descendant.SymType()), Operand: operandExpr, Field: x.Field}
 					}
 				}
 				c.error(x.Pos, "no member %q on component %s", x.Field, comp.Name)
@@ -2615,7 +2615,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 			return &ir.ListLit{AST: x, Type: c.expected, Elems: nil}
 		}
 		c.error(x.Pos, "cannot infer element type of empty list literal; add a type annotation")
-		return &ir.ListLit{AST: x, Type: ListOf(TypDyn)}
+		return &ir.ListLit{AST: x, Type: c.listOf(TypDyn)}
 	}
 	var elemExpected *ir.Type
 	if c.expected != nil && c.expected.Kind == ir.TypeList && len(c.expected.Elems) > 0 {
@@ -2645,13 +2645,13 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	}
 	for i, el := range elems {
 		if sp, ok := el.(*ir.Spread); ok {
-			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Operand = wrapIfNeeded(sp.Operand, c.listOf(elemT))
 			sp.Type = exprType(sp.Operand)
 		} else {
 			elems[i] = wrapIfNeeded(el, elemT)
 		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+	return &ir.ListLit{AST: x, Type: c.listOf(elemT), Elems: elems}
 }
 
 // checkListSpread checks `...operand` written as a list element, returning
@@ -2660,7 +2660,7 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
 	var want *ir.Type
 	if elemExpected != nil {
-		want = ListOf(elemExpected)
+		want = c.listOf(elemExpected)
 	}
 	operand := c.checkExprExpecting(sp.Operand, want)
 	t := exprType(operand)
@@ -2705,11 +2705,11 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	// from its own entries. A struct expected type is always wrong.
 	if c.expected != nil && c.expected.Kind == ir.TypeStruct {
 		c.error(x.Pos, "map literal cannot be used where a struct is expected")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if c.expected == nil || c.expected.Kind != ir.TypeMap {
 		c.error(x.Pos, "anonymous map literal requires an expected type from context")
-		return &ir.MapLitIR{AST: x, Type: ir.MapOf(TypDyn, TypDyn), Entries: nil}
+		return &ir.MapLitIR{AST: x, Type: c.mapOf(TypDyn, TypDyn), Entries: nil}
 	}
 	if len(x.Entries) == 0 {
 		return &ir.MapLitIR{AST: x, Type: c.expected, Entries: nil}
@@ -2741,7 +2741,7 @@ func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
 	if !isComparable(keyT) {
 		c.error(x.Pos, "map key type %s is not comparable", keyT)
 	}
-	return &ir.MapLitIR{AST: x, Type: ir.MapOf(keyT, valT), Entries: entries}
+	return &ir.MapLitIR{AST: x, Type: c.mapOf(keyT, valT), Entries: entries}
 }
 
 // interpPartAlreadyString reports whether an interpolation part's type can be
@@ -3087,7 +3087,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			var operand ir.Expr
 			if variadic >= 0 && !seenNamed && positional >= variadic {
 				elem := variadicElem()
-				operand = c.checkExprExpecting(sp.Operand, ListOf(elem))
+				operand = c.checkExprExpecting(sp.Operand, c.listOf(elem))
 				if t := exprType(operand); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeDyn) {
 					if t.Kind == ir.TypeList && len(t.Elems) == 1 && !t.Elems[0].IsAssignableTo(elem) {
 						c.error(sp.Pos, "cannot spread %s into ...%s", t, elem)
@@ -5866,7 +5866,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 
 // childrenTypeFor is the children contract a rest slot stands for, in the shape
 // the existing arity checks read.
-func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
+func (c *checker) childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	elem := slot.Content
 	if elem == nil {
 		elem = &ir.Type{Kind: ir.TypeComponent}
@@ -5877,7 +5877,7 @@ func childrenTypeFor(slot *ir.SlotDecl) *ir.Type {
 	case ir.SlotOptional:
 		return ir.OptionOf(elem)
 	}
-	return ir.ListOf(elem)
+	return c.listOf(elem)
 }
 
 func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, body []ir.Stmt, what string) {

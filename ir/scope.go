@@ -262,9 +262,11 @@ func NewBaseScope() *Scope {
 		name string
 		typ  *Type
 	}{
-		{"list", ListOf(TypDyn)},
+		// No declaration attached: a library load attaches its own `list` where
+		// sngl:builtin declares it, and what loads before that attaches none.
+		{"list", &Type{Kind: TypeList, Elems: []*Type{TypDyn}}},
 		{"option", OptionOf(TypDyn)},
-		{"map", MapOf(TypDyn, TypDyn)},
+		{"map", &Type{Kind: TypeMap, Elems: []*Type{TypDyn, TypDyn}}},
 	} {
 		s.Symbols[entry.name] = &TypeSym{Name: entry.name, Type: entry.typ}
 	}

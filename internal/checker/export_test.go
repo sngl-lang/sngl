@@ -100,22 +100,3 @@ func (s *SharedLibrary) Tables() map[string]string {
 	}
 	return t
 }
-
-// Publish hands the phases with no scope of their own the declarations s
-// holds, as its own load did. A check that finds the library loaded publishes
-// nothing, and so would run against whichever load published last.
-func (s *SharedLibrary) Publish() {
-	for _, pkg := range s.Packages() {
-		for _, sd := range pkg.Structs {
-			if sd.Builtin == ir.BuiltinDateTime {
-				ir.RegisterDateTimeStruct(sd.SymType())
-			}
-			ir.RegisterGenericBuiltin(sd)
-		}
-		for _, u := range pkg.Units {
-			if u.Builtin == ir.BuiltinDuration {
-				ir.RegisterDurationUnit(u.SymType())
-			}
-		}
-	}
-}

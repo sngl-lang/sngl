@@ -75,9 +75,9 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 	case ir.BuiltinList:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "list requires a type argument, e.g. list<int>")
-			return ListOf(TypDyn)
+			return c.listOf(TypDyn)
 		}
-		return ListOf(c.resolveType(t.TypeArgs[0]))
+		return c.listOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinOption:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "option requires a type argument, e.g. option<int>")
@@ -95,7 +95,7 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 			c.error(t.Pos, "map key type %s is not comparable", k)
 			return TypDyn
 		}
-		return ir.MapOf(k, v)
+		return c.mapOf(k, v)
 	case ir.BuiltinIter:
 		if len(t.TypeArgs) != 1 {
 			c.error(t.Pos, "iter requires exactly 1 type argument, got %d", len(t.TypeArgs))
@@ -626,7 +626,7 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 				c.error(vt.Pos, "parameter %q collects the arguments past the others, so it has no default: given none it is the empty list", p.Name)
 			}
 			variadic = true
-			typ = ir.ListOf(c.resolveTypeRequired(vt.Elem, p.Pos, "parameter "+strconv.Quote(p.Name)))
+			typ = c.listOf(c.resolveTypeRequired(vt.Elem, p.Pos, "parameter "+strconv.Quote(p.Name)))
 		} else {
 			typ = c.resolveTypeRequired(p.Type, p.Pos, "parameter "+strconv.Quote(p.Name))
 		}

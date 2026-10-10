@@ -88,9 +88,6 @@ var TypNull = ir.TypNull
 var TypVoid = ir.TypVoid
 
 //go:fix inline
-var ListOf = ir.ListOf
-
-//go:fix inline
 var OptionOf = ir.OptionOf
 
 //go:fix inline

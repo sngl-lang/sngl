@@ -1,6 +1,7 @@
 package lib_test
 
 import (
+	"fmt"
 	"io/fs"
 	"regexp"
 	"strings"
@@ -8,6 +9,8 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testtargets"
 	"duckfam.us/sngl/ir"
 	"duckfam.us/sngl/lib"
 
@@ -31,8 +34,7 @@ import (
 // emitting platform as a namespace, which is what keeps the two id spaces from
 // ever meeting.
 func TestEveryIntrinsicIsDeclared(t *testing.T) {
-	loadEveryPackage(t)
-	registry := ir.AllIntrinsics()
+	registry := loadEveryPackage(t).AllIntrinsics()
 
 	marked := map[string]bool{}
 	markedComponents := map[string]bool{}
@@ -119,15 +121,29 @@ func TestExportedComponentsAreDocumented(t *testing.T) {
 	}
 }
 
-// loadEveryPackage checks every library package, target packages included,
-// which is what populates the intrinsic registry.
-func loadEveryPackage(t *testing.T) {
+// loadEveryPackage checks one program importing every package a program may,
+// target packages included, and returns the intrinsics its library
+// registered: a registry is one library's, so the packages have to load into
+// one.
+func loadEveryPackage(t *testing.T) *ir.Builtins {
 	t.Helper()
-	for _, name := range lib.Packages() {
-		if checker.LibPackage(name) == nil {
-			t.Errorf("library package %q did not load", name)
+	var src strings.Builder
+	for _, path := range lib.Packages() {
+		if path == "builtin" || strings.HasPrefix(path, "internal/") || strings.HasPrefix(path, "x/scheme/") {
+			continue
 		}
+		fmt.Fprintf(&src, "import _ %q\n", "sngl:"+path)
 	}
+	doc, err := parser.Parse("library.sngl", []byte(src.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	langs, plats := testtargets.Targets()
+	cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats, TargetsComplete: true}
+	if _, diags := checker.Check(doc, cfg); len(diags) > 0 {
+		t.Fatalf("loading the library: %v", diags[0].Error())
+	}
+	return ir.Published()
 }
 
 // A declaration marked #[intrinsic] is a signature whose result comes from the
@@ -147,13 +163,13 @@ func loadEveryPackage(t *testing.T) {
 //   - the `build` flag says only the build's evaluator answers it, so no target
 //     emits a call at all: sngl:x/gen's host API.
 func TestEveryIntrinsicIsImplemented(t *testing.T) {
-	loadEveryPackage(t)
+	library := loadEveryPackage(t)
 	langs := codegen.Langs()
 	if len(langs) == 0 {
 		t.Fatal("no languages registered")
 	}
 	checked := 0
-	for def := range ir.AllIntrinsics() {
+	for def := range library.AllIntrinsics() {
 		// Answered by the build's evaluator alone, which says so on the
 		// declaration: a call no fold reached is refused rather than emitted.
 		if def.Name == errorRaiseID || def.BuildOnly {

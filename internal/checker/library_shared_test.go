@@ -46,7 +46,6 @@ func TestLibraryShared(t *testing.T) {
 			pkgs, tables, f.Skip = now, held, notTheLibrary(now)
 			before = f.Of(pkgs)
 		}
-		library.Publish()
 		cfg := fixtures.CheckConfig(s, doc)
 		library.Use(cfg)
 		_, shared := checker.Check(doc, cfg)
@@ -85,7 +84,7 @@ func TestLibraryFingerprintSeesEveryPackage(t *testing.T) {
 	var outside []string
 	f := testutil.Fingerprinter{Skip: func(v reflect.Value) bool {
 		stop := skip(v)
-		if stop && v.Type().Elem().PkgPath() != "duckfam.us/sngl/ast" && !earlierListOrMap(v) {
+		if stop && v.Type().Elem().PkgPath() != "duckfam.us/sngl/ast" {
 			outside = append(outside, fmt.Sprintf("%s %v", v.Type(), v.Elem().FieldByName("Name")))
 		}
 		return stop
@@ -170,9 +169,7 @@ func logLibraryWrites(t *testing.T, s testutil.Sample, doc *ast.Document) {
 // notTheLibrary stops a walk at what does not belong to pkgs: the AST, which
 // TestProvidedDocsSurviveBuilds holds immutable, and another package or a
 // declaration of one. A write linking the library to one is still seen, in the
-// library object it was written into. Without it the walk reaches every
-// library loaded before, through the list and map declarations ListOf and
-// MapOf hand out from a process global until a load publishes its own.
+// library object it was written into.
 func notTheLibrary(pkgs []*ir.Package) func(reflect.Value) bool {
 	in := map[uintptr]bool{}
 	for _, p := range pkgs {
@@ -214,12 +211,4 @@ func rewrittenEntries(before, after map[string]string) []string {
 	}
 	slices.Sort(out)
 	return out
-}
-
-// earlierListOrMap is a list or map declaration of a library loaded earlier
-// in the process, which ListOf and MapOf hand out from a global until a load
-// publishes its own.
-func earlierListOrMap(v reflect.Value) bool {
-	sd, ok := v.Interface().(*ir.StructDef)
-	return ok && (sd.Builtin == ir.BuiltinList || sd.Builtin == ir.BuiltinMap)
 }

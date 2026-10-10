@@ -647,7 +647,7 @@ func (c *checker) declarePluralKeyConstants(pkg *ir.Package) {
 }
 
 // publishIntrinsic records what a #[intrinsic] declaration says, for the passes
-// that need a signature with no declaration in hand (see ir.RegisterIntrinsic).
+// that need a signature with no declaration in hand (see ir.Builtins.RegisterIntrinsic).
 // The purity is the mark's, already applied by markIntrinsic.
 func (c *checker) publishIntrinsic(fn *ir.Func) {
 	// Only a library package publishes, which is what lets RegisterIntrinsic
@@ -655,11 +655,16 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 	// sngl:internal/marks is refused, but a refusal is a diagnostic and
 	// checking continues, so the mark still stamps -- see
 	// cmd/sngl/testdata/check_internal_import.txt, which exists because this
-	// reaching codegen used to panic.
-	if !c.inLibSource() {
+	// reaching codegen used to panic. A library plugin is the library's own
+	// source, checked as a package of its own on the library's cache.
+	if !c.inLibSource() && c.cfg.libraryScheme == "" {
 		return
 	}
-	ir.RegisterIntrinsic(ir.IntrinsicDef{
+	pkg := c.libPkgName
+	if pkg == "" {
+		pkg = "sngl:" + SchemeTier + c.cfg.libraryScheme
+	}
+	def := ir.IntrinsicDef{
 		Name:            fn.Intrinsic,
 		Params:          fn.Params,
 		Return:          fn.Return,
@@ -667,9 +672,12 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		Purity:          fn.Purity,
 		MutatesReceiver: fn.MutatesReceiver,
 		BuildOnly:       fn.BuildOnly,
-		Pkg:             c.libPkgName,
+		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
-	})
+	}
+	for _, b := range c.libraryRecords() {
+		b.RegisterIntrinsic(def)
+	}
 }
 
 // funcDeclName is how a declaration is spelled: `list.push` for a method,

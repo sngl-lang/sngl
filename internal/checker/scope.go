@@ -55,7 +55,7 @@ func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
 // lookupBodyMethod finds a component-body method by bare name: on the
 // component being checked, then on each body that declared it.
 func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
-	for comp := c.currentComponent; comp != nil; comp = c.bodyOwner[comp] {
+	for comp := c.currentComponent; comp != nil; comp = c.bodyOwnerOf(comp) {
 		if fn, ok := c.lookupMethod(comp.Name, name); ok {
 			return fn, true
 		}
@@ -252,14 +252,18 @@ func (c *checker) typeParamSym(name string, pos ast.Pos) *ir.TypeParamSym {
 		return &ir.TypeParamSym{Name: name}
 	}
 	key := typeParamKey{pos: pos, name: name}
-	if sym, ok := c.typeParamSyms[key]; ok {
+	if sym, ok := c.decls.typeParamSyms[key]; ok {
 		return sym
 	}
-	if c.typeParamSyms == nil {
-		c.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
+	if sym, ok := c.libs.decls.typeParamSyms[key]; ok {
+		return sym
+	}
+	t := c.tables()
+	if t.typeParamSyms == nil {
+		t.typeParamSyms = map[typeParamKey]*ir.TypeParamSym{}
 	}
 	sym := &ir.TypeParamSym{Name: name}
-	c.typeParamSyms[key] = sym
+	t.typeParamSyms[key] = sym
 	return sym
 }
 

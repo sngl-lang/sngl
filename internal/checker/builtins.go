@@ -42,9 +42,11 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 		}
 	case ir.BuiltinDuration:
 		if u := bindBuiltin(c, &c.durationUnit, kind, sym); u != nil {
-			// Handed to phases with no scope of their own; the Go importer
-			// maps time.Duration through it.
-			ir.RegisterDurationUnit(u.SymType())
+			if c.inLibSource() {
+				for _, b := range c.libraryRecords() {
+					b.RegisterDuration(u.SymType())
+				}
+			}
 			bound = true
 		}
 	case ir.BuiltinTargetPlatform:

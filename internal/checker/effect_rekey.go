@@ -128,7 +128,7 @@ func (c *checker) varsWritten(fn *ir.Func, scope map[*ir.Var]struct{}, analyzed 
 			out[v] = true
 		}
 	} else {
-		w := &effectWalker{vars: scope, reads: map[*ir.Var]struct{}{}, writes: map[*ir.Var]struct{}{}}
+		w := &effectWalker{lib: c.libs.builtins, vars: scope, reads: map[*ir.Var]struct{}{}, writes: map[*ir.Var]struct{}{}}
 		ir.Walk(fn.Block, w.visit)
 		for v := range w.writes {
 			out[v] = true
@@ -170,7 +170,7 @@ func (c *checker) readsOf(fn *ir.Func, scope map[*ir.Var]struct{}, analyzed map[
 			out[v] = true
 		}
 	} else {
-		w := &effectWalker{vars: scope, reads: map[*ir.Var]struct{}{}, writes: map[*ir.Var]struct{}{}}
+		w := &effectWalker{lib: c.libs.builtins, vars: scope, reads: map[*ir.Var]struct{}{}, writes: map[*ir.Var]struct{}{}}
 		ir.Walk(fn.Block, w.visit)
 		for v := range w.reads {
 			out[v] = true

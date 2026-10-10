@@ -85,28 +85,6 @@ func (t *Type) IsSized() bool {
 	return t != nil && (t.Kind == TypeInt || t.Kind == TypeFloat) && t.Bits != 0
 }
 
-// ListOf returns a list type with the given element type, carrying the
-// #[builtin("list")] declaration (see genericbuiltins.go).
-func ListOf(elem *Type) *Type {
-	t := &Type{Kind: TypeList, Elems: []*Type{elem}}
-	// Not `Decl: listStructDef.Load()`: that stores a non-nil Symbol holding a
-	// nil *StructDef before the stdlib registers one, which every
-	// `if t.Decl != nil` in the compiler then dereferences.
-	if sd := listStructDef.Load(); sd != nil {
-		t.Decl = sd
-	}
-	return t
-}
-
-// MapOf returns a map<K, V> type, carrying the #[builtin("map")] declaration.
-func MapOf(k, v *Type) *Type {
-	t := &Type{Kind: TypeMap, Elems: []*Type{k, v}}
-	if sd := mapStructDef.Load(); sd != nil {
-		t.Decl = sd
-	}
-	return t
-}
-
 // OptionOf returns an option type wrapping the given type.
 func OptionOf(inner *Type) *Type {
 	return &Type{Kind: TypeOption, Elems: []*Type{inner}}
@@ -720,52 +698,6 @@ func StringReprStruct(t *Type) bool { return builtinOf(t).IsStringRepr() }
 func IsDateStruct(t *Type) bool     { return builtinOf(t) == BuiltinDate }
 func IsTimeStruct(t *Type) bool     { return builtinOf(t) == BuiltinTime }
 func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
-
-// The registered stdlib datetime struct type, so a phase with no scope of its
-// own (the foreign-type importers) can synthesize a canonical value type. Nil
-// before registration; the accessor falls back to TypDyn.
-var stdlibDateTimeType *Type
-
-// RegisterDateTimeStruct records the datetime struct. Idempotent.
-func RegisterDateTimeStruct(t *Type) {
-	if t != nil {
-		stdlibDateTimeType = t
-	}
-}
-
-// DateTimeType falls back to dyn before registration.
-func DateTimeType() *Type { return orDyn(stdlibDateTimeType) }
-
-func orDyn(t *Type) *Type {
-	if t != nil {
-		return t
-	}
-	return TypDyn
-}
-
-// Registered stdlib duration unit type, populated by the checker from the
-// #[builtin("duration")] declaration for the same reason as the datetime one:
-// a foreign-type importer has a Go time.Duration to map and no scope to
-// resolve a name in.
-var stdlibDurationUnit *Type
-
-// RegisterDurationUnit records the resolved stdlib duration unit type so the
-// DurationType accessor can hand it out. Idempotent.
-func RegisterDurationUnit(duration *Type) {
-	if duration != nil {
-		stdlibDurationUnit = duration
-	}
-}
-
-// DurationType returns the registered stdlib duration unit type, falling back
-// to int when the stdlib has not been loaded yet — a duration's magnitude is
-// carried in its base unit, so int is the lossless fallback rather than dyn.
-func DurationType() *Type {
-	if stdlibDurationUnit != nil {
-		return stdlibDurationUnit
-	}
-	return TypInt
-}
 
 // FuncSig describes a function signature.
 type FuncSig struct {

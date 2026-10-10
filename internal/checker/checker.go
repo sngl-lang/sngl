@@ -166,6 +166,13 @@ type libCache struct {
 	// schemes holds the library's plugins this build has loaded, by scheme;
 	// nil for one the library ships but that failed to load.
 	schemes map[string]*ir.Scheme
+	// builtins is what this library says to a phase holding no scope: its
+	// list, map, datetime and duration declarations and its intrinsics. The
+	// checker reads it here rather than from ir.Published, which holds
+	// whatever load registered last.
+	builtins *ir.Builtins
+	// decls is what the library's loads recorded about its declarations.
+	decls declTables
 	// Shared for the same reason `extended` is: the packages are shared, so a
 	// later check must re-bind the same symbol rather than a second one, which
 	// Declare would rightly call a redeclaration.
@@ -181,7 +188,7 @@ func (cfg *Config) libCache() *libCache {
 }
 
 func newLibCache() *libCache {
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}, builtins: ir.NewBuiltins()}
 }
 
 type ImportResolver interface {
@@ -283,10 +290,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 }
 
 type checker struct {
-	// typeParamSyms holds one symbol per declared type parameter, by where it
-	// is written, so every push of a declaration's parameters binds the same
-	// one (typeParamSym).
-	typeParamSyms map[typeParamKey]*ir.TypeParamSym
+	// decls is what this check records about the program's declarations; a
+	// library's are on its libCache (tables).
+	decls declTables
 
 	// docs is the package being checked: every file of it, registered as one
 	// declaration set. doc is whichever one is being registered or checked
@@ -358,10 +364,6 @@ type checker struct {
 	// bodyChecked is the components whose body pass2 has already walked. A
 	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
-
-	// bodyOwner is the body a body-local component was declared in, so its own
-	// body can be checked with its siblings in scope.
-	bodyOwner map[*ir.Component]*ir.Component
 
 	// inferring is the stack of functions whose return type is being inferred,
 	// so a body that calls itself is reported rather than recurring.
@@ -518,12 +520,6 @@ type checker struct {
 	// because type identity is per-declaration.
 	macroStruct *ir.StructDef
 
-	// anonStructs interns one synthesized declaration per package and
-	// canonical anonymous struct signature; see internAnonStruct. anonNames
-	// is the names already taken in each, since two signatures can spell one.
-	anonStructs map[*ir.Package]map[string]*ir.StructDef
-	anonNames   map[*ir.Package]map[string]bool
-
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
 
@@ -547,12 +543,6 @@ type checker struct {
 	// keyed by its declaration. An enclosing body is checked more than once
 	// (preCheckComponentMethods, then checkComponentBody).
 	nestedFuncs map[*ast.FuncDef]*ir.Func
-	// nested is the funcs written inside another function body and hoisted
-	// out of it (checkNestedFunc). A func at the root of a window body is
-	// hoisted too and is not one: it is the window's own. Which is which is
-	// only the checker's question -- a hoisted func is an ordinary member of
-	// what it joined -- so it is asked here rather than of the IR.
-	nested map[*ir.Func]bool
 	// nestedOrder is that set in declaration order, so renameNestedFuncs
 	// reads an enclosing name that is already renamed and two bodies never
 	// swap suffixes between runs.
@@ -581,9 +571,6 @@ type checker struct {
 	// familyMembers are the members of a family that declares props, held to
 	// declaring each once the package's components are registered.
 	familyMembers []*ir.Component
-	// inheritedProps are the props a member took from its family's default
-	// rather than declaring, each mapped to the family's prop.
-	inheritedProps map[*ir.Prop]*ir.Prop
 	// specOrigin is the declaration each call-site specialization was copied
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
@@ -1978,28 +1965,32 @@ func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	if c.libPkgName == "sngl:"+irPkg && sd.Name == macroTypeName {
 		c.macroStruct = sd
 	}
-	// Published as it registers, which the kind stamped above is what makes
-	// possible: ListOf attaches the published `list` to every list type, and
-	// one resolved before this package's was published would attach the last
-	// build's, chaining each build's library to the one before it.
-	c.publishBuiltinStruct(sd)
+	// Recorded as it registers, which the kind stamped above is what makes
+	// possible: listOf attaches the library's `list` to every list type, and
+	// the package's own signatures resolve before its marks run.
+	if c.inLibSource() {
+		for _, b := range c.libraryRecords() {
+			b.RegisterStruct(sd)
+		}
+	}
 	c.applyMarks(s, sd)
 	c.declPkg().Structs = append(c.declPkg().Structs, sd)
 	c.bindDeclared(claimed, sd)
 	return sd
 }
 
-// publishBuiltinStruct hands a marked declaration to the phases that read it
-// where they have no scope to resolve a name in. Both cases key on the kind
-// the declaration carries, so neither is a property of the tier it sits in.
-func (c *checker) publishBuiltinStruct(sd *ir.StructDef) {
-	// The canonical datetime type, for the foreign-type importers that
-	// synthesize one without a scope of their own.
-	if sd.Builtin == ir.BuiltinDateTime {
-		ir.RegisterDateTimeStruct(sd.SymType())
-	}
-	ir.RegisterGenericBuiltin(sd)
+// libraryRecords is where a library load records what it says to the
+// phases holding no scope: its own record, which this check reads, and the
+// process's, which the phases after a check read.
+func (c *checker) libraryRecords() [2]*ir.Builtins {
+	return [2]*ir.Builtins{c.libs.builtins, ir.Published()}
 }
+
+// listOf is list<elem> as this check's library declares it.
+func (c *checker) listOf(elem *ir.Type) *ir.Type { return c.libs.builtins.ListOf(elem) }
+
+// mapOf is map<k, v> as this check's library declares it.
+func (c *checker) mapOf(k, v *ir.Type) *ir.Type { return c.libs.builtins.MapOf(k, v) }
 
 func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	defer pushTypeParams(c, sd.AST.TypeParams)()
@@ -3631,7 +3622,7 @@ func (c *checker) pass2() {
 	// var has no type until the body declaring it has been checked; nothing
 	// calls a test, so nothing needs its body earlier.
 	for _, fn := range c.pkg.Funcs {
-		if fn.IsTest && !owned[fn] && !c.nested[fn] {
+		if fn.IsTest && !owned[fn] && !c.isNested(fn) {
 			c.checkFuncBody(fn)
 		}
 	}
@@ -3728,7 +3719,7 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 		noteOwned(comp)
 	}
 	for _, fn := range pkg.Funcs {
-		if owned[fn] || c.nested[fn] || fn.IsTest {
+		if owned[fn] || c.isNested(fn) || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3768,14 +3759,14 @@ func (c *checker) finishDeclarations(pkg *ir.Package) {
 	pkgVars := stateVars(pkg, nil)
 	for _, fn := range pkg.Funcs {
 		if hasDeclaredBody(fn) {
-			analyzeEffects(fn, pkgVars)
+			analyzeEffects(c.libs.builtins, fn, pkgVars)
 		}
 	}
 	for _, comp := range pkg.Components {
 		varSet := stateVars(pkg, comp)
 		for _, fn := range comp.Funcs {
 			if hasDeclaredBody(fn) {
-				analyzeEffects(fn, varSet)
+				analyzeEffects(c.libs.builtins, fn, varSet)
 			}
 		}
 	}
@@ -4133,7 +4124,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		// A nested func's name belongs to the body that wrote it, not to the
 		// component it was hoisted onto, so it is bound by checkNestedFunc
 		// alone.
-		if !fn.IsMethod() && !c.nested[fn] {
+		if !fn.IsMethod() && !c.isNested(fn) {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4188,10 +4179,11 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 	if !isComp {
 		return
 	}
-	if c.bodyOwner == nil {
-		c.bodyOwner = map[*ir.Component]*ir.Component{}
+	t := c.tables()
+	if t.bodyOwner == nil {
+		t.bodyOwner = map[*ir.Component]*ir.Component{}
 	}
-	c.bodyOwner[nested] = owner
+	t.bodyOwner[nested] = owner
 }
 
 // checkComponentBodies checks every component body in the package, including
@@ -4219,7 +4211,7 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 		c.bodyChecked = map[*ir.Component]bool{}
 	}
 	c.bodyChecked[comp] = true
-	if owner := c.bodyOwner[comp]; owner != nil {
+	if owner := c.bodyOwnerOf(comp); owner != nil {
 		c.checkBodyOnce(owner)
 	}
 	c.checkComponentBody(comp)
@@ -4261,7 +4253,7 @@ func (c *checker) declareBodyDecls(comp *ir.Component) {
 // A method is not among them: it has a receiver rather than a name in scope,
 // and lookupBodyMethod is what walks the chain for one.
 func (c *checker) declareEnclosingBody(comp *ir.Component) {
-	owner := c.bodyOwner[comp]
+	owner := c.bodyOwnerOf(comp)
 	if owner == nil {
 		return
 	}
@@ -4274,7 +4266,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if !fn.IsMethod() && !c.nested[fn] {
+		if !fn.IsMethod() && !c.isNested(fn) {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -4367,7 +4359,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if !fn.IsMethod() {
-			if c.nested[fn] {
+			if c.isNested(fn) {
 				continue
 			}
 			c.declare(funcDeclPos(fn), fn)
@@ -4416,7 +4408,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		if fn.IsMethod() && fn.RecvName() != comp.Name {
 			continue
 		}
-		if c.nested[fn] {
+		if c.isNested(fn) {
 			continue
 		}
 		if fn.RecvName() == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
@@ -4747,7 +4739,7 @@ func (c *checker) declareNodeID(id, target string, counts []nodeCount, mode idMo
 			return
 		}
 	}
-	typ := countedHandleType(c.nodeHandleType(target), counts)
+	typ := c.countedHandleType(c.nodeHandleType(target), counts)
 	v := &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true}
 	if len(counts) > 0 {
 		// The outermost count is what a reader out here crossed first, and so
@@ -4777,13 +4769,13 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 // countedHandleType wraps a handle in the counts of the scopes it was reached
 // through, innermost first: counts is outermost-first, so the last entry is
 // the scope nearest the node and binds tightest.
-func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
+func (c *checker) countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
 	for _, count := range slices.Backward(counts) {
 		switch count {
 		case countOption:
 			typ = ir.OptionOf(typ)
 		case countList:
-			typ = ir.ListOf(typ)
+			typ = c.listOf(typ)
 		}
 	}
 	return typ
@@ -4960,7 +4952,7 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 // site.
 func (c *checker) finishRestSlot(comp *ir.Component) {
 	if slot := comp.RestSlot(); slot != nil {
-		comp.ChildrenType = childrenTypeFor(slot)
+		comp.ChildrenType = c.childrenTypeFor(slot)
 	}
 }
 
@@ -5041,4 +5033,62 @@ func familiesFirst[T any](pending []T, decl func(T) *ast.ComponentDecl) []int {
 		visit(i)
 	}
 	return order
+}
+
+// declTables is what the checker records about declarations beside the IR,
+// kept by whoever owns the declaration: a library load's on its libCache,
+// where a check that finds the library loaded reads them, and a program's on
+// its checker.
+type declTables struct {
+	// typeParamSyms holds one symbol per declared type parameter, by where it
+	// is written, so every push of a declaration's parameters binds the same
+	// one (typeParamSym).
+	typeParamSyms map[typeParamKey]*ir.TypeParamSym
+	// bodyOwner is the body a body-local component was declared in, so its own
+	// body can be checked with its siblings in scope.
+	bodyOwner map[*ir.Component]*ir.Component
+	// anonStructs interns one synthesized declaration per package and
+	// canonical anonymous struct signature; see internAnonStruct. anonNames
+	// is the names already taken in each, since two signatures can spell one.
+	anonStructs map[*ir.Package]map[string]*ir.StructDef
+	anonNames   map[*ir.Package]map[string]bool
+	// nested is the funcs written inside another function body and hoisted
+	// out of it (checkNestedFunc). A func at the root of a window body is
+	// hoisted too and is not one: it is the window's own. Which is which is
+	// only the checker's question -- a hoisted func is an ordinary member of
+	// what it joined -- so it is asked here rather than of the IR.
+	nested map[*ir.Func]bool
+	// inheritedProps are the props a member took from its family's default
+	// rather than declaring, each mapped to the family's prop.
+	inheritedProps map[*ir.Prop]*ir.Prop
+}
+
+// tables is where a record about a declaration being registered goes: the
+// library's while a library package loads, the program's otherwise.
+func (c *checker) tables() *declTables {
+	if c.libLoadPkg != nil {
+		return &c.libs.decls
+	}
+	return &c.decls
+}
+
+// bodyOwnerOf is the body comp was declared in, or nil.
+func (c *checker) bodyOwnerOf(comp *ir.Component) *ir.Component {
+	if owner := c.decls.bodyOwner[comp]; owner != nil {
+		return owner
+	}
+	return c.libs.decls.bodyOwner[comp]
+}
+
+// isNested reports whether fn was written inside another function body.
+func (c *checker) isNested(fn *ir.Func) bool {
+	return c.decls.nested[fn] || c.libs.decls.nested[fn]
+}
+
+// inheritedFrom is the family prop p was inherited from, or nil.
+func (c *checker) inheritedFrom(p *ir.Prop) *ir.Prop {
+	if fp := c.decls.inheritedProps[p]; fp != nil {
+		return fp
+	}
+	return c.libs.decls.inheritedProps[p]
 }

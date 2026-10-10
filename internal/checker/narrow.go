@@ -364,7 +364,7 @@ func (v *narrowValidator) visitCall(x *ir.Call) {
 	// `l.push(x)` writes through its receiver, which the intrinsic names --
 	// the same fact passReactivity and analyzeEffects both read.
 	if x.Func.Intrinsic != "" && len(x.Args) > 0 {
-		if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
+		if def, ok := v.c.libs.builtins.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
 			if v.invalidatedBy(x.Args[0].Value) {
 				v.report(callPos(x, v.chk.fact.pos), "mutated by a method call in this branch")
 				return
