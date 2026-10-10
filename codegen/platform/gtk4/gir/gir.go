@@ -159,6 +159,11 @@ type Action struct {
 type ChildAdder struct {
 	// Func is the C identifier, e.g. "gtk_box_append".
 	Func string
+	// Owner is the C type of the class that declares Func, which is what
+	// its receiver has to be: GtkApplicationWindow takes its child through
+	// gtk_window_set_child, which wants a GtkWindow*, and cgo rejects any
+	// other pointer there.
+	Owner string
 	// Single is true when the call replaces the child rather than appending:
 	// a second child takes the first one's place, which is what the GTK
 	// setter does.
@@ -640,7 +645,7 @@ func ParseGIRBytes(data []byte) (*TypeRegistry, error) {
 func childAdder(cls *ClassInfo, m map[string]*methodInfo) ChildAdder {
 	for _, name := range []string{"append", "add_child"} {
 		if mi := m[name]; mi != nil && mi.ident != "" && mi.valParams == 1 && isWidgetCType(mi.valCType) {
-			return ChildAdder{Func: mi.ident}
+			return ChildAdder{Func: mi.ident, Owner: cls.CType}
 		}
 	}
 	for _, p := range cls.Props {
@@ -650,7 +655,11 @@ func childAdder(cls *ClassInfo, m map[string]*methodInfo) ChildAdder {
 		if !isWidgetCType(p.SetterCType) {
 			continue
 		}
-		return ChildAdder{Func: p.Setter, Single: true}
+		owner := p.OwnerCType
+		if owner == "" {
+			owner = cls.CType
+		}
+		return ChildAdder{Func: p.Setter, Single: true, Owner: owner}
 	}
 	return ChildAdder{}
 }

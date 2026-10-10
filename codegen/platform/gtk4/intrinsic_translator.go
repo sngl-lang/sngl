@@ -451,15 +451,15 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		t.skipped[id] = struct{}{}
 		return nil
 	}
-	ctorInfo := pickPrimaryConstructorInfo(info)
-	// gtk_application_window_new needs BuildUI's `app` parameter, not nil.
-	if ctorInfo.Name == "gtk_application_window_new" {
-		appRef := &ir.Ident{Name: "app", Type: ir.TypDyn}
-		if t.wrapped {
-			return t.emitConstructorAssign(id, cType, rtCall("ApplicationWindowNew", appRef))
-		}
-		return t.emitConstructorAssign(id, cType, nativeCall("gtk_application_window_new", appRef))
+	// A window is a toplevel, which GTK will not put inside a container, and
+	// the platform makes one where a program writes ui.window: its Toplevel
+	// is created with the application and attached to it.
+	if t.isWindowClass(info) {
+		t.shared.fail(fmt.Errorf("gtk4: %s is a window, which GTK places in no container; write ui.window, which this platform makes a GtkApplicationWindow of", cType))
+		t.skipped[id] = struct{}{}
+		return nil
 	}
+	ctorInfo := pickPrimaryConstructorInfo(info)
 	if t.wrapped {
 		if ctor, ok := rtCtorForCType(cType); ok {
 			return t.emitConstructorAssign(id, cType, ctor)
@@ -696,6 +696,25 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 // guessed at, since a dropped child is silently reparented to the root by
 // emitBuildUI. What is derivable is the three shapes that take a widget and
 // nothing else; see gir.ChildAdder.
+// adderReceiver is the C type a child adder's receiver is cast to: the class
+// that declares it, or the container's own where GIR named none.
+func adderReceiver(adder gir.ChildAdder, cType string) string {
+	if adder.Owner != "" {
+		return adder.Owner
+	}
+	return cType
+}
+
+// isWindowClass reports whether a GIR class is GtkWindow or descends from it.
+func (t *gtk4Translator) isWindowClass(info *gir.ClassInfo) bool {
+	for c := info; c != nil; c = t.registry.Classes[c.Parent] {
+		if c.CType == "GtkWindow" {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *gtk4Translator) childAdder(cType string) gir.ChildAdder {
 	if cls := t.classFor(cType); cls != nil {
 		return cls.ChildAdd
@@ -779,7 +798,7 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 		return []ir.Stmt{stmt}
 	}
-	parentArg := cgoCast(cType, t.qualifyNodeExpr(parent))
+	parentArg := cgoCast(adderReceiver(adder, cType), t.qualifyNodeExpr(parent))
 	childArg := cgoCast("GtkWidget", t.qualifyNodeExpr(child))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall(fn, parentArg, childArg)}}
 }
@@ -1353,7 +1372,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		slotBox, parentOf, parentArg = rtCall("SlotBox", box), rtCall("ParentOf", box), parent
 	} else {
 		t.shared.needSlotAnchor()
-		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(cType, parent), cgoCast("GtkWidget", box))}
+		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(adderReceiver(adder, cType), parent), cgoCast("GtkWidget", box))}
 		slotBox = nativeCall("sngl_slot_box", box)
 		parentOf = nativeCall("gtk_widget_get_parent", cgoCast("GtkWidget", box))
 		parentArg = cgoCast("GtkWidget", parent)

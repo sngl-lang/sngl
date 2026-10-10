@@ -129,9 +129,17 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	// tests consume; the caller's emitter adds the generated-by header, so
 	// Source is left empty.
 	mem := codegen.NewMemSink()
-	e := (&golang.Translator{}).NewFileEmitter(mem, codegen.FileOptions{
+	tr := &golang.Translator{}
+	// A `#[cnative]` call is a call into C, which cgo reaches only through the
+	// headers the program's c.link directives name.
+	var preamble string
+	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
+		preamble = tr.EmitCHeader(links)
+	}
+	e := tr.NewFileEmitter(mem, codegen.FileOptions{
 		Name:        "model.go",
 		PackageName: cfg.Package,
+		CgoPreamble: preamble,
 	})
 	// pkg/go/canvas default-aliases to "canvas", but the draw-func selectors
 	// reference it as snglcanvas.

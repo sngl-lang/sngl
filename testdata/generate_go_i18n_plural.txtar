@@ -4,7 +4,6 @@ pkg/go/i18n and calls i18n.Plural and i18n.Selectordinal with the locale
 threaded from the active context (m.__ctx_locale) and the forms as a
 map[i18n.PluralKey]string. `i18n.exactly(0)` becomes i18n.Exactly(0), and the
 CLDR keywords become the i18n.PluralOne / PluralFew / PluralOther constants.
-broken out/go/bubbletea -- emits map[i18n.PluralKey]string where pkg/go/i18n's Plural and Selectordinal take map[any]string
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
@@ -215,4 +214,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:718586da3646b810e2c250044805bd26
+pass sha256:718586da3646b810e2c250044805bd26

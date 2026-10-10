@@ -629,6 +629,8 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
   `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `lib/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
+  A child is added through the call GIR names for the container, its receiver cast to the class that declares the call (`gir.ChildAdder.Owner`): a subclass inherits its parent's adder. A GIR *window* class written as a node is refused: GTK places a window in no container, and `ui.window` is how a program makes one (`cmd/sngl/testdata/gtk4_window_class_refused.txt`).
+
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
 - **none** — no codegen and no Go package: `lib/platform/none` and `lib/language/none` are the whole target, registered by `codegen/declared.go` from the layout as a `DeclaredPlatform` and a `DeclaredLang`. The interpreter is the none language's and the none platform's: `sngl test` runs a program through `internal/interp/testrunner` on `none` alone (`testRunnerFor` in `cmd/sngl/test.go`, `codegen.GeneratesNothing`), and a platform with a generator given `--lang none` has no tests to run (`test_interpreter_none_only.txt`). `sngl run` drives an interpreted pair through `interprun` (`build.IsInterpreted`), which is also how fyne's worker host runs `--lang none` -- and the interpreter's claim on `sngl:ui/nav` is declared beside the registration.
 
@@ -2032,7 +2034,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
   platform built on a C library (gtk4 on cairo) names C identifiers and no
   language at all. The Go backend renders those as cgo and supplies the
-  `C.double`/`C.int` conversions from the declared parameter types.
+  `C.double`/`C.int` conversions from the declared parameter types. Which
+  header declares one is the program's `c.link` (`sngl:x/c`), and fyne and
+  bubbletea write the cgo preamble from the links the program reaches
+  (`ir.ReachedCLinks`); gtk4 writes its own and reads none yet
+  (`testdata/native_decl_not_emitted.txtar`).
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a
@@ -2500,6 +2506,14 @@ the checker asks its questions with no target picked; that is what lets the
 recursion-cycle report reach an override body, and a `limit` var in
 `error_component_override_nested_capture_recursive.sngl` keeps the cycle from
 being folded away before it is asked.
+
+**A program's override of a declaration the program wrote is checked after that
+declaration's body** (`lateOverrides`, drained by `checkBodyOnce`): an
+unannotated `var count = 0` has no type until the body declaring it is read, and
+checked first, from `checkPendingExtensions`, a nested body reading `count` saw
+`dyn` and the interpolation `"{count}"` lost its conversion -- `"L " + m.count`
+on bubbletea (`component_override_body_capture.txtar`). A library's base is
+checked when its package loads, so its overrides stay where they were.
 
 A `func` written there is the third slot of the same shape. It is registered
 by `collectExtensionDecls` and desugared onto the component by the same

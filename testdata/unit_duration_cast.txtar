@@ -16,6 +16,9 @@ multiplying the unit one -- and each is correct in ns right up to the cast that
 divides it out. Read the Go column: the division lands outside the parentheses
 the arithmetic already carries.
 
+A scale by a float is taken in float64 and converted back, since
+time.Duration counts whole nanoseconds and `time.Duration(0.5)` is zero.
+
 `float` divides as floats rather than converting after an integer division, so
 a duration finer than a millisecond reports a fraction here as it does
 elsewhere rather than truncating to zero.
@@ -23,7 +26,6 @@ elsewhere rather than truncating to zero.
 deny out/go/bubbletea/model.go `int\(m\.d__inst0\)` -- the bare cast is the bug: a time.Duration handed out as a number is nanoseconds
 deny out/go/bubbletea/model.go `float64\(m\.d__inst0\)\)` -- the same for the float cast, which must divide rather than widen
 deny out/go/bubbletea/model.go `int\(\(m\.d__inst0 \* 2\)\)` -- arithmetic reaches the cast still in ns, so a scaled duration has to divide too
-broken out/go/bubbletea -- a duration times an int emits `m.one__inst0 * m.n__inst0`, mismatched time.Duration and int
 -- app.sngl --
 import ui "sngl:ui"
 import time "sngl:time"
@@ -44,6 +46,7 @@ component main ui.node {
     var d time.duration = 500ms
     var one time.duration = 1ms
     var n = 3
+    var half = 0.5
 
     ui.text(value="i {int(d)}")
     ui.text(value="f {float(d)}")
@@ -51,6 +54,7 @@ component main ui.node {
     ui.text(value="secs {int(d + 1s)}")
     ui.text(value="scaled {int(d * 2)}")
     ui.text(value="built {int(one * n)}")
+    ui.text(value="halved {float(one * half)} {float(d * 1.5)}")
 }
 
 ui.window {
@@ -74,6 +78,7 @@ type Model struct {
 	d__inst0       time.Duration
 	one__inst0     time.Duration
 	n__inst0       int
+	half__inst0    float64
 	visible__inst0 bool
 
 	width, height int
@@ -85,6 +90,7 @@ func New() Model {
 	m.d__inst0 = time.Duration(500) * time.Millisecond
 	m.one__inst0 = time.Duration(1) * time.Millisecond
 	m.n__inst0 = 3
+	m.half__inst0 = 0.5
 	m.visible__inst0 = true
 	return m
 }
@@ -140,6 +146,21 @@ func SetN__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
+func (m Model) Half__inst0() float64 {
+	return m.half__inst0
+}
+
+func (m Model) SetHalf__inst0(v float64) Model {
+	m.half__inst0 = v
+	return m
+}
+
+type setHalf__inst0Msg struct{ value float64 }
+
+func SetHalf__inst0Cmd(v float64) tea.Cmd {
+	return func() tea.Msg { return setHalf__inst0Msg{value: v} }
+}
+
 func (m Model) Visible__inst0() bool {
 	return m.visible__inst0
 }
@@ -170,6 +191,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetOne__inst0(msg.value)
 	case setN__inst0Msg:
 		m = m.SetN__inst0(msg.value)
+	case setHalf__inst0Msg:
+		m = m.SetHalf__inst0(msg.value)
 	case setVisible__inst0Msg:
 		m = m.SetVisible__inst0(msg.value)
 	case tea.WindowSizeMsg:
@@ -210,8 +233,11 @@ func (m Model) View() tea.View {
 		contentPart_4 = lipgloss.NewStyle().Render(fmt.Sprint(("scaled " + fmt.Sprint(int((m.d__inst0*2)/time.Millisecond)))))
 		contentParts = append(contentParts, contentPart_4)
 		var contentPart_5 string
-		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(("built " + fmt.Sprint(int((m.one__inst0*m.n__inst0)/time.Millisecond)))))
+		contentPart_5 = lipgloss.NewStyle().Render(fmt.Sprint(("built " + fmt.Sprint(int((m.one__inst0*time.Duration(m.n__inst0))/time.Millisecond)))))
 		contentParts = append(contentParts, contentPart_5)
+		var contentPart_6 string
+		contentPart_6 = lipgloss.NewStyle().Render(fmt.Sprint(((("halved " + fmt.Sprint(float64(time.Duration(float64(m.one__inst0)*m.half__inst0))/float64(time.Millisecond))) + " ") + fmt.Sprint(float64(time.Duration(float64(m.d__inst0)*1.5))/float64(time.Millisecond)))))
+		contentParts = append(contentParts, contentPart_6)
 		content = lipgloss.JoinVertical(lipgloss.Left, contentParts...)
 	}
 	v := tea.NewView(content)
@@ -278,6 +304,7 @@ fun MainScreen() {
     var d__inst0 by remember { mutableStateOf(500L) }
     var one__inst0 by remember { mutableStateOf(1L) }
     var n__inst0 by remember { mutableStateOf(3) }
+    var half__inst0 by remember { mutableStateOf(0.5) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -295,6 +322,7 @@ fun MainScreen() {
             Text(text = ("secs " + (d__inst0 + 1000L).toInt().toString()), modifier = Modifier.safeDrawingPadding())
             Text(text = ("scaled " + (d__inst0 * 2).toInt().toString()), modifier = Modifier.safeDrawingPadding())
             Text(text = ("built " + (one__inst0 * n__inst0).toInt().toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((("halved " + _snglFloatStr((one__inst0 * half__inst0).toDouble())) + " ") + _snglFloatStr((d__inst0 * 1.5).toDouble())), modifier = Modifier.safeDrawingPadding())
         }
     }
 }
@@ -323,11 +351,13 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n6" data-sngl-id="__n6">
 </span>
+<span id="__n7" data-sngl-id="__n7">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { d__inst0: 500, one__inst0: 1, n__inst0: 3, visible__inst0: true };
+  var state = { d__inst0: 500, one__inst0: 1, n__inst0: 3, half__inst0: 0.5, visible__inst0: true };
   function String(v) {
     return "" + v;
   }
@@ -337,6 +367,7 @@ body { font-family: system-ui, sans-serif; }
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   var __n6 = document.querySelector('[data-sngl-id="__n6"]');
+  var __n7 = document.querySelector('[data-sngl-id="__n7"]');
   function __sngl_init() {
     __n1.textContent = "i " + String(Math.trunc(state.d__inst0));
     __n2.textContent = "f " + String(parseFloat(state.d__inst0));
@@ -344,14 +375,15 @@ body { font-family: system-ui, sans-serif; }
     __n4.textContent = "secs " + String(Math.trunc(state.d__inst0 + 1e3));
     __n5.textContent = "scaled " + String(Math.trunc(state.d__inst0 * 2));
     __n6.textContent = "built " + String(Math.trunc(state.one__inst0 * state.n__inst0));
+    __n7.textContent = "halved " + String(parseFloat(state.one__inst0 * state.half__inst0)) + " " + String(parseFloat(state.d__inst0 * 1.5));
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-broken sha256:9ff28d84c095600af94505ad45ca3832
+pass sha256:be730800b7e64ceff37d6c353f887563
 -- run/kotlin/android --
-pass sha256:6df1629f2d78275d0a3ebaef2021e422
+pass sha256:a84fe92b2efb1c4cfdc739f7e3615bb5
 -- run/none/html --
-pass sha256:c9176bc5ff1c1e24e91ae64dc8165ea7
+pass sha256:c0172f14de6b2a71b3dd8035c7bd9b05

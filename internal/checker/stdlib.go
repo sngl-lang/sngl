@@ -1215,81 +1215,100 @@ func (c *checker) checkPendingExtensions() {
 		c.pushScope()
 		libBodyScope := c.scope
 		for _, pe := range byTarget[uri] {
-			// A program's override resolves against the program: the names its
-			// body reaches are the ones its own file imported.
-			if pe.user {
-				c.scope = c.symtab.Root
-				c.enterFileOf(pe.pos)
-				c.pushScope()
-			} else {
-				c.scope = libBodyScope
+			// A program's override of a declaration it also wrote is read
+			// once the declaration's own body has been: that check is what
+			// gives an unannotated `var count = 0` its type, and an override
+			// reads the base's state. checkBodyOnce runs it there.
+			if pe.user && slices.Contains(c.pkg.Components, pe.comp) {
+				if c.lateOverrides == nil {
+					c.lateOverrides = map[*ir.Component][]pendingExtension{}
+				}
+				c.lateOverrides[pe.comp] = append(c.lateOverrides[pe.comp], pe)
+				continue
 			}
-			savedAST := pe.comp.AST.Body
-			saved := pe.comp.Body
-			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
-			// An override that listed the props it consumes reads those and no
-			// others: the list is what makes the names in its body traceable
-			// to a declaration rather than appearing from the surrounding
-			// component. One that listed none reads them all.
-			if pe.selection != nil {
-				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
-			}
-			pe.comp.AST.Body = pe.body
-			pe.comp.Stmts = nil
-			// pass1 only ever saw the component's parenless stub, so the
-			// override's own state has to be collected before the body check
-			// that declares it. Starting from the component's own keeps a var
-			// the stdlib declaration made visible to the override.
-			c.pushScope()
-			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
-			pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
-			pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
-			// A method is attached by receiver, so the base's table is where
-			// an override's helper would land and stay -- visible to the base
-			// body and to every other target's override, and a redeclaration
-			// of the next target's helper of the same name. The clone is what
-			// keeps each override's helpers to itself; it starts from the
-			// base's so a method the declaration made stays callable.
-			pe.comp.Methods = maps.Clone(saved.Methods)
-			// Registered inside the collect scope: a signature may name a type
-			// the override body declared, which is bound there and nowhere
-			// else.
-			funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
-			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
-			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
-			pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
-			c.popScope()
-			// checkComponentBody checks comp.Funcs in the component's own
-			// scope, so the override's are checked with its vars and props
-			// visible by having been appended above.
-			if pe.user {
-				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
-			}
-			c.installedOverride = pe.comp
-			c.checkComponentBody(pe.comp)
-			c.installedOverride = nil
-			c.overrideFile = overrideFile{}
-			// While the override's state is still installed, because that is
-			// the body a component nested in it was written in. Left to
-			// pass2's checkComponentBodies it runs after the restore below,
-			// where the owner is the base declaration again and the names the
-			// nested body captured are declared by nobody.
-			c.checkOverrideNestedBodies(bodyDecls)
-			c.checkOverrideConst(pe)
-			checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
-			if pe.kind == ir.BuiltinFamilyLanguage {
-				pe.comp.LanguageOverrides[pe.platform] = checked
-			} else {
-				pe.comp.PlatformOverrides[pe.platform] = checked
-			}
-			pe.comp.AST.Body = savedAST
-			pe.comp.Body = saved
-			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
-			if pe.user {
-				c.popScope()
-			}
+			c.checkOverride(pe, libBodyScope)
 		}
 		c.scope = libBodyScope
+		c.popScope()
+	}
+}
+
+// checkOverride checks one override's body installed on the declaration it
+// overrides, records it in the declaration's override map, and restores the
+// declaration. libBodyScope is the scope a target package's body resolves in;
+// a program's resolves in the program's own.
+func (c *checker) checkOverride(pe pendingExtension, libBodyScope *ir.Scope) {
+	// A program's override resolves against the program: the names its
+	// body reaches are the ones its own file imported.
+	if pe.user {
+		c.scope = c.symtab.Root
+		c.enterFileOf(pe.pos)
+		c.pushScope()
+	} else {
+		c.scope = libBodyScope
+	}
+	savedAST := pe.comp.AST.Body
+	saved := pe.comp.Body
+	savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+	// An override that listed the props it consumes reads those and no
+	// others: the list is what makes the names in its body traceable
+	// to a declaration rather than appearing from the surrounding
+	// component. One that listed none reads them all.
+	if pe.selection != nil {
+		pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+	}
+	pe.comp.AST.Body = pe.body
+	pe.comp.Stmts = nil
+	// pass1 only ever saw the component's parenless stub, so the
+	// override's own state has to be collected before the body check
+	// that declares it. Starting from the component's own keeps a var
+	// the stdlib declaration made visible to the override.
+	c.pushScope()
+	vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
+	pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
+	pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
+	// A method is attached by receiver, so the base's table is where
+	// an override's helper would land and stay -- visible to the base
+	// body and to every other target's override, and a redeclaration
+	// of the next target's helper of the same name. The clone is what
+	// keeps each override's helpers to itself; it starts from the
+	// base's so a method the declaration made stays callable.
+	pe.comp.Methods = maps.Clone(saved.Methods)
+	// Registered inside the collect scope: a signature may name a type
+	// the override body declared, which is bound there and nowhere
+	// else.
+	funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
+	funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
+	overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
+	pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
+	c.popScope()
+	// checkComponentBody checks comp.Funcs in the component's own
+	// scope, so the override's are checked with its vars and props
+	// visible by having been appended above.
+	if pe.user {
+		c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+	}
+	c.installedOverride = pe.comp
+	c.checkComponentBody(pe.comp)
+	c.installedOverride = nil
+	c.overrideFile = overrideFile{}
+	// While the override's state is still installed, because that is
+	// the body a component nested in it was written in. Left to
+	// pass2's checkComponentBodies it runs after the restore below,
+	// where the owner is the base declaration again and the names the
+	// nested body captured are declared by nobody.
+	c.checkOverrideNestedBodies(bodyDecls)
+	c.checkOverrideConst(pe)
+	checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
+	if pe.kind == ir.BuiltinFamilyLanguage {
+		pe.comp.LanguageOverrides[pe.platform] = checked
+	} else {
+		pe.comp.PlatformOverrides[pe.platform] = checked
+	}
+	pe.comp.AST.Body = savedAST
+	pe.comp.Body = saved
+	pe.comp.Props, pe.comp.Events = savedProps, savedEvents
+	if pe.user {
 		c.popScope()
 	}
 }

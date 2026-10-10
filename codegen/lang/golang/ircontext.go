@@ -220,6 +220,9 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := goMultiBaseUnitBinary(n, left, right); ok {
 		return out
 	}
+	if out, ok := goScalarUnitScale(n, left, right); ok {
+		return out
+	}
 	// option<T> against a T: Go's option is *T, and comparing the pointer
 	// with a value does not compile. Each operand is evaluated once.
 	if optLeft, _, ok := OptionCompare(n); ok {

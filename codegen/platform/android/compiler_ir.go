@@ -435,6 +435,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	for _, comp := range info.computeds {
 		stateNames[comp.name] = struct{}{}
 	}
+	scoped := stateScopedFuncs(ctx, stateNames, stateReaching)
 
 	var stateFuncs []*ir.Func
 	if testMode && !cfg.GoLib {
@@ -453,7 +454,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
 				continue
 			}
-			if !needsStateScope(fn, stateNames, stateReaching) {
+			if !scoped[fn] {
 				continue
 			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
@@ -770,7 +771,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) {
 				continue
 			}
-			if !needsStateScope(fn, stateNames, stateReaching) {
+			if !scoped[fn] {
 				continue
 			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
@@ -892,7 +893,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// function at top level, so `Calc.pending` calling the pure
 			// `format` found it only inside the composable, or as
 			// `state.format` in test mode.
-			if componentOwnFuncs[fn] && needsStateScope(fn, stateNames, stateReaching) {
+			if componentOwnFuncs[fn] && scoped[fn] {
 				continue
 			}
 			emitIRKtFunc(&body, fn, kc)
@@ -1262,6 +1263,44 @@ func literalStructLit(n *ir.StructLit) string {
 // user type is an extension function at top level, so a `Calc.pending` calling
 // the pure `format` found it only as `state.format`, against a `state` nothing
 // in that scope declares.
+// stateScopedFuncs is every func that has to be declared where the screen's
+// state is in scope: one needsStateScope says reads it, and then, to a fixed
+// point, one calling such a func -- which is spelled through the scope as
+// `state.f(…)` in test mode and is a local fun of the composable otherwise,
+// so a caller declared outside it names something nothing binds there. A
+// method on a user type is an extension function at top level and reaches no
+// state, so calling one confers nothing.
+func stateScopedFuncs(ctx *codegen.CodegenCtx, state map[string]struct{}, reaches map[*ir.Func]bool) map[*ir.Func]bool {
+	funcs := ctx.AllFuncs()
+	scoped := map[*ir.Func]bool{}
+	for _, fn := range funcs {
+		if fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+			continue
+		}
+		if needsStateScope(fn, state, reaches) {
+			scoped[fn] = true
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, fn := range funcs {
+			if scoped[fn] || fn.IsMethod() && kotlin.ReceiverIsUserType(ctx.Pkg, fn.RecvName()) {
+				continue
+			}
+			_ = ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+				if c, ok := e.(*ir.Call); ok && scoped[c.Func] {
+					scoped[fn] = true
+				}
+				return nil
+			})
+			if scoped[fn] {
+				changed = true
+			}
+		}
+	}
+	return scoped
+}
+
 func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Func]bool) bool {
 	if fn.IsMethod() || reaches[fn] {
 		return true

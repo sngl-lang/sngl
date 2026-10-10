@@ -24,7 +24,6 @@ deny * `\bcount\b` -- the captured var is the owner's, so every target names the
 deny * `\bextra\b` -- the var the override body declares is captured the same way and gets the same clone
 deny * `\blabel\b` -- the captured prop is substituted by the instantiation's argument, so no target emits its name
 deny * `\bbump\b` -- the owner's method is cloned per owner instance, so every target calls the clone and never the declared name
-broken out/go/bubbletea -- interpolating an int into a string emits `"L " + m.count__inst2` with no conversion
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
@@ -295,7 +294,7 @@ func (m Model) View() tea.View {
 		var content_0 string
 		var content_0Children []string
 		var content_0_0 string
-		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + m.count__inst0) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
+		content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst0__inst0))))
 		content_0Children = append(content_0Children, content_0_0)
 		var content_0_1 string
 		content_0_1Focused := (m.__focusID == 0)
@@ -310,7 +309,7 @@ func (m Model) View() tea.View {
 		var content_1 string
 		var content_1Children []string
 		var content_1_0 string
-		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + m.count__inst0) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
+		content_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((("L " + fmt.Sprint(m.count__inst0)) + " ") + fmt.Sprint(m.extra__inst0)) + " ") + fmt.Sprint(m.runs__inst1__inst0))))
 		content_1Children = append(content_1Children, content_1_0)
 		var content_1_1 string
 		content_1_1Focused := (m.__focusID == 1)
@@ -373,8 +372,8 @@ body { font-family: system-ui, sans-serif; }
   var state = { count__inst0: 0, extra__inst0: 5, runs__inst0__inst0: 0, runs__inst1__inst0: 0, visible__inst0: true };
   function bump__inst0() {
     state.count__inst0 = state.count__inst0 + 100;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
   }
   function String(v) {
     return "" + v;
@@ -385,35 +384,35 @@ body { font-family: system-ui, sans-serif; }
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $2.addEventListener("click", function() {
     state.count__inst0 = state.count__inst0 + 1;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
     state.extra__inst0 = state.extra__inst0 + 1;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
     state.runs__inst0__inst0 = state.runs__inst0__inst0 + 1;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
     bump__inst0();
   });
   $4.addEventListener("click", function() {
     state.count__inst0 = state.count__inst0 + 10;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
     state.extra__inst0 = state.extra__inst0 + 1;
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
     state.runs__inst1__inst0 = state.runs__inst1__inst0 + 1;
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
     bump__inst0();
   });
   function __sngl_init() {
-    __n1.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
-    __n2.textContent = "L " + state.count__inst0 + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
+    __n1.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst0__inst0);
+    __n2.textContent = "L " + String(state.count__inst0) + " " + String(state.extra__inst0) + " " + String(state.runs__inst1__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-broken sha256:1f00465c68f01f14f775162a775579d5
+pass sha256:2f21bfc8295c4d2092ed45746f73f860
 -- run/none/html --
-pass sha256:7da1f357d73ace55d59b80e31ea1c2a0
+pass sha256:c0e027384958b52ee1282ec734416397

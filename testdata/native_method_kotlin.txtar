@@ -17,7 +17,6 @@ All three shapes matter to that:
 none, and neither does a function the enclosing scope supplies.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `\bhyp\(|\brep\(|\bplace\(` -- the SNGL names are not emitted; the call becomes a call to the Kotlin identifier
-broken out/kotlin/android -- the native method `shift` is called and never declared: `Unresolved reference 'shift'`
 -- app.sngl --
 import ui "sngl:ui"
 import kt "sngl:language/kotlin"
@@ -34,8 +33,8 @@ func hyp(a float, b float) float
 #[kt.native("String.repeat", "", method)]
 func rep(s string, n int) string
 
-#[kt.native("shift", "", named)]
-func place(x float, y float) float
+#[kt.native("kotlin.math.atan2", "", named)]
+func place(y float, x float) float
 
 component m() ui.node {
     var d = 0.0
@@ -107,11 +106,11 @@ fun MainScreen() {
             }
         }
         Button(onClick = {
-            d__inst0 = (kotlin.math.hypot(3.0, 4.0) + shift(x = 1.0, y = 2.0))
+            d__inst0 = (kotlin.math.hypot(3.0, 4.0) + kotlin.math.atan2(y = 1.0, x = 2.0))
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "ab".repeat(2), modifier = Modifier)
         }
     }
 }
 -- run/kotlin/android --
-broken sha256:a1e07af2ea0cd08c5d92030d9ba8f82e
+pass sha256:85463d569a75eae53acfe3855aa4de77

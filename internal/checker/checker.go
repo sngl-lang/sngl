@@ -349,6 +349,9 @@ type checker struct {
 	// bodyChecked is the components whose body pass2 has already walked. A
 	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
+	// lateOverrides is a program's overrides of a declaration the program
+	// also wrote, which checkBodyOnce checks after that declaration's body.
+	lateOverrides map[*ir.Component][]pendingExtension
 
 	// bodyOwner is the body a body-local component was declared in, so its own
 	// body can be checked with its siblings in scope.
@@ -3559,6 +3562,12 @@ func (c *checker) pass2() {
 	c.hoistPackageBodyIDs()
 
 	owned := c.checkDeclarationBodies(c.pkg, c.pendingExtensionComps())
+	// Every program component's body has been read, so every override
+	// waiting on one has been too; one whose declaration no walk reached is
+	// still an override, and is checked rather than dropped.
+	for _, comp := range c.pkg.Components {
+		c.checkLateOverrides(comp)
+	}
 
 	// A test reads a component's vars through `c.<var>`, and an unannotated
 	// var has no type until the body declaring it has been checked; nothing
@@ -4145,6 +4154,23 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 		c.checkBodyOnce(owner)
 	}
 	c.checkComponentBody(comp)
+	c.checkLateOverrides(comp)
+}
+
+// checkLateOverrides checks the program's overrides of comp that waited on
+// comp's own body.
+func (c *checker) checkLateOverrides(comp *ir.Component) {
+	late := c.lateOverrides[comp]
+	if len(late) == 0 {
+		return
+	}
+	delete(c.lateOverrides, comp)
+	saved := c.scope
+	defer func() { c.scope = saved }()
+	defer c.saveFile()()
+	for _, pe := range late {
+		c.checkOverride(pe, nil)
+	}
 }
 
 // checkOverrideNestedBodies checks the bodies of the components an override
