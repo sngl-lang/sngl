@@ -550,6 +550,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
 		Wrapped:           c.wrapped,
+		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
 	}
 	if c.wrapped {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if

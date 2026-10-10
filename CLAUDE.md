@@ -2035,10 +2035,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   platform built on a C library (gtk4 on cairo) names C identifiers and no
   language at all. The Go backend renders those as cgo and supplies the
   `C.double`/`C.int` conversions from the declared parameter types. Which
-  header declares one is the program's `c.link` (`sngl:x/c`), and fyne and
-  bubbletea write the cgo preamble from the links the program reaches
-  (`ir.ReachedCLinks`); gtk4 writes its own and reads none yet
-  (`testdata/native_decl_not_emitted.txtar`).
+  header declares one is the program's `c.link` (`sngl:x/c`), and every Go target writes the links the program
+  reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
+  preamble of their own, gtk4 inside the one inline mode already has, which a
+  `C.` call puts the build in (`golang.CPreambleLines`,
+  `testdata/c_link.txtar`).
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a

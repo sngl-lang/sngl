@@ -5,7 +5,7 @@ package {{.Package}}
 #cgo pkg-config: gtk4
 #include <gtk/gtk.h>
 #include <stdlib.h>
-
+{{.CLinks}}
 extern void snglGoDispatch(int idx);
 // g_signal_connect callbacks are invoked with the signal's signature
 // (self, ...args, user_data). This one is (instance, user_data), which
