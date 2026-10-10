@@ -88,6 +88,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			walkExpr(x.Then)
 			walkExpr(x.Else)
 		case *ir.Call:
+			walkExpr(x.Callee)
 			walkExpr(x.Receiver)
 			for i := range x.Args {
 				walkExpr(x.Args[i].Value)
