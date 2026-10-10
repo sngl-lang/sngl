@@ -39,6 +39,7 @@ func TestLibraryShared(t *testing.T) {
 	load()
 	var f testutil.Fingerprinter
 	var pkgs []*ir.Package
+	var tables map[string]string
 	var before uint64
 	got := map[string]string{}
 	for s := range testutil.TestdataSamples(t) {
@@ -48,17 +49,23 @@ func TestLibraryShared(t *testing.T) {
 		}
 		_, fresh := checker.Check(doc, fixtures.CheckConfig(s, doc))
 
-		if now := library.Packages(); pkgs == nil || len(now) != len(pkgs) {
-			pkgs, f.Skip = now, notTheLibrary(now)
+		// A load adds packages and table entries, and what it added is held
+		// from the next fixture on.
+		if now, held := library.Packages(), library.Tables(); pkgs == nil || len(now) != len(pkgs) || len(held) != len(tables) {
+			pkgs, tables, f.Skip = now, held, notTheLibrary(now)
 			before = f.Of(pkgs)
 		}
+		library.Publish()
 		cfg := fixtures.CheckConfig(s, doc)
 		library.Use(cfg)
 		_, shared := checker.Check(doc, cfg)
 		after := f.Of(pkgs)
 
 		var why []string
-		if after != before {
+		if rewritten := rewrittenEntries(tables, library.Tables()); after != before || len(rewritten) > 0 {
+			if len(rewritten) > 0 {
+				t.Logf("%s rewrites library cache entries:\n%s", s.Name, strings.Join(rewritten, "\n"))
+			}
 			why = append(why, "writes the library")
 			logLibraryWrites(t, s, doc)
 		}
@@ -82,7 +89,7 @@ func TestLibraryShared(t *testing.T) {
 	}
 	want := readRatchet(t)
 	if *updateLibraryShared {
-		header := "# Fixtures whose check writes a library an earlier check loaded, or reports\n# what a check against a fresh library does not. TestLibraryShared keeps it\n# exact; rewrite it with -update.\n"
+		header := "# Fixtures whose check writes a library an earlier check loaded, or reports\n# what a check against a fresh library does not. TestLibraryShared keeps it\n# exact; rewrite it with -update. A write the library makes of itself the\n# first time something uses it is blamed on the first fixture after a load to\n# use it, so a new fixture can move a line.\n"
 		if err := os.WriteFile(librarySharedRatchet, []byte(header+strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -98,6 +105,40 @@ func TestLibraryShared(t *testing.T) {
 		if !slices.Contains(lines, line) {
 			t.Errorf("%s lists %q, which no longer holds; rewrite it with -update", librarySharedRatchet, line)
 		}
+	}
+}
+
+// A write to any package the library holds is one the fingerprint sees,
+// including the gir: widgets, which no libCache table names.
+func TestLibraryFingerprintSeesEveryPackage(t *testing.T) {
+	library := checker.NewSharedLibrary()
+	loadEveryLibraryPackage(t, library)
+	pkgs := library.Packages()
+	f := testutil.Fingerprinter{Skip: notTheLibrary(pkgs)}
+	var written int
+	for _, p := range pkgs {
+		var doc *string
+		switch {
+		case len(p.Components) > 0:
+			doc = &p.Components[0].Doc
+		case len(p.Funcs) > 0:
+			doc = &p.Funcs[0].Doc
+		case len(p.Structs) > 0:
+			doc = &p.Structs[0].Doc
+		default:
+			continue
+		}
+		before := f.Of(pkgs)
+		was := *doc
+		*doc = was + "written"
+		if f.Of(pkgs) == before {
+			t.Errorf("a write to %q is not seen", p.Path)
+		}
+		*doc = was
+		written++
+	}
+	if written < 30 {
+		t.Fatalf("wrote to %d of %d packages", written, len(pkgs))
 	}
 }
 
@@ -153,6 +194,7 @@ func logLibraryWrites(t *testing.T, s testutil.Sample, doc *ast.Document) {
 	library := checker.NewSharedLibrary()
 	loadEveryLibraryPackage(t, library)
 	pkgs := library.Packages()
+	library.Publish()
 	f := testutil.Fingerprinter{Skip: notTheLibrary(pkgs)}
 	before := f.Graph(pkgs)
 	cfg := fixtures.CheckConfig(s, doc)
@@ -198,4 +240,17 @@ func notTheLibrary(pkgs []*ir.Package) func(reflect.Value) bool {
 		p := v.Elem().FieldByIndex(index)
 		return !p.IsNil() && !in[p.Pointer()]
 	}
+}
+
+// rewrittenEntries is each entry of before that after holds with another
+// value or not at all.
+func rewrittenEntries(before, after map[string]string) []string {
+	var out []string
+	for k, v := range before {
+		if now, ok := after[k]; !ok || now != v {
+			out = append(out, fmt.Sprintf("%s: %s, now %q", k, v, now))
+		}
+	}
+	slices.Sort(out)
+	return out
 }

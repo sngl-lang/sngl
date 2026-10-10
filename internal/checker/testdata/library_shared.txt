@@ -1,6 +1,8 @@
 # Fixtures whose check writes a library an earlier check loaded, or reports
 # what a check against a fresh library does not. TestLibraryShared keeps it
-# exact; rewrite it with -update.
+# exact; rewrite it with -update. A write the library makes of itself the
+# first time something uses it is blamed on the first fixture after a load to
+# use it, so a new fixture can move a line.
 check_basics: writes the library
 checker_methods: writes the library
 component_override_body_func_imported_base: writes the library

@@ -176,6 +176,10 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
+	return newLibCache()
+}
+
+func newLibCache() *libCache {
 	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}}
 }
 
@@ -2127,9 +2131,8 @@ func (c *checker) checkPendingConstInits() {
 		// what this const is -- a target identity is a string in the source
 		// and a target type in the IR, which is the one thing this pass cannot
 		// reconcile for it. `null` is the other: written `= 0`, so the shell
-		// took int, and checked here it put int back over the type its mark
-		// gave it, for every library body checked before the next program
-		// re-bound the role.
+		// took int, and checked here it would put int back over the type its
+		// mark gave it, which nothing sets again.
 		if len(p.vars) > 0 && (p.vars[0].Synthesized || p.vars[0].Builtin.IsConst()) && p.vars[0].Init != nil {
 			continue
 		}
