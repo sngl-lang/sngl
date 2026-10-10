@@ -467,7 +467,6 @@ var (
 // refusing to overwrite a member already there. Attaching is a declaration
 // like any other: a silent overwrite would make which of two declarations a
 // member name refers to depend on the order the checker visited them in.
-// ReplaceMethod is the explicit rebind.
 //
 // It takes the scope rather than a SymbolTable because a declaration is
 // registered before it is reachable from the package root — the stdlib loads
@@ -481,18 +480,6 @@ func AttachMethod(scope *Scope, recv string, f *Func) error {
 	// reaches a component's methods from more than one pass.
 	if prev, exists := (*tbl)[f.Name]; exists && prev != f {
 		return &RedeclaredError{Name: f.Name, Prev: prev}
-	}
-	(*tbl)[f.Name] = f
-	return nil
-}
-
-// ReplaceMethod makes f a member of the declaration recv names, overwriting
-// any member of the same name. For the one case where rebinding is the intent:
-// a declaration that shadows one the standard library made.
-func ReplaceMethod(scope *Scope, recv string, f *Func) error {
-	tbl, err := memberList(scope, recv)
-	if err != nil {
-		return err
 	}
 	(*tbl)[f.Name] = f
 	return nil

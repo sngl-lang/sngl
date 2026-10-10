@@ -2533,7 +2533,7 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 		// A receiver naming a namespace rather than a type (i18n) has no
 		// declaration to host it, and declareMethod says so.
 		if prev := c.declareMethod(f.Pos, fn); prev != nil {
-			c.error(f.Pos, "duplicate declaration of %q on type %s", fn.Name, fn.RecvName())
+			c.reportDuplicateMethod(f.Pos, fn, prev, "type "+fn.RecvName())
 			return nil
 		}
 		c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
@@ -4315,7 +4315,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			// scope by bare name; component-body references resolve through
 			// the currentComponent-aware path in inferIdent / inferCall.
 			if prev := c.declareMethod(compDeclPos(comp), fn); prev != nil {
-				c.error(compDeclPos(comp), "duplicate declaration of %q on component %s", fn.Name, fn.RecvName())
+				c.reportDuplicateMethod(compDeclPos(comp), fn, prev, "component "+fn.RecvName())
 			}
 		}
 	}

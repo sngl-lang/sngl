@@ -3989,6 +3989,14 @@ question per kind rather than one line.
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
+**A program may add a method to a library type, and may not redefine one it
+has.** `func int.twice` is an addition; `func int.abs` collides with the
+`sngl:builtin` declaration and is the duplicate two declarations in one
+package are (`reportDuplicateMethod`,
+`testdata/error_method_redefines_library.sngl`). It used to replace the
+library's member, which made what `x.abs()` means depend on the program
+that checked first once the library is shared between checks.
+
 ### AST
 
 - **`ast/ast.go`** — top-level declarations and structural types: `Document`, `ComponentDecl`, `VisualNode`, `FuncDef`, `VarDecl`, `ConstDecl`, `StructDef`, `EnumDef`, `UnitDef`, `Param`, `Import`, `IfStmt`, `ForStmt`

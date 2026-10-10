@@ -7,5 +7,6 @@ check_basics: writes the library
 checker_methods: writes the library
 component_override_body_func_imported_base: writes the library
 error_component_override_body_func_qualified_base: writes the library
+error_method_redefines_library: writes the library
 test_receiver_param: writes the library
 test_type_methods: writes the library

@@ -1,0 +1,13 @@
+import ui "sngl:ui"
+
+// A program may add a method to a library type, and may not redefine one the
+// library declares: the declaration means one thing in every program.
+func int.twice(x int) => x * 2
+func int.abs(x int) => x                                          // ERROR(check) "on type int: sngl:builtin declares it"
+func list<T>.map<U>(l list<T>, f func(T) U) list<U> { return [] } // ERROR(check) "on type list: sngl:builtin declares it"
+
+component main ui.node {
+    func string.upper(s string) => s // ERROR(check) "on type string: sngl:builtin declares it"
+
+    ui.text(value="{3.twice()}")
+}

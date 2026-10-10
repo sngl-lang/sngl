@@ -63,12 +63,25 @@ func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
 	return nil, false
 }
 
+// reportDuplicateMethod reports fn colliding with prev on the declaration its
+// receiver names, described by on, naming the package that declared prev
+// when it is another's.
+func (c *checker) reportDuplicateMethod(pos ast.Pos, fn, prev *ir.Func, on string) {
+	if other := prev.PkgPath(); other != fn.PkgPath() && other != "" {
+		c.error(pos, "duplicate declaration of %q on %s: %s declares it", fn.Name, on, other)
+		return
+	}
+	c.error(pos, "duplicate declaration of %q on %s", fn.Name, on)
+}
+
 // declareMethod makes fn a member of the declaration its receiver names,
-// reporting an unknown receiver at pos. Returns the member it collides with
-// when the caller must report a duplicate, and nil when the attach stands:
-// because it succeeded, because it deliberately shadows a standard-library
-// member (which user code may do), or because the receiver carries no member
-// list — a namespace, whose members are the declarations of its package.
+// reporting an unknown receiver at pos. Returns the member it collides with,
+// for the caller to report as a duplicate, and nil when the attach stands:
+// because it succeeded, or because the receiver carries no member list -- a
+// namespace, whose members are the declarations of its package. A method
+// another package declared collides too: a program may add to a library
+// type but not redefine what it has, so a library declaration means one
+// thing in every program that reads it.
 func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// The member table is the declaration's, so the receiver is the one the
 	// table is found on -- in this scope, which a body-local type's method
@@ -89,15 +102,7 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	if !errors.As(err, &red) {
 		return nil
 	}
-	prev, isFunc := red.Prev.(*ir.Func)
-	// A package may shadow a method another package declared on the same
-	// receiver; two in one package are a redeclaration.
-	if isFunc && prev.PkgPath() != fn.PkgPath() {
-		if err := ir.ReplaceMethod(c.scope, fn.RecvName(), fn); err != nil {
-			return nil
-		}
-		return nil
-	}
+	prev, _ := red.Prev.(*ir.Func)
 	return prev
 }
 
