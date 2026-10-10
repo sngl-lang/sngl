@@ -51,6 +51,7 @@ func NewFold(pkg *ir.Package, cfg *Config) *Fold {
 	}
 	ctx := run.newCtx(pkg)
 	ctx.unroll, ctx.spliced = true, true
+	ctx.redraws = holdsRedraw(pkg)
 	// Built here so every child shares the one map rather than each building
 	// its own.
 	ctx.getNativeImports()
@@ -79,7 +80,7 @@ func (f *Fold) Expr(e ir.Expr) ir.Expr { return foldExpr(e, f.ctx) }
 
 func (f *Fold) Stmts(stmts []ir.Stmt) []ir.Stmt { return foldStmts(stmts, f.ctx) }
 
-func (f *Fold) Clone(stmts []ir.Stmt) []ir.Stmt { return cloneStmts(stmts) }
+func (f *Fold) Clone(stmts []ir.Stmt) []ir.Stmt { return f.ctx.ownCopy(stmts) }
 
 func (f *Fold) Decide(cond ir.Expr) (value, ok bool) {
 	lit, isLit := foldExpr(cloneExpr(cond), f.ctx).(*ir.Literal)

@@ -615,7 +615,20 @@ func cloneExpr(e ir.Expr) ir.Expr {
 }
 
 // cloneStmt creates a deep copy of a statement.
-func cloneStmt(s ir.Stmt) ir.Stmt {
+func cloneStmt(s ir.Stmt) ir.Stmt { return deepCloner.stmt(s) }
+
+// stmtCloner copies statements. One that shares loops leaves a loop's body
+// and else as they are, for a fold that unrolls the loop to copy per
+// iteration (evalCtx.ownCopy); it records the boundary handlers it copies, so
+// that the aliases a shared body holds can be repointed once it is copied.
+type stmtCloner struct {
+	shareLoops bool
+	handlers   map[*ir.EventHandler]*ir.EventHandler
+}
+
+var deepCloner stmtCloner
+
+func (c *stmtCloner) stmt(s ir.Stmt) ir.Stmt {
 	if s == nil {
 		return nil
 	}
@@ -637,12 +650,12 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 			// each reporting the press of the first.
 			if h.Func != nil {
 				fn := *h.Func
-				fn.Block = copyStmts(h.Func.Block)
+				fn.Block = c.stmts(h.Func.Block)
 				cp.Handlers[i].Func = &fn
 			}
 		}
-		cp.Children = copyStmts(n.Children)
-		cp.Slots = cloneSlots(n.Slots)
+		cp.Children = c.stmts(n.Children)
+		cp.Slots = c.slots(n.Slots)
 		return &cp
 	case *ir.If:
 		if n.Catch != nil {
@@ -650,14 +663,16 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		}
 		cp := *n
 		cp.Cond = cloneExpr(n.Cond)
-		cp.Body = copyStmts(n.Body)
-		cp.Else = copyStmts(n.Else)
+		cp.Body = c.stmts(n.Body)
+		cp.Else = c.stmts(n.Else)
 		return &cp
 	case *ir.For:
 		cp := *n
 		cp.Iter = cloneExpr(n.Iter)
-		cp.Body = copyStmts(n.Body)
-		cp.Else = copyStmts(n.Else)
+		if !c.shareLoops {
+			cp.Body = c.stmts(n.Body)
+			cp.Else = c.stmts(n.Else)
+		}
 		return &cp
 	case *ir.Assign:
 		cp := *n
@@ -700,30 +715,36 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		for i, a := range n.Args {
 			cp.Args[i] = cloneExpr(a)
 		}
-		cp.Children = copyStmts(n.Children)
-		cp.Slots = cloneSlots(n.Slots)
+		cp.Children = c.stmts(n.Children)
+		cp.Slots = c.slots(n.Slots)
 		return &cp
 	case *ir.ContextProvider:
 		cp := *n
 		cp.Value = cloneExpr(n.Value)
-		cp.Children = copyStmts(n.Children)
+		cp.Children = c.stmts(n.Children)
 		return &cp
 	case *ir.ErrorBoundary:
 		cp := *n
-		cp.Children = copyStmts(n.Children)
-		cp.Failed = copyStmts(n.Failed)
+		cp.Children = c.stmts(n.Children)
+		cp.Failed = c.stmts(n.Failed)
 		// The handler is folded per copy as its children are; shared, the
 		// first copy's bindings wrote the handler every copy runs.
 		if h := n.Handler; h != nil {
 			hc := *h
 			if h.Func != nil {
 				fc := *h.Func
-				fc.Block = copyStmts(h.Func.Block)
+				fc.Block = c.stmts(h.Func.Block)
 				hc.Func = &fc
 			}
 			cp.Handler = &hc
-			ir.RepointHandler(cp.Children, h, &hc)
-			ir.RepointHandler(cp.Failed, h, &hc)
+			if c.shareLoops {
+				c.handlers[h] = &hc
+				repointCopied(cp.Children, map[*ir.EventHandler]*ir.EventHandler{h: &hc}, nil)
+				repointCopied(cp.Failed, map[*ir.EventHandler]*ir.EventHandler{h: &hc}, nil)
+			} else {
+				ir.RepointHandler(cp.Children, h, &hc)
+				ir.RepointHandler(cp.Failed, h, &hc)
+			}
 		}
 		return &cp
 	case *ir.CanvasRedrawStmt:
@@ -743,26 +764,28 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 
 // copyStmts is cloneStmts' recursion: the copy alone, without repointing
 // what the copy names.
-func copyStmts(stmts []ir.Stmt) []ir.Stmt {
+func copyStmts(stmts []ir.Stmt) []ir.Stmt { return deepCloner.stmts(stmts) }
+
+func (c *stmtCloner) stmts(stmts []ir.Stmt) []ir.Stmt {
 	if stmts == nil {
 		return nil
 	}
 	out := make([]ir.Stmt, len(stmts))
 	for i, s := range stmts {
-		out[i] = cloneStmt(s)
+		out[i] = c.stmt(s)
 	}
 	return out
 }
 
-// cloneSlots copies each population's body and keeps its parameters, which a
+// slots copies each population's body and keeps its parameters, which a
 // splice binds by pointer.
-func cloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
+func (c *stmtCloner) slots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
 	if slots == nil {
 		return nil
 	}
 	out := make(map[string]*ir.SlotContent, len(slots))
 	for name, sc := range slots {
-		out[name] = &ir.SlotContent{Params: sc.Params, Body: copyStmts(sc.Body)}
+		out[name] = &ir.SlotContent{Params: sc.Params, Body: c.stmts(sc.Body)}
 	}
 	return out
 }

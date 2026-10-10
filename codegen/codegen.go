@@ -691,7 +691,8 @@ type Fold interface {
 	Expr(e ir.Expr) ir.Expr
 	Stmts(stmts []ir.Stmt) []ir.Stmt
 	// Clone copies statements so a fold may rewrite them, sharing every
-	// declaration they name.
+	// declaration they name and every loop body, which the fold copies when it
+	// reaches one. A caller that writes into a loop body copies it first.
 	Clone(stmts []ir.Stmt) []ir.Stmt
 	// Decide is a condition's value, where the build can know it.
 	Decide(cond ir.Expr) (value, ok bool)

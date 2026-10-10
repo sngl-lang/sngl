@@ -317,6 +317,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 	case *ir.NodeInst:
 		return foldNodeInst(n, ctx)
 	case *ir.For:
+		if ctx.unroll {
+			n.Body, n.Else = ctx.ownCopy(n.Body), ctx.ownCopy(n.Else)
+		}
 		n.Iter = foldExpr(n.Iter, ctx)
 		n.Body = foldStmts(n.Body, ctx)
 		n.Else = foldStmts(n.Else, ctx)
@@ -388,7 +391,11 @@ func foldIfStmt(s *ir.If, ctx *evalCtx) ir.Stmt {
 		// The handler is the boundary's, which a splice may have left this
 		// the only route to; folding it again where it was reached is a no-op.
 		if h := s.Catch; h.Func != nil {
-			h.Func.Block = foldStmts(h.Func.Block, ctx)
+			if ctx.unroll {
+				s.Catch = ctx.ownHandler(h)
+			} else {
+				h.Func.Block = foldStmts(h.Func.Block, ctx)
+			}
 		}
 		return s
 	}
