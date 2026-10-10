@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passNodePropReads answers a prop read off a `#id` at build time, wherever the

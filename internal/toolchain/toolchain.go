@@ -33,10 +33,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
-	"git.duckfam.us/jonathan/sngl/internal/headless"
-	"git.duckfam.us/jonathan/sngl/internal/jdk"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/internal/headless"
+	"duckfam.us/sngl/internal/jdk"
 )
 
 // Unavailable reports why this host cannot build generated <lang>/<platform>

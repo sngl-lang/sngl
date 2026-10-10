@@ -6,10 +6,10 @@ import (
 	"strings"
 	"unicode"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/internal/androidtc"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/internal/androidtc"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls code generation. Field names match the SNGL option names
@@ -629,7 +629,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 
-	// Canvas2D stdlib structs (Style/PathCmd). Stdlib-only structs
+	// Canvas2D stdlib struct (Style). Stdlib-only structs
 	// aren't carried on pkg.Structs, so materialize them here (analogous to
 	// canvasutil for the Go platforms) whenever the program contains a canvas.
 	if hasCanvas {

@@ -7,8 +7,8 @@ package html
 // than keeping a list of names beside the declaration to drift away from it.
 
 import (
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // elementDecl is the declaration a node's props and events are read from: the
@@ -125,6 +125,11 @@ func domPropForProp(comp *ir.Component, prop string) (string, bool) {
 	// A Window shown as a `<dialog>` is on screen when the dialog is open.
 	if comp != nil && comp.Intrinsic == windowIntrinsic && prop == "visible" {
 		return "open", true
+	}
+	// A URL source is an `<img>`, which takes its URL in `src`, and the icon
+	// `<link>` standing in for one answers a write of it (faviconInit).
+	if comp != nil && comp.Intrinsic == imageURLIntrinsic && prop == ir.ImageSourceURL {
+		return "src", true
 	}
 	if domOnlyProps[prop] {
 		return domName(prop), true

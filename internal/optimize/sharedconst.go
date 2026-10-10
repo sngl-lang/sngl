@@ -3,7 +3,7 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // sharedAggregateConsts is the set of pkg's consts that a reference keeps

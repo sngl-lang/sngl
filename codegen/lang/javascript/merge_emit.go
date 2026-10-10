@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // EmitMergeFuncs returns JS source for one __merge_<Struct> helper per struct.

@@ -3,8 +3,8 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passBoundaryFailed gives a boundary's `failed` slot its meaning: once the

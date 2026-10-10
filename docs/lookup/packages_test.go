@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"duckfam.us/sngl/docs/lookup"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
 )
 
 func TestLookupPlatformAndroid(t *testing.T) {

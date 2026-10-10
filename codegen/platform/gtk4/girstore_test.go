@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/gencache"
 )
 
 // countParses swaps parseGIR for one that counts, for the length of the test.

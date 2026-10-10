@@ -16,13 +16,13 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	jsscheme "git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/internal/buildhost"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/js/consteval"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/jsbundle"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	jsscheme "duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/js/consteval"
 )
 
 const nodeBin = "node"

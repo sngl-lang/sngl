@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl"
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // parseHexColor converts "#rgb", "#rrggbb", or "#rrggbbaa" to a Color.

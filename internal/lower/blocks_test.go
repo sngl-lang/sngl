@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // TestBlocksReachSlotContent is the sixth walker's share of the same

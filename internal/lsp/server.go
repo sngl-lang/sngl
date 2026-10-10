@@ -2,9 +2,9 @@ package lsp
 
 import (
 	"bufio"
+	"duckfam.us/sngl/internal/trust"
 	"encoding/json"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
 	"io"
 	"log"
 	"net"

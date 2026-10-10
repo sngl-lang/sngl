@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
-const testpkgPath = "git.duckfam.us/jonathan/sngl/codegen/scheme/golang/testdata/testpkg"
+const testpkgPath = "duckfam.us/sngl/codegen/scheme/golang/testdata/testpkg"
 
 // withNativeType registers fn for the duration of the test. The registry is
 // process-global and RegisterType refuses a duplicate, so a test that wants a

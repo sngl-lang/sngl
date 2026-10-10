@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	snglast "duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // importDecl is one import a live fence wrote, as the line the generated

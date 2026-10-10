@@ -10,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/interp"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/interp"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // FuzzDocument exercises the full Parse → Check → Format / IR-Convert

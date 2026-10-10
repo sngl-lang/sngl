@@ -2,7 +2,7 @@ package checker
 
 import "slices"
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // analyzeErrors runs error-effect analysis on the package after type
 // checking. It computes CanError on each function via fixed-point over

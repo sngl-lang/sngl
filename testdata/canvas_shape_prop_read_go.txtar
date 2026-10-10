@@ -36,10 +36,10 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -59,17 +59,6 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -202,26 +191,15 @@ func main() {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type Measurement struct {
 	Px  float64
@@ -336,6 +314,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:06939f6c7ea1413b130fcce69c8868db
+pass sha256:3d5e57201c0cf998d26f09f04b7e3ca4
 -- run/go/fyne --
-pass sha256:12090bba4ad5838fe297406847dc4334
+pass sha256:aaca8f314123d24072986c67ba914e66

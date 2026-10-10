@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // Convert builds a fresh AST Document from a type-checked IR Package,

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // canvasMeta aliases the shared platform-neutral canvas metadata type. The
@@ -45,7 +45,7 @@ type canvasMeta = canvasutil.Meta
 // forced import alias (the path's default "canvas" collides with fyne's own
 // canvas package).
 const (
-	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasImportPath = "duckfam.us/sngl/pkg/go/canvas"
 	snglCanvasAlias      = "snglcanvas"
 )
 
@@ -53,9 +53,9 @@ const (
 // Model field backing a canvas: *snglcanvas.Context.
 func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
 
-// The canvas stdlib structs (lib/canvas.sngl: Style, PathCmd;
+// The canvas stdlib structs (lib/ui/draw/draw.sngl: Style;
 // lib/types.sngl: color → Color) are referenced by the synthesized draw funcs
-// (e.g. style.Fill.R read by the ApplyStyle setters, _cmd.op in the path loop)
+// (e.g. style.Fill.R read by the ApplyStyle setters)
 // but are NOT carried in pkg.Structs (html emits JS object literals), so the
 // fyne Go path declares them here when any canvas is present. Field names/types
 // mirror the stdlib definitions; canvas_sync_test.go guards against drift.
@@ -68,7 +68,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "Style", "PathCmd":
+		case "Color", "Style":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -97,6 +97,9 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
+	}
+	if isImageDrawing(m.Node) {
+		return t.paintImageDrawing(m)
 	}
 	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
 	// size the widget is now.

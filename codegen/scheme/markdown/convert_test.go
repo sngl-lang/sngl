@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 )
 
 const sample = `---

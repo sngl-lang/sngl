@@ -97,17 +97,17 @@ import (
 
 	"golang.org/x/tools/txtar"
 
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
-	"git.duckfam.us/jonathan/sngl/internal/trust"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/trust"
 
 	// Register every language and platform, so a fixture's output block can
 	// name any of them, and every import scheme, so a fixture may import a
 	// `go:` or `c:` package the way a program built by the CLI can -- main.go
 	// blank-imports the same package.
-	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
-	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
+	_ "duckfam.us/sngl/codegen/scheme"
+	_ "duckfam.us/sngl/internal/testtargets"
 )
 
 // goldenPrefix is the archive directory holding generated output. Everything

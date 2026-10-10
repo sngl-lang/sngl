@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/ir"
 )
 
 //go:embed preview.css
@@ -200,12 +200,18 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
+		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
+			return err
+		}
 	} else if cfg.UseGradle() {
 		pkgPath := pkgToPath(cfg.Package)
 		if err := writeAndroidSourceFile(sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", req.Lang, ktOpts, src); err != nil {
 			return err
 		}
 		if err := emitDateFieldFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package); err != nil {
+			return err
+		}
+		if err := emitAssetsFile(req, sink, "app/src/main/java/"+pkgPath+"/MainScreen.kt", cfg.Package, "app/src/main/assets"); err != nil {
 			return err
 		}
 		testAgentInc := ""
@@ -227,7 +233,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		// this since instrumented tests live in androidTest sourceset
 		// with a different dep set.
 		templateTestMode := robolectricAgent || (testMode && cfg.TestRunner != "device")
-		for _, f := range scaffoldFiles(cfg, usesI18n, deviceAgent, testAgentInc, templateTestMode) {
+		for _, f := range scaffoldFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent, testAgentInc, templateTestMode) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -251,7 +257,10 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 		if err := emitDateFieldFile(req, sink, "MainScreen.kt", cfg.Package); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, usesI18n, deviceAgent) {
+		if err := emitAssetsFile(req, sink, "MainScreen.kt", cfg.Package, ""); err != nil {
+			return err
+		}
+		for _, f := range directBuildFiles(cfg, usesI18n, usesAssets(req.Pkg), deviceAgent) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}

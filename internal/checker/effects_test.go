@@ -3,7 +3,7 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // findCallStmt walks a block and returns the first CallStmt whose resolved

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"duckfam.us/sngl/internal/lower"
 )
 
 // A recursive component is built at run time, one host stack frame per level,

@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passInstanceEvents gives a component that survives inlining a run-time event.

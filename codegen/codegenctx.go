@@ -4,7 +4,7 @@ import (
 	"errors"
 	"maps"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // CodegenCtx is the codegen-layer view of a checked package, created by a

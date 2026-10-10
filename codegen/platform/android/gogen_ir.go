@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // emitGo produces output files for the go+android target using IR.
@@ -62,7 +62,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range scaffoldFiles(cfg, false, false, "", false) {
+		for _, f := range scaffoldFiles(cfg, false, false, false, "", false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 		if err := writeAndroidFile(sink, "golib/go.mod", goMod); err != nil {
 			return err
 		}
-		for _, f := range directBuildFiles(cfg, false, false) {
+		for _, f := range directBuildFiles(cfg, false, false, false) {
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}

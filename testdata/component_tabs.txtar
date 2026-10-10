@@ -305,11 +305,11 @@ func newTestComponent() Model { return New() }
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -580,7 +580,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -593,7 +593,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type Tab__record struct {
@@ -1212,9 +1212,9 @@ window.__sngl_boot();
 -- run/go/bubbletea --
 pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
 -- run/go/fyne --
-pass sha256:a390a08841e91ebe240b1a7b60412261
+pass sha256:81f7b6f861c476e16e3c25894f7a03bc
 -- run/go/gtk4 --
-pass sha256:e838dd90103804897f1d644be2fcc806
+pass sha256:103dcac124b54cd5bafd2bceb0d3b41a
 -- run/kotlin/android --
 pass sha256:206ef841e7dd320c81e7b866be73f8ba
 -- run/none/html --

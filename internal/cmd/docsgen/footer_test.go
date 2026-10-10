@@ -46,7 +46,7 @@ func TestInjectFooter(t *testing.T) {
 		}
 		for _, want := range []string{
 			"7a599b7",
-			`href="https://git.duckfam.us/jonathan/sngl/commit/7a599b700a2eb78fa4d2f73bba9a94d164949ddc"`,
+			`href="https://github.com/sngl-lang/sngl/commit/7a599b700a2eb78fa4d2f73bba9a94d164949ddc"`,
 			"2026-08-23",
 			"&copy; 2026 Jonathan Duck. All rights reserved.",
 		} {

@@ -53,8 +53,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
@@ -259,13 +259,13 @@ func main() {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
@@ -441,7 +441,7 @@ func main() {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Init()
@@ -455,8 +455,8 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 type Measurement struct {
@@ -861,11 +861,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:3399abec14e446f652416638b01f2b01
+pass sha256:770a795f8f275430b650b57f6adca16f
 -- run/go/fyne --
-pass sha256:b1e63479c9a6b00fdfdc0e7fc319982f
+pass sha256:50ad3d5fbea6be79b5c8614600cd3971
 -- run/go/gtk4 --
-pass sha256:986b69db3a5333e1f0cf21c9f9765cbf
+pass sha256:4d08ac5ff904730f25fe73a3015552a4
 -- run/kotlin/android --
 pass sha256:182b8a9b65033378455fc054888dcaac
 -- run/none/html --

@@ -3,7 +3,7 @@ package lower
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passStampUsage records package-wide feature usage onto the IR so codegen

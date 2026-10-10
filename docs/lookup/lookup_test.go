@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"duckfam.us/sngl/docs/lookup"
 )
 
 // `sngl` is the library root: it lists the packages and declares nothing

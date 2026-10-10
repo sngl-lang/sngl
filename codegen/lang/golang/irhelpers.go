@@ -1,7 +1,7 @@
 package golang
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // Helpers shared by the Go-emitting platform generators (fyne, gtk4,

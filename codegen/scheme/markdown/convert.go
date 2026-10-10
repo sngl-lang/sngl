@@ -13,7 +13,7 @@ import (
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
+	snglast "duckfam.us/sngl/ast"
 )
 
 // DocumentComponent is the name the generated component takes. One name
@@ -437,7 +437,9 @@ func (e *emitter) inlines(n gast.Node) {
 			flush()
 			// The description flattens to its words: `alt` is a string on the
 			// declaration because a description is read aloud, not looked at.
-			e.linef("markup.image(src=%s, alt=%s)", str(string(c.Destination)), str(plainText(c, e.src)))
+			e.wrap("markup.image", "alt="+str(plainText(c, e.src)), func(e *emitter) {
+				e.line("ui.remote(url=" + str(string(c.Destination)) + ")")
+			})
 		case *gast.RawHTML:
 			// Dropped, for the reason an html block is.
 		case *east.TaskCheckBox:

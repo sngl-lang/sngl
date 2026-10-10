@@ -2,7 +2,7 @@
 # itself: an import path is a name the repository chooses. A grant recorded
 # for one project's package reaches neither another project claiming the same
 # module path nor a replace pointing that path at a directory of its own.
-exec sh -c 'for d in a:a b:a c:c; do printf "module example.com/%s\n\ngo %s\n\nrequire git.duckfam.us/jonathan/sngl v0.0.0\n\nreplace git.duckfam.us/jonathan/sngl => %s\n" "${d#*:}" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > ${d%%:*}/go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> ${d%%:*}/go.mod; done'
+exec sh -c 'for d in a:a b:a c:c; do printf "module example.com/%s\n\ngo %s\n\nrequire duckfam.us/sngl v0.0.0\n\nreplace duckfam.us/sngl => %s\n" "${d#*:}" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > ${d%%:*}/go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> ${d%%:*}/go.mod; done'
 exec sh -c 'printf "\nrequire example.com/a v0.0.0\n\nreplace example.com/a => ./evil\n" >> c/go.mod'
 exec sh -c 'printf "module example.com/a\n\ngo %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" > c/evil/go.mod'
 env GOPROXY=off GOFLAGS=-mod=mod
@@ -45,9 +45,9 @@ ui.window(title="t") {
 package lib
 
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	_ "duckfam.us/sngl/pkg/go/consteval"
 )
 
 //sngl:pure
@@ -65,9 +65,9 @@ ui.window(title="t") {
 package lib
 
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	_ "duckfam.us/sngl/pkg/go/consteval"
 )
 
 //sngl:pure
@@ -85,9 +85,9 @@ ui.window(title="t") {
 package keep
 
 import (
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
-	_ "git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	_ "duckfam.us/sngl/codegen/lang"
+	_ "duckfam.us/sngl/codegen/platform"
+	_ "duckfam.us/sngl/pkg/go/consteval"
 	_ "example.com/a/lib"
 )
 -- c/evil/lib/lib.go --

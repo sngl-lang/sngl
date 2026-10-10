@@ -8,8 +8,8 @@ output {
     }
 }
 
-import "go:git.duckfam.us/jonathan/sngl/docs"
-import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
+import "go:duckfam.us/sngl/docs"
+import "go:duckfam.us/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
 import snapshots "file:lib/snapshots"
@@ -109,35 +109,39 @@ component PlatformCarousel() ui.node {
             ui.stack {
                 if active == 0 {
                     ui.image(
-                        src = screenshotWeb,
                         alt = "SNGL Todo App on Web",
                         fit = contain,
                         style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
-                    )
+                    ) {
+                        ui.file(path=screenshotWeb)
+                    }
                 }
                 if active == 1 {
                     ui.image(
-                        src = screenshotTerminal,
                         alt = "SNGL Todo App in Terminal",
                         fit = contain,
                         style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
-                    )
+                    ) {
+                        ui.file(path=screenshotTerminal)
+                    }
                 }
                 if active == 2 {
                     ui.image(
-                        src = screenshotDesktop,
                         alt = "SNGL Todo App on Desktop",
                         fit = contain,
                         style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
-                    )
+                    ) {
+                        ui.file(path=screenshotDesktop)
+                    }
                 }
                 if active == 3 {
                     ui.image(
-                        src = screenshotAndroid,
                         alt = "SNGL Todo App on Android",
                         fit = contain,
                         style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
-                    )
+                    ) {
+                        ui.file(path=screenshotAndroid)
+                    }
                 }
             }
         }
@@ -203,7 +207,7 @@ component PageLayout(title = "", currentHref = "", children ...component) ui.nod
                         innerHTML = "&copy; <!-- sngl:year --> Jonathan Duck. All rights reserved.",
                     )
                     html.span(class="footer-meta") {
-                        html.a(href="https://git.duckfam.us/jonathan/sngl", innerText="Source")
+                        html.a(href="https://github.com/sngl-lang/sngl", innerText="Source")
                         // docsgen replaces the marker with the commit this site
                         // was generated from; plain `sngl generate` leaves it out.
                         html.span(class="build-stamp", innerHTML="<!-- sngl:build -->")
@@ -317,7 +321,10 @@ component TutorialContent() ui.node {
 // root family so they read as one declaration. Nothing renders it until
 // `site()` at the end of the file.
 component site() root {
-    ui.window(title=pages.current.title, favicon=logo) {
+    ui.window(title=pages.current.title) {
+        component favicon {
+            ui.file(path=logo)
+        }
         nav.stack #pages {
             // Components — the starter set, in reading order. Everything else is one
             // click on, in the package the component belongs to.

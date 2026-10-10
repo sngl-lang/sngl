@@ -45,12 +45,12 @@ window {
 package main
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynetext"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
 	"os"
 )
 
@@ -160,7 +160,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -173,7 +173,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
@@ -256,6 +256,6 @@ func (m *Model) flipClick() {
 	gtk4rt.Emit(m.flip, "clicked")
 }
 -- run/go/fyne --
-pass sha256:2977513ca0c6833b76a0f2dad7b51fab
+pass sha256:771381c0e2cc90778ad10e33d273b03b
 -- run/go/gtk4 --
-pass sha256:5788197f5d46d1236f03f513f8c25654
+pass sha256:7e0a40d7895adf788ee1d905ddac89d0

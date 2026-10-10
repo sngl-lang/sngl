@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // VocabPath is the package the config file's vocabulary is declared in, and

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // loadJSON reads a .json file and synthesises a SNGL IR var named after

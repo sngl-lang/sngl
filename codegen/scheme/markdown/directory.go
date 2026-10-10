@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing/fstest"
 
-	snglast "git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	snglast "duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // SiteComponent is what a directory import hands the program: one component

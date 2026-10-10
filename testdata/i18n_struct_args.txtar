@@ -67,8 +67,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/i18n"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/i18n"
 	"os"
 )
 
@@ -1404,7 +1404,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:707b53d7e86525986a5acec75ad97eee
+pass sha256:2a61e7291245a9752637e4da0f50e823
 -- run/kotlin/android --
 pass sha256:6537a1b8f4cfb0388d96b67969c26f15
 -- run/none/html --

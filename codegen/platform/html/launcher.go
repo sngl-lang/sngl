@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"

@@ -71,6 +71,8 @@ const component shapes.canvasText[platform] {}
 
 const component shapes.canvasImage[platform] {}
 
+const component shapes.image[platform] {}
+
 // --- Widgets ---
 //
 // A control a test drives: what a host would hand an override when the user
@@ -111,7 +113,24 @@ const component ui.drawer[platform] {}
 
 const component ui.text[platform] {}
 
-const component ui.image[platform] {}
+// An image holds the source it shows, or the placeholder where it has none,
+// which is what a snapshot prints beneath the description. A source stands as
+// itself, with its URL or its shapes.
+#[intrinsic("none:image")]
+component image(alt string, fit ui.ObjectFit, @click(), content ...component ui.node) ui.node
+
+const component ui.image[platform] {
+    image(alt=alt, fit=fit, @click { click() }) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+const component ui.file[platform] {}
+
+const component ui.remote[platform] {}
 
 const component ui.progress[platform] {}
 

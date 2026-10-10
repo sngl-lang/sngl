@@ -7,15 +7,15 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/imgdiff"
-	"git.duckfam.us/jonathan/sngl/internal/snapshot"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/imgdiff"
+	"duckfam.us/sngl/internal/snapshot"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/bubbletea"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/lang/golang"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/platform/bubbletea"
+	_ "duckfam.us/sngl/codegen/platform/html"
 )
 
 func TestGenerate(t *testing.T) {

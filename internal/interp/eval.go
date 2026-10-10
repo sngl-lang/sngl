@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
-	goi18n "git.duckfam.us/jonathan/sngl/pkg/go/i18n"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
+	goi18n "duckfam.us/sngl/pkg/go/i18n"
 )
 
 // maxCallDepth is the maximum allowed function call depth.

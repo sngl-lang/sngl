@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/internal/lsp"
+	"duckfam.us/sngl/internal/lsp"
 	"github.com/spf13/cobra"
 )
 

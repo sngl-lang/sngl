@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/lspcore"
+	"duckfam.us/sngl/internal/parser"
 )
 
 func TestWordAtPosition(t *testing.T) {

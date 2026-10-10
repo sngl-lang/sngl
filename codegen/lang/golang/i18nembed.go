@@ -3,8 +3,8 @@ package golang
 import (
 	"io/fs"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
 )
 
 // EmitI18nManifestEmbed writes i18n.manifest.json into sink alongside

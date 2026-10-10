@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/lang/golang"
 )
 
 // emitFyneModel writes the structural model file — lang helpers, unit/struct

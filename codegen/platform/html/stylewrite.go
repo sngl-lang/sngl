@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/htmlutil"
+	"duckfam.us/sngl/ir"
 )
 
 // The page's functions from a SNGL value to the CSS text for it, written when

@@ -3,7 +3,7 @@ package testharness
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 func TestGroup_byComponent(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // CommonAnalysis holds platform-independent analysis extracted from a Package.

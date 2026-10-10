@@ -63,15 +63,52 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 
 // body is what one insertion point renders, cloned and bound for splicing.
 func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
-	stmts, sc, _ := SlotBody(si, callsite)
-	if sc == nil {
-		return sp.Clone(stmts)
+	stmts, sc, supplied := SlotBody(si, callsite)
+	fallback := func() []Stmt { return sp.Substitute(sp.Clone(si.Children), callsite) }
+	if !supplied {
+		return fallback()
 	}
-	bound := sp.Bind(sp.Clone(stmts), sc, si)
-	if si.Decl == nil || len(si.Decl.Slots) == 0 {
-		return bound
+	var out []Stmt
+	switch {
+	case sc == nil:
+		out = sp.Clone(stmts)
+	case si.Decl == nil || len(si.Decl.Slots) == 0:
+		out = sp.Bind(sp.Clone(stmts), sc, si)
+	default:
+		out = sp.entries(sp.Bind(sp.Clone(stmts), sc, si), si, callsite)
 	}
-	return sp.entries(bound, si, callsite)
+	if len(si.Children) == 0 {
+		return out
+	}
+	return WithFallback(out, fallback)
+}
+
+// WithFallback is content with an insertion's fallback standing wherever the
+// content renders nothing: in place of no content, in a branch of an `if` that
+// holds none, and as the fallback of a slot the content only forwards, which
+// renders nothing when what was supplied for that slot does. Looked for
+// through those three alone: a `for` that runs no times, or a component that
+// renders nothing, still renders the content.
+func WithFallback(stmts []Stmt, fallback func() []Stmt) []Stmt {
+	if len(stmts) == 0 {
+		return fallback()
+	}
+	if len(stmts) != 1 {
+		return stmts
+	}
+	switch n := stmts[0].(type) {
+	case *If:
+		if n.Catch != nil || n.FromTernary {
+			return stmts
+		}
+		n.Body = WithFallback(n.Body, fallback)
+		n.Else = WithFallback(n.Else, fallback)
+	case *SlotInst:
+		if n.Entry == nil && len(n.Children) == 0 {
+			n.Children = fallback()
+		}
+	}
+	return stmts
 }
 
 // entries replaces, in a population spliced for ins, every insertion of one of

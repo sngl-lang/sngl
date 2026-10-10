@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
 )
 
 func newMinimalHTMLGen(t *testing.T) *htmlGen {

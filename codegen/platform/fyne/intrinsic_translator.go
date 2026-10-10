@@ -7,10 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // fyneTranslator implements codegen.IntrinsicTranslator for fyne.
@@ -304,6 +304,9 @@ func methodCall(receiver ir.Expr, method string, args []ir.Expr, retType *ir.Typ
 }
 
 func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.Stmt {
+	if m := t.canvasByID[id]; m != nil && isImageDrawing(m.Node) {
+		return t.emitImageDrawingCreate(id)
+	}
 	if tag == "canvas" {
 		if _, ok := t.canvasByID[id]; ok {
 			return t.emitCanvasCreate(id)

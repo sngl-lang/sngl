@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/jdk"
+	"duckfam.us/sngl/internal/jdk"
 )
 
 // directBuild compiles Kotlin sources to a signed debug APK without Gradle.

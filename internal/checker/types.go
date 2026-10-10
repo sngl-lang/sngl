@@ -1,6 +1,6 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // Type aliases re-export all IR types so existing code using checker.X
 // continues to work. New code should import ir directly.

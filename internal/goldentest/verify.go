@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"duckfam.us/sngl/internal/toolchain"
 	"errors"
-	"git.duckfam.us/jonathan/sngl/internal/toolchain"
 )
 
 // recordPrefix is the archive directory holding what a host toolchain said

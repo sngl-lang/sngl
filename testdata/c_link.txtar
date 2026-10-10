@@ -45,11 +45,11 @@ package main
 import "C"
 
 import (
+	"duckfam.us/sngl/pkg/go/fynelayout"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -127,4 +127,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:2d8d0b0e71e581871a1a47d5d5b9f1fb
+pass sha256:2c420f289f323fba4de6cec7d9f7f7ec

@@ -94,8 +94,8 @@ package main
 import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
@@ -518,6 +518,6 @@ fun MainScreen() {
     }
 }
 -- run/go/bubbletea --
-pass sha256:b6983f332b856598260b43056f4dda7f
+pass sha256:c80799d945114de8b4276c4ace756172
 -- run/kotlin/android --
 pass sha256:e18fc4036f79d6d5c0bed778cb664563

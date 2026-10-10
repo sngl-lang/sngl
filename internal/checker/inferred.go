@@ -1,8 +1,8 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // typeFromInit is the type a var or const declaration holds: the one it was

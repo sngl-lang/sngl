@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os/exec"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 // goBuild runs `go build -trimpath -o out .` in dir and returns its combined

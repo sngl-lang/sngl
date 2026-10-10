@@ -24,20 +24,20 @@ package gtk4rt
 #include <graphene.h>
 #include <stdlib.h>
 
-extern void snglGoDispatch(int idx);
-extern void snglGoDispatchOnce(int idx);
+extern void snglRtDispatch(int idx);
+extern void snglRtDispatchOnce(int idx);
 
 // Signal trampoline. GTK invokes simple signals as (instance, user_data);
 // the idx we connected with arrives as user_data, unmangled.
 static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglRtDispatch(GPOINTER_TO_INT(data));
 }
 // A property notification is (instance, pspec, user_data).
 static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
     (void)instance;
     (void)pspec;
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglRtDispatch(GPOINTER_TO_INT(data));
 }
 static void sngl_connect(void* widget, const char* signal, int idx) {
     GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
@@ -49,7 +49,7 @@ static void sngl_connect(void* widget, const char* signal, int idx) {
 // ever quote the index again, so the closure has to be dropped here or every
 // Post leaks one.
 static gboolean sngl_idle_tramp(gpointer data) {
-    snglGoDispatchOnce(GPOINTER_TO_INT(data));
+    snglRtDispatchOnce(GPOINTER_TO_INT(data));
     return G_SOURCE_REMOVE;
 }
 static void sngl_gtk_idle_add(int idx) {
@@ -60,7 +60,7 @@ static void sngl_gtk_idle_add(int idx) {
 // is the same dispatch wired to a source that stays armed. Cancelling is
 // g_source_remove on the id this returns.
 static gboolean sngl_timeout_tramp(gpointer data) {
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglRtDispatch(GPOINTER_TO_INT(data));
     return G_SOURCE_CONTINUE;
 }
 static guint sngl_gtk_timeout_add(int ms, int idx) {
@@ -128,8 +128,8 @@ static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
     g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 
-// Activate trampoline forwards to the exported Go snglActivate.
-extern void snglActivate(GtkApplication* app, gpointer data);
+// Activate trampoline forwards to the exported Go snglRtActivate.
+extern void snglRtActivate(GtkApplication* app, gpointer data);
 
 // sngl_snapshot wraps the target widget in a GdkPaintable, snapshots it into a
 // render node, and rasterises via the cairo GSK renderer (no GdkSurface
@@ -211,8 +211,8 @@ import (
 	"time"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/cbind"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 )
 
 // Handle re-exports cbind.Handle so generated code references a single opaque
@@ -296,12 +296,19 @@ func BoxAppend(box, child Handle) {
 		AppAttach(child)
 		return
 	}
+	if adopted(box, child) {
+		return
+	}
 	C.gtk_box_append((*C.GtkBox)(p(box)), widget(child))
 }
 
 func BoxRemove(box, child Handle) {
 	if box == App {
 		AppDetach(child)
+		return
+	}
+	if t := topOf(box); t != nil && t.icon != nil && t.icon.pic == child {
+		t.icon.onChange, t.icon = nil, nil
 		return
 	}
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
@@ -346,6 +353,9 @@ func ParentOf(w Handle) Handle {
 func InsertBefore(box, anchor, child Handle) {
 	if box == App || anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
 		BoxAppend(box, child)
+		return
+	}
+	if adopted(box, child) {
 		return
 	}
 	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
@@ -592,11 +602,11 @@ func Post(fn func()) {
 	C.sngl_gtk_idle_add(C.int(idx))
 }
 
-//export snglGoDispatch
-func snglGoDispatch(idx C.int) { cbind.Dispatch(int(idx)) }
+//export snglRtDispatch
+func snglRtDispatch(idx C.int) { cbind.Dispatch(int(idx)) }
 
-//export snglGoDispatchOnce
-func snglGoDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
+//export snglRtDispatchOnce
+func snglRtDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
 
 // ---- Application run ----
 
@@ -606,8 +616,8 @@ var activateFn func(app Handle) Handle
 // added to the application, which is what keeps the loop running.
 var hidden bool
 
-//export snglActivate
-func snglActivate(app *C.GtkApplication, _ C.gpointer) {
+//export snglRtActivate
+func snglRtActivate(app *C.GtkApplication, _ C.gpointer) {
 	if activateFn == nil {
 		return
 	}
@@ -636,7 +646,7 @@ func Run(build func(app Handle) Handle) int {
 	C.g_signal_connect_data(
 		C.gpointer(unsafe.Pointer(app)),
 		sig,
-		C.GCallback(C.snglActivate),
+		C.GCallback(C.snglRtActivate),
 		nil, nil, 0,
 	)
 	return int(C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil))
@@ -687,6 +697,35 @@ func SnapshotModel(build func(app Handle) Handle, width, height int, outPath str
 	return os.WriteFile(outPath, data, 0o644)
 }
 
+// snapshotApp is registered once per process. The window a snapshot presents
+// outlives it and holds the application, which stays exported on the session
+// bus, so registering a second one under the same path is refused wherever a
+// session bus exists.
+var snapshotApp *C.GtkApplication
+
+// snapshotApplication registers without running the main loop, so build and
+// the pump execute on the current (locked) OS thread without re-entrancy.
+func snapshotApplication() (*C.GtkApplication, error) {
+	if snapshotApp != nil {
+		return snapshotApp, nil
+	}
+	appID, freeID := cstr("dev.sngl.snapshot")
+	defer freeID()
+	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
+	var gerr *C.GError
+	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
+		msg := "unknown error"
+		if gerr != nil {
+			msg = C.GoString(gerr.message)
+			C.g_error_free(gerr)
+		}
+		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
+		return nil, fmt.Errorf("g_application_register failed: %s", msg)
+	}
+	snapshotApp = app
+	return app, nil
+}
+
 // SnapshotModelBytes is SnapshotModel returning the PNG as bytes rather than
 // writing a file. Used by the test-agent snapshot bridge. The GTK bindings it
 // needs are compiled once here rather than per generated program.
@@ -731,36 +770,6 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 		return nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
 	}
 	return os.ReadFile(f.Name())
-}
-
-// snapshotApp is the application every snapshot in this process builds its
-// window in. One, because a registered application is exported on the
-// session bus for as long as a window holds it, and a second registered at
-// the same path fails with "An object is already exported".
-var snapshotApp *C.GtkApplication
-
-// snapshotApplication registers snapshotApp the first time it is asked for,
-// without running its main loop, so a build and the pump run on the locked
-// OS thread without re-entrancy.
-func snapshotApplication() (*C.GtkApplication, error) {
-	if snapshotApp != nil {
-		return snapshotApp, nil
-	}
-	appID, freeID := cstr("dev.sngl.snapshot")
-	defer freeID()
-	app := C.gtk_application_new(appID, C.G_APPLICATION_NON_UNIQUE)
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		msg := "no reason given"
-		if gerr != nil {
-			msg = C.GoString(gerr.message)
-			C.g_error_free(gerr)
-		}
-		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-		return nil, fmt.Errorf("g_application_register failed: %s", msg)
-	}
-	snapshotApp = app
-	return app, nil
 }
 
 // ---- Rich text ----

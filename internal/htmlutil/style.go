@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BuildCSSStyleIR builds an inline CSS style string from a slice of IR args

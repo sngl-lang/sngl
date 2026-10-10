@@ -3,7 +3,7 @@ package codegen
 import (
 	"context"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // IntrinsicTranslator is implemented by codegen platforms that consume

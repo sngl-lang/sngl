@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
 )
 
 func TestSanitizeDocID(t *testing.T) {
@@ -180,7 +180,7 @@ output { android }
 // canonical single-MainActivity manifest.
 func TestSingleActivityManifestUnchanged(t *testing.T) {
 	noGradle2 := false
-	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false)
+	files := directBuildFiles(Config{Package: "test.sngl.app", Gradle: &noGradle2}.withDefaults(), false, false, false)
 	var manifest string
 	var sawMainActivity bool
 	for _, f := range files {

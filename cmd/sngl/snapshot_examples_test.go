@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // A source that does not check is reported per example as a warning and the

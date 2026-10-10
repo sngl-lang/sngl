@@ -8,11 +8,11 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
-	"git.duckfam.us/jonathan/sngl/codegen/jsbundle"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/i18nruntime"
-	"git.duckfam.us/jonathan/sngl/codegen/scheme/js"
-	"git.duckfam.us/jonathan/sngl/ir"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen/jsbundle"
+	"duckfam.us/sngl/codegen/platform/html/i18nruntime"
+	"duckfam.us/sngl/codegen/scheme/js"
+	"duckfam.us/sngl/ir"
 )
 
 // hasI18nCalls reports whether the IR package uses i18n. When true the html

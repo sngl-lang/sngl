@@ -69,28 +69,17 @@ window {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 type Measurement struct {
 	Px  float64
@@ -562,21 +551,10 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -1079,8 +1057,8 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:84cc90dde2c9bc76361fcce4584e0c9c
+pass sha256:d666bb620b486efbe35275a183be268a
 -- run/go/gtk4 --
-pass sha256:7b0c89e4f99f067ee2c2cf13da2584a0
+pass sha256:2a7ecc42bab445931f8a39be1950759e
 -- run/none/html --
 pass sha256:54a27a668dfc7c4e080fdedbdd035193

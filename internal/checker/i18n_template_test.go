@@ -3,7 +3,7 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 func TestTemplateBuilderPlain(t *testing.T) {

@@ -3,8 +3,8 @@ package build
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // refuseBuildOnlyCalls reports a call only the build can answer -- an

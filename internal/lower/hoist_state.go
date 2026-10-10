@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passHoistState makes a `var` written in a block of a view state of that

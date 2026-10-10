@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 )
 
 func TestGenerateGoWASMBridge(t *testing.T) {

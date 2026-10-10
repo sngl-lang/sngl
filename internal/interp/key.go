@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/snglhost"
 )
 
 // Key identifies a node by where it is written. Defined in snglhost because a

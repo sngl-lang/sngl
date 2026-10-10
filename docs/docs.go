@@ -11,17 +11,17 @@ import (
 	"sort"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/docs/lookup"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/lib"
 
-	_ "git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	_ "duckfam.us/sngl/codegen/lang/javascript"
+	_ "duckfam.us/sngl/codegen/platform/html"
 )
 
 //go:embed *.md learn learn/_tour.md reference

@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // KeepLocalsRead is what a translator writes for a prop it renders nothing
 // for -- a platform's own `style`, which an override forwards rather than a

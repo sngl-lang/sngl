@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/codegen/platform/gtk4/gir"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for gtk4 via cairo.
@@ -79,7 +79,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "Style", "PathCmd":
+		case "Color", "Style":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -92,6 +92,9 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
+	}
+	if t.imageTagOf(m.ID) == imageDrawingTag {
+		return []ir.Stmt{t.paintImageDrawing(m)}
 	}
 	widget := cgoCast("GtkWidget", t.fieldRef(m.ID))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}

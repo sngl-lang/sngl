@@ -3,8 +3,8 @@ package testharness
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
 )
 
 func TestPromote_extractsBody(t *testing.T) {

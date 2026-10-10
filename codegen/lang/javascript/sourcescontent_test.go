@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 )
 
 // The map carries the SNGL text, so a consumer needs no path to resolve.

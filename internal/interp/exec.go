@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/opeval"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/opeval"
+	"duckfam.us/sngl/ir"
 )
 
 // AssertError is returned when an assertion fails. Msg is the structured

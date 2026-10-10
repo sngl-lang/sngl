@@ -3,7 +3,7 @@ package optimize
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A nil list is an absent one -- what a Go value's empty slice evaluates to --

@@ -14,15 +14,15 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	snglI18n "git.duckfam.us/jonathan/sngl/codegen/i18n"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
-	"git.duckfam.us/jonathan/sngl/internal/asset"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	snglI18n "duckfam.us/sngl/codegen/i18n"
+	"duckfam.us/sngl/codegen/lang/javascript"
+	"duckfam.us/sngl/internal/asset"
+	"duckfam.us/sngl/internal/htmlutil"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 func init() {
@@ -212,7 +212,7 @@ type windowShared struct {
 	i18nLoaded   bool
 	// Both describe the package, which no window changes.
 	usedComponents map[string]bool
-	prewalked      map[string]*ir.NodeInst
+	prewalked      *prewalkedNodes
 	slotsRewritten bool
 	// constAssets are the consts written once for every page (sharedConst),
 	// and constFiles the scripts that carry them.
@@ -568,7 +568,8 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
 		gen.shareConsts = shareConsts
-		gen.irBodyStmts = win.Body
+		content, icon := splitFavicon(win.Body)
+		gen.irBodyStmts = content
 		// Per document: a drawing is keyed by its node, and the document's nodes
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
@@ -582,8 +583,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowTitle)); ok {
 			gen.title = s
 		}
-		if s, ok := codegen.IRLiteralString(win.Surface.Prop(windowFavicon)); ok {
+		if s, ok := codegen.IRLiteralString(icon.Prop(ir.ImageSourceURL)); ok && !isImageDrawing(icon) {
 			gen.favicon = s
+		} else {
+			gen.faviconNode = icon
 		}
 		body, err := gen.generate()
 		if err != nil {
@@ -610,12 +613,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	return ctx.BuildMutation(mainStmts), nil
 }
 
-// The props of html's Window a document reads: what its <title> and its icon
-// are. They are the primitive's own, declared in html.sngl.
-const (
-	windowTitle   = "title"
-	windowFavicon = "favicon"
-)
+// The prop of html's Window a document reads for its <title>, declared in
+// html.sngl.
+const windowTitle = "title"
 
 // documentView is what a page is generated from: the Window it is written
 // from. A harness rendering its root component has none, and takes the vars
@@ -692,6 +692,9 @@ type htmlGen struct {
 	stylesheet string
 
 	favicon string
+	// faviconNode is the image source a document's icon is when no literal URL
+	// says it: a drawing, or a URL that reads state.
+	faviconNode *ir.NodeInst
 
 	wasmLoader string
 
@@ -903,16 +906,48 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	return g
 }
 
-// prewalkShared seeds idToNode from the cached package walk. The __n* ids are
-// the same for every window; the $N ids allocated while rendering are not, so
-// each window still gets its own map to add them to.
+// prewalkShared runs prewalkNode over every node the package and the document
+// hold, in the order the package's components, the document's body and the
+// package's funcs list them. The package's nodes are the same for every
+// document, so only their order is cached; the document's body is a clone of
+// its own and is walked each time.
 func (g *htmlGen) prewalkShared() {
-	if g.shared.prewalked == nil {
-		g.prewalkNodes()
-		g.shared.prewalked = maps.Clone(g.idToNode)
+	if g.pkg == nil {
 		return
 	}
-	maps.Copy(g.idToNode, g.shared.prewalked)
+	if g.shared.prewalked == nil {
+		var comps, funcs []*ir.NodeInst
+		for _, c := range g.pkg.Components {
+			if c == nil {
+				continue
+			}
+			comps = prewalkOrder(comps, c.Stmts)
+			for _, fn := range c.Funcs {
+				if fn != nil {
+					comps = prewalkOrder(comps, fn.Block)
+				}
+			}
+		}
+		for _, fn := range g.pkg.Funcs {
+			if fn != nil {
+				funcs = prewalkOrder(funcs, fn.Block)
+			}
+		}
+		g.shared.prewalked = &prewalkedNodes{components: comps, funcs: funcs}
+	}
+	for _, n := range g.shared.prewalked.components {
+		g.prewalkNode(n)
+	}
+	for _, n := range prewalkOrder(nil, g.irBodyStmts) {
+		g.prewalkNode(n)
+	}
+	for _, n := range g.shared.prewalked.funcs {
+		g.prewalkNode(n)
+	}
+}
+
+type prewalkedNodes struct {
+	components, funcs []*ir.NodeInst
 }
 
 // rewriteSlotCallsOnce runs the slot retarget for the first window only: the
@@ -950,12 +985,33 @@ func (g *htmlGen) allocID() string {
 	return id
 }
 
-// prewalkNodes seeds g.idToNode with every NodeInst carrying an `__n*` id from
-// the NoReactivity lowering. See generate().
-func (g *htmlGen) prewalkNodes() {
-	if g.pkg == nil {
-		return
+// prewalkNode records what a handler needs of a node before any is translated:
+// its element var, its declaration and its class rules. See generate().
+func (g *htmlGen) prewalkNode(n *ir.NodeInst) {
+	if strings.HasPrefix(n.ID, "__n") {
+		g.idToNode[n.ID] = n
+	} else if n.ID != "" {
+		// Allocated here rather than when the element is emitted:
+		// a handler is translated as its own node is reached, which
+		// may be before the node its updater writes to. The element
+		// var has to be known by then or the updater renders against
+		// the name the op used, which nothing declares.
+		g.nodeID(n)
 	}
+	// A node the lowering creates later — a `for` body's — gets its
+	// id then, so it never reaches idToNode. Every raw element of a
+	// package shares one declaration, so keeping the one seen here
+	// answers for those too.
+	if g.elemDecl == nil && isElement(n.Component) {
+		g.elemDecl = n.Component
+	}
+	for _, rule := range classRules(n) {
+		g.AddStyle(rule)
+	}
+}
+
+// prewalkOrder appends the nodes prewalkNode visits in stmts to out.
+func prewalkOrder(out []*ir.NodeInst, stmts []ir.Stmt) []*ir.NodeInst {
 	var visit func(s ir.Stmt)
 	visitStmts := func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -974,26 +1030,7 @@ func (g *htmlGen) prewalkNodes() {
 				visitStmts(n.Children)
 				return
 			}
-			if strings.HasPrefix(n.ID, "__n") {
-				g.idToNode[n.ID] = n
-			} else if n.ID != "" {
-				// Allocated here rather than when the element is emitted:
-				// a handler is translated as its own node is reached, which
-				// may be before the node its updater writes to. The element
-				// var has to be known by then or the updater renders against
-				// the name the op used, which nothing declares.
-				g.nodeID(n)
-			}
-			// A node the lowering creates later — a `for` body's — gets its
-			// id then, so it never reaches idToNode. Every raw element of a
-			// package shares one declaration, so keeping the one seen here
-			// answers for those too.
-			if g.elemDecl == nil && isElement(n.Component) {
-				g.elemDecl = n.Component
-			}
-			for _, rule := range classRules(n) {
-				g.AddStyle(rule)
-			}
+			out = append(out, n)
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
 				if h.Func != nil {
@@ -1013,28 +1050,11 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 		default:
-			panic(fmt.Sprintf("html.collectNodeIDs: unhandled ir.Stmt %T", n))
+			panic(fmt.Sprintf("html.prewalkOrder: unhandled ir.Stmt %T", n))
 		}
 	}
-	for _, c := range g.pkg.Components {
-		if c == nil {
-			continue
-		}
-		visitStmts(c.Stmts)
-		for _, fn := range c.Funcs {
-			if fn != nil {
-				visitStmts(fn.Block)
-			}
-		}
-	}
-	// The document's own body, which is a clone of the package's and so
-	// reached from nothing above.
-	visitStmts(g.irBodyStmts)
-	for _, fn := range g.pkg.Funcs {
-		if fn != nil {
-			visitStmts(fn.Block)
-		}
-	}
+	visitStmts(stmts)
+	return out
 }
 
 func slotIndexFromRenderFunc(name string) string {
@@ -1192,6 +1212,11 @@ func (g *htmlGen) generate() (string, error) {
 	g.rewriteSlotCallsOnce()
 	g.rewriteDocumentSlotCalls()
 
+	var icon strings.Builder
+	if g.faviconNode != nil {
+		g.renderIRNode(&icon, g.faviconNode, 1)
+	}
+
 	var b strings.Builder
 
 	b.WriteString("<!DOCTYPE html>\n<html><head>\n")
@@ -1203,6 +1228,7 @@ func (g *htmlGen) generate() (string, error) {
 	if g.favicon != "" {
 		fmt.Fprintf(&b, "  <link rel=\"icon\" href=\"%s\">\n", html.EscapeString(g.favicon))
 	}
+	b.WriteString(icon.String())
 	if g.stylesheet != "" {
 		fmt.Fprintf(&b, "  <link rel=\"stylesheet\" href=\"%s\">\n", html.EscapeString(g.stylesheet))
 	}
@@ -1854,6 +1880,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if t, ok := rawElementTag(n); ok {
 		tag = t
 	}
+	tag = elementTag(tag)
+	favicon := n == g.faviconNode
+	if favicon {
+		tag = "link"
+	}
 
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
@@ -1871,9 +1902,22 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			g.idToNode[id] = n
 		}
 	}
+	if favicon {
+		if id == "" {
+			id = g.nodeID(n)
+		}
+		g.initWrites = append(g.initWrites, updateFunc{
+			funcName: fmt.Sprintf("$u_%s_icon", id[1:]),
+			body:     faviconInit(id),
+			initOnly: true,
+		})
+	}
 	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n), image: isImageDrawing(n)}
+		if cs.image {
+			g.ctx.Helpers[imageDrawHelper] = true
+		}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -1891,7 +1935,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := nodeInlineCSS(n)
-	if css := canvasScalingCSS(n, drawing != nil); css != "" {
+	if css := canvasScalingCSS(n, drawing != nil && !isImageDrawing(n)); css != "" {
 		if style != "" {
 			style += ";"
 		}
@@ -1900,6 +1944,14 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 
 	// innerText and innerHTML render as element content, not attributes.
 	props := nodeProps(n)
+	if isImageSource(n) {
+		props, style = sourceAttrs(props, favicon), ""
+		if !favicon {
+			for _, r := range imageRules {
+				g.AddStyle(r)
+			}
+		}
+	}
 	// The tag names the element rather than being one of its attributes.
 	delete(props, tagProp)
 	var attrs strings.Builder
@@ -2571,6 +2623,9 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	}
 	if g.ctx.Helpers["native:_snglDrawImage"] {
 		b.WriteString(snglDrawImageHelper)
+	}
+	if g.ctx.Helpers[imageDrawHelper] {
+		b.WriteString(snglImageDrawHelper)
 	}
 	b.WriteString(snglCanvasHelper)
 }
@@ -3777,6 +3832,9 @@ func (g *htmlGen) renderDialog(b *strings.Builder, n *ir.NodeInst, depth int) {
 	fmt.Fprintf(b, "%s  <header>\n%s    <span>%s</span>\n", indent, indent, escapeTextContent(title))
 	fmt.Fprintf(b, "%s    <button id=%q aria-label=\"Close\">\n%s      <span>×</span>\n%s    </button>\n%s  </header>\n", indent, close, indent, indent, indent)
 	for _, s := range ir.WidgetChildren(n) {
+		if c, ok := s.(*ir.NodeInst); ok && isImageSource(c) {
+			continue
+		}
 		g.renderIRStmt(b, s, depth+1)
 	}
 	fmt.Fprintf(b, "%s</dialog>\n", indent)

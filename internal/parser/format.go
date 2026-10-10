@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // Format formats a parsed document back to source.

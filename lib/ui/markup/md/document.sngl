@@ -209,7 +209,9 @@ component _list3(b _Block) ui.node {
 component _runs(runs list<_Run>) markup.span {
     for var r = runs {
         if r.image != "" {
-            markup.image(src=r.image, alt=r.text)
+            markup.image(alt=r.text) {
+                ui.remote(url=r.image)
+            }
         } else if r.href != "" {
             markup.link(href=r.href) {
                 for var p = r.parts {

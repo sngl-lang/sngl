@@ -3,8 +3,8 @@ package codegen
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A `measurement` is a magnitude per base: `px`, a device-independent pixel,

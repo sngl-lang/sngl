@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/goldentest"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/goldentest"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/lib"
 )
 
 // TestProvidedDocsSurviveBuilds holds the compiler to what sharing a target's

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // intrinsicPrefix is the namespace every fyne primitive's #[intrinsic] id
@@ -67,9 +67,12 @@ type fyneNative struct {
 type fyneSpec struct {
 	// toplevel is the platform's own Toplevel (toplevelSpec).
 	toplevel bool
-	New      fyneNative
-	Args     []fyneArg
-	GoType   fyneNative
+	// slotBox is the field holding the *fyne.Container a render slot inside the
+	// widget renders into, for a widget that is not one itself.
+	slotBox string
+	New     fyneNative
+	Args    []fyneArg
+	GoType  fyneNative
 	// Add is the method a multi-child container attaches each child with;
 	// Content the field a single-child container assigns its child to. Which
 	// applies is decided by Content being set, because that is the case with
@@ -215,6 +218,9 @@ func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	}
 	if tag == toplevelTag {
 		return toplevelSpec(props), nil
+	}
+	if sp := imageSpecFor(tag, props); sp != nil {
+		return sp, nil
 	}
 	raw := props[specPropName]
 	if raw == nil {

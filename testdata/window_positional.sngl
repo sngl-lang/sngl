@@ -1,9 +1,9 @@
 import . "sngl:ui"
 
-window #home("Home", "/") {
+window #home("Home") {
     text(value="Welcome")
 }
 
-window #settings("Settings", "/settings.html") {
+window #settings("Settings") {
     text(value="Config")
 }

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/kotlin"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
@@ -242,7 +242,7 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib
-// structs (Style/PathCmd) plus the SNGL-color→Compose-Color helper.
+// struct (Style) plus the SNGL-color→Compose-Color helper.
 // These structs are stdlib-only and aren't carried on pkg.Structs, so — like
 // canvasutil does for the Go platforms — they're materialized here. declared is
 // the set of user-declared struct names (data classes already emitted) so a
@@ -261,15 +261,6 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 		b.WriteString("    var lineJoin: String = \"miter\",\n")
 		b.WriteString("    var fontSize: Double = 16.0,\n")
 		b.WriteString("    var fontFamily: String = \"sans-serif\"\n")
-		b.WriteString(")\n\n")
-	}
-	if _, ok := declared["PathCmd"]; !ok {
-		b.WriteString("data class PathCmd(\n")
-		b.WriteString("    var op: String = \"\",\n")
-		b.WriteString("    var x: Double = 0.0,\n    var y: Double = 0.0,\n")
-		b.WriteString("    var cx1: Double = 0.0,\n    var cy1: Double = 0.0,\n")
-		b.WriteString("    var cx2: Double = 0.0,\n    var cy2: Double = 0.0,\n")
-		b.WriteString("    var r: Double = 0.0\n")
 		b.WriteString(")\n\n")
 	}
 	// Two DrawScope extensions the shape overrides call, for the drawing this
@@ -300,15 +291,28 @@ const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: 
     })
 }
 
-// A file that will not decode draws nothing rather than failing the frame,
+// A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
 fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
-    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
-        image = bmp.asImageBitmap(),
+        image = bmp,
         dstOffset = IntOffset(x.toInt(), y.toInt()),
         dstSize = IntSize(w.toInt(), h.toInt()),
     )
+}
+
+// A drawing painted in place of a picture: its own space mapped onto the box
+// and clipped to it, until snglDrawLeave.
+fun DrawScope.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+    drawContext.canvas.save()
+    drawContext.canvas.translate(x, y)
+    drawContext.canvas.scale(sx, sy)
+    drawContext.canvas.clipRect(0f, 0f, w, h)
+}
+
+fun DrawScope.snglDrawLeave() {
+    drawContext.canvas.restore()
 }
 
 `

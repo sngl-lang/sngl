@@ -3,7 +3,7 @@ package codegen
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // BuildOnlyDiagnostic refuses call, which only the build can answer and which

@@ -12,7 +12,7 @@ output {
     }
 }
 
-import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
+import "go:duckfam.us/sngl/docs/lookup"
 import "../docui"
 import "sngl:platform/html"
 

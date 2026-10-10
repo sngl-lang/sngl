@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // HelperSet records which lang-emitted runtime helpers and stdlib

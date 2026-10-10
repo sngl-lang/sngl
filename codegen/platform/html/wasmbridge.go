@@ -4,8 +4,8 @@ import (
 	"io/fs"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // wasmPackage describes an imported package that needs WASM compilation.

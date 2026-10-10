@@ -3,7 +3,7 @@ package lookup_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"duckfam.us/sngl/docs/lookup"
 )
 
 // A target's build-directive node is the declaration an output block writes

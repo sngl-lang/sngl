@@ -1,6 +1,6 @@
 package lower
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // slotFlows makes the flow itself the render slot when a reactive `if` or
 // `for` sits among its spans, for a target with no container a span can be

@@ -5,7 +5,7 @@ package html_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"duckfam.us/sngl/internal/testutil"
 )
 
 func TestComponentFixtures(t *testing.T) {

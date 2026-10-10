@@ -3,8 +3,8 @@ package htmlutil
 import (
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A unit value is a magnitude and the base it is in; CSS is where that gets

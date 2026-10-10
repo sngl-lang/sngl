@@ -964,8 +964,8 @@ position is its record (`Component.Record`, a struct `<name>__record` declared
 beside it, which `promoteForeignStructs` declares in a program that builds
 one), and in a family position (a return position, a slot's content) it is the
 component: `checker.dataRecord` asks `familyPosition`. `bindFamily` recognises
-the self-reference, and refuses another component naming a data component as
-its family; `checkDataComponent` refuses a block and a slot of anything but
+the self-reference, and refuses another *bodyless* component naming a data
+component as its family; `checkDataComponent` refuses a block and a slot of anything but
 records or content (below), since a record holds its props and nothing else. A slot
 of records is a field of the record, so a record may be a tree --
 `component treeItem(label string, children ...component treeItem) treeItem`
@@ -973,6 +973,18 @@ of records is a field of the record, so a record may be a tree --
 (`testdata/family_data_nested.sngl`). The self-reference is read off the source
 before the signature resolves, where the name finds nothing else: a
 `component node(…) node` in a body that sees `ui.node` returns that.
+
+**A component with a body that names a data family composes its records**,
+and is no record itself: `component moveTo(x float, y float) _step { _step(op=PathOp.moveTo, x=x, y=y) }`. A library declaration has to say so,
+since it is never inferred; a program's may leave it to the body, which
+answers the same. A data family's props are its record's fields rather than
+props its members share, so `checkFamilyMember` asks nothing of a composer,
+which may declare some of them under its own meaning and omit the rest. That
+is how a record stays private while a program writes it: `sngl:ui/draw`'s
+`path` takes `steps ...component _step`, and `moveTo`, `lineTo`, `bezierTo`,
+`arcTo` and `close` each compose one `_step` with only its own fields set, so
+an override reads `steps` as `list<_step__record>` and switches on `op`
+(`testdata/draw_path_steps.sngl`, `draw_path_steps.txtar`).
 
 **A data component may declare content**: one rest slot of anything but
 records, `component tab(label string, content ...component node) tab`, which
@@ -1881,6 +1893,17 @@ already meant before entries existed, so content reaches a population only
 through an entry. And **`...` is refused in an invocation list**
 (`error_slot_invocation_rest.sngl`), with a message naming the fallback: a rest
 entry would be filled by exactly the block that is already the fallback.
+
+**A fallback renders wherever the supplied content renders nothing**
+(Jonathan's call), not only where none was supplied: the branch of an `if`
+that holds none, and a forward of a slot its own caller left empty -- an
+avatar forwarding its `src` to its image, which an image's placeholder needs.
+The splicer states it statically (`ir.WithFallback`: an empty list, an `if`'s
+branches, a forward's own fallback) and the interpreter at mount
+(`slotInst`, which mounts the fallback when the content mounted no node).
+The fallback is spliced against the callee's call site, which it always
+should have been: a slot insertion inside a fallback used to be left
+unsubstituted. `testdata/slot_fallback_where_content_renders_nothing.sngl`.
 
 `ir.SlotDecl.Slots` holds the entries, with `Index` their position in the
 list; an insertion's populations are `ir.SlotInst.Slots`, and an insertion *of*
@@ -3284,6 +3307,68 @@ promoted struct's field types too; a library body may render its own
 unexported components; and a registered build intrinsic is handed its call, so
 it can build values of its declared return type.
 
+### Images
+
+**Where an image's pixels come from is a family, `ui.imageSource`**
+(`lib/ui/image.sngl`), so a drawing whose shapes read state repaints by the
+reactivity every canvas already has rather than a second one a value type
+would need. Its members are `ui.file(path)` -- a `file:` asset the build
+copies, which a Go target embeds (`golang.EmitAssetEmbed`, `assets.go`) and
+android ships in the app's assets -- `ui.remote(url)`, fetched while the
+program runs, and `draw.image(width, height) { shapes }`. Every container
+takes a source through a slot: `ui.image`'s `src` (`option`, with a
+`placeholder` slot shown where it holds none), `avatar`'s, `markup.image`'s,
+`draw.canvasImage`'s, and a window's `favicon`. There is no `src=` string:
+one spelling (Jonathan's call). `draw.image` and `ui.image` collide under a
+double dot import, and dot imports are an anti-pattern, so that is the cost
+of the name rather than a reason against it.
+
+**Each member is overridden per target to a primitive of the target's own**,
+and the shared parts read the primitive structurally: a URL source carries a
+`url` prop (`ir.ImageSourceURL`), and a drawing is a shape container in the
+image source family, which `passShapeDraw`, `passCanvasInstances`,
+`passCanvasReactivity` and `codegen.Canvases` already find. What a container
+does with it is each target's:
+
+- html: an image is a `<span class="sngl-image">` frame carrying the style,
+  the click and the description (`role="img"`, `aria-label`), around the
+  `<img>` its source renders (`codegen/platform/html/image.go`). A drawing
+  paints into a canvas of its own and writes a data URL into `src`
+  (`_snglImageDraw`) on every repaint. The document's favicon is the source
+  its Window override put beside the content (`splitFavicon`): a literal URL
+  is the head's `<link rel="icon">`, anything else a link answering a write
+  of `src` with its `href`.
+- fyne: `fynelayout.Image`, a widget whose `Box` holds the source -- an
+  `ImageSource` showing the picture itself and reporting `@load`/`@error` to
+  the image it lands in -- or the placeholder. A drawn source is rasterised
+  and handed over (`SetImage`). A window takes a source as its icon
+  (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
+  (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
+  inside renders into.
+- gtk4: a gtk4rt image box and a `GtkPicture` per source, which fits itself to
+  the image it lands in by watching its own `notify::parent`. A drawing makes
+  every gtk4 build inline cgo (a canvas does), so the image runtime is called
+  from cgo-mode code too, which is why gtk4rt's exported callbacks are
+  `snglRt*`: the cgo scaffold exports `snglGoDispatch` and `snglActivate` of
+  its own. GTK 4 sets a window's icon by name only, so the picture is written
+  into a private icon-theme directory (`iconize`).
+- bubbletea: a drawing is a canvas; a URL is half-block cells fitted into a
+  fixed box (`tui.Picture`), and a fetch arriving sends the program a message
+  (`snglimage.OnArrive`).
+- android: a file is `SnglAssetImage`, shipped Kotlin reading the app's
+  assets; a drawing is a `Canvas`; a URL draws nothing, no loader shipping.
+- none: the image holds its source or placeholder, which a snapshot prints.
+
+`canvasImage` paints its source through a shape primitive whose rest slot is
+the source family (`ir.IsImageSourceHost`): `passShapeDraw` runs its `@url`
+handler with the URL in the payload, or brackets a drawing's shapes between
+`@enter` and `@leave`, which map the drawing's space onto the box and clip --
+so a drawing in a drawing is painted in place. `pkg/go/snglimage` is where
+the Go targets load bytes: embedded, from the working directory, or fetched
+once per URL. `testdata/image_sources.txtar`,
+`codegen/platform/html/image_browser_test.go` and
+`cmd/sngl/testdata/image_sources_runs.txt`.
+
 ### Plugins
 
 A new family, language, platform or import scheme is a SNGL package rather than
@@ -3701,7 +3786,7 @@ The `lib/` directory holds **SNGL stdlib declarations** (language-agnostic `.sng
 When adding a new stdlib package that needs runtime support:
 1. Declare the SNGL surface in `lib/<name>/`, one directory per importable package.
 2. For each target language that needs runtime support, create `pkg/<lang>/<name>/`.
-3. The codegen for that language emits `import "git.duckfam.us/jonathan/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
+3. The codegen for that language emits `import "duckfam.us/sngl/pkg/<lang>/<name>"` and translates stdlib calls to that package's API.
 
 ### Built-in Generic Types
 
@@ -4084,7 +4169,7 @@ targets in parallel) is not a saving.
   and is tuned to one machine besides.
 - **The docs site (`go tool docsgen`) is the stress case**: one html build
   writing ~1200 files, where per-page costs dominate. Its compile step is
-  `sngl generate --allow-eval=go:git.duckfam.us/jonathan/sngl/docs --allow-eval=go:git.duckfam.us/jonathan/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
+  `sngl generate --allow-eval=go:duckfam.us/sngl/docs --allow-eval=go:duckfam.us/sngl/docs/lookup --platform html --lang none website.sngl` once `internal/playground/assets/sngl.wasm` is
   staged.
 - **What another process produces is SNGL, and it is stored.** A step
   whose output the compiler reads but did not write -- the compile-time

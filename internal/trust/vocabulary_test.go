@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // Every grant the config file is written with is a member of

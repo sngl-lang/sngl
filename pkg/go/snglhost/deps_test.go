@@ -21,7 +21,7 @@ func TestTheProtocolCarriesNoCompiler(t *testing.T) {
 	if err != nil {
 		t.Skipf("go list unavailable: %v", err)
 	}
-	const mod = "git.duckfam.us/jonathan/sngl/"
+	const mod = "duckfam.us/sngl/"
 	allowed := map[string]bool{
 		mod + "internal/testrpc": true,
 		mod + "pkg/go/snglhost":  true,

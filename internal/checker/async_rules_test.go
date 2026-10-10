@@ -3,7 +3,7 @@ package checker_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // hasError returns true if any error diagnostic contains the substring needle.

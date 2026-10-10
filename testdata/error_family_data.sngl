@@ -15,7 +15,7 @@ component clash(run string, @run()) clash // ERROR(check) "component clash: even
 
 component holder(name string, inner component ui.node) holder // ERROR(check) "component holder names itself as its family, so it is data, whose props, events, slots of records and one rest slot of content are all it declares: inner"
 
-component apple(name string, ripe bool = true) fruit // ERROR(check) "component apple names fruit as its family, which is data: only fruit itself is one"
+component apple(name string, ripe bool = true) fruit // ERROR(check) "component apple names fruit as its family, which is data: only fruit itself is a record, and a component composing them has a body"
 
 component basket(fruits ...component fruit) ui.node {
     fruits // ERROR(check) "slot \"fruits\" is a list of fruit, read as a value and never inserted"

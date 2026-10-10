@@ -3,7 +3,7 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passCanvasInstances makes each canvas under a `for` a component built at

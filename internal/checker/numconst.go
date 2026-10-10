@@ -3,8 +3,8 @@ package checker
 import (
 	"math/big"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // untypedNumericConst reports whether expr is an untyped numeric constant — a

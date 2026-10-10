@@ -8,7 +8,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	fynetest "fyne.io/fyne/v2/test"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/fynelayout"
 )
 
 // A canvas object refreshes itself when its minimum changes, and that reaches

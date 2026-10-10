@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // toplevelTag is fyne.sngl's `Toplevel`, the primitive `ui.window` is on this
@@ -32,12 +32,14 @@ func toplevelSpec(props map[string]ir.Expr) *fyneSpec {
 			"visible": {Field: "OnVisible", Signature: "func(visible bool)"},
 		},
 		toplevel: true,
+		slotBox:  "Container",
 	}
 }
 
 // appSlotArg is the argument a render slot is handed for its container: the
-// application at the root of the package body, and a Toplevel's box inside
-// one, since a slot renders into a *fyne.Container.
+// application at the root of the package body, and the box inside a widget
+// that holds one -- a Toplevel, an image -- since a slot renders into a
+// *fyne.Container.
 func (t *fyneTranslator) appSlotArg(cs *ir.CallStmt) *ir.CallStmt {
 	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.Lowered.SlotRender || len(cs.Call.Args) != 1 {
 		return nil
@@ -49,10 +51,10 @@ func (t *fyneTranslator) appSlotArg(cs *ir.CallStmt) *ir.CallStmt {
 		v = &ir.Ident{Name: fyneNative{Path: fyneLayoutImportPath, Name: "App"}.qualify(t.gc), Type: ir.TypDyn}
 	default:
 		sp := t.specs[codegen.IdentBareName(arg)]
-		if sp == nil || !sp.toplevel {
+		if sp == nil || sp.slotBox == "" {
 			return nil
 		}
-		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: "Container", Type: ir.TypDyn}
+		v = &ir.Select{Operand: t.qualifyParentExpr(arg), Field: sp.slotBox, Type: ir.TypDyn}
 	}
 	call := *cs.Call
 	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: v}}

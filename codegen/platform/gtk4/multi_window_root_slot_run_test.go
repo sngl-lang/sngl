@@ -56,7 +56,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 func newApp() gtk4rt.Handle {
@@ -94,7 +94,7 @@ const multiWindowDriver = `package main
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 func TestEachWindowKeepsItsRows(t *testing.T) {

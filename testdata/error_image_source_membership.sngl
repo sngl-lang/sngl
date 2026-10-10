@@ -1,0 +1,26 @@
+// An image takes its pixels from a member of `ui.imageSource` and nothing
+// else: a widget in its source slot is a membership error, as a shape in a vbox
+// is, and so is a source anywhere a widget goes. The source's string spelling
+// is gone with the prop.
+
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main ui.node {
+    ui.image {
+        ui.text(value="not a picture") // ERROR(check) "expected imageSource component in image, got text"
+    }
+    ui.vbox {
+        ui.file(path="logo.png") // ERROR(check) "expected node component in vbox, got file"
+    }
+    ui.image(src="logo.png") // ERROR(check) "unknown prop \"src\" on component image"
+    draw.canvas(width=10px, height=10px) {
+        draw.canvasImage(x=0.0, y=0.0, w=10.0, h=10.0) {
+            draw.rect(x=0.0, y=0.0, w=1.0, h=1.0) // ERROR(check) "expected imageSource component in canvasImage, got rect"
+        }
+    }
+}
+
+ui.window {
+    main
+}

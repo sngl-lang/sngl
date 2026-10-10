@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // EmitCHeader implements codegen.CCompiler for the Go/cgo translator.

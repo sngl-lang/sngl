@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // InlayHintResult is a single inlay-hint placement: position to render at,

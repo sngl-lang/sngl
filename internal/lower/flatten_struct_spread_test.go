@@ -3,7 +3,7 @@ package lower
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 func intLit(n string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: n} }

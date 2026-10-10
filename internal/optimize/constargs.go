@@ -3,8 +3,8 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // A const parameter or prop is folded by contract. The checker has held every

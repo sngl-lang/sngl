@@ -4,6 +4,8 @@ import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import gen "sngl:x/gen"
+import ui "sngl:ui"
+import family "sngl:family"
 
 // Go's keywords.
 const keywords = [
@@ -155,7 +157,7 @@ component language(
     const goVersion     string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
-    // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
+    // duckfam.us/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     const goModExtra    string,
@@ -271,7 +273,7 @@ enum NativeFlag {
 // The runtime package the drawing surface lives in, named once: a mark
 // argument may be a const, so the twenty declarations below do not each spell
 // the import path.
-const _canvasPkg = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+const _canvasPkg = "duckfam.us/sngl/pkg/go/canvas"
 
 // The Go type of the draw handler's context parameter. Named through this
 // package's own `native`, which is the point of registering a package's macros
@@ -330,6 +332,15 @@ func DrawContext.closePath()
 #[native(_canvasPkg, "canvas.Context.PaintPath", method)]
 func DrawContext.paintPath()
 
+#[native(_canvasPkg, "canvas.Context.Translate", method)]
+func DrawContext.translate(x float, y float)
+
+#[native(_canvasPkg, "canvas.Context.Scale", method)]
+func DrawContext.scale(x float, y float)
+
+#[native(_canvasPkg, "canvas.Context.ClipRect", method)]
+func DrawContext.clipRect(x float, y float, w float, h float)
+
 #[native(_canvasPkg, "canvas.Context.Text", method)]
 func DrawContext.text(x float, y float, content string)
 
@@ -350,6 +361,25 @@ struct DrawEvent {
 
 #[marks.intrinsic("go:draw")]
 component draw(@draw(e DrawEvent)) shapes.shape
+
+// What a `drawSource` paints a carried or fetched image with: the context, and
+// the URL its source names.
+struct SourceEvent {
+    ctx DrawContext
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[marks.intrinsic("go:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
 
 // The style setters, written once rather than per shape. The context keeps a
 // pending style that the next primitive consumes, so this is the whole of
@@ -412,7 +442,7 @@ const component shapes.path[language] {
     draw(@draw(e) {
         e.ctx.save()
         applyStyle(e.ctx, style)
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
             }
@@ -444,11 +474,24 @@ const component shapes.canvasText[language] {
 }
 
 const component shapes.canvasImage[language] {
-    draw(@draw(e) {
-        e.ctx.save()
-        e.ctx.image(x, y, w, h, src)
-        e.ctx.restore()
-    })
+    drawSource(
+        @url(e) {
+            e.ctx.save()
+            e.ctx.image(x, y, w, h, e.url)
+            e.ctx.restore()
+        },
+        @enter(e) {
+            e.ctx.save()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.clipRect(0.0, 0.0, float(e.width), float(e.height))
+        },
+        @leave(e) {
+            e.ctx.restore()
+        },
+    ) {
+        src
+    }
 }
 
 // --- Channels ---

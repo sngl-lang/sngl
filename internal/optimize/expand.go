@@ -3,7 +3,7 @@ package optimize
 import (
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // maxStaticUnroll bounds an unroll on a target that has no alternative to

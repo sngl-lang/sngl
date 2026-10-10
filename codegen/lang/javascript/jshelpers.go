@@ -6,8 +6,8 @@ package javascript
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // translateIRLiteral renders an ir.Literal to its JS literal text. Used by

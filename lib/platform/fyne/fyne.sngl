@@ -1,6 +1,7 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import markup "sngl:ui/markup"
+import shapes "sngl:ui/draw"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
@@ -88,6 +89,8 @@ const component ui.window[platform] {
         boundary(@error(e) { error(e) }) {
             content
         }
+        #[family.crosses]
+        favicon
     }
 }
 
@@ -379,21 +382,6 @@ const component Hyperlink(style ui.Style = ui.Style{}) ui.node {
     ) {}
 }
 
-// `canvas.Image` is constructed from a URI, which this platform has no
-// expression to build, so the image is empty. From a resource rather than a
-// URI because NewImageFromURI dereferences what it is given and a nil URI is
-// the only one available here.
-const component Image(style ui.Style = ui.Style{}) ui.node {
-    Widget(
-        spec = Spec{
-            new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
-            args = [Arg{raw="nil"}],
-            goType = Native{path="fyne.io/fyne/v2/canvas", name="*Image"},
-        },
-        style = {...style},
-    ) {}
-}
-
 const component Spacer(style ui.Style = ui.Style{}) ui.node {
     Widget(
         spec = Spec{
@@ -636,8 +624,62 @@ const component ui.link[platform] {
     Hyperlink(style={...style}) {}
 }
 
+// --- Images ---
+//
+// An image is this platform's runtime and not a Fyne widget: a box holding the
+// source it shows, fitted as `fit` says, or the placeholder where it holds
+// none. A source shows its picture itself -- the file a URL names, carried in
+// the program or fetched, or the picture a drawing paints -- and reports to the
+// image whether it arrived. In a window, a source is its icon.
+#[intrinsic("fyne:Image")]
+component Image(
+    fit     string,
+    style   ui.Style,
+    @click(),
+    @load(),
+    @failed(message string),
+    content ...component ui.node,
+) ui.node
+
+#[intrinsic("fyne:ImageUrl")]
+component ImageUrl(url string) ui.imageSource
+
+#[intrinsic("fyne:ImageDrawing")]
+component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
+
 const component ui.image[platform] {
-    Image(style={...style}) {}
+    Image(
+        fit = string(fit),
+        style = {...style},
+        @click {
+            click()
+        },
+        @load {
+            load()
+        },
+        @failed(m) {
+            error({message=m, kind="image"})
+        },
+    ) {
+        #[family.crosses]
+        src {
+            placeholder
+        }
+    }
+}
+
+const component ui.file[platform] {
+    ImageUrl(url=path)
+}
+
+const component ui.remote[platform] {
+    ImageUrl(url=url)
+}
+
+const component shapes.image[platform] {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 const component ui.checkbox[platform] {

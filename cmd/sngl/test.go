@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/build"
-	"git.duckfam.us/jonathan/sngl/internal/interp/testrunner"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/build"
+	"duckfam.us/sngl/internal/interp/testrunner"
+	"duckfam.us/sngl/ir"
 	"github.com/spf13/cobra"
 )
 

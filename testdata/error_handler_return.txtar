@@ -469,7 +469,7 @@ func newTestComponent() *Model {
 
 package main
 
-import "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+import "duckfam.us/sngl/pkg/go/gtk4rt"
 
 func main() {
 	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
@@ -482,7 +482,7 @@ func main() {
 package main
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/gtk4rt"
 )
 
 type ErrorEvent struct {
@@ -864,7 +864,7 @@ pass sha256:0fe7a74155baac0d4864a4436a75ded5
 -- run/go/fyne --
 pass sha256:5664d1084bcbee756ab15f28561ffcd7
 -- run/go/gtk4 --
-pass sha256:7cfab22d2c149b19e72cf6df517a3141
+pass sha256:77a56ad91e0037ae99b59ec345c19852
 -- run/go/html --
 pass sha256:777c09133f24051c4dd944ed019b74da
 -- run/kotlin/android --

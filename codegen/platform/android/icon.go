@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
+	"duckfam.us/sngl/codegen"
 	"golang.org/x/image/draw"
 )
 

@@ -57,10 +57,10 @@ package main
 
 import (
 	"charm.land/bubbletea/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -80,17 +80,6 @@ type Style struct {
 	LineJoin    string
 	FontSize    float64
 	FontFamily  string
-}
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -323,6 +312,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:bf1a41e688225e3a352852d301753a68
+pass sha256:8948269c822584794bcfac95b94ac0c3
 -- run/none/html --
 pass sha256:6ee5c7a674c1bad50ab7cb62430fdfe9

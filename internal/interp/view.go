@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // maxRenderDepth bounds how deeply one mount may nest component
@@ -768,8 +768,8 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 }
 
 // slotInst mounts one insertion point: the content its call site supplied, or
-// the insertion's own block as the fallback. ir.SlotBody makes that choice, so
-// the rule is the splicer's and this does not decide it a second time.
+// the insertion's own block as the fallback where it supplied none or what it
+// supplied renders nothing -- the rule ir.WithFallback states for the splicer.
 //
 // Supplied content is mounted in the *caller's* scope with the caller's frame
 // current, because that content is written in the caller's body: a slot inside
@@ -817,10 +817,17 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 		defer func() { m.entries = m.entries[:len(m.entries)-1] }()
 	}
 	m.pop()
-	defer m.push(frame)
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
-	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	nodes, err := m.stmts(cenv, body, path+"/supplied:"+si.Name)
+	m.push(frame)
+	// Content that renders nothing is the fallback's place as much as no
+	// content is: the branch of an `if` that holds none, a forward of a slot
+	// its own caller left empty.
+	if err != nil || len(nodes) > 0 || len(si.Children) == 0 {
+		return nodes, err
+	}
+	return m.stmts(env, si.Children, path)
 }
 
 // entryInst mounts an insertion of a component entry: what the insertion

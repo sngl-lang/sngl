@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"fmt"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 //go:embed preview.css
@@ -69,6 +69,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	if err := c.EmitFromMutation(m, req, sink); err != nil {
 		return err
 	}
+	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
+		return fmt.Errorf("fyne: assets: %w", err)
+	}
 	if golang.PackageUsesI18n(req.Pkg) {
 		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
 			return fmt.Errorf("fyne: i18n manifest embed: %w", err)
@@ -83,7 +86,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc main() { testagent.Main() }\n")
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"duckfam.us/sngl/pkg/go/testagent\"\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -95,7 +98,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
-	"git.duckfam.us/jonathan/sngl/pkg/go/testagent"
+	"duckfam.us/sngl/pkg/go/testagent"
 )
 
 var currentModel *Model

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // A test reaches into a component the one under test renders by its `#id`:

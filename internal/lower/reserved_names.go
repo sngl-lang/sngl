@@ -1,7 +1,7 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passReservedNames renames a declaration the program gave a name the build

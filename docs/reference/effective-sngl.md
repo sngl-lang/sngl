@@ -778,7 +778,9 @@ var name = ""
 ```sngl
 ui.button(text="Submit", disabled=count <= 0)
 ui.input(value=name, placeholder="Enter name", type=email)
-ui.image(src="photo.png", alt="Profile", fit=cover)
+ui.image(alt="Profile", fit=cover) {
+    ui.remote(url="https://example.com/photo.png")
+}
 ```
 
 ### Events

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/canvasutil"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Canvas2D rendering for bubbletea.
@@ -33,9 +33,9 @@ import (
 // method calls is gone with them.
 
 const (
-	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+	snglCanvasImportPath = "duckfam.us/sngl/pkg/go/canvas"
 	snglCanvasAlias      = "snglcanvas"
-	tuiImportPath        = "git.duckfam.us/jonathan/sngl/pkg/go/tui"
+	tuiImportPath        = "duckfam.us/sngl/pkg/go/tui"
 )
 
 // canvasCtxType is the IR native type for the draw-func ctx parameter:
@@ -64,13 +64,13 @@ func terminalCells(w, h int) (cols, rows int) {
 }
 
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs
-// (Color/Style/PathCmd), omitting any whose name a user struct already
+// (Color/Style), omitting any whose name a user struct already
 // declares (those emit their own type decl).
 func canvasStdlibDecls(structs []*ir.StructDef) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "Style", "PathCmd":
+		case "Color", "Style":
 			declared[s.Name] = struct{}{}
 		}
 	}

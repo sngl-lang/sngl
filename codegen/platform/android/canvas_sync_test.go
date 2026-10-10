@@ -4,15 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/lib"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/lib"
 )
 
 // TestCanvasKotlinDeclsInSync guards against drift between the hand-written
 // Kotlin data class decls (canvasKotlinDecls, colorKotlinDecl) and the
 // source-of-truth SNGL struct declarations in lib/ui/draw/draw.sngl
-// (Style, PathCmd) and lib/builtin/color.sngl (color → Color). These
+// (Style) and lib/builtin/color.sngl (color → Color). These
 // Kotlin decls are hand-written because
 // the canvas stdlib structs aren't carried on pkg.Structs for the Kotlin path
 // (mirrors what canvasutil_sync_test.go does for the Go-emitting platforms).
@@ -26,15 +26,13 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// SNGL struct name → lib source file. The Kotlin decl name is the
 	// SNGL name except `color` → `Color` (capitalized data class).
 	want := map[string]string{
-		"Style":   "ui/draw/draw.sngl",
-		"PathCmd": "ui/draw/draw.sngl",
-		"color":   "builtin/color.sngl",
+		"Style": "ui/draw/draw.sngl",
+		"color": "builtin/color.sngl",
 	}
 	// SNGL struct name → Kotlin data class name as emitted.
 	kotlinName := map[string]string{
-		"Style":   "Style",
-		"PathCmd": "PathCmd",
-		"color":   "Color",
+		"Style": "Style",
+		"color": "Color",
 	}
 
 	files := map[string]struct{}{}

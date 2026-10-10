@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // compileCanvasSrc parses, checks, lowers (with android caps) and emits the
@@ -130,15 +130,17 @@ ui.window {
 	}
 }
 
-// TestCanvasImageRenders guards that a canvasImage shape decodes + draws a
-// bitmap (best-effort, local file path) rather than being a silent no-op.
+// TestCanvasImageRenders guards that a canvasImage shape draws the bitmap its
+// source names rather than being a silent no-op.
 func TestCanvasImageRenders(t *testing.T) {
 	src := `import . "sngl:ui"
 import draw "sngl:ui/draw"
 import ui "sngl:ui"
 ui.window {
     draw.canvas(width=100px, height=100px) {
-        draw.canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
+        draw.canvasImage(x=5.0, y=5.0, w=40.0, h=40.0) {
+            remote(url="/tmp/p.png")
+        }
     }
 }`
 	out := compileCanvasSrc(t, src)
@@ -146,7 +148,7 @@ ui.window {
 	// its body alone would pass with no image in the program at all.
 	for _, want := range []string{
 		`snglDrawImage(src = "/tmp/p.png"`,
-		"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(",
+		"SnglAssets.bitmap(src)", "drawImage(",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("canvasImage missing %q:\n%s", want, out)

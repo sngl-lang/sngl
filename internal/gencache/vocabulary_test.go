@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // Every kind of input the store writes is a member of sngl:x/gen/cache, so a

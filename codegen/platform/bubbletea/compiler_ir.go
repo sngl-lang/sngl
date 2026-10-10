@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/lang/golang"
+	"duckfam.us/sngl/ir"
 )
 
 // Config controls code generation. Field names mirror bubbletea.sngl options.
@@ -684,6 +684,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if cfg.Main {
 		b.WriteString("func main() {\n")
 		b.WriteString("\tp := tea.NewProgram(New())\n")
+		if usesPictures(ctx.Pkg) {
+			// Any message draws the view again, which is all a picture that has
+			// just arrived needs.
+			gc.RequireImport(golang.SnglImageImportPath)
+			b.WriteString("\tsnglimage.OnArrive(func() { p.Send(struct{}{}) })\n")
+		}
 		teardown := ctx.Pkg != nil && ctx.Pkg.Teardown != nil
 		if teardown {
 			// The final model, not the one handed to NewProgram: bubbletea

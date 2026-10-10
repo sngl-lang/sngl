@@ -9,13 +9,13 @@ import (
 	"testing/fstest"
 	"time"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/internal/optimize"
-	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/platform/html/internal/webtest"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/ir"
 )
 
 // componentDOMCase is one stdlib component rendered in isolation, with
@@ -57,7 +57,7 @@ import ui "sngl:ui"
 ui.window { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
 	{"image", `import . "sngl:ui"
 import ui "sngl:ui"
-ui.window { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+ui.window { image(alt="pic") { remote(url="/x.png") } }`, []string{"<img", `src="/x.png"`, `aria-label="pic"`}},
 	{"link", `import . "sngl:ui"
 import ui "sngl:ui"
 ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},

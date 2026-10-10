@@ -3,11 +3,11 @@ package lower_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 
-	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
+	_ "duckfam.us/sngl/internal/testtargets"
 )
 
 // TestGenVocabularyIsMapped holds the SNGL enums and the Go tables together.

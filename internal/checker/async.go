@@ -1,6 +1,6 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // analyzeAsyncWithPointsTo extends color propagation to cover funcvar call
 // sites: if a slot pointed to by a Callee contains any async candidate, the

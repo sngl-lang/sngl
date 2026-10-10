@@ -11,6 +11,7 @@ import (
 	"math"
 	"sync"
 
+	"duckfam.us/sngl/pkg/go/snglimage"
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font/gofont/goregular"
@@ -156,6 +157,15 @@ func (s *Surface) Begin(pw, ph int, w, h float64, mode string) *Context {
 func (c *Context) Save()    { c.dc.Push() }
 func (c *Context) Restore() { c.dc.Pop() }
 
+// Translate, Scale and ClipRect place what is drawn after them, until the
+// Restore matching the Save before them.
+func (c *Context) Translate(x, y float64) { c.dc.Translate(x, y) }
+func (c *Context) Scale(x, y float64)     { c.dc.Scale(x, y) }
+func (c *Context) ClipRect(x, y, w, h float64) {
+	c.dc.DrawRectangle(x, y, w, h)
+	c.dc.Clip()
+}
+
 // ApplyStyle sets the style used by the next primitive.
 func (c *Context) ApplyStyle(s Style) { c.pending = s }
 
@@ -218,11 +228,10 @@ func (c *Context) Circle(cx, cy, r float64)       { c.dc.DrawCircle(cx, cy, r); 
 func (c *Context) Ellipse(cx, cy, rx, ry float64) { c.dc.DrawEllipse(cx, cy, rx, ry); c.paint() }
 func (c *Context) Line(x1, y1, x2, y2 float64)    { c.dc.DrawLine(x1, y1, x2, y2); c.strokeOnly() }
 
-// Path-builder methods. Generated code emits a loop over the SNGL PathCmd list,
+// Path-builder methods. Generated code emits a loop over a path's step records,
 // dispatching on the op to MoveTo/LineTo/CubicTo/ClosePath, then PaintPath to
-// fill+stroke the built path per the pending style. This keeps the SNGL-side
-// PathCmd slice on the generated-code side (no canvas.PathCmd crosses the
-// boundary).
+// fill+stroke the built path per the pending style. The records stay on the
+// generated-code side: no step type crosses the boundary.
 func (c *Context) MoveTo(x, y float64) { c.dc.MoveTo(x, y) }
 func (c *Context) LineTo(x, y float64) { c.dc.LineTo(x, y) }
 func (c *Context) CubicTo(x1, y1, x2, y2, x3, y3 float64) {
@@ -326,10 +335,11 @@ func (c *Context) Text(x, y float64, content string) {
 	c.dc.DrawString(content, x, y)
 }
 
-// Image decodes src (a local file path) and draws it scaled into (x,y,w,h).
-// A missing/undecodable path draws nothing.
+// Image draws the picture src names scaled into (x,y,w,h): a file the program
+// carries, or a fetched one once it has arrived. One that is missing, still on
+// its way or undecodable draws nothing.
 func (c *Context) Image(x, y, w, h float64, src string) {
-	img, err := gg.LoadImage(src)
+	img, err := snglimage.Load(src)
 	if err != nil {
 		return
 	}

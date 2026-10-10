@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/ir"
 )
 
 // fynetextPath is the runtime package Fyne's rich text is rendered through.
 // See its package comment for what Fyne does not do for itself and why each
 // of those is a widget implementation rather than a language gap.
-const fynetextPath = "git.duckfam.us/jonathan/sngl/pkg/go/fynetext"
+const fynetextPath = "duckfam.us/sngl/pkg/go/fynetext"
 
 // markupTags are the two primitives whose Spec is built here rather than read
 // off a `spec` record.

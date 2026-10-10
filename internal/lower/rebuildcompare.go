@@ -1,8 +1,8 @@
 package lower
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // rebuildDiffers is the expression that is true when a and b are not the same

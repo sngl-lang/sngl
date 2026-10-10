@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/ir"
 )
 
 // passImplicitState gives a two-way prop the call site left unbound a cell of
@@ -181,17 +181,13 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	if len(unbound) == 0 {
 		return nil, nil
 	}
-	// Each is a gap no component in sngl:ui reaches: its two-way props are one
-	// per component and none takes content.
+	// A gap no component in sngl:ui reaches: its two-way props are one per
+	// component.
 	if len(n.Bindings) > 0 {
 		return nil, fmt.Errorf("%s: %s binds :%s and leaves :%s unbound, which is not supported yet; bind both, or neither", nodePos(n), comp.DisplayName(), n.Bindings[0].PropName, unbound[0].Name)
 	}
 	rest := comp.RestSlot()
-	var restPop *ir.SlotContent
-	if rest != nil && len(n.Slots) == 1 {
-		restPop = n.Slots[rest.Name]
-	}
-	if len(n.Slots) > 0 && restPop == nil || len(n.Children) > 0 && rest == nil {
+	if len(n.Children) > 0 && rest == nil || slices.ContainsFunc(ir.SlotNames(n.Slots), func(name string) bool { return slotDeclOf(comp, name) == nil }) {
 		return nil, fmt.Errorf("%s: %s is given content and leaves :%s unbound, which is not supported yet; bind :%s", nodePos(n), comp.DisplayName(), unbound[0].Name, unbound[0].Name)
 	}
 
@@ -279,26 +275,30 @@ func (st *implicitState) wrap(n *ir.NodeInst) (*ir.NodeInst, error) {
 	// arguments even where the node's rest slot is scoped -- a window's
 	// `content ...component(v T)` -- because bare children bind none.
 	//
-	// A population of that slot written by name -- a window's
-	// `component content(v)` -- is handed on the same way with its argument:
-	// the wrapper's slot takes it, and the node's own population inserts that
-	// slot with what the node hands it.
-	switch {
-	case restPop != nil:
-		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
-		slot := &ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}
+	// A population written by name -- a window's `component content(v)`, or
+	// its `component favicon` -- is handed on the same way with its
+	// arguments: the wrapper's slot takes it, and the node's own population
+	// inserts that slot with what the node hands it.
+	for _, name := range ir.SlotNames(n.Slots) {
+		decl := slotDeclOf(comp, name)
+		fwd := &ir.SlotDecl{Name: decl.Name, Rest: decl.Rest, Content: decl.Content, Card: decl.Card}
+		slot := &ir.SlotInst{Name: fwd.Name, Rest: decl.Rest, Decl: fwd}
 		var params []*ir.Param
-		for _, p := range restPop.Params {
+		for _, p := range n.Slots[name].Params {
 			fwd.Params = append(fwd.Params, &ir.Param{Name: p.Name, Type: p.Type})
 			fp := &ir.Param{Name: "__" + p.Name, Type: p.Type}
 			params = append(params, fp)
 			slot.Args = append(slot.Args, &ir.Ident{Name: fp.Name, Type: fp.Type, Sym: fp})
 		}
-		w.Slots = []*ir.SlotDecl{fwd}
-		inner.Slots = map[string]*ir.SlotContent{rest.Name: {Params: params, Body: []ir.Stmt{slot}}}
-	case len(n.Children) > 0:
+		w.Slots = append(w.Slots, fwd)
+		if inner.Slots == nil {
+			inner.Slots = map[string]*ir.SlotContent{}
+		}
+		inner.Slots[name] = &ir.SlotContent{Params: params, Body: []ir.Stmt{slot}}
+	}
+	if len(n.Children) > 0 {
 		fwd := &ir.SlotDecl{Name: rest.Name, Rest: true, Content: rest.Content, Card: rest.Card}
-		w.Slots = []*ir.SlotDecl{fwd}
+		w.Slots = append(w.Slots, fwd)
 		inner.Children = []ir.Stmt{&ir.SlotInst{Name: fwd.Name, Rest: true, Decl: fwd}}
 	}
 	w.Stmts = []ir.Stmt{inner}
@@ -551,4 +551,13 @@ func handleCallPos(c *ir.Call) string {
 		}
 	}
 	return c.AST.Pos.String()
+}
+
+func slotDeclOf(comp *ir.Component, name string) *ir.SlotDecl {
+	for _, s := range comp.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
 }

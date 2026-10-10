@@ -4,7 +4,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
 
-	_ "git.duckfam.us/jonathan/sngl/internal/highlight" // registers the SNGL lexer with chroma
+	_ "duckfam.us/sngl/internal/highlight" // registers the SNGL lexer with chroma
 )
 
 // tok is one run of a code sample and the `markup.Token` member it renders as.

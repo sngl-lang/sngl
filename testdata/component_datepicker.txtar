@@ -45,8 +45,8 @@ package main
 import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbletea/v2"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"os"
 	"time"
 )
@@ -880,7 +880,7 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d8d1ead30f6aff90d680c0ac173aee32
+pass sha256:8bed59316559345ca87e78b96994cd6a
 -- run/go/fyne --
 pass sha256:2737a66ac82ec597753e3303fcab2e47
 -- run/go/gtk4 --

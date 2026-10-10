@@ -1958,6 +1958,124 @@ it: `family.one` takes one node, so a `for` there is an error and an `if` must
 render one in each branch; `option<T>` takes none or one. How many times a
 body inserts a slot is not bounded.
 
+### Data components
+
+A component that names **itself** as its family is **data**: its own family
+and the only member of it. It has no body and is never rendered. Written in a
+slot of its type, it is a **record** of its props, and the slot's name in the
+container's body is the list of those records, in the order the population
+renders them. This is how a widget that takes its choices as a list has them
+written as children.
+
+```sngl
+import ui "sngl:ui"
+
+component fruit(name string, ripe bool = true) fruit
+
+component basket(fruits ...component fruit) ui.node {
+    for var f = fruits {
+        ui.text(value=f.ripe ? f.name : "{f.name} (unripe)")
+    }
+}
+
+component shop ui.node {
+    var more = false
+    var extra = ["date", "fig"]
+    basket {
+        fruit(name="apple")
+        if more {
+            fruit(name="elder", ripe=false)
+        }
+        for var e = extra {
+            fruit(name=e)
+        }
+    }
+    ui.button(text="more", @click {
+        more = true
+    })
+}
+
+ui.window {
+    shop()
+}
+```
+
+The rules:
+
+- **The list follows the population.** An `if` contributes its records when
+  its condition holds; a `for` over a list contributes one record per element,
+  and may hold an `if` around it. A `for` whose body renders more than one
+  record is an error. The list is an ordinary value, so it is recomputed when
+  state read by the population changes.
+- **A data slot is read, never inserted.** Writing the slot's name as a node
+  in the container's body is an error. Inserted in the population of another
+  slot of the same family, it **forwards**: its records are spread there.
+- **A data component declares props, events, slots of records and one rest
+  slot of content, and nothing else.** A prop the call site omits holds its
+  default in the record.
+- **An event is a field of the record**: a function taking the event's
+  parameters, which the container calls where it means the record was acted
+  on. The handler written at the call site is that function, closing over the
+  call site's scope, and an event nobody handled does nothing. A record never
+  emits one itself.
+- **A slot of records is a field too**, so a record may be a tree:
+  `component treeItem(label string, children ...component treeItem) treeItem`.
+- **Content is not a field.** A rest slot of anything other than records holds
+  what the call site wrote inside the record. The container shows it by
+  writing `r.content` as a node in its own body, `r` being a record and
+  `content` the slot's name, and it renders in the call site's scope.
+- **Its name is its record type in a value position.** `list<fruit>` is a list
+  of records. In a family position (a return position, a slot's content) the
+  name is the component.
+
+A component **with a body** may compose records: it names the data family in
+its return position, or leaves its family to be inferred from a body that
+renders records, and it is replaced by what its body renders wherever it is
+written among them. Such a component is not itself a record. A data family's
+props are its record's fields, not props shared by its members, so a composer
+may declare props of the same names under its own meaning and is not required
+to declare the rest. A composer keeps no state, and a bodyless component
+naming a data family is an error. This is how a library keeps a record private
+while programs write it: `sngl:ui/draw`'s `path` takes
+`steps ...component _step`, and `moveTo`, `lineTo`, `bezierTo`, `arcTo` and
+`close` each compose one `_step` with only their own fields set.
+
+```sngl
+import draw "sngl:ui/draw"
+import ui "sngl:ui"
+
+component unripe(name string) fruit {
+    fruit(name=name, ripe=false)
+}
+
+component fruit(name string, ripe bool = true) fruit
+
+component basket(fruits ...component fruit) ui.node {
+    for var f = fruits {
+        ui.text(value=f.name)
+    }
+}
+
+component art ui.node {
+    basket {
+        unripe(name="lime")
+        fruit(name="apple")
+    }
+    draw.canvas(width=40px, height=40px) {
+        draw.path(style={stroke=#336699}) {
+            draw.moveTo(x=4.0, y=4.0)
+            draw.lineTo(x=36.0, y=4.0)
+            draw.arcTo(cx=36.0, cy=36.0, x=4.0, y=36.0, r=8.0)
+            draw.close()
+        }
+    }
+}
+
+ui.window {
+    art()
+}
+```
+
 ## Programs
 
 A package is a **program** when its body renders something; a package whose
@@ -1998,8 +2116,8 @@ output {
 }
 ```
 
-A window's props are `title` and `favicon`; a window is a surface, not a
-destination. The destinations a user moves between are the pages of a
+A window's prop is its `title`, and its `favicon` slot takes an image source
+as a `ui.image` does; a window is a surface, not a destination. The destinations a user moves between are the pages of a
 `sngl:ui/nav` stack the window holds, each with an `href`. A page whose href
 has `{name}` placeholders is handed their values as one struct value in its
 `params` prop; the body that reads them is the population of the page's

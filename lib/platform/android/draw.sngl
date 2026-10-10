@@ -4,6 +4,7 @@ import . "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import math "sngl:math"
 import kt "sngl:language/kotlin"
+import family "sngl:family"
 
 // The drawing surface, implemented for this platform.
 //
@@ -242,7 +243,7 @@ const component shapes.path[platform] {
         // will not hand back.
         var at = shapes.Point{x=0.0, y=0.0}
 
-        for var c = cmds {
+        for var c = steps {
             if c.op == shapes.PathOp.moveTo {
                 pathMoveTo(p, f32(c.x), f32(c.y))
                 at = shapes.Point{x=c.x, y=c.y}
@@ -297,8 +298,43 @@ const component shapes.canvasText[platform] {
     })
 }
 
+// What a `drawSource` paints an image a URL names with.
+struct SourceEvent {
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the box
+// and clips to it, and `@leave`. The size in their payload is the drawing's.
+#[intrinsic("android:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one<ui.imageSource>,
+) shapes.shape
+
+// The canvas's own transform, which a DrawScope otherwise only takes as a
+// block around what it applies to.
+#[kt.native("snglDrawEnter", "", named)]
+func drawEnter(x float, y float, sx float, sy float, w float, h float)
+
+#[kt.native("snglDrawLeave", "", named)]
+func drawLeave()
+
 const component shapes.canvasImage[platform] {
-    draw(@draw(e) {
-        drawImageShim(src, f32(x), f32(y), f32(w), f32(h))
-    })
+    drawSource(
+        @url(e) {
+            drawImageShim(e.url, f32(x), f32(y), f32(w), f32(h))
+        },
+        @enter(e) {
+            drawEnter(f32(x), f32(y), f32(w / float(e.width)), f32(h / float(e.height)), f32(float(e.width)), f32(float(e.height)))
+        },
+        @leave(e) {
+            drawLeave()
+        },
+    ) {
+        src
+    }
 }

@@ -12,14 +12,14 @@ still gets a lambda because Compose's onClick is not optional. badge wraps its
 carrying the theme's primary colour, which Style has no field for and the
 override therefore spells in Kotlin via `args`.
 
-The rest state what android does today rather than what it might: image is an
-unsized Spacer, chip renders its label as bare text,
+The rest state what android does today rather than what it might: image is a
+Box holding its source, a picture this program names by URL, which draws
+nothing since no loader ships with the app; chip renders its label as bare text,
 toolbar/popover/drawer/tooltip/splitview are a Column over their children, and
 menubar and avatar have neither children nor a text prop the override could
 show, so both are an empty Text.
 
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `TODO: Image` -- an unimplemented widget draws a Spacer, it does not leave a marker in the output
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `Image\(` -- image's android body is a Spacer; no Compose Image composable is reached
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `unknown` -- every component here has a declared android body, so nothing falls through to a placeholder
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `AssistChip` -- chip is bare text; the override names no Material chip
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `DropdownMenu` -- the menu-like components are a plain Column, not a Compose menu surface
@@ -41,7 +41,9 @@ component main node {
         button(text="quiet")
         badge(style={padding=6px}, value="7")
         link(href="/", text="Home")
-        image(src="/logo.png", alt="logo")
+        image(alt="logo") {
+            remote(url="/logo.png")
+        }
         chip(label="Tag")
         toolbar(style={padding=9px}) {
             button(text="New")
@@ -125,7 +127,9 @@ fun MainScreen() {
                 Text(text = "7", modifier = Modifier)
             }
             Text(text = "Home", modifier = Modifier, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier)
+            Box(modifier = Modifier) {
+                SnglAssetImage(url = "/logo.png")
+            }
             Row(modifier = Modifier.alpha(1.0f)) {
                 Text(text = "Tag", modifier = Modifier)
             }
@@ -135,9 +139,53 @@ fun MainScreen() {
                 }
             }
             Text(text = "", modifier = Modifier)
-            Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            Box(modifier = Modifier.width(40.dp).height(40.dp)) {
+                Text(text = "JD", modifier = Modifier.width(40.dp).height(40.dp).background(ComposeColor(red = 204, green = 204, blue = 204, alpha = 255)), style = TextStyle(textAlign = TextAlign.Center))
+            }
         }
     }
 }
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
+}
 -- run/kotlin/android --
-pass sha256:24d8f40bd1d55e048bf8020b8d20fa34
+pass sha256:8d64cdc2c4f1b07385fb52a19a9a2298

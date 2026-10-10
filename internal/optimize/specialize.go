@@ -5,8 +5,8 @@ import (
 	"maps"
 	"slices"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // maxInlineDepth caps how deep component-call inlining may recurse.

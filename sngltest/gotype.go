@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen/scheme/golang"
-	"git.duckfam.us/jonathan/sngl/internal/checker"
-	"git.duckfam.us/jonathan/sngl/ir"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/codegen/scheme/golang"
+	"duckfam.us/sngl/internal/checker"
+	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // mapping is one Go type and the SNGL type a go: import gives it.

@@ -3,7 +3,7 @@ package checker
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"duckfam.us/sngl/internal/parser"
 )
 
 // lspcore.Analyze checks a document even when the parse reported errors, so a

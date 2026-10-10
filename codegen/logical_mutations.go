@@ -1,6 +1,6 @@
 package codegen
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import "duckfam.us/sngl/ir"
 
 // LogicalMutations returns block with its DOM patches removed, leaving the
 // state mutations and every other statement. A DOM patch is an ir.Assign whose

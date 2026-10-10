@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"os"
 
-	"git.duckfam.us/jonathan/sngl/internal/gencache"
-	"git.duckfam.us/jonathan/sngl/pkg/go/consteval"
+	"duckfam.us/sngl/internal/gencache"
+	"duckfam.us/sngl/pkg/go/consteval"
 )
 
 // Producer names the file this package stores: one file's content.

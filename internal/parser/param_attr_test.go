@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ast"
+	"duckfam.us/sngl/ast"
 )
 
 // findFunc returns the named top-level function.

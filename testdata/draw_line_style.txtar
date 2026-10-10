@@ -1,4 +1,4 @@
-A stroke's cap and join and a path's steps are enums of sngl:ui/draw, and each
+A stroke's cap and join and a path step's op are enums of sngl:ui/draw, and each
 target maps the member to its own drawing API: cairo's enum values on gtk4,
 Compose's StrokeCap and StrokeJoin on android, the Canvas2D strings on html,
 and the Go rasteriser's names on fyne and bubbletea.
@@ -10,16 +10,13 @@ import draw "sngl:ui/draw"
 component art ui.node {
     draw.canvas(width=60px, height=40px) {
         draw.line(x1=4.0, y1=4.0, x2=56.0, y2=4.0, style={stroke=#336699, strokeWidth=4.0, lineCap=round})
-        draw.path(
-            cmds = [
-                draw.PathCmd{op=moveTo, x=4.0, y=12.0},
-                draw.PathCmd{op=lineTo, x=30.0, y=36.0},
-                draw.PathCmd{op=bezierTo, cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0},
-                draw.PathCmd{op=arcTo, cx1=56.0, cy1=12.0, x=40.0, y=12.0, r=4.0},
-                draw.PathCmd{op=close},
-            ],
-            style = {stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel},
-        )
+        draw.path(style={stroke=#993366, strokeWidth=2.0, lineCap=square, lineJoin=bevel}) {
+            draw.moveTo(x=4.0, y=12.0)
+            draw.lineTo(x=30.0, y=36.0)
+            draw.bezierTo(cx1=34.0, cy1=12.0, cx2=44.0, cy2=12.0, x=56.0, y=36.0)
+            draw.arcTo(cx=56.0, cy=12.0, x=40.0, y=12.0, r=4.0)
+            draw.close()
+        }
     }
 }
 
@@ -47,10 +44,10 @@ package main
 
 import (
 	"charm.land/bubbletea/v2"
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
-	"git.duckfam.us/jonathan/sngl/pkg/go/tui"
 	"image"
 	"os"
 	"strings"
@@ -62,7 +59,7 @@ type Measurement struct {
 	Rem float64
 }
 
-type PathCmd struct {
+type _step__record struct {
 	Op  string
 	X   float64
 	Y   float64
@@ -112,7 +109,7 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 	ctx.Save()
 	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
 		}
@@ -227,16 +224,22 @@ func main() {
 package main
 
 import (
+	snglcanvas "duckfam.us/sngl/pkg/go/canvas"
+	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
-	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"os"
 )
 
-type PathCmd struct {
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Rem float64
+}
+
+type _step__record struct {
 	Op  string
 	X   float64
 	Y   float64
@@ -245,12 +248,6 @@ type PathCmd struct {
 	Cx2 float64
 	Cy2 float64
 	R   float64
-}
-
-type Measurement struct {
-	Px  float64
-	Em  float64
-	Rem float64
 }
 
 type Style struct {
@@ -303,7 +300,7 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Restore()
 	ctx.Save()
 	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
-	for _, c__r0 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c__r0 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c__r0.Op == "moveTo" {
 			ctx.MoveTo(c__r0.X, c__r0.Y)
 		}
@@ -566,21 +563,10 @@ static void sngl_emit_pressed(void* gesture) {
 import "C"
 
 import (
-	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglcolor"
 	"math"
 	"unsafe"
 )
-
-type PathCmd struct {
-	Op  string
-	X   float64
-	Y   float64
-	Cx1 float64
-	Cy1 float64
-	Cx2 float64
-	Cy2 float64
-	R   float64
-}
 
 // _snglCairoScale maps a drawing's own coordinate space onto the size GTK is
 // drawing at. An empty mode leaves the context alone, which is what a canvas
@@ -610,6 +596,17 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type _step__record struct {
+	Op  string
+	X   float64
+	Y   float64
+	Cx1 float64
+	Cy1 float64
+	Cx2 float64
+	Cy2 float64
+	R   float64
 }
 
 type Color struct {
@@ -761,7 +758,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_restore(ctx)
 	at := Point{X: 0.0, Y: 0.0}
 	C.cairo_save(ctx)
-	for _, c__r2 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
+	for _, c__r2 := range []_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, _step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, R: 0.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, Cx2: 0.0, Cy2: 0.0, R: 4.0}, _step__record{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c__r2.Op == "moveTo" {
 			C.cairo_move_to(ctx, C.double(c__r2.X), C.double(c__r2.Y))
 			at = Point{X: c__r2.X, Y: c__r2.Y}
@@ -863,15 +860,15 @@ data class Measurement(
     val rem: Double = 0.0
 )
 
-data class PathCmd(
+data class _step__record(
     var op: SnglPathOp,
-    var x: Double = 0.0,
-    var y: Double = 0.0,
-    var cx1: Double = 0.0,
-    var cy1: Double = 0.0,
-    var cx2: Double = 0.0,
-    var cy2: Double = 0.0,
-    var r: Double = 0.0
+    var x: Double,
+    var y: Double,
+    var cx1: Double,
+    var cy1: Double,
+    var cx2: Double,
+    var cy2: Double,
+    var r: Double
 )
 
 data class Point(
@@ -920,15 +917,28 @@ fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor,
     })
 }
 
-// A file that will not decode draws nothing rather than failing the frame,
+// A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
 fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
-    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
-        image = bmp.asImageBitmap(),
+        image = bmp,
         dstOffset = IntOffset(x.toInt(), y.toInt()),
         dstSize = IntSize(w.toInt(), h.toInt()),
     )
+}
+
+// A drawing painted in place of a picture: its own space mapped onto the box
+// and clipped to it, until snglDrawLeave.
+fun DrawScope.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+    drawContext.canvas.save()
+    drawContext.canvas.translate(x, y)
+    drawContext.canvas.scale(sx, sy)
+    drawContext.canvas.clipRect(0f, 0f, w, h)
+}
+
+fun DrawScope.snglDrawLeave() {
+    drawContext.canvas.restore()
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -980,7 +990,7 @@ fun MainScreen() {
             drawLine(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 153, alpha = 255), start = Offset(4.0.toFloat(), 4.0.toFloat()), end = Offset(56.0.toFloat(), 4.0.toFloat()), strokeWidth = 4.0.toFloat())
             var p = Path()
             var at = Point(x = 0.0, y = 0.0)
-            for (c in listOf(PathCmd(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), PathCmd(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), PathCmd(op = SnglPathOp.BEZIERTO, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, x = 56.0, y = 36.0, r = 0.0), PathCmd(op = SnglPathOp.ARCTO, cx1 = 56.0, cy1 = 12.0, x = 40.0, y = 12.0, r = 4.0, cx2 = 0.0, cy2 = 0.0), PathCmd(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
+            for (c in listOf(_step__record(op = SnglPathOp.MOVETO, x = 4.0, y = 12.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.LINETO, x = 30.0, y = 36.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0), _step__record(op = SnglPathOp.BEZIERTO, x = 56.0, y = 36.0, cx1 = 34.0, cy1 = 12.0, cx2 = 44.0, cy2 = 12.0, r = 0.0), _step__record(op = SnglPathOp.ARCTO, x = 40.0, y = 12.0, cx1 = 56.0, cy1 = 12.0, cx2 = 0.0, cy2 = 0.0, r = 4.0), _step__record(op = SnglPathOp.CLOSE, x = 0.0, y = 0.0, cx1 = 0.0, cy1 = 0.0, cx2 = 0.0, cy2 = 0.0, r = 0.0))) {
                 if ((c.op == SnglPathOp.MOVETO)) {
                     p.moveTo(c.x.toFloat(), c.y.toFloat())
                 }
@@ -1052,6 +1062,48 @@ fun strokeJoin(join: SnglLineJoin): androidx.compose.ui.graphics.StrokeJoin {
     	return androidx.compose.ui.graphics.StrokeJoin.Bevel
     }
     return androidx.compose.ui.graphics.StrokeJoin.Miter
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglAssets.kt --
+package test.sngl.app
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// SnglAssets reads the pictures the program carries out of the app's assets,
+// where the build put each file at the path the program names it by. A
+// picture a URL names is not one of them: no loader ships with the app, so it
+// is no picture at all. MainActivity hands it the application's context, since
+// a drawing paints where there is none to ask.
+object SnglAssets {
+    private var context: Context? = null
+    private val pictures = HashMap<String, ImageBitmap?>()
+
+    fun init(c: Context) {
+        context = c.applicationContext
+    }
+
+    fun bitmap(path: String): ImageBitmap? = pictures.getOrPut(path) {
+        val c = context ?: return null
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            null
+        } else {
+            runCatching { c.assets.open(path.removePrefix("/")).use { BitmapFactory.decodeStream(it) } }
+                .getOrNull()?.asImageBitmap()
+        }
+    }
+}
+
+// SnglAssetImage is an image's source on this platform: the picture a URL
+// names, or nothing where there is none.
+@Composable
+fun SnglAssetImage(url: String) {
+    val bmp = SnglAssets.bitmap(url) ?: return
+    Image(bitmap = bmp, contentDescription = null, modifier = Modifier)
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from draw_line_style.sngl; DO NOT EDIT. -->
@@ -1149,12 +1201,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f3a2196428ad819e3b5f3343db3914c2
+pass sha256:4c4db1e340e3f040e86cf13a49dc9650
 -- run/go/fyne --
-pass sha256:0afe2465c75c25d4daa9ac6ff0e1d9e4
+pass sha256:9ed6653bc2c74513345c5f750d86a689
 -- run/go/gtk4 --
-pass sha256:eabd0426656146aeaf3266554b2fde9a
+pass sha256:9ff42a482aa40808de4d62f5cbdfe2c0
 -- run/kotlin/android --
-pass sha256:d2cd0c7293c86c1399e64d652b9fa8c8
+pass sha256:8381c9be04b6bae853ac99eb3c741832
 -- run/none/html --
 pass sha256:db768984fd227ac56783d7a933a47519

@@ -1,6 +1,6 @@
 package lspcore
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import "duckfam.us/sngl/ast"
 
 // WalkLiterals invokes fn for every LiteralExpr in the document.
 // Minimal walker shared by hover and color features.

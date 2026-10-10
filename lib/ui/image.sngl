@@ -1,0 +1,52 @@
+import build "sngl:build"
+import family "sngl:family"
+import marks "sngl:internal/marks"
+
+// Where an image's pixels come from. An `image` holds one, and so does every
+// other component that shows a picture -- a window's favicon, a drawing's
+// `canvasImage`, a picture in a flow of text -- so a source is written once
+// and each of them takes it the same way:
+//
+//     image(alt="Logo") { file(path=here.path("logo.svg")) }
+//     image(alt="Dial") { draw.image(width=64.0, height=64.0) { draw.circle(…) } }
+//
+// A family rather than a value, because a source may read state: a drawing
+// whose shapes read a var is repainted when it changes, and a `remote` whose
+// url does is fetched again, by the same reactivity that patches any prop.
+#[marks.builtin("familyImageSource")]
+component imageSource build.family
+
+// A file shipped with the program. `path` is what a `file:` import's
+// `path(…)` hands out, which copies the file into the build: an html page
+// links it, and a program carries it in its binary or its app's assets.
+component file(path string) imageSource
+
+// An image fetched while the program runs, from a URL.
+component remote(url string) imageSource
+
+// Shows the image its source holds, scaled into its frame by `fit`.
+//
+// With no source it shows `placeholder` instead, in the same place: what an
+// avatar with no picture shows its initials in. A source under an `if` that
+// goes false is the same as none.
+component image(
+    alt         string = "",                   // the accessibility label
+    fit         ObjectFit = ObjectFit.contain, // how the image is scaled into its frame
+    style       Style = Style{},
+    @click(),
+    @load(), // decoding completed
+    // Fetching or decoding failed. The payload is the ambient `error` --
+    // the value `error.raise` throws and a `boundary` catches, because a
+    // failure is a failure whoever noticed it.
+    @error(e error),
+    src         ...component option<imageSource>,
+    placeholder component option<node>,
+) node
+
+component _example_image node {
+    vbox(style={gap=8px, padding=16px}) {
+        image(alt="Placeholder image", fit=contain) {
+            remote(url="https://placehold.co/200x100")
+        }
+    }
+}

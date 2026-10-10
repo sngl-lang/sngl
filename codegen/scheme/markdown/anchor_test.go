@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/docsite"
+	"duckfam.us/sngl/internal/docsite"
 )
 
 // An in-page link is written against the page the doc site rendered, so a

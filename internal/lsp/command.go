@@ -1,10 +1,10 @@
 package lsp
 
 import (
+	"duckfam.us/sngl/ir"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // handleExecuteCommand routes workspace/executeCommand to the appropriate

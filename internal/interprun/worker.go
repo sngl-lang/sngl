@@ -16,7 +16,7 @@ import (
 const WorkerEnv = "SNGL_FYNE_WORKER"
 
 // WorkerPkg is the worker's import path.
-const WorkerPkg = "git.duckfam.us/jonathan/sngl/cmd/sngl-fyne-worker"
+const WorkerPkg = "duckfam.us/sngl/cmd/sngl-fyne-worker"
 
 // WorkerDir is where a project's worker is built, relative to it.
 //
@@ -119,6 +119,7 @@ var workerSources = []string{
 	"cmd/sngl-fyne-worker",
 	"pkg/go/fynehost",
 	"pkg/go/fynelayout",
+	"pkg/go/snglimage",
 	"pkg/go/fynetheme",
 	"pkg/go/snglhost",
 	"internal/testrpc",

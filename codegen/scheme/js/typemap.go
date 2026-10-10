@@ -1,7 +1,7 @@
 package js
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 	"github.com/sngl-lang/typescript-go/snglts"
 )
 

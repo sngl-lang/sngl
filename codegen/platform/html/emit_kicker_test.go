@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // makeKickerFunc returns a minimal async $compute_X func for testing.

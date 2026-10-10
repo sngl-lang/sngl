@@ -3,7 +3,7 @@ package lower
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // passHoistBodyTypes renames a body-local struct, enum or unit whose name

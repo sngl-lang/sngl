@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"git.duckfam.us/jonathan/sngl/internal/headless"
+	"duckfam.us/sngl/internal/headless"
 )
 
 // MaybeReexecUnderCage re-runs the current test binary inside a headless cage

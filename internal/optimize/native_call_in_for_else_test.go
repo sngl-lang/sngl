@@ -3,7 +3,7 @@ package optimize
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/ir"
+	"duckfam.us/sngl/ir"
 )
 
 // The guard walks a loop's else, the same way it walks an `if`'s. A native
