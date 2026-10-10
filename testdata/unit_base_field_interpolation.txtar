@@ -90,9 +90,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Tick float64
@@ -114,8 +112,8 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.m__inst0 = Measurement{Px: 3}
-	m.r__inst0 = Measurement{Em: 32}
-	m.sum__inst0 = Measurement{Px: m.m__inst0.Px + m.r__inst0.Px, Em: m.m__inst0.Em + m.r__inst0.Em, Vw: m.m__inst0.Vw + m.r__inst0.Vw, Vh: m.m__inst0.Vh + m.r__inst0.Vh, Pct: m.m__inst0.Pct + m.r__inst0.Pct}
+	m.r__inst0 = Measurement{Rem: 2}
+	m.sum__inst0 = Measurement{Px: m.m__inst0.Px + m.r__inst0.Px, Em: m.m__inst0.Em + m.r__inst0.Em, Rem: m.m__inst0.Rem + m.r__inst0.Rem}
 	m.t__inst0 = Tick(4)
 	m.d__inst0 = time.Duration(500) * time.Millisecond
 	m.w__inst0 = 2.5
@@ -348,9 +346,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -363,8 +359,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     var m__inst0 by remember { mutableStateOf(Measurement(px = 3.0)) }
-    var r__inst0 by remember { mutableStateOf(Measurement(em = 32.0)) }
-    var sum__inst0 by remember { mutableStateOf(Measurement(px = (m__inst0).px + (r__inst0).px, em = (m__inst0).em + (r__inst0).em, vw = (m__inst0).vw + (r__inst0).vw, vh = (m__inst0).vh + (r__inst0).vh, pct = (m__inst0).pct + (r__inst0).pct)) }
+    var r__inst0 by remember { mutableStateOf(Measurement(rem = 2.0)) }
+    var sum__inst0 by remember { mutableStateOf(Measurement(px = (m__inst0).px + (r__inst0).px, em = (m__inst0).em + (r__inst0).em, rem = (m__inst0).rem + (r__inst0).rem)) }
     var t__inst0 by remember { mutableStateOf(4.0) }
     var d__inst0 by remember { mutableStateOf(500L) }
     var w__inst0 by remember { mutableStateOf(2.5) }
@@ -420,8 +416,8 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { m__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, r__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, sum__inst0: null, t__inst0: 4, d__inst0: 500, w__inst0: 2.5, visible__inst0: true };
-  state.sum__inst0 = { px: state.m__inst0.px + state.r__inst0.px, em: state.m__inst0.em + state.r__inst0.em, vw: state.m__inst0.vw + state.r__inst0.vw, vh: state.m__inst0.vh + state.r__inst0.vh, pct: state.m__inst0.pct + state.r__inst0.pct };
+  var state = { m__inst0: { px: 3, em: 0, rem: 0 }, r__inst0: { px: 0, em: 0, rem: 2 }, sum__inst0: null, t__inst0: 4, d__inst0: 500, w__inst0: 2.5, visible__inst0: true };
+  state.sum__inst0 = { px: state.m__inst0.px + state.r__inst0.px, em: state.m__inst0.em + state.r__inst0.em, rem: state.m__inst0.rem + state.r__inst0.rem };
   function String(v) {
     return "" + v;
   }
@@ -446,8 +442,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e752322edfc4b6509b295a1dc2ac911d
+pass sha256:9dc4d9574069b551ac96f163856b0932
 -- run/kotlin/android --
-pass sha256:1f69e7b052b2e2ebaf79508bddc573f4
+pass sha256:e64a656ac01e1de72f4bdc9b43d85b62
 -- run/none/html --
-pass sha256:65770c96112f772a60c29de1c2258bcb
+pass sha256:4d5f529ef80a4f6bc16bf48ca993d78a

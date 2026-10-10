@@ -2,15 +2,9 @@ import . "sngl:ui"
 
 // INLAY(16em) "(256px)"
 // INLAY(1rem) "(16px)"
-// INLAY(50vw) "(640px)"
-// INLAY(50vh) "(400px)"
 // INLAY-NOT(8px) ""
-// INLAY-NOT(20pct) ""
 component App node {
     var headerSize measurement = 16em
     var bodySize measurement = 1rem
-    var halfWidth measurement = 50vw
-    var halfHeight measurement = 50vh
     var pxValue measurement = 8px
-    var pctValue measurement = 20pct
 }

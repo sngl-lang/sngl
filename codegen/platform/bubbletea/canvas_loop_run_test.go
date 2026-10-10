@@ -13,7 +13,7 @@ component Dot(r float) node {
 
     vbox {
         draw.canvas(width=16px, height=16px) {
-            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.CanvasStyle{fill=color{r=255, a=255}})
+            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.Style{fill=color{r=255, a=255}})
         }
         button(text="grow", @click { big = !big })
     }

@@ -564,7 +564,7 @@ const component ui.window[platform] {
 }
 
 const component ui.modal[platform] {
-    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, width=100pct, height=100pct, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
+    html.div(class="modal-overlay", hidden=(open == false), style={...style, position=fixed, top=0, left=0, right=0, bottom=0, background=#00000080, display=flex, alignItems=center, justifyContent=center, zIndex=1000}) {
         html.div(class="modal-content", style={background="#fff", borderRadius=8px, padding=24px}) {
             if title != "" {
                 html.h3(textContent=title, style={marginTop=0, marginX=0, marginBottom=16px})
@@ -601,7 +601,7 @@ const component ui.splitview[platform] {
 // --- Tier 4: Data & Desktop ---
 
 const component ui.table[platform] {
-    html.table(style={width=100pct, borderCollapse="collapse", ...style}) {
+    html.table(width="100%", style={borderCollapse="collapse", ...style}) {
         html.thead {
             html.tr {
                 for var col = columns {
@@ -1073,7 +1073,7 @@ const func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 // The style a shape shares, as a helper rather than repeated per shape. A
 // shape that needs only part of it sets that part itself instead of calling
 // this -- `rect` and `line` below do.
-func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
+func paintStyle(ctx DrawContext, style shapes.Style) {
     ctx.fillStyle = cssColor(style.fill)
     ctx.strokeStyle = cssColor(style.stroke)
     ctx.lineWidth = style.strokeWidth

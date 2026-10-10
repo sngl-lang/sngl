@@ -80,9 +80,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -122,4 +120,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:169397eb167af518679114262ae3520e
+pass sha256:a23284030fb794970f1b4da5dd79b4b4

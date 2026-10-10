@@ -1236,7 +1236,7 @@ Hex literals accept three, four, six, or eight digits — `#fff`, `#fff8`, `#ff0
 
 ### Units in styles
 
-Lengths are `ui.measurement` values: `12px`, `1.5em`, `16rem`, `50pct`, `100vw`. Write the unit; it is what makes a length mean the same thing on every target.
+Lengths are `ui.measurement` values: `12px`, `1.5em`, `2rem`. Write the unit; it is what makes a length mean the same thing on every target. An `em` is a font size: html's cascade where there is one, and the platform's base text size everywhere else.
 
 ### Gotchas
 

@@ -77,9 +77,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -236,9 +234,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state for this SNGL UI.
@@ -373,9 +369,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -517,9 +511,7 @@ import androidx.compose.ui.text.withStyle
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -599,14 +591,14 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a7704983e4c58c01711e96591b4cd34c
+pass sha256:25a2362903fdc45a797682ff5f3edd19
 -- run/go/fyne --
-pass sha256:304b2fb0e93d1d994935f230298cef9e
+pass sha256:599864030cd0c4e3406700362132c004
 -- run/go/gtk4 --
-pass sha256:af2bd282afaa2c166b9b2082a6e27bec
+pass sha256:e1a5165b686c75889de0f77a83c24b17
 -- run/go/html --
 pass sha256:2c57f3c5d56df6fe1785ed36ed9b8e8f
 -- run/kotlin/android --
-pass sha256:6984ea01ae35c83a20e8ccba704b4102
+pass sha256:12d9a2139ee27eb766a3f1beaca7cd3a
 -- run/none/html --
 pass sha256:29a40121654d0eef3cb6aa15104b5990

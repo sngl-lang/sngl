@@ -41,7 +41,7 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <span style="padding-left:4px">a</span>
-  <span style="padding-left:calc(2px + 16em)">b</span>
+  <span style="padding-left:calc(2px + 1rem)">b</span>
 </div>
 
 <script>
@@ -52,4 +52,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5b46f847dc5f704951b9d24491e65fb9
+pass sha256:ae128862ea9bf9bf6c0b8e0f36a0ccc2

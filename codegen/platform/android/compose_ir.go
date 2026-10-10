@@ -377,24 +377,26 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 // or a font size written with its unit failed to compile while the same number
 // written bare worked -- which is why no fixture had caught it.
 //
-// Reduced to its magnitude here rather than given a `.dp` of its own in
-// Kotlin: `px` is the only base this platform reads, as it is everywhere else
-// android answers a measurement, and a helper would make the other four look
-// answered.
+// Reduced to one number of dp here rather than given a `.dp` of its own in
+// Kotlin: an em is emDp of them (codegen.MeasurementPx), and every caller
+// already appends the unit its Compose argument takes.
 func (cc *irComposeContext) styleValue(e ir.Expr) string {
-	if lit, ok := e.(*ir.Literal); ok {
-		if mag, _, ok := ir.UnitMagnitude(lit); ok {
-			return ir.FormatUnitMagnitude(mag)
+	if e != nil && ir.UnitDeclOf(e.ExprType()) != nil {
+		if px, ok := codegen.MeasurementPx(e, emDp); ok {
+			return ir.FormatUnitMagnitude(px)
 		}
 	}
 	val := cc.kc.EvalExpr(e)
 	if e != nil {
-		if ud := ir.UnitDeclOf(e.ExprType()); ud != nil && !ud.IsSingleBase() && len(ud.Bases()) > 0 {
-			return "(" + val + ")." + ud.Bases()[0].Name
+		if ud := ir.UnitDeclOf(e.ExprType()); ud != nil && !ud.IsSingleBase() {
+			return codegen.MeasurementSum(ud, "("+val+")", func(b string) string { return b }, ir.FormatUnitMagnitude(emDp))
 		}
 	}
 	return val
 }
+
+// emDp is an em on this platform: Material's body text is 16sp.
+const emDp = 16
 
 // flexModifier is what a child asking for a share of its parent becomes.
 //

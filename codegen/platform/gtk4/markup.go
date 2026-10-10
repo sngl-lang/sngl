@@ -362,7 +362,7 @@ func flowTags(style map[string]ir.Expr) (open, close string) {
 				attrs = append(attrs, fmt.Sprintf(`foreground="%s"`, hexColor(c)))
 			}
 		case "fontSize":
-			if px, ok := literalNumberOf(f.Value); ok && px > 0 {
+			if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 				attrs = append(attrs, pangoSize(px))
 			}
 		case "fontFamily":
@@ -444,7 +444,7 @@ func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 					foreground = rtStrCall("Foreground", f.Value)
 				}
 			case "fontSize":
-				if px, ok := literalNumberOf(f.Value); ok && px > 0 {
+				if px, ok := codegen.MeasurementPx(f.Value, emPx); ok && px > 0 {
 					attrs = append(attrs, pangoSize(px))
 				}
 			}
@@ -472,6 +472,9 @@ func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 func pangoSize(px float64) string {
 	return fmt.Sprintf(`size="%d"`, int(px*1024))
 }
+
+// emPx is an em on this platform: GTK's default font, Adwaita's 11pt.
+const emPx = 11
 
 // markupColor is an RGBA read off a SNGL color literal. Its own reader rather
 // than the layout one's, because a colour that is not a literal is no colour
@@ -504,8 +507,8 @@ func colorFromExpr(e ir.Expr) *markupColor {
 	return &c
 }
 
-// literalNumberOf reads a numeric literal, with or without a unit suffix: a
-// measurement is written `6` or `6px` and both mean one number here.
+// literalNumberOf reads a numeric literal: a colour's channel. A measurement is
+// codegen.MeasurementPx's.
 func literalNumberOf(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {

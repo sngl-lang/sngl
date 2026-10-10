@@ -232,7 +232,7 @@ func TestFindInLibrary(t *testing.T) {
 	}{
 		{"circle", "sngl:ui/draw", false, "component", `import draw "sngl:ui/draw"`},
 		{"button", "sngl:ui", false, "component", `import ui "sngl:ui"`},
-		{"Style", "sngl:ui", false, "type", `import ui "sngl:ui"`},
+		{"Alignment", "sngl:ui", false, "enum", `import ui "sngl:ui"`},
 		{"color", "sngl:builtin", true, "type", ""},
 	} {
 		got := lookup.FindInLibrary(tc.name)
@@ -252,6 +252,18 @@ func TestFindInLibrary(t *testing.T) {
 	}
 	if got := lookup.FindInLibrary("nosuchdeclaration"); len(got) != 0 {
 		t.Errorf("unknown name resolved to %v", got)
+	}
+}
+
+// A box's style and a shape's are both `Style`, so the bare name has an
+// origin in each package and a lookup has to be told which.
+func TestFindInLibraryAmbiguous(t *testing.T) {
+	got := lookup.FindInLibrary("Style")
+	if len(got) != 2 || got[0].Pkg != "sngl:ui" || got[1].Pkg != "sngl:ui/draw" {
+		t.Fatalf("Style: got %+v, want one origin in sngl:ui and one in sngl:ui/draw", got)
+	}
+	if _, err := lookup.Lookup("sngl", "Style"); err == nil || !strings.Contains(err.Error(), "sngl:ui and sngl:ui/draw") {
+		t.Fatalf("Lookup(sngl, Style) = %v, want it to name both packages", err)
 	}
 }
 

@@ -4,7 +4,7 @@ omitted struct prop has never been pinned anywhere -- and `canvasText` is
 where it shows, because its font is read out of that struct field by field:
 `String(style.fontSize) + "px " + style.fontFamily`.
 
-`CanvasStyle` declares `fontSize float = 16.0` and `fontFamily string =
+`Style` declares `fontSize float = 16.0` and `fontFamily string =
 "sans-serif"`, so the answer has to be those. Bound to an empty struct
 literal instead the two reads resolve to nothing and the page says
 `ctx.font = String({}.fontSize) + "px " + {}.fontFamily`, which is `undefined`
@@ -23,7 +23,7 @@ painted at all, which is why the draw function below brackets it and draws
 nothing inside.
 
 deny out/none/html/index.html `\{\}\.font` -- a member read off an empty style literal is undefined at run time; the declared default has to be bound at build time
-deny out/go/bubbletea/model.go `CanvasStyle\{\}` -- the same claim on the other target: an empty record is not what CanvasStyle's declared defaults say
+deny out/go/bubbletea/model.go `Style\{\}` -- the same claim on the other target: an empty record is not what Style's declared defaults say
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -67,12 +67,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -117,11 +115,11 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Text(1.0, 1.0, "hi")
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Rect(0.0, 0.0, 10.0, 5.0)
 	ctx.Restore()
 }
@@ -139,7 +137,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -285,6 +283,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a9f9448e04efea86dfe3563b4a0ac6f5
+pass sha256:17ef0a7e7561d9c83d4703c8af99ac9f
 -- run/none/html --
 pass sha256:d014a6836fe61ad6fea5e7e440276ba2

@@ -38,7 +38,7 @@ window #w {
     var lit = false
 
     draw.canvas(width=100px, height=100px) {
-        draw.rect(x=0.0, y=0.0, w=50.0, h=50.0, style=draw.CanvasStyle{fill=bgOf(lit)})
+        draw.rect(x=0.0, y=0.0, w=50.0, h=50.0, style=draw.Style{fill=bgOf(lit)})
     }
     button(text="toggle", @click { lit = !lit })
 }
@@ -86,9 +86,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Color(
@@ -101,7 +99,7 @@ data class Color(
         if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
 }
 
-data class CanvasStyle(
+data class Style(
     var fill: Color = Color(a = 0),
     var stroke: Color = Color(a = 0),
     var strokeWidth: Double = 1.0,
@@ -187,4 +185,4 @@ fun bgOf(on: Boolean): Color {
     return Color(r = 24, g = 60, b = 52, a = 255)
 }
 -- run/kotlin/android --
-pass sha256:ba4d907e9b0cdfff544a9bcb6c565de0
+pass sha256:724ec5ad8258d9a674f2fd9f3ad798a0

@@ -10,7 +10,7 @@
 //
 //  1. the flattened canvas metadata in the shape these platforms read it
 //     (Collect / Meta), and
-//  2. emitting the Go stdlib struct decls for Color/CanvasStyle/PathCmd,
+//  2. emitting the Go stdlib struct decls for Color/Style/PathCmd,
 //     which the draw funcs reference but which aren't carried on pkg.Structs
 //     for the Go path.
 //
@@ -77,11 +77,11 @@ func Collect(draws *codegen.CanvasDraws) (byID map[string]*Meta, byNode map[*ir.
 // StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by
 // struct name so a collision with a user-declared struct can omit just that
 // one decl. Field names/types mirror the stdlib definitions in
-// lib/canvas.sngl (CanvasStyle, PathCmd); their color fields reference the
+// lib/canvas.sngl (Style, PathCmd); their color fields reference the
 // shared ColorGoType. The per-platform drift-guard tests assert every stdlib
 // field is present.
 var StructDecls = map[string]string{
-	"CanvasStyle": "type CanvasStyle struct {\n" +
+	"Style": "type Style struct {\n" +
 		"\tFill        " + ColorGoType + "\n" +
 		"\tStroke      " + ColorGoType + "\n" +
 		"\tStrokeWidth float64\n" +
@@ -99,16 +99,16 @@ var StructDecls = map[string]string{
 
 // Color is the SNGL `color` type. On Go it maps to the shared
 // pkg/go/snglcolor.Color struct (int RGBA channels), so a color value is the
-// same type whether it flows into a CanvasStyle field or is coerced to a CSS
+// same type whether it flows into a Style field or is coerced to a CSS
 // string elsewhere. Canvas emitters must register ColorImportPath when they
-// emit CanvasStyle. Kept in sync with lib/types.sngl by the golang lang layer.
+// emit Style. Kept in sync with lib/types.sngl by the golang lang layer.
 const (
 	ColorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	ColorGoType     = "snglcolor.Color"
 )
 
 // StructOrder fixes the emission order of StructDecls.
-var StructOrder = []string{"CanvasStyle", "PathCmd"}
+var StructOrder = []string{"Style", "PathCmd"}
 
 // StructDeclsExcluding returns the canvas stdlib struct decls, omitting any
 // whose name is in declared (a set of user-declared struct names that already

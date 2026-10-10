@@ -3718,8 +3718,8 @@ program declaring the prop writes the program's. Compared by declaration
 instead, the two never matched.
 
 **A unit's members are its bases, and they are registered like any other
-declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
-value carries five numbers and every backend emits it as a record of them.
+declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem }` declares three bases, so a
+value carries three numbers and every backend emits it as a record of them.
 `ir.UnitDef.Fields` is that record's member table — `ir.UnitFields`, one
 `float` per base, built at registration — and `ir.Fielded` is what a struct and
 a unit answer it through, the field half of what `ir.methodTable` already does
@@ -3729,7 +3729,8 @@ both use.
 A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
 nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
 `t.tk` is an unknown member like any other, and a *reduced* suffix is one too —
-`rem` is 16em and no value carries a magnitude for it.
+in `unit width { cm, mm = 0.1cm }`, `mm` is a tenth of a cm and no value
+carries a magnitude for it.
 
 Before the table existed, nothing looked a unit member up: `inferSelect`
 reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
@@ -3790,10 +3791,10 @@ JavaScript, `Measurement(px=3.0, …)` on Kotlin — because nothing had ever
 asked the question; those are three host defaults leaking.
 
 Two consequences, and each is the representation asserting itself. **The
-written suffix is gone from display**: `2rem` shows `32em`, because the record
+written suffix is gone from display**: `2s` shows `2000ms`, because the record
 is the whole of what a compiled target holds and a spelling to prefer was a
 memory only `interp.unitValue.Suffix` had. And an **all-zero value prints in
-the first declared base**, so `0rem` and `0px` both print `0px` — they are the
+the first declared base**, so `0em` and `0px` both print `0px` — they are the
 same value under per-base equality, and equal values have to print equally.
 
 Go needs a helper per unit (`HelperSet.UnitStrings`, emitted by
@@ -3806,16 +3807,31 @@ agreement instead of restating it and drifting from it.
 
 **The CSS path is not this path**, which is what made unifying it cheap rather
 than a trade against html. A style prop is spelled by `internal/htmlutil`:
-`UnitLiteralToCSS` off an `ir.Literal`, with its own rename table where the
-base `pct` is written `%`. It shares `ir.UnitMagnitude` with the above and
-nothing else, reaches `interpolateStringify` nowhere, and `7px` in a
-stylesheet is unchanged by any of this.
+`UnitLiteralToCSS` off an `ir.Literal`, the base name being the CSS unit. It
+shares `ir.UnitMagnitude` with the above and nothing else, reaches
+`interpolateStringify` nowhere, and `7px` in a stylesheet is unchanged by any
+of this.
+
+**A measurement means one length on every target.** `px` is a
+device-independent pixel and `em` and `rem` are font sizes: html hands all
+three to CSS, and every other target, having no cascade, reads both as its
+base text size -- 16 on android, 14 on fyne (the default theme's), 11 on
+gtk4 (Adwaita's point size) and 16px, two cells, on bubbletea -- as one
+number, px + base*(em + rem) (`codegen.MeasurementPx` for a constant,
+`MeasurementSum` and `MeasurementPxExpr` for a value read at run time). A
+canvas's surface is pixels everywhere, so an em there is 16
+(`codegen.CanvasEmPx`). Each target used to read a constant's magnitude
+whatever its base -- `12em` was 12dp on android, `fontSize=17em` 17 on fyne --
+and a run-time value's px alone. `pct`, `vw` and `vh` went for the reason a
+base has to be every target's: a percentage padding exists on no host but
+html, and a viewport unit would have to follow a resize on hosts that apply a
+style once. `rem` was `16em`, which made `13rem` 208em on html.
 
 The interpreter is a fourth implementation of all of this and has to be checked
 with the three backends: `interp.ToInt` needs its `unitValue` case (without it
 every `int(<unit>)` was 0 on `--platform=none`), `evalSelect` needs one to read
 a per-base member, and `unitTable.BaseOf` is what says which base a suffix
-reduces to, so `2rem` counts in em. `cmd/sngl/testdata/unit_magnitude_compiles.txt`
+reduces to, so `2s` counts in ms. `cmd/sngl/testdata/unit_magnitude_compiles.txt`
 runs one program under both `--platform=bubbletea --language=go` and
 `--platform=none` for exactly that reason.
 
@@ -3840,7 +3856,7 @@ Four things follow, and the first three are the record restated:
   every cast the checker's ordering rule leaves meaningful.
 - **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
   value that only ever names one, which is what a program that never mixes
-  bases sees. In the bases, not in the spelling — `1rem` displays `16em`.
+  bases sees. In the bases, not in the spelling — `1s` displays `1000ms`.
 
 The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
 duration is single-base.

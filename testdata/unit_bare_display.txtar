@@ -114,23 +114,11 @@ func snglStrMeasurement(v Measurement) string {
 		}
 		s += fmt.Sprint(v.Em) + "em"
 	}
-	if v.Vw != 0 {
+	if v.Rem != 0 {
 		if s != "" {
 			s += " + "
 		}
-		s += fmt.Sprint(v.Vw) + "vw"
-	}
-	if v.Vh != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Vh) + "vh"
-	}
-	if v.Pct != 0 {
-		if s != "" {
-			s += " + "
-		}
-		s += fmt.Sprint(v.Pct) + "pct"
+		s += fmt.Sprint(v.Rem) + "rem"
 	}
 	if s == "" {
 		return "0px"
@@ -149,9 +137,7 @@ func snglStrDuration(v time.Duration) string {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Tick float64
@@ -171,8 +157,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.mix__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Em: 2}.Pct}
-	m.reduced__inst0 = Measurement{Em: 32}
+	m.mix__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Rem: Measurement{Px: 3}.Rem + Measurement{Em: 2}.Rem}
+	m.reduced__inst0 = Measurement{Rem: 2}
 	m.ticks__inst0 = Tick(4)
 	m.half__inst0 = time.Duration(500) * time.Millisecond
 	m.over__inst0 = time.Duration(1100) * time.Millisecond
@@ -385,9 +371,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -399,8 +383,8 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var mix__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 3.0)).px + (Measurement(em = 2.0)).px, em = (Measurement(px = 3.0)).em + (Measurement(em = 2.0)).em, vw = (Measurement(px = 3.0)).vw + (Measurement(em = 2.0)).vw, vh = (Measurement(px = 3.0)).vh + (Measurement(em = 2.0)).vh, pct = (Measurement(px = 3.0)).pct + (Measurement(em = 2.0)).pct)) }
-    var reduced__inst0 by remember { mutableStateOf(Measurement(em = 32.0)) }
+    var mix__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 3.0)).px + (Measurement(em = 2.0)).px, em = (Measurement(px = 3.0)).em + (Measurement(em = 2.0)).em, rem = (Measurement(px = 3.0)).rem + (Measurement(em = 2.0)).rem)) }
+    var reduced__inst0 by remember { mutableStateOf(Measurement(rem = 2.0)) }
     var ticks__inst0 by remember { mutableStateOf(4.0) }
     var half__inst0 by remember { mutableStateOf(500L) }
     var over__inst0 by remember { mutableStateOf(1100L) }
@@ -415,8 +399,8 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ("mix " + ((mix__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
-            Text(text = ("reduced " + ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("mix " + ((mix__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
+            Text(text = ("reduced " + ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.rem, "rem")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } })), modifier = Modifier.safeDrawingPadding())
             Text(text = ("ticks " + (_snglFloatStr((ticks__inst0)) + "tk")), modifier = Modifier.safeDrawingPadding())
             Text(text = ("half " + ((half__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding())
             Text(text = ("over " + ((over__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding())
@@ -452,16 +436,16 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100, visible__inst0: true };
-  state.mix__inst0 = { px: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.px, em: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.em, vw: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vw, vh: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vh, pct: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.pct };
+  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 0, rem: 2 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100, visible__inst0: true };
+  state.mix__inst0 = { px: { px: 3, em: 0, rem: 0 }.px + { px: 0, em: 2, rem: 0 }.px, em: { px: 3, em: 0, rem: 0 }.em + { px: 0, em: 2, rem: 0 }.em, rem: { px: 3, em: 0, rem: 0 }.rem + { px: 0, em: 2, rem: 0 }.rem };
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   function __sngl_init() {
-    __n1.textContent = "mix " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mix__inst0);
-    __n2.textContent = "reduced " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
+    __n1.textContent = "mix " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.rem, "rem"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mix__inst0);
+    __n2.textContent = "reduced " + ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.rem, "rem"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
     __n3.textContent = "ticks " + (String(state.ticks__inst0) + "tk");
     __n4.textContent = "half " + (String(state.half__inst0) + "ms");
     __n5.textContent = "over " + (String(state.over__inst0) + "ms");
@@ -471,8 +455,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1ef0dfd46839cf179786bbc773e05d77
+pass sha256:31d8be00036a3e22dd182beea4ab14df
 -- run/kotlin/android --
-pass sha256:9af49eda5f5d397dff7452be571f1172
+pass sha256:0debda2f114d63e83c58c32ad527b6d5
 -- run/none/html --
-pass sha256:3ea20d8a634bcbcbdf6f1a9c3ceca44a
+pass sha256:137d13a2b6e571346941e62341caa698

@@ -59,9 +59,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type PathCmd struct {
@@ -75,7 +73,7 @@ type PathCmd struct {
 	R   float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -109,11 +107,11 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Line(4.0, 4.0, 56.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
 	for _, c := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c.Op == "moveTo" {
 			ctx.MoveTo(c.X, c.Y)
@@ -148,7 +146,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -252,12 +250,10 @@ type PathCmd struct {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -284,7 +280,7 @@ func New() *Model {
 	return m
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -302,11 +298,11 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 51, G: 102, B: 153, A: 255}, StrokeWidth: 4.0, LineCap: "round", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	ctx.Line(4.0, 4.0, 56.0, 4.0)
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
+	ApplyStyle(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
 	for _, c__r0 := range []PathCmd{PathCmd{Op: "moveTo", X: 4.0, Y: 12.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "lineTo", X: 30.0, Y: 36.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}, PathCmd{Op: "bezierTo", Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0, X: 56.0, Y: 36.0, R: 0.0}, PathCmd{Op: "arcTo", Cx1: 56.0, Cy1: 12.0, X: 40.0, Y: 12.0, R: 4.0, Cx2: 0.0, Cy2: 0.0}, PathCmd{Op: "close", X: 0.0, Y: 0.0, Cx1: 0.0, Cy1: 0.0, Cx2: 0.0, Cy2: 0.0, R: 0.0}} {
 		if c__r0.Op == "moveTo" {
 			ctx.MoveTo(c__r0.X, c__r0.Y)
@@ -613,9 +609,7 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Color struct {
@@ -630,7 +624,7 @@ type Point struct {
 	Y float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -704,7 +698,7 @@ func ArcTo(ctx *C.cairo_t, from Point, corner Point, to Point, r float64) Point 
 	return a.Tangent2
 }
 
-func Paint(ctx *C.cairo_t, style CanvasStyle) {
+func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
 		if style.Stroke.A > 0 {
@@ -787,7 +781,7 @@ func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 			C.cairo_close_path(ctx)
 		}
 	}
-	Paint(ctx, CanvasStyle{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
+	Paint(ctx, Style{Stroke: snglcolor.Color{R: 153, G: 51, B: 102, A: 255}, StrokeWidth: 2.0, LineCap: "square", LineJoin: "bevel", Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -866,9 +860,7 @@ import androidx.compose.ui.geometry.Rect
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class PathCmd(
@@ -906,7 +898,7 @@ data class Color(
         if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
 }
 
-data class CanvasStyle(
+data class Style(
     var fill: Color = Color(a = 0),
     var stroke: Color = Color(a = 0),
     var strokeWidth: Double = 1.0,
@@ -1157,12 +1149,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5f2176afa00b9dbb7ba339b7f5efff11
+pass sha256:f3a2196428ad819e3b5f3343db3914c2
 -- run/go/fyne --
-pass sha256:afd48d8fc73c4f39fcb595c2516d970d
+pass sha256:0afe2465c75c25d4daa9ac6ff0e1d9e4
 -- run/go/gtk4 --
-pass sha256:4435b8afe63158730082db1da2592475
+pass sha256:eabd0426656146aeaf3266554b2fde9a
 -- run/kotlin/android --
-pass sha256:5e2e4e773322ce054edfba258f4dd63d
+pass sha256:d2cd0c7293c86c1399e64d652b9fa8c8
 -- run/none/html --
 pass sha256:db768984fd227ac56783d7a933a47519

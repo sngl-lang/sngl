@@ -59,7 +59,7 @@ func ggLineJoin(s string) gg.LineJoin {
 }
 
 // Style is the resolved per-shape paint state. A zero-alpha Fill or Stroke
-// disables that paint (matches the SNGL CanvasStyle transparent default).
+// disables that paint (matches the SNGL Style transparent default).
 type Style struct {
 	Fill        color.NRGBA
 	Stroke      color.NRGBA

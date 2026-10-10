@@ -2,8 +2,6 @@ package codegen
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -225,20 +223,17 @@ func nodeEnumProp(n *ir.NodeInst, name string) string {
 }
 
 // nodeIntProp is a numeric or measurement prop as an int, or 0 when absent.
+// A canvas's surface is pixels on every target, so an em there is CSS's
+// default of 16 of them (CanvasEmPx).
 func nodeIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := strings.TrimSuffix(lit.Value, lit.Suffix)
-			if v, err := strconv.Atoi(raw); err == nil {
-				return v
-			}
-			if f, err := strconv.ParseFloat(raw, 64); err == nil {
-				return int(f)
-			}
+		if p.Name == name {
+			px, _ := MeasurementPx(p.Value, CanvasEmPx)
+			return int(px)
 		}
 	}
 	return 0
 }
+
+// CanvasEmPx is an em on a canvas's surface.
+const CanvasEmPx = 16

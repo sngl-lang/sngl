@@ -805,11 +805,10 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 
 // cellVal is a style value in terminal cells.
 //
-// A measurement is a magnitude per base, and a terminal has a size for exactly
-// one of them: a cell is so many pixels wide, while an em is a font the host
-// chose and a pct is a fraction of a box lipgloss never reports. So the first
-// declared base is the one read and the rest contribute nothing -- which is
-// the same answer `2rem` and `50pct` already got, arrived at deliberately.
+// A measurement is read as pixels and scaled to cells: a cell stands for
+// scaleFactor pixels, and an em for emPx of them -- a terminal's font is one
+// cell wide and about two tall, so 16px, two cells, is an em
+// (codegen.MeasurementPx).
 //
 // Reading the magnitude at all is what was missing: a unit value is a record
 // in Go, so `paddingLeft=20px` came out as `max(1, Measurement{Px: 20}/8)` and
@@ -817,29 +816,22 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 // compiled. Nothing in lib/ rendered a body until now, which is why the one
 // spelling every document uses did not reach it sooner.
 func cellVal(expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
-	val := gc.EvalExpr(expr)
 	ud := ir.UnitDeclOf(exprType(expr))
 	if ud == nil {
-		return scaleVal(val, scaleFactor)
+		return scaleVal(gc.EvalExpr(expr), scaleFactor)
 	}
-	bases := ud.Bases()
-	if len(bases) == 0 {
-		return scaleVal(val, scaleFactor)
+	if px, ok := codegen.MeasurementPx(expr, emPx); ok {
+		return scaleVal(strconv.Itoa(int(px)), scaleFactor)
 	}
-	if lit, ok := expr.(*ir.Literal); ok {
-		mag, base, ok := ir.UnitMagnitude(lit)
-		if ok && base != bases[0].Name {
-			return "0"
-		}
-		if ok {
-			return scaleVal(strconv.Itoa(int(mag)), scaleFactor)
-		}
-	}
+	val := gc.EvalExpr(expr)
 	if ud.IsSingleBase() {
 		return scaleVal("int("+val+")", scaleFactor)
 	}
-	return scaleVal("int("+val+"."+golang.ExportName(bases[0].Name)+")", scaleFactor)
+	return scaleVal("int("+codegen.MeasurementSum(ud, val, golang.ExportName, strconv.Itoa(emPx))+")", scaleFactor)
 }
+
+// emPx is an em in the pixels a cell is counted in.
+const emPx = 16
 
 // exprType is expr's type, nil-safely: a style field may carry no expression
 // at all.
@@ -922,7 +914,7 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 		// Position, which is lipgloss.Left -- what left and justify both get.
 		return fmt.Sprintf(`AlignHorizontal(map[string]lipgloss.Position{"center": lipgloss.Center, "right": lipgloss.Right}[%s])`, val)
 	case "borderWidth":
-		if mag, ok := literalMagnitude(expr); ok {
+		if mag, ok := codegen.MeasurementPx(expr, emPx); ok {
 			if mag <= 0 {
 				return ""
 			}
@@ -967,20 +959,6 @@ func enumFlag(expr ir.Expr, val, member string) string {
 		return ""
 	}
 	return fmt.Sprintf("%s == %q", val, member)
-}
-
-// literalMagnitude is a constant measurement's magnitude, in whichever base it
-// was written, or a bare number's value.
-func literalMagnitude(expr ir.Expr) (float64, bool) {
-	if v, ok := codegen.IRLiteralNumber(expr); ok {
-		return v, true
-	}
-	if lit, ok := expr.(*ir.Literal); ok {
-		if mag, _, ok := ir.UnitMagnitude(lit); ok {
-			return mag, true
-		}
-	}
-	return 0, false
 }
 
 // nonzero is whether a run-time measurement is anything but zero, in Go. A

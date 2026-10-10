@@ -61,9 +61,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -274,9 +272,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -466,9 +462,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Palette struct {
@@ -652,9 +646,7 @@ import androidx.compose.ui.text.withStyle
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Palette(
@@ -869,12 +861,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0c6497ba9629ac2da7a950be1db7ddba
+pass sha256:3399abec14e446f652416638b01f2b01
 -- run/go/fyne --
-pass sha256:bb0dd3db5e90ef1ee8480485f6e6f163
+pass sha256:b1e63479c9a6b00fdfdc0e7fc319982f
 -- run/go/gtk4 --
-pass sha256:cc88ea545a2a4bbda69ffb389bf43262
+pass sha256:986b69db3a5333e1f0cf21c9f9765cbf
 -- run/kotlin/android --
-pass sha256:0dc53e949ccffdac37a5bd388c404d86
+pass sha256:182b8a9b65033378455fc054888dcaac
 -- run/none/html --
 pass sha256:d226a21ec189c973db38fbe636e5ad6e

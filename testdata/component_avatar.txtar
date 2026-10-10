@@ -45,9 +45,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -177,9 +175,7 @@ var _snglTheme2 = fynetheme.Theme{Theme: theme.DefaultTheme(), Background: color
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state for this SNGL UI.
@@ -290,9 +286,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -348,10 +342,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:179bedcb08c52f17e33a7d11286e470c
+pass sha256:5046078b19dd8d64aaec5d4648962ebd
 -- run/go/fyne --
-pass sha256:d8e06546423ab5fb227261278e385a16
+pass sha256:df9e7e137d3eb81e3d55932b6778fcec
 -- run/kotlin/android --
-pass sha256:750037fe93b8adb59f85e03582441768
+pass sha256:8de3f25e2ec99aab20a845eef8e701c9
 -- run/none/html --
 pass sha256:ce1ec6245bf3878e338ab4cd8f7db967

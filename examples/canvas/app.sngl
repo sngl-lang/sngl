@@ -8,22 +8,22 @@ output {
 ui.window {
     var radius = 50.0
 
-    func circleStyle() => draw.CanvasStyle{
+    func circleStyle() => draw.Style{
         fill = color{r=99, g=102, b=241, a=255},
         stroke = color{r=67, g=56, b=202, a=255},
         strokeWidth = 3.0,
     }
 
-    func bgStyle() => draw.CanvasStyle{
+    func bgStyle() => draw.Style{
         fill = color{r=248, g=250, b=252, a=255},
     }
 
-    func gridStyle() => draw.CanvasStyle{
+    func gridStyle() => draw.Style{
         stroke = color{r=203, g=213, b=225, a=255},
         strokeWidth = 1.0,
     }
 
-    func labelStyle() => draw.CanvasStyle{
+    func labelStyle() => draw.Style{
         fill = color{r=255, g=255, b=255, a=255},
         fontSize = 14.0,
         fontFamily = "sans-serif",
@@ -65,7 +65,7 @@ ui.window {
                 y = 20.0,
                 w = 80.0,
                 h = 80.0,
-                style = draw.CanvasStyle{
+                style = draw.Style{
                     fill = color{r=251, g=191, b=36, a=255},
                     stroke = color{r=217, g=119, b=6, a=255},
                     strokeWidth = 2.0,
@@ -77,7 +77,7 @@ ui.window {
                 cy = 60.0,
                 rx = 60.0,
                 ry = 35.0,
-                style = draw.CanvasStyle{
+                style = draw.Style{
                     fill = color{r=52, g=211, b=153, a=255},
                     stroke = color{r=5, g=150, b=105, a=255},
                     strokeWidth = 2.0,
@@ -89,7 +89,7 @@ ui.window {
                 y1 = 20.0,
                 x2 = 380.0,
                 y2 = 100.0,
-                style = draw.CanvasStyle{
+                style = draw.Style{
                     stroke = color{r=239, g=68, b=68, a=255},
                     strokeWidth = 4.0,
                 },
@@ -99,21 +99,21 @@ ui.window {
                 x = 20.0,
                 y = 115.0,
                 content = "rect",
-                style = draw.CanvasStyle{fill=color{r=120, g=80, b=0, a=255}, fontSize=11.0},
+                style = draw.Style{fill=color{r=120, g=80, b=0, a=255}, fontSize=11.0},
             )
 
             draw.canvasText(
                 x = 165.0,
                 y = 115.0,
                 content = "ellipse",
-                style = draw.CanvasStyle{fill=color{r=0, g=100, b=70, a=255}, fontSize=11.0},
+                style = draw.Style{fill=color{r=0, g=100, b=70, a=255}, fontSize=11.0},
             )
 
             draw.canvasText(
                 x = 330.0,
                 y = 115.0,
                 content = "line",
-                style = draw.CanvasStyle{fill=color{r=180, g=30, b=30, a=255}, fontSize=11.0},
+                style = draw.Style{fill=color{r=180, g=30, b=30, a=255}, fontSize=11.0},
             )
         }
     }

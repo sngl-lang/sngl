@@ -20,8 +20,8 @@ component main ui.node {
     var t tick = 4tk
     var d time.duration = 500ms
 
-    var a = float(m) // ERROR(check) "float(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em, .vw, .vh or .pct"
-    var b = int(m)   // ERROR(check) "int(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em, .vw, .vh or .pct"
+    var a = float(m) // ERROR(check) "float(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em or .rem"
+    var b = int(m)   // ERROR(check) "int(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em or .rem"
 
     // A single-base unit is a plain number on every target, so a cast is the
     // supported way to read it and both of these stay legal.

@@ -589,7 +589,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if f.Default != nil {
 				// A literal default is emitted as written, and so is a struct
 				// literal of them -- `fill color = color{a=0}` is the one
-				// CanvasStyle writes, and a transparent fill is not the type's
+				// Style writes, and a transparent fill is not the type's
 				// zero. Anything else is an expression a data class header
 				// cannot hold — `false` is a constant declaration whose own
 				// initializer is `0 != 0` — so the field takes the type's
@@ -629,7 +629,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
 
-	// Canvas2D stdlib structs (CanvasStyle/PathCmd). Stdlib-only structs
+	// Canvas2D stdlib structs (Style/PathCmd). Stdlib-only structs
 	// aren't carried on pkg.Structs, so materialize them here (analogous to
 	// canvasutil for the Go platforms) whenever the program contains a canvas.
 	if hasCanvas {

@@ -423,7 +423,7 @@ func CairoContext.setFontSize(size float)
 // they are cast the same way rather than passed as `C.int` -- cgo refuses an
 // int where a `cairo_font_slant_t` belongs.
 //
-// `CanvasStyle` exposes neither, so both are always the normal value. Declared
+// `Style` exposes neither, so both are always the normal value. Declared
 // anyway, because the alternative is a native that lies about its signature.
 #[cnative("C.cairo_font_slant_t")]
 struct FontSlant {}
@@ -487,7 +487,7 @@ func source(ctx CairoContext, c color) {
 // Fill then stroke the current path, preserving it between the two when both
 // apply. This is `_snglCairoPaint` written in SNGL rather than spliced in as
 // Go text.
-func paint(ctx CairoContext, style shapes.CanvasStyle) {
+func paint(ctx CairoContext, style shapes.Style) {
     if style.fill.a > 0 {
         source(ctx, style.fill)
         if style.stroke.a > 0 {

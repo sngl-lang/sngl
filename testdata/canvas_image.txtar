@@ -59,12 +59,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -276,6 +274,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:332991e961bbd0411f20b5b8464f2ae5
+pass sha256:636740f9376412b8a11d4eab83bd5b2e
 -- run/none/html --
 pass sha256:92aba0629ecd0adeb833106243fa2186

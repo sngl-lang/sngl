@@ -68,9 +68,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Tab__record struct {
@@ -318,9 +316,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 type Tab__record struct {
@@ -1214,9 +1210,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:8fff3c9ff8330a8b9d549a4a0d3113c6
+pass sha256:af7b9e3b6c84b1cb2b6f28bed74dfaab
 -- run/go/fyne --
-pass sha256:7e4ff3ab7862ad08a707e34031be9332
+pass sha256:a390a08841e91ebe240b1a7b60412261
 -- run/go/gtk4 --
 pass sha256:e838dd90103804897f1d644be2fcc806
 -- run/kotlin/android --

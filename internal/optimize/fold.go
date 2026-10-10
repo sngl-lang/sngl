@@ -630,7 +630,7 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 // base": once folded, every backend emits one magnitude instead of a
 // per-base record built out of two.
 //
-// Two literals in *different* bases -- `1px + 2pct` -- have no single number
+// Two literals in *different* bases -- `1px + 2em` -- have no single number
 // and are deliberately left alone, for the backend's multi-base
 // representation to carry. That is the only case that reaches it.
 func combinedUnitLiteral(x *ir.Binary) *ir.Literal {

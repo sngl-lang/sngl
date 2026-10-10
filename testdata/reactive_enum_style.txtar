@@ -102,9 +102,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -348,12 +346,12 @@ func (m Model) View() tea.View {
 			Border(lipgloss.NormalBorder(), __lt10 != (Measurement{})).
 			Foreground(lipgloss.Color(__lt11.String())).
 			Faint(__lt9 < 1).
-			Padding(max(1, int(__lt6.Px)/8)).
-			Width(max(1, int(__lt7.Px)/8)).Render(fmt.Sprint("box"))
+			Padding(max(1, int((__lt6.Px+16*(__lt6.Em+__lt6.Rem)))/8)).
+			Width(max(1, int((__lt7.Px+16*(__lt7.Em+__lt7.Rem)))/8)).Render(fmt.Sprint("box"))
 		contentChildren = append(contentChildren, content_30)
 		var content_31 string
 		content_31 = lipgloss.NewStyle().
-			PaddingLeft(max(1, int(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Vw: Measurement{Px: 8}.Vw * float64(m.n), Vh: Measurement{Px: 8}.Vh * float64(m.n), Pct: Measurement{Px: 8}.Pct * float64(m.n)}.Px)/8)).Render(fmt.Sprint("scaled"))
+			PaddingLeft(max(1, int((Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}.Px+16*(Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}.Em+Measurement{Px: Measurement{Px: 8}.Px * float64(m.n), Em: Measurement{Px: 8}.Em * float64(m.n), Rem: Measurement{Px: 8}.Rem * float64(m.n)}.Rem)))/8)).Render(fmt.Sprint("scaled"))
 		contentChildren = append(contentChildren, content_31)
 		var __lt12 string
 		if m.on {
@@ -462,9 +460,7 @@ import androidx.compose.ui.text.withStyle
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -501,12 +497,12 @@ fun MainScreen() {
             Text(text = "left", modifier = Modifier.alpha(1.0f), style = TextStyle(textAlign = TextAlign.Start))
             Text(text = "justified", modifier = Modifier, style = TextStyle(textAlign = TextAlign.Justify))
             Text(text = "nested", modifier = Modifier, style = TextStyle(textAlign = (if (on) TextAlign.Center else (if ((n > 2)) TextAlign.Start else TextAlign.End))))
-            Text(text = "grown", modifier = Modifier, style = TextStyle(fontSize = (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, vw = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vw * 2, vh = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).vh * 2, pct = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).pct * 2)).px.sp))
-            Text(text = "box", modifier = Modifier.padding(((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).px.dp).width(((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).px.dp).alpha(((if (on) 0.5 else 1.0)).toFloat()), style = TextStyle(fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp, color = (if (on) ComposeColor(red = 255, green = 0, blue = 0, alpha = 255) else ComposeColor(red = 0, green = 255, blue = 0, alpha = 255))))
-            Text(text = "scaled", modifier = Modifier.padding(start = (Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, vw = (Measurement(px = 8.0)).vw * n, vh = (Measurement(px = 8.0)).vh * n, pct = (Measurement(px = 8.0)).pct * n)).px.dp))
+            Text(text = "grown", modifier = Modifier, style = TextStyle(fontSize = ((Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).px + 16*((Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).em + (Measurement(px = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).px * 2, em = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).em * 2, rem = ((if (on) Measurement(px = 20.0) else Measurement(px = 10.0))).rem * 2)).rem)).sp))
+            Text(text = "box", modifier = Modifier.padding((((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).px + 16*(((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).em + ((if (on) Measurement(px = 16.0) else Measurement(px = 8.0))).rem)).dp).width((((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).px + 16*(((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).em + ((if (on) Measurement(px = 160.0) else Measurement(px = 80.0))).rem)).dp).alpha(((if (on) 0.5 else 1.0)).toFloat()), style = TextStyle(fontSize = (((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px + 16*(((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).em + ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).rem)).sp, color = (if (on) ComposeColor(red = 255, green = 0, blue = 0, alpha = 255) else ComposeColor(red = 0, green = 255, blue = 0, alpha = 255))))
+            Text(text = "scaled", modifier = Modifier.padding(start = ((Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).px + 16*((Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).em + (Measurement(px = (Measurement(px = 8.0)).px * n, em = (Measurement(px = 8.0)).em * n, rem = (Measurement(px = 8.0)).rem * n)).rem)).dp))
             Text(text = buildAnnotatedString {
                 append("flow ")
-                withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = (((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
+                withStyle(SpanStyle(fontWeight = (if (on) null else FontWeight.Light), fontStyle = (if (on) FontStyle.Italic else null), fontSize = ((((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).px + 16*(((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).em + ((if (on) Measurement(px = 18.0) else Measurement(px = 0.0))).rem))).let { if (it > 0) it.sp else TextUnit.Unspecified }, textDecoration = TextDecoration.combine(listOfNotNull(if (on) TextDecoration.Underline else null)))) {
                     append("run")
                 }
                 if (on) {
@@ -517,11 +513,11 @@ fun MainScreen() {
                 withStyle(SpanStyle(color = (if (on) ComposeColor.Unspecified else ComposeColor(red = 255, green = 0, blue = 0, alpha = 255)))) {
                     append(" tinted")
                 }
-            }, modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal), fontSize = ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px.sp))
+            }, modifier = Modifier, style = TextStyle(fontWeight = (if (on) FontWeight.Bold else FontWeight.Normal), fontSize = (((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).px + 16*(((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).em + ((if (on) Measurement(px = 20.0) else Measurement(px = 12.0))).rem)).sp))
         }
     }
 }
 -- run/go/bubbletea --
-pass sha256:cf93e2c128702e2ba556d7e6a02a3045
+pass sha256:b6983f332b856598260b43056f4dda7f
 -- run/kotlin/android --
-pass sha256:12956ae8cba49e9ed93651104c1462b3
+pass sha256:e18fc4036f79d6d5c0bed778cb664563

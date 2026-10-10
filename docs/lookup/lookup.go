@@ -222,10 +222,17 @@ func lookupInUncached(cwd, path string, idents []string) (Result, error) {
 	// that package.
 	if tgt.tree {
 		origins := FindInLibrary(idents[0])
-		if len(origins) == 1 {
+		switch len(origins) {
+		case 1:
 			return LookupIn(cwd, origins[0].Pkg, idents...)
+		case 0:
+			return Result{}, fmt.Errorf("%w: %q is a package of the library, not a declaration in one", ErrNotFound, idents[0])
 		}
-		return Result{}, fmt.Errorf("%w: %q is a package of the library, not a declaration in one", ErrNotFound, idents[0])
+		pkgs := make([]string, len(origins))
+		for i, o := range origins {
+			pkgs[i] = o.Pkg
+		}
+		return Result{}, fmt.Errorf("%w: %q is declared by %s; name the package", ErrNotFound, idents[0], strings.Join(pkgs, " and "))
 	}
 	if tgt.native != nil {
 		return walkNative(tgt, idents)

@@ -69,9 +69,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -175,9 +173,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state for this SNGL UI.
@@ -298,9 +294,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -396,9 +390,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -463,12 +455,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:896e570511349d45099ebdfb42b9dfb3
+pass sha256:ddbce1708ff170eb3791a135715b11c8
 -- run/go/fyne --
-pass sha256:f9256fe305f1d2e3a9fcafdeee4c08c3
+pass sha256:373d5eabcd3cbd97a69d0b969af0bf3d
 -- run/go/gtk4 --
-pass sha256:8eed8b92483e61b0203250ce9a8d77c6
+pass sha256:dca200ccc8c9cac6ad4d2114b6b7b3c7
 -- run/kotlin/android --
-pass sha256:7a661edd4bfc45ca0814565dfa5ce4a6
+pass sha256:5408223677b07dddce44596a24f5a43b
 -- run/none/html --
 pass sha256:c1eb89b2beb06ae7bd1a87647a2ffd85

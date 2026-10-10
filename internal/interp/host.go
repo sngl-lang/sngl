@@ -57,9 +57,18 @@ func wireValue(v any) any {
 		}
 		return out
 	case unitValue:
-		// A host reads a measurement as its number; the unit table is the
+		// A single-base unit is its number. A multi-base one crosses as its
+		// magnitude per base, which is what the host has to weigh: a
+		// measurement's em is the host's text size. The unit table is the
 		// interpreter's and does not cross.
-		return x.magnitude()
+		if x.Table != nil && len(x.Table.Bases) == 1 {
+			return x.magnitude()
+		}
+		out := make(map[string]any, len(x.Amounts))
+		for b, v := range x.Amounts {
+			out[b] = v
+		}
+		return out
 	}
 	return v
 }

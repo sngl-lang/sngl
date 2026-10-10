@@ -68,9 +68,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -238,6 +236,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:67b027a9f6804bc1088347487b2a9be0
+pass sha256:6eafef390194c8f656852bb718603e22
 -- run/none/html --
 pass sha256:0e204e01575972fb090432d9a78435cb

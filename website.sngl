@@ -105,38 +105,40 @@ component PlatformCarousel() ui.node {
     })
 
     ui.vbox(style={gap=16px, alignItems=center, paddingY=32px}) {
-        ui.stack {
-            if active == 0 {
-                ui.image(
-                    src = screenshotWeb,
-                    alt = "SNGL Todo App on Web",
-                    fit = contain,
-                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 1 {
-                ui.image(
-                    src = screenshotTerminal,
-                    alt = "SNGL Todo App in Terminal",
-                    fit = contain,
-                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 2 {
-                ui.image(
-                    src = screenshotDesktop,
-                    alt = "SNGL Todo App on Desktop",
-                    fit = contain,
-                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
-            }
-            if active == 3 {
-                ui.image(
-                    src = screenshotAndroid,
-                    alt = "SNGL Todo App on Android",
-                    fit = contain,
-                    style = {maxWidth=800px, maxHeight=500px, borderRadius=8px, width=100pct},
-                )
+        html.div(class="platform-carousel") {
+            ui.stack {
+                if active == 0 {
+                    ui.image(
+                        src = screenshotWeb,
+                        alt = "SNGL Todo App on Web",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    )
+                }
+                if active == 1 {
+                    ui.image(
+                        src = screenshotTerminal,
+                        alt = "SNGL Todo App in Terminal",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    )
+                }
+                if active == 2 {
+                    ui.image(
+                        src = screenshotDesktop,
+                        alt = "SNGL Todo App on Desktop",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    )
+                }
+                if active == 3 {
+                    ui.image(
+                        src = screenshotAndroid,
+                        alt = "SNGL Todo App on Android",
+                        fit = contain,
+                        style = {maxWidth=800px, maxHeight=500px, borderRadius=8px},
+                    )
+                }
             }
         }
         ui.hbox(style={gap=8px}) {

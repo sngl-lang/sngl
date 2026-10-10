@@ -97,7 +97,7 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 // when the unit decl can't be resolved or the value can't be parsed.
 //
 // A multi-base unit is refused: erasing `measurement` to a bare number would
-// make `1px` and `1pct` the same value, and this pass has no record to put
+// make `1px` and `1em` the same value, and this pass has no record to put
 // the other bases in. NoUnit is for a target with no unit vocabulary at all
 // (the interpreter test runner), where a single-base unit is exactly its
 // magnitude and a multi-base one has no meaning to preserve. Every real

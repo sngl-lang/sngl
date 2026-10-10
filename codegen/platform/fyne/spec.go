@@ -326,12 +326,15 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 		default:
 			continue
 		}
-		if v, ok := literalNumber(f.Value); ok {
+		if v, ok := codegen.MeasurementPx(f.Value, emPx); ok {
 			*into = v
 		}
 	}
 	return st
 }
+
+// emPx is an em on this platform: the default theme's text size.
+const emPx = 14
 
 // enumOrString reads an enum member, or a plain string, as its name.
 func enumOrString(e ir.Expr) string {
@@ -370,9 +373,8 @@ func colorFromExpr(e ir.Expr) *fyneColor {
 	return &c
 }
 
-// literalNumber reads a numeric literal, with or without a unit suffix: a
-// Style measurement is written `6` or `6px` and both mean the same number of
-// device-independent pixels to Fyne.
+// literalNumber reads a numeric literal: a colour's channel. A measurement is
+// codegen.MeasurementPx's.
 func literalNumber(e ir.Expr) (float64, bool) {
 	lit, ok := e.(*ir.Literal)
 	if !ok || lit == nil {

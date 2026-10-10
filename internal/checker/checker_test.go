@@ -1317,12 +1317,12 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0)
-        circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0)
+        draw.circle(cx=50.0, cy=50.0, r=30.0)
     }
 }
 `)
@@ -1334,12 +1334,12 @@ component myWidget() node {
 func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0) {
-            circle(cx=50.0, cy=50.0, r=30.0)
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0) {
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1347,14 +1347,14 @@ component myWidget() node {
 
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
-component group(children ...component) shape {}
+component group(children ...component) draw.shape {}
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         group() {
-            circle(cx=50.0, cy=50.0, r=30.0)
+            draw.circle(cx=50.0, cy=50.0, r=30.0)
         }
     }
 }
@@ -1364,11 +1364,11 @@ component myWidget() node {
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component notAShape() node {}
 component myWidget() node {
-    canvas(width=400px, height=300px) {
+    draw.canvas(width=400px, height=300px) {
         notAShape() {}
     }
 }
@@ -1380,10 +1380,10 @@ component myWidget() node {
 func TestCheckShape_IsNotAValue(t *testing.T) {
 	expectError(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    var bad = shape
+    var bad = draw.shape
 }
 `, "shape names a family, which is not a value")
 }
@@ -1393,13 +1393,13 @@ func TestCheckCanvasStdlib(t *testing.T) {
 	// surface is imported by a program that draws, not by every program.
 	expectNoErrors(t, `
 import . "sngl:ui"
-import . "sngl:ui/draw"
+import draw "sngl:ui/draw"
 
 component myWidget() node {
-    canvas(width=400px, height=300px) {
-        rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
-        circle(cx=50.0, cy=50.0, r=30.0, style=CanvasStyle{}) {}
-        canvasText(x=10.0, y=10.0, content="hello", style=CanvasStyle{}) {}
+    draw.canvas(width=400px, height=300px) {
+        draw.rect(x=10.0, y=10.0, w=100.0, h=50.0, style=draw.Style{}) {}
+        draw.circle(cx=50.0, cy=50.0, r=30.0, style=draw.Style{}) {}
+        draw.canvasText(x=10.0, y=10.0, content="hello", style=draw.Style{}) {}
     }
 }
 `)

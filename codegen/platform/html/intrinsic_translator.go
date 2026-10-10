@@ -427,6 +427,14 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			Value:  value,
 		}}
 	}
+	// An attribute holding a measurement -- a canvas's width -- takes the
+	// pixels it comes to; the record itself stringifies to "[object Object]".
+	if ud := ir.UnitDeclOf(value.ExprType()); ud != nil && !ud.IsSingleBase() {
+		if px, ok := codegen.MeasurementPx(value, codegen.CanvasEmPx); ok {
+			return setAttr(prop, &ir.Literal{Type: ir.TypFloat, Value: ir.FormatUnitMagnitude(px)})
+		}
+		return setAttr(prop, codegen.MeasurementPxExpr(ud, value, codegen.CanvasEmPx))
+	}
 	return setAttr(prop, value)
 }
 

@@ -86,9 +86,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 data class Choice__record(
@@ -156,4 +154,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:37b49ec81791c6921ecc2ef62e5bc3b2
+pass sha256:abb177e5d24469f7483daabcbe94b640

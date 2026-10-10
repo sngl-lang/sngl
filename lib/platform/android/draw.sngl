@@ -54,7 +54,7 @@ const func composeColor(red int, green int, blue int, alpha int) ComposeColor
 
 // Compose's `Stroke` carries the cap and the join, so `strokeStyle` takes the
 // whole style rather than just the width -- android read `lineCap` and
-// `lineJoin` nowhere before this and the two reached its `CanvasStyle` data
+// `lineJoin` nowhere before this and the two reached its `Style` data
 // class to be ignored (#223).
 #[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
 const func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
@@ -109,7 +109,7 @@ const func strokeJoin(join shapes.LineJoin) StrokeJoin {
     return joinMiter
 }
 
-const func strokeStyle(style shapes.CanvasStyle) DrawStyle {
+const func strokeStyle(style shapes.Style) DrawStyle {
     return strokeOf(f32(style.strokeWidth), strokeCap(style.lineCap), strokeJoin(style.lineJoin))
 }
 

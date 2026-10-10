@@ -494,7 +494,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// The drawing-area trampoline registration emits an `unsafe.Pointer` cast.
 	if hasCanvas {
 		gc.RequireImport("unsafe")
-		// The emitted CanvasStyle struct decl references snglcolor.Color.
+		// The emitted Style struct decl references snglcolor.Color.
 		gc.RequireImport(canvasutil.ColorImportPath)
 	}
 

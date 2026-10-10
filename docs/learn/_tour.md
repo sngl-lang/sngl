@@ -424,7 +424,7 @@ ui.window {
 
 ## Colors and Units
 
-Colors have literal syntax (`#rgb`, `#rrggbb`, `#rrggbbaa`) and a built-in `color` type. Sizes and times are **units**: a number with a suffix, typed by the unit that declares the suffix. `sngl:ui` declares `measurement` (`16px`, `1.25em`, `50pct`), and `sngl:time` declares `duration` (`250ms`, `5s`).
+Colors have literal syntax (`#rgb`, `#rrggbb`, `#rrggbbaa`) and a built-in `color` type. Sizes and times are **units**: a number with a suffix, typed by the unit that declares the suffix. `sngl:ui` declares `measurement` (`16px`, `1.25em`, `2rem`), and `sngl:time` declares `duration` (`250ms`, `5s`).
 
 A suffix needs something to say which unit it belongs to — a typed `const`, a prop, a style field — so `const pad ui.measurement = 16px` names the type while `style={padding=16px}` gets it from `Style`. Units add and scale like numbers, and interpolating one prints its magnitude in the unit's base: `5s` displays as `5000ms`, the base of `duration`. Your own code can declare units with `unit` the same way the library does.
 
@@ -764,7 +764,7 @@ ui.window {
     var volume = 60
     ui.vbox(style={gap=10px, padding=16px}) {
         ui.text(value="Native browser widgets:", style={fontWeight=bold})
-        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=100pct})
+        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width=240px})
         ui.hbox(style={gap=8px}) {
             ui.button(text="-10", @click { volume = volume - 10 })
             ui.button(text="+10", @click { volume = volume + 10 })

@@ -31,7 +31,7 @@ component Dot(r float) node {
 
     vbox {
         draw.canvas(width=16px, height=16px) {
-            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.CanvasStyle{fill=color{r=255, a=255}})
+            draw.circle(cx=8, cy=8, r=big ? r * 2 : r, style=draw.Style{fill=color{r=255, a=255}})
         }
         button(text="grow", @click { big = !big })
     }
@@ -66,12 +66,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -142,7 +140,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 		__canvasRaster0 := func() image.Image {
 			ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 			ctx.Save()
-			ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+			ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 			var __lt0 float64
 			if func() bool {
 				if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -166,7 +164,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -335,7 +333,7 @@ func (m Model) View() tea.View {
 			__canvasRaster0 := func() image.Image {
 				ctx := _canvasSurface0At(__canvasAt0).Begin(16, 16, 0, 0, "")
 				ctx.Save()
-				ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+				ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, A: 255, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 				var __lt0 float64
 				if func() bool {
 					if __v, __ok := m.big__inst0[fmt.Sprint(__copy0)]; __ok {
@@ -432,8 +430,8 @@ body { font-family: system-ui, sans-serif; }
     let __n3 = document.createElement("div");
     __n3.setAttribute("style", "display:flex;flex-direction:column");
     let __n4 = document.createElement("canvas");
-    __n4.setAttribute("width", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
-    __n4.setAttribute("height", { px: 16, em: 0, vw: 0, vh: 0, pct: 0 });
+    __n4.setAttribute("width", 16);
+    __n4.setAttribute("height", 16);
     __n3.appendChild(__n4);
     let __n5 = document.createElement("button");
     __n5.disabled = false;
@@ -547,6 +545,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e4aac6218f5d2ab93bc8f6e26e007e57
+pass sha256:9d4d4efc6566f15a9d9816c32e6f8b19
 -- run/none/html --
-pass sha256:eadaa23b37f5799c29949d24b3dddad5
+pass sha256:ea39a50a9fa2f07c2daa74be7f09432c

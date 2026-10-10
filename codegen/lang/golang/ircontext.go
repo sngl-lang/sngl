@@ -16,7 +16,7 @@ import (
 // (int channels), so both string contexts (via Color.String()) and canvas
 // contexts (reading .R/.G/.B/.A) work off one type. colorImportPath is
 // registered on demand at the emit sites that actually reference the type:
-// StructLit (a color value) and the canvas emitters (CanvasStyle decls).
+// StructLit (a color value) and the canvas emitters (Style decls).
 const (
 	colorImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	colorGoType     = "snglcolor.Color"

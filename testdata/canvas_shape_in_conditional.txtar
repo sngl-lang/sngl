@@ -40,9 +40,9 @@ component main() ui.node {
 
     draw.canvas(width=40px, height=20px) {
         if big {
-            draw.rect(x=0.0, y=0.0, w=10.0, h=5.0, style=draw.CanvasStyle{fill=color{r=255}})
+            draw.rect(x=0.0, y=0.0, w=10.0, h=5.0, style=draw.Style{fill=color{r=255}})
         } else {
-            draw.circle(cx=5.0, cy=5.0, r=2.0, style=draw.CanvasStyle{fill=color{b=255}})
+            draw.circle(cx=5.0, cy=5.0, r=2.0, style=draw.Style{fill=color{b=255}})
         }
     }
 }
@@ -69,12 +69,10 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
-type CanvasStyle struct {
+type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
 	StrokeWidth float64
@@ -122,12 +120,12 @@ var _canvasSurface0 snglcanvas.Surface
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	if m.big__inst0 {
 		ctx.Save()
-		ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+		ApplyStyle(ctx, Style{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Rect(0.0, 0.0, 10.0, 5.0)
 		ctx.Restore()
 	} else {
 		ctx.Save()
-		ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{B: 255, R: 0, G: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+		ApplyStyle(ctx, Style{Fill: snglcolor.Color{B: 255, R: 0, G: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 		ctx.Circle(5.0, 5.0, 2.0)
 		ctx.Restore()
 	}
@@ -146,7 +144,7 @@ func (m Model) __canvasTransmit() tea.Cmd {
 	return tea.Raw(__ctb.String())
 }
 
-func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+func ApplyStyle(ctx *snglcanvas.Context, style Style) {
 	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
 	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
 	ctx.SetStrokeWidth(style.StrokeWidth)
@@ -325,6 +323,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7806afe987a6b7b322120fa4029f3809
+pass sha256:bf1a41e688225e3a352852d301753a68
 -- run/none/html --
 pass sha256:6ee5c7a674c1bad50ab7cb62430fdfe9

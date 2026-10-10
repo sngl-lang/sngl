@@ -2,7 +2,6 @@ package android
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -70,17 +69,9 @@ func packageHasCanvas(draws *codegen.CanvasDraws) bool {
 // keeps the NodeInst, so it reads the prop here. Returns 0 when absent.
 func canvasIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := lit.Value
-			if v, err := strconv.Atoi(raw); err == nil {
-				return v
-			}
-			if f, err := strconv.ParseFloat(raw, 64); err == nil {
-				return int(f)
-			}
+		if p.Name == name {
+			px, _ := codegen.MeasurementPx(p.Value, codegen.CanvasEmPx)
+			return int(px)
 		}
 	}
 	return 0
@@ -251,7 +242,7 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib
-// structs (CanvasStyle/PathCmd) plus the SNGL-color→Compose-Color helper.
+// structs (Style/PathCmd) plus the SNGL-color→Compose-Color helper.
 // These structs are stdlib-only and aren't carried on pkg.Structs, so — like
 // canvasutil does for the Go platforms — they're materialized here. declared is
 // the set of user-declared struct names (data classes already emitted) so a
@@ -261,8 +252,8 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 // color type, so it is emitted by colorKotlinDecl for both.
 func canvasKotlinDecls(declared map[string]struct{}) string {
 	var b strings.Builder
-	if _, ok := declared["CanvasStyle"]; !ok {
-		b.WriteString("data class CanvasStyle(\n")
+	if _, ok := declared["Style"]; !ok {
+		b.WriteString("data class Style(\n")
 		b.WriteString("    var fill: Color = Color(a = 0),\n")
 		b.WriteString("    var stroke: Color = Color(a = 0),\n")
 		b.WriteString("    var strokeWidth: Double = 1.0,\n")

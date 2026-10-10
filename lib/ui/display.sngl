@@ -280,8 +280,3 @@ component _example_tree node {
         }
     }
 }
-
-// TODO Components take positional arguments. We prefer putting the ones that make sense early,
-// but a user could use them all that way. We should make a way to cut off positional arguments.
-// (it would work for functions and events too), `_ enum{}` might work already. (unnabable and unprovidable)
-// Make it backwards compatible to rearrange. Similar to the `_ [0]func()` hack in Go to make structs uncomparable.

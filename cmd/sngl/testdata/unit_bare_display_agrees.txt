@@ -14,11 +14,11 @@
 # while 1100ms printed `1.1s` and did not. A fixture with one round value
 # would have passed on the unfixed compiler.
 #
-# `reduced` is the cost of agreement rather than a win: 2rem displays as 32em,
+# `reduced` is the cost of agreement rather than a win: 2cm displays as 20mm,
 # because a compiled target holds the record and has no spelling to prefer.
 #
 # `zero` pins the shape nothing else reaches: a value carrying no magnitude at
-# all prints in the first declared base, since 0rem and 0px are one value.
+# all prints in the first declared base, since 0em and 0px are one value.
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'
@@ -37,9 +37,15 @@ unit tick {
     tk
 }
 
+unit length {
+    mm,
+    cm = 10mm,
+    pt,
+}
+
 component main ui.node {
     var mix ui.measurement = 3px + 2em
-    var reduced ui.measurement = 2rem
+    var reduced length = 2cm
     var zero ui.measurement = 1em - 1em
     var ticks tick = 4tk
     var half time.duration = 500ms
@@ -70,7 +76,7 @@ func testAMultiBaseValueSumsItsBases(t Test, c main) {
 }
 
 func testAReducedSuffixDisplaysInItsBase(t Test, c main) {
-    t.assert(c.sReduced == "32em")
+    t.assert(c.sReduced == "20mm")
 }
 
 func testAnEmptyValueTakesTheFirstBase(t Test, c main) {
@@ -92,7 +98,7 @@ ui.window {
     main
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:cfa7caf0fb621ec5e7556f22db3e8fd3
+sha256:a73b48d8c8212945f26ed12c0dbe0fc1
 {
   "results": [
     {

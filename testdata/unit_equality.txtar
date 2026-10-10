@@ -74,9 +74,7 @@ import (
 type Measurement struct {
 	Px  float64
 	Em  float64
-	Vw  float64
-	Vh  float64
-	Pct float64
+	Rem float64
 }
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -99,7 +97,7 @@ func New() Model {
 	m := Model{}
 	m.a__inst0 = Measurement{Px: 3}
 	m.b__inst0 = Measurement{Px: 3}
-	m.wide__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Em: 2}.Pct}
+	m.wide__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Rem: Measurement{Px: 3}.Rem + Measurement{Em: 2}.Rem}
 	m.d__inst0 = time.Duration(500) * time.Millisecond
 	m.e__inst0 = time.Duration(1000) * time.Millisecond
 	m.same__inst0 = (m.a__inst0 == m.b__inst0)
@@ -346,9 +344,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -362,7 +358,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var a__inst0 by remember { mutableStateOf(Measurement(px = 3.0)) }
     var b__inst0 by remember { mutableStateOf(Measurement(px = 3.0)) }
-    var wide__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 3.0)).px + (Measurement(em = 2.0)).px, em = (Measurement(px = 3.0)).em + (Measurement(em = 2.0)).em, vw = (Measurement(px = 3.0)).vw + (Measurement(em = 2.0)).vw, vh = (Measurement(px = 3.0)).vh + (Measurement(em = 2.0)).vh, pct = (Measurement(px = 3.0)).pct + (Measurement(em = 2.0)).pct)) }
+    var wide__inst0 by remember { mutableStateOf(Measurement(px = (Measurement(px = 3.0)).px + (Measurement(em = 2.0)).px, em = (Measurement(px = 3.0)).em + (Measurement(em = 2.0)).em, rem = (Measurement(px = 3.0)).rem + (Measurement(em = 2.0)).rem)) }
     var d__inst0 by remember { mutableStateOf(500L) }
     var e__inst0 by remember { mutableStateOf(1000L) }
     var same__inst0 by remember { mutableStateOf((a__inst0 == b__inst0)) }
@@ -400,10 +396,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, b__inst0: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }, wide__inst0: null, d__inst0: 500, e__inst0: 1e3, same__inst0: null, apart__inst0: null, single__inst0: null, visible__inst0: true };
-  state.wide__inst0 = { px: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.px, em: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.em, vw: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vw, vh: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vh, pct: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.pct };
-  state.same__inst0 = state.a__inst0.px === state.b__inst0.px && state.a__inst0.em === state.b__inst0.em && state.a__inst0.vw === state.b__inst0.vw && state.a__inst0.vh === state.b__inst0.vh && state.a__inst0.pct === state.b__inst0.pct;
-  state.apart__inst0 = !(state.wide__inst0.px === state.a__inst0.px && state.wide__inst0.em === state.a__inst0.em && state.wide__inst0.vw === state.a__inst0.vw && state.wide__inst0.vh === state.a__inst0.vh && state.wide__inst0.pct === state.a__inst0.pct);
+  var state = { a__inst0: { px: 3, em: 0, rem: 0 }, b__inst0: { px: 3, em: 0, rem: 0 }, wide__inst0: null, d__inst0: 500, e__inst0: 1e3, same__inst0: null, apart__inst0: null, single__inst0: null, visible__inst0: true };
+  state.wide__inst0 = { px: { px: 3, em: 0, rem: 0 }.px + { px: 0, em: 2, rem: 0 }.px, em: { px: 3, em: 0, rem: 0 }.em + { px: 0, em: 2, rem: 0 }.em, rem: { px: 3, em: 0, rem: 0 }.rem + { px: 0, em: 2, rem: 0 }.rem };
+  state.same__inst0 = state.a__inst0.px === state.b__inst0.px && state.a__inst0.em === state.b__inst0.em && state.a__inst0.rem === state.b__inst0.rem;
+  state.apart__inst0 = !(state.wide__inst0.px === state.a__inst0.px && state.wide__inst0.em === state.a__inst0.em && state.wide__inst0.rem === state.a__inst0.rem);
   state.single__inst0 = state.d__inst0 === state.e__inst0;
   function String(v) {
     return "" + v;
@@ -417,8 +413,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:aa078439987cb7a5f912c425e66dfcee
+pass sha256:a2d6c8a37ca1715181c9f78ca53e1034
 -- run/kotlin/android --
-pass sha256:75684587ec39a7841d214a7a3c997060
+pass sha256:e1954c20d0a0270d05a2cbd298f091fc
 -- run/none/html --
-pass sha256:af8183c27ebe9e78d32f95d85d2d6af6
+pass sha256:c7ba55962893031309d866f6604cefed

@@ -1,9 +1,9 @@
-// TODO how many of these enums are fine to inline on the style struct?
-
-// Layout length used throughout `Style`. Unit literals: `px`, `em`,
-// `rem` (= 16em), `vw`, `vh`, `pct`.
-// TODO How many of these units even make sense to any platform other than HTML?
-unit measurement { px, em, rem = 16em, vw, vh, pct }
+// Layout length used throughout `Style`. `px` is a device-independent
+// pixel; `em` and `rem` are multiples of a font size. html reads them as
+// CSS does. Every other target has no cascade, so both are its base text
+// size: 16 on android, fyne's theme text size, GTK's default font size,
+// and two terminal cells on bubbletea.
+unit measurement { px, em, rem }
 
 // Main-axis direction for flex containers such as `vbox` and `hbox`.
 // `row` and `column` are the common cases; the `Reverse` variants

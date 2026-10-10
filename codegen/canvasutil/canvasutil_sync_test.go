@@ -12,7 +12,7 @@ import (
 
 // TestStructDeclsInSync guards against drift between the hardcoded Go struct
 // decls in StructDecls and the source-of-truth SNGL struct declarations in
-// lib/canvas.sngl (CanvasStyle, PathCmd). These Go decls are hand-written
+// lib/canvas.sngl (Style, PathCmd). These Go decls are hand-written
 // because those canvas stdlib structs aren't carried on the Go codegen path;
 // every Go-emitting canvas platform (fyne, gtk4) consumes StructDecls, so this
 // single test covers them all.
@@ -24,8 +24,8 @@ import (
 // field is added/renamed in the .sngl but not in StructDecls, this fails.
 func TestStructDeclsInSync(t *testing.T) {
 	want := map[string]string{
-		"CanvasStyle": "ui/draw/draw.sngl",
-		"PathCmd":     "ui/draw/draw.sngl",
+		"Style":   "ui/draw/draw.sngl",
+		"PathCmd": "ui/draw/draw.sngl",
 	}
 
 	files := map[string][]string{}

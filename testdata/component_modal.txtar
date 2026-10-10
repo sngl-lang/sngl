@@ -270,9 +270,7 @@ import androidx.compose.ui.window.Dialog
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -352,7 +350,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;height:100%;justify-content:center;position:fixed;width:100%;z-index:1000" class="modal-overlay">
+<div id="__n0" data-sngl-id="__n0" class="modal-overlay" style="align-items:center;background-color:rgba(0,0,0,0.5019607843137255);display:flex;justify-content:center;position:fixed;z-index:1000" class="modal-overlay">
   <div class="modal-content" style="background-color:#fff;border-radius:8px;padding:24px" class="modal-content">
     <h3 style="margin-bottom:16px">Hello</h3>
     <span>body</span>
@@ -389,7 +387,7 @@ window.__sngl_boot = () => {
   }
   function _snglStyleLength(v) {
     if (typeof v === "number") return v + "px";
-    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + (k === "pct" ? "%" : k));
+    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
     if (t.length === 0) return "0px";
     return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
   }
@@ -398,6 +396,8 @@ window.__sngl_boot = () => {
     __n0.hidden = state.open === false;
     __n0.style.setProperty("top", _snglStyleLength(0));
     __n0.style.setProperty("left", _snglStyleLength(0));
+    __n0.style.setProperty("right", _snglStyleLength(0));
+    __n0.style.setProperty("bottom", _snglStyleLength(0));
   }
   __sngl_init();
 })();
@@ -410,6 +410,6 @@ pass sha256:7b383e8f17b8b7cffd5d302ae34eff56
 -- run/go/fyne --
 pass sha256:58d9771cb302d5848443ba9e68bc4cc0
 -- run/kotlin/android --
-pass sha256:663f0a0de407b7547029eb2593a0fb44
+pass sha256:6d13bbe3b9a554ffcbf0d8b338cb59ae
 -- run/none/html --
-pass sha256:632fb5da78d6ef891b9fc87be76e5acf
+pass sha256:53c9fc24f9d5aedcfc6668de8807f278

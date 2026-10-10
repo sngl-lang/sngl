@@ -64,13 +64,13 @@ func terminalCells(w, h int) (cols, rows int) {
 }
 
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs
-// (Color/CanvasStyle/PathCmd), omitting any whose name a user struct already
+// (Color/Style/PathCmd), omitting any whose name a user struct already
 // declares (those emit their own type decl).
 func canvasStdlibDecls(structs []*ir.StructDef) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "Style", "PathCmd":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -87,7 +87,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	vc.requireImport(snglCanvasImportPath)
 	vc.requireImport(tuiImportPath)
 	vc.requireImport("image")
-	// The emitted CanvasStyle struct decl references snglcolor.Color.
+	// The emitted Style struct decl references snglcolor.Color.
 	vc.requireImport(canvasutil.ColorImportPath)
 	if vc.canvasSeq[c.Name] {
 		id, raster := emitLoopCanvasRaster(vc.line, c, vc.gc)

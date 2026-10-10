@@ -33,4 +33,4 @@ Everything below comes from `sngl:ui/draw`, which the app imports as
 - `draw.path(cmds, style)` — a path built from a `list<draw.PathCmd>`
 - `draw.canvasText(x, y, content, style)` — drawn text
 - `draw.canvasImage(x, y, w, h, src)` — a drawn image
-- `draw.CanvasStyle` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`
+- `draw.Style` — struct with `fill`, `stroke`, `strokeWidth`, `lineCap`, `lineJoin`, `fontSize`, `fontFamily`

@@ -429,12 +429,11 @@ func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
-		// When expected type is an enum, resolve bare member names.
-		if c.expected != nil && c.expected.Kind == ir.TypeEnum {
-			if ed, ok := c.expected.Decl.(*ir.EnumDef); ok {
-				if c.enumMember(x.Pos, ed, x.Name) {
-					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
-				}
+		// When expected type is an enum, resolve bare member names. An
+		// option of one wants a member as readily: the slot wraps it.
+		if want := optionElem(c.expected); want != nil {
+			if ed := expectedEnumDef(want); ed != nil && c.enumMember(x.Pos, ed, x.Name) {
+				return &ir.Ident{AST: x, Type: want, Name: x.Name, Member: x.Name}
 			}
 		}
 		// And an event where a function is expected.
@@ -675,6 +674,14 @@ func bareTypeParam(p *ir.Param) bool {
 }
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
+	if (x.Op == ast.BinEq || x.Op == ast.BinNeq) && c.bareMember(x.Left) && !c.bareMember(x.Right) {
+		rightExpr := c.checkExpr(x.Right)
+		leftExpected := c.expected
+		if rt := comparedEnum(exprType(rightExpr)); rt != nil {
+			leftExpected = rt
+		}
+		return c.finishBinary(x, c.checkExprExpecting(x.Left, leftExpected), rightExpr)
+	}
 	leftExpr := c.checkExpr(x.Left)
 	// `a && b` evaluates b only where a held, so a null test in a narrows what
 	// follows it; `a || b` evaluates b only where a failed, which is the same
@@ -698,8 +705,39 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
 		rightExpected = lt
 	}
+	// An enum is what the other side of a comparison is expected to be, so
+	// a bare member resolves on either side of `==`: `x == bold`, and
+	// `bold == x`, where the member is checked once the right is known. An
+	// inline enum has no name to qualify a member with, so this is the
+	// only way to compare one against a member.
+	if x.Op == ast.BinEq || x.Op == ast.BinNeq {
+		if lt := comparedEnum(exprType(leftExpr)); lt != nil {
+			rightExpected = lt
+		}
+	}
 	rightExpr := c.checkExprExpecting(x.Right, rightExpected)
 	return c.finishBinary(x, leftExpr, rightExpr)
+}
+
+// comparedEnum is the enum a comparison operand of type t holds -- t itself,
+// or the element of an option of one -- or nil.
+func comparedEnum(t *ir.Type) *ir.Type {
+	if t = optionElem(t); expectedEnumDef(t) != nil {
+		return t
+	}
+	return nil
+}
+
+// bareMember reports whether e is a name nothing in scope binds, which a
+// comparison checks after its other operand so that it may be a member of
+// that operand's enum.
+func (c *checker) bareMember(e ast.Expr) bool {
+	id, ok := e.(*ast.IdentExpr)
+	if !ok {
+		return false
+	}
+	_, bound := c.scope.Lookup(id.Name)
+	return !bound
 }
 
 func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) ir.Expr {
@@ -2052,6 +2090,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 									typ = ir.TypDyn // already reported, as above
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
+							}
+							// A family reached through its package is no
+							// more a value than it is in scope.
+							if f, ok := fsym.(*ir.Component); ok && f.IsFamily() {
+								c.error(x.Pos, "%s.%s names a family, which is not a value: a value of it is a handle to one of its members", ident.Name, f.Name)
+								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							t := c.symType(fsym)
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}

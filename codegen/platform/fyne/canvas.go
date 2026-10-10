@@ -53,7 +53,7 @@ const (
 // Model field backing a canvas: *snglcanvas.Context.
 func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
 
-// The canvas stdlib structs (lib/canvas.sngl: CanvasStyle, PathCmd;
+// The canvas stdlib structs (lib/canvas.sngl: Style, PathCmd;
 // lib/types.sngl: color → Color) are referenced by the synthesized draw funcs
 // (e.g. style.Fill.R read by the ApplyStyle setters, _cmd.op in the path loop)
 // but are NOT carried in pkg.Structs (html emits JS object literals), so the
@@ -68,7 +68,7 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	declared := map[string]struct{}{}
 	for _, s := range structs {
 		switch s.Name {
-		case "Color", "CanvasStyle", "PathCmd":
+		case "Color", "Style", "PathCmd":
 			declared[s.Name] = struct{}{}
 		}
 	}
@@ -177,7 +177,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink("fyne.io/fyne/v2/canvas")
-		// The emitted CanvasStyle struct decl references snglcolor.Color.
+		// The emitted Style struct decl references snglcolor.Color.
 		t.importSink(canvasutil.ColorImportPath)
 	}
 

@@ -354,7 +354,7 @@ component draw(@draw(e DrawEvent)) shapes.shape
 // The style setters, written once rather than per shape. The context keeps a
 // pending style that the next primitive consumes, so this is the whole of
 // "apply a style" and it is a plain call sequence an override can skip.
-func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
+func applyStyle(ctx DrawContext, style shapes.Style) {
     ctx.setFill(style.fill.r, style.fill.g, style.fill.b, style.fill.a)
     ctx.setStroke(style.stroke.r, style.stroke.g, style.stroke.b, style.stroke.a)
     ctx.setStrokeWidth(style.strokeWidth)

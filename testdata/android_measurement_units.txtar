@@ -60,9 +60,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 data class Measurement(
     val px: Double = 0.0,
     val em: Double = 0.0,
-    val vw: Double = 0.0,
-    val vh: Double = 0.0,
-    val pct: Double = 0.0
+    val rem: Double = 0.0
 )
 
 fun _snglFloatStr(v: Double): String =
@@ -93,4 +91,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:f7d8fd99451320ea152b2466df1ff176
+pass sha256:e8e8ee37603ce25ad200f611ea5b99f7

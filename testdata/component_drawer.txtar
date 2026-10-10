@@ -372,7 +372,7 @@ window.__sngl_boot = () => {
   }
   function _snglStyleLength(v) {
     if (typeof v === "number") return v + "px";
-    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + (k === "pct" ? "%" : k));
+    const t = Object.keys(v).filter((k) => v[k] !== 0).map((k) => v[k] + k);
     if (t.length === 0) return "0px";
     return t.length === 1 ? t[0] : "calc(" + t.join(" + ") + ")";
   }
@@ -388,4 +388,4 @@ pass sha256:89810bf54a0d7197804a92b1c8885fed
 -- run/kotlin/android --
 pass sha256:1d5886f2039d964d297fa6265cb5f55e
 -- run/none/html --
-pass sha256:5c7b0e8ae5ddd1d0ae6c442cf79238a0
+pass sha256:5d12b5123d3941cece2a7a4d33b879b2
