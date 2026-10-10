@@ -849,7 +849,10 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 // error. Only the parenless form is an extension; `component sngl.X() { body }`
 // (android) is ignored here, because that platform reads such a body itself.
 func (c *checker) mergeTargetExtensions(pkgName string) {
-	if c.libs.extended[pkgName] {
+	// A target nothing declares -- a misspelled one in an output block -- has
+	// no package to load, and loading one anyway caches it empty for every
+	// check that finds the library loaded.
+	if c.libs.extended[pkgName] || !c.hasLibPkg(pkgName) {
 		return
 	}
 	c.libs.extended[pkgName] = true

@@ -59,6 +59,9 @@ func TestLibraryShared(t *testing.T) {
 			why = append(why, "writes the library")
 			logLibraryWrites(t, s, doc)
 		}
+		if sourceless := library.Sourceless(); len(sourceless) > 0 {
+			why = append(why, "caches a package with no source: "+strings.Join(sourceless, ", "))
+		}
 		if a, b := diagnosticLines(fresh), diagnosticLines(shared); !slices.Equal(a, b) {
 			why = append(why, "diagnostics differ")
 			t.Logf("%s against a fresh library:\n%s\nagainst the shared one:\n%s", s.Name, strings.Join(a, "\n"), strings.Join(b, "\n"))

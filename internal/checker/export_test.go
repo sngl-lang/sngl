@@ -100,3 +100,14 @@ func (s *SharedLibrary) Tables() map[string]string {
 	}
 	return t
 }
+
+// Sourceless is every package s holds by a path no source serves.
+func (s *SharedLibrary) Sourceless() []string {
+	var out []string
+	for _, path := range slices.Sorted(maps.Keys(s.libs.pkgs)) {
+		if len(PackageDocsFor(path)) == 0 {
+			out = append(out, path)
+		}
+	}
+	return out
+}
