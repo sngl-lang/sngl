@@ -48,25 +48,14 @@ component platform(
     const minSdk        int,
     // Override the Gradle distribution version (unset = combo default).
     const gradleVersion string,
-    // What its generated code introduces beside a program's names. A component,
-    // struct or enum is written as a Kotlin type named by capitalizing it, and
-    // an explicit import outranks a declaration of the file's own package, so a
-    // program's `modifier` would be shadowed by Compose's `Modifier`; and the
-    // types and parameters the screen itself declares.
+    // What its generated code introduces beside a program's names: the types,
+    // locals and parameters the screen itself declares, and `Toast`, which the
+    // language's Alert intrinsic writes as text. A Compose name the screen
+    // imports is not here: each is imported through the file's import set,
+    // which aliases it around a program's own declaration of that name.
     const reservedNames list<string> = [
-        "modifier",
-        "alignment",
-        "textStyle",
-        "fontWeight",
-        "textAlign",
-        "dialog",
-        "pullToRefreshBox",
-        "composeColor",
         "toast",
-        "localContext",
         "golib",
-        "backHandler",
-        "activity",
         "mainScreen",
         "mainScreenState",
         "errorEvent",
@@ -106,12 +95,17 @@ func install(dir string)
 // these are written in no other form than that, so they are also the examples.
 //
 // A prop's name is the Compose argument it is emitted as, in declaration
-// order. Five names are the emitter's own: `modifier` takes a Style and
-// becomes the `Modifier` chain built from it, `chain` appends further Modifier
-// calls verbatim after those, `args` is arguments spelled in Kotlin, for a
-// value — `Alignment.CenterVertically`, a `MaterialTheme` shape — that SNGL
-// has no way to write, and `colors` and `shape` take a Style rendered as the
-// widget's own colour set and outline.
+// order, and its value is written as any SNGL value is -- a host value
+// Compose takes there, `Alignment.CenterVertically` or a `MaterialTheme`
+// shape, is a `#[kt.native]` const declared below. Four names are the
+// emitter's own: `modifier` takes a Style and becomes the `Modifier` chain
+// built from it, `then` appends further Modifier values to that chain, and
+// `colors` and `shape`, given a Style, are rendered as the widget's own colour
+// set and outline.
+//
+// Nothing here is Kotlin written as text. Every name the screen writes is
+// imported through the file's import set, which aliases one a program's own
+// declaration already holds, and text could not be re-spelled to follow it.
 //
 // A func-typed prop is a Compose lambda argument, and the override supplies
 // the lambda: its body is emitted where the argument goes, so what the callback
@@ -132,6 +126,64 @@ func install(dir string)
 // `#[intrinsic("android:…")]`, namespaced by the platform so it can never
 // collide with a stdlib intrinsic or with another platform's.
 
+// --- Host values ---
+//
+// Compose's own values a composable's props take, declared so that each is
+// spelled through the import set rather than as text.
+
+// Compose's Modifier: what `then` takes, built from `modifier` -- the empty
+// chain -- and the Modifier calls below. Named in full, as a native type is:
+// a type is spelled where no import set is at hand.
+#[kt.native("androidx.compose.ui.Modifier")]
+struct Modifier {}
+
+// The empty chain every Modifier starts from: Compose's `Modifier` companion.
+#[kt.native("Modifier", "androidx.compose.ui.Modifier")]
+const modifier Modifier
+
+#[kt.native("fillMaxSize", "androidx.compose.foundation.layout.fillMaxSize", method)]
+const func Modifier.fillMaxSize() Modifier
+
+#[kt.native("fillMaxWidth", "androidx.compose.foundation.layout.fillMaxWidth", method)]
+const func Modifier.fillMaxWidth() Modifier
+
+#[kt.native("fillMaxHeight", "androidx.compose.foundation.layout.fillMaxHeight", method)]
+const func Modifier.fillMaxHeight() Modifier
+
+#[kt.native("androidx.compose.foundation.ScrollState")]
+struct ScrollState {}
+
+// A scroll position kept across recompositions. A composable call, so it is
+// read where a composable is drawn -- as a prop's value, which is where every
+// one of these lands.
+#[kt.native("rememberScrollState", "androidx.compose.foundation.rememberScrollState")]
+const func rememberScrollState() ScrollState
+
+#[kt.native("verticalScroll", "androidx.compose.foundation.verticalScroll", method)]
+const func Modifier.verticalScroll(state ScrollState) Modifier
+
+#[kt.native("androidx.compose.ui.Alignment.Vertical")]
+struct VerticalAlignment {}
+
+#[kt.native("Alignment.Top", "androidx.compose.ui.Alignment")]
+const alignTop VerticalAlignment
+
+#[kt.native("Alignment.CenterVertically", "androidx.compose.ui.Alignment")]
+const alignCenterVertically VerticalAlignment
+
+#[kt.native("Alignment.Bottom", "androidx.compose.ui.Alignment")]
+const alignBottom VerticalAlignment
+
+// The theme's accent, read off MaterialTheme where it is drawn.
+#[kt.native("MaterialTheme.colorScheme.primary", "androidx.compose.material3.MaterialTheme")]
+const primaryColor ComposeColor
+
+#[kt.native("androidx.compose.ui.graphics.Shape")]
+struct Shape {}
+
+#[kt.native("MaterialTheme.shapes.medium", "androidx.compose.material3.MaterialTheme")]
+const mediumShape Shape
+
 // The screen: what a `ui.window` is on android, which shows one. It is not
 // a composable: MainScreen draws its content, and a program declares one
 // window here, a second being refused where it is written.
@@ -151,7 +203,7 @@ component Screen(
 #[kt.native("Column", "androidx.compose.foundation.layout.Column")]
 component Column(
     modifier ui.Style,
-    chain    list<string>,
+    then     list<Modifier>,
     children ...component,
 ) ui.node
 
@@ -159,24 +211,24 @@ component Column(
 #[kt.native("Box", "androidx.compose.foundation.layout.Box")]
 component Box(
     modifier ui.Style,
-    chain    list<string>,
+    then     list<Modifier>,
     children ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Row", "androidx.compose.foundation.layout.Row")]
 component Row(
-    modifier ui.Style,
-    chain    list<string>,
-    args     list<string>,
-    children ...component,
+    modifier          ui.Style,
+    then              list<Modifier>,
+    verticalAlignment VerticalAlignment,
+    children          ...component,
 ) ui.node
 
 #[gen.renders(identity)]
 #[kt.native("Spacer", "androidx.compose.foundation.layout.Spacer")]
 component Spacer(
     modifier ui.Style,
-    chain    list<string>,
+    then     list<Modifier>,
 ) ui.node
 
 #[gen.renders(identity)]
@@ -187,7 +239,7 @@ component Text(
     // Typography, as Compose's own `style` argument: a TextStyle built from
     // the Style's font and colour fields.
     style    ui.Style,
-    args     list<string>,
+    color    ComposeColor,
 ) ui.node
 
 #[gen.renders(identity)]
@@ -321,6 +373,6 @@ component Dialog(
 #[gen.renders(identity)]
 #[kt.native("Surface", "androidx.compose.material3.Surface")]
 component Surface(
-    args     list<string>,
+    shape    Shape,
     children ...component,
 ) ui.node

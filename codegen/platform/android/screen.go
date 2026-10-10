@@ -42,7 +42,7 @@ func (cc *irComposeContext) renderContent(stmts []ir.Stmt) {
 		return
 	}
 	if slices.ContainsFunc(stmts, func(s ir.Stmt) bool { _, ok := s.(*ir.SlotInst); return ok }) {
-		cc.line("%s(modifier = Modifier.%s()) {", cc.kc.Name(ktColumn), cc.kc.Name(ktSafeDrawingPadding))
+		cc.line("%s(modifier = %s.%s()) {", cc.kc.Name(ktColumn), cc.kc.Name(ktModifier), cc.kc.Name(ktSafeDrawingPadding))
 		cc.indent++
 		outerAxis, outerRoot := cc.parentAxis, cc.atRoot
 		cc.parentAxis, cc.atRoot = "Column", false
@@ -86,7 +86,7 @@ func (cc *irComposeContext) renderScreen(n *ir.NodeInst) {
 		cc.indent++
 		gated = true
 	}
-	cc.line("val __activity = %s.current as? %s", cc.kc.Name("androidx.compose.ui.platform.LocalContext"), cc.kc.Name("android.app.Activity"))
+	cc.line("val __activity = %s.current as? %s", cc.kc.Name(ktLocalContext), cc.kc.Name("android.app.Activity"))
 	cc.line("%s {", cc.kc.Name("androidx.activity.compose.BackHandler"))
 	for _, l := range body {
 		cc.line("    %s", l)

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen/lang/kotlin"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/lib"
 )
@@ -76,7 +77,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 	// Color is emitted by colorKotlinDecl rather than canvasKotlinDecls -- a
 	// canvas is one of two ways a program reaches the type -- so the guard
 	// reads both.
-	decls := canvasKotlinDecls(nil) + colorKotlinDecl(nil)
+	decls := canvasKotlinDecls(kotlin.NewIRContext(nil), nil) + colorKotlinDecl(nil)
 
 	// Split the emitted Kotlin into per-data-class bodies so a field present in
 	// one decl can't satisfy a check for another struct.

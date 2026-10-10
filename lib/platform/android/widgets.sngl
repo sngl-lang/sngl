@@ -51,7 +51,7 @@ const component ui.spacer[platform] {
 const component ui.scroll[platform] {
     Column(
         modifier = {...style},
-        chain = ["verticalScroll(rememberScrollState())"],
+        then = [modifier.verticalScroll(rememberScrollState())],
     ) {
         content
     }
@@ -129,7 +129,7 @@ const component ui.input[platform] {
 }
 
 const component ui.checkbox[platform] {
-    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
         Checkbox(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -150,7 +150,7 @@ const component ui.radio[platform] {
     if direction == ui.Orientation.horizontal {
         Row(modifier={...style}) {
             for var opt = options {
-                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
                         value = opt.label
                         change(opt.label)
@@ -162,7 +162,7 @@ const component ui.radio[platform] {
     } else {
         Column(modifier={...style}) {
             for var opt = options {
-                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                Row(verticalAlignment=alignCenterVertically) {
                     RadioButton(selected=(value == opt.label), onClick=func() {
                         value = opt.label
                         change(opt.label)
@@ -175,7 +175,7 @@ const component ui.radio[platform] {
 }
 
 const component ui.toggle[platform] {
-    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+    Row(modifier={...style}, verticalAlignment=alignCenterVertically) {
         Switch(checked=checked, onCheckedChange=func(on) {
             checked = on
             change(on)
@@ -275,7 +275,7 @@ const component ui.link[platform] {
     Text(
         text = text,
         style = {...style},
-        args = ["color = MaterialTheme.colorScheme.primary"],
+        color = primaryColor,
     ) {}
 }
 
@@ -305,7 +305,7 @@ const component ui.tabs[platform] {
 const component ui.modal[platform] {
     if open {
         Dialog(onDismissRequest=func() { close() }) {
-            Surface(args=["shape = MaterialTheme.shapes.medium"]) {
+            Surface(shape=mediumShape) {
                 Column(modifier={padding=16px}) {
                     if title != "" {
                         Text(text=title) {}

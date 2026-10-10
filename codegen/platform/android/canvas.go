@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -37,26 +38,6 @@ import (
 // a Compose-specific 2D API — the drawing is now written in SNGL and reaches
 // the emitter as ordinary Compose calls.
 
-// canvasComposeImports are the Compose graphics imports the DrawScope
-// translation needs. Registered when any canvas is rendered.
-var canvasComposeImports = []string{
-	"androidx.compose.foundation.Canvas",
-	"androidx.compose.ui.geometry.Offset",
-	"androidx.compose.ui.geometry.Size",
-	"androidx.compose.ui.graphics.Path",
-	// No Fill: the fill variants in android.sngl omit `style` entirely and
-	// take Compose's own default, so nothing the overrides emit names it.
-	"androidx.compose.ui.graphics.drawscope.Stroke",
-	"androidx.compose.ui.graphics.nativeCanvas",
-	"androidx.compose.ui.graphics.asImageBitmap",
-	"androidx.compose.ui.unit.IntOffset",
-	"androidx.compose.ui.unit.IntSize",
-	// The two shims' own needs: the receiver they extend, and the ARGB int a
-	// `Paint` colour is.
-	"androidx.compose.ui.graphics.drawscope.DrawScope",
-	"androidx.compose.ui.graphics.toArgb",
-}
-
 // packageHasCanvas reports whether the program contains at least one canvas.
 // Used to decide whether to emit the canvas stdlib data classes.
 func packageHasCanvas(draws *codegen.CanvasDraws) bool {
@@ -85,10 +66,6 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	if drawing == nil {
 		return
 	}
-	for _, imp := range canvasComposeImports {
-		cc.kc.RequireImport(imp)
-	}
-
 	w, h := canvasIntProp(n, "width"), canvasIntProp(n, "height")
 	if w <= 0 {
 		w = 300
@@ -99,7 +76,7 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 
 	tag := ""
 	if id := userTestTag(n); id != "" {
-		tag = fmt.Sprintf(".testTag(%q)", id)
+		tag = fmt.Sprintf(".%s(%q)", cc.kc.Name(ktTestTag), id)
 	}
 
 	// `width`/`height` are the coordinate space the shapes were placed in.
@@ -110,12 +87,11 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	mode := canvasScalingProp(n)
 	switch mode {
 	case canvasutil.ScaleFit, canvasutil.ScaleFill, canvasutil.ScaleStretch:
-		cc.kc.RequireImport("androidx.compose.ui.graphics.drawscope.scale")
-		cc.line("Canvas(modifier = Modifier.%s().%s(%df / %df)%s) {", cc.kc.Name(ktFillMaxWidth), cc.kc.Name(ktAspectRatio), w, h, tag)
+		cc.line("%s(modifier = %s.%s().%s(%df / %df)%s) {", cc.kc.Name(ktCanvas), cc.kc.Name(ktModifier), cc.kc.Name(ktFillMaxWidth), cc.kc.Name(ktAspectRatio), w, h, tag)
 		cc.indent++
 		cc.emitCanvasScale(mode, w, h)
 	default:
-		cc.line("Canvas(modifier = Modifier.%s(%d.dp, %d.dp)%s) {", cc.kc.Name(ktSize), w, h, tag)
+		cc.line("%s(modifier = %s.%s(%s, %s)%s) {", cc.kc.Name(ktCanvas), cc.kc.Name(ktModifier), cc.kc.Name(ktSize), dp(cc.kc, strconv.Itoa(w)), dp(cc.kc, strconv.Itoa(h)), tag)
 		cc.indent++
 		cc.emitDrawBody(drawing.Draw)
 		cc.indent--
@@ -137,13 +113,14 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 // factor, the smaller ratio for fit so the whole drawing lands inside and the
 // larger for fill so none of the room is left over.
 func (cc *irComposeContext) emitCanvasScale(mode string, w, h int) {
+	scale, zero := cc.kc.Name(ktDrawScale), cc.kc.Name(ktOffset)+".Zero"
 	switch mode {
 	case canvasutil.ScaleStretch:
-		cc.line("scale(scaleX = size.width / %df, scaleY = size.height / %df, pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scaleX = size.width / %df, scaleY = size.height / %df, pivot = %s) {", scale, w, h, zero)
 	case canvasutil.ScaleFill:
-		cc.line("scale(scale = maxOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scale = maxOf(size.width / %df, size.height / %df), pivot = %s) {", scale, w, h, zero)
 	default:
-		cc.line("scale(scale = minOf(size.width / %df, size.height / %df), pivot = Offset.Zero) {", w, h)
+		cc.line("%s(scale = minOf(size.width / %df, size.height / %df), pivot = %s) {", scale, w, h, zero)
 	}
 	cc.indent++
 }
@@ -248,7 +225,7 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 //
 // Color is not among them: a canvas is one of two ways a program reaches the
 // color type, so it is emitted by colorKotlinDecl for both.
-func canvasKotlinDecls(declared map[string]struct{}) string {
+func canvasKotlinDecls(kc *kotlin.KtIRContext, declared map[string]struct{}) string {
 	var b strings.Builder
 	if _, ok := declared["Style"]; !ok {
 		b.WriteString("data class Style(\n")
@@ -271,15 +248,23 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 	//
 	// Extensions on DrawScope, so an override calls them the way it calls
 	// `drawRect`: receiverless, with the scope supplying the receiver.
-	b.WriteString(snglDrawShims)
+	b.WriteString(strings.NewReplacer(
+		"{DrawScope}", kc.Name(ktDrawScope),
+		"{ComposeColor}", composeColor(kc),
+		"{nativeCanvas}", kc.Name(ktNativeCanvas),
+		"{toArgb}", kc.Name(ktToArgb),
+		"{IntOffset}", kc.Name(ktIntOffset),
+		"{IntSize}", kc.Name(ktIntSize),
+	).Replace(snglDrawShims))
 	return b.String()
 }
 
 // snglDrawShims are the DrawScope extensions a shape override calls for the
 // two drawings a native declaration cannot describe. See emitCanvasStructs.
-const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
-    drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
-        color = c.toArgb()
+// Each {Name} is a Compose name, replaced with what the file calls it.
+const snglDrawShims = `fun {DrawScope}.snglDrawText(content: String, x: Float, y: Float, c: {ComposeColor}, size: Float, family: String) {
+    drawContext.canvas.{nativeCanvas}.drawText(content, x, y, android.graphics.Paint().apply {
+        color = c.{toArgb}()
         textSize = size
         // The three CSS generic families Typeface names, and Typeface.create
         // falls back to the system default for anything else -- which is the
@@ -291,25 +276,25 @@ const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: 
 
 // A picture that will not decode draws nothing rather than failing the frame,
 // which is what every other target does with an unreadable source.
-fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
+fun {DrawScope}.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
     val bmp = SnglAssets.bitmap(src) ?: return
     drawImage(
         image = bmp,
-        dstOffset = IntOffset(x.toInt(), y.toInt()),
-        dstSize = IntSize(w.toInt(), h.toInt()),
+        dstOffset = {IntOffset}(x.toInt(), y.toInt()),
+        dstSize = {IntSize}(w.toInt(), h.toInt()),
     )
 }
 
 // A drawing painted in place of a picture: its own space mapped onto the box
 // and clipped to it, until snglDrawLeave.
-fun DrawScope.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
+fun {DrawScope}.snglDrawEnter(x: Float, y: Float, sx: Float, sy: Float, w: Float, h: Float) {
     drawContext.canvas.save()
     drawContext.canvas.translate(x, y)
     drawContext.canvas.scale(sx, sy)
     drawContext.canvas.clipRect(0f, 0f, w, h)
 }
 
-fun DrawScope.snglDrawLeave() {
+fun {DrawScope}.snglDrawLeave() {
     drawContext.canvas.restore()
 }
 

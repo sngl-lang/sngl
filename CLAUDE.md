@@ -620,9 +620,28 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   `reserveDeclared`) already holds it (`testdata/android_import_alias.txtar`).
   `RequireImport` still spells a name bare and panics where the name is
   taken, as a forced Go alias does. `getValue`/`setValue` are imported as they
-  are, a `by` delegate finding them by name. What `chain` and `args` write is
-  Kotlin as text, which no `Name` call reaches, so `baselineImports` are
-  registered first and keep their simple names.
+  are, a `by` delegate finding them by name, and so is `Toast`, which the
+  language's Alert intrinsic writes with no import set to ask -- the one
+  Compose-side name `reservedNames` still holds for that reason.
+
+  **Nothing the screen writes is Kotlin as text.** The emitter's own
+  spellings go through `Name` -- `NameAs` where the file prefers another
+  spelling, Compose's `Color` being `ComposeColor` beside the `Color` data
+  class SNGL's `color` becomes -- and a fixed text block (the DrawScope
+  shims, the NavType) has each name replaced with the file's spelling. A
+  `#[kt.native(name, path)]` declaration is spelled by `KtIRContext.NativeName`,
+  through `Name` where the path names the declaration or the name is reached
+  through it (`Alignment.CenterVertically` beside `androidx.compose.ui.Alignment`).
+  The composables' raw `chain` and `args` props are gone for the same reason:
+  `then list<Modifier>` takes Modifier values built from the calls
+  `android.sngl` declares (`modifier.verticalScroll(rememberScrollState())`),
+  and a value SNGL had no way to write is a typed prop and a host const
+  (`verticalAlignment=alignCenterVertically`, `color=primaryColor`,
+  `shape=mediumShape`). `reserveDeclared` runs before any import, so a
+  program's `component modifier` keeps its name and Compose's is
+  `Modifier_2` (`testdata/android_compose_names_aliased.txtar`). A host const
+  a program reads through its package (`android.modifier`) is the identifier
+  it is unqualified (`inferSelect`), on every language.
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
   The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what the `gir:` scheme's package is -- `lib/x/scheme/gir`'s handler calls the build intrinsic `gir.widgets`, which gtk4 registers (`girwidgets.go`) and which hands it the entry, directive included, recording it and the `gtk4.gir` setting -- and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. `lib/platform/gtk4/gtk4.sngl` imports `gtk "gir:Gtk-4.0"` and writes `gtk.GtkLabel`, as a program naming a widget does. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.

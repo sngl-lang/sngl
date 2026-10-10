@@ -5,14 +5,16 @@ emitter reads the declaration: the #[kt.native] name is the composable's name,
 each declared prop is the Compose argument of that name in declaration order, and children are a trailing lambda. A childless composable takes no
 lambda, and a #id carried onto one becomes a testTag.
 
-`chain` appends Modifier calls the Style has no field for. The window's own
-content is kept out from under the status bar and the display cutout, last in
-the chain, so it insets the content rather than the background. Text declares
+`then` appends Modifiers the Style has no field for, built from the calls
+android.sngl declares -- `android.modifier.fillMaxSize()` -- so every name in
+them is imported through the screen's import set. The window's own content is
+kept out from under the status bar and the display cutout, last in the chain,
+so it insets the content rather than the background. Text declares
 `modifier` and `style` separately, so the Style behind the Modifier and the one
 behind the TextStyle are distinct props.
 
 The stdlib wrappers reach the same emitter: hbox's android override is written
-in terms of Row and scroll's adds a chain entry, and both inline to the
+in terms of Row and scroll's adds a `then` entry, and both inline to the
 composable, so neither name survives into codegen. stack layers its children, so
 it is a Box and not a Column.
 -- app.sngl --
@@ -26,7 +28,7 @@ output {
 }
 
 component main node {
-    android.Column(chain=["fillMaxSize()"]) {
+    android.Column(then=[android.modifier.fillMaxSize()]) {
         android.Row #bar(modifier={padding=4px}) {
             android.Spacer(modifier={height=8px})
             android.Text(text="hi", modifier={padding=1px}, style={fontSize=20px})
@@ -51,29 +53,8 @@ window {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -82,12 +63,20 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 
 data class Measurement(
@@ -115,7 +104,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+        Column(modifier = Modifier.then(Modifier.fillMaxSize()).safeDrawingPadding()) {
             Row(modifier = Modifier.testTag("bar").padding(4.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "hi", modifier = Modifier.padding(1.dp), style = TextStyle(fontSize = 20.sp))
@@ -123,7 +112,7 @@ fun MainScreen() {
             Row(modifier = Modifier.padding(2.dp)) {
                 Text(text = "wrapped", modifier = Modifier)
             }
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.then(Modifier.verticalScroll(rememberScrollState()))) {
                 Text(text = "scrolled", modifier = Modifier)
             }
             Box(modifier = Modifier.padding(3.dp)) {
@@ -133,4 +122,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:3006ffe5d440e269565b05875001ecd3
+pass sha256:b15e98bad6b6bad21954f614c5ddee35

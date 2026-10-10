@@ -15,6 +15,12 @@ const (
 	ktLayout = "androidx.compose.foundation.layout."
 	ktM3     = "androidx.compose.material3."
 	ktRT     = "androidx.compose.runtime."
+	ktUI     = "androidx.compose.ui."
+	ktNav    = "androidx.navigation."
+
+	ktBackground = "androidx.compose.foundation.background"
+	ktCanvas     = "androidx.compose.foundation.Canvas"
+	ktCornerRect = "androidx.compose.foundation.shape.RoundedCornerShape"
 
 	ktBox                = ktLayout + "Box"
 	ktColumn             = ktLayout + "Column"
@@ -45,41 +51,51 @@ const (
 	ktMutableStateOf     = ktRT + "mutableStateOf"
 	ktRemember           = ktRT + "remember"
 	ktToMutableStateList = ktRT + "toMutableStateList"
+
+	ktModifier      = ktUI + "Modifier"
+	ktAlpha         = ktUI + "draw.alpha"
+	ktColor         = ktUI + "graphics.Color"
+	ktTestTag       = ktUI + "platform.testTag"
+	ktLocalContext  = ktUI + "platform.LocalContext"
+	ktTextStyle     = ktUI + "text.TextStyle"
+	ktFontWeight    = ktUI + "text.font.FontWeight"
+	ktFontStyle     = ktUI + "text.font.FontStyle"
+	ktFontFamily    = ktUI + "text.font.FontFamily"
+	ktTextAlign     = ktUI + "text.style.TextAlign"
+	ktTextUnit      = ktUI + "unit.TextUnit"
+	ktDp            = ktUI + "unit.dp"
+	ktSp            = ktUI + "unit.sp"
+	ktOffset        = ktUI + "geometry.Offset"
+	ktGeomSize      = ktUI + "geometry.Size"
+	ktPath          = ktUI + "graphics.Path"
+	ktStroke        = ktUI + "graphics.drawscope.Stroke"
+	ktDrawScope     = ktUI + "graphics.drawscope.DrawScope"
+	ktDrawScale     = ktUI + "graphics.drawscope.scale"
+	ktNativeCanvas  = ktUI + "graphics.nativeCanvas"
+	ktAsImageBitmap = ktUI + "graphics.asImageBitmap"
+	ktToArgb        = ktUI + "graphics.toArgb"
+	ktIntOffset     = ktUI + "unit.IntOffset"
+	ktIntSize       = ktUI + "unit.IntSize"
+
+	ktSpanStyle      = ktUI + "text.SpanStyle"
+	ktWithStyle      = ktUI + "text.withStyle"
+	ktWithLink       = ktUI + "text.withLink"
+	ktLinkAnnotation = ktUI + "text.LinkAnnotation"
+	ktBuildAnnotated = ktUI + "text.buildAnnotatedString"
+	ktTextDecoration = ktUI + "text.style.TextDecoration"
 )
 
-// baselineImports are imported ahead of everything the body names, so each
-// keeps its simple name: what `chain` and `args` write is Kotlin as text --
-// `fillMaxSize()`, `MaterialTheme.shapes.medium` -- which no Name call can
-// spell, and it reaches only what the file imports under the name it wrote.
-var baselineImports = []string{
-	"androidx.compose.foundation.background",
-	"androidx.compose.foundation.clickable",
-	"androidx.compose.foundation.rememberScrollState",
-	"androidx.compose.foundation.verticalScroll",
-	ktFillMaxHeight,
-	ktFillMaxSize,
-	ktFillMaxWidth,
-	ktMaterialTheme,
-	// Every screen is a composable, and a slot's type spells the annotation
-	// where no context is at hand.
-	ktComposable,
-	"androidx.compose.material3.pulltorefresh.PullToRefreshBox",
-	"androidx.compose.ui.Alignment",
-	"androidx.compose.ui.Modifier",
-	"androidx.compose.ui.platform.testTag",
-	"androidx.compose.ui.draw.alpha",
-	"androidx.compose.ui.draw.clip",
-	// Aliased to ComposeColor so the SNGL stdlib `color` struct (emitted as
-	// a `Color` data class for Canvas2D) doesn't collide with the framework
-	// graphics Color. All framework-color uses say ComposeColor.
-	"androidx.compose.ui.graphics.Color as ComposeColor",
-	"androidx.compose.ui.text.TextStyle",
-	"androidx.compose.ui.text.font.FontWeight",
-	"androidx.compose.ui.text.style.TextAlign",
-	"androidx.compose.ui.unit.dp",
-	"androidx.compose.ui.unit.sp",
-	"androidx.compose.ui.window.Dialog",
+// composeColor is what the file calls Compose's Color: ComposeColor, beside
+// the Color data class SNGL's own color type becomes, or an alias of that
+// where a program's declaration holds the name.
+func composeColor(kc *kotlin.KtIRContext) string {
+	return kc.NameAs(ktColor, "ComposeColor")
 }
+
+// dp and sp are a number in Compose's units, through the extension property
+// the file imports under whatever name it was given.
+func dp(kc *kotlin.KtIRContext, v string) string { return v + "." + kc.Name(ktDp) }
+func sp(kc *kotlin.KtIRContext, v string) string { return v + "." + kc.Name(ktSp) }
 
 // stateDelegate imports what a `by` delegate to a State needs. getValue and
 // setValue are operators Kotlin finds by name, so they are imported as they

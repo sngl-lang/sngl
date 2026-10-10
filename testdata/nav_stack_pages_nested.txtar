@@ -1351,51 +1351,32 @@ func (m *Model) pickClick() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import android.net.Uri
-import android.os.Bundle
 import androidx.navigation.NavType
-import kotlin.reflect.typeOf
-import kotlinx.serialization.encodeToString
+import android.os.Bundle
+import android.net.Uri
 import kotlinx.serialization.json.Json
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.toRoute
+import androidx.navigation.NavBackStackEntry
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.navigation.compose.NavHost
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.navigation.compose.composable
+import kotlin.reflect.typeOf
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -1537,4 +1518,4 @@ pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
 pass sha256:5539452db21961c44f0109adcfc0cbb2
 -- run/kotlin/android --
-pass sha256:1a244a229defa976241e0273118d6334
+pass sha256:925d6eac137323c97ffc2fe2e4b39165

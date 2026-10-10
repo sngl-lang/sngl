@@ -85,6 +85,23 @@ func (s *ktImportSet) name(fqn string) string {
 	}
 }
 
+// nameAs is name with the simple name replaced by alias.
+func (s *ktImportSet) nameAs(fqn, alias string) string {
+	if n, ok := s.names[fqn]; ok {
+		return n
+	}
+	for i := 1; ; i++ {
+		try := alias
+		if i > 1 {
+			try = fmt.Sprintf("%s_%d", alias, i)
+		}
+		if _, ok := s.taken[try]; !ok {
+			s.require(fqn + " as " + try)
+			return try
+		}
+	}
+}
+
 // simpleName is the last segment of a fully-qualified name.
 func simpleName(fqn string) string {
 	return fqn[strings.LastIndexByte(fqn, '.')+1:]
@@ -135,6 +152,41 @@ func (kc *KtIRContext) Name(fqn string) string {
 		return simpleName(fqn)
 	}
 	return kc.imports.name(fqn)
+}
+
+// NameAs is Name with the alias to prefer: the fqn is imported as alias
+// unless something else holds that name, and then as alias_2, alias_3 and so
+// on. For a name the file means to spell other than its simple name --
+// Compose's Color is ComposeColor here, beside the Color data class SNGL's
+// own color type becomes. A name already registered keeps its spelling.
+func (kc *KtIRContext) NameAs(fqn, alias string) string {
+	if kc.imports == nil {
+		return alias
+	}
+	return kc.imports.nameAs(fqn, alias)
+}
+
+// NativeName is what the file writes for the name a `#[kotlin.native(name,
+// path)]` declaration gives, importing what reaches it. Where the import names
+// the declaration itself (`Card` from androidx.compose.material3.Card), or the
+// name is reached through it (`Alignment.CenterVertically` beside an import of
+// androidx.compose.ui.Alignment), the import goes through Name, so it is
+// aliased around whatever else claims the simple name. Any other name is
+// written as the mark gave it, beside the import as it is. A declaration with
+// no path names a global or a fully-qualified name, and imports nothing.
+func (kc *KtIRContext) NativeName(path, name string) string {
+	if path == "" {
+		return name
+	}
+	simple := simpleName(path)
+	if name == simple {
+		return kc.Name(path)
+	}
+	if rest, ok := strings.CutPrefix(name, simple+"."); ok {
+		return kc.Name(path) + "." + rest
+	}
+	kc.RequireImport(path)
+	return name
 }
 
 // Reserve says the file declares name at its top level. An explicit import
@@ -737,10 +789,7 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func == nil || n.Func.Foreign.Name == "" || n.Func.Foreign.Scheme != "kotlin" {
 		return "", false
 	}
-	if n.Func.Foreign.Path != "" {
-		kc.RequireImport(n.Func.Foreign.Path)
-	}
-	name := n.Func.Foreign.Name
+	name := kc.NativeName(n.Func.Foreign.Path, n.Func.Foreign.Name)
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
@@ -1751,8 +1800,5 @@ func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	if !ok || !ir.IsHostValue(v) {
 		return "", false
 	}
-	if v.Foreign.Path != "" {
-		kc.RequireImport(v.Foreign.Path)
-	}
-	return v.Foreign.Name, true
+	return kc.NativeName(v.Foreign.Path, v.Foreign.Name), true
 }

@@ -2102,6 +2102,13 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 								return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 							}
 							t := c.symType(fsym)
+							// A host value reached through its package is the
+							// host identifier it is unqualified: a backend
+							// spells it from the declaration, and a select of
+							// a namespace names nothing the host declares.
+							if v, ok := fsym.(*ir.Var); ok && ir.IsHostValue(v) {
+								return &ir.Ident{Type: t, Name: v.Name, Sym: v}
+							}
 							return &ir.Select{AST: x, Type: t, Operand: operandExpr, Field: x.Field}
 						}
 					}

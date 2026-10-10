@@ -513,11 +513,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
-	// Pass 1: the baseline every screen imports, ahead of anything the body
-	// names so each keeps its simple name (see baselineImports).
-	for _, imp := range baselineImports {
-		kc.RequireImport(imp)
-	}
+	// Pass 1: what the program declares, ahead of every import, so a Compose
+	// name the file imports is aliased around it rather than capturing it.
 	reserveDeclared(kc, ctx.Pkg)
 	// Conditional imports derived from IR analysis (no code scanning needed).
 	if len(info.Timers) > 0 {
@@ -525,7 +522,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 	if info.NeedsToast {
 		kc.RequireImport("android.widget.Toast")
-		kc.RequireImport("androidx.compose.ui.platform.LocalContext")
 	}
 	if cfg.GoLib && len(kc.IdentRewrites) > 0 {
 		kc.RequireImport("golib.Golib")
@@ -615,7 +611,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// aren't carried on pkg.Structs, so materialize them here (analogous to
 	// canvasutil for the Go platforms) whenever the program contains a canvas.
 	if hasCanvas {
-		body.WriteString(canvasKotlinDecls(declaredStructs))
+		body.WriteString(canvasKotlinDecls(kc, declaredStructs))
 	}
 
 	// ErrorEvent is emitted when any error-handling construct is present
@@ -725,7 +721,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 
 	if info.NeedsToast {
-		body.WriteString("    val context = LocalContext.current\n")
+		fmt.Fprintf(&body, "    val context = %s.current\n", kc.Name(ktLocalContext))
 	}
 
 	// State declarations (skipped in test mode — state lives on
@@ -925,7 +921,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
-	params = append(params, slotParams(cc.Component)...)
+	params = append(params, slotParams(cc.Component, kc.Name(ktComposable))...)
 	params = append(params, eventParams(cc.Component)...)
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 

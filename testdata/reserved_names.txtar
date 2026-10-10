@@ -9,9 +9,10 @@ an import every Go target writes, and a parameter of that name hides it from
 the `fmt.Sprint` beside it; `cmd`, `cmds` and `msg` are locals of
 bubbletea's `Update`; `width` is a field bubbletea's Model declares for itself; `state` is
 the object html's script keeps the page's state in, so a parameter of that
-name hides every read of it. A component `modifier` is android's
-`fun Modifier`, which the `androidx.compose.ui.Modifier` import outranks, and
-a struct `model` is the Go targets' `Model`.
+name hides every read of it. A struct `model` is the Go targets' `Model`.
+A component `modifier` is not renamed: android's `fun Modifier` keeps its
+name and Compose's `Modifier` is imported under an alias around it, since
+every Compose name the screen writes goes through its import set.
 
 Each target declares what it reserves -- a language its words, a platform the
 identifiers its generated code introduces -- in a const prop of its
@@ -28,7 +29,7 @@ deny * `\(m int` -- a parameter named for the receiver duplicates it
 deny * `fmt int` -- a parameter named for an import hides the import
 deny * `len int` -- a parameter named for a builtin hides the builtin
 deny out/go/bubbletea/model.go `type Model struct \{\n\tn int` -- the program's struct is not the Model
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `fun Modifier\(` -- the Modifier import outranks a package member of that name
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `(?m)^import androidx\.compose\.ui\.Modifier$` -- the program's Modifier owns the simple name; Compose's is aliased
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `var (class|object)\b` -- a Kotlin keyword is written escaped or renamed
 deny out/none/html/index.html `function add\(state\)` -- a parameter named for the state object hides it
 
@@ -1170,29 +1171,8 @@ func (m *Model) go__r0Click() {
 
 package test.sngl.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -1202,8 +1182,10 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier as Modifier_2
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Text
 
 data class Item(
@@ -1248,7 +1230,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Column(modifier = Modifier.safeDrawingPadding()) {
+        Column(modifier = Modifier_2.safeDrawingPadding()) {
             Button(onClick = {
                 range = bump(range, cmd, chan)
                 m = (m + 1)
@@ -1256,29 +1238,29 @@ fun MainScreen() {
                 width = (width + rows.size)
                 it = Item(type = "b", `class` = (it.`class` + 1))
                 mod = Model(n = (mod.n + 1))
-            }, modifier = Modifier.testTag("go")) {
-                Text(text = ((((((((((((((((("go " + range.toString()) + " ") + chan.toString()) + " ") + m.toString()) + " ") + cmd.toString()) + " ") + object__r0.toString()) + " ") + width.toString()) + " ") + it.type) + " ") + it.`class`.toString()) + " ") + mod.n.toString()), modifier = Modifier)
+            }, modifier = Modifier_2.testTag("go")) {
+                Text(text = ((((((((((((((((("go " + range.toString()) + " ") + chan.toString()) + " ") + m.toString()) + " ") + cmd.toString()) + " ") + object__r0.toString()) + " ") + width.toString()) + " ") + it.type) + " ") + it.`class`.toString()) + " ") + mod.n.toString()), modifier = Modifier_2)
             }
             for (r in rows) {
-                Modifier__r0(label = ("w" + r.toString()))
+                Modifier(label = ("w" + r.toString()))
             }
             Button(onClick = {
                 (listOf(*rows.toTypedArray(), 3)).let { __v -> rows.clear(); rows.addAll(__v) }
-            }, modifier = Modifier) {
-                Text(text = "more", modifier = Modifier)
+            }, modifier = Modifier_2) {
+                Text(text = "more", modifier = Modifier_2)
             }
         }
     }
 }
 
 @Composable
-fun Modifier__r0(label: String = "") {
+fun Modifier(label: String = "") {
     var count by remember { mutableStateOf(0) }
 
     Button(onClick = {
         count = (count + 1)
-    }, modifier = Modifier) {
-        Text(text = ((label + " ") + count.toString()), modifier = Modifier)
+    }, modifier = Modifier_2) {
+        Text(text = ((label + " ") + count.toString()), modifier = Modifier_2)
     }
 }
 
@@ -1443,6 +1425,6 @@ pass sha256:c858908174f360b4e702635cfacf12df
 -- run/go/gtk4 --
 pass sha256:e22f5e2a38c8aea7462146b0e039a7b7
 -- run/kotlin/android --
-pass sha256:7479286702c561631a280e949e05541b
+pass sha256:45b8fdea83065b477379d2a8239e1673
 -- run/none/html --
 pass sha256:790d90e289c01f04164413ed7046faec
