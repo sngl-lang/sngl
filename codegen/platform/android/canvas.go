@@ -110,14 +110,12 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	mode := canvasScalingProp(n)
 	switch mode {
 	case canvasutil.ScaleFit, canvasutil.ScaleFill, canvasutil.ScaleStretch:
-		cc.kc.RequireImport("androidx.compose.foundation.layout.fillMaxWidth")
 		cc.kc.RequireImport("androidx.compose.ui.graphics.drawscope.scale")
-		cc.line("Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(%df / %df)%s) {", w, h, tag)
+		cc.line("Canvas(modifier = Modifier.%s().%s(%df / %df)%s) {", cc.kc.Name(ktFillMaxWidth), cc.kc.Name(ktAspectRatio), w, h, tag)
 		cc.indent++
-		cc.kc.RequireImport("androidx.compose.foundation.layout.aspectRatio")
 		cc.emitCanvasScale(mode, w, h)
 	default:
-		cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
+		cc.line("Canvas(modifier = Modifier.%s(%d.dp, %d.dp)%s) {", cc.kc.Name(ktSize), w, h, tag)
 		cc.indent++
 		cc.emitDrawBody(drawing.Draw)
 		cc.indent--

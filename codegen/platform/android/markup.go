@@ -98,7 +98,7 @@ func (cc *irComposeContext) renderFlow(n *ir.NodeInst, comp *ir.Component) {
 	if ts := cc.textStyleExpr(n, "style"); ts != "" {
 		args = append(args, "style = "+ts)
 	}
-	cc.line("Text(%s)", strings.Join(args, ", "))
+	cc.line("%s(%s)", cc.kc.Name(ktText), strings.Join(args, ", "))
 }
 
 // renderAnnotated renders the spans of a flow into a buffer of their own, one

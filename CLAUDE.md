@@ -607,6 +607,22 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
   A value has to reach the emitter through a *declared* prop, since that is what lowering turns into the `node.prop = expr` assignment the translator sees. `style` is the platform's own and renders nothing, as on gtk4; a temp its value reads -- a ternary passTernary hoisted -- is read into `_` (`codegen.KeepLocalsRead`, `testdata/style_ternary_unrendered.txtar`). So the primitives declare a vocabulary of value props by type (`text`, `placeholder`, `number`, `flag`, `options`) and `Setter` binds one to a Go method — the vocabulary grows with the types a setter takes, not with the widget count. Same for `@click`/`@change`/`@input` and `Handler`.
 - **android** — generates Android app code; supports `kotlin` and `golang`. Declares `navigation`: `sngl:ui/nav` is a Compose `NavHost` with typed routes (see *Navigation*), Kotlin only. A window's content that reaches its Screen through a slot -- a window under a reactive `if`, an instance of its own -- is wrapped in a `Column` carrying `safeDrawingPadding`, the inset the direct route puts on each root node (`testdata/android_window_slot_inset.txtar`).
+
+  **The screen imports every name explicitly, and never a star**
+  (`kotlin.KtIRContext.Name`, the counterpart of Go's `AliasFor`). In Kotlin
+  an explicit import outranks a declaration of the file's own package, which
+  outranks a star import. So under `material3.*` a program component that
+  became `fun Text` captured the emitter's own `Text(…)` calls. The obvious fix,
+  an explicit import, would instead capture the program's calls. `Name` takes
+  the fully-qualified name (`codegen/platform/android/ktnames.go`), imports it,
+  and answers the spelling: the simple name, or `Text_2` imported `as` that
+  where another import or a declaration the file makes (`Reserve`,
+  `reserveDeclared`) already holds it (`testdata/android_import_alias.txtar`).
+  `RequireImport` still spells a name bare and panics where the name is
+  taken, as a forced Go alias does. `getValue`/`setValue` are imported as they
+  are, a `by` delegate finding them by name. What `chain` and `args` write is
+  Kotlin as text, which no `Name` call reaches, so `baselineImports` are
+  registered first and keep their simple names.
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
   The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what the `gir:` scheme's package is -- `lib/x/scheme/gir`'s handler calls the build intrinsic `gir.widgets`, which gtk4 registers (`girwidgets.go`) and which hands it the entry, directive included, recording it and the `gtk4.gir` setting -- and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. `lib/platform/gtk4/gtk4.sngl` imports `gtk "gir:Gtk-4.0"` and writes `gtk.GtkLabel`, as a program naming a widget does. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.

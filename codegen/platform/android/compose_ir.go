@@ -264,23 +264,24 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
 		cc.widgetSeq++
 		exp := fmt.Sprintf("expanded%d", cc.widgetSeq)
-		cc.line("var %s by remember { mutableStateOf(false) }", exp)
-		cc.line("Box(%s) {", style)
+		stateDelegate(cc.kc)
+		cc.line("var %s by %s { %s(false) }", exp, cc.kc.Name(ktRemember), cc.kc.Name(ktMutableStateOf))
+		cc.line("%s(%s) {", cc.kc.Name(ktBox), style)
 		cc.indent++
-		cc.line("OutlinedButton(onClick = { %s = true }) {", exp)
+		cc.line("%s(onClick = { %s = true }) {", cc.kc.Name(ktOutlinedButton), exp)
 		cc.indent++
 		if placeholder != "" {
-			cc.line("Text(if (%s.isNotEmpty()) %s else %q)", valueExpr, valueExpr, placeholder)
+			cc.line("%s(if (%s.isNotEmpty()) %s else %q)", cc.kc.Name(ktText), valueExpr, valueExpr, placeholder)
 		} else {
-			cc.line("Text(%s)", valueExpr)
+			cc.line("%s(%s)", cc.kc.Name(ktText), valueExpr)
 		}
 		cc.indent--
 		cc.line("}")
-		cc.line("DropdownMenu(expanded = %s, onDismissRequest = { %s = false }) {", exp, exp)
+		cc.line("%s(expanded = %s, onDismissRequest = { %s = false }) {", cc.kc.Name(ktDropdownMenu), exp, exp)
 		cc.indent++
 		cc.line("%s.forEach { opt ->", optionsExpr)
 		cc.indent++
-		cc.line("DropdownMenuItem(text = { Text(opt) }, onClick = {")
+		cc.line("%s(text = { %s(opt) }, onClick = {", cc.kc.Name(ktDropdownMenuItem), cc.kc.Name(ktText))
 		cc.indent++
 		// Two-way `:value` write-back (the bound var is an assignable lvalue),
 		// then any user @change handler, then close the menu.
@@ -361,7 +362,7 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			parts = append(parts, "alpha("+ktFloat(cc.styleValue(sf.Value))+")")
 			continue
 		}
-		if mod := composeModifier(sf.Name, cc.styleValue(sf.Value)); mod != "" {
+		if mod := cc.composeModifier(sf.Name, cc.styleValue(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
 	}
@@ -416,11 +417,11 @@ func (cc *irComposeContext) flexModifier(val string) string {
 		// across the other one by default, which is why the rows of the
 		// keypad divided the height while the keys in them stayed the height
 		// of their own labels.
-		return fmt.Sprintf("weight(%s).fillMaxHeight()", ktFloat(val))
+		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxHeight))
 	case "Column":
-		return fmt.Sprintf("weight(%s).fillMaxWidth()", ktFloat(val))
+		return fmt.Sprintf("weight(%s).%s()", ktFloat(val), cc.kc.Name(ktFillMaxWidth))
 	}
-	return "fillMaxSize()"
+	return cc.kc.Name(ktFillMaxSize) + "()"
 }
 
 // declaresProp reports whether comp declares a prop of this name.
@@ -447,8 +448,7 @@ func (cc *irComposeContext) cornerShapeExpr(n *ir.NodeInst, styleProp string) st
 		if v == "" || v == "0" || v == "0.0" {
 			continue
 		}
-		cc.kc.RequireImport("androidx.compose.foundation.shape.RoundedCornerShape")
-		return fmt.Sprintf("RoundedCornerShape(%s.dp)", v)
+		return fmt.Sprintf("%s(%s.dp)", cc.kc.Name("androidx.compose.foundation.shape.RoundedCornerShape"), v)
 	}
 	return ""
 }
@@ -468,7 +468,7 @@ func (cc *irComposeContext) buttonColorsExpr(n *ir.NodeInst, styleProp string) s
 	if len(args) == 0 {
 		return ""
 	}
-	return "ButtonDefaults.buttonColors(" + strings.Join(args, ", ") + ")"
+	return cc.kc.Name(ktButtonDefaults) + ".buttonColors(" + strings.Join(args, ", ") + ")"
 }
 
 func (cc *irComposeContext) buildModifier(n *ir.NodeInst) string {
@@ -592,22 +592,22 @@ func parseHexColorLiteral(val string) (r, g, b int, ok bool) {
 	return int(v>>16) & 0xff, int(v>>8) & 0xff, int(v) & 0xff, true
 }
 
-func composeModifier(prop, val string) string {
+func (cc *irComposeContext) composeModifier(prop, val string) string {
 	switch prop {
 	case "padding":
-		return fmt.Sprintf("padding(%s.dp)", val)
+		return fmt.Sprintf("%s(%s.dp)", cc.kc.Name(ktPadding), val)
 	case "paddingTop":
-		return fmt.Sprintf("padding(top = %s.dp)", val)
+		return fmt.Sprintf("%s(top = %s.dp)", cc.kc.Name(ktPadding), val)
 	case "paddingBottom":
-		return fmt.Sprintf("padding(bottom = %s.dp)", val)
+		return fmt.Sprintf("%s(bottom = %s.dp)", cc.kc.Name(ktPadding), val)
 	case "paddingLeft":
-		return fmt.Sprintf("padding(start = %s.dp)", val)
+		return fmt.Sprintf("%s(start = %s.dp)", cc.kc.Name(ktPadding), val)
 	case "paddingRight":
-		return fmt.Sprintf("padding(end = %s.dp)", val)
+		return fmt.Sprintf("%s(end = %s.dp)", cc.kc.Name(ktPadding), val)
 	case "width":
-		return fmt.Sprintf("width(%s.dp)", val)
+		return fmt.Sprintf("%s(%s.dp)", cc.kc.Name(ktWidth), val)
 	case "height":
-		return fmt.Sprintf("height(%s.dp)", val)
+		return fmt.Sprintf("%s(%s.dp)", cc.kc.Name(ktHeight), val)
 	case "flex":
 		// Decided in modifierRawExcept, which knows whether weight() is in
 		// scope here.
@@ -662,7 +662,12 @@ func composeIntrinsic(n *ir.NodeInst) (*ir.Component, string) {
 // widget's own colour set and `shape` as its own outline — because none of
 // the five is a value Compose takes as written.
 func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, composable string) {
-	cc.requireNativeImport(comp.Foreign.Path)
+	// The axis a child may ask a weight along is the composable's, whatever
+	// the file ends up calling it.
+	axis := composable
+	if comp.IsNative() && comp.Foreign.Path != "" {
+		composable = cc.nativeName(comp.Foreign)
+	}
 	var args []string
 	for _, p := range comp.Props {
 		switch p.Name {
@@ -716,8 +721,8 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	// about to receive it. Nothing below here is the window's content.
 	outerAxis, outerRoot := cc.parentAxis, cc.atRoot
 	cc.parentAxis = ""
-	if composable == "Row" || composable == "Column" {
-		cc.parentAxis = composable
+	if axis == "Row" || axis == "Column" {
+		cc.parentAxis = axis
 	}
 	cc.atRoot = false
 	defer func() { cc.parentAxis, cc.atRoot = outerAxis, outerRoot }()
@@ -728,17 +733,17 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	cc.line("}")
 }
 
-// requireNativeImport adds the import a `#[kt.native]` composable names,
-// unless a star import of its package -- one of the structural imports every
-// screen carries -- already reaches it.
-func (cc *irComposeContext) requireNativeImport(path string) {
-	if path == "" {
-		return
+// nativeName is what the file calls a `#[kt.native(name, import)]`
+// composable. Where the import names the composable itself, Name answers --
+// its simple name, or an alias another import made necessary. Where the name
+// is reached through the import instead (`Shapes.Card` beside an import of
+// Shapes), the name is written as the mark gave it.
+func (cc *irComposeContext) nativeName(f ir.Foreign) string {
+	if f.Path[strings.LastIndexByte(f.Path, '.')+1:] == f.Name {
+		return cc.kc.Name(f.Path)
 	}
-	if i := strings.LastIndexByte(path, '.'); i > 0 && slices.Contains(cc.kc.Imports(), path[:i]+".*") {
-		return
-	}
-	cc.kc.RequireImport(path)
+	cc.kc.RequireImport(f.Path)
+	return f.Name
 }
 
 // slotArgs emits each named slot a call site populated as the composable
@@ -809,8 +814,7 @@ func (cc *irComposeContext) intrinsicModifier(n *ir.NodeInst, comp *ir.Component
 		// of it and a cutout over part of that. Last in the chain, so it
 		// insets the content and not the background -- the colour still
 		// reaches the edges and only what is drawn inside is kept clear.
-		cc.kc.RequireImport("androidx.compose.foundation.layout.safeDrawingPadding")
-		mod.WriteString(".safeDrawingPadding()")
+		mod.WriteString("." + cc.kc.Name(ktSafeDrawingPadding) + "()")
 	}
 	return mod.String()
 }

@@ -32,7 +32,7 @@ func (cc *irComposeContext) renderEffect(n *ir.NodeInst) {
 		key = cc.kc.EvalExpr(on)
 	}
 
-	cc.line("DisposableEffect(%s) {", key)
+	cc.line("%s(%s) {", cc.kc.Name(ktDisposableEffect), key)
 	cc.indent++
 	// Bound once, on the way in, and read by both halves. onDispose runs when
 	// the composition leaves -- by which time the state the key reads already

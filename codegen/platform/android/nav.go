@@ -590,7 +590,7 @@ func (cc *irComposeContext) renderNavStack(n *ir.NodeInst) {
 		cc.parentAxis, cc.atRoot = "", false
 		body := pageContent(pg.node)
 		if len(body) > 1 {
-			cc.line("Column {")
+			cc.line("%s {", cc.kc.Name(ktColumn))
 			cc.indent++
 			cc.parentAxis = "Column"
 		}
@@ -667,7 +667,7 @@ func (nav *androidNav) pageFor(e ir.Expr) (*navStackK, *navPageK) {
 // then navigates the controller of the stack its page is in.
 func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 	st, pg := cc.nav.pageFor(n.Prop(ir.NavLinkTo))
-	cc.line("Button(onClick = {")
+	cc.line("%s(onClick = {", cc.kc.Name(ktButton))
 	cc.indent++
 	if h := codegen.NodeHandler(n, ir.NavLinkClick); h != nil && h.Func != nil {
 		for _, stmt := range h.Func.Block {
@@ -690,7 +690,7 @@ func (cc *irComposeContext) renderNavLink(n *ir.NodeInst) {
 	if t := n.Prop(ir.NavLinkText); t != nil {
 		text = cc.kc.EvalExpr(t)
 	}
-	cc.line("Text(text = %s)", text)
+	cc.line("%s(text = %s)", cc.kc.Name(ktText), text)
 	cc.indent--
 	cc.line("}")
 }

@@ -206,17 +206,17 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 
 // listStateInitKt renders the right-hand side of a list-typed state
 // declaration: a SnapshotStateList built from the var's initializer.
-func listStateInitKt(bind irAndroidBind, initVal string) string {
+func listStateInitKt(kc *kotlin.KtIRContext, bind irAndroidBind, initVal string) string {
 	elems := initVal
 	if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
 		elems = elems[len("listOf(") : len(elems)-1]
 	} else if bind.initEx != nil && strings.TrimSpace(initVal) != "" {
-		return initVal + ".toMutableStateList()"
+		return initVal + "." + kc.Name(ktToMutableStateList) + "()"
 	}
 	if elems == "" {
-		return "mutableStateListOf<" + listElementTypeKt(bind.ktType) + ">()"
+		return kc.Name(ktMutableStateListOf) + "<" + listElementTypeKt(bind.ktType) + ">()"
 	}
-	return "mutableStateListOf(" + elems + ")"
+	return kc.Name(ktMutableStateListOf) + "(" + elems + ")"
 }
 
 // computedCalcKt renders the whole `derivedStateOf(...)` call for a computed,
@@ -236,12 +236,12 @@ func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, 
 	// a component's computed is rendered here from Compose state, because that
 	// module has no Model for its body to read component state through.
 	if comp.fn == nil || len(comp.fn.Block) == 0 {
-		return "derivedStateOf { " + ktComputedZero(comp) + " }"
+		return kc.Name(ktDerivedStateOf) + " { " + ktComputedZero(comp) + " }"
 	}
 	if len(comp.fn.Block) == 1 {
 		if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
 			if v := kc.EvalExpr(ret.Value); v != "" {
-				return "derivedStateOf { " + v + " }"
+				return kc.Name(ktDerivedStateOf) + " { " + v + " }"
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, 
 		retType = "Any"
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "derivedStateOf(fun(): %s {\n", retType)
+	fmt.Fprintf(&b, "%s(fun(): %s {\n", kc.Name(ktDerivedStateOf), retType)
 	for _, stmt := range comp.fn.Block {
 		for _, line := range kc.EvalStmt(stmt) {
 			fmt.Fprintf(&b, "%s    %s\n", indent, line)
@@ -512,31 +512,12 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		}
 	}
 
-	// Pass 1: register all known imports before rendering the body.
-	// Structural Compose imports are always required for any Compose UI.
-	kc.RequireImport("androidx.compose.foundation.background")
-	kc.RequireImport("androidx.compose.foundation.clickable")
-	kc.RequireImport("androidx.compose.foundation.layout.*")
-	kc.RequireImport("androidx.compose.foundation.rememberScrollState")
-	kc.RequireImport("androidx.compose.foundation.verticalScroll")
-	kc.RequireImport("androidx.compose.material3.*")
-	kc.RequireImport("androidx.compose.material3.pulltorefresh.PullToRefreshBox")
-	kc.RequireImport("androidx.compose.runtime.*")
-	kc.RequireImport("androidx.compose.ui.Alignment")
-	kc.RequireImport("androidx.compose.ui.Modifier")
-	kc.RequireImport("androidx.compose.ui.platform.testTag")
-	kc.RequireImport("androidx.compose.ui.draw.alpha")
-	kc.RequireImport("androidx.compose.ui.draw.clip")
-	// Aliased to ComposeColor so the SNGL stdlib `color` struct (emitted as
-	// a `Color` data class for Canvas2D) doesn't collide with the framework
-	// graphics Color. All framework-color uses below say ComposeColor.
-	kc.RequireImport("androidx.compose.ui.graphics.Color as ComposeColor")
-	kc.RequireImport("androidx.compose.ui.text.TextStyle")
-	kc.RequireImport("androidx.compose.ui.text.font.FontWeight")
-	kc.RequireImport("androidx.compose.ui.text.style.TextAlign")
-	kc.RequireImport("androidx.compose.ui.unit.dp")
-	kc.RequireImport("androidx.compose.ui.unit.sp")
-	kc.RequireImport("androidx.compose.ui.window.Dialog")
+	// Pass 1: the baseline every screen imports, ahead of anything the body
+	// names so each keeps its simple name (see baselineImports).
+	for _, imp := range baselineImports {
+		kc.RequireImport(imp)
+	}
+	reserveDeclared(kc, ctx.Pkg)
 	// Conditional imports derived from IR analysis (no code scanning needed).
 	if len(info.Timers) > 0 {
 		kc.RequireImport("kotlinx.coroutines.delay")
@@ -688,9 +669,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = classKC.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				fmt.Fprintf(&body, "    val %s = %s\n", bind.name, listStateInitKt(bind, initVal))
+				fmt.Fprintf(&body, "    val %s = %s\n", bind.name, listStateInitKt(kc, bind, initVal))
 			} else {
-				fmt.Fprintf(&body, "    var %s by mutableStateOf%s(%s)\n", bind.name, stateTypeArg(bind, initVal), initVal)
+				stateDelegate(kc)
+				fmt.Fprintf(&body, "    var %s by %s%s(%s)\n", bind.name, kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
 			}
 		}
 		// Getters, not derivedStateOf: one read outside any composition and
@@ -724,18 +706,19 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = kc.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				fmt.Fprintf(&body, "val %s = %s\n\n", bind.name, listStateInitKt(bind, initVal))
+				fmt.Fprintf(&body, "val %s = %s\n\n", bind.name, listStateInitKt(kc, bind, initVal))
 			} else {
-				fmt.Fprintf(&body, "var %s by mutableStateOf%s(%s)\n\n", bind.name, stateTypeArg(bind, initVal), initVal)
+				stateDelegate(kc)
+				fmt.Fprintf(&body, "var %s by %s%s(%s)\n\n", bind.name, kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
 			}
 		}
 	}
 
 	// Main composable
-	body.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
-	body.WriteString("@Composable\n")
+	fmt.Fprintf(&body, "@OptIn(%s::class)\n", kc.Name(ktExperimentalMaterial3Api))
+	fmt.Fprintf(&body, "@%s\n", kc.Name(ktComposable))
 	if testMode {
-		body.WriteString("fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {\n")
+		fmt.Fprintf(&body, "fun MainScreen(state: MainScreenState = %s { MainScreenState() }) {\n", kc.Name(ktRemember))
 	} else {
 		body.WriteString("fun MainScreen() {\n")
 	}
@@ -757,9 +740,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				initVal = kc.EvalExpr(bind.initEx)
 			}
 			if bind.isList {
-				fmt.Fprintf(&body, "    val %s = remember { %s }\n", bind.name, listStateInitKt(bind, initVal))
+				fmt.Fprintf(&body, "    val %s = %s { %s }\n", bind.name, kc.Name(ktRemember), listStateInitKt(kc, bind, initVal))
 			} else {
-				fmt.Fprintf(&body, "    var %s by remember { mutableStateOf%s(%s) }\n", bind.name, stateTypeArg(bind, initVal), initVal)
+				stateDelegate(kc)
+				fmt.Fprintf(&body, "    var %s by %s { %s%s(%s) }\n", bind.name, kc.Name(ktRemember), kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
 			}
 		}
 	}
@@ -769,7 +753,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// non-test mode.
 	if !testMode {
 		for _, comp := range info.computeds {
-			fmt.Fprintf(&body, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, cfg, kc, "    "))
+			stateDelegate(kc)
+			fmt.Fprintf(&body, "    val %s by %s { %s }\n", comp.name, kc.Name(ktRemember), computedCalcKt(comp, cfg, kc, "    "))
 		}
 	}
 
@@ -819,7 +804,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		if t.Enabled != nil {
 			gate = kc.EvalExpr(t.Enabled)
 		}
-		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", gate)
+		fmt.Fprintf(&body, "    %s(%s) {\n", kc.Name(ktLaunchedEffect), gate)
 		fmt.Fprintf(&body, "        while (%s) {\n", gate)
 		fmt.Fprintf(&body, "            delay(%dL)\n", t.IntervalMs)
 		for _, stmt := range t.Body {
@@ -927,7 +912,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 }
 
 func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo, screen *codegen.Screen, nav *androidNav) {
-	b.WriteString("\n@Composable\n")
+	fmt.Fprintf(b, "\n@%s\n", kc.Name(ktComposable))
 	var params []string
 	for _, p := range cc.Props {
 		ktType := kotlin.IRTypeToKt(p.Type)
@@ -965,15 +950,17 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 			initVal = compKC.EvalExpr(bind.initEx)
 		}
 		if bind.isList {
-			fmt.Fprintf(b, "    val %s = remember { %s }\n", bind.name, listStateInitKt(bind, initVal))
+			fmt.Fprintf(b, "    val %s = %s { %s }\n", bind.name, kc.Name(ktRemember), listStateInitKt(kc, bind, initVal))
 		} else {
-			fmt.Fprintf(b, "    var %s by remember { mutableStateOf%s(%s) }\n", bind.name, stateTypeArg(bind, initVal), initVal)
+			stateDelegate(kc)
+			fmt.Fprintf(b, "    var %s by %s { %s%s(%s) }\n", bind.name, kc.Name(ktRemember), kc.Name(ktMutableStateOf), stateTypeArg(bind, initVal), initVal)
 		}
 		decls++
 	}
 	for _, fn := range cc.Computeds {
 		comp := irAndroidComputed{name: fn.Name, ktType: irFuncReturnKt(fn), fn: fn}
-		fmt.Fprintf(b, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, cfg, compKC, "    "))
+		stateDelegate(kc)
+		fmt.Fprintf(b, "    val %s by %s { %s }\n", comp.name, kc.Name(ktRemember), computedCalcKt(comp, cfg, compKC, "    "))
 		decls++
 	}
 	for _, fn := range cc.Funcs {

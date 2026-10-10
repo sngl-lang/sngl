@@ -14,12 +14,25 @@ import (
 // ktImportSet is the shared import collector for a KtIRContext tree.
 // Shared by pointer across all derived contexts (WithLocal, ForComponent)
 // so any RequireImport call anywhere in the tree is visible to the root.
+//
+// Every import is explicit -- one name per line, never a star -- and each
+// claims the simple name it brings into scope. An explicit import outranks a
+// star import and a declaration of the file's own package, so a star leaves
+// which declaration a name reaches to whatever the libraries hold today, and
+// two explicit imports of one simple name do not compile. Claiming the name
+// is what lets Name alias the second instead.
 type ktImportSet struct {
 	paths map[string]struct{}
 	order []string
+	// names is the spelling each fully-qualified name was given; taken is the
+	// reverse, which simple names some import already brings into scope.
+	names map[string]string
+	taken map[string]string
 }
 
-func newKtImportSet() *ktImportSet { return &ktImportSet{paths: map[string]struct{}{}} }
+func newKtImportSet() *ktImportSet {
+	return &ktImportSet{paths: map[string]struct{}{}, names: map[string]string{}, taken: map[string]string{}}
+}
 
 func (s *ktImportSet) require(path string) {
 	if path == "" {
@@ -30,6 +43,51 @@ func (s *ktImportSet) require(path string) {
 	}
 	s.paths[path] = struct{}{}
 	s.order = append(s.order, path)
+	fqn, alias, aliased := strings.Cut(path, " as ")
+	if !aliased {
+		alias = simpleName(fqn)
+	}
+	// A caller that requires an import spells the name bare, so a second
+	// declaration claiming it would be read in its place -- or, two explicit
+	// imports of one name, not compile. Go's forced aliases refuse the same
+	// way; a caller that cannot know what is taken asks Name.
+	if prev, ok := s.taken[alias]; ok {
+		if prev == "" {
+			panic(fmt.Sprintf("kotlin: import %q is spelled %s, which the file declares; spell it through Name", path, alias))
+		}
+		if prev != fqn {
+			panic(fmt.Sprintf("kotlin: import %q is spelled %s, which %q already claims; spell it through Name", path, alias, prev))
+		}
+		return
+	}
+	s.taken[alias] = fqn
+	s.names[fqn] = alias
+}
+
+// name registers fqn and returns what code writes for it: the simple name
+// where no other import has claimed it, and otherwise the simple name
+// suffixed, imported under that alias.
+func (s *ktImportSet) name(fqn string) string {
+	if n, ok := s.names[fqn]; ok {
+		return n
+	}
+	simple := simpleName(fqn)
+	if _, ok := s.taken[simple]; !ok {
+		s.require(fqn)
+		return simple
+	}
+	for i := 2; ; i++ {
+		alias := fmt.Sprintf("%s_%d", simple, i)
+		if _, ok := s.taken[alias]; !ok {
+			s.require(fqn + " as " + alias)
+			return alias
+		}
+	}
+}
+
+// simpleName is the last segment of a fully-qualified name.
+func simpleName(fqn string) string {
+	return fqn[strings.LastIndexByte(fqn, '.')+1:]
 }
 
 // KtIRContext translates IR expressions and statements into Kotlin code.
@@ -59,6 +117,38 @@ func NewIRContext(ctx *codegen.ExprCtx) *KtIRContext {
 func (kc *KtIRContext) RequireImport(path string) {
 	if kc.imports != nil {
 		kc.imports.require(path)
+	}
+}
+
+// Name registers the import of a fully-qualified name and returns what code
+// writes for it: `Card` for androidx.compose.material3.Card, or `Card_2`,
+// imported under that alias, where another import already brought a `Card`
+// into scope. The Kotlin counterpart of Go's AliasFor: a caller writing the
+// simple name itself could not know what another import already claimed.
+//
+// Assignment is in registration order, which is the walk order, so the result
+// is stable across runs of one build. An operator a convention finds by name
+// -- a `by` delegate's getValue -- cannot be renamed and goes through
+// RequireImport.
+func (kc *KtIRContext) Name(fqn string) string {
+	if kc.imports == nil {
+		return simpleName(fqn)
+	}
+	return kc.imports.name(fqn)
+}
+
+// Reserve says the file declares name at its top level. An explicit import
+// outranks a declaration of the file's own package, so an import bringing the
+// same name into scope would take every reference to the declaration with it;
+// Name aliases around a reserved name instead. One an import already claimed
+// is left to the import -- passReservedNames is what keeps a program from
+// declaring the names a target imports unasked.
+func (kc *KtIRContext) Reserve(name string) {
+	if kc.imports == nil || name == "" {
+		return
+	}
+	if _, ok := kc.imports.taken[name]; !ok {
+		kc.imports.taken[name] = ""
 	}
 }
 
