@@ -424,6 +424,9 @@ func pageDocument(stmts *[]ir.Stmt, pc pageCopy, fold codegen.Fold, static bool)
 // page's content.
 func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, fold codegen.Fold, static bool) []ir.Stmt {
 	stmts := stack.Children
+	// The fold's copy shares a loop's body, so a page reached through one is
+	// the program's own until it is copied here.
+	shared := false
 	for depth, step := range pc.path {
 		idx := step.idx
 		if depth == 0 {
@@ -444,8 +447,14 @@ func (out *documentPage) take(stack *ir.NodeInst, pc pageCopy, fold codegen.Fold
 				return nil
 			}
 			fold.BindLoop(n, step.sub, items[step.sub])
-			stmts = n.Body
+			stmts, shared = n.Body, true
 		case *ir.NodeInst:
+			if shared {
+				cp := *n
+				cp.Record = ir.CloneExprSharingDecls(n.Record)
+				cp.Children = fold.Clone(n.Children)
+				n = &cp
+			}
 			out.node, out.static = n, static
 			// The record is the copy's: under a `for` it reads the loop's
 			// variables, which fold now binds.
