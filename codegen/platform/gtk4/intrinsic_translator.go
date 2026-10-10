@@ -503,6 +503,10 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 func ctorZeroArg(reg *gir.TypeRegistry, p gir.ConstructorParam) (ir.Expr, error) {
 	switch p.GIRType {
 	case "utf8", "filename", "gchararray":
+		// gtk_link_button_new refuses NULL and returns no widget at all.
+		if !p.Nullable {
+			return nativeCall("CString", &ir.Literal{Type: ir.TypString, Value: ""}), nil
+		}
 		return &ir.Literal{Type: ir.TypNull}, nil
 	case "gboolean", "gint", "gint32", "gint64", "guint", "guint32", "guint64", "gsize":
 		return nativeCall(ctorScalarCast(p), &ir.Literal{Type: ir.TypInt, Value: "0"}), nil
