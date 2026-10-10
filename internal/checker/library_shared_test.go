@@ -114,7 +114,18 @@ func TestLibraryFingerprintSeesEveryPackage(t *testing.T) {
 	library := checker.NewSharedLibrary()
 	loadEveryLibraryPackage(t, library)
 	pkgs := library.Packages()
-	f := testutil.Fingerprinter{Skip: notTheLibrary(pkgs)}
+	skip := notTheLibrary(pkgs)
+	var outside []string
+	f := testutil.Fingerprinter{Skip: func(v reflect.Value) bool {
+		stop := skip(v)
+		if stop && v.Type().Elem().PkgPath() != "duckfam.us/sngl/ast" && !earlierListOrMap(v) {
+			outside = append(outside, fmt.Sprintf("%s %v", v.Type(), v.Elem().FieldByName("Name")))
+		}
+		return stop
+	}}
+	if f.Of(pkgs); len(outside) > 0 {
+		t.Fatalf("the library reaches %d objects of packages Packages does not name, such as a %s", len(outside), outside[0])
+	}
 	var written int
 	for _, p := range pkgs {
 		var doc *string
@@ -194,7 +205,6 @@ func logLibraryWrites(t *testing.T, s testutil.Sample, doc *ast.Document) {
 	library := checker.NewSharedLibrary()
 	loadEveryLibraryPackage(t, library)
 	pkgs := library.Packages()
-	library.Publish()
 	f := testutil.Fingerprinter{Skip: notTheLibrary(pkgs)}
 	before := f.Graph(pkgs)
 	cfg := fixtures.CheckConfig(s, doc)
@@ -242,8 +252,6 @@ func notTheLibrary(pkgs []*ir.Package) func(reflect.Value) bool {
 	}
 }
 
-// rewrittenEntries is each entry of before that after holds with another
-// value or not at all.
 func rewrittenEntries(before, after map[string]string) []string {
 	var out []string
 	for k, v := range before {
@@ -253,4 +261,12 @@ func rewrittenEntries(before, after map[string]string) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// earlierListOrMap is a list or map declaration of a library loaded earlier
+// in the process, which ListOf and MapOf hand out from a global until a load
+// publishes its own.
+func earlierListOrMap(v reflect.Value) bool {
+	sd, ok := v.Interface().(*ir.StructDef)
+	return ok && (sd.Builtin == ir.BuiltinList || sd.Builtin == ir.BuiltinMap)
 }
