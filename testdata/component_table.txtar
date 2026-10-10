@@ -497,23 +497,27 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		var __n1 *__child0Instance
 		if len(m.__inst0_live) > __inst0_i {
 			__n1 = m.__inst0_live[__inst0_i]
-			__n1.Set__p0(row)
-			__n1.Set__p1(k)
-			__n1.Set__p2(m.idx)
-			__n1.Set__on0(func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+			__n1.Set__p0(k)
+			__n1.Set__p1(m.idx)
+			__n1.Set__p2(row)
+			__n1.Set__on0(func(b any) {
+				if C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0 {
+					m.idx = k
+					for __inst0_live_ui, _ := range m.__inst0_live {
+						m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
+					}
 				}
 			})
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n1__new := new__child0Instance(m, row, k, m.idx, func() {
-				m.idx = k
-				for __inst0_live_ui, _ := range m.__inst0_live {
-					m.__inst0_live[__inst0_live_ui].Set__p2(m.idx)
+			__n1__new := new__child0Instance(m, k, m.idx, row, func(b any) {
+				if C.gtk_check_button_get_active((*C.GtkCheckButton)(unsafe.Pointer(b.(*C.GtkCheckButton)))) != 0 {
+					m.idx = k
+					for __inst0_live_ui, _ := range m.__inst0_live {
+						m.__inst0_live[__inst0_live_ui].Set__p1(m.idx)
+					}
 				}
 			})
 			__n1 = __n1__new
@@ -537,20 +541,20 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 type __child0Instance struct {
 	Root         *C.GtkWidget
 	__model      *Model
-	__prop___p0  TableRow__record
+	__prop___p0  int
 	__prop___p1  int
-	__prop___p2  int
-	__prop___on0 func()
+	__prop___p2  TableRow__record
+	__prop___on0 func(any)
 	__root       *C.GtkBox
 	__slot0      []*C.GtkWidget
 	__slot0_at   *C.GtkWidget
 	__slot1      []*C.GtkWidget
 	__slot1_at   *C.GtkWidget
-	__inst1_live []*__child1Instance
-	__n5         *C.GtkBox
+	__n4         *C.GtkBox
+	__n0         *C.GtkCheckButton
 }
 
-func new__child0Instance(__model *Model, __a___p0 TableRow__record, __a___p1 int, __a___p2 int, __a___on0 func()) *__child0Instance {
+func new__child0Instance(__model *Model, __a___p0 int, __a___p1 int, __a___p2 TableRow__record, __a___on0 func(any)) *__child0Instance {
 	c := &__child0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __a___p0
@@ -560,36 +564,38 @@ func new__child0Instance(__model *Model, __a___p0 TableRow__record, __a___p1 int
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
-	c.__inst1_live = []*__child1Instance{}
-	c.__n5 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(c.__n5)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(c.__n5)), C.gboolean(boolToInt(true)))
-	c.__renderSlot1(c.__n5)
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n5))
+	c.__n4 = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(c.__n4)), C.GTK_ORIENTATION_HORIZONTAL)
+	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(c.__n4)), C.gboolean(boolToInt(true)))
+	c.__n0 = (*C.GtkCheckButton)(unsafe.Pointer(C.gtk_check_button_new()))
+	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
+	snglCallbacks = append(snglCallbacks, func() {
+		c.__prop___on0(c.__n0)
+	})
+	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("toggled"), C.int((len(snglCallbacks) - 1)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(c.__n4)), (*C.GtkWidget)(unsafe.Pointer(c.__n0)))
+	c.__renderSlot1(c.__n4)
+	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n4))
 	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
 	return c
 }
 
-func (c *__child0Instance) Set__p0(__v TableRow__record) {
+func (c *__child0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
-	c.__renderSlot1(c.__n5)
+	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
 	c.__prop___p1 = __v
-	for __inst1_live_ui, _ := range c.__inst1_live {
-		c.__inst1_live[__inst1_live_ui].Set__p1(c.__prop___p1)
-	}
+	C.gtk_check_button_set_active((*C.GtkCheckButton)(unsafe.Pointer(c.__n0)), C.gboolean(boolToInt((c.__prop___p0 == c.__prop___p1))))
 }
 
-func (c *__child0Instance) Set__p2(__v int) {
+func (c *__child0Instance) Set__p2(__v TableRow__record) {
 	c.__prop___p2 = __v
-	for __inst1_live_ui, _ := range c.__inst1_live {
-		c.__inst1_live[__inst1_live_ui].Set__p2(c.__prop___p2)
-	}
+	c.__renderSlot1(c.__n4)
 }
 
-func (c *__child0Instance) Set__on0(__v func()) {
+func (c *__child0Instance) Set__on0(__v func(any)) {
 	c.__prop___on0 = __v
 }
 
@@ -599,140 +605,16 @@ func (c *__child0Instance) __renderSlot1(parent *C.GtkBox) {
 	}
 	c.__slot1 = nil
 	c.__slot1_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at)
-	__inst1_next := []*__child1Instance{}
-	var __inst1_i int = 0
-	for _, cell := range c.__prop___p0.Cells {
-		var __n3 *__child1Instance
-		if len(c.__inst1_live) > __inst1_i {
-			__n3 = c.__inst1_live[__inst1_i]
-			__n3.Set__p0(cell)
-			__n3.Set__p1(c.__prop___p1)
-			__n3.Set__p2(c.__prop___p2)
-			__n3.Set__on0(func() {
-				c.__prop___on0()
-			})
-		} else {
-			if len(c.__inst1_live) > __inst1_i {
-				c.__inst1_live[__inst1_i].Destroy()
-			}
-			__n3__new := new__child1Instance(c.__model, cell, c.__prop___p1, c.__prop___p2, func() {
-				c.__prop___on0()
-			})
-			__n3 = __n3__new
-		}
-		__inst1_next = append(__inst1_next, __n3)
-		__inst1_i = (__inst1_i + 1)
-		__n3__el := __n3.Root
-		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
-		c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3__el)))
+	for _, cell := range c.__prop___p2.Cells {
+		__n3 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n3)), C.CString(cell))
+		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n3)), C.float(0.0))
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), c.__slot1_at, (*C.GtkWidget)(unsafe.Pointer(__n3)))
+		c.__slot1 = append(c.__slot1, (*C.GtkWidget)(unsafe.Pointer(__n3)))
 	}
-	for __inst1_i_d, _ := range c.__inst1_live {
-		var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
-		if __inst1_i_j >= __inst1_i {
-			c.__inst1_live[__inst1_i_j].Destroy()
-		}
-	}
-	c.__inst1_live = __inst1_next
-}
-
-func (c *__child0Instance) teardown() {
-	for __inst1_live_di, _ := range c.__inst1_live {
-		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
-		c.__inst1_live[__inst1_live_dj].Destroy()
-	}
-	c.__inst1_live = []*__child1Instance{}
 }
 
 func (c *__child0Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
-		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
-	}
-	if c.__slot1_at != nil {
-		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
-	}
-}
-
-// __child1Instance is one live instance of the __child1 component.
-type __child1Instance struct {
-	Root         *C.GtkWidget
-	__model      *Model
-	__prop___p0  string
-	__prop___p1  int
-	__prop___p2  int
-	__prop___on0 func()
-	__root       *C.GtkBox
-	__slot0      []*C.GtkWidget
-	__slot0_at   *C.GtkWidget
-	__slot1      []*C.GtkWidget
-	__slot1_at   *C.GtkWidget
-	__n0         *C.GtkButton
-}
-
-func new__child1Instance(__model *Model, __a___p0 string, __a___p1 int, __a___p2 int, __a___on0 func()) *__child1Instance {
-	c := &__child1Instance{}
-	c.__model = __model
-	c.__prop___p0 = __a___p0
-	c.__prop___p1 = __a___p1
-	c.__prop___p2 = __a___p2
-	c.__prop___on0 = __a___on0
-	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
-	c.__slot0 = nil
-	c.__slot1 = nil
-	var __lt2 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt2 = "bold"
-	} else {
-		__lt2 = "normal"
-	}
-	c.__n0 = (*C.GtkButton)(unsafe.Pointer(C.gtk_button_new()))
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(c.__n0)), C.CString(c.__prop___p0))
-	_ = __lt2
-	snglCallbacks = append(snglCallbacks, func() {
-		c.__prop___on0()
-	})
-	C.sngl_connect(unsafe.Pointer(c.__n0), C.CString("clicked"), C.int((len(snglCallbacks) - 1)))
-	c.Root = (*C.GtkWidget)(unsafe.Pointer(c.__n0))
-	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(c.Root)))
-	return c
-}
-
-func (c *__child1Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	C.gtk_button_set_label((*C.GtkButton)(unsafe.Pointer(c.__n0)), C.CString(c.__prop___p0))
-}
-
-func (c *__child1Instance) Set__p1(__v int) {
-	c.__prop___p1 = __v
-	var __lt0 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt0 = "bold"
-	} else {
-		__lt0 = "normal"
-	}
-	_ = __lt0
-}
-
-func (c *__child1Instance) Set__p2(__v int) {
-	c.__prop___p2 = __v
-	var __lt1 string
-	if c.__prop___p1 == c.__prop___p2 {
-		__lt1 = "bold"
-	} else {
-		__lt1 = "normal"
-	}
-	_ = __lt1
-}
-
-func (c *__child1Instance) Set__on0(__v func()) {
-	c.__prop___on0 = __v
-}
-
-func (c *__child1Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
@@ -761,16 +643,19 @@ func (m *Model) buildWidgetTree() {
 	__n2 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n2)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(__n2)), C.int(0))
-	__n6 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
-	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n6)), C.GTK_ORIENTATION_HORIZONTAL)
-	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(__n6)), C.gboolean(boolToInt(true)))
+	__n5 := (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(0, C.int(0))))
+	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(__n5)), C.GTK_ORIENTATION_HORIZONTAL)
+	C.gtk_box_set_homogeneous((*C.GtkBox)(unsafe.Pointer(__n5)), C.gboolean(boolToInt(true)))
+	__n6 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
+	C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n6)), C.CString(""))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
 	for _, col := range []string{"Name", "Role"} {
 		__n8 := (*C.GtkLabel)(unsafe.Pointer(C.gtk_label_new(nil)))
 		C.gtk_label_set_text((*C.GtkLabel)(unsafe.Pointer(__n8)), C.CString(col))
 		C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(__n8)), C.float(0.0))
-		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n6)), (*C.GtkWidget)(unsafe.Pointer(__n8)))
+		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n5)), (*C.GtkWidget)(unsafe.Pointer(__n8)))
 	}
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(__n6)))
+	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(__n5)))
 	__n9 := (*C.GtkSeparator)(unsafe.Pointer(C.gtk_separator_new(0)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(__n2)), (*C.GtkWidget)(unsafe.Pointer(__n9)))
 	m.__renderSlot0(__n2)
@@ -934,7 +819,7 @@ pass sha256:df93d47cf3aa143d3e9e9f0087c4fa33
 -- run/go/fyne --
 pass sha256:763d453540ed50f5f6aad8cb4f8cdbab
 -- run/go/gtk4 --
-pass sha256:4bc11ea6f095b7980ad4f276de2f134e
+pass sha256:b7a0f65a73d21415d39385f2ed019169
 -- run/kotlin/android --
 pass sha256:05a402c234d27b9d436aca9e6fe9d493
 -- run/none/html --
