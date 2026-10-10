@@ -1224,7 +1224,7 @@ func (c *checker) checkPendingExtensions() {
 			} else {
 				c.scope = libBodyScope
 			}
-			savedAST := pe.comp.AST.Body
+			savedAST := pe.comp.AST
 			saved := pe.comp.Body
 			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
 			// An override that listed the props it consumes reads those and no
@@ -1234,7 +1234,12 @@ func (c *checker) checkPendingExtensions() {
 			if pe.selection != nil {
 				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
 			}
-			pe.comp.AST.Body = pe.body
+			// The declaration is the library's parsed source, which every check
+			// shares, so the component is handed a copy carrying the override's
+			// body rather than having the body written into it.
+			decl := *pe.comp.AST
+			decl.Body = pe.body
+			pe.comp.AST = &decl
 			pe.comp.Stmts = nil
 			// pass1 only ever saw the component's parenless stub, so the
 			// override's own state has to be collected before the body check
@@ -1282,7 +1287,7 @@ func (c *checker) checkPendingExtensions() {
 			} else {
 				pe.comp.PlatformOverrides[pe.platform] = checked
 			}
-			pe.comp.AST.Body = savedAST
+			pe.comp.AST = savedAST
 			pe.comp.Body = saved
 			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
