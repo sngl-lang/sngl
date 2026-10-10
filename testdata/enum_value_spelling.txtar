@@ -444,6 +444,17 @@ enum class Empty(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
+enum class SnglJustification(private val sngl: String) {
+    START("start"),
+    CENTER("center"),
+    END("end"),
+    SPACEBETWEEN("spaceBetween"),
+    SPACEAROUND("spaceAround"),
+    SPACEEVENLY("spaceEvenly");
+
+    override fun toString(): String = sngl
+}
+
 enum class SnglDisplay(private val sngl: String) {
     FLEX("flex"),
     BLOCK("block"),
@@ -461,17 +472,6 @@ enum class SnglFontWeight(private val sngl: String) {
     BOLD("bold"),
     LIGHTER("lighter"),
     BOLDER("bolder");
-
-    override fun toString(): String = sngl
-}
-
-enum class SnglJustification(private val sngl: String) {
-    START("start"),
-    CENTER("center"),
-    END("end"),
-    SPACEBETWEEN("spaceBetween"),
-    SPACEAROUND("spaceAround"),
-    SPACEEVENLY("spaceEvenly");
 
     override fun toString(): String = sngl
 }
@@ -692,6 +692,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7f84de24bbb8ac023618bb9f82623894
 -- run/kotlin/android --
-pass sha256:547c58bd9d00a0578109e2c8e538ac3a
+pass sha256:c061be4305e1f05d3fecfe3b6396a606
 -- run/none/html --
 pass sha256:28f76c774e10e181697cde7cf2e27c09
