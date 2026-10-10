@@ -105,6 +105,8 @@ build-image:
         paths: *image-inputs
       when: always
     - when: never
+  # --compressed-caching=false and --snapshot-mode=redo keep kaniko under the
+  # runner's memory; without them the snapshot after the apt layer is OOM-killed.
   script:
     - mkdir -p /kaniko/.docker
     - >-
@@ -116,6 +118,8 @@ build-image:
       --dockerfile $CI_PROJECT_DIR/Dockerfile
       --destination $IMAGE:latest
       --cache=true
+      --compressed-caching=false
+      --snapshot-mode=redo
 
 # Compile the third-party dependency closure into a Go build cache the test
 # job restores.
