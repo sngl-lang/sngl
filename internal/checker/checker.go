@@ -261,11 +261,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	// this file declares further down.
 	c.collectUserOverrides()
 	c.collectFuncOverrides()
-	// Body-check pending stdlib platform extensions after user pass1 so that
-	// user-declared symbols are in scope when the platform body resolves
-	// identifiers. Collection (the AST walk that enumerates pending bodies)
-	// happened in newChecker; checkPendingExtensions populates each stdlib
-	// Component's PlatformOverrides map.
+	// The program's overrides of library components, after its pass1 so that
+	// a body resolves the program's own declarations. A target package's are
+	// checked as it loads (mergeTargetExtensions).
 	c.checkPendingExtensions()
 	c.pass2()
 	// After pass2: an override body is checked against the base's signature,
@@ -760,10 +758,9 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	// target index binds it for the merge (mergeTargetExtensions).
 	_ = stdlibScope
 
-	// Splice the build target's extension bodies into the stdlib components
-	// they target. AST splicing happens here so that user pass1/pass2 see
-	// body-bearing stdlib components; IR body checking runs from Check() after
-	// user pass1, so a body can reference a user-declared symbol.
+	// Check the build target's overrides of the library components they
+	// target, as part of loading the target's package, so that user
+	// pass1/pass2 see body-bearing library components.
 	//
 	// Building for a target is an `import _ "sngl:platform/<it>"` nobody
 	// wrote, so only the target's package loads here. A program that imports

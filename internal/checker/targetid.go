@@ -405,9 +405,15 @@ func (c *checker) funcOverrideBase(decl *ast.FuncDef) *ir.Func {
 // params and the return type in scope are the ones the override inherits: the
 // override declares neither, and checkFuncBody reads both off the declaration.
 func (c *checker) checkPendingFuncOverrides() {
+	c.checkFuncOverrides(c.pendingFuncOverrides)
+}
+
+// checkFuncOverrides checks each of pending as checkPendingFuncOverrides
+// describes.
+func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
-	for _, po := range c.pendingFuncOverrides {
+	for _, po := range pending {
 		// A target package's own override is compiler-internal source: it
 		// resolves in that package, chained to the library scope it is written
 		// against, and not where a program's declarations are visible. A

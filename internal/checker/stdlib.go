@@ -865,7 +865,8 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		// it cannot provide.
 		return
 	}
-	{
+	ext, funcs := len(c.pendingExtensions), len(c.pendingFuncOverrides)
+	func() {
 		// An override names its target, and a target package's own source is
 		// no exception -- but it reaches its namespace the way its bodies do,
 		// from the package itself, not from the program's scope, which is
@@ -977,7 +978,30 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection, decl.Const)
 			}
 		}
-	}
+	}()
+	// The package's own overrides are the package's, so they are checked as
+	// part of loading it: what one declares -- a helper, a body struct --
+	// belongs to this package and not to the program that happened to load it.
+	own := slices.Clone(c.pendingExtensions[ext:])
+	ownFuncs := slices.Clone(c.pendingFuncOverrides[funcs:])
+	c.pendingExtensions, c.pendingFuncOverrides = c.pendingExtensions[:ext], c.pendingFuncOverrides[:funcs]
+	c.inTargetLoad(pkgName, func() {
+		c.checkExtensions(own)
+		c.checkFuncOverrides(ownFuncs)
+	})
+}
+
+// inTargetLoad runs check as part of loading the target package pkgName:
+// library source, declaring into that package.
+func (c *checker) inTargetLoad(pkgName string, check func()) {
+	c.libDepth++
+	savedName, savedLoad := c.libPkgName, c.libLoadPkg
+	c.libPkgName, c.libLoadPkg = "sngl:"+pkgName, c.libPkg(pkgName)
+	defer func() {
+		c.libDepth--
+		c.libPkgName, c.libLoadPkg = savedName, savedLoad
+	}()
+	check()
 }
 
 // qualifiedComponentName is how an override names what it overrides: qualified
@@ -1176,13 +1200,18 @@ type pendingExtension struct {
 	pkg *ir.Package
 }
 
-// Runs after user pass1, so user-declared symbols are in scope. Each extension
-// body is checked with the platform block temporarily installed as the stdlib
+// checkPendingExtensions checks the program's own overrides, after its pass1
+// so its declarations are in scope. Each extension body is checked with the platform block temporarily installed as the stdlib
 // component's AST.Body, then the slot is restored: the component is left with
 // an empty Body, and lower's passPlatformExtensionBody swaps the active
 // platform's in.
 func (c *checker) checkPendingExtensions() {
-	if len(c.pendingExtensions) == 0 {
+	c.checkExtensions(c.pendingExtensions)
+}
+
+// checkExtensions checks each of pending as checkPendingExtensions describes.
+func (c *checker) checkExtensions(pending []pendingExtension) {
+	if len(pending) == 0 {
 		return
 	}
 	// Group by target package so each target's own is in scope while its
@@ -1192,7 +1221,7 @@ func (c *checker) checkPendingExtensions() {
 	// language of some name is not the platform of it.
 	var order []string
 	byTarget := map[string][]pendingExtension{}
-	for _, pe := range c.pendingExtensions {
+	for _, pe := range pending {
 		uri := targetTierMember(pe.kind) + "/" + pe.platform
 		if _, seen := byTarget[uri]; !seen {
 			order = append(order, uri)
