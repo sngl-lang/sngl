@@ -716,6 +716,10 @@ type Fold interface {
 	// documents with the fold it is handed, and each round runs what it could
 	// not answer as one program.
 	SettleNatives(probe func(Fold) error) error
+	// NativesAsked counts the native calls a probe round has asked to run so
+	// far, across this fold and every fold it shares the round with; zero
+	// outside a probe.
+	NativesAsked() int
 	// HoldsNativeCall reports whether s holds a pure native call the fold
 	// could evaluate.
 	HoldsNativeCall(s ir.Stmt) bool

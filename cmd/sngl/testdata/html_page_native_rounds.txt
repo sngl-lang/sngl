@@ -1,0 +1,47 @@
+# A native call only a page's loop variable makes constant is answered before
+# the first document is written, one batch per round. A call whose argument is
+# another call's answer takes a second round, and that round probes only the
+# document that asked: the others were folded whole in the first. Were it
+# skipped, the page would still come out right, answered one call at a time,
+# so the round lines are what this asserts.
+exec sh -c 'printf "module example.com/app\n\ngo %s\n\nrequire duckfam.us/sngl v0.0.0\n\nreplace duckfam.us/sngl => %s\n" "$(sed -n "s/^go //p" "$SNGL_HOST_GO_MOD")" "${SNGL_HOST_GO_MOD%/go.mod}" > go.mod && sed -n "/^require (/,/^)/p" "$SNGL_HOST_GO_MOD" >> go.mod'
+env GOPROXY=off GOFLAGS=-mod=mod
+exec go mod tidy
+env SNGL_GENCACHE_DIR=$WORK/store
+
+sngl -v generate --lang=none --platform=html -o out --allow-eval=go:example.com/app/lib app.sngl
+stderr -count=2 'consteval round.*calls=1'
+grep 'twice 8' out/two/index.html
+grep 'plain 1' out/index.html
+grep 'plain 3' out/three/index.html
+
+-- app.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import lib "go:example.com/app/lib"
+
+struct P {
+    n int
+    href string
+}
+
+const pages = [P{n=1, href="/"}, P{n=2, href="/two"}, P{n=3, href="/three"}]
+
+ui.window(title="t") {
+    nav.stack #stack {
+        for var p = pages {
+            nav.page(href=p.href, title="p") {
+                if p.n == 2 {
+                    ui.text(value="twice {lib.Double(lib.Double(p.n))}")
+                } else {
+                    ui.text(value="plain {p.n}")
+                }
+            }
+        }
+    }
+}
+-- lib/lib.go --
+package lib
+
+//sngl:pure
+func Double(n int) int { return n * 2 }

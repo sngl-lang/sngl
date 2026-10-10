@@ -30,12 +30,24 @@ import (
 // is its own params or the request's.
 func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*codegen.Document, error] {
 	return func(yield func(*codegen.Document, error) bool) {
+		// A document that asked for no call in one round was folded whole, and
+		// answers to other documents' calls cannot change it, so a later round
+		// probes only the documents that asked.
+		var askers map[int]bool
 		if err := fold.SettleNatives(func(probe codegen.Fold) error {
 			doc, _ := documentSurface(pkg)
 			if doc == nil || !probe.HoldsNativeCall(doc) {
 				return nil
 			}
-			_, err := surfaceDocuments(doc, probe, static, func(*codegen.Document, codegen.Fold) bool { return true })
+			want := func(i int) bool { return askers == nil || askers[i] }
+			asked, before := map[int]bool{}, probe.NativesAsked()
+			_, err := surfaceDocuments(doc, probe, static, want, func(i int, _ *codegen.Document, dfold codegen.Fold) bool {
+				if n := dfold.NativesAsked(); n > before {
+					asked[i], before = true, n
+				}
+				return true
+			})
+			askers = asked
 			return err
 		}); err != nil {
 			yield(nil, err)
@@ -44,7 +56,7 @@ func documentsOf(pkg *ir.Package, fold codegen.Fold, static bool) iter.Seq2[*cod
 
 		if doc, body := documentSurface(pkg); doc != nil {
 			before, after := bodyAround(body, doc)
-			_, err := surfaceDocuments(doc, fold, static, func(d *codegen.Document, dfold codegen.Fold) bool {
+			_, err := surfaceDocuments(doc, fold, static, nil, func(_ int, d *codegen.Document, dfold codegen.Fold) bool {
 				if len(before)+len(after) > 0 {
 					d.Body = slices.Concat(dfold.Stmts(dfold.Clone(before)), d.Body, dfold.Stmts(dfold.Clone(after)))
 				}
@@ -166,7 +178,8 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 
 // surfaceDocuments hands each document w, a surface, is written as to yield:
 // w itself when it holds no stack, and one per page copy when it holds one.
-// False when yield stopped the walk.
+// False when yield stopped the walk. want, when not nil, picks the documents
+// to write by their index in that order, and yield is handed the index.
 //
 // A surface holding a nav.stack is one document per page: the whole surface,
 // with the stack standing for that page alone. A page is the node carrying a
@@ -179,23 +192,29 @@ func bodyAround(body []ir.Stmt, doc *ir.NodeInst) (before, after []ir.Stmt) {
 // loop around it, the iteration it is. The surface is cloned holding that one
 // page, the loops' variables bound for the iteration, so a site of a thousand
 // pages holds one page's tree at a time.
-func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, yield func(*codegen.Document, codegen.Fold) bool) (bool, error) {
+func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, want func(int) bool, yield func(int, *codegen.Document, codegen.Fold) bool) (bool, error) {
 	stack, err := documentStack(w.Children, wfold)
 	if err != nil {
 		return false, err
 	}
 	if stack == nil {
+		if want != nil && !want(0) {
+			return true, nil
+		}
 		dfold := wfold.Child()
 		dfold.TakeFileAssets() // a document carries what its own fold resolved
 		doc := dfold.Clone([]ir.Stmt{w})[0].(*ir.NodeInst)
 		foldSurface(doc, dfold)
-		return yield(&codegen.Document{Surface: doc, Body: doc.Children}, dfold), nil
+		return yield(0, &codegen.Document{Surface: doc, Body: doc.Children}, dfold), nil
 	}
 	copies := documentCopies(stack, wfold)
 	if err := wfold.Err(); err != nil {
 		return false, err
 	}
-	for _, pc := range copies {
+	for i, pc := range copies {
+		if want != nil && !want(i) {
+			continue
+		}
 		dfold := wfold.Child()
 		dfold.TakeFileAssets()
 		doc := cloneWithOnly(stack, pc, func() []ir.Stmt { return dfold.Clone([]ir.Stmt{w}) })[0].(*ir.NodeInst)
@@ -207,7 +226,7 @@ func surfaceDocuments(w *ir.NodeInst, wfold codegen.Fold, static bool, yield fun
 		if err := dfold.Err(); err != nil {
 			return false, err
 		}
-		if !yield(&codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
+		if !yield(i, &codegen.Document{Surface: doc, Body: doc.Children, Page: page.node}, dfold) {
 			return false, nil
 		}
 	}

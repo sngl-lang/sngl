@@ -79,9 +79,13 @@ func wantTypes(reqs []*nativeRequest) map[string]*ir.Type {
 type nativeEval struct {
 	byKey map[string]*nativeRequest
 	order []*nativeRequest
+	// asked counts every call that could not be answered, a key another fold
+	// already asked for included, so a caller can tell which folds asked.
+	asked int
 }
 
 func (n *nativeEval) add(req *nativeRequest) {
+	n.asked++
 	if n.byKey == nil {
 		n.byKey = map[string]*nativeRequest{}
 	}
