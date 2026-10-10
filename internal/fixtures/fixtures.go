@@ -172,24 +172,7 @@ func assertFormatIsIdempotent(t *testing.T, s testutil.Sample, doc *ast.Document
 // check runs the checker against every registered target and holds the result
 // to the fixture's ERROR(check) and ERROR(lint) directives.
 func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
-	langs, plats := testtargets.Targets()
-	cfg := &checker.Config{
-		IsMain:          true,
-		FS:              s.FS,
-		Dir:             s.Dir,
-		Languages:       langs,
-		Platforms:       plats,
-		TargetsComplete: true,
-	}
-	// A fixture that imports a directory package resolves through the stub in
-	// resolver.go rather than off disk.
-	for _, st := range doc.Stmts {
-		if _, ok := st.(*ast.Import); ok {
-			cfg.Resolver = newTestResolver()
-			break
-		}
-	}
-	pkg, diags := checker.Check(doc, cfg)
+	pkg, diags := checker.Check(doc, CheckConfig(s, doc))
 
 	expected := s.PhaseErrors("check")
 	directed := map[int]bool{}
@@ -226,6 +209,27 @@ func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
 	}
 	testutil.AssertDiagnostics(t, diags, s.Errors, "lint")
 	return pkg
+}
+
+// CheckConfig is the Config a fixture is checked with: every registered target,
+// and the import stub for a fixture that imports a directory package.
+func CheckConfig(s testutil.Sample, doc *ast.Document) *checker.Config {
+	langs, plats := testtargets.Targets()
+	cfg := &checker.Config{
+		IsMain:          true,
+		FS:              s.FS,
+		Dir:             s.Dir,
+		Languages:       langs,
+		Platforms:       plats,
+		TargetsComplete: true,
+	}
+	for _, st := range doc.Stmts {
+		if _, ok := st.(*ast.Import); ok {
+			cfg.Resolver = newTestResolver()
+			break
+		}
+	}
+	return cfg
 }
 
 // assertFolds holds each FOLD directive to the value the optimizer reaches.
