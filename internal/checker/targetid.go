@@ -306,14 +306,12 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 			return
 		}
 	}
-	overrides := &base.PlatformOverrides
-	if kind == ir.BuiltinFamilyLanguage {
-		overrides = &base.LanguageOverrides
-	}
+	overrides := c.overrideMap(base, libURI == "", kind)
 	if *overrides == nil {
 		*overrides = map[string]ir.Override{}
 	}
-	if _, dup := (*overrides)[plat]; dup {
+	all := c.overridesOf(base)
+	if _, dup := (*all.Of(kind))[plat]; dup {
 		c.error(decl.Pos, "function %q already has an implementation for %q", decl.Name, plat)
 		return
 	}
@@ -432,11 +430,7 @@ func (c *checker) checkPendingFuncOverrides() {
 		}
 		po.fn.Block = nil
 		c.checkFuncBody(po.fn)
-		if po.kind == ir.BuiltinFamilyLanguage {
-			po.fn.LanguageOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
-		} else {
-			po.fn.PlatformOverrides[po.platform] = ir.Override{Stmts: po.fn.Block}
-		}
+		(*c.overrideMap(po.fn, po.libURI == "", po.kind))[po.platform] = ir.Override{Stmts: po.fn.Block}
 		po.fn.AST = saved
 		po.fn.Block = savedBlock
 	}
@@ -602,4 +596,51 @@ func soleEmitterNode(body ir.Body, kind ir.BuiltinKind) *ir.NodeInst {
 		return nil
 	}
 	return ni
+}
+
+// overrideMap is where an override of decl for the tier kind is recorded: on
+// decl when its own package or a target package writes it, and in the
+// program's overlay when a program overrides a declaration another package
+// owns, which every check reading that package shares.
+func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *map[string]ir.Override {
+	if user {
+		if owner := ir.DeclaringPackage(decl); owner != nil && owner != c.declPkg() {
+			return c.pkg.Overlay.For(decl).Of(kind)
+		}
+	}
+	switch d := decl.(type) {
+	case *ir.Component:
+		if kind == ir.BuiltinFamilyLanguage {
+			return &d.LanguageOverrides
+		}
+		return &d.PlatformOverrides
+	case *ir.Func:
+		if kind == ir.BuiltinFamilyLanguage {
+			return &d.LanguageOverrides
+		}
+		return &d.PlatformOverrides
+	}
+	return nil
+}
+
+// overridesOf is every override decl has: its own and the program's.
+func (c *checker) overridesOf(decl ir.Symbol) ir.Overrides {
+	own := *ir.OverridesOf(decl)
+	added := c.pkg.Overlay.Overrides[decl]
+	if added == nil {
+		return own
+	}
+	return ir.Overrides{Platform: mergedOverrides(own.Platform, added.Platform), Language: mergedOverrides(own.Language, added.Language)}
+}
+
+func mergedOverrides(own, added map[string]ir.Override) map[string]ir.Override {
+	if len(added) == 0 {
+		return own
+	}
+	out := maps.Clone(own)
+	if out == nil {
+		out = make(map[string]ir.Override, len(added))
+	}
+	maps.Copy(out, added)
+	return out
 }

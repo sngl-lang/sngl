@@ -244,6 +244,7 @@ const maxEvalRounds = 10
 // No loop is unrolled here, for any target; Documents does that for a static
 // one.
 func Optimize(pkg *ir.Package, cfg *Config) error {
+	ir.InstallOverlay(pkg)
 	if cfg.Cache == nil {
 		cfg.Cache = NewEvalCache()
 	}

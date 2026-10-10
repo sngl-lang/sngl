@@ -263,7 +263,11 @@ func stateVars(pkg *ir.Package, owner *ir.Component) map[*ir.Var]struct{} {
 	if owner != nil {
 		add(owner.Vars)
 		add(viewStateVars(owner.Stmts))
-		for _, overrides := range []map[string]ir.Override{owner.PlatformOverrides, owner.LanguageOverrides} {
+		bodies := []map[string]ir.Override{owner.PlatformOverrides, owner.LanguageOverrides}
+		if added := pkg.Overlay.Overrides[owner]; added != nil {
+			bodies = append(bodies, added.Platform, added.Language)
+		}
+		for _, overrides := range bodies {
 			for _, b := range overrides {
 				add(b.Vars)
 				add(viewStateVars(b.Stmts))

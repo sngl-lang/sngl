@@ -984,14 +984,12 @@ func qualifiedComponentName(ns, local string) string {
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string, isConst bool) {
-	overrides := &comp.PlatformOverrides
-	if kind == ir.BuiltinFamilyLanguage {
-		overrides = &comp.LanguageOverrides
-	}
+	overrides := c.overrideMap(comp, user, kind)
 	if *overrides == nil {
 		*overrides = map[string]ir.Override{}
 	}
-	if _, dup := (*overrides)[target]; dup {
+	all := c.overridesOf(comp)
+	if _, dup := (*all.Of(kind))[target]; dup {
 		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
 		return
 	}
@@ -1282,11 +1280,7 @@ func (c *checker) checkPendingExtensions() {
 			c.checkOverrideNestedBodies(bodyDecls)
 			c.checkOverrideConst(pe)
 			checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
-			if pe.kind == ir.BuiltinFamilyLanguage {
-				pe.comp.LanguageOverrides[pe.platform] = checked
-			} else {
-				pe.comp.PlatformOverrides[pe.platform] = checked
-			}
+			(*c.overrideMap(pe.comp, pe.user, pe.kind))[pe.platform] = checked
 			pe.comp.AST = savedAST
 			pe.comp.Body = saved
 			pe.comp.Props, pe.comp.Events = savedProps, savedEvents

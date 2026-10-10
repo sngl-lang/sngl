@@ -1936,7 +1936,7 @@ func isPrimitiveMethodReceiver(t *ir.Type) bool {
 
 // methodNamed reports whether the type declares a method of this name, which
 // is what a field read of a type with no fields usually is: the call left off.
-func methodNamed(t *ir.Type, name string) bool {
+func (c *checker) methodNamed(t *ir.Type, name string) bool {
 	if t == nil {
 		return false
 	}
@@ -1944,7 +1944,7 @@ func methodNamed(t *ir.Type, name string) bool {
 	if !ok {
 		return false
 	}
-	_, found := decl.Methods[name]
+	_, found := ir.MethodOn(c.scope, decl, name)
 	return found
 }
 
@@ -1978,7 +1978,7 @@ func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, d
 		}
 		return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
 	}
-	if _, isMethod := decl.MethodTable()[x.Field]; isMethod {
+	if _, isMethod := ir.MethodOn(c.scope, decl, x.Field); isMethod {
 		c.error(x.Pos, "%s.%s is a method; write %s() to call it", name, x.Field, x.Field)
 	} else {
 		c.error(x.Pos, "no field %q on %s %s", x.Field, noun, name)
@@ -2228,7 +2228,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					// A component another package declares is not in scope by
 					// its bare name: `pages.current` off a sngl:ui/nav stack.
 					// Its own table holds its methods.
-					if fn, ok = comp.Methods[x.Field]; ok {
+					if fn, ok = ir.MethodOn(c.scope, comp, x.Field); ok {
 						c.ensureReturnType(fn)
 					}
 				}
@@ -2314,7 +2314,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
 		if hasNoLegitimateFields(operand) {
-			if methodNamed(operand, x.Field) {
+			if c.methodNamed(operand, x.Field) {
 				c.error(x.Pos, "%s.%s is a method; write %s() to call it", operand, x.Field, x.Field)
 			} else {
 				c.error(x.Pos, "no field %q on type %s", x.Field, operand)

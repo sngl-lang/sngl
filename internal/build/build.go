@@ -89,6 +89,7 @@ type Result struct {
 // the one nothing reads afterwards is not made. A caller that needs the
 // checked IR afterwards has to clone before calling.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
+	ir.InstallOverlay(pkg)
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
 	// perfectly good thing to type-check, and it is only as something to

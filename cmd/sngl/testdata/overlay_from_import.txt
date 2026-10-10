@@ -1,0 +1,29 @@
+# What an imported directory package adds to library declarations -- an
+# override of a library component, a method on a library type -- is held on
+# that package rather than written into the library, and importing it makes
+# both the importer's: the build renders the package's avatar and calls its
+# int.thrice.
+
+sngl generate --platform html --lang none -o out app.sngl
+grep 'class="dir-avatar"' out/index.html
+grep '<span>9</span>' out/index.html
+
+-- app.sngl --
+import ui "sngl:ui"
+import _ "./widgets"
+
+ui.window(title="t") {
+    ui.vbox {
+        ui.avatar(initials="AB")
+        ui.text(value="{3.thrice()}")
+    }
+}
+-- widgets/widgets.sngl --
+import "sngl:platform/html"
+import ui "sngl:ui"
+
+func int.thrice(x int) => x * 3
+
+component ui.avatar[html.platform](initials) {
+    html.span(class="dir-avatar", innerText=initials)
+}

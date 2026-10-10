@@ -3997,6 +3997,19 @@ package are (`reportDuplicateMethod`,
 library's member, which made what `x.abs()` means depend on the program
 that checked first once the library is shared between checks.
 
+**What a program adds to a library declaration is held on the program**
+(`ir.Overlay`, `internal/checker`'s `overrideMap` and `attachMethod`): an
+override of a library component or function goes in `ir.Package.Overlay`, a
+method on a library type in the program's root `ir.Scope.Added`, so a check
+leaves the library as it found it -- `TestLibraryShared` holds every fixture to
+that. The checker reads both through `overridesOf` and `ir.MethodOn`, an
+import adopts what the imported package added (`adoptAdditions`), and every
+phase after the check finds the overrides where a target package's are because
+`ir.InstallOverlay` writes them there first: `ClonePackage(For)`, the two
+`Specialize` entries, `optimize.Optimize`, `lower.Lower`, `build.Emit` and
+`interp.BuildProgramEnv` each call it. Until a build starts from a copy of what
+it reaches, that install writes the checked library.
+
 ### AST
 
 - **`ast/ast.go`** — top-level declarations and structural types: `Document`, `ComponentDecl`, `VisualNode`, `FuncDef`, `VarDecl`, `ConstDecl`, `StructDef`, `EnumDef`, `UnitDef`, `Param`, `Import`, `IfStmt`, `ForStmt`

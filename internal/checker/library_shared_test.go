@@ -1,10 +1,7 @@
 package checker_test
 
 import (
-	"flag"
 	"fmt"
-	"maps"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -20,16 +17,11 @@ import (
 	"duckfam.us/sngl/lib"
 )
 
-var updateLibraryShared = flag.Bool("update", false, "rewrite testdata/library_shared.txt")
-
-const librarySharedRatchet = "testdata/library_shared.txt"
-
 // Every fixture checks against a library an earlier check loaded as it does
 // against a fresh one, and leaves that library as it found it. That is what
-// checking each package once per process needs. The fixtures that do not yet
-// are listed in testdata/library_shared.txt, which may only shrink: a fixture
-// newly writing the library fails, and so does one listed that no longer
-// does.
+// checking each package once per process needs. A write the library makes of
+// itself the first time something uses it is blamed on the first fixture after
+// a load to use it.
 func TestLibraryShared(t *testing.T) {
 	var library *checker.SharedLibrary
 	load := func() {
@@ -41,7 +33,6 @@ func TestLibraryShared(t *testing.T) {
 	var pkgs []*ir.Package
 	var tables map[string]string
 	var before uint64
-	got := map[string]string{}
 	for s := range testutil.TestdataSamples(t) {
 		doc, err := parser.Parse(s.Filename, []byte(s.Source))
 		if err != nil {
@@ -75,35 +66,11 @@ func TestLibraryShared(t *testing.T) {
 		}
 		before = after
 		if len(why) > 0 {
-			got[s.Name] = strings.Join(why, ", ")
+			t.Errorf("%s %s", s.Name, strings.Join(why, ", "))
 			// The next fixture is asked about a library no fixture has
 			// written, or each offender would be blamed for the ones before.
 			load()
 			pkgs = nil
-		}
-	}
-
-	var lines []string
-	for _, name := range slices.Sorted(maps.Keys(got)) {
-		lines = append(lines, name+": "+got[name])
-	}
-	want := readRatchet(t)
-	if *updateLibraryShared {
-		header := "# Fixtures whose check writes a library an earlier check loaded, or reports\n# what a check against a fresh library does not. TestLibraryShared keeps it\n# exact; rewrite it with -update. A write the library makes of itself the\n# first time something uses it is blamed on the first fixture after a load to\n# use it, so a new fixture can move a line.\n"
-		if err := os.WriteFile(librarySharedRatchet, []byte(header+strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	t.Logf("%d fixtures do not share the library", len(lines))
-	for _, line := range lines {
-		if !slices.Contains(want, line) {
-			t.Errorf("not in %s: %s", librarySharedRatchet, line)
-		}
-	}
-	for _, line := range want {
-		if !slices.Contains(lines, line) {
-			t.Errorf("%s lists %q, which no longer holds; rewrite it with -update", librarySharedRatchet, line)
 		}
 	}
 }
@@ -151,20 +118,6 @@ func TestLibraryFingerprintSeesEveryPackage(t *testing.T) {
 	if written < 30 {
 		t.Fatalf("wrote to %d of %d packages", written, len(pkgs))
 	}
-}
-
-func readRatchet(t *testing.T) []string {
-	data, err := os.ReadFile(librarySharedRatchet)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatal(err)
-	}
-	var lines []string
-	for line := range strings.SplitSeq(string(data), "\n") {
-		if line != "" && !strings.HasPrefix(line, "#") {
-			lines = append(lines, line)
-		}
-	}
-	return lines
 }
 
 // loadEveryLibraryPackage checks a program importing every package a program

@@ -1719,6 +1719,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 
 	owner := c.declPkg()
 	owner.Imports = append(owner.Imports, irImport)
+	c.adoptAdditions(imp.Pos, irImport.Pkg)
 
 	// A segmented tree reaches this package if any package it imports declares
 	// one of its nodes: inlining will bring the nodes here, and the pass that
@@ -1829,6 +1830,42 @@ func (c *checker) declPkg() *ir.Package {
 	return c.pkg
 }
 
+// adoptAdditions makes what an imported package added to declarations it does
+// not own -- methods and overrides -- the importer's too: a method on a type
+// is the type's wherever the package that declared it is reached, and an
+// override is what the build of the program renders.
+func (c *checker) adoptAdditions(pos ast.Pos, src *ir.Package) {
+	if src == nil || c.inLibSource() {
+		return
+	}
+	for sym, ov := range src.Overlay.Overrides {
+		mine := c.pkg.Overlay.For(sym)
+		for _, kind := range []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage} {
+			for target, body := range *ov.Of(kind) {
+				dst := mine.Of(kind)
+				if *dst == nil {
+					*dst = map[string]ir.Override{}
+				}
+				if held, ok := (*dst)[target]; ok && !slices.Equal(held.Stmts, body.Stmts) {
+					c.error(pos, "%s has two implementations for %q, from two packages this one reaches", sym.SymName(), target)
+					continue
+				}
+				(*dst)[target] = body
+			}
+		}
+	}
+	if src.Symbols == nil {
+		return
+	}
+	for decl, methods := range src.Symbols.Root.Added {
+		for _, name := range slices.Sorted(maps.Keys(methods)) {
+			if err := ir.AddMethod(c.symtab.Root, decl, methods[name]); err != nil {
+				c.error(pos, "method %q on %s is declared by two packages this one reaches", name, decl.SymName())
+			}
+		}
+	}
+}
+
 // adoptContexts moves an imported package's contexts onto the program's own
 // list.
 //
@@ -1869,6 +1906,10 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Imports = append(dst.Imports, src.Imports...)
 	dst.Schemes = append(dst.Schemes, src.Schemes...)
 	dst.CLinks = append(dst.CLinks, src.CLinks...)
+	if src.Symbols != nil {
+		dst.Symbols.Root.Added = src.Symbols.Root.Added
+	}
+	dst.Overlay = src.Overlay
 	for _, sd := range src.Structs {
 		// Nobody named it, so it is not part of what the package exports.
 		if sd.Anon {
@@ -3655,6 +3696,17 @@ func (c *checker) checkDeclarationBodies(pkg *ir.Package, extra []*ir.Component)
 				owned[fn] = true
 			}
 		}
+		if added := pkg.Overlay.Overrides[comp]; added != nil {
+			for _, overrides := range []map[string]ir.Override{added.Platform, added.Language} {
+				for _, b := range overrides {
+					for _, fn := range b.Funcs {
+						if !fn.IsMethod() || fn.RecvName() == comp.Name {
+							owned[fn] = true
+						}
+					}
+				}
+			}
+		}
 	}
 	for _, comp := range pkg.Components {
 		noteOwned(comp)
@@ -3936,7 +3988,7 @@ func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
 	// JavaScript global has no module to name, and #[js.native("setInterval")]
 	// is the whole of what there is to say about it.
 	return fn.Intrinsic != "" || fn.Foreign.Path != "" || fn.Foreign.Name != "" || c.isMacroSig(fn.Return) ||
-		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
+		c.overridesOf(fn).Any()
 }
 
 // blockAlwaysReturns reports whether a statement block is guaranteed to return

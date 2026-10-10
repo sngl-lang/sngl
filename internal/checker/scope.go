@@ -63,6 +63,21 @@ func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
 	return nil, false
 }
 
+// attachMethod makes fn a member of the declaration name resolves to. A
+// program's method on one another package declared is held on the program's
+// root scope (ir.Scope.Added) rather than in that declaration's table, which
+// every check reading the declaration's package shares.
+func (c *checker) attachMethod(name string, fn *ir.Func) error {
+	if !c.inLibSource() {
+		if sym, ok := c.scope.Lookup(name); ok {
+			if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
+				return ir.AddMethod(c.symtab.Root, sym, fn)
+			}
+		}
+	}
+	return ir.AttachMethod(c.scope, name, fn)
+}
+
 // reportDuplicateMethod reports fn colliding with prev on the declaration its
 // receiver names, described by on, naming the package that declared prev
 // when it is another's.
@@ -88,7 +103,7 @@ func (c *checker) declareMethod(pos ast.Pos, fn *ir.Func) *ir.Func {
 	// is attached in.
 	name := fn.RecvName()
 	fn.Receiver = c.receiverType(name)
-	err := ir.AttachMethod(c.scope, name, fn)
+	err := c.attachMethod(name, fn)
 	switch {
 	case err == nil, errors.Is(err, ir.ErrNoMethodHost):
 		return nil

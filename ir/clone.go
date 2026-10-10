@@ -32,6 +32,7 @@ func ClonePackage(pkg *Package) *Package {
 	if pkg == nil {
 		return nil
 	}
+	InstallOverlay(pkg)
 	return newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
 }
 
@@ -47,6 +48,7 @@ func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
+	InstallOverlay(pkg)
 	c := newCloner()
 	c.only = &target{platform, language}
 	return c.clone(reflect.ValueOf(pkg)).Interface().(*Package)

@@ -205,6 +205,7 @@ func namesOrOwn(r renamer) renamer {
 // Returns an error wrapping the failing pass's name when any pass fails or
 // when opts.StopAfter names a pass that does not exist.
 func Lower(pkg *ir.Package, feats Features, opts Options) error {
+	ir.InstallOverlay(pkg)
 	if opts.StopAfter == "none" {
 		return nil
 	}

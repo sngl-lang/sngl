@@ -56,6 +56,11 @@ type Scope struct {
 	// when there is no name to find — and only by a caller resolving a
 	// position a wildcard stands in (WildcardMatches), never by Lookup.
 	Wildcards []Symbol
+	// Added holds, on a package-root scope, the methods the package adds to
+	// declarations another package owns, by declaration. A method is found
+	// by a lookup through the scope, so a lookup from inside the package
+	// finds them and the declaration's own table stays its package's.
+	Added map[Symbol]map[string]*Func
 }
 
 // WildcardSymbol is a symbol that also answers to every name its pattern
@@ -446,11 +451,70 @@ func LookupMethodIn(scope *Scope, recv, method string) (*Func, bool) {
 		fn, isFunc := member.(*Func)
 		return fn, isFunc
 	}
-	if tbl := methodTable(sym); tbl != nil {
+	return MethodOn(scope, sym, method)
+}
+
+// MethodOn finds the method named method on decl, as a lookup through scope
+// sees it: one a package on the chain added, or one decl declares.
+func MethodOn(scope *Scope, decl Symbol, method string) (*Func, bool) {
+	if f, found := addedMethod(scope, decl, method); found {
+		return f, true
+	}
+	if tbl := methodTable(decl); tbl != nil {
 		f, found := (*tbl)[method]
 		return f, found
 	}
 	return nil, false
+}
+
+// DeclaringPackage is the package that declared sym, for a declaration a
+// method or an override can be written for; nil for anything else.
+func DeclaringPackage(sym Symbol) *Package {
+	switch d := sym.(type) {
+	case *StructDef:
+		return d.Pkg
+	case *EnumDef:
+		return d.Pkg
+	case *UnitDef:
+		return d.Pkg
+	case *Component:
+		return d.Pkg
+	case *Func:
+		return d.Pkg
+	}
+	return nil
+}
+
+// addedMethod is the method named method a package whose root is on scope's
+// chain added to decl.
+func addedMethod(scope *Scope, decl Symbol, method string) (*Func, bool) {
+	for sc := scope; sc != nil; sc = sc.Parent {
+		if f, ok := sc.Added[decl][method]; ok {
+			return f, true
+		}
+	}
+	return nil, false
+}
+
+// AddMethod makes f a method root's package adds to decl, which another
+// package owns, refusing a name decl or an earlier addition already has.
+func AddMethod(root *Scope, decl Symbol, f *Func) error {
+	if tbl := methodTable(decl); tbl == nil {
+		return ErrNoMethodHost
+	} else if prev, exists := (*tbl)[f.Name]; exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	if prev, exists := addedMethod(root, decl, f.Name); exists && prev != f {
+		return &RedeclaredError{Name: f.Name, Prev: prev}
+	}
+	if root.Added == nil {
+		root.Added = map[Symbol]map[string]*Func{}
+	}
+	if root.Added[decl] == nil {
+		root.Added[decl] = map[string]*Func{}
+	}
+	root.Added[decl][f.Name] = f
+	return nil
 }
 
 var (

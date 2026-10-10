@@ -19,6 +19,7 @@ func SpecializeForTarget(pkg *Package, platform, language string) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
+	InstallOverlay(pkg)
 	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, false)
 }
 
@@ -36,6 +37,7 @@ func SpecializeOverriddenBodies(pkg *Package, platform, language string) {
 	if pkg == nil || (platform == "" && language == "") {
 		return
 	}
+	InstallOverlay(pkg)
 	specializePkgBodies(pkg, target{platform, language}, map[*Package]struct{}{}, true)
 }
 
