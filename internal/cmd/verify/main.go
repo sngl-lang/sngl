@@ -57,26 +57,28 @@ var failRE = regexp.MustCompile(`^FAIL\s+(\S+)`)
 // test binaries that self-wrap in TestMain.
 func wrapHeadless(command string, args []string) (string, []string, []string) {
 	cmd, wrapped, env, cleanup := headless.Wrap(command, args)
-	cageCleanups = append(cageCleanups, cleanup)
+	cleanups = append(cleanups, cleanup)
 	return cmd, wrapped, env
 }
 
-// cageCleanups removes each compositor's private runtime dir. wrapHeadless is
-// called once per wrapped step, so these accumulate; os.Exit skips defers, so
-// every exit path goes through exit().
-var cageCleanups []func()
+// cleanups remove what this run created: each compositor's private runtime
+// dir (wrapHeadless is called once per wrapped step, so these accumulate) and
+// the coverage profile. os.Exit skips defers, so every exit path goes through
+// exit() -- a deferred remove of the profile left 300MB in the temp dir after
+// every failing run.
+var cleanups []func()
 
-// cleanupCage removes every compositor runtime dir this run created.
-func cleanupCage() {
-	for _, c := range cageCleanups {
+// cleanup removes everything this run created so far.
+func cleanup() {
+	for _, c := range cleanups {
 		c()
 	}
-	cageCleanups = nil
+	cleanups = nil
 }
 
 // exit terminates verify, removing anything it created on the way out.
 func exit(code int) {
-	cleanupCage()
+	cleanup()
 	os.Exit(code)
 }
 
@@ -96,6 +98,9 @@ func (r pkgResult) coverage() float64 {
 }
 
 func main() {
+	// cage runs this binary as the shim around each wrapped step.
+	headless.RunShim()
+
 	verbose := flag.Bool("v", false, "pass -v to go test")
 	dry := flag.Bool("dry", false, "skip file-mutating steps")
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric, the android sngl-test matrix); default skips them")
@@ -203,7 +208,7 @@ func main() {
 	if !runStepEnv("sngl-test", senv, sc, sargs...) {
 		exit(1)
 	}
-	cleanupCage()
+	cleanup()
 }
 
 func runStep(name string, command string, args ...string) bool {
@@ -254,7 +259,7 @@ func runTests(verbose, fmtDocs, full bool) {
 		log.Fatalf("create coverprofile: %v", err)
 	}
 	profile.Close()
-	defer os.Remove(profile.Name())
+	cleanups = append(cleanups, func() { os.Remove(profile.Name()) })
 
 	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
@@ -307,10 +312,12 @@ func runTests(verbose, fmtDocs, full bool) {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		exit(1)
 	}
 	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		exit(1)
 	}
 
 	failed := map[string]bool{}
