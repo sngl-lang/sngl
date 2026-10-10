@@ -709,7 +709,7 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		doc:     firstDoc(docs),
 		docs:    docs,
 		cfg:     cfg,
-		pkg:     &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
+		pkg:     &ir.Package{Library: cfg.byLibrary, LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:  symtab,
 		scope:   symtab.Root,
 		visited: cfg.visitedStack(),
@@ -3584,6 +3584,7 @@ func (c *checker) pass2() {
 	c.checkGenInputs()
 	c.checkGenSchemes()
 	c.checkCLinks()
+	c.reportUnlinkedCNativeCalls()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn. A library

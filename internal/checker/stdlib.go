@@ -430,6 +430,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 
 	stdlibPkg := &ir.Package{
 		Path:           c.libPkgName,
+		Library:        true,
 		Symbols:        NewSymbolTable(),
 		LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{},
 		AddressedVars:  map[*ir.Var]bool{},

@@ -2039,7 +2039,13 @@ declaration itself. Two things about the name that are easy to get wrong:
   reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
   preamble of their own, gtk4 inside the one inline mode already has, which a
   `C.` call puts the build in (`golang.CPreambleLines`,
-  `testdata/c_link.txtar`).
+  `testdata/c_link.txtar`). A call of a program's `#[cnative]` function from a package
+  no c.link reaches is a checker error at the call
+  (`reportUnlinkedCNativeCalls`, `testdata/error_cnative_unlinked.sngl`):
+  it used to reach the Go toolchain as `undefined: C`. A library's is exempt
+  (`ir.Package.Library`, set for a `sngl:` package and what a library plugin
+  writes), since gtk4's preamble includes the headers its cairo and `gir:`
+  declarations name.
 - **A component may be one, on Kotlin.** `#[kt.native("Card", "androidx.compose.material3.Card")]` on a bodyless component names a
   composable: android calls it with the props as arguments by name and the rest
   slot as the trailing lambda (`renderIntrinsic`), and adds the import unless a

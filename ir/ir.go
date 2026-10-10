@@ -34,7 +34,13 @@ type Package struct {
 	// Path is the package's global name -- "sngl:ui" for a library package --
 	// and empty for a program's, whose declarations mean nothing outside a
 	// build. A declaration's identity is this and its name (DeclInfo.Pkg).
-	Path       string `json:",omitempty"`
+	Path string `json:",omitempty"`
+	// Library says the library wrote the package: a sngl: package, or what a
+	// library plugin generated (gtk4's `gir:` widgets, a `c:` link). Its
+	// declarations are the library's to vouch for -- a `#[cnative]` one names
+	// a header the target's own preamble includes -- where a program's must
+	// say so itself.
+	Library    bool `json:",omitempty"`
 	Imports    []*Import
 	Structs    []*StructDef
 	Enums      []*EnumDef

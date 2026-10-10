@@ -1,0 +1,24 @@
+// A `#[cnative]` function is a C identifier, and a cgo preamble declares one
+// only through a header a `c.link` names. With none reached the call compiled
+// through to the Go toolchain, which answered `undefined: C` or "could not
+// determine what C.abs refers to" with no position in the program. The call
+// is refused where it is written; declaring the function is not, since a
+// declaration nothing calls reaches no preamble.
+import ui "sngl:ui"
+import macro "sngl:macro"
+
+#[macro.cnative("abs")]
+func cabs(n int) int
+
+#[macro.cnative("labs")]
+func clabs(n int) int
+
+var v = 0
+
+func twice(n int) => cabs(n) * 2 // ERROR(check) "C function \"abs\" is called, but no c.link"
+
+ui.window(title="t") {
+    ui.button(text="{v}", @click {
+        v = cabs(v - 3) // ERROR(check) "C function \"abs\" is called, but no c.link"
+    })
+}
