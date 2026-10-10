@@ -12,12 +12,14 @@ package plugin
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/buildhost"
@@ -76,7 +78,7 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 		store = gencache.Default()
 	}
 	if data, ok := store.Lookup(req); ok {
-		if docs, err := parseFiles(splitFiles(gencache.Body(data))); err == nil {
+		if docs, err := parseStored(gencache.Body(data)); err == nil {
 			return docs, nil
 		} else {
 			slog.Debug("sngl.scheme stored output", "scheme", s.Name, "uri", uri, "err", err)
@@ -87,7 +89,8 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	docs, err := parseFiles(out)
+	body := joinFiles(out)
+	docs, err := parseStored(body)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +98,41 @@ func (r *Runner) Generate(s *ir.Scheme, uri string) ([]*ast.Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	store.Put(req, gencache.Output{Inputs: append(inputs, literal...), Body: joinFiles(out)})
+	store.Put(req, gencache.Output{Inputs: append(inputs, literal...), Body: body})
+	return docs, nil
+}
+
+// parsed holds the documents of the outputs this process has parsed, by the
+// digest of what was stored. A parsed AST is never written to, so every check
+// replaying one output shares one parse: gtk4's widget set is megabytes of
+// SNGL, and every check that registers the platform imports it.
+var parsed = struct {
+	sync.Mutex
+	docs map[[sha256.Size]byte][]*ast.Document
+}{docs: map[[sha256.Size]byte][]*ast.Document{}}
+
+// maxParsed bounds what a long-lived process (the LSP) keeps of outputs that
+// a plugin's edits have since replaced.
+const maxParsed = 16
+
+func parseStored(body []byte) ([]*ast.Document, error) {
+	key := sha256.Sum256(body)
+	parsed.Lock()
+	docs, ok := parsed.docs[key]
+	parsed.Unlock()
+	if ok {
+		return docs, nil
+	}
+	docs, err := parseFiles(splitFiles(body))
+	if err != nil {
+		return nil, err
+	}
+	parsed.Lock()
+	defer parsed.Unlock()
+	if len(parsed.docs) >= maxParsed {
+		clear(parsed.docs)
+	}
+	parsed.docs[key] = docs
 	return docs, nil
 }
 

@@ -137,17 +137,16 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		nv := reflect.New(v.Type().Elem())
 		c.seen[ptr] = nv // register before recursing to handle cycles
-		nv.Elem().Set(c.clone(v.Elem()))
+		c.cloneInto(nv.Elem(), v.Elem())
 		return nv
 
 	case reflect.Interface:
 		if v.IsNil() {
 			return v
 		}
-		cloned := c.clone(v.Elem())
-		out := reflect.New(v.Type()).Elem()
-		out.Set(cloned)
-		return out
+		// Every caller stores the result in a slot of the interface's type,
+		// which takes the concrete value as readily as a boxed one.
+		return c.clone(v.Elem())
 
 	case reflect.Struct:
 		// Only deep-copy our own struct types; share foreign structs
@@ -157,33 +156,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 			return v
 		}
 		out := reflect.New(v.Type()).Elem()
-		for i := 0; i < v.NumField(); i++ {
-			// A lambda's Func is the expression's own body rather than a
-			// declaration it names, so it is copied even in share mode. One
-			// hop only: the declarations reached from inside that body are
-			// references like any other.
-			c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
-			// A declaration's package is where it came from, not part of it:
-			// the package being cloned maps to its clone, and any other -- a
-			// library package -- is shared rather than copied whole.
-			if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
-				p := v.Field(i)
-				if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
-					out.Field(i).Set(cv)
-				} else {
-					out.Field(i).Set(p)
-				}
-				continue
-			}
-			if c.only != nil && carriesOverrides(v.Type()) {
-				if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
-					out.Field(i).Set(c.cloneOverride(v.Field(i), key))
-					continue
-				}
-			}
-			out.Field(i).Set(c.clone(v.Field(i)))
-		}
-		c.deepNext = false
+		c.cloneStruct(out, v)
 		return out
 
 	case reflect.Slice:
@@ -192,7 +165,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		}
 		out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
 		for i := 0; i < v.Len(); i++ {
-			out.Index(i).Set(c.clone(v.Index(i)))
+			c.cloneInto(out.Index(i), v.Index(i))
 		}
 		return out
 
@@ -210,7 +183,7 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 	case reflect.Array:
 		out := reflect.New(v.Type()).Elem()
 		for i := 0; i < v.Len(); i++ {
-			out.Index(i).Set(c.clone(v.Index(i)))
+			c.cloneInto(out.Index(i), v.Index(i))
 		}
 		return out
 
@@ -218,6 +191,46 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		// Primitives, funcs, chans: value copy is the identity here.
 		return v
 	}
+}
+
+// cloneInto clones v into dst, which is settable. An IR struct is copied where
+// it will live rather than built in a temporary and copied there.
+func (c *cloner) cloneInto(dst, v reflect.Value) {
+	if v.Kind() == reflect.Struct && isIRType(v.Type()) {
+		c.cloneStruct(dst, v)
+		return
+	}
+	dst.Set(c.clone(v))
+}
+
+func (c *cloner) cloneStruct(out, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		// A lambda's Func is the expression's own body rather than a
+		// declaration it names, so it is copied even in share mode. One
+		// hop only: the declarations reached from inside that body are
+		// references like any other.
+		c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
+		// A declaration's package is where it came from, not part of it:
+		// the package being cloned maps to its clone, and any other -- a
+		// library package -- is shared rather than copied whole.
+		if v.Type() == declInfoType && v.Type().Field(i).Name == "Pkg" {
+			p := v.Field(i)
+			if cv, ok := c.seen[p.Pointer()]; ok && !p.IsNil() {
+				out.Field(i).Set(cv)
+			} else {
+				out.Field(i).Set(p)
+			}
+			continue
+		}
+		if c.only != nil && carriesOverrides(v.Type()) {
+			if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
+				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+				continue
+			}
+		}
+		c.cloneInto(out.Field(i), v.Field(i))
+	}
+	c.deepNext = false
 }
 
 // carriesOverrides reports whether t is a declaration with per-target

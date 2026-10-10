@@ -65,9 +65,15 @@ type WildcardSymbol interface {
 	WildcardPattern() string
 }
 
-// NewScope creates a child scope.
+// NewScope creates a child scope. Its map is made by the first binding: most
+// scopes a checker pushes bind nothing.
 func NewScope(parent *Scope) *Scope {
-	return &Scope{Parent: parent, Symbols: make(map[string]Symbol)}
+	return &Scope{Parent: parent}
+}
+
+// NewScopeSize is NewScope for a scope about to bind n names.
+func NewScopeSize(parent *Scope, n int) *Scope {
+	return &Scope{Parent: parent, Symbols: make(map[string]Symbol, n)}
 }
 
 // NoteWildcard records sym among the scope's wildcards when it is one. Binding
@@ -142,7 +148,7 @@ func (s *Scope) Declare(sym Symbol) error {
 	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
-	s.Symbols[name] = sym
+	s.bind(name, sym)
 	s.NoteWildcard(sym)
 	return nil
 }
@@ -159,7 +165,7 @@ func (s *Scope) DeclareName(sym Symbol) error {
 	if prev, ok := s.Symbols[name]; ok && prev != sym {
 		return &RedeclaredError{Name: name, Prev: prev}
 	}
-	s.Symbols[name] = sym
+	s.bind(name, sym)
 	return nil
 }
 
@@ -167,8 +173,15 @@ func (s *Scope) DeclareName(sym Symbol) error {
 // For the places where rebinding is the intent — shadowing a dot-imported
 // name, splicing a platform override over the stdlib declaration it extends.
 func (s *Scope) Replace(sym Symbol) {
-	s.Symbols[sym.SymName()] = sym
+	s.bind(sym.SymName(), sym)
 	s.NoteWildcard(sym)
+}
+
+func (s *Scope) bind(name string, sym Symbol) {
+	if s.Symbols == nil {
+		s.Symbols = make(map[string]Symbol)
+	}
+	s.Symbols[name] = sym
 }
 
 // Lookup walks the parent chain for a name. Declared names only: it resolves
@@ -298,13 +311,17 @@ func NewSymbolTable() *SymbolTable {
 // with. Used by the passes that need every declaration in the build, including
 // the stdlib's, which lives in a scope outside the package's own root.
 func (st *SymbolTable) EachSymbol(f func(Symbol) bool) {
-	seen := make(map[string]bool)
+	n := 0
+	for sc := st.Root; sc != nil; sc = sc.Parent {
+		n += len(sc.Symbols)
+	}
+	seen := make(map[string]struct{}, n)
 	for sc := st.Root; sc != nil; sc = sc.Parent {
 		for name, sym := range sc.Symbols {
-			if seen[name] {
+			if _, dup := seen[name]; dup {
 				continue
 			}
-			seen[name] = true
+			seen[name] = struct{}{}
 			if !f(sym) {
 				return
 			}

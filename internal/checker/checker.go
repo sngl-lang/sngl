@@ -2682,12 +2682,24 @@ func (c *checker) isLibraryNamespace(name string) bool {
 // it a claim, renaming a var in a child would break its parent, and a library
 // component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
+	// Every component is asked and almost none collides, so the names are
+	// sorted to find out before a map of positions is built to report one.
+	names := make([]string, 0, len(comp.Props)+len(comp.Events)+len(comp.Slots)+len(comp.Vars)+len(comp.Funcs))
+	eachComponentClaim(decl, comp, func(name, _ string, _ ast.Pos) {
+		if name != "" {
+			names = append(names, name)
+		}
+	})
+	slices.Sort(names)
+	if len(slices.Compact(names)) == len(names) {
+		return
+	}
 	type claimed struct {
 		kind string
 		pos  ast.Pos
 	}
-	seen := make(map[string]claimed, len(comp.Props)+len(comp.Events)+len(comp.Slots))
-	claim := func(name, kind string, pos ast.Pos) {
+	seen := make(map[string]claimed, len(names))
+	eachComponentClaim(decl, comp, func(name, kind string, pos ast.Pos) {
 		if name == "" {
 			return
 		}
@@ -2701,7 +2713,12 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 			return
 		}
 		seen[name] = claimed{kind, pos}
-	}
+	})
+}
+
+// eachComponentClaim calls claim for each name claimComponentAPI holds to one
+// meaning, in source order.
+func eachComponentClaim(decl *ast.ComponentDecl, comp *ir.Component, claim func(name, kind string, pos ast.Pos)) {
 	for _, p := range decl.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
@@ -2920,7 +2937,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 						c.error(pd.Pos, "component %s declares a second rest slot %q: the children written bare go to one (%q is at %s)",
 							comp.Name, pd.Name, restSlot.Name, restSlot.Pos)
 					} else {
-						restSlot = &pd
+						first := pd
+						restSlot = &first
 					}
 				}
 				irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd, ct, rest))
@@ -4198,7 +4216,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
 	defer c.fileOf(c.bodyFilePos(comp))()
-	c.pushScope()
+	c.scope = ir.NewScopeSize(c.scope, len(comp.Props)+len(comp.Vars)+len(comp.Funcs))
 	defer c.popScope()
 
 	prevComp := c.currentComponent

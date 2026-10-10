@@ -4013,7 +4013,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	if c.platformScopeCache != nil {
 		if s, ok := c.platformScopeCache[uri]; ok {
 			// Clone so each insertion point gets its own parent chain.
-			clone := NewScope(nil)
+			clone := ir.NewScopeSize(nil, len(s.Symbols))
 			maps.Copy(clone.Symbols, s.Symbols)
 			clone.Wildcards = slices.Clone(s.Wildcards)
 			return clone
@@ -4035,7 +4035,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	// `import "sngl:platform/x"` must name one declaration, not two.
 	pkg := c.libPkg(uri)
 
-	scope := NewScope(nil)
+	scope := ir.NewScopeSize(nil, len(pkg.Symbols.Root.Symbols))
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// The package's own import aliases, which its root chains to and which
@@ -4072,7 +4072,7 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	c.platformScopeCache[uri] = scope
 
 	// Return a clone for this usage.
-	clone := NewScope(nil)
+	clone := ir.NewScopeSize(nil, len(scope.Symbols))
 	maps.Copy(clone.Symbols, scope.Symbols)
 	clone.Wildcards = slices.Clone(scope.Wildcards)
 	return clone
