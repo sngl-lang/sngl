@@ -4840,7 +4840,10 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 	// Methods need no lifting: they live on the receiver's declaration, so
 	// lifting the type lifts its members with it.
-	for _, sym := range pkg.Symbols.Root.Symbols {
+	// Sorted, so two dot imports colliding on several names report the same
+	// one every time.
+	for _, name := range slices.Sorted(maps.Keys(pkg.Symbols.Root.Symbols)) {
+		sym := pkg.Symbols.Root.Symbols[name]
 		if !exported(sym) {
 			continue
 		}

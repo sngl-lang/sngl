@@ -69,7 +69,7 @@ stdout 'draw_imported.sngl: ok'
 # `Style`, a widget and a box's style in one, a drawn image source and a
 # shape's style in the other, and a dot import lifts both.
 ! sngl check draw_both_dotted.sngl
-stderr 'dot import of "sngl:ui/draw" lifts "image", already lifted by dot import of "sngl:ui"'
+stderr 'dot import of "sngl:ui/draw" lifts "Style", already lifted by dot import of "sngl:ui"'
 
 # Without draw, the names are the file's own to use.
 sngl check draw_names_free.sngl
