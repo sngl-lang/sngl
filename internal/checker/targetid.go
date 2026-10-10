@@ -614,6 +614,7 @@ func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *m
 			return c.pkg.Overlay.For(decl).Of(kind)
 		}
 	}
+	ir.MustWrite(ir.DeclaringPackage(decl), "an override of "+decl.SymName())
 	switch d := decl.(type) {
 	case *ir.Component:
 		if kind == ir.BuiltinFamilyLanguage {

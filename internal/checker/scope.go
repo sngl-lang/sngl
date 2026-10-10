@@ -59,6 +59,12 @@ func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
 		if fn, ok := c.lookupMethod(comp.Name, name); ok {
 			return fn, true
 		}
+		// An override's helper is in its own copy of the table, which its
+		// name does not reach.
+		if fn, ok := comp.Methods[name]; ok && comp == c.installedOverride {
+			c.ensureReturnType(fn)
+			return fn, true
+		}
 	}
 	return nil, false
 }
@@ -79,11 +85,23 @@ func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
 // every check reading the declaration's package shares -- except an override's
 // helper, which belongs to that override's own copy of the table.
 func (c *checker) attachMethod(name string, fn *ir.Func) error {
-	if !c.inLibSource() {
-		if sym, ok := c.scope.Lookup(name); ok && sym != c.overrideHelpers && sym != c.installedOverride {
-			if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
-				return ir.AddMethod(c.symtab.Root, sym, fn)
+	sym, found := c.scope.Lookup(name)
+	if ov := c.installedOverride; found && ov != nil && (sym == c.overriddenBase || sym == ov) {
+		if prev, ok := ov.Methods[fn.Name]; ok {
+			if prev != fn {
+				return &ir.RedeclaredError{Name: fn.Name, Prev: prev}
 			}
+			return nil
+		}
+		if ov.Methods == nil {
+			ov.Methods = map[string]*ir.Func{}
+		}
+		ov.Methods[fn.Name] = fn
+		return nil
+	}
+	if found && !c.inLibSource() {
+		if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
+			return ir.AddMethod(c.symtab.Root, sym, fn)
 		}
 	}
 	return ir.AttachMethod(c.scope, name, fn)

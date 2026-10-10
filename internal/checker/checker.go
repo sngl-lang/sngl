@@ -171,6 +171,11 @@ type libCache struct {
 	// checker reads it here rather than from ir.Published, which holds
 	// whatever load registered last.
 	builtins *ir.Builtins
+	// shared says the cache outlives the check that made it, so a later
+	// check reads it (enter). checking counts the checks running on it, a
+	// nested one included.
+	shared   bool
+	checking int
 	// decls is what the library's loads recorded about its declarations.
 	decls declTables
 	// Shared for the same reason `extended` is: the packages are shared, so a
@@ -254,6 +259,9 @@ func splitByFile(doc *ast.Document) []*ast.Document {
 // Imports stay the file's own: the alias in `import draw "sngl:ui/draw"` binds
 // where it is written and nowhere else.
 func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
+	if cfg != nil && cfg.libs != nil {
+		defer cfg.libs.enter()()
+	}
 	c := newChecker(docs, cfg)
 	c.pass1()
 	// A program's own overrides resolve after pass1: an override may be
@@ -311,13 +319,10 @@ type checker struct {
 	fileScopesByName map[string]*ir.Scope
 	// overrideFile says which file an installed override's body came from.
 	overrideFile overrideFile
-	// installedOverride is the component whose body is an override's while
-	// that body is checked, user or library.
-	installedOverride *ir.Component
-	// overrideHelpers is the component whose override's helpers are being
-	// registered: they go in the override's own copy of its method table,
-	// which the base is restored over, and not among the program's additions.
-	overrideHelpers *ir.Component
+	// installedOverride is the copy of overriddenBase an override's body is
+	// checked on, user or library. Its helpers go in the copy's method table,
+	// and not among the program's additions.
+	installedOverride, overriddenBase *ir.Component
 	// pendingMarks queues the marks pass1 meets while it is still
 	// registering declarations, and the checks that read them (afterMarks),
 	// so every macro a mark may name is registered by the time one runs.
@@ -4436,10 +4441,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 	c.checkViewVarHandlers(comp.Stmts)
 
-	// The body is captured rather than re-read: checkPendingExtensions swaps an
-	// override's statements onto the declaration for the length of one check
-	// and restores the base body after, so a drain-time read would check the
-	// base body once per override and the override's body never.
 	body := comp.Stmts
 	c.deferFamilyCheck(func() { c.checkFamilyParamBody(comp, body) })
 	// What a body puts in the tree is held to the family the component is a

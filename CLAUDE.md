@@ -742,6 +742,23 @@ follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:family` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
+**A library load owns what it records.** Each `libCache` carries the
+`ir.Builtins` its loads registered -- sngl:builtin's `list` and `map`, the
+datetime and duration types, every intrinsic -- and the `declTables` its loads
+wrote (type parameter symbols, body owners, nested funcs, interned anonymous
+structs, inherited family props), and a check reads its own library's.
+`ir.Published` is the process-wide copy every load also writes, for the phases
+that hold no checker. A target package's own overrides are checked as part of
+loading it (`mergeTargetExtensions`), so what one declares is the target
+package's. A cache shared between checks (`libCache.shared`, a test's
+`SharedLibrary` until a process holds one library) is frozen when the
+outermost check on it returns: `ir.Freeze` marks its packages, and the known
+writers -- a package root's bindings, `AttachMethod`, `specializeComp`, the
+checker's `overrideMap`, a `Builtins` registration -- panic on one
+(`ir.MustWrite`). A build still writes the checked library until a build
+starts from a copy of it, which is why a cache only one check reads is never
+frozen.
+
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
 What compiler code reads *off* a marked declaration -- a nav page's `href`,
@@ -1263,11 +1280,10 @@ is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
 `cmd/sngl/testdata/error_under_wrappers.txt` covers both halves on the interpreter. A `testdata/*.sngl` fixture's test functions are run as well, on the interpreter only, by `TestRunFixtures` (`internal/interp/testrunner`): every fixture that declares one is executed unless it asserts a failure before the run.
 
-Two of those deferrals are subtler than the rest. The family-parameter check captures
-the body it was asked about instead of re-reading `comp.Stmts`, because
-`checkPendingExtensions` swaps an override's statements onto the declaration
-and restores the base body after: read late, it checks the base body once per
-registered override and the override's body never. And a library package
+Two of those deferrals are subtler than the rest. The family-parameter check is
+handed the component it was asked about, which for an override is the copy of
+its declaration the override was checked on (`checkPendingExtensions`): the
+declaration itself never holds an override's body. And a library package
 drains its own, in the `finishDeclarations` its load runs -- left for the
 program's pass2, nothing checked a library body's membership when no program
 loaded it: `sngl doc`, the LSP's lib path and `sngl check sngl:platform/fyne`
@@ -2457,11 +2473,12 @@ is one where android's accidental answer is the better of the two.
 **A platform override body is a body like any other** (#230): an override *is*
 the body its target renders, so "the body it was written in" is well defined
 there and every word above applies unchanged. Two things make it work, and both
-are about *when* the override is installed. `checkPendingExtensions` swaps the
-override's vars, props and body decls onto the declaration and restores the
-base after, so the nested bodies are checked while it still holds
-(`checkOverrideNestedBodies`) rather than in pass2, which runs after the
-restore. And the owner link has to survive to lowering, so `ir.Body` carries
+are about *where* the override is installed. `checkPendingExtensions` checks it
+on a copy of the declaration carrying the override's vars, props, body decls,
+funcs and method table -- the declaration is usually another package's, which
+every check sharing it reads, so it is never written -- and checks the nested
+bodies while that copy is installed (`checkOverrideNestedBodies`) rather than
+in pass2, which never sees it. And the owner link has to survive to lowering, so `ir.Body` carries
 `BodyDecls` beside `Vars` and `Stmts`. A component embeds its `ir.Body`, an
 override is an `ir.Override` holding one, and `specializeComp` swaps the body
 whole — without the body decls in it
@@ -2478,8 +2495,8 @@ by `collectExtensionDecls` and desugared onto the component by the same
 `registerNestedMethods` an ordinary body uses, so the override's body calls its
 own helper and a nested body reaches it through `lookupBodyMethod` — the route
 a method takes, since a component-body func is a method on its owner rather
-than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
-with the rest; without that swap bubbletea emitted
+than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, with the
+rest; without them bubbletea emitted
 `func (m *outer) Bump()` against a type it never declares, which
 `component_override_body_func.txtar` denies.
 
@@ -2500,9 +2517,9 @@ under one host identifier. The hoist-and-rename `passHoistBodyTypes` does for
 types is where it lifts, and the diagnostic says so
 (`error_component_override_body_func_shadows.sngl`).
 
-`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
-base declaration is restored and the live `Component.Funcs` no longer names the
-override's helper — checked at package scope instead, it reported the
+`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because the live
+`Component.Funcs` is the base declaration's and never names the override's
+helper — checked at package scope instead, it reported the
 component's own vars as undefined. That set is asked of `c.pendingExtensions`
 as well as `pkg.Components`: an override's base is usually *not* this package's
 declaration, and every override in `lib/` and in a target package has a stdlib

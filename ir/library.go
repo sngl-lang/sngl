@@ -47,6 +47,7 @@ func (b *Builtins) RegisterStruct(sd *StructDef) {
 	if sd == nil {
 		return
 	}
+	MustWrite(sd.Pkg, "registering "+sd.Name)
 	switch sd.Builtin {
 	case BuiltinList:
 		b.list.Store(sd)
@@ -82,7 +83,12 @@ func (b *Builtins) MapOf(k, v *Type) *Type {
 }
 
 // RegisterDuration records sngl:time's duration unit.
-func (b *Builtins) RegisterDuration(t *Type) { b.duration.Store(t) }
+func (b *Builtins) RegisterDuration(t *Type) {
+	if d, ok := t.Decl.(*UnitDef); ok {
+		MustWrite(d.Pkg, "registering "+d.Name)
+	}
+	b.duration.Store(t)
+}
 
 // DurationType is this library's duration unit, or int before it registers:
 // a duration's magnitude is carried in its base unit, so int is the lossless

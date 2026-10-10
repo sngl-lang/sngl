@@ -675,6 +675,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
 	}
+	ir.MustWrite(fn.Pkg, "registering "+def.Name)
 	for _, b := range c.libraryRecords() {
 		b.RegisterIntrinsic(def)
 	}
@@ -1262,47 +1263,50 @@ func (c *checker) checkExtensions(pending []pendingExtension) {
 			} else {
 				c.scope = libBodyScope
 			}
-			savedAST := pe.comp.AST
-			saved := pe.comp.Body
-			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
+			// The override is checked on a copy of the declaration carrying
+			// its body, so the declaration -- often another package's, which
+			// every check sharing it reads -- is never written.
+			base := pe.comp
+			ov := new(ir.Component)
+			*ov = *base
 			// An override that listed the props it consumes reads those and no
 			// others: the list is what makes the names in its body traceable
 			// to a declaration rather than appearing from the surrounding
 			// component. One that listed none reads them all.
 			if pe.selection != nil {
-				pe.comp.Props, pe.comp.Events = selectProps(pe.comp, pe.selection)
+				ov.Props, ov.Events = selectProps(base, pe.selection)
 			}
 			// The declaration is the library's parsed source, which every check
-			// shares, so the component is handed a copy carrying the override's
-			// body rather than having the body written into it.
-			decl := *pe.comp.AST
+			// shares, so the copy is handed a copy of it carrying the
+			// override's body.
+			decl := *base.AST
 			decl.Body = pe.body
-			pe.comp.AST = &decl
-			pe.comp.Stmts = nil
+			ov.AST = &decl
+			ov.Stmts = nil
 			// pass1 only ever saw the component's parenless stub, so the
 			// override's own state has to be collected before the body check
 			// that declares it. Starting from the component's own keeps a var
 			// the stdlib declaration made visible to the override.
 			c.pushScope()
-			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
-			pe.comp.Vars = append(slices.Clip(saved.Vars), vars...)
-			pe.comp.BodyDecls = append(slices.Clip(saved.BodyDecls), bodyDecls...)
+			vars, bodyDecls, funcDefs := c.collectExtensionDecls(ov, pe.body)
+			ov.Vars = append(slices.Clip(base.Vars), vars...)
+			ov.BodyDecls = append(slices.Clip(base.BodyDecls), bodyDecls...)
 			// A method is attached by receiver, so the base's table is where
 			// an override's helper would land and stay -- visible to the base
 			// body and to every other target's override, and a redeclaration
 			// of the next target's helper of the same name. The clone is what
 			// keeps each override's helpers to itself; it starts from the
 			// base's so a method the declaration made stays callable.
-			pe.comp.Methods = maps.Clone(saved.Methods)
+			ov.Methods = maps.Clone(base.Methods)
 			// Registered inside the collect scope: a signature may name a type
 			// the override body declared, which is bound there and nowhere
 			// else.
 			// A program's own additions to the component are its methods as much
 			// as the declaration's are, and a helper of one's name would be
 			// shadowed by it at every call.
-			known := saved.Methods
-			if added := c.symtab.Root.Added[pe.comp]; len(added) > 0 {
-				known = maps.Clone(saved.Methods)
+			known := base.Methods
+			if added := c.symtab.Root.Added[base]; len(added) > 0 {
+				known = maps.Clone(base.Methods)
 				if known == nil {
 					known = map[string]*ir.Func{}
 				}
@@ -1310,33 +1314,27 @@ func (c *checker) checkExtensions(pending []pendingExtension) {
 			}
 			funcDefs = c.reportOverrideFuncShadows(pe, known, funcDefs)
 			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
-			c.overrideHelpers = pe.comp
-			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
-			c.overrideHelpers = nil
-			pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
+			c.overriddenBase, c.installedOverride = base, ov
+			overrideFuncs := c.registerNestedMethods(base.Name, ov.AST.TypeParams, funcDefs)
+			ov.Funcs = append(slices.Clip(base.Funcs), overrideFuncs...)
 			c.popScope()
 			// checkComponentBody checks comp.Funcs in the component's own
 			// scope, so the override's are checked with its vars and props
 			// visible by having been appended above.
 			if pe.user {
-				c.overrideFile = overrideFile{comp: pe.comp, pos: pe.pos}
+				c.overrideFile = overrideFile{comp: ov, pos: pe.pos}
 			}
-			c.installedOverride = pe.comp
-			c.checkComponentBody(pe.comp)
-			c.installedOverride = nil
+			c.checkComponentBody(ov)
 			c.overrideFile = overrideFile{}
-			// While the override's state is still installed, because that is
-			// the body a component nested in it was written in. Left to
-			// pass2's checkComponentBodies it runs after the restore below,
-			// where the owner is the base declaration again and the names the
-			// nested body captured are declared by nobody.
+			// While the override is still installed, because that is the body
+			// a component nested in it was written in.
 			c.checkOverrideNestedBodies(bodyDecls)
-			c.checkOverrideConst(pe)
-			checked := ir.Override{Body: pe.comp.Body, Const: pe.isConst, Pkg: pe.pkg}
-			(*c.overrideMap(pe.comp, pe.user, pe.kind))[pe.platform] = checked
-			pe.comp.AST = savedAST
-			pe.comp.Body = saved
-			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
+			c.overriddenBase, c.installedOverride = nil, nil
+			checkedPE := pe
+			checkedPE.comp = ov
+			c.checkOverrideConst(checkedPE)
+			checked := ir.Override{Body: ov.Body, Const: pe.isConst, Pkg: pe.pkg}
+			(*c.overrideMap(base, pe.user, pe.kind))[pe.platform] = checked
 			if pe.user {
 				c.popScope()
 			}
@@ -1625,4 +1623,69 @@ func Packages() []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// packages is every package the cache holds: those it holds by path, each
+// library plugin's, what they import, and the package each declaration they
+// hold says declared it. The last two are how the gir: widgets
+// sngl:platform/gtk4 imports are reached, which name a package of their own.
+func (l *libCache) packages() []*ir.Package {
+	var pkgs []*ir.Package
+	seen := map[*ir.Package]bool{}
+	add := func(p *ir.Package) {
+		if p != nil && !seen[p] {
+			seen[p] = true
+			pkgs = append(pkgs, p)
+		}
+	}
+	for _, path := range slices.Sorted(maps.Keys(l.pkgs)) {
+		add(l.pkgs[path])
+	}
+	for _, name := range slices.Sorted(maps.Keys(l.schemes)) {
+		if scheme := l.schemes[name]; scheme != nil {
+			add(scheme.Pkg)
+		}
+	}
+	for i := 0; i < len(pkgs); i++ {
+		p := pkgs[i]
+		for _, imp := range p.Imports {
+			add(imp.Pkg)
+		}
+		for _, d := range p.Components {
+			add(d.Pkg)
+		}
+		for _, d := range p.Funcs {
+			add(d.Pkg)
+		}
+		for _, d := range p.Structs {
+			add(d.Pkg)
+		}
+		for _, d := range p.Enums {
+			add(d.Pkg)
+		}
+		for _, d := range p.Units {
+			add(d.Pkg)
+		}
+		for _, d := range p.Consts {
+			add(d.Pkg)
+		}
+		for _, d := range p.Vars {
+			add(d.Pkg)
+		}
+	}
+	return pkgs
+}
+
+// enter counts a check running on the cache, and returns its end. A shared
+// cache is frozen when the outermost check on it ends: every check after
+// reads what it holds, and none may write it.
+func (l *libCache) enter() func() {
+	l.checking++
+	return func() {
+		if l.checking--; l.checking == 0 && l.shared {
+			for _, p := range l.packages() {
+				ir.Freeze(p)
+			}
+		}
+	}
 }

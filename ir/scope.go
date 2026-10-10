@@ -183,6 +183,10 @@ func (s *Scope) Replace(sym Symbol) {
 }
 
 func (s *Scope) bind(name string, sym Symbol) {
+	if s.Symbols[name] == sym {
+		return
+	}
+	s.mustWrite(name)
 	if s.Symbols == nil {
 		s.Symbols = make(map[string]Symbol)
 	}
@@ -538,14 +542,21 @@ var (
 // registered before it is reachable from the package root — the stdlib loads
 // into a scope that only later becomes the root's parent.
 func AttachMethod(scope *Scope, recv string, f *Func) error {
-	tbl, err := memberList(scope, recv)
+	tbl, sym, err := memberList(scope, recv)
 	if err != nil {
 		return err
 	}
 	// Re-registering the same declaration is not a redeclaration. The checker
 	// reaches a component's methods from more than one pass.
-	if prev, exists := (*tbl)[f.Name]; exists && prev != f {
-		return &RedeclaredError{Name: f.Name, Prev: prev}
+	if prev, exists := (*tbl)[f.Name]; exists {
+		if prev != f {
+			return &RedeclaredError{Name: f.Name, Prev: prev}
+		}
+		return nil
+	}
+	MustWrite(DeclaringPackage(sym), "a method on "+recv)
+	if *tbl == nil {
+		*tbl = make(map[string]*Func)
 	}
 	(*tbl)[f.Name] = f
 	return nil
@@ -553,19 +564,16 @@ func AttachMethod(scope *Scope, recv string, f *Func) error {
 
 // memberList returns the member table of the declaration recv names, creating
 // it on first use.
-func memberList(scope *Scope, recv string) (*map[string]*Func, error) {
+func memberList(scope *Scope, recv string) (*map[string]*Func, Symbol, error) {
 	sym, ok := scope.Lookup(recv)
 	if !ok {
-		return nil, ErrUnknownReceiver
+		return nil, nil, ErrUnknownReceiver
 	}
 	tbl := methodTable(sym)
 	if tbl == nil {
-		return nil, ErrNoMethodHost
+		return nil, nil, ErrNoMethodHost
 	}
-	if *tbl == nil {
-		*tbl = make(map[string]*Func)
-	}
-	return tbl, nil
+	return tbl, sym, nil
 }
 
 // MemberOf returns the method named name declared on decl — the Decl carried
