@@ -1259,7 +1259,9 @@ func (c *checker) checkPendingExtensions() {
 			// else.
 			funcDefs = c.reportOverrideFuncShadows(pe, saved.Methods, funcDefs)
 			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
+			c.overrideHelpers = pe.comp
 			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
+			c.overrideHelpers = nil
 			pe.comp.Funcs = append(slices.Clip(saved.Funcs), overrideFuncs...)
 			c.popScope()
 			// checkComponentBody checks comp.Funcs in the component's own

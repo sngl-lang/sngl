@@ -83,7 +83,7 @@ func (c *checker) hasOverrideFor(comp *ir.Component, t ir.StaticTarget) bool {
 	// A host of a family that emits is answered by the family's override: the
 	// emitter consumes the host where it is written, so there is nothing of
 	// the host's own left for a target to render.
-	if f := ir.EmittedFamily(comp); f != nil && c.hasOverrideFor(f, t) {
+	if f := c.emittedFamily(comp); f != nil && c.hasOverrideFor(f, t) {
 		return true
 	}
 	ov := c.overridesOf(comp)
@@ -134,7 +134,7 @@ func describeTarget(t ir.StaticTarget) string {
 // the override maps -- mergeTargetExtensions in newChecker, collectUserOverrides
 // and checkPendingExtensions before pass2.
 func (c *checker) renderSuppliedElsewhere(comp *ir.Component) bool {
-	if f := ir.EmittedFamily(comp); f != nil && c.renderSuppliedElsewhere(f) {
+	if f := c.emittedFamily(comp); f != nil && c.renderSuppliedElsewhere(f) {
 		return true
 	}
 	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone || ir.IsDataMember(comp) ||
@@ -219,4 +219,17 @@ func (c *checker) bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) 
 // `{}` would say it renders nothing -- and is exempt as a family is.
 func isTargetNode(comp *ir.Component) bool {
 	return ir.TargetTier(comp.Family) != ""
+}
+
+// emittedFamily is ir.EmittedFamily asked during the check, when a program's
+// override of a library family is in the overlay rather than on the family.
+func (c *checker) emittedFamily(host *ir.Component) *ir.Component {
+	if host == nil || !host.Bodyless {
+		return nil
+	}
+	f := ir.RestSlotFamily(host)
+	if f == nil || f == host || !c.overridesOf(f).Any() {
+		return nil
+	}
+	return f
 }

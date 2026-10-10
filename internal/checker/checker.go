@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"io/fs"
+	"iter"
 	"maps"
 	"path"
 	"regexp"
@@ -309,6 +310,10 @@ type checker struct {
 	// installedOverride is the component whose body is an override's while
 	// that body is checked, user or library.
 	installedOverride *ir.Component
+	// overrideHelpers is the component whose override's helpers are being
+	// registered: they go in the override's own copy of its method table,
+	// which the base is restored over, and not among the program's additions.
+	overrideHelpers *ir.Component
 	// pendingMarks queues the marks pass1 meets while it is still
 	// registering declarations, and the checks that read them (afterMarks),
 	// so every macro a mark may name is registered by the time one runs.
@@ -1838,15 +1843,17 @@ func (c *checker) adoptAdditions(pos ast.Pos, src *ir.Package) {
 	if src == nil || c.inLibSource() {
 		return
 	}
-	for sym, ov := range src.Overlay.Overrides {
+	for _, sym := range bySymName(maps.Keys(src.Overlay.Overrides)) {
+		ov := src.Overlay.Overrides[sym]
 		mine := c.pkg.Overlay.For(sym)
 		for _, kind := range []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage} {
-			for target, body := range *ov.Of(kind) {
+			for _, target := range slices.Sorted(maps.Keys(*ov.Of(kind))) {
+				body := (*ov.Of(kind))[target]
 				dst := mine.Of(kind)
 				if *dst == nil {
 					*dst = map[string]ir.Override{}
 				}
-				if held, ok := (*dst)[target]; ok && !slices.Equal(held.Stmts, body.Stmts) {
+				if held, ok := (*dst)[target]; ok && (held.Pkg != body.Pkg || !slices.Equal(held.Stmts, body.Stmts)) {
 					c.error(pos, "%s has two implementations for %q, from two packages this one reaches", sym.SymName(), target)
 					continue
 				}
@@ -1857,13 +1864,19 @@ func (c *checker) adoptAdditions(pos ast.Pos, src *ir.Package) {
 	if src.Symbols == nil {
 		return
 	}
-	for decl, methods := range src.Symbols.Root.Added {
+	for _, decl := range bySymName(maps.Keys(src.Symbols.Root.Added)) {
+		methods := src.Symbols.Root.Added[decl]
 		for _, name := range slices.Sorted(maps.Keys(methods)) {
 			if err := ir.AddMethod(c.symtab.Root, decl, methods[name]); err != nil {
 				c.error(pos, "method %q on %s is declared by two packages this one reaches", name, decl.SymName())
 			}
 		}
 	}
+}
+
+// bySymName is syms in name order, for diagnostics read off a map.
+func bySymName(syms iter.Seq[ir.Symbol]) []ir.Symbol {
+	return slices.SortedStableFunc(syms, func(a, b ir.Symbol) int { return strings.Compare(a.SymName(), b.SymName()) })
 }
 
 // adoptContexts moves an imported package's contexts onto the program's own

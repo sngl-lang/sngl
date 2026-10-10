@@ -30,8 +30,8 @@ func (o *Overrides) Of(kind BuiltinKind) *map[string]Override {
 	return &o.Platform
 }
 
-// OverridesOf is the override maps sym carries itself, nil for a declaration
-// that carries none.
+// OverridesOf is the override maps sym carries itself, for a Component or a
+// Func; nil for any other symbol.
 func OverridesOf(sym Symbol) *Overrides {
 	switch d := sym.(type) {
 	case *Component:

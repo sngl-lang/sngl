@@ -63,13 +63,23 @@ func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
 	return nil, false
 }
 
+// memberOf is the method named name on decl, a program's additions to it
+// included.
+func (c *checker) memberOf(decl any, name string) (*ir.Func, bool) {
+	sym, ok := decl.(ir.Symbol)
+	if !ok {
+		return nil, false
+	}
+	return ir.MethodOn(c.scope, sym, name)
+}
+
 // attachMethod makes fn a member of the declaration name resolves to. A
 // program's method on one another package declared is held on the program's
 // root scope (ir.Scope.Added) rather than in that declaration's table, which
 // every check reading the declaration's package shares.
 func (c *checker) attachMethod(name string, fn *ir.Func) error {
 	if !c.inLibSource() {
-		if sym, ok := c.scope.Lookup(name); ok {
+		if sym, ok := c.scope.Lookup(name); ok && sym != c.overrideHelpers && sym != c.installedOverride {
 			if owner := ir.DeclaringPackage(sym); owner != nil && owner != c.declPkg() {
 				return ir.AddMethod(c.symtab.Root, sym, fn)
 			}

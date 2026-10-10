@@ -8,6 +8,7 @@ import "reflect"
 var irPkgPath = reflect.TypeFor[Package]().PkgPath()
 
 var declInfoType = reflect.TypeFor[DeclInfo]()
+var packageType = reflect.TypeFor[Package]()
 
 // ClonePackage returns a deep, independent copy of pkg. Every internal
 // cross-reference — Ident.Sym, Call.Func, StructLit.Def, Type.Decl, the
@@ -222,6 +223,12 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 			} else {
 				out.Field(i).Set(p)
 			}
+			continue
+		}
+		// ClonePackageFor installed the overlay first, so the declarations it
+		// copies carry this target's overrides already, and the clone's
+		// overlay would put every other target's back.
+		if c.only != nil && v.Type() == packageType && v.Type().Field(i).Name == "Overlay" {
 			continue
 		}
 		if c.only != nil && carriesOverrides(v.Type()) {

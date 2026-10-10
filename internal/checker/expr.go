@@ -1387,7 +1387,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// The receiver's declaration owns its members, so ask it directly. Only
 	// when the type has no declaration to ask — a builtin generic, whose
 	// members hang off the bare constructor name — does the name matter.
-	fn, ok := ir.MemberOf(receiver.Decl, sel.Field)
+	fn, ok := c.memberOf(receiver.Decl, sel.Field)
 	if !ok {
 		fn, ok = c.lookupMethod(typeName, sel.Field)
 	}
@@ -1408,7 +1408,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	// `option`'s own members, so a name the option itself declares still wins.
 	if !ok && receiver.Kind == ir.TypeOption && len(receiver.Elems) == 1 &&
 		receiver.Elems[0] != nil && receiver.Elems[0].Kind == ir.TypeStruct {
-		if fn, ok = ir.MemberOf(receiver.Elems[0].Decl, sel.Field); ok {
+		if fn, ok = c.memberOf(receiver.Elems[0].Decl, sel.Field); ok {
 			receiver = receiver.Elems[0]
 			typeName = receiver.String()
 		}

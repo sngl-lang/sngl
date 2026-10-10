@@ -61,8 +61,7 @@ type Package struct {
 	RootComponent string `json:",omitempty"`
 	Contexts      []*Context
 	Symbols       *SymbolTable
-	// Overlay is what the package adds to library declarations; see Overlay.
-	Overlay Overlay `json:"-"`
+	Overlay       Overlay `json:"-"`
 	// Origin is where a package the program reads by path came from: the
 	// program's own, a directory import, a fetched one. Nil for a library
 	// package and a native scheme's shell. A build-time function asks it who
