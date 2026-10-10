@@ -2528,8 +2528,6 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 
 	if fn.IsMethod() {
-		// Attaching is a declaration: it fails on a member of that name
-		// already there, unless this one shadows a standard-library member.
 		// A receiver naming a namespace rather than a type (i18n) has no
 		// declaration to host it, and declareMethod says so.
 		if prev := c.declareMethod(f.Pos, fn); prev != nil {
