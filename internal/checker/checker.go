@@ -5176,15 +5176,8 @@ func (c *checker) overrideBodies() []any {
 				if !mine(ov) {
 					continue
 				}
-				out = append(out, ov.Stmts)
-				for _, fn := range ov.Funcs {
-					out = append(out, fn)
-				}
-				for _, v := range ov.Vars {
-					if v.Init != nil {
-						out = append(out, v.Init)
-					}
-				}
+				// Walked as a component is, so a var's handlers are reached.
+				out = append(out, &ir.Component{Body: ov.Body})
 			}
 		}
 	}
