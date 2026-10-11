@@ -23,6 +23,10 @@ component counter(label string = "c") ui.node {
         total += t.length
     }
 
+    func twice() {
+        this.add(1)
+    }
+
     ui.button(text="{total}", @click {
         add(1)
         bump(1)

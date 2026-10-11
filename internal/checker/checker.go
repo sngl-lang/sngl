@@ -5142,6 +5142,9 @@ func (c *checker) reportHandleCallDefaults() {
 			return nil
 		}
 		comp := call.Func.RecvDecl().(*ir.Component)
+		if isOwnReceiver(call.Args[0].Value, comp) {
+			return nil
+		}
 		given := map[string]bool{}
 		for _, a := range call.Args[1:] {
 			given[a.Name] = true
@@ -5186,4 +5189,20 @@ func readsComponent(e ir.Expr, comp *ir.Component) string {
 		return nil
 	})
 	return what
+}
+
+// isOwnReceiver reports whether e is comp's own `this`, read in a body of
+// comp's, where every name a default reads is in scope.
+func isOwnReceiver(e ir.Expr, comp *ir.Component) bool {
+	id, ok := e.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	switch s := id.Sym.(type) {
+	case *ir.Component:
+		return s == comp
+	case *ir.Param:
+		return s.Receiver && s.Type != nil && s.Type.Decl == ir.Symbol(comp)
+	}
+	return false
 }
