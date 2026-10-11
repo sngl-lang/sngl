@@ -323,9 +323,9 @@ type checker struct {
 	// checked on, user or library. Its helpers go in the copy's method table,
 	// and not among the program's additions.
 	installedOverride, overriddenBase *ir.Component
-	// addedOverrideAt is where the program wrote an override it holds in its
-	// overlay, whose declaration is another package's and reports nothing of
-	// the program's.
+	// addedOverrideAt is where the program wrote each of its overrides: an
+	// override of another package's declaration is reported there, since the
+	// declaration is not the program's.
 	addedOverrideAt map[addedOverride]ast.Pos
 	// pendingMarks queues the marks pass1 meets while it is still
 	// registering declarations, and the checks that read them (afterMarks),
