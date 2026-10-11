@@ -35,6 +35,16 @@ func (c orderConstraint) String() string {
 
 // orderConstraints is every ordering the pipeline actually depends on.
 var orderConstraints = []orderConstraint{
+	{"ReceiverParam", "CallDefaults",
+		"a generic built-in's method gets its receiver as a parameter here, and until it has one the receiver every call passes first is matched to the first declared parameter"},
+	{"CallDefaults", "InlinePure",
+		"a default names what the callee's declaration names; once a body holding the call is spliced and renamed per copy, the default names a var the copy no longer has"},
+	{"CallDefaults", "NoInlineComponents",
+		"the same renaming, for a component method's default reading the component's state"},
+	{"CallDefaults", "Context",
+		"Context appends each threaded value as an argument, which the defaults would then be filled in front of"},
+	{"CallDefaults", "NoImplicitRecv",
+		"a component method called in its own body has no receiver argument until NoImplicitRecv writes one, and the defaults are matched with the receiver still implicit"},
 	{"HoistBodyTypes", "NoRef",
 		"NoRef synthesizes a box struct per element type and deduplicates them by the element's type *name*, so two body-local types still sharing one name are handed one __ref_ box between them"},
 	{"PlatformExtensionBody", "InlinePure",

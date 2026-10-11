@@ -3898,6 +3898,7 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprAs(ap.Default, p.Type, defaultSlot(*ap.Default.ExprPos()))
+			c.refuseDefaultReadingParams(fn, p, *ap.Default.ExprPos())
 			if p.Const {
 				c.deferConstArg(*ap.Default.ExprPos(), p.Default, "the default of "+constParamLabel(p.Name))
 			}
@@ -5103,4 +5104,25 @@ func (c *checker) inheritedFrom(p *ir.Prop) *ir.Prop {
 		return fp
 	}
 	return c.libs.decls.inheritedProps[p]
+}
+
+// refuseDefaultReadingParams reports a parameter's default that names one of
+// its function's parameters. A default is evaluated where the call is
+// written, as a component prop's is, and no parameter is in scope there.
+func (c *checker) refuseDefaultReadingParams(fn *ir.Func, p *ir.Param, pos ast.Pos) {
+	_ = ir.Walk(p.Default, func(n ir.Node) error {
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if q, ok := id.Sym.(*ir.Param); ok && (q == fn.RecvParam || slices.Contains(fn.Params, q)) {
+			at := pos
+			if id.AST != nil {
+				at = id.AST.Pos
+			}
+			c.error(at, "the default of %q reads parameter %q: a default is evaluated where the call is written, where no parameter is in scope", p.Name, q.Name)
+			return ir.SkipDir
+		}
+		return nil
+	})
 }

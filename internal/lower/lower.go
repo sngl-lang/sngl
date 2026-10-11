@@ -42,6 +42,11 @@ var passes = []pass{
 	passNavigationValues,
 	passNavigationHrefs,
 	passPlatformExtensionBody,
+	// Before anything inlines a body or appends an argument of its own: a
+	// default is written where the call is, and names what the callee's
+	// declaration does.
+	passReceiverParam,
+	passCallDefaults,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,
@@ -77,10 +82,7 @@ var passes = []pass{
 	passInstanceSlots,
 	passCanvasInstances,
 	passFlattenStructSpread,
-	passReceiverParam,
 	passNoImplicitRecv,
-	// After the receiver is a parameter and every call carries it.
-	passCallDefaults,
 	passShapeDraw,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.

@@ -1,18 +1,17 @@
 package lower
 
-import "duckfam.us/sngl/ir"
+import (
+	"slices"
 
-// passCallDefaults writes a parameter's default into each call that omits it.
-//
-// The checker leaves an omitted argument out of Call.Args and keeps the
-// default on the parameter, which the optimizer's inliner and the interpreter
-// read. A function a backend emits takes every parameter it declares: Go has no
-// default, and the JavaScript and Kotlin emitters declare none, so `plus(1)`
-// for `func plus(k int, by int = 2)` did not compile on Go and added
-// `undefined` on JavaScript.
-//
-// A native or an intrinsic is the host's or an emitter's to call, with
-// whatever arity it answers for, and is left as written.
+	"duckfam.us/sngl/ir"
+)
+
+// passCallDefaults writes a parameter's default into each call that omits it:
+// a function a backend emits takes every parameter it declares, and no
+// emitter declares a default. It runs before the inliners rename what a
+// default reads and before any pass appends an argument of its own. A native
+// or an intrinsic is called with whatever arity its host or emitter answers
+// for, and is left as written.
 var passCallDefaults = pass{
 	name:    "CallDefaults",
 	enabled: func(Features) bool { return true },
@@ -31,39 +30,68 @@ func lowerCallDefaults(pkg *ir.Package, _ Features, _ Options) error {
 	})
 }
 
+// fillDefaults matches c's arguments to its callee's parameters in order: the
+// checker writes them in parameter order, named for their parameters, with a
+// receiver first and unnamed. A component method's receiver is implicit at a
+// call in its own body and is left for passNoImplicitRecv.
 func fillDefaults(c *ir.Call) {
 	fn := c.Func
-	if fn == nil || fn.Intrinsic != "" || (fn.Foreign.Name != "" && !fn.Foreign.Marked) || len(c.Args) >= len(fn.Params) {
+	if fn == nil || fn.Intrinsic != "" || (fn.Foreign.Name != "" && !fn.Foreign.Marked) {
 		return
 	}
-	args := make([]ir.CallArg, 0, len(fn.Params))
-	bound := map[*ir.Param]ir.Expr{}
-	next := 0
+	var args []ir.CallArg
+	var recv ir.Expr
+	next, filled := 0, false
 	for _, p := range fn.Params {
-		if next < len(c.Args) && (c.Args[next].Name == "" || c.Args[next].Name == p.Name) {
+		switch {
+		case next < len(c.Args) && (c.Args[next].Name == "" || c.Args[next].Name == p.Name):
+			if p.Receiver {
+				recv = c.Args[next].Value
+			}
 			args = append(args, c.Args[next])
-			bound[p] = c.Args[next].Value
 			next++
-			continue
-		}
-		if p.Default == nil {
+		case p.Receiver:
+		case p.Default != nil:
+			args = append(args, ir.CallArg{Name: p.Name, Value: defaultAt(fn, p.Default, recv)})
+			filled = true
+		default:
 			return
 		}
-		def := ir.CloneExprSharingDecls(p.Default)
-		// A default may name an earlier parameter, which at the call is the
-		// argument bound to it.
-		_ = ir.RewriteExprs(def, func(e ir.Expr) (ir.Expr, error) {
-			if id, ok := e.(*ir.Ident); ok {
-				if p, ok := id.Sym.(*ir.Param); ok && bound[p] != nil {
-					return ir.CloneExprSharingDecls(bound[p]), nil
-				}
-			}
-			return e, nil
-		})
-		args = append(args, ir.CallArg{Name: p.Name, Value: def})
-		bound[p] = def
 	}
-	if next == len(c.Args) {
+	if filled && next == len(c.Args) {
 		c.Args = args
 	}
+}
+
+// defaultAt is def as a call reaching fn through recv writes it: a component
+// method called through a handle reads the component's vars and props off the
+// handle, since the caller has none of its own.
+func defaultAt(fn *ir.Func, def ir.Expr, recv ir.Expr) ir.Expr {
+	out := ir.CloneExprSharingDecls(def)
+	comp, ok := fn.RecvDecl().(*ir.Component)
+	if !ok || recv == nil {
+		return out
+	}
+	through := func(e ir.Expr) ir.Expr {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return e
+		}
+		switch s := id.Sym.(type) {
+		case *ir.Var:
+			if !slices.Contains(comp.Vars, s) {
+				return e
+			}
+		case *ir.Param:
+			if !slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Sym == s }) {
+				return e
+			}
+		default:
+			return e
+		}
+		return &ir.Select{Type: id.Type, Operand: ir.CloneExprSharingDecls(recv), Field: id.Name}
+	}
+	out = through(out)
+	_ = ir.RewriteExprs(out, func(e ir.Expr) (ir.Expr, error) { return through(e), nil })
+	return out
 }

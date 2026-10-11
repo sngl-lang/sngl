@@ -1,0 +1,16 @@
+// A parameter's default is evaluated where the call is written, as a
+// component prop's is, so it may not name a parameter of its function.
+
+func span(lo int, hi int = lo + 10) int { // ERROR(check) "the default of \"hi\" reads parameter \"lo\""
+    return hi - lo
+}
+
+func same(a int, b int = a) int { // ERROR(check) "the default of \"b\" reads parameter \"a\""
+    return a + b
+}
+
+const base = 3
+
+func shifted(a int, b int = base + 1) int {
+    return a + b
+}

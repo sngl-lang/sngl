@@ -80,12 +80,10 @@ func recvVisit(n ir.Node) error {
 // call that already carries its receiver (Args covers the params), a non-method
 // call, or a receiverless func is left unchanged.
 func injectRecv(c *ir.Call) error {
-	// A type method's receiver is always Args[0], so counting arguments
-	// against a list with a default in it would read an omitted default as
-	// an omitted receiver.
 	if c.Func == nil || !c.Func.IsMethod() {
 		return nil
 	}
+	// A type method's receiver is always Args[0].
 	switch c.Func.RecvDecl().(type) {
 	case *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
 		return nil
