@@ -541,9 +541,9 @@ func (c *checker) reportEmitterPlacement() {
 	}
 	allowed := map[*ir.NodeInst]bool{}
 	var bodies [][]ir.Stmt
-	for _, comp := range c.pkg.Components {
-		bodies = append(bodies, comp.Stmts)
-		for _, overrides := range []map[string]ir.Override{comp.PlatformOverrides, comp.LanguageOverrides} {
+	place := func(comp *ir.Component, ovs *ir.Overrides, at func(kind ir.BuiltinKind, target string) (ast.Pos, bool)) {
+		for _, kind := range []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage} {
+			overrides := *ovs.Of(kind)
 			for _, target := range slices.Sorted(maps.Keys(overrides)) {
 				body := overrides[target]
 				want := ir.BuiltinGenNode
@@ -552,12 +552,45 @@ func (c *checker) reportEmitterPlacement() {
 				}
 				if ni := soleEmitterNode(body.Body, want); ni != nil {
 					allowed[ni] = true
-				} else if comp.IsFamily() && comp.AST != nil {
-					c.error(comp.AST.Pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
+				} else if pos, ok := at(kind, target); ok && comp.IsFamily() {
+					c.error(pos, "the %s family's override for %s is a gen.emit and nothing else: a family is never rendered, so nothing else in it would be read", comp.Name, target)
 				}
 				bodies = append(bodies, body.Stmts)
 			}
 		}
+	}
+	for _, comp := range c.pkg.Components {
+		bodies = append(bodies, comp.Stmts)
+		place(comp, ir.OverridesOf(comp), func(ir.BuiltinKind, string) (ast.Pos, bool) {
+			if comp.AST == nil {
+				return ast.Pos{}, false
+			}
+			return comp.AST.Pos, true
+		})
+	}
+	// An override the program wrote of another package's component is the
+	// program's to answer for; one an import added was its own package's.
+	for _, sym := range bySymName(maps.Keys(c.pkg.Overlay.Overrides)) {
+		comp, ok := sym.(*ir.Component)
+		if !ok {
+			continue
+		}
+		mine := ir.Overrides{}
+		for _, kind := range []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage} {
+			for target, body := range *c.pkg.Overlay.Overrides[sym].Of(kind) {
+				if _, ok := c.addedOverrideAt[addedOverride{comp, kind, target}]; ok {
+					dst := mine.Of(kind)
+					if *dst == nil {
+						*dst = map[string]ir.Override{}
+					}
+					(*dst)[target] = body
+				}
+			}
+		}
+		place(comp, &mine, func(kind ir.BuiltinKind, target string) (ast.Pos, bool) {
+			pos, ok := c.addedOverrideAt[addedOverride{comp, kind, target}]
+			return pos, ok
+		})
 	}
 	for _, owner := range ir.Owners(c.pkg) {
 		bodies = append(bodies, owner.Stmts())
@@ -568,6 +601,14 @@ func (c *checker) reportEmitterPlacement() {
 			c.reportMisplacedEmitters(st, allowed, seen)
 		}
 	}
+}
+
+// addedOverride names one override the program holds in its overlay: the
+// declaration, the tier and the target.
+type addedOverride struct {
+	decl   ir.Symbol
+	kind   ir.BuiltinKind
+	target string
 }
 
 func (c *checker) reportMisplacedEmitters(st ir.Stmt, allowed, seen map[*ir.NodeInst]bool) {

@@ -1335,6 +1335,10 @@ func (c *checker) checkExtensions(pending []pendingExtension) {
 			checked := ir.Override{Body: ov.Body, Const: pe.isConst, Pkg: pe.pkg}
 			(*c.overrideMap(base, pe.user, pe.kind))[pe.platform] = checked
 			if pe.user {
+				if c.addedOverrideAt == nil {
+					c.addedOverrideAt = map[addedOverride]ast.Pos{}
+				}
+				c.addedOverrideAt[addedOverride{base, pe.kind, pe.platform}] = pe.pos
 				c.popScope()
 			}
 		}

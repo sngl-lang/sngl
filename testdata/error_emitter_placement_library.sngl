@@ -1,0 +1,14 @@
+// A program's override of a declaration another package owns is held to
+// where gen.emit and gen.node may be written, as an override of its own is.
+
+import gen "sngl:x/gen"
+import go "sngl:language/go"
+import ui "sngl:ui"
+
+component ui.node[go.language] { // ERROR(check) "the node family's override for go is a gen.emit and nothing else"
+    gen.node(open="x")           // ERROR(check) "gen.node is written as the whole body of a member's override"
+}
+
+component ui.button[go.language] {
+    gen.emit(file="a.txt") // ERROR(check) "gen.emit is written as the whole body of a family's override"
+}
