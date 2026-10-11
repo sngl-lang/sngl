@@ -252,6 +252,9 @@ type pendingFuncOverride struct {
 	// package's own source is written against its own imports, none of which
 	// the program has.
 	libURI string
+	// pkg is the package a program's override is written in, nil for a
+	// target package's.
+	pkg *ir.Package
 }
 
 // collectFuncOverrides merges each `func f[target] { ... }` a program declares
@@ -318,7 +321,11 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 	// Reserve the key so a duplicate is caught even when the body check
 	// contributes nothing, as addOverrideBody does for a component.
 	(*overrides)[plat] = ir.Override{}
-	c.pendingFuncOverrides = append(c.pendingFuncOverrides, pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI})
+	po := pendingFuncOverride{fn: base, platform: plat, kind: kind, decl: decl, libURI: libURI}
+	if libURI == "" {
+		po.pkg = c.declPkg()
+	}
+	c.pendingFuncOverrides = append(c.pendingFuncOverrides, po)
 }
 
 // libFuncOverrideBase resolves the function a target package's own override
@@ -439,7 +446,7 @@ func (c *checker) checkFuncOverrides(pending []pendingFuncOverride) {
 		}
 		ov.Block = nil
 		c.checkFuncBody(ov)
-		checked := ir.Override{Stmts: ov.Block}
+		checked := ir.Override{Stmts: ov.Block, Pkg: po.pkg}
 		if po.fn.RecvParam == nil {
 			checked.RecvParam = ov.RecvParam
 		}
