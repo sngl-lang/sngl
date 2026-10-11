@@ -5130,10 +5130,10 @@ func (c *checker) refuseDefaultReadingParams(fn *ir.Func, p *ir.Param, pos ast.P
 
 // reportHandleCallDefaults reports a call of a component's method through a
 // handle that leaves out an argument whose default reads the component: its
-// state, its props or its methods. A default is written where the call is,
-// and a call outside the component reaches none of those.
+// state, its props, its methods or the nodes it names. A default is written
+// where the call is, and a call outside the component reaches none of those.
 func (c *checker) reportHandleCallDefaults() {
-	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+	visit := func(n ir.Node) error {
 		call, ok := n.(*ir.Call)
 		if !ok || call.Func == nil || !call.Func.OnComponent() || len(call.Func.Params) == 0 || !call.Func.Params[0].Receiver {
 			return nil
@@ -5158,19 +5158,66 @@ func (c *checker) reportHandleCallDefaults() {
 			}
 		}
 		return nil
-	})
+	}
+	_ = ir.Walk(c.pkg, visit)
+	for _, body := range c.overrideBodies() {
+		_ = ir.Walk(body, visit)
+	}
 }
 
-// readsComponent names what of comp e reads -- one of its vars, props or
-// methods -- or is empty.
+// overrideBodies is every override body the program wrote, which no walk of
+// the package reaches: those of its own declarations, and those it holds in
+// its overlay.
+func (c *checker) overrideBodies() []any {
+	var out []any
+	add := func(ovs *ir.Overrides, mine func(ir.Override) bool) {
+		for _, kind := range []ir.BuiltinKind{ir.BuiltinFamilyPlatform, ir.BuiltinFamilyLanguage} {
+			for _, ov := range *ovs.Of(kind) {
+				if !mine(ov) {
+					continue
+				}
+				out = append(out, ov.Stmts)
+				for _, fn := range ov.Funcs {
+					out = append(out, fn)
+				}
+				for _, v := range ov.Vars {
+					if v.Init != nil {
+						out = append(out, v.Init)
+					}
+				}
+			}
+		}
+	}
+	all := func(ir.Override) bool { return true }
+	for _, comp := range c.pkg.Components {
+		add(ir.OverridesOf(comp), all)
+	}
+	for _, fn := range c.pkg.Funcs {
+		add(ir.OverridesOf(fn), all)
+	}
+	for _, ovs := range c.pkg.Overlay.Overrides {
+		add(ovs, func(ov ir.Override) bool { return ov.Pkg == c.declPkg() })
+	}
+	return out
+}
+
+// readsComponent names what of comp e reads -- one of its vars, props,
+// methods or node handles -- or is empty.
 func readsComponent(e ir.Expr, comp *ir.Component) string {
+	handles := map[*ir.Var]bool{}
+	_ = ir.Walk(comp.Stmts, func(n ir.Node) error {
+		if ni, ok := n.(*ir.NodeInst); ok && ni.Handle != nil {
+			handles[ni.Handle] = true
+		}
+		return nil
+	})
 	var what string
 	_ = ir.Walk(e, func(n ir.Node) error {
 		switch x := n.(type) {
 		case *ir.Ident:
 			switch s := x.Sym.(type) {
 			case *ir.Var:
-				if slices.Contains(comp.Vars, s) {
+				if slices.Contains(comp.Vars, s) || handles[s] {
 					what = fmt.Sprintf("%q", x.Name)
 				}
 			case *ir.Param:
@@ -5191,18 +5238,13 @@ func readsComponent(e ir.Expr, comp *ir.Component) string {
 	return what
 }
 
-// isOwnReceiver reports whether e is comp's own `this`, read in a body of
-// comp's, where every name a default reads is in scope.
+// isOwnReceiver reports whether e is the `this` of a method of comp, in
+// whose body every name a default reads is in scope.
 func isOwnReceiver(e ir.Expr, comp *ir.Component) bool {
 	id, ok := e.(*ir.Ident)
 	if !ok {
 		return false
 	}
-	switch s := id.Sym.(type) {
-	case *ir.Component:
-		return s == comp
-	case *ir.Param:
-		return s.Receiver && s.Type != nil && s.Type.Decl == ir.Symbol(comp)
-	}
-	return false
+	p, ok := id.Sym.(*ir.Param)
+	return ok && p.Receiver && p.Type != nil && p.Type.Decl == ir.Symbol(comp)
 }
