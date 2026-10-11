@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/imports"
@@ -67,11 +68,17 @@ type Config struct {
 	// which register a plugin with no lib/ directory behind it; production
 	// callers leave it nil.
 	LibSources map[string][]*ast.Document
+	// PrivateLibrary checks against a library of the check's own rather than
+	// the one every check in the process shares: for a caller that will write
+	// what it checked, as a test comparing stripped IR does.
+	PrivateLibrary bool
 	// libs is the library-package cache this check shares with the nested
 	// checks its imports start. Unexported: it is the compiler's own
 	// bookkeeping, and a cache built against other platforms would hand this
 	// check their declarations.
 	libs *libCache
+	// hold is the check chain's hold on libs, handed to a nested check.
+	hold *libHold
 	// visited is the stack of directory packages currently being checked,
 	// shared with the nested checks so that a package importing itself back is
 	// reported. Two files of one package importing the same sibling is not a
@@ -171,9 +178,14 @@ type libCache struct {
 	// checker reads it here rather than from ir.Published, which holds
 	// whatever load registered last.
 	builtins *ir.Builtins
-	// checking counts the checks running on the cache, a nested one
-	// included; the outermost one's end freezes it (enter).
-	checking int
+	// mu is held for reading by every check on the cache and for writing by
+	// a load (libHold).
+	mu sync.RWMutex
+	// loaded says a load has added to the cache since it was last frozen.
+	loaded bool
+	// diags is what each load reported, by package, for the checks that
+	// find it loaded (replayLoad).
+	diags map[string][]ir.Diagnostic
 	// decls is what the library's loads recorded about its declarations.
 	decls declTables
 	// targets is every override a library package in the cache declares of a
@@ -191,11 +203,14 @@ func (cfg *Config) libCache() *libCache {
 	if cfg != nil && cfg.libs != nil {
 		return cfg.libs
 	}
+	if shared := sharedLibCache(cfg); shared != nil {
+		return shared
+	}
 	return newLibCache()
 }
 
 func newLibCache() *libCache {
-	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}, builtins: ir.NewBuiltins()}
+	return &libCache{pkgs: map[string]*ir.Package{}, loading: map[string]bool{}, extended: map[string]bool{}, rendersByName: map[string]map[*ir.Component]bool{}, roles: map[ir.BuiltinKind]ir.Symbol{}, macroSigs: map[*ir.Func]bool{}, schemes: map[string]*ir.Scheme{}, builtins: ir.NewBuiltins(), diags: map[string][]ir.Diagnostic{}}
 }
 
 type ImportResolver interface {
@@ -262,10 +277,7 @@ func splitByFile(doc *ast.Document) []*ast.Document {
 // where it is written and nowhere else.
 func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(docs, cfg)
-	// Whichever cache the check made or was handed: a nested check -- a
-	// directory import, a scheme's package -- enters the same one, and only
-	// the outermost exit may freeze it.
-	defer c.libs.enter()()
+	defer c.endHold()
 	c.pass1()
 	// A program's own overrides resolve after pass1: an override may be
 	// written above the declaration it overrides, and may name a component
@@ -506,7 +518,10 @@ type checker struct {
 	stdlibPkg *ir.Package
 	// libs memoizes loaded sngl:<name> packages and guards against a cycle
 	// among them. Shared with the checks this one's imports start.
-	libs     *libCache
+	libs *libCache
+	hold *libHold
+	// endHold ends the check's hold on libs, taken as it is built.
+	endHold  func()
 	libDepth int
 	// markAliases and markDotPkgs resolve the package a #[...] mark names,
 	// for the documents whose declarations are being registered. A lib load
@@ -521,6 +536,9 @@ type checker struct {
 	// is recording, which owns them: they are reserved before its load is
 	// entered, while declPkg is still the program.
 	overrideOwner *ir.Package
+	// adoptedContexts is the library packages whose contexts this check has
+	// put on its own list (adoptLibContexts).
+	adoptedContexts map[*ir.Package]bool
 	// libImportScope is where an import registered while a library package
 	// loads binds its namespace, and where a dot import lifts into. It sits
 	// above the package's own root, so what the package imports is reachable
@@ -715,19 +733,20 @@ type pendingConstInit struct {
 func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
 	c := &checker{
-		doc:     firstDoc(docs),
-		docs:    docs,
-		cfg:     cfg,
-		pkg:     &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
-		symtab:  symtab,
-		scope:   symtab.Root,
-		visited: cfg.visitedStack(),
-		dirPkgs: cfg.dirPkgCache(),
-		libs:    cfg.libCache(),
-
+		doc:           firstDoc(docs),
+		docs:          docs,
+		cfg:           cfg,
+		pkg:           &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
+		symtab:        symtab,
+		scope:         symtab.Root,
+		visited:       cfg.visitedStack(),
+		dirPkgs:       cfg.dirPkgCache(),
+		libs:          cfg.libCache(),
 		generating:    cfg.generatingStack(),
 		schemeClashes: map[*ir.Scheme]bool{},
 	}
+	c.hold = cfg.libHold(c.libs)
+	c.endHold = c.hold.check()
 	// Allocated before the library loads, because those now run the same
 	// pass1 a program's package does, and pass1 enters a file per document.
 	c.fileScopes = make(map[*ast.Document]*ir.Scope, len(docs))
@@ -1707,6 +1726,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 					Targets:    c.targets,
 					LibSources: c.cfg.LibSources,
 					libs:       c.libs,
+					hold:       c.hold,
 					generating: c.generating,
 				})
 				c.diags = append(c.diags, diags...)
@@ -1805,6 +1825,7 @@ func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, 
 		Targets:    c.targets,
 		LibSources: c.cfg.LibSources,
 		libs:       c.libs,
+		hold:       c.hold,
 		generating: c.generating,
 	}
 	if generated {
@@ -4180,8 +4201,15 @@ func propParam(p *ir.Prop) *ir.Param {
 	if p.Sym == nil {
 		p.Sym = &ir.Param{Name: p.Name}
 	}
-	p.Sym.Type = p.Type
-	p.Sym.Const = p.Const
+	// Only what changed: an override is checked on a copy of a library
+	// declaration whose props are the library's, which other checks and
+	// builds are reading.
+	if p.Sym.Type != p.Type {
+		p.Sym.Type = p.Type
+	}
+	if p.Sym.Const != p.Const {
+		p.Sym.Const = p.Const
+	}
 	return p.Sym
 }
 

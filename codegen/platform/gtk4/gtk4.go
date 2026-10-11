@@ -135,6 +135,14 @@ func (g *Generator) Unavailable() error {
 	return g.fsErr
 }
 
+// LibraryState is the GIR setting, which decides the widgets
+// sngl:platform/gtk4 declares.
+func (g *Generator) LibraryState() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.girOpt
+}
+
 // gir lazy-loads the widget registry, caching both the registry and the
 // failure. Configure resets the cache when --opt gir= changes.
 func (g *Generator) gir() (*gir.TypeRegistry, error) {

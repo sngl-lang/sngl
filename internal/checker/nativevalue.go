@@ -40,9 +40,10 @@ func CheckNativeValue(e ast.Expr, want *ir.Type, types ir.NativeDecls) (ir.Expr,
 	// One checker for the process. Building it re-registers the whole embedded
 	// stdlib (~0.6ms), which would otherwise be paid per value rather than
 	// per program, and nothing in an encoded value can leave state behind that
-	// the next one would see.
+	// the next one would see. Its library is its own, since it holds it for
+	// the life of the process.
 	if nativeValueChecker == nil {
-		nativeValueChecker = newChecker(nil, &Config{})
+		nativeValueChecker = newChecker(nil, &Config{PrivateLibrary: true})
 		nativeValueChecker.nativeValues = true
 	}
 	c := nativeValueChecker

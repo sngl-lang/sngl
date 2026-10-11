@@ -766,16 +766,38 @@ structs, inherited family props), and a check reads its own library's.
 `ir.Published` is the process-wide copy every load also writes, for the phases
 that hold no checker. A target package's own overrides are checked as part of
 loading it (`mergeTargetExtensions`), so what one declares is the target
-package's. A library cache is frozen when the outermost check on it returns --
-not a nested one, a directory import's or a scheme's, which enters the same
-cache --:
+package's. What a load made is frozen as the load lets go of the cache, a
+target package once its overrides are merged:
 `ir.Freeze` sets `Frozen` on its packages, their root scopes and their
 declarations, and the known writers -- a package root's bindings,
 `AttachMethod`, `specializeComp`, an overlay install, a `Builtins`
 registration -- panic on one (`ir.MustWriteDecl`). They ask the declaration
 rather than its package, since a build's copy of a library declaration names
-the package it came from; the cloner leaves the flag behind, and a frozen
-library is collected with its last reader.
+the package it came from; the cloner leaves the flag behind.
+
+**The library is checked once per process** (`libhold.go`). A check finds
+the cache for its targets in `processLibs`, keyed by each registered target,
+whether it is available, and its `LibraryState` -- gtk4's GIR setting, which
+decides the widgets it declares. A check substituting library source
+(`LibSources`) or asking for a library of its own (`PrivateLibrary`, which a
+test that strips what it checked takes) gets a fresh one, and
+`EjectLibraries` drops the lot. A check holds its cache for reading from the
+moment its checker is built, a nested check sharing the hold (`libHold`), so
+the cache's tables need no lock of their own; a load trades that for the
+write lock, looks again for what it was about to load, and resolves every
+macro's signature before it lets go, since a mark's first use was a library
+write. What a load reported is replayed to each later check that reaches the
+package (`replayLoad`), and a context a library declares is on that package
+and adopted by the program (`adoptLibContexts`), as each check that loaded
+its own library used to report and append them.
+`TestConcurrentChecksAndBuildsShareTheLibrary` runs checks and builds at once
+from a cold cache under `-race`; the writes it found were a program's check
+storing a library macro's signature and an override's check re-storing a
+library prop's type. A library loaded part-way through a program's pass2 --
+an output block naming a target the build is not for -- is loaded with no
+file of the program's current, or a file switch inside the load set the
+package's import scope to the program's file
+(`TestTargetLoadedByAnOutputBlockKeepsItsImports`).
 
 **An override belongs to the package that declares it.** A target package's
 override of `sngl:ui`'s `text` goes in that package's `Overlay`, as a

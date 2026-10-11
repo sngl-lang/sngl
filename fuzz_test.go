@@ -41,7 +41,7 @@ func FuzzDocument(f *testing.F) {
 		if !ok {
 			t.Skip("parse failed")
 		}
-		pkg1, diags := checker.Check(doc1, &checker.Config{IsMain: true})
+		pkg1, diags := checker.Check(doc1, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(diags) {
 			t.Skip("check failed")
 		}
@@ -60,7 +60,7 @@ func FuzzDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("formatter output failed to parse: %v\n--- formatted ---\n%s", err, formatted)
 		}
-		fmtPkg, fmtDiags := checker.Check(fmtDoc, &checker.Config{IsMain: true})
+		fmtPkg, fmtDiags := checker.Check(fmtDoc, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(fmtDiags) {
 			t.Fatalf("formatter output failed to type-check:\n--- formatted ---\n%s\n--- diags ---\n%s",
 				formatted, joinDiags(fmtDiags))
@@ -77,7 +77,7 @@ func FuzzDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}
-		convPkg, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true})
+		convPkg, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true, PrivateLibrary: true})
 		if hasError(convDiags) {
 			t.Fatalf("ir.Convert output failed to type-check:\n--- generated ---\n%s\n--- diags ---\n%s",
 				convSrc, joinDiags(convDiags))

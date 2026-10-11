@@ -213,6 +213,11 @@ func (c *checker) resolveMacroSig(pkg *ir.Package, fn *ir.Func) {
 	if c.libs.macroSigs[fn] || fn.AST == nil || len(fn.Params) != len(fn.AST.Params.Params) {
 		return
 	}
+	// It writes a library declaration, which every check on the cache reads.
+	defer c.loadHold()()
+	if c.libs.macroSigs[fn] {
+		return
+	}
 	c.libs.macroSigs[fn] = true
 	// The package's own root, whose parent is the scope its imports bound
 	// their namespaces in — the scope the declaration was written in.
@@ -322,9 +327,17 @@ func targetUnavailable(t any) error {
 // and the import has to resolve to the same instance the user sees.
 func (c *checker) libPkg(name string) *ir.Package {
 	if pkg, ok := c.libs.pkgs[name]; ok {
+		c.replayLoad("pkg:" + name)
 		c.adoptLib(name, pkg)
 		return pkg
 	}
+	defer c.loadHold()()
+	if pkg, ok := c.libs.pkgs[name]; ok {
+		c.replayLoad("pkg:" + name)
+		c.adoptLib(name, pkg)
+		return pkg
+	}
+	start := len(c.diags)
 	if c.libs.loading[name] {
 		// An import cycle inside lib/ is a compiler bug, not user input.
 		panic("sngl: import cycle in embedded library at sngl:" + name)
@@ -354,6 +367,11 @@ func (c *checker) libPkg(name string) *ir.Package {
 	savedConstInits := c.pendingConstInits
 	c.pendingConstInits = nil
 	defer func() { c.pendingConstInits = savedConstInits }()
+	// What this package declares of another's is its own, not the overrides
+	// of a target being merged around its load.
+	savedOwner := c.overrideOwner
+	c.overrideOwner = nil
+	defer func() { c.overrideOwner = savedOwner }()
 	// pass1 builds the replace map from the documents it is given, so the
 	// enclosing package's is put back: a library package loads part-way
 	// through it, and its own `=>` redirects are not the program's.
@@ -367,6 +385,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	c.libs.pkgs[name] = pkg
 	c.libs.publish(pkg)
 	c.adoptLib(name, pkg)
+	c.recordLoad("pkg:"+name, start)
 	return pkg
 }
 
@@ -376,6 +395,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 // an outer one, which is the point — the declaration a platform extension is
 // attached to has to be the declaration user code resolves.
 func (c *checker) adoptLib(name string, pkg *ir.Package) {
+	c.adoptLibContexts(pkg)
 	if name == irPkg && c.macroStruct == nil {
 		if sym, ok := pkg.Symbols.Root.LookupLocal(macroTypeName); ok {
 			if sd, isStruct := sym.(*ir.StructDef); isStruct {
@@ -449,9 +469,16 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		c.bindLib(ast.Pos{}, c.libImportScope, &ir.Namespace{Name: nsName, Pkg: stdlibPkg})
 	}
 	stdlibPkg.Symbols.Root.Parent = c.libImportScope
+	// No file of the program's is current while the package loads: one that
+	// stayed current through a load in pass2 was what a file switch inside
+	// the load put back, as the parent of the package's root, which lost the
+	// package every import it had bound.
+	savedFile := c.saveFile()
+	c.curFileScope = nil
 	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root
 	defer func() {
 		c.symtab, c.scope, c.libImportScope = savedSymtab, savedScope, savedImportScope
+		savedFile()
 	}()
 	savedLoadPkg := c.libLoadPkg
 	c.libLoadPkg = stdlibPkg
@@ -511,7 +538,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// at which point a default like `i18n.defaultLocale()` still types as dyn.
 	// Once the bodies are checked the wrapper has its concrete return type,
 	// so re-pull ctx.Typ from the default expression's Call.Func.Return.
-	for _, ctx := range c.pkg.Contexts {
+	for _, ctx := range stdlibPkg.Contexts {
 		if ctx.Typ != nil && ctx.Typ.Kind != ir.TypeDyn {
 			continue
 		}
@@ -855,9 +882,16 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	// no package to load, and loading one anyway caches it empty for every
 	// check that finds the library loaded.
 	if c.libs.extended[pkgName] || !c.hasLibPkg(pkgName) {
+		c.replayLoad("merge:" + pkgName)
+		return
+	}
+	defer c.loadHold()()
+	if c.libs.extended[pkgName] {
+		c.replayLoad("merge:" + pkgName)
 		return
 	}
 	c.libs.extended[pkgName] = true
+	defer c.recordLoad("merge:"+pkgName, len(c.diags))
 	name, tier, ok := targetTierName(pkgName)
 	if !ok {
 		return
@@ -1596,12 +1630,13 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 		Targets:    ownTarget(name),
 	}
 	c := newChecker(nil, cfg)
-	end := c.libs.enter()
+	endLoad := c.loadHold()
 	pkg := c.libPkg(name)
 	if pkg != nil {
 		pkg.Targets = c.libs.targets
 	}
-	end()
+	endLoad()
+	c.endHold()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }
@@ -1690,20 +1725,6 @@ func (l *libCache) packages() []*ir.Package {
 		}
 	}
 	return pkgs
-}
-
-// enter counts a check running on the cache, and returns its end. The cache
-// is frozen when the outermost check on it ends: every check and build after
-// reads what it holds, a build through a copy, and none may write it.
-func (l *libCache) enter() func() {
-	l.checking++
-	return func() {
-		if l.checking--; l.checking == 0 {
-			for _, p := range l.packages() {
-				ir.Freeze(p)
-			}
-		}
-	}
 }
 
 // publish adds the overrides pkg declares of other packages' declarations to

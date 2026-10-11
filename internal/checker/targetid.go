@@ -686,7 +686,7 @@ func (c *checker) overrideWriter(user bool) *ir.Package {
 	switch {
 	case user:
 		return c.declPkg()
-	case c.overrideOwner != nil && (c.libLoadPkg == nil || c.libLoadPkg == c.overrideOwner):
+	case c.overrideOwner != nil:
 		return c.overrideOwner
 	}
 	return c.libLoadPkg

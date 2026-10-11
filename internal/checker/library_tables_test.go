@@ -85,6 +85,34 @@ func TestFrozenLibraryTakesANewTarget(t *testing.T) {
 	}
 }
 
+// A target package an output block names is loaded while that block is
+// checked, in pass2, though the build is for another target. The package is
+// the one a later check building for it merges, so it is held to every import
+// it bound: loaded with the program's file current, html lost all but the one
+// alias the program's file shared with it, and its overrides no longer
+// resolved `markup.monospace`.
+func TestTargetLoadedByAnOutputBlockKeepsItsImports(t *testing.T) {
+	shared := checker.NewSharedLibrary()
+	langs, plats := testtargets.Targets()
+	for _, run := range []struct {
+		src    string
+		target ir.StaticTarget
+	}{
+		{"import ui \"sngl:ui\"\n\noutput {\n    go { bubbletea }\n    none { html }\n}\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n", ir.StaticTarget{Platform: "bubbletea", Language: "go"}},
+		{"import ui \"sngl:ui\"\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n", ir.StaticTarget{Platform: "html", Language: "none"}},
+	} {
+		doc, err := parser.Parse("main.sngl", []byte(run.src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats, Targets: []ir.StaticTarget{run.target}}
+		shared.Use(cfg)
+		if _, diags := checker.Check(doc, cfg); len(diags) > 0 {
+			t.Fatalf("%s: %s", run.target.Platform, diags[0].Error())
+		}
+	}
+}
+
 func uiComponent(t *testing.T, pkg *ir.Package, name string) *ir.Component {
 	t.Helper()
 	sym, ok := pkg.Symbols.Root.Lookup("ui")
