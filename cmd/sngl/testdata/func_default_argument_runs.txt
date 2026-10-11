@@ -26,12 +26,12 @@ component counter ui.node {
     var step = 2
     var total = 0
 
-    func add(a int, by int = step * 3) {
+    func add(a int = 1, by int = step * 3) {
         total += a + by
     }
 
     ui.button #b(text="{total}", @click {
-        add(1)
+        add()
     })
 }
 
