@@ -34,6 +34,7 @@ func CompilePreviewHTML(sourceFile, platform, lang string) ([]byte, error) {
 // a caller that already has one -- a package read from several files has no
 // single source file to re-read.
 func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, error) {
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,

@@ -80,16 +80,10 @@ type Result struct {
 	Warnings []ir.Diagnostic
 }
 
-// Emit builds pkg for every resolved target.
-//
-// optimize and lower work in place, so every target but the last starts from
-// a clone of the pristine checked IR, and the last -- the only one, in a
-// single-target build -- works on pkg itself and leaves it optimized and
-// lowered. A clone copies the whole reachable graph, library IR included, so
-// the one nothing reads afterwards is not made. A caller that needs the
-// checked IR afterwards has to clone before calling.
+// Emit builds pkg for every resolved target, each from a copy of its own:
+// optimize and lower work in place, and the checked package and the library
+// it reaches are read by every build after this one.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
-	ir.InstallOverlay(pkg)
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
 	// perfectly good thing to type-check, and it is only as something to
@@ -117,8 +111,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	evalCache := optimize.NewEvalCache()
 
 	results := make([]Result, 0, len(targets))
-	for i, target := range targets {
-		res, err := emitTarget(pkg, target, i < len(targets)-1, evalCache, o)
+	for _, target := range targets {
+		res, err := emitTarget(pkg, target, evalCache, o)
 		if err != nil {
 			return nil, err
 		}
@@ -127,11 +121,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	return results, nil
 }
 
-func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.EvalCache, o Options) (Result, error) {
-	tpkg := pkg
-	if clone {
-		tpkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
-	}
+func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o Options) (Result, error) {
+	tpkg := ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 
 	if target.Options == nil {
 		target.Options = &ir.StructLit{}

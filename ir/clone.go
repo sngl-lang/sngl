@@ -8,7 +8,6 @@ import "reflect"
 var irPkgPath = reflect.TypeFor[Package]().PkgPath()
 
 var declInfoType = reflect.TypeFor[DeclInfo]()
-var packageType = reflect.TypeFor[Package]()
 
 // ClonePackage returns a deep, independent copy of pkg. Every internal
 // cross-reference — Ident.Sym, Call.Func, StructLit.Def, Type.Decl, the
@@ -33,8 +32,9 @@ func ClonePackage(pkg *Package) *Package {
 	if pkg == nil {
 		return nil
 	}
-	InstallOverlay(pkg)
-	return newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	out := newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	InstallOverlay(out)
+	return out
 }
 
 // ClonePackageFor is ClonePackage for a clone that one target will build: of
@@ -49,10 +49,11 @@ func ClonePackageFor(pkg *Package, platform, language string) *Package {
 	if pkg == nil {
 		return nil
 	}
-	InstallOverlay(pkg)
 	c := newCloner()
 	c.only = &target{platform, language}
-	return c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	out := c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+	InstallOverlay(out)
+	return out
 }
 
 // CloneExpr returns a deep, independent copy of one expression, on the same
@@ -236,12 +237,6 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 			}
 			continue
 		}
-		// ClonePackageFor installed the overlay first, so the declarations it
-		// copies carry this target's overrides already, and the clone's
-		// overlay would put every other target's back.
-		if c.only != nil && v.Type() == packageType && v.Type().Field(i).Name == "Overlay" {
-			continue
-		}
 		if c.only != nil && carriesOverrides(v.Type()) {
 			if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
 				out.Field(i).Set(c.cloneOverride(v.Field(i), key))
@@ -256,35 +251,38 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 // carriesOverrides reports whether t is a declaration with per-target
 // override maps.
 func carriesOverrides(t reflect.Type) bool {
-	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]()
+	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]() || t == reflect.TypeFor[Overrides]()
 }
 
 // overrideKey is the entry of the named override map this clone's target
 // picks, and whether the field is an override map at all.
 func (c *cloner) overrideKey(field string) (string, bool) {
 	switch field {
-	case "PlatformOverrides":
+	case "PlatformOverrides", "Platform":
 		return c.only.platform, true
-	case "LanguageOverrides":
+	case "LanguageOverrides", "Language":
 		return c.only.language, true
 	}
 	return "", false
 }
 
-// cloneOverride copies the one entry of an override map that key names, or
-// none: an empty key is an axis the target does not name, which pick never
-// reads.
+// cloneOverride copies the entry of an override map that key names, and every
+// other entry empty: pick reads only its own target's, and a build still asks
+// whether a declaration is overridden for some target -- a generated family is
+// refused on a target its emitter says nothing about.
 func (c *cloner) cloneOverride(m reflect.Value, key string) reflect.Value {
-	if m.IsNil() || key == "" {
-		return reflect.Zero(m.Type())
+	if m.IsNil() {
+		return m
 	}
-	k := reflect.ValueOf(key)
-	body := m.MapIndex(k)
-	if !body.IsValid() {
-		return reflect.Zero(m.Type())
+	out := reflect.MakeMapWithSize(m.Type(), m.Len())
+	iter := m.MapRange()
+	for iter.Next() {
+		if key != "" && iter.Key().String() == key {
+			out.SetMapIndex(iter.Key(), c.clone(iter.Value()))
+		} else {
+			out.SetMapIndex(iter.Key(), reflect.Zero(m.Type().Elem()))
+		}
 	}
-	out := reflect.MakeMapWithSize(m.Type(), 1)
-	out.SetMapIndex(k, c.clone(body))
 	return out
 }
 

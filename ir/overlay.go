@@ -59,8 +59,8 @@ func (o *Overlay) For(sym Symbol) *Overrides {
 // every phase after the check finds a program's override where it finds a
 // target package's. Installing twice installs once.
 //
-// It writes the library: until each build starts from a copy of what it
-// reaches, the copy it installs on is the checked library itself.
+// It writes the library declarations pkg reaches, so pkg is a build's copy
+// (ClonePackage), never the checked package every later build reads.
 func InstallOverlay(pkg *Package) {
 	if pkg == nil {
 		return
