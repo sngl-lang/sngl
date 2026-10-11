@@ -41,6 +41,8 @@ var orderConstraints = []orderConstraint{
 		"a default names what the callee's declaration names; once a body holding the call is spliced and renamed per copy, the default names a var the copy no longer has"},
 	{"CallDefaults", "NoInlineComponents",
 		"the same renaming, for a component method's default reading the component's state"},
+	{"CallDefaults", "HandleParams",
+		"a call handing a handle to a function is inlined only when its arguments cover every parameter, which an omitted default leaves them short of"},
 	{"CallDefaults", "Context",
 		"Context appends each threaded value as an argument, which the defaults would then be filled in front of"},
 	{"CallDefaults", "NoImplicitRecv",

@@ -2864,6 +2864,11 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	}
 	c.refuseParamMarks(x.Params.Params)
 	c.refuseConstParams(x.Params.Params, "a lambda's")
+	for _, p := range x.Params.Params {
+		if p.Default != nil {
+			c.error(*p.Default.ExprPos(), "a lambda's parameter %q takes no default: a call through a function value passes every argument", p.Name)
+		}
+	}
 	params := c.buildLambdaParams(x.Params, expectedSig)
 	var ret *ir.Type
 	if x.ReturnType != nil {

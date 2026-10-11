@@ -290,6 +290,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.reportBodylessLibComponents()
 	c.reportTargetNames()
 	c.reportEmitterPlacement()
+	c.reportHandleCallDefaults()
 	c.reportUnresolvedSchemes()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
@@ -5120,9 +5121,69 @@ func (c *checker) refuseDefaultReadingParams(fn *ir.Func, p *ir.Param, pos ast.P
 			if id.AST != nil {
 				at = id.AST.Pos
 			}
-			c.error(at, "the default of %q reads parameter %q: a default is evaluated where the call is written, where no parameter is in scope", p.Name, q.Name)
+			c.error(at, "the default of %q reads parameter %q: a default is evaluated at the call, where no parameter is in scope", p.Name, q.Name)
 			return ir.SkipDir
 		}
 		return nil
 	})
+}
+
+// reportHandleCallDefaults reports a call of a component's method through a
+// handle that leaves out an argument whose default reads the component: its
+// state, its props or its methods. A default is written where the call is,
+// and a call outside the component reaches none of those.
+func (c *checker) reportHandleCallDefaults() {
+	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.Func == nil || !call.Func.OnComponent() || len(call.Func.Params) == 0 || !call.Func.Params[0].Receiver {
+			return nil
+		}
+		if len(call.Args) == 0 || call.Args[0].Name != "" {
+			return nil
+		}
+		comp := call.Func.RecvDecl().(*ir.Component)
+		given := map[string]bool{}
+		for _, a := range call.Args[1:] {
+			given[a.Name] = true
+		}
+		for _, p := range call.Func.Params[1:] {
+			if given[p.Name] || p.Default == nil {
+				continue
+			}
+			if what := readsComponent(p.Default, comp); what != "" && call.AST != nil {
+				c.error(call.AST.Pos, "the default of %q reads %s of %s, which a call through a handle cannot reach: pass %s", p.Name, what, comp.Name, p.Name)
+			}
+		}
+		return nil
+	})
+}
+
+// readsComponent names what of comp e reads -- one of its vars, props or
+// methods -- or is empty.
+func readsComponent(e ir.Expr, comp *ir.Component) string {
+	var what string
+	_ = ir.Walk(e, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Ident:
+			switch s := x.Sym.(type) {
+			case *ir.Var:
+				if slices.Contains(comp.Vars, s) {
+					what = fmt.Sprintf("%q", x.Name)
+				}
+			case *ir.Param:
+				if slices.ContainsFunc(comp.Props, func(p *ir.Prop) bool { return p.Sym == s }) {
+					what = fmt.Sprintf("%q", x.Name)
+				}
+			}
+		case *ir.Call:
+			if x.Func != nil && x.Func.RecvDecl() == ir.Symbol(comp) {
+				what = fmt.Sprintf("%q", x.Func.Name)
+			}
+		}
+		if what != "" {
+			return ir.SkipDir
+		}
+		return nil
+	})
+	return what
 }
