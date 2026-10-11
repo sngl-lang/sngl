@@ -64,6 +64,8 @@ var alwaysOn = []string{
 	// Once every raise is resolved a boundary holds nothing, on any target.
 	"BoundaryPassthrough",
 	"CSE",
+	// Every emitted function takes every parameter it declares.
+	"CallDefaults",
 	// A call through a name the inliner bound to a declared function.
 	"DirectCalls",
 	// A raise is a raise on every target, and the catch it unwinds to is a block

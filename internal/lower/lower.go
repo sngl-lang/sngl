@@ -79,6 +79,8 @@ var passes = []pass{
 	passFlattenStructSpread,
 	passReceiverParam,
 	passNoImplicitRecv,
+	// After the receiver is a parameter and every call carries it.
+	passCallDefaults,
 	passShapeDraw,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
