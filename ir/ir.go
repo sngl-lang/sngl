@@ -794,6 +794,10 @@ func (f *Func) OnComponent() bool {
 	return ok
 }
 
+// OnType reports whether f is a method of a type: a struct, an enum, a unit
+// or a built-in such as list, called on a value it is handed first.
+func (f *Func) OnType() bool { return f.IsMethod() && !f.OnComponent() }
+
 // receiverName names a receiver type by its declaration, or by its kind for a
 // built-in constructor whose declaration was not to hand.
 func receiverName(t *Type) string {

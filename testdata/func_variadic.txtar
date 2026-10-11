@@ -677,7 +677,7 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("true", true)
         org.junit.Assert.assertTrue("true", true)
         var p = Point(first = 7)
-        org.junit.Assert.assertTrue("(sum(p.first, listOf()) == 7)", (sum(p.first, listOf()) == 7))
+        org.junit.Assert.assertTrue("(sum(p.first, listOf<Int>()) == 7)", (sum(p.first, listOf<Int>()) == 7))
     }
 
 }
@@ -777,6 +777,6 @@ pass sha256:6267a0f25ea90d371046410c6febe4b4
 -- run/go/gtk4 --
 pass sha256:40d2312160f95546db84a12de459563d
 -- run/kotlin/android --
-pass sha256:7de653f10d41d4e7ef8c0f29e2cf12e9
+pass sha256:7e999e85c561eeda177cc4b88078e2cd
 -- run/none/html --
 pass sha256:fab28b758debbb2bced08fe8307e72e5

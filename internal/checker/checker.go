@@ -3911,14 +3911,14 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	defer func() { c.returnType = prevReturn }()
 
 	// A method on a generic receiver may carry no receiver parameter -- saying
-	// `this` instead -- so bind it for the expression bodies that delegate to
-	// an intrinsic, `func list<T>.push(item T) => stdlib.ListPush(this, item)`.
+	// `this` instead -- so bind it for a body that names it,
+	// `func list<T>.push(item T) => stdlib.ListPush(this, item)` or a block.
 	// A concrete receiver names itself a parameter and needs none, and so does
 	// a nested method, whose `this` is synthesized into its parameter list.
-	// Only an expression body: the bodyless generic stubs never say `this`, and
+	// Only a written body: the bodyless generic stubs never say `this`, and
 	// resolving the receiver here would trip the map-key comparability check
 	// on an abstract key type.
-	if fn.AST != nil && fn.AST.Body != nil && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
+	if fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined()) && fn.IsMethod() && len(fn.RecvTypeParams) > 0 &&
 		!slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Name == ir.ReceiverParam }) {
 		// Kept on the declaration as well as in the scope: the body names it,
 		// so whoever replaces the body's parameters has to know which symbol

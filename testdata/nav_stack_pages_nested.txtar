@@ -1460,7 +1460,7 @@ fun _page__valueOf(entry: NavBackStackEntry?): _page__value? {
             val c = (r.cols).elementAt(__copy1)
             _page__value(id = 0, href = (if ((c == "3")) "/" else ((("/" + r.name) + "/") + c)), title = (r.name + c), meta = __anon_e3b0c4(), copy = listOf(__copy, __copy1))
         }
-        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf())
+        destination.hasRoute<_page__valueRoute1>() -> _page__value(id = 1, href = "/about", title = "About", meta = __anon_e3b0c4(), copy = listOf<Int>())
         else -> null
     }
 }
@@ -1527,4 +1527,4 @@ pass sha256:40bfc012a6f372829050151f6aa7812d
 -- run/go/gtk4 --
 pass sha256:5539452db21961c44f0109adcfc0cbb2
 -- run/kotlin/android --
-pass sha256:8ce1a13014300d97ef0e16f90f59fd3b
+pass sha256:9762d8e882c91052474a1ab6743ca6b7
