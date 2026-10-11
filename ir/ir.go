@@ -786,6 +786,14 @@ func (f *Func) RecvDecl() Symbol {
 	return f.Receiver.Decl
 }
 
+// OnComponent reports whether f is a method of a component, whose receiver is
+// the instance's state, rather than of a type, whose receiver is a value the
+// caller passes.
+func (f *Func) OnComponent() bool {
+	_, ok := f.RecvDecl().(*Component)
+	return ok
+}
+
 // receiverName names a receiver type by its declaration, or by its kind for a
 // built-in constructor whose declaration was not to hand.
 func receiverName(t *Type) string {
