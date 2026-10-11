@@ -222,6 +222,7 @@ func Compile(source string) string {
 		return jsonStr(result)
 	}
 
+	pkg = ir.ClonePackageFor(pkg, "html", "none")
 	compileOptCfg := &optimize.Config{
 		Platform: "html", Language: "none",
 	}

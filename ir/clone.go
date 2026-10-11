@@ -220,6 +220,10 @@ func (c *cloner) cloneInto(dst, v reflect.Value) {
 
 func (c *cloner) cloneStruct(out, v reflect.Value) {
 	for i := 0; i < v.NumField(); i++ {
+		// A copy is a build's own, whatever the original says.
+		if v.Type().Field(i).Name == "Frozen" {
+			continue
+		}
 		// A lambda's Func is the expression's own body rather than a
 		// declaration it names, so it is copied even in share mode. One
 		// hop only: the declarations reached from inside that body are

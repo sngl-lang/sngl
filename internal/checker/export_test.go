@@ -13,9 +13,7 @@ import (
 type SharedLibrary struct{ libs *libCache }
 
 func NewSharedLibrary() *SharedLibrary {
-	libs := newLibCache()
-	libs.shared = true
-	return &SharedLibrary{libs: libs}
+	return &SharedLibrary{libs: newLibCache()}
 }
 
 // Use makes the check cfg configures load its library into s, and find there

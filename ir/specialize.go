@@ -199,7 +199,7 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 		return
 	}
 	if body, ok := pick(t, fn.PlatformOverrides, fn.LanguageOverrides); ok {
-		MustWrite(fn.Pkg, "specializing "+fn.Name)
+		fn.mustWrite("specializing " + fn.Name)
 		fn.SpecializedFor = t.key()
 		fn.Block = body.Stmts
 		if body.RecvParam != nil {
@@ -246,7 +246,7 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if covers(comp.SpecializedFor, t) {
 		return
 	}
-	MustWrite(comp.Pkg, "specializing "+comp.Name)
+	comp.mustWrite("specializing " + comp.Name)
 	if comp.SpecializedFor == "" && comp.DeclaredBody == nil {
 		comp.DeclaredBody = comp.Stmts
 	}

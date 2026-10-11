@@ -34,6 +34,7 @@ func generateGtk4(t *testing.T, src string) (map[string][]byte, error) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

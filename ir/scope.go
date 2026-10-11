@@ -51,6 +51,8 @@ type Scope struct {
 	// can tell a package boundary from the ambient scope every package's root
 	// eventually chains into. See SymbolTable.LookupMember.
 	IsPackageRoot bool
+	// Frozen marks a package root no check may bind in any more (Freeze).
+	Frozen bool `json:"-"`
 	// Wildcards are the symbols in this scope that answer to names nobody
 	// declared. A declared name always wins, and a wildcard is consulted only
 	// when there is no name to find — and only by a caller resolving a

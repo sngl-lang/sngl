@@ -171,10 +171,8 @@ type libCache struct {
 	// checker reads it here rather than from ir.Published, which holds
 	// whatever load registered last.
 	builtins *ir.Builtins
-	// shared says the cache outlives the check that made it, so a later
-	// check reads it (enter). checking counts the checks running on it, a
-	// nested one included.
-	shared   bool
+	// checking counts the checks running on the cache, a nested one
+	// included; the outermost one's end freezes it (enter).
 	checking int
 	// decls is what the library's loads recorded about its declarations.
 	decls declTables

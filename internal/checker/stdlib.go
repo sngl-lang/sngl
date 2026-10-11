@@ -1679,13 +1679,13 @@ func (l *libCache) packages() []*ir.Package {
 	return pkgs
 }
 
-// enter counts a check running on the cache, and returns its end. A shared
-// cache is frozen when the outermost check on it ends: every check after
-// reads what it holds, and none may write it.
+// enter counts a check running on the cache, and returns its end. The cache
+// is frozen when the outermost check on it ends: every check and build after
+// reads what it holds, a build through a copy, and none may write it.
 func (l *libCache) enter() func() {
 	l.checking++
 	return func() {
-		if l.checking--; l.checking == 0 && l.shared {
+		if l.checking--; l.checking == 0 {
 			for _, p := range l.packages() {
 				ir.Freeze(p)
 			}

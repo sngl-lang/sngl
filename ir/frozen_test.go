@@ -10,6 +10,7 @@ func frozenPackage() (*Package, *StructDef) {
 	sd := &StructDef{Name: "Thing", Pkg: p}
 	p.Structs = append(p.Structs, sd)
 	p.Symbols.Root.Symbols[sd.Name] = sd
+	p.Components = append(p.Components, &Component{Name: "c", Pkg: p, PlatformOverrides: map[string]Override{"x": {}}})
 	Freeze(p)
 	return p, sd
 }
@@ -38,8 +39,7 @@ func TestFrozenPackageRefusesWrites(t *testing.T) {
 		NewBuiltins().RegisterStruct(&StructDef{Name: "list", Pkg: p, Builtin: BuiltinList})
 	})
 	wantFrozenPanic(t, "a specialization", func() {
-		comp := &Component{Name: "c", Pkg: p, PlatformOverrides: map[string]Override{"x": {}}}
-		specializeComp(comp, target{platform: "x"}, false)
+		specializeComp(p.Components[0], target{platform: "x"}, false)
 	})
 
 	// Re-binding what is already bound writes nothing, and a scope inside
@@ -48,4 +48,21 @@ func TestFrozenPackageRefusesWrites(t *testing.T) {
 		t.Errorf("re-declaring a bound symbol: %v", err)
 	}
 	_ = NewScope(p.Symbols.Root).Declare(&Var{Name: "local"})
+}
+
+// A build's copy of a frozen package is the build's to write, though its
+// declarations name the package they were copied from.
+func TestCopyOfAFrozenPackageIsWritable(t *testing.T) {
+	p, _ := frozenPackage()
+	cp := ClonePackage(p)
+	if IsFrozen(cp) || cp.Symbols.Root.Frozen || cp.Components[0].Frozen {
+		t.Fatal("the copy is frozen")
+	}
+	specializeComp(cp.Components[0], target{platform: "x"}, false)
+	if cp.Components[0].SpecializedFor == "" {
+		t.Error("the copy was not specialized")
+	}
+	if p.Components[0].SpecializedFor != "" {
+		t.Error("specializing the copy wrote the original")
+	}
 }

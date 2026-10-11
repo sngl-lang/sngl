@@ -69,8 +69,10 @@ func InstallOverlay(pkg *Package) {
 		var plat, lang *map[string]Override
 		switch d := sym.(type) {
 		case *Component:
+			d.mustWrite("installing an override of " + d.Name)
 			plat, lang = &d.PlatformOverrides, &d.LanguageOverrides
 		case *Func:
+			d.mustWrite("installing an override of " + d.Name)
 			plat, lang = &d.PlatformOverrides, &d.LanguageOverrides
 		default:
 			continue

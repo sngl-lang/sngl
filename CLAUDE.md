@@ -766,17 +766,29 @@ structs, inherited family props), and a check reads its own library's.
 `ir.Published` is the process-wide copy every load also writes, for the phases
 that hold no checker. A target package's own overrides are checked as part of
 loading it (`mergeTargetExtensions`), so what one declares is the target
-package's. A cache shared between checks (`libCache.shared`, a test's
-`SharedLibrary` until a process holds one library) is frozen when the
-outermost check on it returns: `ir.Freeze` marks its packages, and the known
-writers -- a package root's bindings, `AttachMethod`, `specializeComp`, a
-`Builtins` registration -- panic on one (`ir.MustWrite`). Two writes are let
-through. A target package's override is recorded on the declaration it
+package's. A library cache is frozen when the outermost check on it returns:
+`ir.Freeze` sets `Frozen` on its packages, their root scopes and their
+declarations, and the known writers -- a package root's bindings,
+`AttachMethod`, `specializeComp`, an overlay install, a `Builtins`
+registration -- panic on one (`ir.MustWrite`). A flag on each object rather
+than a registry, so a build's copy is not frozen (the cloner leaves the flag
+behind) and a frozen library is collected with its last reader. One write is
+let through: a target package's override is recorded on the declaration it
 overrides until each override is owned by the package that declares it,
 since a later check may build for a target an earlier one never loaded
-(`TestFrozenLibraryTakesANewTarget`). And a build writes the checked library
-until it starts from a copy of it, which is why a cache only one check reads
-is never frozen.
+(`TestFrozenLibraryTakesANewTarget`).
+
+**Every phase after the check works on a copy** (`ir.ClonePackage`,
+`ClonePackageFor`), since the checked package and the library it reaches are
+what every later build reads: `build.Emit` copies for every target, the last
+included, `interp.Prepare` returns the copy a session or a test run uses, and
+the CLI's `dump` stages, the playground, the docs and snapshot previews, the
+LSP's color fold and the fixture fold each copy before the first phase that
+writes. A phase handed the checked package itself panics at the first library
+write. TestGolden fingerprints the checked package, and the library it
+reaches, around `Emit`. A target's copy keeps other targets' override entries
+emptied, since a build still asks whether a declaration is overridden for
+*some* target (`cmd/sngl/testdata/emit_family_refused.txt`).
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
@@ -4046,8 +4058,8 @@ import adopts what the imported package added (`adoptAdditions`), and every
 phase after the check finds the overrides where a target package's are because
 `ir.InstallOverlay` writes them there first: `ClonePackage(For)`, the two
 `Specialize` entries, `optimize.Optimize`, `lower.Lower`, `build.Emit` and
-`interp.BuildProgramEnv` each call it. Until a build starts from a copy of what
-it reaches, that install writes the checked library.
+`interp.BuildProgramEnv` each call it, on the build's copy (see *Every phase
+after the check works on a copy*).
 
 ### AST
 
@@ -4266,9 +4278,8 @@ targets in parallel) is not a saving.
   *wrote* names -- what a process it ran read, which no recorder sees -- with
   any digest or value left out filled in by `Store.Complete` as it is stored.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
-  package for every target but the last, and `ir.ClonePackage` copies by
-  reflection everything reachable — library IR included, since per-target
-  override bodies are written onto the shared library declarations.
+  package for every target, and `ir.ClonePackage` copies by reflection
+  everything reachable, library IR included.
 
 ### Trust
 

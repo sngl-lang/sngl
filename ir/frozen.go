@@ -1,33 +1,50 @@
 package ir
 
-import (
-	"fmt"
-	"sync"
-)
+import "fmt"
 
-// frozen holds the packages, and their root scopes, that a check sharing
-// them has finished with: every later check reads them and none may write
-// them. Keyed by identity, so a build's copy of one is not frozen.
-var frozen sync.Map
-
-// Freeze marks p, and the scope its declarations are bound in, as read-only.
+// Freeze marks p, the scope its declarations are bound in, and each of its
+// declarations as read-only: the check that loaded p has ended, and every
+// later check and build reads it. A flag on each object rather than a
+// registry, so a build's copy of one is not frozen (the cloner leaves the
+// flag behind) and a frozen library is collected with its last reader.
 func Freeze(p *Package) {
 	if p == nil {
 		return
 	}
-	frozen.Store(p, true)
+	p.Frozen = true
 	if p.Symbols != nil && p.Symbols.Root != nil {
-		frozen.Store(p.Symbols.Root, true)
+		p.Symbols.Root.Frozen = true
+	}
+	for _, c := range p.Components {
+		c.Frozen = true
+		for _, fn := range c.Funcs {
+			fn.Frozen = true
+		}
+	}
+	for _, fns := range [][]*Func{p.Funcs, p.Macros} {
+		for _, fn := range fns {
+			fn.Frozen = true
+		}
+	}
+	for _, s := range p.Structs {
+		s.Frozen = true
+	}
+	for _, e := range p.Enums {
+		e.Frozen = true
+	}
+	for _, u := range p.Units {
+		u.Frozen = true
+	}
+	for _, vs := range [][]*Var{p.Consts, p.Vars} {
+		for _, v := range vs {
+			v.Frozen = true
+		}
 	}
 }
 
 // IsFrozen reports whether p has been frozen.
 func IsFrozen(p *Package) bool {
-	if p == nil {
-		return false
-	}
-	_, ok := frozen.Load(p)
-	return ok
+	return p != nil && p.Frozen
 }
 
 // MustWrite panics when p is frozen. A field write cannot be intercepted, so
@@ -38,11 +55,16 @@ func MustWrite(p *Package, what string) {
 	}
 }
 
-func (s *Scope) mustWrite(name string) {
-	if !s.IsPackageRoot {
-		return
+// mustWrite is MustWrite for one declaration, which a build may hold a copy
+// of: the copy names the frozen package it came from and is not frozen.
+func (d *DeclInfo) mustWrite(what string) {
+	if d.Frozen {
+		panic(fmt.Sprintf("ir: %s writes %s, which is frozen", what, d.PkgPath()))
 	}
-	if _, ok := frozen.Load(s); ok {
+}
+
+func (s *Scope) mustWrite(name string) {
+	if s.IsPackageRoot && s.Frozen {
 		panic(fmt.Sprintf("ir: binding %q in a frozen package's scope", name))
 	}
 }

@@ -62,6 +62,8 @@ type Package struct {
 	Contexts      []*Context
 	Symbols       *SymbolTable
 	Overlay       Overlay `json:"-"`
+	// Frozen says the check that loaded the package has ended (Freeze).
+	Frozen bool `json:"-"`
 	// Origin is where a package the program reads by path came from: the
 	// program's own, a directory import, a fetched one. Nil for a library
 	// package and a native scheme's shell. A build-time function asks it who
@@ -557,6 +559,8 @@ type DeclInfo struct {
 	//
 	// Not encoded: the package holds the declaration back.
 	Pkg *Package `json:"-"`
+	// Frozen says the check that declared it has ended (Freeze). A copy is not.
+	Frozen bool `json:"-"`
 	// Doc is the doc comment of a declaration a scheme imported; a SNGL
 	// declaration's own is read off its AST.
 	Doc string `json:",omitempty"`
