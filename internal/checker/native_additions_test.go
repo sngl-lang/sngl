@@ -48,6 +48,9 @@ var n = e.twice() + Square(1)
 	if len(entry.Methods) > 0 {
 		t.Errorf("the program's method was written onto the imported struct: %v", entry.Methods)
 	}
+	if pkg.Symbols.Root.Added[entry]["twice"] == nil {
+		t.Errorf("the program holds no method on the imported struct")
+	}
 	if len(square.PlatformOverrides) > 0 {
 		t.Errorf("the program's override was written onto the imported func: %v", square.PlatformOverrides)
 	}

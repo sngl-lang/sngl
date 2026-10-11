@@ -1615,6 +1615,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 			}
 			irImport.Native = native
 			if native != nil {
+				// No Path: PkgPath names a SNGL package, which pruning and
+				// ir.Convert qualify by; a native declaration is identified by its
+				// Foreign origin.
 				nsPkg := &ir.Package{
 					Structs:        native.Structs,
 					Enums:          native.Enums,

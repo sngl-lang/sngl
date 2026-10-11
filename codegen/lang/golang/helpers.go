@@ -105,15 +105,15 @@ func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // bubbletea, fyne and gtk4 each route their emit loop through this rather than
 // asking again: the call site (evalTypeMethodCall) lifts a method on any type
 // the package declares, and a narrower emitter answer emits a definition in a
-// form no call site names. A type the host declares -- one a scheme
-// imported -- is declared in no package the build emits, and is never one Go
-// attaches a method to here either.
+// form no call site names. A type the host declares -- one a scheme imported,
+// or a library describes with a native mark -- is declared in no package the
+// build emits, and Go attaches no method to it here either.
 func LiftsToFreeFunc(pkg *ir.Package, fn *ir.Func) bool {
 	receiver := fn.RecvName()
 	if pkg == nil || receiver == "" {
 		return false
 	}
-	if fn.Lowered.HostReceiver == "" && hostDeclared(fn.RecvDecl()) {
+	if hostDeclared(fn.RecvDecl()) {
 		return true
 	}
 	for _, c := range pkg.Components {

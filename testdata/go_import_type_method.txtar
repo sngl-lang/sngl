@@ -1,7 +1,6 @@
 A program's method on a type a go: import declares is a free function taking
 the value, as one on the program's own struct is: Go attaches no method to
-another package's type, and a Model method named for it took no parameter
-while every call site passed one.
+another package's type.
 
 deny * `func \(m \*Model\) sum` -- the method is no Model method
 
