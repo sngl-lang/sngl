@@ -19,6 +19,7 @@ import (
 func generateFyneModelBuilt(t *testing.T, src string) string {
 	t.Helper()
 	pkg := checkForFyne(t, src)
+	pkg = ir.ClonePackage(pkg)
 	lang := codegen.LookupLang("go")
 	if lang == nil {
 		t.Fatal("go lang not registered")
@@ -28,7 +29,6 @@ func generateFyneModelBuilt(t *testing.T, src string) string {
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

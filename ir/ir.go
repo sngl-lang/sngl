@@ -62,6 +62,11 @@ type Package struct {
 	Contexts      []*Context
 	Symbols       *SymbolTable
 	Overlay       Overlay `json:"-"`
+	// Targets are the overrides the library packages a check loaded declare
+	// of declarations they do not own -- a target package's of sngl:ui --
+	// as the check found them. Each package owns its overrides, so a build
+	// installs these on its copy beside the program's own (InstallOverlay).
+	Targets Overlay `json:"-"`
 	// Frozen says the check that loaded the package has ended (Freeze).
 	Frozen bool `json:"-"`
 	// Origin is where a package the program reads by path came from: the

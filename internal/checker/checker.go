@@ -176,6 +176,10 @@ type libCache struct {
 	checking int
 	// decls is what the library's loads recorded about its declarations.
 	decls declTables
+	// targets is every override a library package in the cache declares of a
+	// declaration another package owns, as of its last load. It is replaced,
+	// never written in place (publish), so a check may keep the one it read.
+	targets ir.Overlay
 	// Shared for the same reason `extended` is: the packages are shared, so a
 	// later check must re-bind the same symbol rather than a second one, which
 	// Declare would rightly call a redeclaration.
@@ -291,6 +295,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.reportEmitterPlacement()
 	c.reportHandleCallDefaults()
 	c.reportUnresolvedSchemes()
+	c.pkg.Targets = c.libs.targets
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }
@@ -512,6 +517,10 @@ type checker struct {
 	// libLoadPkg is the library package currently loading, and the owner of
 	// any import registered while it does. nil outside a lib load.
 	libLoadPkg *ir.Package
+	// overrideOwner is the target package whose overrides mergeTargetExtensions
+	// is recording, which owns them: they are reserved before its load is
+	// entered, while declPkg is still the program.
+	overrideOwner *ir.Package
 	// libImportScope is where an import registered while a library package
 	// loads binds its namespace, and where a dot import lifts into. It sits
 	// above the package's own root, so what the package imports is reachable

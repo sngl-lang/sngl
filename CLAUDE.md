@@ -775,10 +775,18 @@ declarations, and the known writers -- a package root's bindings,
 registration -- panic on one (`ir.MustWriteDecl`). They ask the declaration
 rather than its package, since a build's copy of a library declaration names
 the package it came from; the cloner leaves the flag behind, and a frozen
-library is collected with its last reader. One write is
-let through: a target package's override is recorded on the declaration it
-overrides until each override is owned by the package that declares it,
-since a later check may build for a target an earlier one never loaded
+library is collected with its last reader.
+
+**An override belongs to the package that declares it.** A target package's
+override of `sngl:ui`'s `text` goes in that package's `Overlay`, as a
+program's does (`overrideMap`), and the cache publishes every library
+overlay as one merged overlay it replaces rather than writes
+(`libCache.targets`, `ir.Overlay.Merged`). A check reads it through
+`overridesOf`, and records the one it saw on its package as `Targets`, which
+`ir.InstallOverlay` installs on a build's copy ahead of the program's own and
+`ir.Package.OverridesOf` reads off a checked package. So a later check may
+load a target an earlier one never did without writing the declaration both
+read, and the earlier check does not see it
 (`TestFrozenLibraryTakesANewTarget`).
 
 **Every phase after the check works on a copy** (`ir.ClonePackage`,

@@ -654,22 +654,16 @@ func soleEmitterNode(body ir.Body, kind ir.BuiltinKind) *ir.NodeInst {
 }
 
 // overrideMap is where an override of decl for the tier kind is recorded: on
-// decl when its own package or a target package writes it, and in the
-// program's overlay when a program overrides a declaration another package
-// owns, which every check reading that package shares.
+// decl when its own package writes it, and otherwise in the overlay of the
+// package that writes it -- the program's, or a library package's -- since
+// the declaration belongs to another package, which every check shares.
 func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *map[string]ir.Override {
-	if user {
-		if owner := ir.DeclaringPackage(decl); owner != nil && owner != c.declPkg() {
-			return c.pkg.Overlay.For(decl).Of(kind)
+	if writer := c.overrideWriter(user); writer != nil {
+		if owner := ir.DeclaringPackage(decl); owner != nil && owner != writer {
+			return writer.Overlay.For(decl).Of(kind)
 		}
 	}
-	// A target package's override is still recorded on the declaration it
-	// overrides, frozen or not, until each override is owned by the package
-	// that declares it: a later check may build for a target an earlier one
-	// never loaded.
-	if user {
-		ir.MustWriteDecl(decl, "an override of "+decl.SymName())
-	}
+	ir.MustWriteDecl(decl, "an override of "+decl.SymName())
 	switch d := decl.(type) {
 	case *ir.Component:
 		if kind == ir.BuiltinFamilyLanguage {
@@ -685,14 +679,36 @@ func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *m
 	return nil
 }
 
-// overridesOf is every override decl has: its own and the program's.
-func (c *checker) overridesOf(decl ir.Symbol) ir.Overrides {
-	own := *ir.OverridesOf(decl)
-	added := c.pkg.Overlay.Overrides[decl]
-	if added == nil {
-		return own
+// overrideWriter is the package an override being recorded belongs to: the
+// program for a user's, else the target package being merged or the library
+// package loading.
+func (c *checker) overrideWriter(user bool) *ir.Package {
+	switch {
+	case user:
+		return c.declPkg()
+	case c.overrideOwner != nil && (c.libLoadPkg == nil || c.libLoadPkg == c.overrideOwner):
+		return c.overrideOwner
 	}
-	return ir.Overrides{Platform: mergedOverrides(own.Platform, added.Platform), Language: mergedOverrides(own.Language, added.Language)}
+	return c.libLoadPkg
+}
+
+// overridesOf is every override decl has: its own, the library's, the
+// package being merged's and the program's.
+func (c *checker) overridesOf(decl ir.Symbol) ir.Overrides {
+	all := *ir.OverridesOf(decl)
+	for _, o := range []ir.Overlay{c.libs.targets, c.overrideOwnerOverlay(), c.pkg.Overlay} {
+		if added := o.Overrides[decl]; added != nil {
+			all = ir.Overrides{Platform: mergedOverrides(all.Platform, added.Platform), Language: mergedOverrides(all.Language, added.Language)}
+		}
+	}
+	return all
+}
+
+func (c *checker) overrideOwnerOverlay() ir.Overlay {
+	if w := c.overrideWriter(false); w != nil {
+		return w.Overlay
+	}
+	return ir.Overlay{}
 }
 
 func mergedOverrides(own, added map[string]ir.Override) map[string]ir.Override {

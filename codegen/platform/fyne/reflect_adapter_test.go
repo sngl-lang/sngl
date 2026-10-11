@@ -64,7 +64,7 @@ func allSpecs(t *testing.T) map[string]*fyneSpec {
 	pkg := checkAllComponents(t)
 	out := map[string]*fyneSpec{}
 	for _, comp := range OverriddenComponents(pkg) {
-		for _, n := range fynePrimitiveNodes(comp.PlatformOverrides["fyne"].Stmts) {
+		for _, n := range fynePrimitiveNodes(pkg.OverridesOf(comp).Platform["fyne"].Stmts) {
 			sp, err := specFromProps(n.Name, nodeProps(n))
 			if err != nil {
 				t.Fatalf("%s: %v", comp.Name, err)

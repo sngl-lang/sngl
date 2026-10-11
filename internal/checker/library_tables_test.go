@@ -1,6 +1,8 @@
 package checker_test
 
 import (
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 
@@ -51,10 +53,13 @@ component table(name string) suits.suit {
 }
 
 // A check sharing a library that an earlier one froze may build for a target
-// the earlier one did not, whose overrides the library has not seen yet.
+// the earlier one did not, whose overrides the library has not seen yet. The
+// target package owns them: the declaration they override is not written, and
+// the earlier check does not see them.
 func TestFrozenLibraryTakesANewTarget(t *testing.T) {
 	shared := checker.NewSharedLibrary()
 	langs, plats := testtargets.Targets()
+	var checked []*ir.Package
 	for _, plat := range []string{"html", "bubbletea"} {
 		doc, err := parser.Parse("main.sngl", []byte("import ui \"sngl:ui\"\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n"))
 		if err != nil {
@@ -62,10 +67,37 @@ func TestFrozenLibraryTakesANewTarget(t *testing.T) {
 		}
 		cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats, Targets: []ir.StaticTarget{{Platform: plat}}}
 		shared.Use(cfg)
-		if _, diags := checker.Check(doc, cfg); len(diags) > 0 {
+		pkg, diags := checker.Check(doc, cfg)
+		if len(diags) > 0 {
 			t.Fatalf("%s: %s", plat, diags[0].Error())
 		}
+		checked = append(checked, pkg)
 	}
+	text := uiComponent(t, checked[1], "text")
+	if len(text.PlatformOverrides) > 0 {
+		t.Errorf("a target package wrote its override onto sngl:ui's text: %v", slices.Sorted(maps.Keys(text.PlatformOverrides)))
+	}
+	for i, want := range [][]string{{"html"}, {"bubbletea", "html"}} {
+		got := slices.Sorted(maps.Keys(checked[i].OverridesOf(text).Platform))
+		if !slices.Equal(got, want) {
+			t.Errorf("check %d sees overrides of text for %v, want %v", i, got, want)
+		}
+	}
+}
+
+func uiComponent(t *testing.T, pkg *ir.Package, name string) *ir.Component {
+	t.Helper()
+	sym, ok := pkg.Symbols.Root.Lookup("ui")
+	ns, isNS := sym.(*ir.Namespace)
+	if !ok || !isNS {
+		t.Fatal("sngl:ui is not imported as ui")
+	}
+	member, _ := ns.Pkg.Symbols.LookupRootComponent(name)
+	comp, isComp := member.(*ir.Component)
+	if !isComp {
+		t.Fatalf("sngl:ui declares no component %s", name)
+	}
+	return comp
 }
 
 // A check's library is frozen when the check returns, though no other check

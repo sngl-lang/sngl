@@ -365,6 +365,7 @@ func (c *checker) libPkg(name string) *ir.Package {
 	}
 	delete(c.libs.loading, name)
 	c.libs.pkgs[name] = pkg
+	c.libs.publish(pkg)
 	c.adoptLib(name, pkg)
 	return pkg
 }
@@ -866,6 +867,13 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 		// it cannot provide.
 		return
 	}
+	owner := c.libPkg(pkgName)
+	savedOwner := c.overrideOwner
+	c.overrideOwner = owner
+	defer func() {
+		c.overrideOwner = savedOwner
+		c.libs.publish(owner)
+	}()
 	ext, funcs := len(c.pendingExtensions), len(c.pendingFuncOverrides)
 	func() {
 		// An override names its target, and a target package's own source is
@@ -1590,6 +1598,9 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	c := newChecker(nil, cfg)
 	end := c.libs.enter()
 	pkg := c.libPkg(name)
+	if pkg != nil {
+		pkg.Targets = c.libs.targets
+	}
 	end()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
@@ -1692,5 +1703,13 @@ func (l *libCache) enter() func() {
 				ir.Freeze(p)
 			}
 		}
+	}
+}
+
+// publish adds the overrides pkg declares of other packages' declarations to
+// what every check on the cache reads (libCache.targets).
+func (l *libCache) publish(pkg *ir.Package) {
+	if pkg != nil {
+		l.targets = l.targets.Merged(pkg.Overlay)
 	}
 }
