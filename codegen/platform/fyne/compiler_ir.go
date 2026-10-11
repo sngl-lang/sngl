@@ -347,7 +347,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
-		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn.RecvName()) {
+		if fn.IsMethod() && golang.LiftsToFreeFunc(ctx.Pkg, fn) {
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}

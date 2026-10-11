@@ -90,14 +90,14 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {
-		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn.RecvName()) {
+		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
 			out[fn] = true
 		}
 	}
 	return out
 }
 
-// LiftsToFreeFunc reports whether a method on this receiver is emitted as a
+// LiftsToFreeFunc reports whether fn, a method, is emitted as a
 // free `ReceiverMethod(recv, …)` function rather than dispatched through the
 // Model. A component's method is the other case and stays a Model method, so
 // it has a receiver to read state from already.
@@ -105,10 +105,16 @@ func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // bubbletea, fyne and gtk4 each route their emit loop through this rather than
 // asking again: the call site (evalTypeMethodCall) lifts a method on any type
 // the package declares, and a narrower emitter answer emits a definition in a
-// form no call site names.
-func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
+// form no call site names. A type the host declares -- one a scheme
+// imported -- is declared in no package the build emits, and is never one Go
+// attaches a method to here either.
+func LiftsToFreeFunc(pkg *ir.Package, fn *ir.Func) bool {
+	receiver := fn.RecvName()
 	if pkg == nil || receiver == "" {
 		return false
+	}
+	if fn.Lowered.HostReceiver == "" && hostDeclared(fn.RecvDecl()) {
+		return true
 	}
 	for _, c := range pkg.Components {
 		if c.Name == receiver {
@@ -132,6 +138,16 @@ func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
 		if u.Name == receiver {
 			return true
 		}
+	}
+	return false
+}
+
+func hostDeclared(decl ir.Symbol) bool {
+	switch d := decl.(type) {
+	case *ir.StructDef:
+		return d.Foreign.Path != "" && !d.Foreign.Marked
+	case *ir.EnumDef:
+		return d.Foreign.Path != "" && !d.Foreign.Marked
 	}
 	return false
 }
