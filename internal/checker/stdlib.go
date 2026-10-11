@@ -386,6 +386,16 @@ func (c *checker) libPkg(name string) *ir.Package {
 	c.libs.publish(pkg)
 	c.adoptLib(name, pkg)
 	c.recordLoad("pkg:"+name, start)
+	// A target package's overrides are merged as it loads, so nothing writes
+	// it once another check can reach it. What the merge reports is a check's
+	// only where it builds for the target or imports its package
+	// (mergeTargetExtensions replays it).
+	if _, _, isTarget := targetTierName(name); isTarget && !c.cfg.noTargets {
+		mark := len(c.diags)
+		c.mergeTargetExtensions(name)
+		c.diags = c.diags[:mark]
+		delete(c.hold.replayed, "merge:"+name)
+	}
 	return pkg
 }
 
@@ -469,10 +479,8 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 		c.bindLib(ast.Pos{}, c.libImportScope, &ir.Namespace{Name: nsName, Pkg: stdlibPkg})
 	}
 	stdlibPkg.Symbols.Root.Parent = c.libImportScope
-	// No file of the program's is current while the package loads: one that
-	// stayed current through a load in pass2 was what a file switch inside
-	// the load put back, as the parent of the package's root, which lost the
-	// package every import it had bound.
+	// No file of the program's is current while the package loads, or a file
+	// switch inside the load restores it as the parent of the package's root.
 	savedFile := c.saveFile()
 	c.curFileScope = nil
 	c.symtab, c.scope = stdlibPkg.Symbols, stdlibPkg.Symbols.Root

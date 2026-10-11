@@ -38,6 +38,7 @@ func sharedLibCache(cfg *Config) *libCache {
 	l := processLibs.byKey[key]
 	if l == nil {
 		l = newLibCache()
+		l.key = key
 		processLibs.byKey[key] = l
 	}
 	return l
@@ -139,15 +140,18 @@ func (h *libHold) load() func() {
 	}
 }
 
-// freezeLoaded freezes every package in the cache once a load has added one,
-// but a target package whose overrides are not merged yet: a later check
-// building for it merges them into it. The caller holds the write lock.
+// freezeLoaded freezes what loads have added to the cache, but a target
+// package a check against no target loaded, whose overrides a later check
+// merges into it. The caller holds the write lock.
 func (l *libCache) freezeLoaded() {
 	if !l.loaded {
 		return
 	}
 	l.loaded = false
 	for _, p := range l.packages() {
+		if p.Frozen {
+			continue
+		}
 		if name, ok := strings.CutPrefix(p.Path, "sngl:"); ok && !l.extended[name] {
 			if _, _, isTarget := targetTierName(name); isTarget {
 				continue
@@ -194,20 +198,45 @@ func diagKey(d ir.Diagnostic) string {
 	return fmt.Sprintf("%d %s", d.Severity, d.Error())
 }
 
-// loadHold is libHold.load for this check. The outermost load resolves the
-// signature of every macro the cache holds before it lets go, where a mark's
-// first use used to: written then, a program's check would write a library
-// declaration other checks and builds are reading.
+// loadHold is libHold.load for this check, taken in a defer. Before the
+// outermost load lets go it settles what a later check would otherwise write
+// into a declaration others are reading: every macro's signature and every
+// prop's symbol. A load that panics leaves the cache half-written, so the
+// process drops it.
 func (c *checker) loadHold() func() {
 	end := c.hold.load()
 	return func() {
+		if r := recover(); r != nil {
+			c.libs.eject()
+			end()
+			panic(r)
+		}
 		if c.hold.writes == 1 && c.libs.loaded {
 			for _, p := range c.libs.packages() {
+				if p.Frozen {
+					continue
+				}
 				for _, fn := range p.Macros {
 					c.resolveMacroSig(p, fn)
+				}
+				for _, comp := range p.Components {
+					for _, prop := range comp.Props {
+						if prop.Sym == nil {
+							propParam(prop)
+						}
+					}
 				}
 			}
 		}
 		end()
+	}
+}
+
+// eject drops l from the process, if it is the cache its key names.
+func (l *libCache) eject() {
+	processLibs.Lock()
+	defer processLibs.Unlock()
+	if processLibs.byKey[l.key] == l {
+		delete(processLibs.byKey, l.key)
 	}
 }

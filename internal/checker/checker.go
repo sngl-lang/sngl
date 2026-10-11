@@ -186,6 +186,8 @@ type libCache struct {
 	// diags is what each load reported, by package, for the checks that
 	// find it loaded (replayLoad).
 	diags map[string][]ir.Diagnostic
+	// key is the cache's in processLibs, empty for one it does not hold.
+	key string
 	// decls is what the library's loads recorded about its declarations.
 	decls declTables
 	// targets is every override a library package in the cache declares of a
@@ -747,6 +749,12 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	}
 	c.hold = cfg.libHold(c.libs)
 	c.endHold = c.hold.check()
+	defer func() {
+		if r := recover(); r != nil {
+			c.endHold()
+			panic(r)
+		}
+	}()
 	// Allocated before the library loads, because those now run the same
 	// pass1 a program's package does, and pass1 enters a file per document.
 	c.fileScopes = make(map[*ast.Document]*ir.Scope, len(docs))

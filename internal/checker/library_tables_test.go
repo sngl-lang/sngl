@@ -4,7 +4,9 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/checker"
@@ -150,5 +152,52 @@ func TestLibraryFrozenWhenItsCheckReturns(t *testing.T) {
 	}
 	if !ir.IsFrozen(ui) {
 		t.Error("sngl:ui is not frozen after the check that loaded it returned")
+	}
+}
+
+// panickyPlatform is html, whose availability panics the second time it is
+// asked: the first is the cache's key, the second the merge inside a load.
+type panickyPlatform struct{ asked *atomic.Int32 }
+
+func (panickyPlatform) PlatformIdentifier() string { return "html" }
+func (panickyPlatform) Description() string        { return "panics during a load" }
+func (p panickyPlatform) Unavailable() error {
+	if p.asked.Add(1) == 2 {
+		panic("injected")
+	}
+	return nil
+}
+
+// A load that panics leaves the cache half-written and its lock held by
+// nobody who will let go; the next check must still finish.
+func TestCheckAfterAPanickingLoadFinishes(t *testing.T) {
+	checker.EjectLibraries()
+	t.Cleanup(checker.EjectLibraries)
+	plat := panickyPlatform{asked: &atomic.Int32{}}
+	check := func(src string) {
+		doc, err := parser.Parse("main.sngl", []byte(src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		checker.Check(doc, &checker.Config{IsMain: true, Platforms: []ir.Platform{plat}, Targets: []ir.StaticTarget{{Platform: "html"}}})
+	}
+	func() {
+		defer func() {
+			if r := recover(); r != "injected" {
+				t.Fatalf("the first check did not panic in its load: %v", r)
+			}
+		}()
+		check("import ui \"sngl:ui\"\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n")
+	}()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// A package the first never reached, so this one loads.
+		check("import draw \"sngl:ui/draw\"\n\nconst p = draw.Point{x=1.0, y=2.0}\n")
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("a check after a panicking load never finished")
 	}
 }

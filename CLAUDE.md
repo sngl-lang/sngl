@@ -766,8 +766,10 @@ structs, inherited family props), and a check reads its own library's.
 `ir.Published` is the process-wide copy every load also writes, for the phases
 that hold no checker. A target package's own overrides are checked as part of
 loading it (`mergeTargetExtensions`), so what one declares is the target
-package's. What a load made is frozen as the load lets go of the cache, a
-target package once its overrides are merged:
+package's, and they are merged as the package loads, whoever loaded it, so
+nothing writes a package another check can reach; what the merge reports is
+a check's only where it builds for the target or imports it. What a load made
+is frozen as the load lets go of the cache:
 `ir.Freeze` sets `Frozen` on its packages, their root scopes and their
 declarations, and the known writers -- a package root's bindings,
 `AttachMethod`, `specializeComp`, an overlay install, a `Builtins`
@@ -784,9 +786,11 @@ test that strips what it checked takes) gets a fresh one, and
 `EjectLibraries` drops the lot. A check holds its cache for reading from the
 moment its checker is built, a nested check sharing the hold (`libHold`), so
 the cache's tables need no lock of their own; a load trades that for the
-write lock, looks again for what it was about to load, and resolves every
-macro's signature before it lets go, since a mark's first use was a library
-write. What a load reported is replayed to each later check that reaches the
+write lock, looks again for what it was about to load, and before it lets go
+resolves every macro's signature and mints every prop's symbol, which a
+later check would otherwise write. A load that panics drops the cache from
+the process, since it is half-written, and a check that panics lets go of its
+hold (`TestCheckAfterAPanickingLoadFinishes`). What a load reported is replayed to each later check that reaches the
 package (`replayLoad`), and a context a library declares is on that package
 and adopted by the program (`adoptLibContexts`), as each check that loaded
 its own library used to report and append them.

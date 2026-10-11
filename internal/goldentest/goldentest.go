@@ -331,7 +331,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool, lang, pl
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("check: %w", err)
 	}
-	if err := walkDivergence(pkg); err != nil {
+	if err := walkDivergence(ownContexts(pkg)); err != nil {
 		return nil, nil, 0, fmt.Errorf("checked IR: %w", err)
 	}
 	walked++

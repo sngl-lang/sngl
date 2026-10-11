@@ -43,3 +43,16 @@ func walkDivergence(pkg *ir.Package) error {
 	}
 	return nil
 }
+
+// ownContexts is pkg with only the contexts it declares: a rewrite writes what
+// it visits, and a library's contexts are read by every check in the process.
+func ownContexts(pkg *ir.Package) *ir.Package {
+	view := *pkg
+	view.Contexts = nil
+	for _, ctx := range pkg.Contexts {
+		if !ctx.Stdlib {
+			view.Contexts = append(view.Contexts, ctx)
+		}
+	}
+	return &view
+}
