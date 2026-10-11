@@ -2,7 +2,9 @@ A generic function is copied per instantiation on a target that emits no type
 parameter, named for its type arguments: one reading state stays where such a
 function goes (a method of the Model on the Go targets), one comparing two T's
 needs no constraint, a call inside an instance instantiates its own callee,
-and a parameter only the result names is bound by the call's type.
+and a parameter only the result names is bound by the call's type. Two
+instantiations that spell alike, `func(int) string` and `func(int, string)`,
+are two copies, and a default typed by T is bound with the call.
 
 deny out/go/bubbletea/model.go `\bany\b` -- no type parameter is erased
 deny out/go/fyne/model.go `\bany\b` -- no type parameter is erased
@@ -51,6 +53,16 @@ func both<T>(xs list<T>, want T) int {
     return c + count([at(xs)], want)
 }
 
+func last<T>(xs list<T>) T {
+    var i = xs.length - 1
+    return xs[i]
+}
+
+func pad<T>(xs list<T>, extra list<T> = []) int {
+    var c = xs.length + extra.length
+    return c + n
+}
+
 func blank<T>() list<T> {
     var out list<T> = []
     if n < 0 {
@@ -74,13 +86,24 @@ component box {
 var xs = [10, 20, 10]
 var names = ["a", "b"]
 var e list<string> = ["z"]
+var fns = last([
+    func(x int) string {
+        return "{x}"
+    },
+])
+var acts = last([
+    func(x int, s string) {
+        n = x
+    },
+])
 
 ui.window(title="t") {
-    ui.text(value="{both(xs, 10)} {both(names, "b")} {e.length}")
+    ui.text(value="{both(xs, 10)} {both(names, "b")} {e.length} {pad([1])} {fns(1)}")
     box()
     ui.button(text="go", @click {
         n = 2
         e = blank()
+        acts(1, "s")
     })
 }
 -- out/go/bubbletea/model.go --
@@ -101,6 +124,8 @@ type Model struct {
 	xs             []int
 	names          []string
 	e              []string
+	fns            func(int) string
+	acts           func(int, string)
 	k__inst0       int
 	visible__inst0 bool
 	__focusID      int
@@ -115,6 +140,10 @@ func New() Model {
 	m.xs = []int{10, 20, 10}
 	m.names = []string{"a", "b"}
 	m.e = []string{"z"}
+	m.fns = Last__func_int_string([]func(int) string{func(x int) string { return fmt.Sprint(x) }})
+	m.acts = Last__func_int_string_1([]func(int, string){func(x int, s string) {
+		m.n = x
+	}})
 	m.k__inst0 = 0
 	m.visible__inst0 = true
 	m.__focusID = 0
@@ -179,6 +208,21 @@ func (m *Model) both__int(xs []int, want int) int {
 func (m *Model) both__string(xs []string, want string) int {
 	var c int = Count__string(xs, want)
 	return (c + Count__string([]string{m.at__string(xs)}, want))
+}
+
+func Last__func_int_string(xs []func(int) string) func(int) string {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func Last__func_int_string_1(xs []func(int, string)) func(int, string) {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func (m *Model) pad__int(xs []int, extra []int) int {
+	var c int = (len(xs) + len(extra))
+	return (c + m.n)
 }
 
 func (m *Model) nth__int__inst0(xs []int) int {
@@ -271,6 +315,36 @@ func SetECmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setEMsg{value: v} }
 }
 
+func (m Model) Fns() func(int) string {
+	return m.fns
+}
+
+func (m Model) SetFns(v func(int) string) Model {
+	m.fns = v
+	return m
+}
+
+type setFnsMsg struct{ value func(int) string }
+
+func SetFnsCmd(v func(int) string) tea.Cmd {
+	return func() tea.Msg { return setFnsMsg{value: v} }
+}
+
+func (m Model) Acts() func(int, string) {
+	return m.acts
+}
+
+func (m Model) SetActs(v func(int, string)) Model {
+	m.acts = v
+	return m
+}
+
+type setActsMsg struct{ value func(int, string) }
+
+func SetActsCmd(v func(int, string)) tea.Cmd {
+	return func() tea.Msg { return setActsMsg{value: v} }
+}
+
 func (m Model) K__inst0() int {
 	return m.k__inst0
 }
@@ -318,6 +392,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetNames(msg.value)
 	case setEMsg:
 		m = m.SetE(msg.value)
+	case setFnsMsg:
+		m = m.SetFns(msg.value)
+	case setActsMsg:
+		m = m.SetActs(msg.value)
 	case setK__inst0Msg:
 		m = m.SetK__inst0(msg.value)
 	case setVisible__inst0Msg:
@@ -344,6 +422,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.n = 2
 			m.e = m.blank__string()
+			m.acts(1, "s")
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -354,7 +433,7 @@ func (m Model) View() tea.View {
 	if m.visible__inst0 {
 		var contentParts []string
 		var contentPart_0 string
-		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e)))))
+		contentPart_0 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1))))
 		contentParts = append(contentParts, contentPart_0)
 		var contentPart_1 string
 		contentPart_1 = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.nth__int__inst0([]int{1, 2})) + " ") + m.nth__string__inst0([]string{"a", "b"}))))
@@ -410,6 +489,8 @@ type Model struct {
 	xs             []int
 	names          []string
 	e              []string
+	fns            func(int) string
+	acts           func(int, string)
 	k__inst0       int
 	visible__inst0 bool
 
@@ -428,6 +509,10 @@ func New() *Model {
 	m.xs = []int{10, 20, 10}
 	m.names = []string{"a", "b"}
 	m.e = []string{"z"}
+	m.fns = Last__func_int_string([]func(int) string{func(x int) string { return fmt.Sprint(x) }})
+	m.acts = Last__func_int_string_1([]func(int, string){func(x int, s string) {
+		m.n = x
+	}})
 	m.k__inst0 = 0
 	m.visible__inst0 = true
 	return m
@@ -487,6 +572,21 @@ func (m *Model) both__string(xs []string, want string) int {
 	return (c__r3 + Count__string([]string{m.at__string(xs)}, want))
 }
 
+func Last__func_int_string(xs []func(int) string) func(int) string {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func Last__func_int_string_1(xs []func(int, string)) func(int, string) {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func (m *Model) pad__int(xs []int, extra []int) int {
+	var c__r4 int = (len(xs) + len(extra))
+	return (c__r4 + m.n)
+}
+
 func (m *Model) nth__int__inst0(xs []int) int {
 	var i int = m.k__inst0
 	return xs[i]
@@ -512,9 +612,10 @@ func (m *Model) __n3_click_handler() {
 
 func (m *Model) __n4_click_handler() {
 	m.n = 2
-	m.__n1.SetText(((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	m.__n1.SetText(((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
 	m.e = m.blank__string()
-	m.__n1.SetText(((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	m.__n1.SetText(((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
+	m.acts(1, "s")
 }
 
 func (m *Model) N() int {
@@ -549,6 +650,22 @@ func (m *Model) SetE(v []string) {
 	m.e = v
 }
 
+func (m *Model) Fns() func(int) string {
+	return m.fns
+}
+
+func (m *Model) SetFns(v func(int) string) {
+	m.fns = v
+}
+
+func (m *Model) Acts() func(int, string) {
+	return m.acts
+}
+
+func (m *Model) SetActs(v func(int, string)) {
+	m.acts = v
+}
+
 func (m *Model) K__inst0() int {
 	return m.k__inst0
 }
@@ -577,7 +694,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.OnClosed = m.__n0_closed_handler
 	m.__n0.OnVisible = m.__n0_visible_handler
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	m.__n1.SetText(((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
 	m.__n0.Add(m.__n1)
 	m.__n2 = widget.NewLabel("")
 	m.__n2.SetText(((fmt.Sprint(m.nth__int__inst0([]int{1, 2})) + " ") + m.nth__string__inst0([]string{"a", "b"})))
@@ -630,6 +747,8 @@ type Model struct {
 	xs             []int
 	names          []string
 	e              []string
+	fns            func(int) string
+	acts           func(int, string)
 	k__inst0       int
 	visible__inst0 bool
 	__n0           gtk4rt.Handle
@@ -648,6 +767,10 @@ func New() *Model {
 	m.xs = []int{10, 20, 10}
 	m.names = []string{"a", "b"}
 	m.e = []string{"z"}
+	m.fns = Last__func_int_string([]func(int) string{func(x int) string { return fmt.Sprint(x) }})
+	m.acts = Last__func_int_string_1([]func(int, string){func(x int, s string) {
+		m.n = x
+	}})
 	m.k__inst0 = 0
 	m.visible__inst0 = true
 	return m
@@ -707,6 +830,21 @@ func (m *Model) both__string(xs []string, want string) int {
 	return (c__r3 + Count__string([]string{m.at__string(xs)}, want))
 }
 
+func Last__func_int_string(xs []func(int) string) func(int) string {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func Last__func_int_string_1(xs []func(int, string)) func(int, string) {
+	var i int = (len(xs) - 1)
+	return xs[i]
+}
+
+func (m *Model) pad__int(xs []int, extra []int) int {
+	var c__r4 int = (len(xs) + len(extra))
+	return (c__r4 + m.n)
+}
+
 func (m *Model) nth__int__inst0(xs []int) int {
 	var i int = m.k__inst0
 	return xs[i]
@@ -732,9 +870,10 @@ func (m *Model) __n3_clicked_handler() {
 
 func (m *Model) __n4_clicked_handler() {
 	m.n = 2
-	gtk4rt.LabelSetText(m.__n1, ((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	gtk4rt.LabelSetText(m.__n1, ((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
 	m.e = m.blank__string()
-	gtk4rt.LabelSetText(m.__n1, ((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	gtk4rt.LabelSetText(m.__n1, ((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
+	m.acts(1, "s")
 }
 
 func (m *Model) N() int {
@@ -769,6 +908,22 @@ func (m *Model) SetE(v []string) {
 	m.e = v
 }
 
+func (m *Model) Fns() func(int) string {
+	return m.fns
+}
+
+func (m *Model) SetFns(v func(int) string) {
+	m.fns = v
+}
+
+func (m *Model) Acts() func(int, string) {
+	return m.acts
+}
+
+func (m *Model) SetActs(v func(int, string)) {
+	m.acts = v
+}
+
 func (m *Model) K__inst0() int {
 	return m.k__inst0
 }
@@ -796,7 +951,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.ToplevelOnClosed(m.__n0, m.__n0_closed_handler)
 	gtk4rt.ToplevelOnVisible(m.__n0, m.__n0_visible_handler)
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, ((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))))
+	gtk4rt.LabelSetText(m.__n1, ((((((((fmt.Sprint(m.both__int(m.xs, 10)) + " ") + fmt.Sprint(m.both__string(m.names, "b"))) + " ") + fmt.Sprint(len(m.e))) + " ") + fmt.Sprint(m.pad__int([]int{1}, []int{}))) + " ") + m.fns(1)))
 	gtk4rt.BoxAppend(m.__n0, m.__n1)
 	m.__n2 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n2, ((fmt.Sprint(m.nth__int__inst0([]int{1, 2})) + " ") + m.nth__string__inst0([]string{"a", "b"})))
@@ -861,6 +1016,10 @@ fun MainScreen() {
     val xs = remember { mutableStateListOf(10, 20, 10) }
     val names = remember { mutableStateListOf("a", "b") }
     val e = remember { mutableStateListOf("z") }
+    var fns by remember { mutableStateOf(last__func_int_string(listOf({ x: Int -> x.toString() }))) }
+    var acts by remember { mutableStateOf(last__func_int_string_1(listOf({ x: Int, s: String ->
+    n = x
+}))) }
     var k__inst0 by remember { mutableStateOf(0) }
     var visible__inst0 by remember { mutableStateOf(true) }
     val blank__string by remember { derivedStateOf(fun(): List<String> {
@@ -902,6 +1061,12 @@ fun MainScreen() {
     }
 
 
+    fun pad__int(xs: List<Int>, extra: List<Int>): Int {
+        var c = (xs.size + extra.size)
+        return (c + n)
+    }
+
+
     fun nth__int__inst0(xs: List<Int>): Int {
         var i = k__inst0
         return xs[i]
@@ -922,7 +1087,7 @@ fun MainScreen() {
             }
         }
         Column {
-            Text(text = ((((both__int(xs, 10).toString() + " ") + both__string(names, "b").toString()) + " ") + e.size.toString()), modifier = Modifier.safeDrawingPadding())
+            Text(text = ((((((((both__int(xs, 10).toString() + " ") + both__string(names, "b").toString()) + " ") + e.size.toString()) + " ") + pad__int(listOf(1), listOf<Int>()).toString()) + " ") + fns(1)), modifier = Modifier.safeDrawingPadding())
             Text(text = ((nth__int__inst0(listOf(1, 2)).toString() + " ") + nth__string__inst0(listOf("a", "b"))), modifier = Modifier.safeDrawingPadding())
             Button(onClick = {
                 k__inst0 = 1
@@ -932,6 +1097,7 @@ fun MainScreen() {
             Button(onClick = {
                 n = 2
                 (blank__string).let { __v -> e.clear(); e.addAll(__v) }
+                acts(1, "s")
             }, modifier = Modifier.safeDrawingPadding()) {
                 Text(text = "go", modifier = Modifier)
             }
@@ -957,6 +1123,16 @@ fun count__string(xs: List<String>, want: String): Int {
     	}
     }
     return c
+}
+
+fun last__func_int_string(xs: List<(Int) -> String>): (Int) -> String {
+    var i = (xs.size - 1)
+    return xs[i]
+}
+
+fun last__func_int_string_1(xs: List<(Int, String) -> Unit>): (Int, String) -> Unit {
+    var i = (xs.size - 1)
+    return xs[i]
 }
 -- out/none/html/index.html --
 <!-- Code generated by sngl (html) from app.sngl; DO NOT EDIT. -->
@@ -986,7 +1162,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 1, xs: [10, 20, 10], names: ["a", "b"], e: ["z"], k__inst0: 0, visible__inst0: true };
+  var state = { n: 1, xs: [10, 20, 10], names: ["a", "b"], e: ["z"], fns: null, acts: null, k__inst0: 0, visible__inst0: true };
+  state.fns = last([(x) => String(x)]);
+  state.acts = last([(x, s) => {
+    state.n = x;
+  }]);
   function at(xs) {
     let i = state.n;
     if (i >= xs.length) {
@@ -1012,6 +1192,14 @@ body { font-family: system-ui, sans-serif; }
   function both(xs, want) {
     let c = count(xs, want);
     return c + count([at(xs)], want);
+  }
+  function last(xs) {
+    let i = xs.length - 1;
+    return xs[i];
+  }
+  function pad(xs, extra) {
+    let c = xs.length + extra.length;
+    return c + state.n;
   }
   function blank() {
     let out = [];
@@ -1039,12 +1227,13 @@ body { font-family: system-ui, sans-serif; }
   });
   $1.addEventListener("click", function() {
     state.n = 2;
-    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length);
+    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length) + " " + String(pad([1], [])) + " " + state.fns(1);
     state.e = blank();
-    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length);
+    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length) + " " + String(pad([1], [])) + " " + state.fns(1);
+    state.acts(1, "s");
   });
   function __sngl_init() {
-    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length);
+    __n1.textContent = String(both(state.xs, 10)) + " " + String(both(state.names, "b")) + " " + String(state.e.length) + " " + String(pad([1], [])) + " " + state.fns(1);
     __n2.textContent = String(nth__inst0([1, 2])) + " " + nth__inst0(["a", "b"]);
   }
   __sngl_init();
@@ -1052,12 +1241,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7555032ce65b3b38ea56c4bc6a8811ce
+pass sha256:92095b70962dc882c77f6b5bbfa47ca7
 -- run/go/fyne --
-pass sha256:d15393af93679740b2109973a145e0d2
+pass sha256:21819cc5c9b28df1a6d40a23565a984b
 -- run/go/gtk4 --
-pass sha256:fbb04b9b980f913155f97a37c9111b19
+pass sha256:f104523acacf2120fe04698f232661f4
 -- run/kotlin/android --
-pass sha256:6e357919285bc58604a177ed8904cc46
+pass sha256:e653475f35cad5b1798d03efc2875542
 -- run/none/html --
-pass sha256:0919cd847f9be8c6f049f4f5c2188e3e
+pass sha256:f7418780f7a1d9bb10df7b4329b55ffe

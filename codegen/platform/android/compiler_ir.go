@@ -1339,8 +1339,8 @@ func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
 // function of the page, taking its receiver first, and points every call and
 // reference at it. MainScreen holds that state as remembered locals, and the
 // test build as members of its state class, so the method is declared in
-// whichever holds it and called as the page's other functions are; a
-// top-level extension named state nothing in its scope declares.
+// whichever holds it and called as the page's other functions are, where an
+// extension is declared at top level.
 func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
 	if cfg.GoLib {
 		return

@@ -318,10 +318,13 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 
 // bindRootProps makes each prop of a component rendered with no call site a
 // var of it holding the prop's default, or its type's zero where nothing
-// supplies one, as the interpreter's mount binds it. Nothing else binds them:
-// the body read a name no target declared, and a test reading `c.inc` named
-// a field no Model has.
+// supplies one, as the interpreter's mount binds it. One that renders itself
+// is left alone: its own call sites bind the props, and a var there is state
+// a recursion has nowhere to keep.
 func bindRootProps(comp *ir.Component) {
+	if rendersItself(comp) {
+		return
+	}
 	vars := map[ir.Symbol]*ir.Var{}
 	var bound []*ir.Var
 	for _, p := range comp.Props {
@@ -354,4 +357,35 @@ func bindRootProps(comp *ir.Component) {
 		}
 		return nil
 	})
+}
+
+// rendersItself reports whether comp renders an instance of itself, directly
+// or through the components it renders.
+func rendersItself(comp *ir.Component) bool {
+	seen := map[*ir.Component]bool{}
+	work := []*ir.Component{comp}
+	for len(work) > 0 {
+		c := work[len(work)-1]
+		work = work[:len(work)-1]
+		found := false
+		_ = ir.Walk(c, func(n ir.Node) error {
+			inst, ok := n.(*ir.NodeInst)
+			if !ok || inst.Component == nil {
+				return nil
+			}
+			if inst.Component == comp {
+				found = true
+				return ir.SkipAll
+			}
+			if !seen[inst.Component] {
+				seen[inst.Component] = true
+				work = append(work, inst.Component)
+			}
+			return nil
+		})
+		if found {
+			return true
+		}
+	}
+	return false
 }

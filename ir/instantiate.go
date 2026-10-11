@@ -6,7 +6,9 @@ import "reflect"
 // copy naming one of them names its binding instead. What fn declares -- its
 // parameters, its locals and loop variables, and the lambdas in its body with
 // theirs -- is copied, and everything it refers to beyond that is shared, so a
-// call in the copy still resolves to the declaration the original's did.
+// call in the copy still resolves to the declaration the original's did. That
+// includes a call of fn itself, which is bound by its own arguments: under
+// polymorphic recursion it is not the copy making it.
 func InstantiateFunc(fn *Func, bindings map[string]*Type) *Func {
 	if fn == nil {
 		return nil
@@ -15,7 +17,21 @@ func InstantiateFunc(fn *Func, bindings map[string]*Type) *Func {
 	c.shareDecls = true
 	c.subst = bindings
 	c.own = ownDecls(fn)
+	c.deepNext = true
 	out := c.clone(reflect.ValueOf(fn)).Interface().(*Func)
+	_ = Walk(out, func(n Node) error {
+		switch x := n.(type) {
+		case *Call:
+			if x.Func == out {
+				x.Func = fn
+			}
+		case *Ident:
+			if x.Sym == Symbol(out) {
+				x.Sym = fn
+			}
+		}
+		return nil
+	})
 	out.TypeParams = nil
 	out.RecvTypeParams = nil
 	return out
@@ -33,7 +49,12 @@ func ownDecls(fn *Func) map[uintptr]bool {
 			own[reflect.ValueOf(f.RecvParam).Pointer()] = true
 		}
 	}
-	addFunc(fn)
+	for _, p := range fn.Params {
+		own[reflect.ValueOf(p).Pointer()] = true
+	}
+	if fn.RecvParam != nil {
+		own[reflect.ValueOf(fn.RecvParam).Pointer()] = true
+	}
 	_ = Walk(fn.Block, func(n Node) error {
 		switch x := n.(type) {
 		case *LocalVar:
@@ -111,4 +132,16 @@ func (t *Type) HasTypeParam() bool {
 		return t.Sig.Return.HasTypeParam()
 	}
 	return false
+}
+
+// SubstituteExprTypes copies e with every type in it bound under bindings,
+// sharing the declarations it names.
+func SubstituteExprTypes(e Expr, bindings map[string]*Type) Expr {
+	if e == nil {
+		return nil
+	}
+	c := newCloner()
+	c.shareDecls = true
+	c.subst = bindings
+	return c.clone(reflect.ValueOf(e)).Interface().(Expr)
 }
