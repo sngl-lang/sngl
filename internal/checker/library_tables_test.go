@@ -67,3 +67,28 @@ func TestFrozenLibraryTakesANewTarget(t *testing.T) {
 		}
 	}
 }
+
+// A check's library is frozen when the check returns, though no other check
+// shares it: everything after the check reads it through a copy.
+func TestLibraryFrozenWhenItsCheckReturns(t *testing.T) {
+	doc, err := parser.Parse("main.sngl", []byte("import ui \"sngl:ui\"\n\nui.window(title=\"t\") {\n    ui.text(value=\"hi\")\n}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	if len(diags) > 0 {
+		t.Fatalf("check: %v", diags[0].Error())
+	}
+	var ui *ir.Package
+	for _, imp := range pkg.Imports {
+		if imp.Path == "sngl:ui" {
+			ui = imp.Pkg
+		}
+	}
+	if ui == nil {
+		t.Fatal("sngl:ui not imported")
+	}
+	if !ir.IsFrozen(ui) {
+		t.Error("sngl:ui is not frozen after the check that loaded it returned")
+	}
+}

@@ -668,7 +668,7 @@ func (c *checker) overrideMap(decl ir.Symbol, user bool, kind ir.BuiltinKind) *m
 	// that declares it: a later check may build for a target an earlier one
 	// never loaded.
 	if user {
-		ir.MustWrite(ir.DeclaringPackage(decl), "an override of "+decl.SymName())
+		ir.MustWriteDecl(decl, "an override of "+decl.SymName())
 	}
 	switch d := decl.(type) {
 	case *ir.Component:

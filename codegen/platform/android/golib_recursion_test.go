@@ -38,6 +38,7 @@ ui.window {
 	}
 	gen := &Generator{}
 	kotlinLang := codegen.LookupLang("kotlin")
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/ir"
 )
 
 // generateFyneModelBuilt is the pipeline internal/build runs, which is what
@@ -27,6 +28,7 @@ func generateFyneModelBuilt(t *testing.T, src string) string {
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

@@ -133,6 +133,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
+		pkg = ir.ClonePackageFor(pkg, platform, lang)
 		optCfg := &optimize.Config{
 			Platform: platform,
 			Language: lang,
@@ -184,6 +185,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -385,7 +387,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			snapshotter, ok := plat.(codegen.Snapshotter)
 			if !ok {
 				// No native snapshotter — try HTML fallback.
-				html, err := compilePreviewHTMLDoc(ir.ClonePackage(p.pkg), platform, lang)
+				html, err := compilePreviewHTMLDoc(p.pkg, platform, lang)
 				if err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: %w", p.entry.ID, platform, err)
 				}

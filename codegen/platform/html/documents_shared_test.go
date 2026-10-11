@@ -136,6 +136,7 @@ func lowerHTML(t *testing.T, dir, src string) *ir.Package {
 	}
 	gen := &Generator{}
 	lang := codegen.LookupLang("none")
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{Platform: "html", Language: "none", Dir: dir}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

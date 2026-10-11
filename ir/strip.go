@@ -44,8 +44,12 @@ func clearReachableFamilyKinds(pkg *Package) {
 					return
 				}
 				seen[v.Pointer()] = true
-				if p, ok := v.Interface().(*Package); ok {
+				switch p := v.Interface().(type) {
+				case *Package:
 					p.FamilyKinds = nil
+					p.Frozen = false
+				case *Scope:
+					p.Frozen = false
 				}
 			}
 			walk(v.Elem(), depth+1)
@@ -56,6 +60,8 @@ func clearReachableFamilyKinds(pkg *Package) {
 			// load of the library that check made.
 			if v.Type() == reflect.TypeFor[DeclInfo]() && v.CanAddr() {
 				d := v.Addr().Interface().(*DeclInfo)
+				// The check that made a declaration froze it, and a copy is not.
+				d.Frozen = false
 				if path := d.PkgPath(); path == "" {
 					d.Pkg = nil
 				} else {

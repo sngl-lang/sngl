@@ -365,6 +365,7 @@ func Generate(source, platform, lang string) string {
 		return jsonStr(result)
 	}
 
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
 	genOptCfg := &optimize.Config{
 		Platform: platform, Language: lang,
 	}

@@ -766,13 +766,16 @@ structs, inherited family props), and a check reads its own library's.
 `ir.Published` is the process-wide copy every load also writes, for the phases
 that hold no checker. A target package's own overrides are checked as part of
 loading it (`mergeTargetExtensions`), so what one declares is the target
-package's. A library cache is frozen when the outermost check on it returns:
+package's. A library cache is frozen when the outermost check on it returns --
+not a nested one, a directory import's or a scheme's, which enters the same
+cache --:
 `ir.Freeze` sets `Frozen` on its packages, their root scopes and their
 declarations, and the known writers -- a package root's bindings,
 `AttachMethod`, `specializeComp`, an overlay install, a `Builtins`
-registration -- panic on one (`ir.MustWrite`). A flag on each object rather
-than a registry, so a build's copy is not frozen (the cloner leaves the flag
-behind) and a frozen library is collected with its last reader. One write is
+registration -- panic on one (`ir.MustWriteDecl`). They ask the declaration
+rather than its package, since a build's copy of a library declaration names
+the package it came from; the cloner leaves the flag behind, and a frozen
+library is collected with its last reader. One write is
 let through: a target package's override is recorded on the declaration it
 overrides until each override is owned by the package that declares it,
 since a later check may build for a target an earlier one never loaded
@@ -782,9 +785,9 @@ since a later check may build for a target an earlier one never loaded
 `ClonePackageFor`), since the checked package and the library it reaches are
 what every later build reads: `build.Emit` copies for every target, the last
 included, `interp.Prepare` returns the copy a session or a test run uses, and
-the CLI's `dump` stages, the playground, the docs and snapshot previews, the
-LSP's color fold and the fixture fold each copy before the first phase that
-writes. A phase handed the checked package itself panics at the first library
+the CLI's `dump` stages, the playground's compile and generate, the docs
+preview, every snapshot path, the LSP's color fold and the fixture fold each
+copy before the first phase that writes. A phase handed the checked package itself panics at the first library
 write. TestGolden fingerprints the checked package, and the library it
 reaches, around `Emit`. A target's copy keeps other targets' override entries
 emptied, since a build still asks whether a declaration is overridden for

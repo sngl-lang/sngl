@@ -98,9 +98,12 @@ component main node {
 
 	// Lower with the matching active platform — swap pass should move the
 	// stashed body into Component.Body.
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{Platform: "extstub"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
+	sym, _ = pkg.Symbols.LookupRootComponent("text")
+	stdText = sym.(*ir.Component)
 	if len(stdText.Stmts) == 0 {
 		t.Errorf("expected stdlib text Body to be swapped in by lower, got 0 stmts")
 	}
@@ -233,6 +236,7 @@ component main node {
 	// says so — the same thing `sngl test` does for a component under test.
 	caps := lower.NoLowering()
 	caps.InlineComponents = false
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "stubA", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

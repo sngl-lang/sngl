@@ -54,6 +54,7 @@ func compileI18nHTML(t *testing.T, src string) []byte {
 	// stdlib components (text, button) render through their `platform html { }`
 	// bodies — the real path `sngl generate` takes.
 	optCfg := &optimize.Config{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier(), Dir: "."}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

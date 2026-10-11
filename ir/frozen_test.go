@@ -36,7 +36,7 @@ func TestFrozenPackageRefusesWrites(t *testing.T) {
 		_ = AttachMethod(p.Symbols.Root, "Thing", &Func{Name: "m"})
 	})
 	wantFrozenPanic(t, "a library record", func() {
-		NewBuiltins().RegisterStruct(&StructDef{Name: "list", Pkg: p, Builtin: BuiltinList})
+		NewBuiltins().RegisterStruct(sd)
 	})
 	wantFrozenPanic(t, "a specialization", func() {
 		specializeComp(p.Components[0], target{platform: "x"}, false)

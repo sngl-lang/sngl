@@ -4,9 +4,9 @@ import "fmt"
 
 // Freeze marks p, the scope its declarations are bound in, and each of its
 // declarations as read-only: the check that loaded p has ended, and every
-// later check and build reads it. A flag on each object rather than a
-// registry, so a build's copy of one is not frozen (the cloner leaves the
-// flag behind) and a frozen library is collected with its last reader.
+// later check and build reads it. The flag is on each object, so a build's
+// copy of one is not frozen (the cloner leaves it behind) and a frozen library
+// is collected with its last reader.
 func Freeze(p *Package) {
 	if p == nil {
 		return
@@ -47,16 +47,27 @@ func IsFrozen(p *Package) bool {
 	return p != nil && p.Frozen
 }
 
-// MustWrite panics when p is frozen. A field write cannot be intercepted, so
-// the known writers call it, and the library fingerprint catches the rest.
-func MustWrite(p *Package, what string) {
-	if IsFrozen(p) {
-		panic(fmt.Sprintf("ir: %s writes %s, which is frozen", what, p.Path))
+// MustWriteDecl panics when sym is frozen. A field write cannot be
+// intercepted, so the known writers call it, and the library fingerprint
+// catches the rest. It asks the declaration rather than its package because a
+// build's copy names the frozen package it came from and is not frozen.
+func MustWriteDecl(sym Symbol, what string) {
+	switch d := sym.(type) {
+	case *StructDef:
+		d.mustWrite(what)
+	case *EnumDef:
+		d.mustWrite(what)
+	case *UnitDef:
+		d.mustWrite(what)
+	case *Component:
+		d.mustWrite(what)
+	case *Func:
+		d.mustWrite(what)
+	case *Var:
+		d.mustWrite(what)
 	}
 }
 
-// mustWrite is MustWrite for one declaration, which a build may hold a copy
-// of: the copy names the frozen package it came from and is not frozen.
 func (d *DeclInfo) mustWrite(what string) {
 	if d.Frozen {
 		panic(fmt.Sprintf("ir: %s writes %s, which is frozen", what, d.PkgPath()))

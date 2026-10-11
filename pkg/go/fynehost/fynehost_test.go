@@ -55,6 +55,7 @@ func check(t *testing.T, src string) *ir.Package {
 			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
 		}
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, lower.InterpreterFeatures(), lower.Options{
 		Platform:        "fyne",
 		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),

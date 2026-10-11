@@ -556,7 +556,7 @@ func AttachMethod(scope *Scope, recv string, f *Func) error {
 		}
 		return nil
 	}
-	MustWrite(DeclaringPackage(sym), "a method on "+recv)
+	MustWriteDecl(sym, "a method on "+recv)
 	if *tbl == nil {
 		*tbl = make(map[string]*Func)
 	}

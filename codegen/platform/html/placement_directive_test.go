@@ -46,6 +46,7 @@ window {
 		}
 	}
 	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

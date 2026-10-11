@@ -131,6 +131,7 @@ func TestATimerTicksInTheEmittedProgram(t *testing.T) {
 	// compile. A harness that skips it tests a program `sngl generate` never
 	// produces.
 	optCfg := &optimize.Config{Platform: "bubbletea", Language: "go"}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}

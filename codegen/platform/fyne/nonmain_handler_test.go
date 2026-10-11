@@ -6,6 +6,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/lower"
+	"duckfam.us/sngl/ir"
 )
 
 // A node-attached handler that lowering promotes to a Func on a component
@@ -38,6 +39,7 @@ component focusLoop node {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
+	pkg = ir.ClonePackage(pkg)
 	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

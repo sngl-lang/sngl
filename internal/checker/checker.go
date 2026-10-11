@@ -257,10 +257,11 @@ func splitByFile(doc *ast.Document) []*ast.Document {
 // Imports stay the file's own: the alias in `import draw "sngl:ui/draw"` binds
 // where it is written and nowhere else.
 func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnostic) {
-	if cfg != nil && cfg.libs != nil {
-		defer cfg.libs.enter()()
-	}
 	c := newChecker(docs, cfg)
+	// Whichever cache the check made or was handed: a nested check -- a
+	// directory import, a scheme's package -- enters the same one, and only
+	// the outermost exit may freeze it.
+	defer c.libs.enter()()
 	c.pass1()
 	// A program's own overrides resolve after pass1: an override may be
 	// written above the declaration it overrides, and may name a component

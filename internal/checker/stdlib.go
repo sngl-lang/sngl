@@ -675,7 +675,7 @@ func (c *checker) publishIntrinsic(fn *ir.Func) {
 		Pkg:             pkg,
 		DeclaredAs:      funcDeclName(fn),
 	}
-	ir.MustWrite(fn.Pkg, "registering "+def.Name)
+	ir.MustWriteDecl(fn, "registering "+def.Name)
 	for _, b := range c.libraryRecords() {
 		b.RegisterIntrinsic(def)
 	}
@@ -1588,7 +1588,9 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 		Targets:    ownTarget(name),
 	}
 	c := newChecker(nil, cfg)
+	end := c.libs.enter()
 	pkg := c.libPkg(name)
+	end()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }

@@ -44,6 +44,7 @@ func generateBubbleteaModel(t *testing.T, src string) string {
 		t.Fatalf("check: %s", firstError(diags))
 	}
 	optCfg := &optimize.Config{Platform: "bubbletea", Language: "go"}
+	pkg = ir.ClonePackage(pkg)
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
