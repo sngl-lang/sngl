@@ -58,8 +58,7 @@ var n = e.twice()
 	}
 }
 
-// A call of a go: function is a call of the host's, on every target, so a
-// body overriding it would never run.
+// No target emits a go: function, so a body overriding one would never run.
 func TestNativeFuncOverrideRefused(t *testing.T) {
 	_, square, native := nativeAPI()
 	_, diags := checkNative(t, `import . "go:api"
@@ -73,7 +72,7 @@ var n = Square(1)
 `, native)
 	var refused bool
 	for _, d := range diags {
-		if d.Severity == ir.Error && strings.Contains(d.Msg, `"Square" is the host's api.Square`) {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, `"Square" is declared outside SNGL`) {
 			refused = true
 		}
 	}
