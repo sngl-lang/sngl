@@ -1621,15 +1621,19 @@ func (c *checker) registerImport(imp *ast.Import) {
 					AddressedVars:  map[*ir.Var]bool{},
 				}
 				for _, s := range native.Structs {
+					s.Pkg = nsPkg
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, s)
 				}
 				for _, e := range native.Enums {
+					e.Pkg = nsPkg
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, e)
 				}
 				for _, f := range native.Funcs {
+					f.Pkg = nsPkg
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, f)
 				}
 				for _, v := range native.Vars {
+					v.Pkg = nsPkg
 					c.bindLib(imp.Pos, nsPkg.Symbols.Root, v)
 				}
 				irImport.Pkg = nsPkg
