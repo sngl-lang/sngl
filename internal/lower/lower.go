@@ -77,6 +77,7 @@ var passes = []pass{
 	passInstanceSlots,
 	passCanvasInstances,
 	passFlattenStructSpread,
+	passReceiverParam,
 	passNoImplicitRecv,
 	passShapeDraw,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which

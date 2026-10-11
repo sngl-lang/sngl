@@ -1,0 +1,61 @@
+# A method on a type reads its receiver and the page's state, run on the
+# interpreter and in a browser. testdata/type_method_receiver.txtar is the
+# compiled half: a golden shows the parameter list, and only running it shows
+# that `bonus` was read off the receiver, which has no such field.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+struct Pt {
+    x int
+    y int
+}
+
+var bonus = 1
+var n = 1
+
+func Pt.sum(q Pt) int {
+    return q.x + q.y + bonus
+}
+
+func list<T>.pick() => this[n]
+
+component main ui.node {
+    var p = Pt{x=1, y=2}
+    var xs = [10, 20, 30]
+    var sum = 0
+    var picked = 0
+
+    effect(@mount {
+        sum = p.sum()
+        picked = xs.pick()
+    })
+
+    ui.text(value="{sum} {picked}")
+}
+
+func testTypeMethodsReadTheirReceiver(t Test, c main) {
+    t.assert(c.sum == 4)
+    t.assert(c.picked == 20)
+}
+
+ui.window {
+    main
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:8713b3a07472494617b52101bc4a6cc4
+{
+  "results": [
+    {
+      "Desc": "TypeMethodsReadTheirReceiver",
+      "Passed": true
+    }
+  ]
+}

@@ -105,6 +105,8 @@ var alwaysOn = []string{
 	"NodePropReads",
 	"PlatformExtensionBody",
 	"PropBindings",
+	// No target reaches a receiver no parameter names.
+	"ReceiverParam",
 	// Every runtime takes an i18n call's arguments as a map, whatever the
 	// target.
 	"RecordArgs",
