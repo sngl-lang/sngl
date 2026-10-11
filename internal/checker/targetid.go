@@ -309,6 +309,12 @@ func (c *checker) mergeFuncOverride(decl *ast.FuncDef, base *ir.Func, libURI str
 			return
 		}
 	}
+	// Every call of a native is spelled as the host's identifier, on every
+	// target, so a body for one would be checked and then never run.
+	if base.Foreign.Name != "" && !base.Foreign.Marked {
+		c.error(decl.Pos, "%q is the host's %s, which has no body for an override to replace", decl.Name, base.Foreign.Name)
+		return
+	}
 	overrides := c.overrideMap(base, libURI == "", kind)
 	if *overrides == nil {
 		*overrides = map[string]ir.Override{}

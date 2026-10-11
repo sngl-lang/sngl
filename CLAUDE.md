@@ -2048,7 +2048,10 @@ declaration itself. Two things about the name that are easy to get wrong:
   receiver and the copy carries no `Foreign`. Only a native with a *return
   type* ever showed: the checker synthesizes `return <zero>` for a bodyless
   func, and a void one got an empty block that every Go emitter's
-  `len(fn.Block) == 0` guard already skipped.
+  `len(fn.Block) == 0` guard already skipped. Nor is one overridden: every
+  call is spelled as the host's identifier before a target's body is read,
+  so `func ToUpper[bubbletea.platform]` over `go:strings` is refused where
+  it is written rather than checked and never run.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
