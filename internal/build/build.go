@@ -309,4 +309,49 @@ func IsolateRootComponent(pkg *ir.Package, comp string) {
 	// only thing left that says which declaration the program renders, and
 	// AnalyzeCommon runs from the package alone.
 	pkg.RootComponent = comp
+	for _, c := range pkg.Components {
+		if c.Name == comp {
+			bindRootProps(c)
+		}
+	}
+}
+
+// bindRootProps makes each prop of a component rendered with no call site a
+// var of it holding the prop's default, or its type's zero where nothing
+// supplies one, as the interpreter's mount binds it. Nothing else binds them:
+// the body read a name no target declared, and a test reading `c.inc` named
+// a field no Model has.
+func bindRootProps(comp *ir.Component) {
+	vars := map[ir.Symbol]*ir.Var{}
+	var bound []*ir.Var
+	for _, p := range comp.Props {
+		if p.Sym == nil {
+			continue
+		}
+		init := p.Default
+		if init == nil {
+			init = ir.DeclaredDefault(p.Type)
+		} else {
+			init = ir.CloneExprSharingDecls(init)
+		}
+		v := &ir.Var{Type: p.Type, Init: init, IsConst: p.Const}
+		v.Name = p.Name
+		v.Pkg = comp.Pkg
+		vars[p.Sym] = v
+		bound = append(bound, v)
+	}
+	if len(vars) == 0 {
+		return
+	}
+	// Ahead of the component's own, whose initializers may read them.
+	comp.Vars = append(bound, comp.Vars...)
+	comp.Props = nil
+	_ = ir.Walk(comp, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym != nil {
+			if v, ok := vars[id.Sym]; ok {
+				id.Sym = v
+			}
+		}
+		return nil
+	})
 }

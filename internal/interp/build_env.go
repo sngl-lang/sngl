@@ -28,11 +28,17 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 	// separately rather than overwriting.
 	seedPackageState(env, pkg)
 
+	// Rendered with no call site, so a prop nothing supplies starts from its
+	// type's zero, as an unbound two-way prop's cell does.
+	for _, p := range comp.Props {
+		init := p.Default
+		if init == nil {
+			init = ir.DeclaredDefault(p.Type)
+		}
+		env.Set(p.Sym, evalInit(env, init))
+	}
 	for _, v := range comp.Vars {
 		env.Set(v, evalInit(env, v.Init))
-	}
-	for _, p := range comp.Props {
-		env.Set(p.Sym, evalInit(env, p.Default))
 	}
 	env.Comp = comp
 	env.BodyStmts = comp.Stmts
