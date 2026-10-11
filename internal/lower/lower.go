@@ -47,6 +47,7 @@ var passes = []pass{
 	// declaration does.
 	passReceiverParam,
 	passCallDefaults,
+	passMonomorphize,
 	passNavigation,
 	passHandleParams,
 	passImplicitState,

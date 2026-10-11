@@ -115,7 +115,13 @@ type cloner struct {
 	// only, when set, is the target the clone is for: an override map keeps
 	// only the entry that target picks. See ClonePackageFor.
 	only *target
+	// subst and own are InstantiateFunc's: the bindings every type is
+	// rewritten under, and the declarations copied although shareDecls is set.
+	subst map[string]*Type
+	own   map[uintptr]bool
 }
+
+var typePtrType = reflect.TypeFor[*Type]()
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
 	switch v.Kind() {
@@ -129,7 +135,12 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		if cv, ok := c.seen[ptr]; ok {
 			return cv
 		}
-		if c.shareDecls && !deep && isDeclType(v.Type().Elem()) {
+		if c.subst != nil && v.Type() == typePtrType {
+			nv := reflect.ValueOf(v.Interface().(*Type).Substitute(c.subst))
+			c.seen[ptr] = nv
+			return nv
+		}
+		if c.shareDecls && !deep && !c.own[ptr] && isDeclType(v.Type().Elem()) {
 			return v
 		}
 		// Share anything that isn't one of our IR types (AST nodes,

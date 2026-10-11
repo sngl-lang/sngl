@@ -1,0 +1,142 @@
+# A generic function at two types, on every target: one reading the page's
+# state, one comparing two T's, one calling another with its own T, a
+# component's generic method, and one whose T only the result names.
+# testdata/generic_func_instances.txtar is the code.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+var n = 1
+
+func at<T>(xs list<T>) T {
+    var i = n
+    if i >= xs.length {
+        i = 0
+    }
+    return xs[i]
+}
+
+func count<T>(xs list<T>, want T) int {
+    var c = 0
+    for var x = xs {
+        if x == want {
+            c += 1
+        }
+    }
+    return c
+}
+
+func both<T>(xs list<T>, want T) int {
+    var c = count(xs, want)
+    return c + count([at(xs)], want)
+}
+
+func blank<T>() list<T> {
+    var out list<T> = []
+    if n < 0 {
+        return out
+    }
+    return out
+}
+
+component main ui.node {
+    var k = 1
+    var ints = 0
+    var strs = 0
+    var picked = ""
+    var e list<string> = ["z"]
+
+    func nth<T>(xs list<T>) T {
+        var i = k
+        return xs[i]
+    }
+
+    effect(@mount {
+        ints = both([10, 20, 10], 20)
+        strs = both(["a", "b", "b"], "b")
+        picked = nth(["a", "b"])
+        e = blank()
+    })
+
+    ui.text(value="{ints} {strs} {picked} {nth([1, 2])} {e.length}")
+}
+
+func testEachInstantiationRuns(t Test, c main) {
+    t.assert(c.ints == 2)
+    t.assert(c.strs == 3)
+    t.assert(c.picked == "b")
+    t.assert(c.e.length == 0)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:71542252aa4dedccd888c5e9d4106525
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:eecc61c4e82f14bba46edfb9a9bceaae
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:abf617d8a2f4812a4f100fdbafaf8ada
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:213354398d423a7505d78cf5460271a7
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:02935396e76a95b953c38ac240953ae0
+{
+  "results": [
+    {
+      "Desc": "EachInstantiationRuns",
+      "Passed": true
+    }
+  ]
+}
