@@ -1522,6 +1522,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			}
 			rest := c.checkCallArgs(call.Args, shifted)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
+			// `this.add(1)` in a component's own body is `add(1)`: the
+			// instance is the one the call is made in, which a call of a
+			// component method leaves implicit for every target to supply.
+			if comp, ok := fn.RecvDecl().(*ir.Component); ok && isOwnReceiver(receiverExpr, comp) {
+				args = rest
+			}
 		} else if !recvParamStyle {
 			// New-style RecvTypeParams method: receiver is NOT a param.
 			// Check all call args against the full (substituted) sig.
