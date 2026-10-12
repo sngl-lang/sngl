@@ -130,10 +130,10 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.samebase__inst0 = Measurement{Px: 7}
-	m.reduced__inst0 = time.Duration(1500) * time.Millisecond
+	m.reduced__inst0 = (time.Duration(1500) * time.Millisecond)
 	m.mixed__inst0 = Measurement{Px: Measurement{Px: 1}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 1}.Em + Measurement{Em: 2}.Em, Rem: Measurement{Px: 1}.Rem + Measurement{Em: 2}.Rem}
-	m.short__inst0 = time.Duration(100) * time.Millisecond
-	m.long__inst0 = time.Duration(1000) * time.Millisecond
+	m.short__inst0 = (time.Duration(100) * time.Millisecond)
+	m.long__inst0 = (time.Duration(1000) * time.Millisecond)
 	m.total__inst0 = (m.short__inst0 + m.long__inst0)
 	m.visible__inst0 = true
 	return m
@@ -423,7 +423,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5d310a702cb17b43b6d2d76dae17ff33
+pass sha256:18008f68c978db8754c15ddd59932971
 -- run/kotlin/android --
 pass sha256:730f52150e7206f71132093c834b7c8d
 -- run/none/html --

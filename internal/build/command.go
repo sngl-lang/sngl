@@ -101,7 +101,7 @@ func RunCommand(t Target, kind ir.BuiltinKind, args ...any) error {
 	if c == nil {
 		return fmt.Errorf("neither platform %q nor language %q says how to %s what it generates", t.Platform, t.Lang, what)
 	}
-	env, err := interp.BuildEnv(c.pkg, "")
+	env, err := interp.BuildEnv(c.pkg, "", nil)
 	if err != nil {
 		return err
 	}

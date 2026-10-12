@@ -38,6 +38,15 @@ func init() {
 	regImp("string.replace", []string{"strings"}, func(a []string) string { return "strings.ReplaceAll(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:time ---
+	// datetime is time.Time here and duration is time.Duration, so the host
+	// operators line up and nothing is converted. .UTC() because every other
+	// target produces UTC and a bare time.Now() carries the machine's zone; it
+	// drops the monotonic reading, which this is documented as not needing.
+	regImp("time.now", []string{"time"}, func(a []string) string { return "time.Now().UTC()" })
+	reg("datetime.add", func(a []string) string { return "(" + a[0] + ").Add(" + a[1] + ")" })
+	reg("time.between", func(a []string) string { return "(" + a[1] + ").Sub(" + a[0] + ")" })
+
 	// --- float math --- (Math{Floor,Ceil,Round} return int)
 	regImp("float.floor", []string{"math"}, func(a []string) string { return "math.Floor(" + a[0] + ")" })
 	regImp("float.ceil", []string{"math"}, func(a []string) string { return "math.Ceil(" + a[0] + ")" })

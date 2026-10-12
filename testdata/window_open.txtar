@@ -107,7 +107,7 @@ func New() *Model {
 	m.live__inst0 = false
 	m.gen__inst0 = 0
 	m.visible__inst0 = true
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -121,7 +121,7 @@ func (m *Model) __run(args []string, run func()) {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -166,7 +166,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(200)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(200) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -416,7 +416,7 @@ func New() *Model {
 	m.ticks = 0
 	m.handle__inst0 = nil
 	m.visible__inst0 = true
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -449,7 +449,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(200)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(200) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -584,6 +584,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.details)
 }
 -- run/go/fyne --
-pass sha256:1f532d00347d1933a6cdfc3667aa9a20
+pass sha256:c298ec4543d8d0b1f4ab026cc30a7ab5
 -- run/go/gtk4 --
-pass sha256:47f8b4f372e2e50b7887b9af3b7ddc36
+pass sha256:8cc4be90177896863a5a80aa61c02d48

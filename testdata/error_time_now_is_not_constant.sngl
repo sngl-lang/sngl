@@ -1,0 +1,17 @@
+// A clock is not a constant, and the `const` that `now` does *not* carry is
+// what says so: a const call is a constant, so `const func now()` would be
+// accepted here and the build machine's timestamp baked into the artifact name.
+//
+// The output directive is where that is visible, because it is the position
+// the language already holds to `ir.IsConst`: it is read once, before the
+// program runs. Declare `now` const in `lib/time/time.sngl` and this fixture
+// passes clean rather than failing.
+
+import ui "sngl:ui"
+import time "sngl:time"
+
+output(name=string(time.now())) // ERROR(check) "now is not const"
+
+ui.window {
+    ui.text(value="hi")
+}

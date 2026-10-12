@@ -645,7 +645,7 @@ func runEvalFn(pkg *ir.Package) (val any, err error) {
 	if fn == nil {
 		return nil, fmt.Errorf("_eval not present in package")
 	}
-	env, err := interp.BuildEnv(pkg, "")
+	env, err := interp.BuildEnv(pkg, "", nil)
 	if err != nil {
 		return nil, err
 	}

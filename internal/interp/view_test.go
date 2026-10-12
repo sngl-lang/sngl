@@ -47,7 +47,7 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 		swept++
 		ids := allIDs(pkg)
 		for _, comp := range pkg.Components {
-			env, err := BuildEnv(pkg, comp.Name)
+			env, err := BuildEnv(pkg, comp.Name, nil)
 			if err != nil {
 				continue
 			}

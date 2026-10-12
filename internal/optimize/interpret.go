@@ -421,12 +421,12 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 // A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
 func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
 	if ctx.interpEnvs == nil {
-		return interp.BuildEnv(ctx.pkg, "")
+		return interp.BuildEnv(ctx.pkg, "", nil)
 	}
 	if env, ok := ctx.interpEnvs[ctx.pkg]; ok {
 		return env, nil
 	}
-	env, err := interp.BuildEnv(ctx.pkg, "")
+	env, err := interp.BuildEnv(ctx.pkg, "", nil)
 	if err != nil {
 		return nil, err
 	}

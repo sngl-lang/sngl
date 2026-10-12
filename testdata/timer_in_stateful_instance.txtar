@@ -46,7 +46,7 @@ func snglStrDuration(v time.Duration) string {
 	return fmt.Sprint(float64(v)/float64(time.Millisecond)) + "ms"
 }
 
-var periods []time.Duration = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+var periods []time.Duration = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 
 type timerTickMsg0 struct {
 	key string
@@ -71,7 +71,7 @@ func New() Model {
 	m.__timer0Seq = map[string]int{}
 	m.ticks__inst0 = map[string]int{}
 	m.visible__inst0 = true
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -262,7 +262,7 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -364,7 +364,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.done__inst0 = nil
 	c.live__inst0 = false
 	c.gen__inst0 = 0
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -380,7 +380,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 }
 
 func (c *TickerInstance) __effect0_mount() {
-	if c.__effect0_key > time.Duration(0)*time.Millisecond {
+	if c.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		c.live__inst0 = true
 		c.gen__inst0 = (c.gen__inst0 + 1)
 		var mine int = c.gen__inst0
@@ -545,7 +545,7 @@ func New() *Model {
 	m.__slot0 = nil
 	m.__slot0_at = nil
 	m.__inst0_live = []*TickerInstance{}
-	m.periods = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	return m
 }
 
@@ -617,7 +617,7 @@ func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance
 	c.__prop_period = __a_period
 	c.ticks = 0
 	c.handle__inst0 = nil
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -928,10 +928,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5430a18dfcec725b60178036b5e9433a
+pass sha256:d5422eda6b14447404e3529d158be700
 -- run/go/fyne --
-pass sha256:0936f06fa5e3eec693710009113b0e2b
+pass sha256:b6911720da10aabee2184cabd03d38ee
 -- run/go/gtk4 --
-pass sha256:0b03cc7a33fd47a8e475b0e02e5b2518
+pass sha256:c2cc90448ece5940f37cc04e062f2436
 -- run/none/html --
 pass sha256:0505301a708e989283f7fc9ca82628b6

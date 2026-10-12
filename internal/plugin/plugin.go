@@ -138,7 +138,7 @@ func parseStored(body []byte) ([]*ast.Document, error) {
 
 // run calls the handler with the output it writes to and the import's path.
 func run(host *buildhost.Host, s *ir.Scheme, uri string) (*buildhost.Output, []gencache.Input, error) {
-	env, err := interp.BuildEnv(s.Pkg, "")
+	env, err := interp.BuildEnv(s.Pkg, "", nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scheme %q: %w", s.Name, err)
 	}

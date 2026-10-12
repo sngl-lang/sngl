@@ -741,6 +741,46 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/family/` → `sngl:family`** — the family *vocabulary* and no families: the `crosses` mark a placement writes to stand outside the family its position accepts, the `eventless` mark a family writes, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `family.default` here. It was `sngl:tree`, whose `none` mark is gone: a component that takes the family it is placed in returns a type parameter (see *A wrapper whose family is whatever it was handed*).
 - **`lib/build/` → `sngl:build`** — families, and the build-target tree: `family`, the family of families every family is a member of, and `language` and `platform`, the two families an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. The two target families double as the target identities: a target's node read as a value is a value of its family, and `PLATFORM` and `LANGUAGE` are declared `build.platform` and `build.language`. An application names it to declare a family (`component block build.family`); otherwise a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, a date's `year()`, `month()` and `day()` and `parseDate(s)` for text a program did not write (written in SNGL over `string(d)`, which every target spells as the literal), and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+
+  **The clock is `now`, and the `const` it does *not* carry is the
+  load-bearing part.** A const call is a constant, so a clock reading declared
+  `const func` would be accepted wherever a constant is demanded and the value
+  a build ships would be the one the build machine read; a bodyless library
+  function is not const unless it says so, and `now` keeps
+  `#[marks.intrinsic("time.now", readonly)]` besides. `since` and `until` have
+  SNGL bodies and inherit the impurity through the purity fixed point rather
+  than restating it, while `add` and `between` are `const func`, being pure
+  functions of their arguments.
+
+  The instant is **`datetime` itself** rather than a type of its own: it
+  already maps to the host's date type everywhere, and a second one would be
+  two SNGL types over one host representation. What that costs is that Go
+  carries it as a `time.Time` beside a `time.Duration` and converts nothing,
+  while JavaScript and Kotlin carry an RFC3339 string and pay a parse per
+  operation — and both have to normalise first, because a datetime *literal*
+  may be written with no offset, which ES reads as local time and
+  `Instant.parse` refuses outright.
+
+  `between` is a **package function and not a `datetime` method**, which is
+  forced rather than chosen: `resolve.go` reads a method's first parameter *as*
+  the receiver when it carries the receiver's own type (what lets
+  `int.ident(1)` mean `1.ident()`), so no `datetime` method can take a second
+  instant — `d.since(x)` reports `too many arguments: expected 0`.
+
+  It is **wall-clock** time and says so in `lib/time/doc.sngl`: what a date
+  shown to someone is, and what an interval against a calendar deadline is. Not
+  a scheduling primitive — a wall clock jumps on an NTP correction and on a
+  daylight saving change, and an RFC3339 string cannot carry a monotonic
+  reading at all.
+
+  Duration arithmetic needed no declarations: `unit / unit` is the
+  dimensionless `float` the checker has always typed it, and `unit / scalar` is
+  still that unit. It had simply never compiled — Go divided two
+  `time.Duration`s into a `float64` return and Kotlin two `Long`s into a
+  `Double`, so a program could write the division and no Go or Kotlin target
+  could build it. `ir.IsUnitRatio` is the shared answer, single-base only for
+  the reason the checker already refuses *ordering* and *casting* a multi-base
+  value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.

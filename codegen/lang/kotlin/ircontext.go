@@ -230,6 +230,12 @@ func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
 	if out, ok := multiBaseUnitBinaryKt(n, left, right); ok {
 		return out
 	}
+	// unit / unit is the dimensionless float the two magnitudes divide to, and
+	// a duration is carried as a Long here -- so the bare `/` is Kotlin's
+	// integer division and yields a Long where a Double is declared.
+	if ir.IsUnitRatio(n) {
+		return "(" + left + ".toDouble() / " + right + ".toDouble())"
+	}
 	return "(" + left + " " + n.Op.String() + " " + right + ")"
 }
 func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {

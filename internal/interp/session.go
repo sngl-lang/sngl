@@ -39,7 +39,7 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	env, err := sessionEnv(pkg, comp)
+	env, err := sessionEnv(pkg, comp, clock)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +59,11 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 }
 
 // sessionEnv scopes a session to comp, or to the program when comp is empty.
-func sessionEnv(pkg *ir.Package, comp string) (*Env, error) {
+func sessionEnv(pkg *ir.Package, comp string, clock Clock) (*Env, error) {
 	if comp == "" {
-		return BuildProgramEnv(pkg), nil
+		return BuildProgramEnv(pkg, clock), nil
 	}
-	return BuildEnv(pkg, comp)
+	return BuildEnv(pkg, comp, clock)
 }
 
 // View is the tree as the session currently holds it -- what a host has
@@ -210,7 +210,7 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	if err != nil {
 		return nil, err
 	}
-	env, err := sessionEnv(pkg, s.Comp)
+	env, err := sessionEnv(pkg, s.Comp, s.Clock)
 	if err != nil {
 		return nil, err
 	}

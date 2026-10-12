@@ -132,7 +132,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case timerTickMsg0:
 		if m.__timer0[msg.key] == msg.gen && true {
 			m.ticks = (m.ticks + 1)
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{msg.key, msg.gen} }))
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -163,7 +163,7 @@ func (m *Model) __timer0Sync() []tea.Cmd {
 			m.__timer0Seq[key]++
 			gen := m.__timer0Seq[key]
 			m.__timer0[key] = gen
-			cmds = append(cmds, tea.Tick(time.Duration(1000)*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
+			cmds = append(cmds, tea.Tick((time.Duration(1000)*time.Millisecond), func(time.Time) tea.Msg { return timerTickMsg0{key, gen} }))
 		}
 	}
 	for key := range m.__timer0 {
@@ -241,7 +241,7 @@ func New() *Model {
 	m.live__inst0 = false
 	m.gen__inst0 = 0
 	m.visible__inst0 = true
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -251,7 +251,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -289,7 +289,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -559,8 +559,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e91f5b00ce8cc5058bfe1a9ee04e7b60
+pass sha256:6e4d1fe2a0ba326caa73d19f864234c3
 -- run/go/fyne --
-pass sha256:aa4642a1c5c018667459a983cd120759
+pass sha256:77df582c10206a28c5b649aed7e2b08b
 -- run/none/html --
 pass sha256:827e543211a1e3a4ea051112a02fee80

@@ -76,9 +76,6 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 		// The deadline is simulated, not wall-clock: a test asking to wait
 		// 1000ms for a 10ms timer spends three ticks, not a real second.
-		if tv.clock == nil {
-			tv.clock = interp.NewVirtual()
-		}
 		deadline := tv.clock.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 
 		// A test function may take no component, in which case there is
@@ -251,7 +248,12 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		start := time.Now()
 		childResult := &codegen.TestResult{Desc: fmt.Sprintf("%v", desc)}
 		childEnv := env.Snapshot()
-		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides}
+		// The parent's clock, not one of its own: childEnv is a Snapshot and
+		// carries `Clock`, so a subtest's `time.now()` already reads the
+		// parent's. A second clock here would start back at Epoch, so
+		// `t.tick()` would advance one while `now()` read the other -- and
+		// time would appear to run backwards across the subtest boundary.
+		childT := &testingT{env: childEnv, result: childResult, pkg: tv.pkg, compName: tv.compName, locale: tv.locale, contextOverrides: tv.contextOverrides, clock: tv.clock}
 
 		callArgs := []any{childT}
 		if tv.compName != "" && tv.comp != nil {
