@@ -115,7 +115,7 @@ func (env *Env) noteWrite(target ir.Expr, kind writeKind, index int, item any) {
 	if !ok {
 		return
 	}
-	l.entries = append(l.entries, cellWrite{at: at, kind: kind, index: index, item: item})
+	l.entries = append(l.entries, cellWrite{at: at, kind: kind, index: index, item: CopyValue(item)})
 }
 
 // NoteReplace records that a harness replaced sym's value in this scope -- a
@@ -215,6 +215,12 @@ func (env *Env) cellOf(e ir.Expr) (cell, bool) {
 }
 
 func (c cell) extend(step, v any) cell {
+	// An element is what an `@set` hands its handler, as this write left it:
+	// a struct is shared, so a later write in the same handler would move a
+	// value held by reference.
+	if _, isIndex := step.(int); isIndex {
+		v = CopyValue(v)
+	}
 	c.path = append(slices.Clone(c.path), step)
 	c.vals = append(slices.Clone(c.vals), v)
 	return c

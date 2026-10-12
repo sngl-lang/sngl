@@ -52,7 +52,7 @@ func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	st := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}}
+	st := &effectState{pkg: pkg, reactive: collectReactiveVars(pkg), byVar: map[*ir.Var][]*loweredEffect{}, dirtyBy: map[*ir.Var][]*loweredEffect{}, cellBy: map[*ir.Var][]*loweredEffect{}}
 	for _, o := range ir.Owners(pkg) {
 		if err := st.owner(o); err != nil {
 			return err
@@ -77,6 +77,12 @@ type effectState struct {
 	// dirtyBy is the brackets with an `@update` a write to each state var
 	// marks owed one: those whose `on` reads it.
 	dirtyBy map[*ir.Var][]*loweredEffect
+	// cellBy is the brackets with an `@update` keyed on a cell of each state
+	// var, which a write reaches by where it landed rather than by the var
+	// alone (notesFor).
+	cellBy map[*ir.Var][]*loweredEffect
+	// temps numbers the index temps a noted write binds.
+	temps int
 	// groups is one settle entry point per scope holding effects, in the
 	// order the scopes were walked.
 	groups []*effectGroup
@@ -128,6 +134,8 @@ type loweredEffect struct {
 	// hands out a fresh value per call and two of them for one component must
 	// compare equal.
 	comp *ir.Component
+	// prefix is what every name this bracket synthesizes starts with.
+	prefix string
 	// live is `list<T>`: the key each running lifetime is keyed on, in mount
 	// order. Its length is how many brackets this position currently holds.
 	live *ir.Var
@@ -159,6 +167,20 @@ type loweredEffect struct {
 	mark   *ir.Func
 	key    ir.Expr
 	frames []effectFrame
+	// cell is the cell `on` names, or nil for a computed key, whose writes
+	// mark it by the vars it reads.
+	cell *effectCell
+	// changes is the list change handlers the call site wrote, by event;
+	// kinds, ats and items the queue of writes they are owed; atVar and
+	// itemVar what a handler's parameters read; length the list's length
+	// before an insert, which its note compares; notes the note functions
+	// built so far.
+	changes        map[string]*ir.Func
+	kinds, ats     *ir.Var
+	items          *ir.Var
+	atVar, itemVar *ir.Var
+	length         *ir.Var
+	notes          map[string]*ir.Func
 	// down and up are nil for a bracket with neither @mount nor @unmount,
 	// which reports writes and holds no lifetime.
 	down *ir.Func
@@ -281,7 +303,7 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	st.counter++
 
 	key := effectKeyExpr(n)
-	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool}
+	fx := &loweredEffect{comp: o.Comp, elem: ir.TypBool, prefix: prefix}
 	if key != nil {
 		fx.elem = key.ExprType()
 		fx.keyVar = &ir.Var{
@@ -300,6 +322,12 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	if fx.mount == nil && fx.unmount == nil && fx.update == nil {
 		return nil
 	}
+	if key != nil {
+		fx.cell = cellOfKey(key)
+	}
+	if err := st.lowerChanges(n, o, fx, key); err != nil {
+		return err
+	}
 	if fx.keyVar != nil {
 		st.addVar(o, fx.keyVar)
 	}
@@ -315,8 +343,12 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 			Synthesized: true,
 		}
 		st.addVar(o, fx.dirty)
-		for _, v := range st.reactiveVarsIn(key) {
-			st.dirtyBy[v] = append(st.dirtyBy[v], fx)
+		if fx.cell != nil {
+			st.cellBy[fx.cell.root] = append(st.cellBy[fx.cell.root], fx)
+		} else {
+			for _, v := range st.reactiveVarsIn(key) {
+				st.dirtyBy[v] = append(st.dirtyBy[v], fx)
+			}
 		}
 	}
 	if fx.mount == nil && fx.unmount == nil {
@@ -659,15 +691,19 @@ func (st *effectState) reportable(n *ir.NodeInst, frames []effectFrame) error {
 //	    __effectN_dirty = false
 //	    <the if chain> { __effectN_key = <on>; __effectN_update() }
 //	}
-func (st *effectState) reportBlock(prefix string, fx *loweredEffect) ir.Stmt {
+func (st *effectState) reportBlock(prefix string, fx *loweredEffect) []ir.Stmt {
+	var out []ir.Stmt
+	if fx.kinds != nil {
+		out = st.drainBlock(fx)
+	}
 	run := []ir.Stmt{
 		&ir.Assign{Target: st.varIdent(fx.keyVar), Op: ast.AssignSet, Value: deepCloneExpr(fx.key)},
-		callOf(fx.update),
 	}
-	return &ir.If{
+	run = append(run, callHandler(fx.update)...)
+	return append(out, &ir.If{
 		Cond: st.varIdent(fx.dirty),
 		Body: append([]ir.Stmt{st.setFlag(fx.dirty, false)}, st.positionBlock(prefix, fx.frames, run)...),
-	}
+	})
 }
 
 // checkHandlerScope refuses a handler body that reads a loop variable of an
@@ -1018,7 +1054,7 @@ func (st *effectState) buildGroups() {
 		// them: a write was made while the bracket it reaches was running.
 		for j, fx := range g.fxs {
 			if fx.update != nil {
-				pass = append(pass, st.reportBlock(prefix+"_"+strconv.Itoa(j), fx))
+				pass = append(pass, st.reportBlock(prefix+"_"+strconv.Itoa(j), fx)...)
 			}
 		}
 		for _, fx := range slices.Backward(g.fxs) {
@@ -1146,7 +1182,7 @@ func (st *effectState) groupFor(comp *ir.Component) *effectGroup {
 // A call to an ordinary function needs nothing at the call: its body is a
 // block of its own, and settles before it returns.
 func (st *effectState) injectSettles() {
-	if len(st.byVar) == 0 && len(st.dirtyBy) == 0 {
+	if len(st.byVar) == 0 && len(st.dirtyBy) == 0 && len(st.cellBy) == 0 {
 		return
 	}
 	blocks := allBlocks(st.pkg)
@@ -1216,15 +1252,12 @@ func (st *effectState) settleAfterWrites(stmts []ir.Stmt, own map[*[]ir.Stmt]boo
 				*b = st.markInto(*b, own)
 			}
 		}
+		before, after, dirty := st.writeNotes(s)
+		out = append(out, before...)
 		out = append(out, s)
-		seen := map[*loweredEffect]bool{}
-		for _, v := range st.writtenVars(s) {
-			for _, fx := range st.dirtyBy[v] {
-				if !seen[fx] {
-					seen[fx] = true
-					out = append(out, call(fx.group, st.markFunc(fx)))
-				}
-			}
+		out = append(out, after...)
+		for _, fx := range dirty {
+			out = append(out, call(fx.group, st.markFunc(fx)))
 		}
 		hit := map[*effectGroup]bool{}
 		st.collectSettled([]ir.Stmt{s}, own, hit)
@@ -1261,8 +1294,13 @@ func (st *effectState) markInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.S
 				*b = st.markInto(*b, own)
 			}
 		}
+		before, after, dirty := st.writeNotes(s)
+		out = append(out, before...)
 		out = append(out, s)
-		out = append(out, st.marksDirty(s)...)
+		out = append(out, after...)
+		for _, fx := range dirty {
+			out = append(out, st.setFlag(fx.dirty, true))
+		}
 	}
 	return out
 }
@@ -1315,20 +1353,28 @@ func nestedBodies(s ir.Stmt) []*[]ir.Stmt {
 	return nil
 }
 
-// marksDirty is the flags a statement's write sets: every `@update` whose key
-// reads what it wrote is owed a report, whatever value it wrote.
-func (st *effectState) marksDirty(s ir.Stmt) []ir.Stmt {
-	var out []ir.Stmt
+// writeNotes is what a statement's write owes the brackets with an `@update`:
+// the notes around it for each change a bracket handles, and every bracket
+// owed a report -- a computed key's whose reads it wrote, whatever value it
+// wrote, and a cell key's that it reached and no change handler described.
+func (st *effectState) writeNotes(s ir.Stmt) (before, after []ir.Stmt, dirty []*loweredEffect) {
+	before, after, cellDirty := st.notesFor(s)
 	seen := map[*loweredEffect]bool{}
-	for _, v := range st.writtenVars(s) {
-		for _, fx := range st.dirtyBy[v] {
-			if !seen[fx] {
-				seen[fx] = true
-				out = append(out, st.setFlag(fx.dirty, true))
-			}
+	add := func(fx *loweredEffect) {
+		if !seen[fx] {
+			seen[fx] = true
+			dirty = append(dirty, fx)
 		}
 	}
-	return out
+	for _, v := range st.writtenVars(s) {
+		for _, fx := range st.dirtyBy[v] {
+			add(fx)
+		}
+	}
+	for _, fx := range cellDirty {
+		add(fx)
+	}
+	return before, after, dirty
 }
 
 // settledBy is the scopes whose brackets a statement may have moved, in a
@@ -1470,6 +1516,16 @@ func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
 		},
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}}
+}
+
+// callHandler calls a lifted handler, or nothing where its body is empty: a Go
+// emitter skips a function with no statements, as it would a native's
+// signature, so a call would name nothing it declared.
+func callHandler(fn *ir.Func) []ir.Stmt {
+	if fn == nil || len(fn.Block) == 0 {
+		return nil
+	}
+	return []ir.Stmt{callOf(fn)}
 }
 
 func callOf(fn *ir.Func) ir.Stmt {

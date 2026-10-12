@@ -1,0 +1,579 @@
+# An effect's list change events, run on every target passEffect lowers them
+# for -- all but android -- and on the interpreter, which is what they are held
+# to.
+#
+# testdata/effect_changes.txtar is the code. The tests pin what a compiled queue
+# could get wrong: the order the writes were made in (testOrder), the index a
+# write read against the list as it stood then (testOrder's set), the removed
+# item read before the removal (testOrder), a write no handler describes
+# reaching @update after the changes (testReplace, testPartial), an
+# out-of-range insert or remove reporting nothing (testOutOfRange), the element
+# as each write left it rather than as the handler ends (testSetTwice), a
+# field key's sibling reporting nothing (testField), a test's own write
+# (testHarness), and none to a bracket the tree no longer holds (testGated).
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout 'PASS'
+[gtk4] ! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+struct Holder {
+    items list<int>
+    other int = 0
+}
+
+struct Item {
+    n int = 0
+}
+
+component changes ui.node {
+    var xs list<int> = [10, 20]
+    var log list<string> = []
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @remove(at, item) {
+            log.push("remove {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+        @clear {
+            log.push("clear")
+        },
+    )
+
+    func pushRemoveSet() {
+        xs.push(30)
+        xs.remove(0)
+        xs[1] = 99
+    }
+
+    func insertAt(i int, x int) {
+        xs.insert(i, x)
+    }
+
+    func outOfRange() {
+        xs.insert(9, 1)
+        xs.remove(-1)
+        xs.remove(5)
+    }
+
+    func bump() {
+        for var k, &x = xs {
+            if k == 1 {
+                x += 1
+            }
+        }
+    }
+
+    func clearAll() {
+        xs.clear()
+    }
+
+    func swapAll() {
+        xs.push(1)
+        xs = [7]
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testOrder(t test.Test, c changes) {
+    c.pushRemoveSet()
+    t.assert(c.out.value == "insert 2 30,remove 0 10,set 1 99")
+}
+
+func testInsert(t test.Test, c changes) {
+    c.insertAt(1, 15)
+    t.assert(c.out.value == "insert 1 15")
+}
+
+func testOutOfRange(t test.Test, c changes) {
+    c.outOfRange()
+    t.assert(c.out.value == "")
+}
+
+func testThroughARef(t test.Test, c changes) {
+    c.bump()
+    t.assert(c.out.value == "set 1 21")
+}
+
+func testClear(t test.Test, c changes) {
+    c.clearAll()
+    t.assert(c.out.value == "clear")
+}
+
+func testReplace(t test.Test, c changes) {
+    c.swapAll()
+    t.assert(c.out.value == "insert 2 1,update 1")
+}
+
+func testHarness(t test.Test, c changes) {
+    c.xs.push(5)
+    t.assert(c.out.value == "insert 2 5")
+    c.xs[0] = 4
+    t.assert(c.out.value == "insert 2 5,set 0 4")
+}
+
+component partial ui.node {
+    var xs list<int> = [1]
+    var log list<string> = []
+
+    effect(
+        on = xs,
+        @update(v) {
+            log.push("update {v.length()}")
+        },
+        @insert(at, item) {
+            log.push("insert {at}")
+        },
+    )
+
+    func pushThenRemove() {
+        xs.push(2)
+        xs.remove(0)
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testPartial(t test.Test, c partial) {
+    c.pushThenRemove()
+    t.assert(c.out.value == "insert 1,update 1")
+}
+
+component field ui.node {
+    var h = Holder{items=[1]}
+    var log list<string> = []
+
+    effect(
+        on = h.items,
+        @update {
+            log.push("update")
+        },
+        @insert(at, item) {
+            log.push("insert {at} {item}")
+        },
+        @set(at, item) {
+            log.push("set {at} {item}")
+        },
+    )
+
+    func add() {
+        h.items.push(2)
+    }
+
+    func poke() {
+        h.items[0] = 7
+    }
+
+    func sibling() {
+        h.other = 3
+    }
+
+    func swap() {
+        h = Holder{items=[5]}
+    }
+
+    ui.text #out(value = "{h.items.length()} {log.join(",")}")
+}
+
+func testField(t test.Test, c field) {
+    c.add()
+    t.assert(c.out.value == "2 insert 1 2")
+    c.poke()
+    t.assert(c.out.value == "2 insert 1 2,set 0 7")
+    c.sibling()
+    t.assert(c.out.value == "2 insert 1 2,set 0 7")
+    c.swap()
+    t.assert(c.out.value == "1 insert 1 2,set 0 7,update")
+}
+
+component twice ui.node {
+    var xs list<Item> = [Item{}]
+    var log list<string> = []
+
+    effect(
+        on = xs,
+        @update {},
+        @set(at, item) {
+            log.push("set {at} {item.n}")
+        },
+    )
+
+    func setTwice() {
+        xs[0].n = 1
+        xs[0].n = 2
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testSetTwice(t test.Test, c twice) {
+    c.setTwice()
+    t.assert(c.out.value == "set 0 1,set 0 2")
+}
+
+component gated ui.node {
+    var on = true
+    var xs list<int> = []
+    var log list<string> = []
+
+    if on {
+        effect(
+            on = xs,
+            @update {},
+            @insert(at, item) {
+                log.push("insert {at}")
+            },
+        )
+    }
+
+    func pushAndHide() {
+        xs.push(1)
+        on = false
+    }
+
+    func pushWhileHidden() {
+        xs.push(2)
+    }
+
+    ui.text #out(value = log.join(","))
+}
+
+func testGated(t test.Test, c gated) {
+    c.pushAndHide()
+    t.assert(c.out.value == "")
+    c.pushWhileHidden()
+    t.assert(c.out.value == "")
+}
+
+ui.window(title = "Changes") {
+    changes
+    partial
+    field
+    twice
+    gated
+}
+-- testrun/bubbletea/go/app.sngl/changes/1 --
+sha256:c71728e7a048d9b9d1dc39684b3e851e
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/field/1 --
+sha256:ab0357b93586fd39d3835b2d25039013
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/gated/1 --
+sha256:9ad135fa9c3ecb0b4c74e6dfbf88b355
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/partial/1 --
+sha256:d8c748d80697271b14e3513c93c998f4
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/twice/1 --
+sha256:74fbdc63fa99e263b7375f51dc792e2f
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/changes/1 --
+sha256:136e1c72331e7d6564944ed90eecf1f2
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/field/1 --
+sha256:8979aca6f3caef92b030b7f11fc7cee2
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/gated/1 --
+sha256:23c42a434f2d18df9e5ac50f68b72fc9
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/partial/1 --
+sha256:bff00154c54041c40c1f3a9a51496ae3
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/twice/1 --
+sha256:4da18150bd7876632acd3518167b1a0a
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/changes/1 --
+sha256:16a3775da4a5fbd29535fa081f34d418
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/field/1 --
+sha256:2defe60ea7cce9023b8613b35e34b491
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/gated/1 --
+sha256:fecddd6479fbd709822d35506e6bb196
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/partial/1 --
+sha256:d5af0c9a995f19dcfd868a0cc03cc08b
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/twice/1 --
+sha256:7f5207bcaa975239a63c612d6258b5f5
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/changes/1 --
+sha256:4b70689ff93a1be3801061477aa18765
+{
+  "results": [
+    {
+      "Desc": "Clear",
+      "Passed": true
+    },
+    {
+      "Desc": "Harness",
+      "Passed": true
+    },
+    {
+      "Desc": "Insert",
+      "Passed": true
+    },
+    {
+      "Desc": "Order",
+      "Passed": true
+    },
+    {
+      "Desc": "OutOfRange",
+      "Passed": true
+    },
+    {
+      "Desc": "Replace",
+      "Passed": true
+    },
+    {
+      "Desc": "ThroughARef",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/field/1 --
+sha256:662d3fdb120fe1a29f6fe571140d08a1
+{
+  "results": [
+    {
+      "Desc": "Field",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/gated/1 --
+sha256:320e4855f7eb18943246243d03c6d3e7
+{
+  "results": [
+    {
+      "Desc": "Gated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/partial/1 --
+sha256:0ff6b13d44225315b06bf7efee0136e1
+{
+  "results": [
+    {
+      "Desc": "Partial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/twice/1 --
+sha256:61a99ff318d2be6652950c51a946377b
+{
+  "results": [
+    {
+      "Desc": "SetTwice",
+      "Passed": true
+    }
+  ]
+}

@@ -44,7 +44,9 @@
 // `@clear`. A write no such handler describes, replacing the list whole among
 // them, still reaches `@update`, so a program handling the changes has to handle
 // `@update` too. They run after the handler that wrote, in the order the writes
-// were made, each index read against the list as it stood at that write.
+// were made, each index read against the list as it stood at that write, and
+// each item as that write left it: a later write in the same handler does not
+// move it.
 //
 // For a key that does compare, `@update` runs on every write, including one of
 // the value it already held, and before the bracket rekeys. No handler may write
