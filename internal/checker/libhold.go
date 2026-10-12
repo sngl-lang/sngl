@@ -94,13 +94,16 @@ type libHold struct {
 	// replayed is the packages whose load diagnostics this check has
 	// reported (replayLoad).
 	replayed map[string]bool
+	// current is what entryCurrent has found of each kept package's source
+	// and imports in this chain.
+	current map[*pkgEntry]bool
 }
 
 func (cfg *Config) libHold(libs *libCache) *libHold {
 	if cfg != nil && cfg.hold != nil {
 		return cfg.hold
 	}
-	return &libHold{libs: libs, replayed: map[string]bool{}}
+	return &libHold{libs: libs, replayed: map[string]bool{}, current: map[*pkgEntry]bool{}}
 }
 
 // check holds the cache for reading for a check, and returns its end. A
@@ -164,6 +167,7 @@ func (l *libCache) freezeLoaded() {
 // recordLoad keeps what loading key reported, from start on, for every later
 // check that finds it loaded. The caller holds the write lock.
 func (c *checker) recordLoad(key string, start int) {
+	c.libKeys = append(c.libKeys, key)
 	c.libs.loaded = true
 	c.hold.replayed[key] = true
 	if diags := c.diags[start:]; len(diags) > 0 {
@@ -175,6 +179,7 @@ func (c *checker) recordLoad(key string, start int) {
 // loaded: a library problem is every program's that reaches it, as it was
 // when each check loaded its own.
 func (c *checker) replayLoad(key string) {
+	c.libKeys = append(c.libKeys, key)
 	if c.hold.replayed[key] {
 		return
 	}
@@ -213,22 +218,28 @@ func (c *checker) loadHold() func() {
 		}
 		if c.hold.writes == 1 && c.libs.loaded {
 			for _, p := range c.libs.packages() {
-				if p.Frozen {
-					continue
-				}
-				for _, fn := range p.Macros {
-					c.resolveMacroSig(p, fn)
-				}
-				for _, comp := range p.Components {
-					for _, prop := range comp.Props {
-						if prop.Sym == nil {
-							propParam(prop)
-						}
-					}
+				if !p.Frozen {
+					c.settle(p)
 				}
 			}
 		}
 		end()
+	}
+}
+
+// settle writes what a check reaching p's declarations would otherwise write
+// into them lazily, before p is shared: every macro's signature and every
+// prop's symbol.
+func (c *checker) settle(p *ir.Package) {
+	for _, fn := range p.Macros {
+		c.resolveMacroSig(p, fn)
+	}
+	for _, comp := range p.Components {
+		for _, prop := range comp.Props {
+			if prop.Sym == nil {
+				propParam(prop)
+			}
+		}
 	}
 }
 

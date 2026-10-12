@@ -92,6 +92,34 @@ ui.window(title="t") {
     }
 }
 `,
+	`import ui "sngl:ui"
+import badge "./badge"
+
+output {
+    go { fyne }
+    none { html }
+}
+
+var n = 0
+
+ui.window(title="t") {
+    badge.count(n=n, @bump { n += 1 })
+}
+`,
+}
+
+// concurrentPackages are directory packages every program's directory holds,
+// which the checks keep between them.
+var concurrentPackages = map[string]string{
+	"badge/badge.sngl": `import ui "sngl:ui"
+import style "./style"
+
+component count(n int, @bump()) ui.node {
+    ui.button(text="{style.prefix}{n}", @click { bump() })
+}
+`,
+	"badge/style/style.sngl": `const prefix = "n="
+`,
 }
 
 func buildProgram(src string) (map[string][]byte, error) {
@@ -100,6 +128,9 @@ func buildProgram(src string) (map[string][]byte, error) {
 		return nil, err
 	}
 	fsys := fstest.MapFS{"main.sngl": {Data: []byte(src)}}
+	for name, data := range concurrentPackages {
+		fsys[name] = &fstest.MapFile{Data: []byte(data)}
+	}
 	pkg, err := build.Check(doc, build.CheckConfig{FS: fsys, IsMain: true})
 	if err != nil {
 		return nil, err

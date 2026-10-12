@@ -90,6 +90,15 @@ type Config struct {
 	// per-declaration -- which reads as "cannot pass Op as Op" at the call
 	// site where the two meet.
 	dirPkgs map[string]*ir.Package
+	// dirEntries is the kept entry behind each of dirPkgs, where it was kept.
+	dirEntries map[string]*pkgEntry
+	// report is filled in for the import that started this check: whether
+	// its package may be kept (pkgEntry).
+	report *nestedReport
+	// inScheme says the check is of a scheme's package or a directory one
+	// imports, whose FS is the scheme's and not the project's: its directory
+	// imports are not kept.
+	inScheme bool
 	// generating is the stack of scheme imports whose plugin is running, so a
 	// plugin whose output imports its own scheme again is a cycle rather than
 	// a recursion.
@@ -140,6 +149,14 @@ func (cfg *Config) dirPkgCache() map[string]*ir.Package {
 		return cfg.dirPkgs
 	}
 	return map[string]*ir.Package{}
+}
+
+// dirEntryCache is dirPkgCache's kept entries.
+func (cfg *Config) dirEntryCache() map[string]*pkgEntry {
+	if cfg != nil && cfg.dirEntries != nil {
+		return cfg.dirEntries
+	}
+	return map[string]*pkgEntry{}
 }
 
 // libCache holds the library packages one build has loaded. It is shared with
@@ -194,6 +211,11 @@ type libCache struct {
 	// declaration another package owns, as of its last load. It is replaced,
 	// never written in place (publish), so a check may keep the one it read.
 	targets ir.Overlay
+	// pkgEntries is the directory and scheme packages checked against this
+	// library that later checks may use, by entryKey. Checks store them while
+	// holding mu only for reading, so they have a lock of their own.
+	pkgMu      sync.Mutex
+	pkgEntries map[string]*pkgEntry
 	// Shared for the same reason `extended` is: the packages are shared, so a
 	// later check must re-bind the same symbol rather than a second one, which
 	// Declare would rightly call a redeclaration.
@@ -311,6 +333,11 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.reportUnresolvedSchemes()
 	c.pkg.Targets = c.libs.targets
 	ir.Normalize(c.pkg)
+	if r := c.cfg.nestedReport(); r != nil {
+		r.uncacheable = c.uncacheable || len(c.diags) > 0
+		r.deps = c.deps
+		r.libKeys = c.libKeys
+	}
 	return c.pkg, c.diags
 }
 
@@ -399,7 +426,14 @@ type checker struct {
 	visited map[string]bool
 	// dirPkgs is the build's checked-package cache, shared with every nested
 	// check so that one directory yields one set of declarations.
-	dirPkgs map[string]*ir.Package
+	dirPkgs    map[string]*ir.Package
+	dirEntries map[string]*pkgEntry
+	// uncacheable says this package imported something a kept entry could
+	// not tell was unchanged, and deps is the kept entries it imported.
+	uncacheable bool
+	deps        []*pkgEntry
+	// libKeys is every library load the check reached (pkgEntry.libKeys).
+	libKeys []string
 	// generating is Config.generating, shared with every nested check.
 	generating map[string]bool
 
@@ -743,6 +777,7 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		scope:         symtab.Root,
 		visited:       cfg.visitedStack(),
 		dirPkgs:       cfg.dirPkgCache(),
+		dirEntries:    cfg.dirEntryCache(),
 		libs:          cfg.libCache(),
 		generating:    cfg.generatingStack(),
 		schemeClashes: map[*ir.Scheme]bool{},
@@ -1630,8 +1665,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 	} else if c.unresolvedImport {
 		// Reported once the package's own schemes are known; bound with no
 		// package meanwhile.
+		c.uncacheable = true
 	} else if plugin := c.pluginScheme(scheme); plugin != nil {
 		// A scheme a plugin serves: its handler writes the package.
+		c.uncacheable = true
 		if docs := c.generateScheme(imp, plugin, uri); len(docs) > 0 {
 			irImport.Pkg = c.checkSchemePackage(docs, nil, scheme, uri, true, plugin.Library)
 		}
@@ -1639,6 +1676,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 		// Scheme import. Try FS-backed schemes first (git://, http://, …) so
 		// remote SNGL packages resolve to .sngl docs; fall back to native
 		// scheme importers (go:, ts://, …) for language sources.
+		c.uncacheable = true
 		docs, subFS, err := c.cfg.Resolver.ResolveSchemeFS(scheme, uri, c.cfg.Dir)
 		if err != nil {
 			c.error(imp.Pos, "import %q: %v", imp.Path, err)
@@ -1704,6 +1742,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.importCycle = true
 		case c.dirPkgs[dirPath] != nil:
 			irImport.Pkg = c.dirPkgs[dirPath]
+			if e := c.dirEntries[dirPath]; e != nil {
+				c.adoptContexts(e.pkg)
+			}
+			c.noteDep(c.dirEntries[dirPath])
 		default:
 			c.visited[dirPath] = true
 			docs, err := c.cfg.Resolver.Resolve(c.cfg.FS, dirPath)
@@ -1711,7 +1753,14 @@ func (c *checker) registerImport(imp *ast.Import) {
 				c.error(imp.Pos, "import %q: %v", imp.Path, err)
 			}
 			defer delete(c.visited, dirPath)
-			if len(docs) > 0 {
+			key := c.entryKey("dir", dirPath)
+			if len(docs) == 0 {
+				c.uncacheable = true
+			} else if e := c.cachedDir(key, docs); e != nil {
+				c.useEntry(e, map[*pkgEntry]bool{})
+				irImport.Pkg = e.exported
+				c.noteDep(e)
+			} else {
 				// The package's files together, not one at a time: a
 				// declaration in one may be named by an annotation in another,
 				// and checking them separately left each without its siblings
@@ -1721,6 +1770,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				// against, and visited/dirPkgs are shared so a sibling
 				// importing the same package is neither a cycle nor a second
 				// copy of its types.
+				rep := &nestedReport{}
 				pkg, diags := CheckPackage(docs, &Config{
 					FS:         c.cfg.FS,
 					Dir:        c.cfg.Dir,
@@ -1728,6 +1778,9 @@ func (c *checker) registerImport(imp *ast.Import) {
 					Resolver:   c.cfg.Resolver,
 					visited:    c.visited,
 					dirPkgs:    c.dirPkgs,
+					dirEntries: c.dirEntries,
+					report:     rep,
+					inScheme:   c.cfg.inScheme,
 					Languages:  c.cfg.Languages,
 					Platforms:  c.cfg.Platforms,
 					Replaces:   c.replaces,
@@ -1755,6 +1808,12 @@ func (c *checker) registerImport(imp *ast.Import) {
 				// of one directory must see one set of declarations, or a
 				// value from one cannot be passed to the other.
 				c.dirPkgs[dirPath] = exported
+				if !c.cfg.inScheme {
+					if e := c.keep(key, dirPath, docs, pkg, exported, rep); e != nil {
+						c.dirEntries[dirPath] = e
+					}
+				}
+				c.noteDep(c.dirEntries[dirPath])
 			}
 		}
 	}
@@ -1798,24 +1857,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 	c.markForeign(irImport.Pkg)
 	claimed := c.claimTopLevel(alias, imp.Pos, bindAlias, imp.Path)
-	// One name, two packages: `html` is sngl:ui's namespace for the
-	// placement directives and the html platform's for its elements, and a
-	// file that dot-imports std and imports the platform means both. The
-	// imported package goes behind the one already in scope, so a name std
-	// declares wins and the platform's -- including its wildcard -- is reached
-	// after.
-	//
-	// Only once the alias is this file's to bind: two imports claiming one
-	// alias is still two meanings for a name, which claimTopLevel reports.
-	if claimed && ns.Pkg != nil && ns.Pkg.Symbols != nil {
-		if existing, ok := c.scope.Lookup(alias); ok {
-			if existingNS, isNS := existing.(*ir.Namespace); isNS &&
-				existingNS.Pkg != nil && existingNS.Pkg != ns.Pkg && existingNS.Pkg.Symbols != nil {
-				existingNS.Pkg.Symbols.Root.Parent = ns.Pkg.Symbols.Root
-				return
-			}
-		}
-	}
 	c.bindImport(claimed, ns)
 }
 
@@ -1823,7 +1864,15 @@ func (c *checker) registerImport(imp *ast.Import) {
 // package, however many files it arrived as -- the same rule a directory
 // import follows -- and returns the view an importer sees.
 func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, uri string, generated, byLibrary bool) *ir.Package {
+	key := c.entryKey(fmt.Sprintf("scheme generated=%v byLibrary=%v", generated, byLibrary), scheme+":"+uri)
+	if e := c.cachedPkg(key, docs); e != nil {
+		c.useEntry(e, map[*pkgEntry]bool{})
+		return e.exported
+	}
+	rep := &nestedReport{}
 	cfg := &Config{
+		report:     rep,
+		inScheme:   true,
 		FS:         subFS,
 		Dir:        c.cfg.Dir,
 		Resolver:   c.cfg.Resolver,
@@ -1849,6 +1898,7 @@ func (c *checker) checkSchemePackage(docs []*ast.Document, subFS fs.FS, scheme, 
 	c.mergePkgInto(exported, pkg)
 	c.adoptContexts(pkg)
 	exported.Origin = origin
+	c.keep(key, "", docs, pkg, exported, rep)
 	return exported
 }
 

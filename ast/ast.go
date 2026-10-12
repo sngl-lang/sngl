@@ -97,6 +97,10 @@ type Document struct {
 	// every multi-line literal, argument list and nested block got wrong.
 	// A document the compiler synthesized has none, and formats unspaced.
 	BlankLines map[int]bool `json:"-"`
+	// Digest is the SHA-256 of the file name and source it was parsed from,
+	// and empty for one the compiler built: what a cache of checked packages
+	// keys a package's source by.
+	Digest string `json:"-"`
 }
 
 // BlankBefore reports whether the source left the line above line empty.

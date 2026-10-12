@@ -803,6 +803,31 @@ file of the program's current, or a file switch inside the load set the
 package's import scope to the program's file
 (`TestTargetLoadedByAnOutputBlockKeepsItsImports`).
 
+**A directory import and a scheme's package are kept beside the library**
+(`dircache.go`), keyed by the import root, the path or URI, the replace map
+and the targets, and holding the digest of the source they were checked from
+(`ast.Document.Digest`, which `parser.Parse` records). A later check reusing
+one asks that its source is unchanged and that each directory package it
+imported is still the one kept, read again and recursively; storing a new
+version drops the old one and every kept package checked against it, which is
+how an edit reaches the LSP's next check (`TestImportedPackagesAreKept`). Only
+a package whose check is a function of those things is kept: one importing a
+`go:` package, a plugin's output, a fetch or a directory under a scheme's FS
+is checked every time, and so is one whose check reported anything of its
+own. A hit does for the build what checking each package it reaches would
+have: it memoizes them, adopts their contexts and replays the library loads
+they reached (`useEntry`), since the build that kept one may have done all
+three through another import. And a directory this build has already checked
+into a package of its own -- under another replace map, so another key --
+fails every kept package that imported a different one, or two versions of a
+type meet in the program (`TestKeptPackageAgreesWithTheBuildsOwn`). A kept
+package is settled and frozen as a library load is, which is why two imports
+under one alias no longer chain the first package's scope onto the second's:
+that wrote into whatever package the first import found. The resolvers parse with `parser.ParseShared`, which hands two reads of
+the same bytes one tree while either is held: a hit still resolves the
+package's source, and the `md:` site's was most of what a warm check of the
+docs site parsed.
+
 **An override belongs to the package that declares it.** A target package's
 override of `sngl:ui`'s `text` goes in that package's `Overlay`, as a
 program's does (`overrideMap`), and the cache publishes every library
